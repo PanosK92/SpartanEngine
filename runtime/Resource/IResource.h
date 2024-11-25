@@ -101,8 +101,8 @@ namespace Spartan
         void SetFlags(const uint32_t flags) { m_flags = flags; }
 
         // io
-        virtual bool SaveToFile(const std::string& file_path)               { return true; }
-        virtual bool LoadFromFile(const std::string& file_path, bool async) { return true; }
+        virtual void SaveToFile(const std::string& file_path)               { }
+        virtual void LoadFromFile(const std::string& file_path, bool async) { }
 
         // type
         template <typename T>

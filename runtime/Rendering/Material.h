@@ -95,8 +95,8 @@ namespace Spartan
         ~Material() = default;
 
         // iresource
-        bool LoadFromFile(const std::string& file_path, bool async) override;
-        bool SaveToFile(const std::string& file_path) override;
+        void LoadFromFile(const std::string& file_path, bool async) override;
+        void SaveToFile(const std::string& file_path) override;
 
         // textures
         void SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot = 0);

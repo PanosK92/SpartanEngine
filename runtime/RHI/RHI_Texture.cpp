@@ -242,7 +242,7 @@ namespace Spartan
         RHI_DestroyResource();
     }
 
-    bool RHI_Texture::SaveToFile(const string& file_path)
+    void RHI_Texture::SaveToFile(const string& file_path)
     {
         // if a file already exists, get the byte count
         m_object_size = 0;
@@ -260,7 +260,7 @@ namespace Spartan
         bool append = true;
         auto file = make_unique<FileStream>(file_path, FileStream_Write | FileStream_Append);
         if (!file->IsOpen())
-            return false;
+            return;
 
         // if the existing file has texture data but we don't, don't overwrite them
         bool dont_overwrite_data = m_object_size != 0 && !HasData();
@@ -305,16 +305,14 @@ namespace Spartan
         file->Write(m_flags);
         file->Write(GetObjectId());
         file->Write(GetResourceFilePath());
-
-        return true;
     }
 
-    bool RHI_Texture::LoadFromFile(const string& file_path, bool async)
+    void RHI_Texture::LoadFromFile(const string& file_path, bool async)
     {
         if (!FileSystem::IsFile(file_path))
         {
             SP_LOG_ERROR("Invalid file path \"%s\".", file_path.c_str());
-            return false;
+            return;
         }
 
         m_type         = RHI_Texture_Type::Type2D;
@@ -331,7 +329,7 @@ namespace Spartan
             if (!file->IsOpen())
             {
                 SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
-                return false;
+                return;
             }
 
             // read mip info
@@ -387,7 +385,7 @@ namespace Spartan
                 if (!ImageImporter::Load(file_paths[slice_index], slice_index, this))
                 {
                     SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
-                    return false;
+                    return;
                 }
             }
 
@@ -401,8 +399,6 @@ namespace Spartan
         }
 
         ComputeMemoryUsage();
-
-        return true;
     }
 
     RHI_Texture_Mip& RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)

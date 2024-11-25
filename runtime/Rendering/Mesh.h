@@ -60,8 +60,8 @@ namespace Spartan
         ~Mesh();
 
         // iresource
-        bool LoadFromFile(const std::string& file_path, bool async) override;
-        bool SaveToFile(const std::string& file_path) override;
+        void LoadFromFile(const std::string& file_path, bool async) override;
+        void SaveToFile(const std::string& file_path) override;
 
         // geometry
         void Clear();

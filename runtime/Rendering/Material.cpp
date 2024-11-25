@@ -142,13 +142,13 @@ namespace Spartan
         SetProperty(MaterialProperty::Ior,              Material::EnumToIor(MaterialIor::Air));
     }
 
-    bool Material::LoadFromFile(const std::string& file_path, bool async)
+    void Material::LoadFromFile(const std::string& file_path, bool async)
     {
         pugi::xml_document doc;
         if (!doc.load_file(file_path.c_str()))
         {
             SP_LOG_ERROR("Failed to load XML file");
-            return false;
+            return;
         }
 
         SetResourceFilePath(file_path);
@@ -185,11 +185,9 @@ namespace Spartan
         }
 
         m_object_size = sizeof(*this);
-
-        return true;
     }
 
-    bool Material::SaveToFile(const string& file_path)
+    void Material::SaveToFile(const string& file_path)
     {
         SetResourceFilePath(file_path);
 
@@ -217,7 +215,7 @@ namespace Spartan
             textureNode.append_attribute("texture_path").set_value(m_textures[i] ? m_textures[i]->GetResourceFilePathNative().c_str() : "");
         }
 
-        return doc.save_file(file_path.c_str());
+        doc.save_file(file_path.c_str());
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot)
