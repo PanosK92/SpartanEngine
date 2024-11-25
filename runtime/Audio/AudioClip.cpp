@@ -94,7 +94,7 @@ namespace Spartan
         #endif
     }
 
-    bool AudioClip::LoadFromFile(const string& file_path)
+    bool AudioClip::LoadFromFile(const string& file_path, bool async)
     {
         bool loaded = false;
 

@@ -234,7 +234,7 @@ namespace Spartan
 
     RHI_Texture::RHI_Texture(const string& file_path) : IResource(ResourceType::Texture)
     {
-         LoadFromFile(file_path);
+         LoadFromFile(file_path, false);
     }
 
     RHI_Texture::~RHI_Texture()
@@ -309,7 +309,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Texture::LoadFromFile(const string& file_path)
+    bool RHI_Texture::LoadFromFile(const string& file_path, bool async)
     {
         if (!FileSystem::IsFile(file_path))
         {

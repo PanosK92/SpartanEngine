@@ -87,10 +87,9 @@ namespace Spartan
         RHI_Texture();
         ~RHI_Texture();
 
-        //= IResource ===========================================
+        // iresource
         bool SaveToFile(const std::string& file_path) override;
-        bool LoadFromFile(const std::string& file_path) override;
-        //=======================================================
+        bool LoadFromFile(const std::string& file_path, bool async) override;
 
         uint32_t GetWidth() const           { return m_width; }
         void SetWidth(const uint32_t width) { m_width = width; }
