@@ -68,7 +68,7 @@ Icon::Icon(IconType type, const string& file_path)
 
 RHI_Texture* Icon::GetTexture() const
 {
-    if (m_texture && m_texture->GetResourceState() == ResourceState::Ready)
+    if (m_texture && m_texture->GetResourceState() == ResourceState::PreparedForGpu)
     {
         return m_texture.get();
     }
