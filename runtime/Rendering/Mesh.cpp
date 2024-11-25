@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Mesh.h"
 #include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_Texture.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Entity.h"
 #include "../Resource/ResourceCache.h"
@@ -208,8 +207,7 @@ namespace Spartan
         {
             SetResourceFilePath(file_path);
 
-            bool optimize_materials = !(m_flags & static_cast<uint32_t>(MeshFlags::DontOptimizeMaterials));
-            if (!ModelImporter::Load(this, file_path, optimize_materials))
+            if (!ModelImporter::Load(this, file_path))
                 return false;
         }
 

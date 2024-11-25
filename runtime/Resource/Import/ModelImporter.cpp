@@ -53,7 +53,6 @@ namespace Spartan
         string model_name;
         Mesh* mesh               = nullptr;
         bool model_has_animation = false;
-        bool optimize_materials  = false;
         const aiScene* scene     = nullptr;
 
         Matrix to_matrix(const aiMatrix4x4& transform)
@@ -307,12 +306,9 @@ namespace Spartan
             load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
             load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
-            // this will pack textures, compress them, and upload them to the GPU
-            if (optimize_materials)
-            {
-                bool is_gltf = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
-                material->Optimize(is_gltf);
-            }
+            // gltf detection
+            bool is_gltf = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+            material->SetProperty(MaterialProperty::Gltf, is_gltf ? 1.0f : 0.0f);
 
             // name
             aiString name_assimp;
@@ -418,7 +414,7 @@ namespace Spartan
         Settings::RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
-    bool ModelImporter::Load(Mesh* mesh_in, const string& file_path, const bool optimize_materials_)
+    bool ModelImporter::Load(Mesh* mesh_in, const string& file_path)
     {
         SP_ASSERT_MSG(mesh_in != nullptr, "Invalid parameter");
 
@@ -429,10 +425,9 @@ namespace Spartan
         }
 
         // model params
-        optimize_materials = optimize_materials_;
-        model_file_path    = file_path;
-        model_name         = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        mesh               = mesh_in;
+        model_file_path = file_path;
+        model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        mesh            = mesh_in;
         mesh->SetObjectName(model_name);
 
         // set up the importer

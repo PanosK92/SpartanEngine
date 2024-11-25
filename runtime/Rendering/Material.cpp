@@ -322,7 +322,7 @@ namespace Spartan
         return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
     }
 
-    void Material::Optimize(const bool is_gltf)
+    void Material::Optimize()
     {
         SP_ASSERT_MSG(m_resource_state != ResourceState::Processing, "The material is already being processed");
         SP_ASSERT_MSG(m_resource_state != ResourceState::Ready, "The material is already optimized");
@@ -410,20 +410,20 @@ namespace Spartan
                     // create packed data and fallback to default data when needed
                     texture_packing::pack_occlusion_roughness_metalness_height
                     (
-                        texture_occlusion ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
-                        texture_roughness ? texture_roughness->GetMip(0, 0).bytes : texture_one,
-                        texture_metalness ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
-                        texture_height    ? texture_height->GetMip(0, 0).bytes    : texture_half,
-                        is_gltf,
+                        (texture_occlusion && !texture_occlusion->GetMip(0, 0).bytes.empty()) ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
+                        (texture_roughness && !texture_roughness->GetMip(0, 0).bytes.empty()) ? texture_roughness->GetMip(0, 0).bytes : texture_one,
+                        (texture_metalness && !texture_metalness->GetMip(0, 0).bytes.empty()) ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
+                        (texture_height    && !texture_height->GetMip(0, 0).bytes.empty())    ? texture_height->GetMip(0, 0).bytes    : texture_half,
+                        GetProperty(MaterialProperty::Gltf) == 1.0f,
                         texture_packed->GetMip(0, 0).bytes
                     );
-                    
+ 
                     texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
                 }
 
                 SetTexture(MaterialTextureType::Packed, texture_packed);
 
-                // step 3: textues that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
+                // step 3: textures that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
                 {
                     if (texture_alpha_mask) texture_alpha_mask->SetFlag(RHI_Texture_Thumbnail);
                     if (texture_occlusion)  texture_occlusion->SetFlag(RHI_Texture_Thumbnail);

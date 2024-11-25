@@ -223,33 +223,32 @@ namespace Spartan
         return BoundingBox::Undefined;
     }
     
-    shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
+    void Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
 
-        // in order for the component to guarantee serialization/deserialization, we cache the material
-        shared_ptr<Material> _material = ResourceCache::Cache(material);
-
-        m_material = _material.get();
-
-        // set to false otherwise material won't serialize/deserialize
         m_material_default = false;
 
-        return _material;
+        // cache it so it can be serialized/deserialized
+        m_material = ResourceCache::Cache(material).get();
+
+        // pack textures, generate mips, compress, upload to GPU
+        if (m_material->GetResourceState() == ResourceState::Max)
+        { 
+            m_material->Optimize();
+        }
     }
 
-    shared_ptr<Material> Renderable::SetMaterial(const string& file_path)
+    void Renderable::SetMaterial(const string& file_path)
     {
-        // load the material
         auto material = make_shared<Material>();
         if (!material->LoadFromFile(file_path))
         {
             SP_LOG_WARNING("Failed to load material from \"%s\"", file_path.c_str());
-            return nullptr;
+            return;
         }
 
-        // set it as the current material
-        return SetMaterial(material);
+        SetMaterial(material);
     }
 
     void Renderable::SetDefaultMaterial()

@@ -76,10 +76,10 @@ namespace Spartan
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
-        std::shared_ptr<Material> SetMaterial(const std::shared_ptr<Material>& material);
+        void SetMaterial(const std::shared_ptr<Material>& material);
 
         // Loads a material and the sets it
-        std::shared_ptr<Material> SetMaterial(const std::string& file_path);
+        void SetMaterial(const std::string& file_path);
 
         void SetDefaultMaterial();
         std::string GetMaterialName() const;

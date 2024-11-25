@@ -73,6 +73,7 @@ namespace Spartan
         VertexAnimateWind,    // applies vertex-based animation to simulate wind
         VertexAnimateWater,   // applies vertex-based animation to simulate water flow
         CullMode,             // sets the culling mode based on RHI_CullMode enum values
+        Gltf,                 // indicates if the material was imported from a glTF file
         Max                   // total number of properties, used to size arrays
     };
 
@@ -125,7 +126,7 @@ namespace Spartan
         }
 
         // misc
-        void Optimize(const bool is_gltf = false);
+        void Optimize();
         uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
