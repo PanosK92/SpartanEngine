@@ -35,7 +35,7 @@ namespace Spartan
 
     }
 
-    bool Animation::LoadFromFile(const string& filePath)
+    bool Animation::LoadFromFile(const string& filePath, bool async)
     {
         return true;
     }

@@ -242,7 +242,7 @@ namespace Spartan
     void Renderable::SetMaterial(const string& file_path)
     {
         auto material = make_shared<Material>();
-        if (!material->LoadFromFile(file_path))
+        if (!material->LoadFromFile(file_path, false))
         {
             SP_LOG_WARNING("Failed to load material from \"%s\"", file_path.c_str());
             return;

@@ -40,10 +40,9 @@ namespace Spartan
         AudioClip();
         ~AudioClip();
 
-        //= IResource ===========================================
-        bool LoadFromFile(const std::string& file_path) override;
+        // iresource
+        bool LoadFromFile(const std::string& file_path, bool async) override;
         bool SaveToFile(const std::string& file_path) override;
-        //=======================================================
 
         void Play(const bool loop, const bool is_3d);
         void Pause();
