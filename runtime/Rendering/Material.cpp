@@ -325,7 +325,7 @@ namespace Spartan
     void Material::Optimize()
     {
         SP_ASSERT_MSG(m_resource_state != ResourceState::Processing, "The material is already being processed");
-        SP_ASSERT_MSG(m_resource_state != ResourceState::Ready, "The material is already optimized");
+        SP_ASSERT_MSG(m_resource_state != ResourceState::Ready,      "The material is already optimized");
 
         m_resource_state = ResourceState::Processing;
 
@@ -369,9 +369,9 @@ namespace Spartan
 
                 if (!texture_packed)
                 {
-                    bool textures_are_compressed = (texture_occlusion  && texture_occlusion->IsCompressedFormat())  ||
-                                                   (texture_roughness  && texture_roughness->IsCompressedFormat())  ||
-                                                   (texture_metalness  && texture_metalness->IsCompressedFormat())  ||
+                    bool textures_are_compressed = (texture_occlusion  && texture_occlusion->IsCompressedFormat()) ||
+                                                   (texture_roughness  && texture_roughness->IsCompressedFormat()) ||
+                                                   (texture_metalness  && texture_metalness->IsCompressedFormat()) ||
                                                    (texture_height     && texture_height->IsCompressedFormat());
                 
                     RHI_Texture* texture_reference = texture_color      ? texture_color      :
@@ -434,9 +434,10 @@ namespace Spartan
             }
         }
 
-        // prepare all textures
-        future<void> texture_preparation_task = ThreadPool::AddTask([this]()
+        // PrepareForGpu() generates mips, compresses and uploads to GPU, so we offload it to a thread
+        ThreadPool::AddTask([this]()
         {
+            // prepare all textures
             for (RHI_Texture* texture : m_textures)
             {
                 if (texture && texture->GetResourceState() == ResourceState::Max)

@@ -250,15 +250,13 @@ namespace Spartan
 
                 if (texture)
                 {
+                    // set cached texture
                     material->SetTexture(texture_type, texture);
                 }
-                else // if we didn't get a texture, it's not cached, hence we have to load it and cache it now
+                else
                 {
-                    // load texture
-                    texture = ResourceCache::Load<RHI_Texture>(deduced_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontOptimize);
-
-                    // set the texture to the provided material
-                    material->SetTexture(texture_type, texture);
+                    // load new texture
+                    material->SetTexture(texture_type, deduced_path, 0, RHI_Texture_DontOptimize);
                 }
             }
 
