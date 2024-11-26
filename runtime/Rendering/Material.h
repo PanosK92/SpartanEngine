@@ -126,7 +126,7 @@ namespace Spartan
         }
 
         // misc
-        void Optimize();
+        void PrepareForGpu();
         uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }

@@ -382,11 +382,7 @@ namespace Spartan
             // load texture
             for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
             {
-                if (!ImageImporter::Load(file_paths[slice_index], slice_index, this))
-                {
-                    SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
-                    return;
-                }
+                ImageImporter::Load(file_paths[slice_index], slice_index, this);
             }
 
             // set resource file path so it can be used by the resource cache.
@@ -520,10 +516,10 @@ namespace Spartan
     void RHI_Texture::PrepareForGpu()
     {
         SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared textures can be prepared");
+        m_resource_state = ResourceState::PreparingForGpu;
+
         SP_ASSERT(m_slices.size() > 0);
         SP_ASSERT(m_slices[0].mips.size() > 0);
-
-        m_resource_state = ResourceState::PreparingForGpu;
 
         if (!IsCompressedFormat()) // the bistro world loads compressed textures with mips
         {
