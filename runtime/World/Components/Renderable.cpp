@@ -235,7 +235,7 @@ namespace Spartan
         // pack textures, generate mips, compress, upload to GPU
         if (m_material->GetResourceState() == ResourceState::Max)
         { 
-            m_material->Optimize();
+            m_material->PrepareForGpu();
         }
     }
 

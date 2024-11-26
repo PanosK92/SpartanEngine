@@ -328,14 +328,14 @@ namespace Spartan
         FreeImage_DeInitialise();
     }
 
-    bool ImageImporter::Load(const string& file_path, const uint32_t slice_index, RHI_Texture* texture)
+    void ImageImporter::Load(const string& file_path, const uint32_t slice_index, RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
 
         if (!FileSystem::Exists(file_path))
         {
             SP_LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
-            return false;
+            return;
         }
 
         // acquire image format
@@ -353,7 +353,7 @@ namespace Spartan
             if (!FreeImage_FIFSupportsReading(format)) 
             {
                 SP_LOG_ERROR("Unsupported format");
-                return false;
+                return;
             }
         }
 
@@ -369,7 +369,7 @@ namespace Spartan
             if (result != tinyddsloader::Success)
             {
                 SP_LOG_ERROR("Failed to load DSS file");
-                return false;
+                return;
             }
 
             // get format
@@ -408,7 +408,7 @@ namespace Spartan
                 memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
             }
 
-            return true;
+            return;
         }
 
         // load
@@ -416,7 +416,7 @@ namespace Spartan
         if (!bitmap)
         {
             SP_LOG_ERROR("Failed to load \"%s\"", file_path.c_str());
-            return false;
+            return;
         }
         
         // deduce certain properties
@@ -430,7 +430,7 @@ namespace Spartan
         if (!bitmap)
         {
             SP_LOG_ERROR("Failed to apply bitmap corrections");
-            return false;
+            return;
         }
 
         // scale if needed
@@ -456,8 +456,6 @@ namespace Spartan
         memcpy(&mip.bytes[0], bytes, bytes_size);
 
         FreeImage_Unload(bitmap);
-
-        return true;
     }
 
     void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
