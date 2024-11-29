@@ -256,7 +256,7 @@ namespace Spartan
                 else
                 {
                     // load new texture
-                    material->SetTexture(texture_type, deduced_path, 0, RHI_Texture_DontPrepareForGpu);
+                    material->SetTexture(texture_type, deduced_path);
                 }
             }
 

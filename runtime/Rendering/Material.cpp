@@ -262,10 +262,10 @@ namespace Spartan
         SetTexture(texture_type, texture.get(), slot);
     }
 
-    void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot, const uint32_t flags)
+    void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
         bool async = true;
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress | flags, async), slot);
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu, async), slot);
     }
  
     bool Material::HasTextureOfType(const string& path) const
