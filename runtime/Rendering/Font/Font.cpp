@@ -52,7 +52,7 @@ namespace Spartan
         m_color           = color;
 
         SetSize(font_size);
-        LoadFromFile(file_path, false);
+        LoadFromFile(file_path);
     }
 
     void Font::SaveToFile(const string& file_path)
@@ -60,7 +60,7 @@ namespace Spartan
 
     }
 
-    void Font::LoadFromFile(const string& file_path, bool async)
+    void Font::LoadFromFile(const string& file_path)
     {
         const Stopwatch timer;
 

@@ -178,7 +178,7 @@ namespace Spartan
         m_vertices.shrink_to_fit();
     }
 
-    void Mesh::LoadFromFile(const string& file_path, bool async)
+    void Mesh::LoadFromFile(const string& file_path)
     {
         const Stopwatch timer;
 
