@@ -311,10 +311,6 @@ namespace Spartan
         if (HasData())
         {
             stage(this);
-            if ((m_flags & RHI_Texture_KeepData) == 0)
-            { 
-                ClearBytes();
-            }
         }
 
         // transition to target layout

@@ -323,7 +323,7 @@ namespace Spartan
 
     void Material::PrepareForGpu()
     {
-        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared materiasl can be prepared");
+        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared materials can be prepared");
         m_resource_state = ResourceState::PreparingForGpu;
 
         RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color);
@@ -439,6 +439,7 @@ namespace Spartan
             {
                 if (texture && texture->GetResourceState() == ResourceState::Max)
                 {
+                    texture->SetFlag(RHI_Texture_DontPrepareForGpu, false);
                     texture->PrepareForGpu();
                 }
             }

@@ -445,8 +445,8 @@ namespace Spartan
         // import flags
         uint32_t import_flags = 0;
         {
-            import_flags |= aiProcess_ValidateDataStructure; // validates the imported scene data structure.
-            import_flags |= aiProcess_Triangulate;           // triangulates all faces of all meshes.
+            import_flags |= aiProcess_ValidateDataStructure; // validates the imported scene data structure
+            import_flags |= aiProcess_Triangulate;           // triangulates all faces of all meshes
             import_flags |= aiProcess_SortByPType;           // splits meshes with more than one primitive type in homogeneous sub-meshes
 
             // switch to engine conventions

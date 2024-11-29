@@ -115,7 +115,7 @@ namespace Spartan
         void SetExternalMemoryHandle(void* handle) { m_rhi_external_memory = handle; }
 
         // misc
-        void ClearBytes();
+        void ClearData();
         void PrepareForGpu();
         void SaveAsImage(const std::string& file_path);
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
@@ -145,6 +145,15 @@ namespace Spartan
         bool IsStencilFormat() const      { return m_format == RHI_Format::D32_Float_S8X24_Uint; }
         bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
         bool IsColorFormat() const        { return !IsDepthStencilFormat(); }
+
+        // usage
+        bool IsMaterialTexture() const
+        {
+            return m_format           == RHI_Format::R8G8B8A8_Unorm &&
+                   m_channel_count    == 4                          &&
+                   m_bits_per_channel == 8                          &&
+                   !(IsRtv() || IsDsv());
+        }
 
         // layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
@@ -182,8 +191,8 @@ namespace Spartan
         // api resources
         void* m_rhi_srv                                          = nullptr;     // an srv with all mips
         std::array<void*, rhi_max_mip_count> m_rhi_srv_mips      = { nullptr }; // an srv for each mip
-        std::array<void*, rhi_max_render_target_count> m_rhi_rtv = { nullptr }; 
-        std::array<void*, rhi_max_render_target_count> m_rhi_dsv = { nullptr }; 
+        std::array<void*, rhi_max_render_target_count> m_rhi_rtv = { nullptr };
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv = { nullptr };
         void* m_rhi_resource                                     = nullptr;
         void* m_rhi_external_memory                              = nullptr;
         void* m_mapped_data                                      = nullptr;
