@@ -196,8 +196,6 @@ namespace Spartan
             mip_count++;
         }
 
-        // notes:
-        // - gbuffer_normal: any format with or below 8 bits per channel, will produce banding
         #define render_target(x) render_targets[static_cast<uint8_t>(x)]
 
         // typical flags
@@ -557,7 +555,7 @@ namespace Spartan
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
         #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
-        // noise
+        // blue noise textures with 2 channels, each channel containing a different pattern
         {
             standard_texture(Renderer_StandardTexture::Noise_blue_0) = make_shared<RHI_Texture>(dir_texture + "noise_blue_0.png");
             standard_texture(Renderer_StandardTexture::Noise_blue_1) = make_shared<RHI_Texture>(dir_texture + "noise_blue_1.png");
@@ -567,11 +565,6 @@ namespace Spartan
             standard_texture(Renderer_StandardTexture::Noise_blue_5) = make_shared<RHI_Texture>(dir_texture + "noise_blue_5.png");
             standard_texture(Renderer_StandardTexture::Noise_blue_6) = make_shared<RHI_Texture>(dir_texture + "noise_blue_6.png");
             standard_texture(Renderer_StandardTexture::Noise_blue_7) = make_shared<RHI_Texture>(dir_texture + "noise_blue_7.png");
-        }
-
-        // color
-        {
-            standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
         }
 
         // gizmos
@@ -584,6 +577,7 @@ namespace Spartan
 
         // misc
         {
+            standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
             standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture>(dir_texture + "foam.jpg");
         } 
     }

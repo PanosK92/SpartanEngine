@@ -218,11 +218,7 @@ namespace Spartan
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
-        if (!(flags & RHI_Texture_DontPrepareForGpu))
-        { 
-            RHI_Texture::RHI_CreateResource();
-            m_resource_state = ResourceState::PreparedForGpu;
-        }
+        PrepareForGpu();
 
         if (!compressonator::registered)
         {
@@ -292,7 +288,7 @@ namespace Spartan
                 }
             }
 
-            ClearBytes();
+            ClearData();
         }
 
         // write properties
@@ -320,7 +316,7 @@ namespace Spartan
         m_flags       |= RHI_Texture_Srv;
         m_object_name  = FileSystem::GetFileNameFromFilePath(file_path);
 
-        ClearBytes();
+        ClearData();
 
         // load from drive
         if (FileSystem::IsEngineTextureFile(file_path))
@@ -507,7 +503,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Texture::ClearBytes()
+    void RHI_Texture::ClearData()
     {
          m_slices.clear();
          m_slices.shrink_to_fit();
@@ -518,11 +514,15 @@ namespace Spartan
         SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared textures can be prepared");
         m_resource_state = ResourceState::PreparingForGpu;
 
-        SP_ASSERT(m_slices.size() > 0);
-        SP_ASSERT(m_slices[0].mips.size() > 0);
+        bool generate_mips_and_compress = !IsCompressedFormat() &&                    // the bistro world loads pre-compressed textures
+                                          IsMaterialTexture() &&                      // render targets or textures which are written to in compute passes, don't need mip and compression
+                                          !(m_flags & RHI_Texture_DontPrepareForGpu); // some textures delay preperation because the material packs their data in a custom way before preparing them
 
-        if (!IsCompressedFormat()) // the bistro world loads compressed textures with mips
+        if (generate_mips_and_compress)
         {
+            SP_ASSERT(m_slices.size() > 0);
+            SP_ASSERT(m_slices[0].mips.size() > 0);
+
             // generate mip chain
             uint32_t mip_count = mips::compute_count(m_width, m_height);
             for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
@@ -530,10 +530,10 @@ namespace Spartan
                 AllocateMip();
 
                 mips::downsample_bilinear(
-                    m_slices[0].mips[mip_index - 1].bytes, // above
-                    m_slices[0].mips[mip_index].bytes,     // below
-                    max(1u, m_width  >> (mip_index - 1)),  // above width
-                    max(1u, m_height >> (mip_index - 1))   // above height
+                    m_slices[0].mips[mip_index - 1].bytes, // larger
+                    m_slices[0].mips[mip_index].bytes,     // smaller
+                    max(1u, m_width  >> (mip_index - 1)),  // larger width
+                    max(1u, m_height >> (mip_index - 1))   // larger height
                 );
             }
 
@@ -576,16 +576,26 @@ namespace Spartan
         }
         
         // upload to gpu
-        SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");;
+        if (!(m_flags & RHI_Texture_DontPrepareForGpu))
+        { 
+            SP_ASSERT(RHI_CreateResource());
+        }
 
         // clear data
         if (!(m_flags & RHI_Texture_KeepData))
         { 
-            ClearBytes();
+            ClearData();
         }
         ComputeMemoryUsage();
 
-        m_resource_state = ResourceState::PreparedForGpu;
+        if (m_rhi_resource)
+        {
+            m_resource_state = ResourceState::PreparedForGpu;
+        }
+        else
+        {
+            m_resource_state = ResourceState::Max;
+        }
     }
 
     void RHI_Texture::SaveAsImage(const string& file_path)
