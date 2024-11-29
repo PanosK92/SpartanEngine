@@ -230,7 +230,7 @@ namespace Spartan
 
     RHI_Texture::RHI_Texture(const string& file_path) : IResource(ResourceType::Texture)
     {
-         LoadFromFile(file_path, false);
+         LoadFromFile(file_path);
     }
 
     RHI_Texture::~RHI_Texture()
@@ -303,7 +303,7 @@ namespace Spartan
         file->Write(GetResourceFilePath());
     }
 
-    void RHI_Texture::LoadFromFile(const string& file_path, bool async)
+    void RHI_Texture::LoadFromFile(const string& file_path)
     {
         if (!FileSystem::IsFile(file_path))
         {
@@ -311,10 +311,11 @@ namespace Spartan
             return;
         }
 
-        m_type         = RHI_Texture_Type::Type2D;
-        m_depth        = 1;
-        m_flags       |= RHI_Texture_Srv;
-        m_object_name  = FileSystem::GetFileNameFromFilePath(file_path);
+        m_type            = RHI_Texture_Type::Type2D;
+        m_depth           = 1;
+        m_flags          |= RHI_Texture_Srv;
+        m_object_name     = FileSystem::GetFileNameFromFilePath(file_path);
+        m_resource_state  = ResourceState::LoadingFromDrive;
 
         ClearData();
 
@@ -322,38 +323,35 @@ namespace Spartan
         if (FileSystem::IsEngineTextureFile(file_path))
         {
             auto file = make_unique<FileStream>(file_path, FileStream_Read);
-            if (!file->IsOpen())
+            if (file->IsOpen())
             {
-                SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
-                return;
-            }
+                // read mip info
+                file->Read(&m_object_size);
+                file->Read(&m_depth);
+                file->Read(&m_mip_count);
 
-            // read mip info
-            file->Read(&m_object_size);
-            file->Read(&m_depth);
-            file->Read(&m_mip_count);
-
-            // read mip data
-            m_slices.resize(m_depth);
-            for (RHI_Texture_Slice& slice : m_slices)
-            {
-                slice.mips.resize(m_mip_count);
-                for (RHI_Texture_Mip& mip : slice.mips)
+                // read mip data
+                m_slices.resize(m_depth);
+                for (RHI_Texture_Slice& slice : m_slices)
                 {
-                    file->Read(&mip.bytes);
+                    slice.mips.resize(m_mip_count);
+                    for (RHI_Texture_Mip& mip : slice.mips)
+                    {
+                        file->Read(&mip.bytes);
+                    }
                 }
-            }
 
-            // read properties
-            file->Read(&m_width);
-            file->Read(&m_height);
-            file->Read(&m_channel_count);
-            file->Read(&m_bits_per_channel);
-            file->Read(reinterpret_cast<uint32_t*>(&m_type));
-            file->Read(reinterpret_cast<uint32_t*>(&m_format));
-            file->Read(&m_flags);
-            SetObjectId(file->ReadAs<uint64_t>());
-            SetResourceFilePath(file->ReadAs<string>());
+                // read properties
+                file->Read(&m_width);
+                file->Read(&m_height);
+                file->Read(&m_channel_count);
+                file->Read(&m_bits_per_channel);
+                file->Read(reinterpret_cast<uint32_t*>(&m_type));
+                file->Read(reinterpret_cast<uint32_t*>(&m_format));
+                file->Read(&m_flags);
+                SetObjectId(file->ReadAs<uint64_t>());
+                SetResourceFilePath(file->ReadAs<string>());
+            }
         }
         else if (FileSystem::IsSupportedImageFile(file_path))
         {
@@ -385,12 +383,13 @@ namespace Spartan
             SetResourceFilePath(file_path);
         }
 
+        ComputeMemoryUsage();
+        m_resource_state = ResourceState::Max;
+
         if (!(m_flags & RHI_Texture_DontPrepareForGpu))
         {
             PrepareForGpu();
         }
-
-        ComputeMemoryUsage();
     }
 
     RHI_Texture_Mip& RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)

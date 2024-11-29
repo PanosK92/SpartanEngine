@@ -68,7 +68,7 @@ namespace Spartan
         ~Animation() = default;
 
         // iresource
-        void LoadFromFile(const std::string& filePath, bool async) override;
+        void LoadFromFile(const std::string& filePath) override;
         void SaveToFile(const std::string& filePath) override;
 
         void SetObjectName(const std::string& name)   { m_object_name = name; }

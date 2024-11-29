@@ -68,7 +68,7 @@ namespace Spartan
 
         // iresource
         void SaveToFile(const std::string& file_path) override;
-        void LoadFromFile(const std::string& file_path, bool async) override;
+        void LoadFromFile(const std::string& file_path) override;
 
         // text
         void AddText(const std::string& text, const Math::Vector2& position_screen_percentage);

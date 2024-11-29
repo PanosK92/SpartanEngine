@@ -243,7 +243,7 @@ namespace Spartan
     {
         auto material = make_shared<Material>();
 
-        material->LoadFromFile(file_path, false);
+        material->LoadFromFile(file_path);
 
         SetMaterial(material);
     }

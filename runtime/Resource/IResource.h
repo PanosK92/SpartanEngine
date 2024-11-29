@@ -45,6 +45,7 @@ namespace Spartan
 
     enum class ResourceState
     {
+        LoadingFromDrive,
         PreparingForGpu,
         PreparedForGpu,
         Max
@@ -101,8 +102,8 @@ namespace Spartan
         void SetFlags(const uint32_t flags) { m_flags = flags; }
 
         // io
-        virtual void SaveToFile(const std::string& file_path)               { }
-        virtual void LoadFromFile(const std::string& file_path, bool async) { }
+        virtual void SaveToFile(const std::string& file_path)   { }
+        virtual void LoadFromFile(const std::string& file_path) { }
 
         // type
         template <typename T>

@@ -101,7 +101,7 @@ namespace Spartan
 
         // loads a resource and adds it to the resource cache
         template <class T>
-        static std::shared_ptr<T> Load(const std::string& file_path, uint32_t flags = 0, bool async = false)
+        static std::shared_ptr<T> Load(const std::string& file_path, uint32_t flags = 0)
         {
             if (!FileSystem::Exists(file_path))
             {
@@ -126,7 +126,7 @@ namespace Spartan
             resource->SetResourceFilePath(file_path);
 
             // load
-            resource->LoadFromFile(file_path, async);
+            resource->LoadFromFile(file_path);
 
             // returned cached reference which is guaranteed to be around after deserialization
             return Cache<T>(resource);

@@ -94,7 +94,7 @@ namespace Spartan
         #endif
     }
 
-    void AudioClip::LoadFromFile(const string& file_path, bool async)
+    void AudioClip::LoadFromFile(const string& file_path)
     {
         #if defined(_MSC_VER)
 

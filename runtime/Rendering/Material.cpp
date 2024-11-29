@@ -142,7 +142,7 @@ namespace Spartan
         SetProperty(MaterialProperty::Ior,              Material::EnumToIor(MaterialIor::Air));
     }
 
-    void Material::LoadFromFile(const std::string& file_path, bool async)
+    void Material::LoadFromFile(const std::string& file_path)
     {
         pugi::xml_document doc;
         if (!doc.load_file(file_path.c_str()))
@@ -264,8 +264,7 @@ namespace Spartan
 
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
-        bool async = true;
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu, async), slot);
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu), slot);
     }
  
     bool Material::HasTextureOfType(const string& path) const
