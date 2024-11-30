@@ -362,7 +362,7 @@ namespace Spartan
         SP_ASSERT(entity != nullptr);
 
         // create a file path for this material (required for the material to be able to be cached by the resource cache)
-        const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePathNative()) + material->GetObjectName() + EXTENSION_MATERIAL;
+        const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePath()) + material->GetObjectName() + EXTENSION_MATERIAL;
         material->SetResourceFilePath(spartan_asset_path);
 
         // create a Renderable and pass the material to it

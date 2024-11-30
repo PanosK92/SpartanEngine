@@ -59,32 +59,14 @@ namespace Spartan
 
         void SetResourceFilePath(const std::string& path)
         {
-            const bool is_native_file            = FileSystem::IsEngineMaterialFile(path) || FileSystem::IsEngineModelFile(path);
-            const std::string file_path_relative = FileSystem::GetRelativePath(path);
-
-            // foreign file
-            if (!FileSystem::IsEngineFile(path))
-            {
-                m_resource_file_path_foreign = file_path_relative;
-                m_resource_file_path_native  = FileSystem::NativizeFilePath(file_path_relative);
-            }
-            // engine file
-            else
-            {
-                m_resource_file_path_foreign.clear();
-                m_resource_file_path_native = file_path_relative;
-            }
-
-            m_resource_directory = FileSystem::GetDirectoryFromFilePath(file_path_relative);
-            m_object_name        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path_relative);
+            m_resource_file_path = FileSystem::GetRelativePath(path);
+            m_object_name        = FileSystem::GetFileNameWithoutExtensionFromFilePath(m_resource_file_path);
         }
         
-        ResourceType GetResourceType()                 const { return m_resource_type; }
-        const char* GetResourceTypeCstr()              const { return typeid(*this).name(); }
-        bool HasFilePathNative()                       const { return !m_resource_file_path_native.empty(); }
-        const std::string& GetResourceFilePath()       const { return m_resource_file_path_foreign; }
-        const std::string& GetResourceFilePathNative() const { return m_resource_file_path_native; }
-        const std::string& GetResourceDirectory()      const { return m_resource_directory; }
+        ResourceType GetResourceType()            const { return m_resource_type; }
+        const char* GetResourceTypeCstr()         const { return typeid(*this).name(); }
+        const std::string& GetResourceFilePath()  const { return m_resource_file_path; }
+        const std::string& GetResourceDirectory() const { return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
 
         // flags
         void SetFlag(const uint32_t flag, bool enabled = true)
@@ -117,8 +99,6 @@ namespace Spartan
         uint32_t m_flags                            = 0;
 
     private:
-        std::string m_resource_directory;
-        std::string m_resource_file_path_native;
-        std::string m_resource_file_path_foreign;
+        std::string m_resource_file_path;
     };
 }

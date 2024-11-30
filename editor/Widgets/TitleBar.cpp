@@ -269,22 +269,28 @@ void TitleBar::EntryWorld()
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("Load"))
+        // the engine has changed a lot, so I need to re-write resource cache serialization/deserialization
+        // grey out the options so users know that the functionality is part of the engine but currently disabled
+        ImGui::BeginDisabled(true);
         {
-            ShowWorldLoadDialog();
-        }
+            if (ImGui::MenuItem("Load"))
+            {
+                ShowWorldLoadDialog();
+            }
 
-        ImGui::Separator();
+            ImGui::Separator();
 
-        if (ImGui::MenuItem("Save", "Ctrl+S"))
-        {
-            ShowWorldSaveDialog();
-        }
+            if (ImGui::MenuItem("Save", "Ctrl+S"))
+            {
+                ShowWorldSaveDialog();
+            }
 
-        if (ImGui::MenuItem("Save As...", "Ctrl+S"))
-        {
-            ShowWorldSaveDialog();
+            if (ImGui::MenuItem("Save As...", "Ctrl+S"))
+            {
+                ShowWorldSaveDialog();
+            }
         }
+        ImGui::EndDisabled();
 
         ImGui::EndMenu();
     }
