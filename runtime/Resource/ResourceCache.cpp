@@ -66,9 +66,9 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Shutdown));
     }
 
-    bool ResourceCache::IsCached(const string& resource_file_path_native, const ResourceType resource_type)
+    bool ResourceCache::IsCached(const string& file_path, const ResourceType resource_type)
     {
-        SP_ASSERT(!resource_file_path_native.empty());
+        SP_ASSERT(!file_path.empty());
 
         lock_guard<mutex> guard(m_mutex);
 
@@ -77,7 +77,7 @@ namespace Spartan
             if (resource->GetResourceType() != resource_type)
                 continue;
 
-            if (resource_file_path_native == resource->GetResourceFilePathNative())
+            if (file_path == resource->GetResourceFilePath())
                 return true;
         }
 
@@ -148,72 +148,12 @@ namespace Spartan
 
     void ResourceCache::Serialize()
     {
-        // create resource list file
-        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + ".resource";
-        auto file = make_unique<FileStream>(file_path, FileStream_Write);
-        if (!file->IsOpen())
-        {
-            SP_LOG_ERROR("Failed to open file.");
-            return;
-        }
-
-        const uint32_t resource_count = GetResourceCount();
-
-        // start progress report
-        ProgressTracker::GetProgress(ProgressType::Resource).Start(resource_count, "Loading resources...");
-
-        // save resource count
-        file->Write(resource_count);
-
-        // save all the currently used resources to disk
-        for (shared_ptr<IResource>& resource : m_resources)
-        {
-            if (resource->HasFilePathNative())
-            {
-                SP_ASSERT_MSG(!resource->GetResourceFilePathNative().empty(), "Resources must have a native file path");
-                SP_ASSERT_MSG(resource->GetResourceType() != ResourceType::Max, "Resources must have a type");
-
-                file->Write(resource->GetResourceFilePathNative());              // file path
-                file->Write(static_cast<uint32_t>(resource->GetResourceType())); // type
-                resource->SaveToFile(resource->GetResourceFilePathNative());     // save
-            }
-
-            // update progress
-            ProgressTracker::GetProgress(ProgressType::Resource).JobDone();
-        }
+        // todo: since we won't be using custom file formats, we just need to save the resource paths, simple and reliable
     }
 
     void ResourceCache::Deserialize()
     {
-        // open file
-        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + ".resource";
-        unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
-        if (!file->IsOpen())
-            return;
-
-        // go through each resource and load it
-        const uint32_t resource_count = file->ReadAs<uint32_t>();
-        for (uint32_t i = 0; i < resource_count; i++)
-        {
-            string file_path = file->ReadAs<string>();
-            const ResourceType type = static_cast<ResourceType>(file->ReadAs<uint32_t>());
-
-            switch (type)
-            {
-            case ResourceType::Mesh:
-                Load<Mesh>(file_path);
-                break;
-            case ResourceType::Material:
-                Load<Material>(file_path);
-                break;
-            case ResourceType::Texture:
-                Load<RHI_Texture>(file_path);
-                break;
-            case ResourceType::Audio:
-                Load<AudioClip>(file_path);
-                break;
-            }
-        }
+        // todo: we just need to load the resource paths, simple and reliable
     }
 
     void ResourceCache::Shutdown()

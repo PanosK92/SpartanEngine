@@ -61,7 +61,7 @@ namespace Spartan
         {
             for (std::shared_ptr<IResource>& resource : GetResources())
             {
-                if (path == resource->GetResourceFilePathNative())
+                if (path == resource->GetResourceFilePath())
                     return std::static_pointer_cast<T>(resource);
             }
 
@@ -72,29 +72,14 @@ namespace Spartan
         template <class T>
         static std::shared_ptr<T> Cache(const std::shared_ptr<T> resource)
         {
-            // validate resource
             if (!resource)
                 return nullptr;
 
-            // validate resource file path
-            if (!resource->HasFilePathNative() && !FileSystem::IsDirectory(resource->GetResourceFilePathNative()))
-            {
-                SP_LOG_ERROR("A resource must have a valid file path in order to be cached");
-                return nullptr;
-            }
+            // if cached, return the cached resource
+            if (IsCached(resource->GetResourceFilePath(), resource->GetResourceType()))
+                return GetByPath<T>(resource->GetResourceFilePath());
 
-            // validate resource file path
-            if (!FileSystem::IsEngineFile(resource->GetResourceFilePathNative()))
-            {
-                SP_LOG_ERROR("A resource must have a native file format in order to be cached, provide format was %s", FileSystem::GetExtensionFromFilePath(resource->GetResourceFilePathNative()).c_str());
-                return nullptr;
-            }
-
-            // ensure that this resource is not already cached
-            if (IsCached(resource->GetResourceFilePathNative(), resource->GetResourceType()))
-                return GetByPath<T>(resource->GetResourceFilePathNative());
-
-            // cache it
+            // if not, cache it and return the cached resource
             std::lock_guard<std::mutex> guard(GetMutex());
             return std::static_pointer_cast<T>(GetResources().emplace_back(resource));
         }
@@ -173,7 +158,7 @@ namespace Spartan
 
     private:
         static bool IsCached(const uint64_t resource_id);
-        static bool IsCached(const std::string& resource_name, const ResourceType resource_type);
+        static bool IsCached(const std::string& file_path, const ResourceType resource_type);
 
         // event handlers
         static void Serialize();

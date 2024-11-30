@@ -72,14 +72,13 @@ void ResourceViewer::OnTickVisible()
         ImGuiTableFlags_ScrollY;            // Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
 
     static ImVec2 size = ImVec2(-1.0f);
-    if (ImGui::BeginTable("##Widget_ResourceCache", 6, flags, size))
+    if (ImGui::BeginTable("##Widget_ResourceCache", 5, flags, size))
     {
         // Headers
         ImGui::TableSetupColumn("Type");
         ImGui::TableSetupColumn("ID");
         ImGui::TableSetupColumn("Name");
         ImGui::TableSetupColumn("Path");
-        ImGui::TableSetupColumn("Path (native)");
         ImGui::TableSetupColumn("Size");
         ImGui::TableHeadersRow();
 
@@ -106,12 +105,8 @@ void ResourceViewer::OnTickVisible()
                 ImGui::TableSetColumnIndex(3);
                 ImGui::Text(resource->GetResourceFilePath().c_str());
 
-                // Path (native)
-                ImGui::TableSetColumnIndex(4);
-                ImGui::Text(resource->GetResourceFilePathNative().c_str());
-                
                 // Memory
-                ImGui::TableSetColumnIndex(5);
+                ImGui::TableSetColumnIndex(4);
                 print_memory(object->GetObjectSize());
             }
         }

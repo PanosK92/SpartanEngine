@@ -193,7 +193,7 @@ void Properties::Inspect(const shared_ptr<Entity> entity)
     // If we were previously inspecting a material, save the changes
     if (!m_inspected_material.expired())
     {
-        m_inspected_material.lock()->SaveToFile(m_inspected_material.lock()->GetResourceFilePathNative());
+        m_inspected_material.lock()->SaveToFile(m_inspected_material.lock()->GetResourceFilePath());
     }
     m_inspected_material.reset();
 }

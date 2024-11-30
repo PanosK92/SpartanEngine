@@ -273,20 +273,6 @@ namespace Spartan
         return extension;
     }
 
-    string FileSystem::NativizeFilePath(const string& path)
-    {
-        const string file_path_no_ext = GetFilePathWithoutExtension(path);
-
-        if (IsSupportedAudioFile(path))  return file_path_no_ext + EXTENSION_AUDIO;
-        if (IsSupportedImageFile(path))  return file_path_no_ext + EXTENSION_TEXTURE;
-        if (IsSupportedModelFile(path))  return file_path_no_ext + EXTENSION_MODEL;
-        if (IsSupportedFontFile(path))   return file_path_no_ext + EXTENSION_FONT;
-        if (IsSupportedShaderFile(path)) return file_path_no_ext + EXTENSION_SHADER;
-
-        SP_LOG_WARNING("Failed to nativize file path");
-        return path;
-    }
-
     vector<string> FileSystem::GetDirectoriesInDirectory(const string& path)
     {
         vector<string> directories;

@@ -75,7 +75,6 @@ namespace Spartan
         static std::string GetFilePathWithoutExtension(const std::string& path);
         static std::string ReplaceExtension(const std::string& path, const std::string& extension);
         static std::string GetExtensionFromFilePath(const std::string& path);
-        static std::string NativizeFilePath(const std::string& path);
         static std::string GetRelativePath(const std::string& path);
         static std::string GetWorkingDirectory();
         static std::string GetRootDirectory(const std::string& path);

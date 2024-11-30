@@ -212,7 +212,7 @@ namespace Spartan
 
             textureNode.append_attribute("texture_type").set_value(i);
             textureNode.append_attribute("texture_name").set_value(m_textures[i] ? m_textures[i]->GetObjectName().c_str() : "");
-            textureNode.append_attribute("texture_path").set_value(m_textures[i] ? m_textures[i]->GetResourceFilePathNative().c_str() : "");
+            textureNode.append_attribute("texture_path").set_value(m_textures[i] ? m_textures[i]->GetResourceFilePath().c_str() : "");
         }
 
         doc.save_file(file_path.c_str());
@@ -274,7 +274,7 @@ namespace Spartan
             if (!texture)
                 continue;
 
-            if (texture->GetResourceFilePathNative() == path)
+            if (texture->GetResourceFilePath() == path)
                 return true;
         }
 
@@ -297,7 +297,7 @@ namespace Spartan
         if (!HasTextureOfType(texture_type))
             return "";
 
-        return m_textures[static_cast<uint32_t>(texture_type)]->GetResourceFilePathNative();
+        return m_textures[static_cast<uint32_t>(texture_type)]->GetResourceFilePath();
     }
 
     vector<string> Material::GetTexturePaths()
@@ -308,7 +308,7 @@ namespace Spartan
             if (!texture)
                 continue;
 
-            paths.emplace_back(texture->GetResourceFilePathNative());
+            paths.emplace_back(texture->GetResourceFilePath());
         }
 
         return paths;
