@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "pch.h"
 #include "Game.h"
+#include "../Game/Car.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
@@ -35,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../Game/Car.h"
 //============================================
 
 //= NAMESPACES ===============
@@ -147,93 +147,92 @@ namespace Spartan
             
                 // body
                 {
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Ior, 1.45f);
+                        }
+                    }
+                    
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_aluminum);
+                            material->SetProperty(MaterialProperty::Roughness, 0.08f);
+                            material->SetProperty(MaterialProperty::Metalness, 0.15f);
+                            material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                        }
+                    }
+                    
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Mirror_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::standard_black);
+                            material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                        }
+                    }
+                    
+                    // plastic
+                    {
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
                         {
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
-                                material->SetProperty(MaterialProperty::Ior, 1.45f);
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
                             }
                         }
-
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
+                    
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
                         {
                             if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
                             {
-                                material->SetColor(Color::material_aluminum);
-                                material->SetProperty(MaterialProperty::Roughness, 0.08f);
-                                material->SetProperty(MaterialProperty::Metalness, 0.15f);
-                                material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                                material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
-                            }
-                        }
-
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Mirror_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::standard_black);
-                                material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                                material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                            }
-                        }
-
-                        // plastic
-                        {
-                            if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
-                            {
-                                if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                                {
-                                    material->SetColor(Color::material_tire);
-                                    material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                                }
-                            }
-
-                            if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
-                            {
-                                if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                                {
-                                    material->SetColor(Color::material_tire);
-                                    material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                                }
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
                             }
                         }
                     }
+                }
             
                 // interior
                 {
-                        if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetColor(Color::material_tire);
-                            material->SetTexture(MaterialTextureType::Roughness, nullptr);
-                            material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                            material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                        }
-
-                        if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetColor(Color::material_tire);
-                            material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                            material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                        }
-
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetTexture(MaterialTextureType::Roughness, nullptr);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
                     }
+                    
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                    }
+                }
             
                 // lights
                 {
-                        if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetColor(Color::material_glass);
-                            material->SetProperty(MaterialProperty::Roughness, 0.2f);
-                            material->SetTexture(MaterialTextureType::Emission, material->GetTexture(MaterialTextureType::Color));
-                        }
-
-                        // plastic covers
-                        if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            material->SetColor(Color::material_tire);
-                        }
+                    if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_glass);
+                        material->SetProperty(MaterialProperty::Roughness, 0.2f);
+                        material->SetTexture(MaterialTextureType::Emission, material->GetTexture(MaterialTextureType::Color));
                     }
+                    
+                    // plastic covers
+                    if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                        material->SetColor(Color::material_tire);
+                    }
+                }
             
                 // add physics body
                 {
@@ -303,26 +302,26 @@ namespace Spartan
             
                 // disable all the wheels since they have weird rotations, we will add our own
                 {
-                        entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
-
-                        entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
-
-                        entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
-
-                        entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
-                    }
+                    entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
+                    entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
+                    
+                    entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
+                    entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
+                    
+                    entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
+                    entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
+                    
+                    entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
+                    entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
+                    entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
+                }
             }
         }
 

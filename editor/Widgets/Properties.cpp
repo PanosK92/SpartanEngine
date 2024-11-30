@@ -702,158 +702,156 @@ void Properties::ShowMaterial(Material* material) const
             ImGuiSp::tooltip("Optimized materials can't be modified");
         }
 
-        ImGui::BeginDisabled(optimized);
+        // texture slots
         {
-            // texture slots
+            const auto show_property = [this, &material, &optimized](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
             {
-                const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
+                bool show_texture  = mat_tex      != MaterialTextureType::Max;
+                bool show_modifier = mat_property != MaterialProperty::Max;
+        
+                // name
+                if (name)
                 {
-                    bool show_texture  = mat_tex      != MaterialTextureType::Max;
-                    bool show_modifier = mat_property != MaterialProperty::Max;
-
-                    // name
-                    if (name)
+                    ImGui::Text(name);
+        
+                    if (tooltip)
                     {
-                        ImGui::Text(name);
-
-                        if (tooltip)
-                        {
-                            ImGuiSp::tooltip(tooltip);
-                        }
-
-                        if (show_texture || show_modifier)
-                        {
-                            ImGui::SameLine(column_pos_x);
-                        }
+                        ImGuiSp::tooltip(tooltip);
                     }
-
-                    // texture
-                    if (show_texture)
+        
+                    if (show_texture || show_modifier)
                     {
-                        // for the current texture type (mat_tex), show all its slots
-                        for (uint32_t slot = 0; slot < material->GetUsedSlotCount(); ++slot)
-                        {
-                            MaterialTextureType texture_type = static_cast<MaterialTextureType>(mat_tex);
-                            
-                            // create a lambda that captures both the type and slot for the setter
-                            auto setter = [material, texture_type, slot](Spartan::RHI_Texture* texture) 
-                            { 
-                                material->SetTexture(texture_type, texture, slot);
-                            };
-                    
-                            // slots are shown side by side for each type
-                            if (slot > 0)
-                            {
-                                ImGui::SameLine();
-                            }
-                    
-                            // get the texture for this slot and show it in the UI
-                            RHI_Texture* texture = material->GetTexture(texture_type, slot);
-                            ImGuiSp::image_slot(texture, setter);
-                        }
-                    
-                        if (show_modifier)
+                        ImGui::SameLine(column_pos_x);
+                    }
+                }
+        
+                // texture
+                ImGui::BeginDisabled(optimized);
+                if (show_texture)
+                {
+                    // for the current texture type (mat_tex), show all its slots
+                    for (uint32_t slot = 0; slot < material->GetUsedSlotCount(); ++slot)
+                    {
+                        MaterialTextureType texture_type = static_cast<MaterialTextureType>(mat_tex);
+                        
+                        // create a lambda that captures both the type and slot for the setter
+                        auto setter = [material, texture_type, slot](Spartan::RHI_Texture* texture) 
+                        { 
+                            material->SetTexture(texture_type, texture, slot);
+                        };
+                
+                        // slots are shown side by side for each type
+                        if (slot > 0)
                         {
                             ImGui::SameLine();
                         }
+                
+                        // get the texture for this slot and show it in the UI
+                        RHI_Texture* texture = material->GetTexture(texture_type, slot);
+                        ImGuiSp::image_slot(texture, setter);
                     }
-
-                    // modifier/multiplier
+                
                     if (show_modifier)
                     {
-                        if (mat_property == MaterialProperty::ColorTint)
+                        ImGui::SameLine();
+                    }
+                }
+                ImGui::EndDisabled();
+        
+                // modifier/multiplier
+                if (show_modifier)
+                {
+                    if (mat_property == MaterialProperty::ColorTint)
+                    {
+                        m_material_color_picker->Update();
+                    }
+                    else
+                    {
+                        float value = material->GetProperty(mat_property);
+
+                        if (mat_property != MaterialProperty::Metalness)
                         {
-                            m_material_color_picker->Update();
+                            float min = 0.0f;
+                            float max = 1.0f;
+
+                            if (mat_property == MaterialProperty::Ior)
+                            {
+                                min = 1.0f;
+                                max = 2.4f; // diamond
+                            }
+
+                            // this custom slider already has a unique id
+                            ImGuiSp::draw_float_wrap("", &value, 0.004f, min, max);
                         }
                         else
                         {
-                            float value = material->GetProperty(mat_property);
-
-                            if (mat_property != MaterialProperty::Metalness)
-                            {
-                                float min = 0.0f;
-                                float max = 1.0f;
-
-                                if (mat_property == MaterialProperty::Ior)
-                                {
-                                    min = 1.0f;
-                                    max = 2.4f; // diamond
-                                }
-
-                                // this custom slider already has a unique id
-                                ImGuiSp::draw_float_wrap("", &value, 0.004f, min, max);
-                            }
-                            else
-                            {
-                                bool is_metallic = value != 0.0f;
-                                ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                                ImGui::Checkbox("", &is_metallic);
-                                ImGui::PopID();
-                                value = is_metallic ? 1.0f : 0.0f;
-                            }
-
-                            material->SetProperty(mat_property, value);
+                            bool is_metallic = value != 0.0f;
+                            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+                            ImGui::Checkbox("", &is_metallic);
+                            ImGui::PopID();
+                            value = is_metallic ? 1.0f : 0.0f;
                         }
+
+                        material->SetProperty(mat_property, value);
                     }
-                };
-
-                // properties with textures
-                show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorTint);
-                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
-                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTextureType::Metalness, MaterialProperty::Metalness);
-                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTextureType::Normal,    MaterialProperty::Normal);
-                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTextureType::Height,    MaterialProperty::Height);
-                show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTextureType::Occlusion, MaterialProperty::Max);
-                show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTextureType::Emission,  MaterialProperty::Max);
-                show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTextureType::AlphaMask, MaterialProperty::Max);
-                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTextureType::Max,       MaterialProperty::Clearcoat);
-                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTextureType::Max,       MaterialProperty::Clearcoat_Roughness);
-                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTextureType::Max,       MaterialProperty::Anisotropic);
-                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
-                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
-                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTextureType::Max,       MaterialProperty::SheenTint);
-                show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
-            }
-
-            // index of refraction
-            {
-                static vector<string> ior_types =
-                {
-                    "Air",
-                    "Water",
-                    "Eyes",
-                    "Glass",
-                    "Sapphire",
-                    "Diamond"
-                };
-
-                ImGui::Text("IOR");
-                ImGui::SameLine(column_pos_x);
-                uint32_t ior_index = static_cast<uint32_t>(Material::IorToEnum(material->GetProperty(MaterialProperty::Ior)));
-                if (ImGuiSp::combo_box("##material_ior", ior_types, &ior_index))
-                {
-                    material->SetProperty(MaterialProperty::Ior, static_cast<float>(Material::EnumToIor(static_cast<MaterialIor>(ior_index))));
                 }
-            }
-
-            // uv
+            };
+        
+            // properties with textures
+            show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorTint);
+            show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
+            show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTextureType::Metalness, MaterialProperty::Metalness);
+            show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTextureType::Normal,    MaterialProperty::Normal);
+            show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTextureType::Height,    MaterialProperty::Height);
+            show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTextureType::Occlusion, MaterialProperty::Max);
+            show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTextureType::Emission,  MaterialProperty::Max);
+            show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTextureType::AlphaMask, MaterialProperty::Max);
+            show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTextureType::Max,       MaterialProperty::Clearcoat);
+            show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTextureType::Max,       MaterialProperty::Clearcoat_Roughness);
+            show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTextureType::Max,       MaterialProperty::Anisotropic);
+            show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
+            show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
+            show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTextureType::Max,       MaterialProperty::SheenTint);
+            show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
+        }
+        
+        // index of refraction
+        {
+            static vector<string> ior_types =
             {
-                // tiling
-                ImGui::Text("Tiling");
-                ImGui::SameLine(column_pos_x); ImGui::Text("X");
-                ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-                ImGui::SameLine(); ImGui::Text("Y");
-                ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-
-                // offset
-                ImGui::Text("Offset");
-                ImGui::SameLine(column_pos_x); ImGui::Text("X");
-                ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-                ImGui::SameLine(); ImGui::Text("Y");
-                ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+                "Air",
+                "Water",
+                "Eyes",
+                "Glass",
+                "Sapphire",
+                "Diamond"
+            };
+        
+            ImGui::Text("IOR");
+            ImGui::SameLine(column_pos_x);
+            uint32_t ior_index = static_cast<uint32_t>(Material::IorToEnum(material->GetProperty(MaterialProperty::Ior)));
+            if (ImGuiSp::combo_box("##material_ior", ior_types, &ior_index))
+            {
+                material->SetProperty(MaterialProperty::Ior, static_cast<float>(Material::EnumToIor(static_cast<MaterialIor>(ior_index))));
             }
         }
-        ImGui::EndDisabled();
+        
+        // uv
+        {
+            // tiling
+            ImGui::Text("Tiling");
+            ImGui::SameLine(column_pos_x); ImGui::Text("X");
+            ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+            ImGui::SameLine(); ImGui::Text("Y");
+            ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+        
+            // offset
+            ImGui::Text("Offset");
+            ImGui::SameLine(column_pos_x); ImGui::Text("X");
+            ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+            ImGui::SameLine(); ImGui::Text("Y");
+            ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+        }
 
         //= MAP ===============================================================================
         material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);
