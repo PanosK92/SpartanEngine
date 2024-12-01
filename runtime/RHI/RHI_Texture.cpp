@@ -387,7 +387,7 @@ namespace Spartan
         m_resource_state = ResourceState::Max;
 
         if (!(m_flags & RHI_Texture_DontPrepareForGpu))
-        {
+        { 
             PrepareForGpu();
         }
     }
@@ -513,70 +513,70 @@ namespace Spartan
         SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared textures can be prepared");
         m_resource_state = ResourceState::PreparingForGpu;
 
-        bool generate_mips_and_compress = !IsCompressedFormat() &&                    // the bistro world loads pre-compressed textures
-                                          IsMaterialTexture() &&                      // render targets or textures which are written to in compute passes, don't need mip and compression
-                                          !(m_flags & RHI_Texture_DontPrepareForGpu); // some textures delay preperation because the material packs their data in a custom way before preparing them
+        bool is_not_compressed   = !IsCompressedFormat();                      // the bistro world loads pre-compressed textures
+        bool is_material_texture = IsMaterialTexture();                        // render targets or textures which are written to in compute passes, don't need mip and compression
+        bool can_be_prepared     = !(m_flags & RHI_Texture_DontPrepareForGpu); // some textures delay preperation because the material packs their data in a custom way before preparing them
 
-        if (generate_mips_and_compress)
-        {
-            SP_ASSERT(m_slices.size() > 0);
-            SP_ASSERT(m_slices[0].mips.size() > 0);
-
-            // generate mip chain
-            uint32_t mip_count = mips::compute_count(m_width, m_height);
-            for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
-            {
-                AllocateMip();
-
-                mips::downsample_bilinear(
-                    m_slices[0].mips[mip_index - 1].bytes, // larger
-                    m_slices[0].mips[mip_index].bytes,     // smaller
-                    max(1u, m_width  >> (mip_index - 1)),  // larger width
-                    max(1u, m_height >> (mip_index - 1))   // larger height
-                );
-            }
-
-            // for thumbnails, find the appropriate mip level close to 128x128 and make it the only mip
-            if (m_flags & RHI_Texture_Thumbnail)
-            {
-                uint32_t target_mip = 0;
-                for (uint32_t i = 0; i < m_slices[0].mips.size(); i++)
-                {
-                    uint32_t mip_width  = max(1u, m_width >> i);
-                    uint32_t mip_height = max(1u, m_height >> i);
-                    
-                    if (mip_width <= 128 && mip_height <= 128)
-                    {
-                        target_mip = i;
-                        break;
-                    }
-                }
-
-                // move the target mip to the top
-                if (target_mip > 0)
-                {
-                    m_slices[0].mips[0] = move(m_slices[0].mips[target_mip]);
-                    m_width             = max(1u, m_width >> target_mip);
-                    m_height            = max(1u, m_height >> target_mip);
-                }
-                
-                // clear all other mips
-                m_slices[0].mips.resize(1);
-                m_mip_count = static_cast<uint32_t>(m_slices[0].mips.size());
-            }
-
-            // compress
-            bool compress       = m_flags & RHI_Texture_Compress;
-            bool not_compressed = !IsCompressedFormat();
-            if (compress && not_compressed)
-            {
-                compressonator::compress(this);
-            }
-        }
-        
-        // upload to gpu
-        if (!(m_flags & RHI_Texture_DontPrepareForGpu))
+        if (can_be_prepared)
         { 
+            if (is_not_compressed && is_material_texture)
+            {
+                SP_ASSERT(!m_slices.empty());
+                SP_ASSERT(!m_slices.front().mips.empty());
+
+                // generate mip chain
+                uint32_t mip_count = mips::compute_count(m_width, m_height);
+                for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
+                {
+                    AllocateMip();
+
+                    mips::downsample_bilinear(
+                        m_slices[0].mips[mip_index - 1].bytes, // larger
+                        m_slices[0].mips[mip_index].bytes,     // smaller
+                        max(1u, m_width  >> (mip_index - 1)),  // larger width
+                        max(1u, m_height >> (mip_index - 1))   // larger height
+                    );
+                }
+
+                // for thumbnails, find the appropriate mip level close to 128x128 and make it the only mip
+                if (m_flags & RHI_Texture_Thumbnail)
+                {
+                    uint32_t target_mip = 0;
+                    for (uint32_t i = 0; i < m_slices[0].mips.size(); i++)
+                    {
+                        uint32_t mip_width  = max(1u, m_width >> i);
+                        uint32_t mip_height = max(1u, m_height >> i);
+                        
+                        if (mip_width <= 128 && mip_height <= 128)
+                        {
+                            target_mip = i;
+                            break;
+                        }
+                    }
+
+                    // move the target mip to the top
+                    if (target_mip > 0)
+                    {
+                        m_slices[0].mips[0] = move(m_slices[0].mips[target_mip]);
+                        m_width             = max(1u, m_width >> target_mip);
+                        m_height            = max(1u, m_height >> target_mip);
+                    }
+                    
+                    // clear all other mips
+                    m_slices[0].mips.resize(1);
+                    m_mip_count = static_cast<uint32_t>(m_slices[0].mips.size());
+                }
+
+                // compress
+                bool compress       = m_flags & RHI_Texture_Compress;
+                bool not_compressed = !IsCompressedFormat();
+                if (compress && not_compressed)
+                {
+                    compressonator::compress(this);
+                }
+            }
+            
+            // upload to gpu
             SP_ASSERT(RHI_CreateResource());
         }
 
