@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //================================
 #include "pch.h"
 #include "PhysicsDebugDraw.h"
-#include "BulletPhysicsHelper.h"
 #include "../Rendering/Renderer.h"
 //================================
 
@@ -40,7 +39,7 @@ namespace Spartan
     PhysicsDebugDraw::PhysicsDebugDraw()
     {
         debug_mode =
-            DBG_DrawFrames        | // axes of the coordinate frames 
+            DBG_DrawFrames        | // axes of the coordinate frames
             DBG_DrawWireframe     | // shapes
             DBG_DrawContactPoints |
             DBG_DrawConstraints   |

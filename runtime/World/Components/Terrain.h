@@ -76,8 +76,8 @@ namespace Spartan
         void UpdateMesh(const uint32_t tile_index);
         void Clear();
 
-        float m_min_y                     = -20.0f; // everything below 0.0 is assumed to be below sea level
-        float m_max_y                     = 100.0f;
+        float m_min_y                     = -5.0f; // everything below 0.0 is assumed to be below sea level
+        float m_max_y                     = 50.0f;
         float m_vertex_density            = 1.0f;
         std::atomic<bool> m_is_generating = false;
         uint32_t m_height_samples         = 0;
