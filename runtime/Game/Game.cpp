@@ -409,8 +409,8 @@ namespace Spartan
         void create_forest_car()
         {
             create_sun(LightIntensity::sky_sunlight_morning_evening);
-            create_camera(Vector3(-205.1f, 10.5922f, 153.6538f), Vector3(9.4095f, 28.6348f, 0.0f));
-            create_car(Vector3(-198.0397f, 4.0f, 161.3321f));
+            create_camera(Vector3(-212.0840f, 5.2584f, 285.4062f), Vector3(4.0149f, 154.4289f, 0.0f));
+            create_car(Vector3(-208.1031f, 4.5, 271.7055f));
 
             // mood adjustment
             m_default_light_directional->GetComponent<Light>()->SetTemperature(2300.0f);
