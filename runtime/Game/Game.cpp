@@ -1098,14 +1098,14 @@ namespace Spartan
                     // the camera is a child of physics capsule
                     bool outside_the_car = m_default_physics_body_camera->GetChildrenCount() != 0;
 
-                    if (outside_the_car)
+                    if (outside_the_car) // move inside
                     {
                         Entity* camera = m_default_physics_body_camera->GetChildByName("component_camera");
                         camera->SetParent(m_default_car);
                         camera->SetPositionLocal(Vector3(0.5f, 1.8f, -0.6f));
                         camera->SetRotationLocal(Quaternion::Identity);
                     }
-                    else
+                    else // move outside
                     {
                         Entity* camera = m_default_car->GetChildByName("component_camera");
                         camera->SetParent(m_default_physics_body_camera);
