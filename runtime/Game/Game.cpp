@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
+#include "../Input/Input.h"
 //============================================
 
 //= NAMESPACES ===============
@@ -49,6 +50,7 @@ namespace Spartan
     {
         // resources
         shared_ptr<Entity> m_default_terrain             = nullptr;
+        shared_ptr<Entity> m_default_car                 = nullptr;
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
@@ -140,10 +142,10 @@ namespace Spartan
             
                 // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
                 // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
-                shared_ptr<Entity> entity_root = World::CreateEntity();
-                entity_root->SetObjectName("toyota_ae86_sprinter_trueno");
-                entity_root->SetPosition(position);
-                entity_car->SetParent(entity_root);
+                m_default_car = World::CreateEntity();
+                m_default_car->SetObjectName("toyota_ae86_sprinter_trueno");
+                m_default_car->SetPosition(position);
+                entity_car->SetParent(m_default_car);
             
                 // body
                 {
@@ -236,7 +238,7 @@ namespace Spartan
             
                 // add physics body
                 {
-                    PhysicsBody* physics_body = entity_root->AddComponent<PhysicsBody>().get();
+                    PhysicsBody* physics_body = m_default_car->AddComponent<PhysicsBody>().get();
                     physics_body->SetBodyType(PhysicsBodyType::Vehicle);
                     physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
                     physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
@@ -275,26 +277,26 @@ namespace Spartan
                         {
                             shared_ptr<Entity> wheel = entity_wheel_root;
                             wheel->SetObjectName("wheel_fl");
-                            wheel->SetParent(entity_root);
+                            wheel->SetParent(m_default_car);
                             physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
                     
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_fr");
                             wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
                             wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->SetParent(entity_root);
+                            wheel->SetParent(m_default_car);
                             physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
                     
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_rl");
-                            wheel->SetParent(entity_root);
+                            wheel->SetParent(m_default_car);
                             physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
                     
                             wheel = entity_wheel_root->Clone();
                             wheel->SetObjectName("wheel_rr");
                             wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
                             wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->SetParent(entity_root);
+                            wheel->SetParent(m_default_car);
                             physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
                         }
                     }
@@ -1033,59 +1035,82 @@ namespace Spartan
         m_default_environment         = nullptr;
         m_default_light_directional   = nullptr;
         m_default_terrain             = nullptr;
+        m_default_car                 = nullptr;
     }
 
     void Game::Tick()
     {
-        // forest default world logic
+        // forest logic
+        if (m_default_terrain)
         {
-            if (!m_default_terrain)
-                return;
-
-            Camera* camera = Renderer::GetCamera().get();
-            if (!camera)
-                return;
-
+            Camera*  camera  = Renderer::GetCamera().get();
             Terrain* terrain = m_default_terrain->GetComponent<Terrain>().get();
-            if (!terrain)
+            if (!camera || !terrain)
                 return;
 
-            bool is_below_water_level = camera->GetEntity()->GetPosition().y < 0.0f;
-
-            // underwater
+            // sound
             {
-                // sound
-                if (Entity* entity = m_default_terrain->GetDescendantByName("underwater"))
+                bool is_below_water_level = camera->GetEntity()->GetPosition().y < 0.0f;
+
+                // underwater
                 {
-                    if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
+                    if (Entity* entity = m_default_terrain->GetDescendantByName("underwater"))
                     {
-                        if (is_below_water_level && !audio_source->IsPlaying())
+                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
                         {
-                            audio_source->Play();
+                            if (is_below_water_level && !audio_source->IsPlaying())
+                            {
+                                audio_source->Play();
+                            }
+                            else if (!is_below_water_level && audio_source->IsPlaying())
+                            {
+                                audio_source->Stop();
+                            }
                         }
-                        else if (!is_below_water_level && audio_source->IsPlaying())
+                    }
+                }
+
+                // footsteps
+                if (!is_below_water_level)
+                {
+                    if (Entity* entity = m_default_terrain->GetDescendantByName("footsteps"))
+                    {
+                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
                         {
-                            audio_source->Stop();
+                            if (camera->IsWalking() && !audio_source->IsPlaying())
+                            {
+                                audio_source->Play();
+                            }
+                            else if (!camera->IsWalking() && audio_source->IsPlaying())
+                            {
+                                audio_source->Stop();
+                            }
                         }
                     }
                 }
             }
 
-            // footsteps
-            if (!is_below_water_level)
+            // car
             {
-                if (Entity* entity = m_default_terrain->GetDescendantByName("footsteps"))
+                // enter/exit
+                if (Input::GetKeyDown(KeyCode::E))
                 {
-                    if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
+                    // the camera is a child of physics capsule
+                    bool outside_the_car = m_default_physics_body_camera->GetChildrenCount() != 0;
+
+                    if (outside_the_car)
                     {
-                        if (camera->IsWalking() && !audio_source->IsPlaying())
-                        {
-                            audio_source->Play();
-                        }
-                        else if (!camera->IsWalking() && audio_source->IsPlaying())
-                        {
-                            audio_source->Stop();
-                        }
+                        Entity* camera = m_default_physics_body_camera->GetChildByName("component_camera");
+                        camera->SetParent(m_default_car);
+                        camera->SetPositionLocal(Vector3(0.5f, 1.8f, -0.6f));
+                        camera->SetRotationLocal(Quaternion::Identity);
+                    }
+                    else
+                    {
+                        Entity* camera = m_default_car->GetChildByName("component_camera");
+                        camera->SetParent(m_default_physics_body_camera);
+                        camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
+                        camera->SetRotationLocal(Quaternion::Identity);
                     }
                 }
             }
