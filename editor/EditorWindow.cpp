@@ -63,6 +63,7 @@ namespace
             {
                 ImGui::TextWrapped(
                     "I cover the costs for Dropbox hosting and a GitHub Pro subscription for benefits like assets and package bandwidth."
+                    " "
                     "If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!"
                 );
             
