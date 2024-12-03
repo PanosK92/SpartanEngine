@@ -315,7 +315,7 @@ void RenderOptions::OnTickVisible()
             // gi
             {
                 // toggle
-                option_check_box("GI - Global illumination (WIP)", Renderer_Option::GlobalIllumination);
+                option_check_box("GI - Global illumination", Renderer_Option::GlobalIllumination);
             
                 // internal resolution
                 //float gi_value  = Renderer::GetOption<float>(Renderer_Option::GlobalIllumination);

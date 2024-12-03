@@ -1255,6 +1255,12 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
 
+        // todo: see if this can be done in the shader (to avoid the barrier)
+        if (is_transparent_pass)
+        {
+            cmd_list->ClearTexture(tex_out, Color::standard_transparent);
+        }
+
         // set pipeline state
         static RHI_PipelineState pso;
         pso.name             = "light_composition_transparent";
