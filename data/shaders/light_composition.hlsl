@@ -108,12 +108,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
 
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels.
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is a transparent pass, ignore all opaque pixels.
-    bool early_exit_3 = pass_is_transparent() && surface.is_sky();    // if this is a transparent pass, ignore sky pixels (they only render in the opaque)
-    if (early_exit_1 || early_exit_2 || early_exit_3)
-        return;
-
+    // initialize
     float3 light_diffuse       = 0.0f;
     float3 light_specular      = 0.0f;
     float3 light_refraction    = 0.0f;
@@ -122,14 +117,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float alpha                = 0.0f;
     float distance_from_camera = 0.0f;
 
-    // compute light based on if this is the sky or any other surface
-    if (surface.is_sky())
+    // during the compute pass, fill in the sky pixels
+    if (surface.is_sky() && pass_is_opaque())
     {
         light_emissive       = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         alpha                = 0.0f;
         distance_from_camera = FLT_MAX_16;
     }
-    else
+    // for the opaque pass, fill in the opaque pixels, and for the transparent pass, fill in the transparent pixels
+    else if ((pass_is_opaque() && surface.is_opaque()) || (pass_is_transparent() && surface.is_transparent()))
     {
         light_diffuse        = tex_light_diffuse[thread_id.xy].rgb;
         light_specular       = tex_light_specular[thread_id.xy].rgb;
