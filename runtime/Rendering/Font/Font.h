@@ -53,12 +53,19 @@ namespace Spartan
         Font_Outline_Negative
     };
 
-    struct TextData
+    struct FontData
     {
         std::vector<RHI_Vertex_PosTex> vertices;
         std::vector<uint32_t> indices;
         Math::Vector2 position;
     };
+
+    struct FontBuffer
+    {
+        std::shared_ptr<RHI_Buffer> vertex;
+        std::shared_ptr<RHI_Buffer> index;
+    };
+    const uint32_t font_buffer_count = 2;
 
     class Font : public IResource
     {
@@ -102,11 +109,11 @@ namespace Spartan
 
         // properties
         void SetSize(uint32_t size);
-        RHI_Buffer* GetIndexBuffer() const  { return m_index_buffer.get(); }
-        RHI_Buffer* GetVertexBuffer() const { return m_vertex_buffer.get(); }
-        uint32_t GetSize() const                    { return m_font_size; }
-        Font_Hinting_Type GetHinting() const        { return m_hinting; }
-        auto GetForceAutohint() const               { return m_force_autohint; }
+        RHI_Buffer* GetIndexBuffer() const                          { return m_buffers[m_buffer_index].index.get(); }
+        RHI_Buffer* GetVertexBuffer() const                         { return m_buffers[m_buffer_index].vertex.get(); }
+        uint32_t GetSize() const                                    { return m_font_size; }
+        Font_Hinting_Type GetHinting() const                        { return m_hinting; }
+        auto GetForceAutohint() const                               { return m_force_autohint; }
         void SetGlyph(const uint32_t char_code, const Glyph& glyph) { m_glyphs[char_code] = glyph; }
 
     private:
@@ -120,10 +127,12 @@ namespace Spartan
         uint32_t m_char_max_width;
         uint32_t m_char_max_height;
         std::unordered_map<uint32_t, Glyph> m_glyphs;
-        std::vector<TextData> m_text_data;
-        std::shared_ptr<RHI_Buffer> m_vertex_buffer;
-        std::shared_ptr<RHI_Buffer> m_index_buffer;
+        std::vector<FontData> m_font_data;
         std::shared_ptr<RHI_Texture> m_atlas;
         std::shared_ptr<RHI_Texture> m_atlas_outline;
+
+        // buffers
+        std::array<FontBuffer, font_buffer_count> m_buffers;
+        uint32_t m_buffer_index = 0;
     };
 }

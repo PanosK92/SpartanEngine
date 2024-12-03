@@ -1904,7 +1904,7 @@ namespace Spartan
         // if a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data_initial != nullptr)
         {
-            SP_ASSERT(is_mappable && "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag.");
+            SP_ASSERT_MSG(is_mappable, "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag");
 
             // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
             // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
