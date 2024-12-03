@@ -173,26 +173,30 @@ namespace Spartan
     void Font::UpdateVertexAndIndexBuffers()
     {
         SP_ASSERT(m_vertex_buffer && m_index_buffer);
-
+    
         if (m_text_data.empty())
             return;
-
+    
         // combine all vertices/indices into one
         vector<RHI_Vertex_PosTex> vertices;
         vector<uint32_t> indices;
         uint32_t vertex_offset = 0;
+    
         for (const TextData& text_data : m_text_data)
         {
+            // insert vertices for this text entry
             vertices.insert(vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
-
+    
+            // adjust indices to reference the correct vertices
             for (uint32_t index : text_data.indices)
             {
-                indices.push_back(index); // index + vertex_offset causes issues for some weird compiler related reason
+                indices.push_back(index + vertex_offset);
             }
-
+    
+            // update vertex offset for the next text entry
             vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
         }
-
+    
         // create/grow buffers
         if (vertices.size() > m_vertex_buffer->GetElementCount())
         {
@@ -203,7 +207,7 @@ namespace Spartan
                 true,
                 "font"
             );
-
+    
             m_index_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
                 sizeof(indices[0]),
                 static_cast<uint32_t>(indices.size()),
@@ -212,20 +216,20 @@ namespace Spartan
                 "font"
             );
         }
-
+    
         // copy the data over to the gpu
         {
             if (RHI_Vertex_PosTex* vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->GetMappedData()))
             {
                 copy(vertices.begin(), vertices.end(), vertex_buffer);
             }
-
+    
             if (uint32_t* index_buffer = static_cast<uint32_t*>(m_index_buffer->GetMappedData()))
             {
                 copy(indices.begin(), indices.end(), index_buffer);
             }
         }
-
+    
         m_text_data.clear();
     }
 

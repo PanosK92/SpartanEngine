@@ -1114,6 +1114,11 @@ namespace Spartan
                     }
                 }
             }
+
+            // osd
+            {
+                Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car", Vector2(0.005f, -0.96f));
+            }
         }
     }
 
