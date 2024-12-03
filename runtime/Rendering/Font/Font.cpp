@@ -45,8 +45,12 @@ namespace Spartan
 
     Font::Font(const string& file_path, const uint32_t font_size, const Color& color) : IResource(ResourceType::Font)
     {
-        m_vertex_buffer   = make_shared<RHI_Buffer>();
-        m_index_buffer    = make_shared<RHI_Buffer>();
+        for (uint32_t i = 0; i < font_buffer_count; i++)
+        {
+            m_buffers[i].vertex = make_shared<RHI_Buffer>();
+            m_buffers[i].index  = make_shared<RHI_Buffer>();
+        }
+
         m_char_max_width  = 0;
         m_char_max_height = 0;
         m_color           = color;
@@ -86,6 +90,12 @@ namespace Spartan
         // don't accumulate text if the renderer hasn't rendered a frame yet
         if (Renderer::GetFrameNumber() < 1)
             return;
+
+        // new frame
+        if (text.empty())
+        {
+            m_buffer_index = (m_buffer_index + 1) % font_buffer_count;
+        }
 
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
@@ -161,12 +171,12 @@ namespace Spartan
         }
 
         // store the generated data for this text
-        m_text_data.emplace_back(vertices, indices, position);
+        m_font_data.emplace_back(vertices, indices, position);
     }
 
     bool Font::HasText() const
     {
-        return !m_text_data.empty();
+        return !m_font_data.empty();
     }
 
     void Font::SetSize(const uint32_t size)
@@ -176,9 +186,7 @@ namespace Spartan
 
     void Font::UpdateVertexAndIndexBuffers()
     {
-        SP_ASSERT(m_vertex_buffer && m_index_buffer);
-    
-        if (m_text_data.empty())
+        if (m_font_data.empty())
             return;
     
         // combine all vertices/indices into one
@@ -186,7 +194,7 @@ namespace Spartan
         vector<uint32_t> indices;
         uint32_t vertex_offset = 0;
     
-        for (const TextData& text_data : m_text_data)
+        for (const FontData& text_data : m_font_data)
         {
             // insert vertices for this text entry
             vertices.insert(vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
@@ -201,10 +209,10 @@ namespace Spartan
             vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
         }
     
-        // create/grow buffers
-        if (vertices.size() > m_vertex_buffer->GetElementCount())
+        // grow buffers
+        if (vertices.size() > GetVertexBuffer()->GetElementCount())
         {
-            m_vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
+            m_buffers[m_buffer_index].vertex = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
                 sizeof(vertices[0]),
                 static_cast<uint32_t>(vertices.size()),
                 static_cast<void*>(&vertices[0]),
@@ -212,7 +220,7 @@ namespace Spartan
                 "font"
             );
     
-            m_index_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
+             m_buffers[m_buffer_index].index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
                 sizeof(indices[0]),
                 static_cast<uint32_t>(indices.size()),
                 static_cast<void*>(&indices[0]),
@@ -223,31 +231,31 @@ namespace Spartan
     
         // copy the data over to the gpu
         {
-            if (RHI_Vertex_PosTex* vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->GetMappedData()))
+            if (RHI_Vertex_PosTex* vertex_buffer = static_cast<RHI_Vertex_PosTex*>(GetVertexBuffer()->GetMappedData()))
             {
                 // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
-                memset(vertex_buffer, 0, m_vertex_buffer->GetObjectSize());
+                memset(vertex_buffer, 0, GetVertexBuffer()->GetObjectSize());
                 
                 // now copy your actual vertices
                 copy(vertices.begin(), vertices.end(), vertex_buffer);
             }
 
-            if (uint32_t* index_buffer = static_cast<uint32_t*>(m_index_buffer->GetMappedData()))
+            if (uint32_t* index_buffer = static_cast<uint32_t*>(GetIndexBuffer()->GetMappedData()))
             {
                 // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
-                memset(index_buffer, 0, m_index_buffer->GetObjectSize());
+                memset(index_buffer, 0, GetIndexBuffer()->GetObjectSize());
                 
                 // now copy your actual indices
                 copy(indices.begin(), indices.end(), index_buffer);
             }
         }
     
-        m_text_data.clear();
+        m_font_data.clear();
     }
 
     uint32_t Font::GetIndexCount()
     {
-        SP_ASSERT(m_index_buffer);
-        return m_index_buffer->GetElementCount();
+        SP_ASSERT(GetIndexBuffer());
+        return GetIndexBuffer()->GetElementCount();
     }
 }
