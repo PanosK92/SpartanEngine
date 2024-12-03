@@ -65,7 +65,7 @@ namespace Spartan
         std::shared_ptr<RHI_Buffer> vertex;
         std::shared_ptr<RHI_Buffer> index;
     };
-    const uint32_t font_buffer_count = 2;
+    const uint32_t font_buffer_count = 3;
 
     class Font : public IResource
     {
