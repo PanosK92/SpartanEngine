@@ -83,7 +83,7 @@ namespace Spartan
 
     void Font::AddText(const string& text, const Vector2& position_screen_percentage)
     {
-        // early exit if the renderer isn't ready
+        // don't accumulate text if the renderer hasn't rendered a frame yet
         if (Renderer::GetFrameNumber() < 1)
             return;
 
