@@ -157,7 +157,6 @@ namespace Spartan
             Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_fr), Vector2(1.0f, 0.005f));
             Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rl), Vector2(1.4f, 0.005f));
             Renderer::DrawString(wheel_to_string(parameters, tuning::wheel_rr), Vector2(1.8f, 0.005f));
-            Renderer::DrawString("Take control! Use the arrow keys to steer the car and space for handbreak.", Vector2(0.005f, -0.96f));
         }
 
         void draw_info_general(CarParameters& parameters, const float speed)
