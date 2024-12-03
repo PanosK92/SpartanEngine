@@ -83,6 +83,10 @@ namespace Spartan
 
     void Font::AddText(const string& text, const Vector2& position_screen_percentage)
     {
+        // early exit if the renderer isn't ready
+        if (Renderer::GetFrameNumber() < 1)
+            return;
+
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
         const float aspect_ratio    = viewport_width / viewport_height;
@@ -105,7 +109,7 @@ namespace Spartan
         position.y -= m_char_max_height * 1.5f;
 
         // set the cursor to the starting position
-        Vector2 cursor      = position;
+        Vector2 cursor       = position;
         float starting_pos_x = cursor.x;
 
         // generate vertices - draw each latter onto a quad
@@ -221,11 +225,19 @@ namespace Spartan
         {
             if (RHI_Vertex_PosTex* vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->GetMappedData()))
             {
+                // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
+                memset(vertex_buffer, 0, m_vertex_buffer->GetObjectSize());
+                
+                // now copy your actual vertices
                 copy(vertices.begin(), vertices.end(), vertex_buffer);
             }
-    
+
             if (uint32_t* index_buffer = static_cast<uint32_t*>(m_index_buffer->GetMappedData()))
             {
+                // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
+                memset(index_buffer, 0, m_index_buffer->GetObjectSize());
+                
+                // now copy your actual indices
                 copy(indices.begin(), indices.end(), index_buffer);
             }
         }
