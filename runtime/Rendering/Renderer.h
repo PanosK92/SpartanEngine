@@ -78,7 +78,7 @@ namespace Spartan
 
         // misc
         static void SetStandardResources(RHI_CommandList* cmd_list);
-        static uint64_t GetFrameNum();
+        static uint64_t GetFrameNumber();
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
         static void SetEntities(std::unordered_map<uint64_t, std::shared_ptr<Entity>>& entities);

@@ -800,7 +800,7 @@ namespace Spartan
         return RHI_Context::api_type;
     }
 
-    uint64_t Renderer::GetFrameNum()
+    uint64_t Renderer::GetFrameNumber()
     {
         return frame_num;
     }
