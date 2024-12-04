@@ -50,7 +50,7 @@ namespace Spartan
         {
             if (type == LightType::Directional)
             {
-                return get_world_depth() * 4.0f;
+                return numeric_limits<float>::max();
             }
             else if (type == LightType::Point)
             {
@@ -439,7 +439,7 @@ namespace Spartan
             {
                 target = camera->GetEntity()->GetPosition();
             }
-            Vector3 position = target - GetEntity()->GetForward() * get_world_depth() * 2.5f;
+            Vector3 position = target - GetEntity()->GetForward() * get_world_depth() * 3.0f;
 
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up); // near
             m_matrix_view[1] = m_matrix_view[0];                                      // far
@@ -474,7 +474,7 @@ namespace Spartan
                 float right      = extent;
                 float bottom     = -extent;
                 float top        = extent;
-                float far_plane  = get_world_depth() * 3.0f;
+                float far_plane  = get_world_depth() * 4.0f;
 
                 m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
                 m_frustums[i] = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
