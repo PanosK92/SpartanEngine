@@ -34,6 +34,7 @@ struct sampling
                            4.0 + dot(p, float2(23.0, 31.0)))) * 103.0);
     }
 
+    // good but very expensive, could possibly be used at far distances which use lower mips
     static float4 sample_seamless_texture(float2 uv, uint texture_index, uint sampler_index, float v = 1.0f)
     {
         float2 p       = floor(uv);
@@ -106,9 +107,9 @@ struct sampling
         }
         else if (is_terrain) // slope based blending with sand, grass, rock and snow
         {
-            float4 tex_grass = sample_seamless_texture(uv, texture_index + 0, sampler_anisotropic_wrap);
-            float4 tex_rock  = sample_seamless_texture(uv, texture_index + 1, sampler_anisotropic_wrap);
-            float4 tex_sand  = sample_seamless_texture(uv, texture_index + 2, sampler_anisotropic_wrap);
+            float4 tex_grass = GET_TEXTURE(texture_index + 0).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+            float4 tex_rock  = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+            float4 tex_sand  = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
   
             // compute blend factors
             const float snow_level   = apply_snow_level_variation(position);
