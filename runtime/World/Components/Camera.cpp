@@ -43,6 +43,7 @@ namespace Spartan
     Camera::Camera(Entity* entity) : Component(entity)
     {
         m_entity_ptr->SetPosition(Vector3(0.0f, 3.0f, -5.0f));
+        SetFlag(CameraFlags::CanBeControlled, true);
     }
 
     void Camera::OnInitialize()
@@ -57,7 +58,7 @@ namespace Spartan
         if (m_last_known_viewport != current_viewport)
         {
             m_last_known_viewport = current_viewport;
-            m_is_dirty            = true;
+            SetFlag(CameraFlags::IsDirty, true);
         }
 
         // DIRTY CHECK
@@ -65,7 +66,7 @@ namespace Spartan
         {
             m_position = GetEntity()->GetPosition();
             m_rotation = GetEntity()->GetRotation();
-            m_is_dirty = true;
+            SetFlag(CameraFlags::IsDirty, true);
         }
 
         ProcessInput();
@@ -103,20 +104,20 @@ namespace Spartan
         if (m_near_plane != near_plane_limited)
         {
             m_near_plane = near_plane_limited;
-            m_is_dirty   = true;
+            SetFlag(CameraFlags::IsDirty, true);
         }
     }
 
     void Camera::SetFarPlane(const float far_plane)
     {
         m_far_plane = far_plane;
-        m_is_dirty  = true;
+        SetFlag(CameraFlags::IsDirty, true);
     }
 
     void Camera::SetProjection(const ProjectionType projection)
     {
         m_projection_type = projection;
-        m_is_dirty        = true;
+        SetFlag(CameraFlags::IsDirty, true);
     }
 
     float Camera::GetFovHorizontalDeg() const
@@ -132,7 +133,7 @@ namespace Spartan
     void Camera::SetFovHorizontalDeg(const float fov)
     {
         m_fov_horizontal_rad = Helper::DegreesToRadians(fov);
-        m_is_dirty           = true;
+        SetFlag(CameraFlags::IsDirty, true);
     }
 
     bool Camera::IsInViewFrustum(const BoundingBox& bounding_box) const
@@ -310,7 +311,7 @@ namespace Spartan
 
     void Camera::ComputeMatrices()
     {
-        if (!m_is_dirty)
+        if (!GetFlag(CameraFlags::IsDirty))
             return;
 
         m_view                          = ComputeViewMatrix();
@@ -319,16 +320,12 @@ namespace Spartan
         m_view_projection               = m_view * m_projection;
         m_view_projection_non_reverse_z = m_view * m_projection_non_reverse_z;
         m_frustum                       = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_near_plane);
-        m_is_dirty                      = false;
+        SetFlag(CameraFlags::IsDirty, false);
     }
 
     void Camera::ProcessInput()
     {
-        // fps camera controls
-        // x-axis movement: w, a, s, d
-        // y-axis movement: q, e
-        // mouse look: hold right click to enable
-        if (m_first_person_control_enabled)
+        if (GetFlag(CameraFlags::CanBeControlled))
         {
             ProcessInputFpsControl();
         }
@@ -353,17 +350,17 @@ namespace Spartan
             // initiate control only when the mouse is within the viewport
             if (Input::GetKeyDown(KeyCode::Click_Right) && Input::GetMouseIsInViewport())
             {
-                m_is_controlled_by_keyboard_mouse = true;
+                SetFlag(IsActivelyControlled, true);
             }
 
             // maintain control as long as the right click is pressed and initial control has been given
-            m_is_controlled_by_keyboard_mouse = Input::GetKey(KeyCode::Click_Right) && m_is_controlled_by_keyboard_mouse;
+            SetFlag(IsActivelyControlled, Input::GetKey(KeyCode::Click_Right) && GetFlag(CameraFlags::IsActivelyControlled));
         }
 
         // cursor visibility and position
         {
             // when right clicking and moving the mouse over the viewport (hide the mouse)
-            if (m_is_controlled_by_keyboard_mouse && !m_fps_control_cursor_hidden)
+            if (GetFlag(CameraFlags::IsActivelyControlled) && !GetFlag(CameraFlags::WantsCursorHidden))
             {
                 m_mouse_last_position = Input::GetMousePosition();
 
@@ -372,10 +369,10 @@ namespace Spartan
                     Input::SetMouseCursorVisible(false);
                 }
 
-                m_fps_control_cursor_hidden = true;
+                SetFlag(CameraFlags::WantsCursorHidden, true);
             }
             // when releasing the rick click, make the mouse visible and set it to the last visible position
-            else if (!m_is_controlled_by_keyboard_mouse && m_fps_control_cursor_hidden)
+            else if (!GetFlag(CameraFlags::IsActivelyControlled) && GetFlag(CameraFlags::WantsCursorHidden))
             {
                 Input::SetMousePosition(m_mouse_last_position);
 
@@ -384,15 +381,15 @@ namespace Spartan
                     Input::SetMouseCursorVisible(true);
                 }
 
-                m_fps_control_cursor_hidden = false;
+                SetFlag(CameraFlags::WantsCursorHidden, false);
             }
         }
 
         // mouse look
-        if (m_is_controlled_by_keyboard_mouse || Input::IsGamepadConnected())
+        if (GetFlag(CameraFlags::IsActivelyControlled) || Input::IsGamepadConnected())
         {
             // wrap around left and right screen edges (to allow for infinite scrolling)
-            if (m_is_controlled_by_keyboard_mouse)
+            if (GetFlag(CameraFlags::IsActivelyControlled))
             {
                 uint32_t edge_padding = 5;
                 Vector2 mouse_position = Input::GetMousePosition();
@@ -409,7 +406,7 @@ namespace Spartan
             }
 
             // get camera rotation
-            if (m_is_controlled_by_keyboard_mouse)
+            if (GetFlag(CameraFlags::IsActivelyControlled))
             {
                 m_first_person_rotation.x = GetEntity()->GetRotation().Yaw();
                 m_first_person_rotation.y = GetEntity()->GetRotation().Pitch();
@@ -442,9 +439,9 @@ namespace Spartan
         }
 
         // directional movement
-        if (m_is_controlled_by_keyboard_mouse || Input::IsGamepadConnected())
+        if (GetFlag(CameraFlags::IsActivelyControlled) || Input::IsGamepadConnected())
         {
-            if (m_is_controlled_by_keyboard_mouse)
+            if (GetFlag(CameraFlags::IsActivelyControlled))
             {
                 if (Input::GetKey(KeyCode::W)) movement_direction += GetEntity()->GetForward();
                 if (Input::GetKey(KeyCode::S)) movement_direction += GetEntity()->GetBackward();
@@ -619,7 +616,7 @@ namespace Spartan
             }
 
             // if the lerp has completed or the user has initiated fps control, stop lerping
-            if (m_lerp_to_target_alpha >= 1.0f || m_is_controlled_by_keyboard_mouse)
+            if (m_lerp_to_target_alpha >= 1.0f || GetFlag(CameraFlags::IsActivelyControlled))
             {
                 m_lerp_to_target_p        = false;
                 m_lerp_to_target_r        = false;
@@ -657,6 +654,20 @@ namespace Spartan
 
             m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
             m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;
+        }
+    }
+
+    void Camera::SetFlag(const CameraFlags flag, const bool enable)
+    {
+        bool flag_present = m_flags & flag;
+
+        if (enable && !flag_present)
+        {
+            m_flags |= static_cast<uint32_t>(flag);
+        }
+        else if (!enable && flag_present)
+        {
+            m_flags  &= ~static_cast<uint32_t>(flag);
         }
     }
 

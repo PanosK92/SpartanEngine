@@ -116,7 +116,7 @@ void Viewport::OnTickVisible()
     }
 
     // check if the engine wants cursor control
-    if (camera && camera->IsActivelyControlled())
+    if (camera && camera->GetFlag(Spartan::CameraFlags::IsActivelyControlled))
     {
         ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     }

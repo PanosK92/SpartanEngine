@@ -242,10 +242,10 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
-        bool shadows                = light->IsFlagSet(Spartan::LightFlags::Shadows);
-        bool shadows_transparent    = light->IsFlagSet(Spartan::LightFlags::ShadowsTransparent);
-        bool shadows_screen_space   = light->IsFlagSet(Spartan::LightFlags::ShadowsScreenSpace);
-        bool volumetric             = light->IsFlagSet(Spartan::LightFlags::Volumetric);
+        bool shadows                = light->GetFlag(Spartan::LightFlags::Shadows);
+        bool shadows_transparent    = light->GetFlag(Spartan::LightFlags::ShadowsTransparent);
+        bool shadows_screen_space   = light->GetFlag(Spartan::LightFlags::ShadowsScreenSpace);
+        bool volumetric             = light->GetFlag(Spartan::LightFlags::Volumetric);
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
         //======================================================================================
@@ -875,7 +875,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
 
     if (component_begin("Camera", IconType::Component_Camera, camera))
     {
-        //= REFLECT ===============================================================
+        //= REFLECT ======================================================================
         static vector<string> projection_types = { "Perspective", "Orthographic" };
         float aperture                         = camera->GetAperture();
         float shutter_speed                    = camera->GetShutterSpeed();
@@ -883,8 +883,8 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         float fov                              = camera->GetFovHorizontalDeg();
         float near_plane                       = camera->GetNearPlane();
         float far_plane                        = camera->GetFarPlane();
-        bool first_person_control_enabled      = camera->GetIsControlEnabled();
-        //=========================================================================
+        bool first_person_control_enabled      = camera->GetFlag(CameraFlags::CanBeControlled);
+        //================================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -929,16 +929,16 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         ImGui::Text("First Person Control");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
-
-        //= MAP =====================================================================================================================
+ 
+        //= MAP =============================================================================================================================================
         if (aperture != camera->GetAperture())                             camera->SetAperture(aperture);
         if (shutter_speed != camera->GetShutterSpeed())                    camera->SetShutterSpeed(shutter_speed);
         if (iso != camera->GetIso())                                       camera->SetIso(iso);
         if (fov != camera->GetFovHorizontalDeg())                          camera->SetFovHorizontalDeg(fov);
         if (near_plane != camera->GetNearPlane())                          camera->SetNearPlane(near_plane);
         if (far_plane != camera->GetFarPlane())                            camera->SetFarPlane(far_plane);
-        if (first_person_control_enabled != camera->GetIsControlEnabled()) camera->SetIsControlEnalbed(first_person_control_enabled);
-        //===========================================================================================================================
+        if (first_person_control_enabled != camera->GetFlag(CameraFlags::CanBeControlled)) camera->SetFlag(CameraFlags::CanBeControlled, first_person_control_enabled);
+        //===================================================================================================================================================
     }
     component_end();
 }
