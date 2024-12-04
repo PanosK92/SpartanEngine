@@ -55,7 +55,6 @@ namespace Spartan
             reinterpret_cast<const Math::Vector3&>(to),
             reinterpret_cast<const Color&>(color_from),
             reinterpret_cast<const Color&>(color_to),
-            0.0f,
             true
         );
     }

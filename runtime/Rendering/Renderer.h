@@ -55,13 +55,13 @@ namespace Spartan
         static void Tick();
 
         // primitive rendering (useful for debugging)
-        static void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
-        static void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Color& color = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
-        static void DrawBox(const Math::BoundingBox& box, const Color& color = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
-        static void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
-        static void DrawSphere(const Math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
-        static void DrawDirectionalArrow(const Math::Vector3& start, const Math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
-        static void DrawPlane(const Math::Plane& plane, const Color& color = Color::standard_renderer_lines, const float duration = 0.0f, const bool depth = true);
+        static void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, const bool depth = true);
+        static void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Color& color = Color::standard_renderer_lines, const bool depth = true);
+        static void DrawBox(const Math::BoundingBox& box, const Color& color = Color::standard_renderer_lines, const bool depth = true);
+        static void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, const bool depth = true);
+        static void DrawSphere(const Math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, const bool depth = true);
+        static void DrawDirectionalArrow(const Math::Vector3& start, const Math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines, const bool depth = true);
+        static void DrawPlane(const Math::Plane& plane, const Color& color = Color::standard_renderer_lines, const bool depth = true);
         static void DrawString(const std::string& text, const Math::Vector2& position_screen_percentage);
 
         // options
@@ -198,7 +198,6 @@ namespace Spartan
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_vertex_buffer_lines;
         static std::vector<RHI_Vertex_PosCol> m_line_vertices;
-        static std::vector<float> m_lines_duration;
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
         static uint32_t m_resource_index;

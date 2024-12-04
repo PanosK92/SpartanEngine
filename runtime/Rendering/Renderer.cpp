@@ -55,7 +55,6 @@ namespace Spartan
     // line rendering
     shared_ptr<RHI_Buffer> Renderer::m_vertex_buffer_lines;
     vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
-    vector<float> Renderer::m_lines_duration;
     uint32_t Renderer::m_lines_index_depth_off;
     uint32_t Renderer::m_lines_index_depth_on;
 
