@@ -1188,19 +1188,19 @@ namespace Spartan
                     }
                 }
 
-                // engine sound
-                if (inside_the_car)
-                {
-                    // todo: fix the loop function and remove this hack
-                    if (!audio_source_idle->IsPlaying())
-                    { 
-                        audio_source_idle->Play();
-                    }
-
-                    float engine_rpm = m_default_car->AddComponent<PhysicsBody>()->GetCar()->GetEngineRpm();
-                    float pitch      = engine_rpm / 1000.0f;
-                    audio_source_idle->SetPitch(pitch);
-                }
+                // engine sound (need to find a loopable one)
+                //if (inside_the_car)
+                //{
+                //    // todo: fix the loop function and remove this hack
+                //    if (!audio_source_idle->IsPlaying())
+                //    { 
+                //        audio_source_idle->Play();
+                //    }
+                //
+                //    float engine_rpm = m_default_car->AddComponent<PhysicsBody>()->GetCar()->GetEngineRpm();
+                //    float pitch      = engine_rpm / 1000.0f;
+                //    audio_source_idle->SetPitch(pitch);
+                //}
             }
 
             // osd
