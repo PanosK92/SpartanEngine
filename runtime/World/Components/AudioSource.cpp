@@ -162,6 +162,14 @@ namespace Spartan
     
         m_audio_clip->Stop();
     }
+
+    float AudioSource::GetProgress() const
+    {
+        if (!m_audio_clip)
+            return 0.0f;
+    
+        m_audio_clip->GetProgress();
+    }
     
     void AudioSource::SetMute(bool mute)
     {

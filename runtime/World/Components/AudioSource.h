@@ -53,6 +53,7 @@ namespace Spartan
         bool IsPlaying() const;
         void Play() const;
         void Stop() const;
+        float GetProgress() const;
 
         bool GetMute() const { return m_mute; }
         void SetMute(bool mute);

@@ -305,27 +305,33 @@ namespace Spartan
                     }
                 }
 
-                // disable all the wheels since they have weird rotations, we will add our own
+                // disable entities
                 {
-                    entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
-                    entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
+                    // disable all the wheels since they have weird rotations, we will add our own
+                    {
+                        entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
 
-                    entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
-                    entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
 
-                    entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
-                    entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
 
-                    entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
-                    entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
-                    entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
+                    }
+
+                    // disable glass until I resolve the motion vector issue
+                    entity_car->GetDescendantByName("CarBody_Windows_0")->SetActive(false);
                 }
             }
 
@@ -355,7 +361,7 @@ namespace Spartan
                     audio_source->SetPlayOnStart(false);
                 }
 
-                // start
+                // door
                 {
                     shared_ptr<Entity> sound = World::CreateEntity();
                     sound->SetObjectName("sound_door");
@@ -1156,6 +1162,8 @@ namespace Spartan
                         // place the camera on the left of the driver's door
                         m_default_physics_body_camera->GetComponent<PhysicsBody>()->SetPosition(m_default_car->GetPosition() + m_default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
 
+                        audio_source_idle->Stop();
+
                         inside_the_car = false;
                     }
 
@@ -1184,18 +1192,14 @@ namespace Spartan
                 if (inside_the_car)
                 {
                     // todo: fix the loop function and remove this hack
-                    if (!audio_source_idle->IsPlaying() && !audio_source_start->IsPlaying())
+                    if (!audio_source_idle->IsPlaying())
                     { 
                         audio_source_idle->Play();
                     }
 
                     float engine_rpm = m_default_car->AddComponent<PhysicsBody>()->GetCar()->GetEngineRpm();
-                    float pitch      = engine_rpm / 500.0f;
+                    float pitch      = engine_rpm / 1000.0f;
                     audio_source_idle->SetPitch(pitch);
-                }
-                else
-                {
-                    audio_source_idle->Stop();
                 }
             }
 
