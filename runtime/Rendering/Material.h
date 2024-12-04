@@ -33,14 +33,14 @@ namespace Spartan
     enum class MaterialTextureType
     {
         Color,
-        Roughness,
-        Metalness,
+        Roughness, // packed g
+        Metalness, // packed b
         Normal,
-        Occlusion,
+        Occlusion, // packed r
         Emission,
-        Height,
-        AlphaMask,
-        Packed, // occlusion, roughness, metalness, height
+        Height,    // packed a
+        AlphaMask, // packed into color a
+        Packed,    // occlusion, roughness, metalness, height
         Max
     };
 

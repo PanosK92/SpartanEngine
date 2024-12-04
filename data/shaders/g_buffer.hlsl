@@ -100,7 +100,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a BC5 two channel normal map
-        tangent_normal.z = sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
+        tangent_normal.z = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
     
         float normal_intensity     = max(0.012f, GetMaterial().normal);
         tangent_normal.xy         *= saturate(normal_intensity);
@@ -116,10 +116,10 @@ gbuffer main_ps(gbuffer_vertex vertex)
         metalness            *= packed_sample.b;
     }
     
-    // specular anti-aliasing
+    // specular anti-aliasing - also increases cache hits for certain subsqeuent passes
     {
-        const float strength           = 1.0f;
-        const float max_roughness_gain = 0.02f;
+        static const float strength           = 1.0f;
+        static const float max_roughness_gain = 0.02f;
 
         float roughness2         = roughness * roughness;
         float3 dndu              = ddx(normal), dndv = ddy(normal);
@@ -138,4 +138,3 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     return g_buffer;
 }
-
