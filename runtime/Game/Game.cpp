@@ -1124,12 +1124,16 @@ namespace Spartan
                     Vector3(0.0f, 2.0f, 1.0f),   // hood
                     Vector3(0.0f, 3.0f, -10.0f)  // chase
                 };
-            
+
+                // get some commonly used things
+                bool inside_the_car             = m_default_physics_body_camera->GetChildrenCount() == 0;
+                AudioSource* audio_source_door  = m_default_car->GetChildByName("sound_door")->GetComponent<AudioSource>().get();
+                AudioSource* audio_source_start = m_default_car->GetChildByName("sound_start")->GetComponent<AudioSource>().get();
+                AudioSource* audio_source_idle  = m_default_car->GetChildByName("sound_idle")->GetComponent<AudioSource>().get();
+
                 // enter/exit
                 if (Input::GetKeyDown(KeyCode::E))
                 {
-                    bool inside_the_car = m_default_physics_body_camera->GetChildrenCount() == 0;
-            
                     Entity* camera = nullptr;
                     if (!inside_the_car)
                     {
@@ -1138,10 +1142,7 @@ namespace Spartan
                         camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         camera->SetRotationLocal(Quaternion::Identity);
 
-                        if (AudioSource* audio_source = m_default_car->GetChildByName("sound_start")->GetComponent<AudioSource>().get())
-                        {
-                            audio_source->Play();
-                        }
+                        audio_source_start->Play();
 
                         inside_the_car = true;
                     }
@@ -1163,16 +1164,12 @@ namespace Spartan
                     m_default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
 
                     // play exit/enter sound
-                    if (AudioSource* audio_source = m_default_car->GetChildByName("sound_door")->GetComponent<AudioSource>().get())
-                    {
-                        audio_source->Play();
-                    }
+                    audio_source_door->Play();
                 }
             
                 // change car view
                 if (Input::GetKeyDown(KeyCode::V))
                 {
-                    bool inside_the_car = m_default_physics_body_camera->GetChildrenCount() == 0;
                     if (inside_the_car)
                     {
                         if (Entity* camera = m_default_car->GetChildByName("component_camera"))
@@ -1181,6 +1178,24 @@ namespace Spartan
                             camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         }
                     }
+                }
+
+                // engine sound
+                if (inside_the_car)
+                {
+                    // todo: fix the loop function and remove this hack
+                    if (!audio_source_idle->IsPlaying() && !audio_source_start->IsPlaying())
+                    { 
+                        audio_source_idle->Play();
+                    }
+
+                    float engine_rpm = m_default_car->AddComponent<PhysicsBody>()->GetCar()->GetEngineRpm();
+                    float pitch      = engine_rpm / 500.0f;
+                    audio_source_idle->SetPitch(pitch);
+                }
+                else
+                {
+                    audio_source_idle->Stop();
                 }
             }
 

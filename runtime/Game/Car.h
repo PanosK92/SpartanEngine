@@ -94,7 +94,9 @@ namespace Spartan
         float GetSpeedKilometersPerHour() const;
         float GetSpeedMetersPerSecond() const;
 
+        // misc
         void SetControlEnabled(const bool enabled) { m_parameters.control_enabled = enabled; }
+        float GetEngineRpm() const { return m_parameters.engine_rpm; }
 
     private:
         void HandleInput();
