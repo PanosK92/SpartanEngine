@@ -1081,6 +1081,15 @@ namespace Spartan
 
             // car
             {
+                // car views
+                enum class CarView { Dashboard, Hood, Chase };
+                static CarView current_view = CarView::Dashboard;
+                
+                // camera positions for different views
+                static const Vector3 car_view_dashboard = Vector3(0.5f, 1.8f, -0.6f);
+                static const Vector3 car_view_hood      = Vector3(0.0f, 2.0f, 1.0f);
+                static const Vector3 car_view_chase     = Vector3(0.0f, 3.0f, -10.0f);
+
                 // enter/exit
                 if (Input::GetKeyDown(KeyCode::E))
                 {
@@ -1092,11 +1101,11 @@ namespace Spartan
                     {
                         camera = m_default_physics_body_camera->GetChildByName("component_camera");
                         camera->SetParent(m_default_car);
-                        camera->SetPositionLocal(Vector3(0.5f, 1.8f, -0.6f));
+                        camera->SetPositionLocal(car_view_dashboard);
                         camera->SetRotationLocal(Quaternion::Identity);
                         inside_the_car = true;
                     }
-                    else 
+                    else
                     {
                         camera = m_default_car->GetChildByName("component_camera");
                         camera->SetParent(m_default_physics_body_camera);
@@ -1107,11 +1116,38 @@ namespace Spartan
 
                     camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
                 }
+
+                // change car view
+                if (Input::GetKeyDown(KeyCode::V))
+                {
+                    bool inside_the_car = m_default_physics_body_camera->GetChildrenCount() == 0;
+                    if (inside_the_car)
+                    {
+                        if (Entity* camera = m_default_car->GetChildByName("component_camera"))
+                        {
+                            switch(current_view)
+                            {
+                                case CarView::Dashboard:
+                                    current_view = CarView::Hood;
+                                    camera->SetPositionLocal(car_view_hood);
+                                    break;
+                                case CarView::Hood:
+                                    current_view = CarView::Chase;
+                                    camera->SetPositionLocal(car_view_chase);
+                                    break;
+                                case CarView::Chase:
+                                    current_view = CarView::Dashboard;
+                                    camera->SetPositionLocal(car_view_dashboard);
+                                    break;
+                            }
+                        }
+                    }
+                }
             }
 
             // osd
             {
-                Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car", Vector2(0.005f, -0.96f));
+                Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, -0.96f));
             }
         }
     }
