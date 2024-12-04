@@ -359,6 +359,33 @@ namespace Spartan
         return is_paused;
     }
 
+    float AudioClip::GetProgress()
+    {
+        #if defined(_MSC_VER)
+
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            // Get total sound length
+            unsigned int total_length = 0;
+            FMOD::Sound* sound = static_cast<FMOD::Sound*>(m_fmod_sound);
+            if (sound && sound->getLength(&total_length, FMOD_TIMEUNIT_PCM) == FMOD_OK)
+            {
+                // Get current playback position
+                unsigned int current_position = 0;
+                if (channel->getPosition(&current_position, FMOD_TIMEUNIT_PCM) == FMOD_OK)
+                {
+                    // Normalize the position
+                    return total_length > 0 ? 
+                        static_cast<float>(current_position) / static_cast<float>(total_length) : 
+                        0.0f;
+                }
+            }
+        }
+        #endif
+
+        return 0.0f;
+    }
+
     bool AudioClip::CreateSound(const string& file_path)
     {
         #if defined(_MSC_VER)

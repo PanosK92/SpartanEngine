@@ -79,6 +79,7 @@ namespace Spartan
 
         bool IsPlaying();
         bool IsPaused();
+        float GetProgress();
 
         void ResetChannel() { m_fmod_channel = nullptr; }
 
