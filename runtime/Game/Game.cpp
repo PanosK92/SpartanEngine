@@ -1086,22 +1086,24 @@ namespace Spartan
                 static CarView current_view = CarView::Dashboard;
                 
                 // camera positions for different views
-                static const Vector3 car_view_dashboard = Vector3(0.5f, 1.8f, -0.6f);
-                static const Vector3 car_view_hood      = Vector3(0.0f, 2.0f, 1.0f);
-                static const Vector3 car_view_chase     = Vector3(0.0f, 3.0f, -10.0f);
-
+                static const Vector3 car_view_positions[] =
+                {
+                    Vector3(0.5f, 1.8f, -0.6f),  // dashboard
+                    Vector3(0.0f, 2.0f, 1.0f),   // hood
+                    Vector3(0.0f, 3.0f, -10.0f)  // chase
+                };
+            
                 // enter/exit
                 if (Input::GetKeyDown(KeyCode::E))
                 {
-                    // the camera is a child of physics capsule
                     bool inside_the_car = m_default_physics_body_camera->GetChildrenCount() == 0;
-
+            
                     Entity* camera = nullptr;
                     if (!inside_the_car)
                     {
                         camera = m_default_physics_body_camera->GetChildByName("component_camera");
                         camera->SetParent(m_default_car);
-                        camera->SetPositionLocal(car_view_dashboard);
+                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         camera->SetRotationLocal(Quaternion::Identity);
                         inside_the_car = true;
                     }
@@ -1109,14 +1111,18 @@ namespace Spartan
                     {
                         camera = m_default_car->GetChildByName("component_camera");
                         camera->SetParent(m_default_physics_body_camera);
+
+                        Vector3 exit_position = m_default_car->GetPosition() + m_default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f;
+                        m_default_physics_body_camera->GetComponent<PhysicsBody>()->SetPosition(exit_position);
+
                         camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
                         camera->SetRotationLocal(Quaternion::Identity);
                         inside_the_car = false;
                     }
-
+            
                     camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
                 }
-
+            
                 // change car view
                 if (Input::GetKeyDown(KeyCode::V))
                 {
@@ -1125,21 +1131,8 @@ namespace Spartan
                     {
                         if (Entity* camera = m_default_car->GetChildByName("component_camera"))
                         {
-                            switch(current_view)
-                            {
-                                case CarView::Dashboard:
-                                    current_view = CarView::Hood;
-                                    camera->SetPositionLocal(car_view_hood);
-                                    break;
-                                case CarView::Hood:
-                                    current_view = CarView::Chase;
-                                    camera->SetPositionLocal(car_view_chase);
-                                    break;
-                                case CarView::Chase:
-                                    current_view = CarView::Dashboard;
-                                    camera->SetPositionLocal(car_view_dashboard);
-                                    break;
-                            }
+                            current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
+                            camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         }
                     }
                 }
