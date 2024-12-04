@@ -45,10 +45,16 @@ namespace Spartan
         Projection_Orthographic,
     };
 
-    struct camera_bookmark
+    enum CameraFlags : uint32_t
     {
-        Math::Vector3 position = Math::Vector3::Zero;
-        Math::Vector3 rotation = Math::Vector3::Zero;
+        // fps camera controls
+        // x-axis movement: w, a, s, d
+        // y-axis movement: q, e
+        // mouse look: hold right click to enable
+        CanBeControlled      = 1U << 0,
+        IsActivelyControlled = 1U << 1,
+        WantsCursorHidden    = 1U << 2,
+        IsDirty              = 1U << 3
     };
 
     class Camera : public Component
@@ -80,9 +86,8 @@ namespace Spartan
         // converts a world bounding box to a screen rectangle
         Math::Rectangle WorldToScreenCoordinates(const Math::BoundingBox& bounding_box) const;
 
-        // converts a screen point to a world point. Z can be 0.0f to 1.0f and it will lerp between the near and far plane.
+        // converts a screen point to a world point. Z can be 0.0f to 1.0f and it will lerp between the near and far plane
         Math::Vector3 ScreenToWorldCoordinates(const Math::Vector2& position_screen, const float z) const;
-        //=================================================================================================================
 
         // aperture
         float GetAperture() const              { return m_aperture; }
@@ -99,6 +104,7 @@ namespace Spartan
         // exposure
         float GetEv100()    const { return std::log2(m_aperture / m_shutter_speed * 100.0f / m_iso); }
         float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100())); }
+
         // planes/projection
         void SetNearPlane(float near_plane);
         void SetFarPlane(float far_plane);
@@ -107,7 +113,7 @@ namespace Spartan
         float GetFarPlane()                const { return m_far_plane; }
         ProjectionType GetProjectionType() const { return m_projection_type; }
 
-        // FOV
+        // fov
         float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
         float GetFovVerticalRad()   const;
         float GetFovHorizontalDeg() const;
@@ -117,15 +123,13 @@ namespace Spartan
         bool IsInViewFrustum(const Math::BoundingBox& bounding_box) const;
         bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
 
-        // first person control
-        bool GetIsControlEnabled()             const { return m_first_person_control_enabled; }
-        void SetIsControlEnalbed(const bool enabled) { m_first_person_control_enabled = enabled; }
-        bool IsActivelyControlled()            const { return m_is_controlled_by_keyboard_mouse; }
-        void SetPhysicsBodyToControl(PhysicsBody* physics_body);
+        // flags
+        bool GetFlag(const CameraFlags flag) { return m_flags & flag; }
+        void SetFlag(const CameraFlags flag, const bool enable = true);
 
         // misc
+        void SetPhysicsBodyToControl(PhysicsBody* physics_body);
         bool IsWalking();
-        void MakeDirty() { m_is_dirty = true; }
         void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
         std::shared_ptr<Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
 
@@ -139,6 +143,7 @@ namespace Spartan
         void ProcessInputFpsControl();
         void ProcessInputLerpToEntity();
 
+        uint32_t m_flags                             = 0;
         float m_aperture                             = 2.8f;         // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
         float m_shutter_speed                        = 1.0f / 60.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
         float m_iso                                  = 500.0f;       // sensitivity to light
@@ -153,11 +158,7 @@ namespace Spartan
         Math::Matrix m_view_projection_non_reverse_z = Math::Matrix::Identity;
         Math::Vector3 m_position                     = Math::Vector3::Zero;
         Math::Quaternion m_rotation                  = Math::Quaternion::Identity;
-        bool m_is_dirty                              = false;
-        bool m_first_person_control_enabled          = true;
-        bool m_is_controlled_by_keyboard_mouse       = false;
         Math::Vector2 m_mouse_last_position          = Math::Vector2::Zero;
-        bool m_fps_control_cursor_hidden             = false;
         Math::Vector3 m_movement_speed               = Math::Vector3::Zero;
         float m_movement_scroll_accumulator          = 0.0f;
         Math::Vector2 m_mouse_smoothed               = Math::Vector2::Zero;

@@ -510,11 +510,11 @@ namespace Spartan
         for (shared_ptr<Entity>& light_entity : lights)
         {
             shared_ptr<Light> light = light_entity->GetComponent<Light>();
-            if (!light || !light->IsFlagSet(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
+            if (!light || !light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                 continue;
 
             // skip lights that don't cast transparent shadows (if this is a transparent pass)
-            if (is_transparent_pass && !light->IsFlagSet(LightFlags::ShadowsTransparent))
+            if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
                 continue;
 
             // set light pso
@@ -978,7 +978,7 @@ namespace Spartan
             {
                 if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
-                    if (!light->IsFlagSet(LightFlags::ShadowsScreenSpace) || light->GetIntensityWatt() == 0.0f)
+                    if (!light->GetFlag(LightFlags::ShadowsScreenSpace) || light->GetIntensityWatt() == 0.0f)
                         continue;
 
                     if (array_slice_index == tex_sss->GetDepth())
@@ -1152,8 +1152,8 @@ namespace Spartan
 
                 // set shadow maps
                 {
-                    RHI_Texture* tex_depth = light->IsFlagSet(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
-                    RHI_Texture* tex_color = light->IsFlagSet(LightFlags::ShadowsTransparent) ? light->GetColorTexture() : nullptr;
+                    RHI_Texture* tex_depth = light->GetFlag(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
+                    RHI_Texture* tex_color = light->GetFlag(LightFlags::ShadowsTransparent) ? light->GetColorTexture() : nullptr;
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_depth);
                     cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);

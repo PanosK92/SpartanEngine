@@ -83,7 +83,7 @@ namespace Spartan
         //============================================
 
         // flags
-        bool IsFlagSet(const LightFlags flag) { return m_flags & flag; }
+        bool GetFlag(const LightFlags flag) { return m_flags & flag; }
         void SetFlag(const LightFlags flag, const bool enable = true);
 
         // type

@@ -158,20 +158,20 @@ namespace Spartan
             // directional light: 2 slices for cascades
             // point light:       2 slices for front and back paraboloid
 
-            if ((IsFlagSet(LightFlags::Shadows) && !m_texture_depth) || resolution_dirty)
+            if ((GetFlag(LightFlags::Shadows) && !m_texture_depth) || resolution_dirty)
             {
                 m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
             }
-            else if (!IsFlagSet(LightFlags::Shadows) && m_texture_depth)
+            else if (!GetFlag(LightFlags::Shadows) && m_texture_depth)
             {
                 m_texture_depth = nullptr;
             }
 
-            if ((IsFlagSet(LightFlags::ShadowsTransparent) && !m_texture_depth) || resolution_dirty)
+            if ((GetFlag(LightFlags::ShadowsTransparent) && !m_texture_depth) || resolution_dirty)
             {
                 m_texture_color = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_color, flags, "light_color");
             }
-            else if (!IsFlagSet(LightFlags::ShadowsTransparent) && m_texture_color)
+            else if (!GetFlag(LightFlags::ShadowsTransparent) && m_texture_color)
             {
                 m_texture_color = nullptr;
             }

@@ -1085,22 +1085,27 @@ namespace Spartan
                 if (Input::GetKeyDown(KeyCode::E))
                 {
                     // the camera is a child of physics capsule
-                    bool outside_the_car = m_default_physics_body_camera->GetChildrenCount() != 0;
+                    bool inside_the_car = m_default_physics_body_camera->GetChildrenCount() == 0;
 
-                    if (outside_the_car) // move inside
+                    Entity* camera = nullptr;
+                    if (!inside_the_car)
                     {
-                        Entity* camera = m_default_physics_body_camera->GetChildByName("component_camera");
+                        camera = m_default_physics_body_camera->GetChildByName("component_camera");
                         camera->SetParent(m_default_car);
                         camera->SetPositionLocal(Vector3(0.5f, 1.8f, -0.6f));
                         camera->SetRotationLocal(Quaternion::Identity);
+                        inside_the_car = true;
                     }
-                    else // move outside
+                    else 
                     {
-                        Entity* camera = m_default_car->GetChildByName("component_camera");
+                        camera = m_default_car->GetChildByName("component_camera");
                         camera->SetParent(m_default_physics_body_camera);
                         camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
                         camera->SetRotationLocal(Quaternion::Identity);
+                        inside_the_car = false;
                     }
+
+                    camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
                 }
             }
 
