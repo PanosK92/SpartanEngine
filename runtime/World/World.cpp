@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Core/ProgressTracker.h"
+#include "Components/Renderable.h"
 //==================================
 
 //= NAMESPACES ===============
@@ -43,8 +44,9 @@ namespace Spartan
         string name;
         string file_path;
         mutex entity_access_mutex;
-        bool resolve            = false;
-        bool was_in_editor_mode = false;
+        bool resolve             = false;
+        bool was_in_editor_mode  = false;
+        BoundingBox bounding_box = BoundingBox::Undefined;
     }
 
     void World::Initialize()
@@ -100,7 +102,8 @@ namespace Spartan
         if (resolve && !ProgressTracker::IsLoading())
         {
             Renderer::SetEntities(entities);
-            resolve = false;
+            resolve      = false;
+            bounding_box = BoundingBox::Undefined;
         }
 
         Game::Tick();
@@ -335,5 +338,27 @@ namespace Spartan
     const string& World::GetFilePath()
     {
         return file_path;
+    }
+
+    BoundingBox& World::GetBoundinBox()
+    {
+        if (bounding_box == BoundingBox::Undefined)
+        { 
+            for (auto& entity : entities)
+            {
+                if (entity.second->IsActive())
+                {
+                    if (shared_ptr<Renderable> renderable = entity.second->GetComponent<Renderable>())
+                    {
+                        if (renderable->IsVisible())
+                        {
+                            bounding_box.Merge(renderable->GetBoundingBox(BoundingBoxType::Transformed));
+                        }
+                    }
+                }
+            }
+        }
+
+        return bounding_box;
     }
 }

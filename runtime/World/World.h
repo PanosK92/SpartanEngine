@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include <unordered_map>
-//======================
+//= INCLUDES ===================
+#include "../Math/BoundingBox.h"
+//==============================
 
 namespace Spartan
 {
@@ -52,5 +52,6 @@ namespace Spartan
         static void Resolve();
         static const std::string GetName();
         static const std::string& GetFilePath();
+        static Math::BoundingBox& GetBoundinBox();
     };
 }

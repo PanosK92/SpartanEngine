@@ -38,15 +38,19 @@ namespace Spartan
 {
     namespace
     {
-        float orthographic_depth       = 4096; // depth of all cascades
         float orthographic_extent_near = 12.0f;
-        float orthographic_extent_far  = 64.0f;
+        float orthographic_extent_far  = 128.0f;
+
+        float get_world_depth()
+        {
+            return World::GetBoundinBox().GetExtents().Abs().Max();
+        }
 
         float get_sensible_range(const LightType type)
         {
             if (type == LightType::Directional)
             {
-                return orthographic_depth;
+                return get_world_depth() * 4.0f;
             }
             else if (type == LightType::Point)
             {
@@ -435,7 +439,7 @@ namespace Spartan
             {
                 target = camera->GetEntity()->GetPosition();
             }
-            Vector3 position = target - GetEntity()->GetForward() * orthographic_depth * 0.8f;
+            Vector3 position = target - GetEntity()->GetForward() * get_world_depth() * 2.5f;
 
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up); // near
             m_matrix_view[1] = m_matrix_view[0];                                      // far
@@ -470,7 +474,7 @@ namespace Spartan
                 float right      = extent;
                 float bottom     = -extent;
                 float top        = extent;
-                float far_plane  = orthographic_depth;
+                float far_plane  = get_world_depth() * 3.0f;
 
                 m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
                 m_frustums[i] = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
