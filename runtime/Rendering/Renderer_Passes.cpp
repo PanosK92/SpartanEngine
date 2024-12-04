@@ -2119,7 +2119,7 @@ namespace Spartan
         static RHI_PipelineState pso;
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Wireframe);
+        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
         pso.render_target_color_textures[0]  = tex_out;
         pso.clear_color[0]                   = rhi_color_load;
         pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
@@ -2145,9 +2145,14 @@ namespace Spartan
 
             if (vertex_count != 0)
             {
-                // update vertex buffer
                 RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->GetMappedData());
-                copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+
+                // update vertex buffer
+                {
+                    // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
+                    memset(buffer, 0, m_vertex_buffer_lines->GetObjectSize());
+                    copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+                }
 
                 // depth off
                 if (draw_lines_depth_off)
