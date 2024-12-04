@@ -56,7 +56,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     float2 velocity   = 0.0f;
     Material material = GetMaterial();
     Surface surface; surface.flags = material.flags;
-    
+
     // velocity
     {
         // convert to ndc
