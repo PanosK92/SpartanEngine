@@ -22,9 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_SAMPLING
 #define SPARTAN_COMMON_SAMPLING
 
-static const float sea_level   = 0.0f;
-static const float sand_offset = 1.0f;
-static const float snow_level  = 75.0f;
+static const float snow_level = 75.0f;
 
 struct sampling
 {
@@ -64,7 +62,7 @@ struct sampling
         }
 
         // contrast-preserving average
-        float mean = 0.3; // adjust this as needed for the specific mean
+        float mean = 0.3;
         float3 res = mean + (va - w1 * mean) / sqrt(w2);
     
         return float4(lerp(va / w1, res, v), 1.0f);
@@ -89,59 +87,49 @@ struct sampling
     static float4 smart(float3 position, float3 normal, float2 uv, uint texture_index, bool is_water, bool is_terrain, bool is_vegetation)
     {
         // parameters
-        const uint texture_index_rock = texture_index + 1;
-        const uint texture_index_sand = texture_index + 2;
-        const uint texture_index_snow = texture_index + 3;
-        const float snow_level        = apply_snow_level_variation(position);
-        const float snow_blend_speed  = 0.1f;
-
-        // compute blend factors
-        float slope             = saturate(pow(saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
-        float distance_to_snow  = position.y - snow_level;
-        float snow_blend_factor = saturate(1.0 - max(0.0, -distance_to_snow) * snow_blend_speed);
-        float sand_blend_factor = saturate(position.y / sand_offset);
+        const float sea_level        = 0.0f; 
+        const float sand_offset      = 0.75f;
+        const float snow_blend_speed = 0.1f;
+        const float2 direction_1     = float2(1.0, 0.5);
+        const float2 direction_2     = float2(-0.5, 1.0);
+        const float speed_1          = 0.2;
+        const float speed_2          = 0.15;
 
         float4 color;
         if (is_water) // animate using interleaved UVs
         {
-            // interleave UVs
-            const float2 direction_1 = float2(1.0, 0.5);
-            const float2 direction_2 = float2(-0.5, 1.0);
-            const float speed_1      = 0.2;
-            const float speed_2      = 0.15;
-            float2 uv_interleaved_1  = uv + (float)buffer_frame.time * speed_1 * direction_1;
-            float2 uv_interleaved_2  = uv + (float)buffer_frame.time * speed_2 * direction_2;
-
-            float3 sample_1 = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_1).rgb;
-            float3 sample_2 = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_2).rgb;
-            color           = float4(normalize(sample_1 + sample_2), 0.0f);
+            float2 uv_interleaved_1 = uv + (float)buffer_frame.time * speed_1 * direction_1;
+            float2 uv_interleaved_2 = uv + (float)buffer_frame.time * speed_2 * direction_2;
+            float3 sample_1         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_1).rgb;
+            float3 sample_2         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_2).rgb;
+            color                   = float4(normalize(sample_1 + sample_2), 0.0f);
         }
         else if (is_terrain) // slope based blending with sand, grass, rock and snow
         {
-            float4 tex_flat  = sample_seamless_texture(uv, texture_index,      sampler_anisotropic_wrap);
-            float4 tex_slope = sample_seamless_texture(uv, texture_index_rock, sampler_anisotropic_wrap);
-            float4 tex_sand  = sample_seamless_texture(uv, texture_index_sand, sampler_anisotropic_wrap);
-            float4 tex_snow  = sample_seamless_texture(uv, texture_index_snow, sampler_anisotropic_wrap);
-
+            float4 tex_grass = sample_seamless_texture(uv, texture_index + 0, sampler_anisotropic_wrap);
+            float4 tex_rock  = sample_seamless_texture(uv, texture_index + 1, sampler_anisotropic_wrap);
+            float4 tex_sand  = sample_seamless_texture(uv, texture_index + 2, sampler_anisotropic_wrap);
+  
+            // compute blend factors
+            const float snow_level   = apply_snow_level_variation(position);
+            float slope             = saturate(pow(saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
+            float distance_to_snow  = position.y - snow_level;
+            float snow_blend_factor = saturate(1.0 - max(0.0, -distance_to_snow) * snow_blend_speed);
+            float sand_blend_factor = saturate(position.y / sand_offset);
+            
             // determine where the sand should appear: only below a certain elevation
             float sand_blend_threshold = sea_level + sand_offset; // define a threshold above which no sand should appear
             float sand_factor          = saturate((position.y - sea_level) / (sand_blend_threshold - sea_level));
             sand_blend_factor          = 1.0f - sand_factor; // invert factor: 1 near sea level, 0 above the threshold
 
             // blend textures
-            float4 terrain = lerp(tex_slope, tex_flat, slope);    // blend base terrain with slope
-            terrain = lerp(terrain, tex_sand, sand_blend_factor); // then blend in sand based on height
-            color = lerp(terrain, tex_snow, snow_blend_factor);   // blend in the snow
+            float4 terrain = lerp(tex_rock, tex_grass, slope);           // blend base terrain with slope
+            color          = lerp(terrain, tex_sand, sand_blend_factor); // then blend in sand based on height
+            color          = lerp(color, 0.95f, snow_blend_factor);      // blend in the snow
         }
         else // default texture sampling
         {
             color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
-        }
-
-        // final snow blend for vegetation
-        if (is_vegetation)
-        {
-            color.rgb = lerp(color.rgb, 0.95f, snow_blend_factor);
         }
 
         return color;

@@ -499,26 +499,21 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,    500.0f);
 
                     // set textures
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\grass\\albedo.png");
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\grass\\normal.png");
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\grass\\roughness.png");
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\grass\\occlusion.png");
-                    //material->SetTexture(MaterialTexture::Height,    "project\\terrain\\grass\\height.png");
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png", 1);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png", 1);
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\grass\\albedo.png",    0);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\grass\\normal.png",    0);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\grass\\roughness.png", 0);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\grass\\occlusion.png", 0);
+                    //material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\grass\\height.png");
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",    1);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",    1);
                     material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png", 1);
                     material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png", 1);
-                    //material->SetTexture(MaterialTexture::Height2,    "project\\terrain\\rock\\height.png");
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png", 2);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png", 2);
+                    //material->SetTexture(MaterialTextureType::Height2,    "project\\terrain\\rock\\height.png");
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",    2);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",    2);
                     material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png", 2);
                     material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png", 2);
-                    //material->SetTexture(MaterialTexture::Height3,    "project\\terrain\\sand\\height.png");
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\snow\\albedo.png", 3);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\snow\\normal.png", 3);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\snow\\roughness.png", 3);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\snow\\occlusion.png", 3);
-                    //material->SetTexture(MaterialTexture::Height4,    "project\\terrain\\snow\\height.png");
+                    //material->SetTexture(MaterialTextureType::Height3,    "project\\terrain\\sand\\height.png");
                 }
                 
                 // generate a height field
@@ -549,7 +544,7 @@ namespace Spartan
                             material->SetObjectName("material_water");
                             material->SetColor(Color(0.0f, 60.0f / 255.0f, 120.0f / 255.0f, 250.0f / 255.0f));
                             material->SetTexture(MaterialTextureType::Normal,           "project\\terrain\\water_normal.jpeg");
-                            material->SetProperty(MaterialProperty::Ior,                Material::EnumToIor(MaterialIor::Water)); // water
+                            material->SetProperty(MaterialProperty::Ior,                Material::EnumToIor(MaterialIor::Water));
                             material->SetProperty(MaterialProperty::Roughness,          0.0f);
                             material->SetProperty(MaterialProperty::Normal,             0.1f);
                             material->SetProperty(MaterialProperty::TextureTilingX,     200.0f);
