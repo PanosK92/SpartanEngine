@@ -112,7 +112,7 @@ struct sampling
             float4 tex_sand  = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
   
             // compute blend factors
-            const float snow_level   = apply_snow_level_variation(position);
+            const float snow_level  = apply_snow_level_variation(position);
             float slope             = saturate(pow(saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
             float distance_to_snow  = position.y - snow_level;
             float snow_blend_factor = saturate(1.0 - max(0.0, -distance_to_snow) * snow_blend_speed);

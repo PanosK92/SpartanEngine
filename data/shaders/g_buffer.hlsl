@@ -54,6 +54,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     float metalness   = GetMaterial().metallness;
     float emission    = 0.0f;
     float2 velocity   = 0.0f;
+    float occlusion   = 1.0f;
     Material material = GetMaterial();
     Surface surface; surface.flags = material.flags;
 
@@ -108,10 +109,25 @@ gbuffer main_ps(gbuffer_vertex vertex)
     }
 
     // occlusion, roughness, metalness, height sample
-    float4 packed_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
-    float occlusion       = packed_sample.r;
-    roughness            *= packed_sample.g;
-    metalness            *= packed_sample.b;
+    {
+        float4 packed_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
+        occlusion             = packed_sample.r;
+        roughness            *= packed_sample.g;
+        metalness            *= packed_sample.b;
+    }
+    
+    // specular anti-aliasing
+    {
+        const float strength           = 1.0f;
+        const float max_roughness_gain = 0.02f;
+
+        float roughness2         = roughness * roughness;
+        float3 dndu              = ddx(normal), dndv = ddy(normal);
+        float variance           = (dot(dndu, dndu) + dot(dndv, dndv));
+        float kernelRoughness2   = min(variance * strength, max_roughness_gain);
+        float filteredRoughness2 = saturate(roughness2 + kernelRoughness2);
+        roughness                = fast_sqrt(filteredRoughness2);
+    }
 
     // write to g-buffer
     gbuffer g_buffer;
@@ -122,3 +138,4 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     return g_buffer;
 }
+
