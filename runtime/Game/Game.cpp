@@ -243,7 +243,10 @@ namespace Spartan
                     physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
                     physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
                     physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
-                    
+
+                    // disable car control (it's toggled via the gameplay code in Tick())
+                    physics_body->GetCar()->SetControlEnabled(false);
+
                     // set the steering wheel to the physics body so that it can rotate it
                     if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
                     {
@@ -1105,22 +1108,24 @@ namespace Spartan
                         camera->SetParent(m_default_car);
                         camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         camera->SetRotationLocal(Quaternion::Identity);
+
                         inside_the_car = true;
                     }
                     else
                     {
                         camera = m_default_car->GetChildByName("component_camera");
                         camera->SetParent(m_default_physics_body_camera);
-
-                        Vector3 exit_position = m_default_car->GetPosition() + m_default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f;
-                        m_default_physics_body_camera->GetComponent<PhysicsBody>()->SetPosition(exit_position);
-
                         camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
                         camera->SetRotationLocal(Quaternion::Identity);
+
+                        // place the camera on the left of the driver's door
+                        m_default_physics_body_camera->GetComponent<PhysicsBody>()->SetPosition(m_default_car->GetPosition() + m_default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
+
                         inside_the_car = false;
                     }
             
                     camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
+                    m_default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
                 }
             
                 // change car view
