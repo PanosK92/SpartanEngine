@@ -72,6 +72,7 @@ namespace Spartan
         btRaycastVehicle* vehicle           = nullptr;
         btRigidBody* body                   = nullptr;
         Entity* transform_steering_wheel    = nullptr;
+        bool control_enabled                = true;
         std::vector<Entity*> transform_wheels;
     };
 
@@ -92,6 +93,8 @@ namespace Spartan
         // speed
         float GetSpeedKilometersPerHour() const;
         float GetSpeedMetersPerSecond() const;
+
+        void SetControlEnabled(const bool enabled) { m_parameters.control_enabled = enabled; }
 
     private:
         void HandleInput();

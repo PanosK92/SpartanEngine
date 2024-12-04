@@ -628,7 +628,11 @@ namespace Spartan
             m_parameters.movement_direction = CarMovementState::Stationary;
         }
 
-        HandleInput();
+        if (m_parameters.control_enabled)
+        { 
+            HandleInput();
+        }
+
         ApplyForces();
         UpdateTransforms();
 
