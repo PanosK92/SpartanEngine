@@ -274,7 +274,7 @@ namespace ImGui::RHI
             cmd_list->Begin(queue);
         }
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
-        bool gpu_timing  = is_main_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
+        bool gpu_timing  = is_main_window;
         cmd_list->BeginTimeblock(name, true, Spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
         cmd_list->SetPipelineState(pso);
         cmd_list->SetBufferVertex(vertex_buffer);
@@ -399,7 +399,7 @@ namespace ImGui::RHI
 
     void window_create(ImGuiViewport* viewport)
     {
-        SP_ASSERT_MSG(viewport->PlatformHandle != nullptr, "Platform handle is invalid");
+        SP_ASSERT(viewport->PlatformHandle);
 
         // note: platformHandle is SDL_Window, PlatformHandleRaw is HWND
         SDL_Window* sdl_window = SDL_GetWindowFromID(static_cast<uint32_t>(reinterpret_cast<uintptr_t>(viewport->PlatformHandle)));

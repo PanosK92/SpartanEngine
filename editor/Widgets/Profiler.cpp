@@ -35,7 +35,7 @@ namespace
 {
     void show_time_block(const Spartan::TimeBlock& time_block)
     {
-        float m_tree_depth_stride = 10;
+        const float m_tree_depth_stride = 10;
 
         const char* name        = time_block.GetName();
         const float duration    = time_block.GetDuration();

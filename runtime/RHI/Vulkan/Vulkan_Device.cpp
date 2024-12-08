@@ -427,10 +427,6 @@ namespace Spartan
                         // present related, they happen without the renderer doing anything, imgui presenting is enough
                         if (p_callback_data->messageIdNumber == 0xe17ab4ae || p_callback_data->messageIdNumber == 0x42f2f4ed)
                             return VK_FALSE;
-
-                        // depth gbuffer - some barrier might be dodgy
-                        if (p_callback_data->messageIdNumber == 0x5c0ec5d6 || p_callback_data->messageIdNumber == 0xe4d96472)
-                            return VK_FALSE;
                     }
                 }
 
