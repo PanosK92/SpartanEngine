@@ -173,7 +173,7 @@ void Editor::Tick()
             {
                 // main window
                 ImGui::RHI::render(ImGui::GetDrawData());
-                Spartan::Renderer::Present();
+                Spartan::Renderer::SubmitAndPresent();
             }
 
             // child windows

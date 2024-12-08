@@ -55,7 +55,7 @@ namespace
     }
 
     int mode_hardware = 0; // 0: gpu, 1: cpu
-    int mode_sort     = 0; // 0: alphabetically, 1: by duration
+    int mode_sort     = 1; // 0: alphabetically, 1: by duration
 }
 
 Profiler::Profiler(Editor* editor) : Widget(editor)

@@ -74,7 +74,7 @@ namespace Spartan
         // swapchain
         static RHI_SwapChain* GetSwapChain();
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
-        static void Present();
+        static void SubmitAndPresent();
 
         // misc
         static void SetStandardResources(RHI_CommandList* cmd_list);

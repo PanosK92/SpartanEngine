@@ -308,7 +308,7 @@ namespace Spartan
             // present
             if (is_standalone)
             {
-                Present();
+                SubmitAndPresent();
             }
         }
 
@@ -780,18 +780,24 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Present()
+    void Renderer::SubmitAndPresent()
     {
-        // submit
         RHI_Queue* queue          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
         RHI_CommandList* cmd_list = queue->GetCommandList();
-        if (cmd_list->GetState() == RHI_CommandListState::Recording)
-        { 
-            cmd_list->Submit(queue, swap_chain->GetObjectId());
-        }
 
-        // present
-        swap_chain->Present();
+         // measure cpu time
+         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
+
+         // submit
+         if (cmd_list->GetState() == RHI_CommandListState::Recording)
+         {
+             cmd_list->Submit(queue, swap_chain->GetObjectId());
+         }
+
+         // present
+         swap_chain->Present();
+
+         Profiler::TimeBlockEnd();
     }
 
     RHI_Api_Type Renderer::GetRhiApiType()
