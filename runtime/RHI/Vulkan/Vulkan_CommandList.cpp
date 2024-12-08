@@ -95,18 +95,9 @@ namespace Spartan
         }
 
         namespace image_barrier
-        { 
-            tuple<VkPipelineStageFlags2, VkAccessFlags2> get_layout_sync_info(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth)
+        {
+            tuple<VkPipelineStageFlags2, VkAccessFlags2> get_layout_sync_info(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth, const RHI_PipelineState& pso)
             {   
-                // determine used shader stages based on pipeline state
-                //VkPipelineStageFlags2 used_stages = 0;
-                //used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
-                //used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
-                //used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
-                //used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
-                //used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
-                
-
                 switch (layout)
                 {
                 case VK_IMAGE_LAYOUT_UNDEFINED:
@@ -149,12 +140,22 @@ namespace Spartan
                     );
 
                 case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | 
-                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | 
-                        VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT, 
-                        VK_ACCESS_2_SHADER_READ_BIT
-                    );
+                   {
+                        // todo: use this for more fine-grained synchronization
+                        VkPipelineStageFlags2 used_stages = 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
+                        used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
+
+                        return make_tuple(
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | 
+                            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | 
+                            VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT, 
+                            VK_ACCESS_2_SHADER_READ_BIT
+                        );
+                    }
 
                 case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
                     if (is_depth)
@@ -252,24 +253,13 @@ namespace Spartan
                 barrier.subresourceRange.baseArrayLayer = 0;
                 barrier.subresourceRange.layerCount     = array_length;
 
-                // retrieve source synchronization info
-                auto [src_stages, src_access] = get_layout_sync_info(
-                    barrier.oldLayout,
-                    false, // source mask
-                    is_depth
-                );
+                auto [src_stages, src_access] = get_layout_sync_info(barrier.oldLayout, false, is_depth, pso);
+                auto [dst_stages, dst_access] = get_layout_sync_info(barrier.newLayout, true,  is_depth, pso);
 
-                // retrieve destination synchronization info
-                auto [dst_stages, dst_access] = get_layout_sync_info(
-                    barrier.newLayout,
-                    true, // destination mask
-                    is_depth
-                );
-
-                barrier.srcAccessMask = src_access;
-                barrier.srcStageMask  = src_stages;
-                barrier.dstAccessMask = dst_access;
-                barrier.dstStageMask  = dst_stages;
+                barrier.srcAccessMask = src_access; // retrieve source synchronization info
+                barrier.srcStageMask  = src_stages; // retrieve source synchronization info
+                barrier.dstAccessMask = dst_access; // retrieve destination synchronization info
+                barrier.dstStageMask  = dst_stages; // retrieve destination synchronization info
 
                 return barrier;
             }
