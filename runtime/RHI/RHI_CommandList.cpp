@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============
+//= INCLUDES =================
 #include "pch.h"
 #include "RHI_CommandList.h"
 #include "RHI_Texture.h"
-#include "RHI_Semaphore.h"
-//==========================
+#include "RHI_SyncPrimitive.h"
+//============================
 
 //= NAMESPACES ========
 using namespace std;

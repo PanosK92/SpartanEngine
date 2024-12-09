@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
-#include "../RHI_Semaphore.h"
+#include "../RHI_SyncPrimitive.h"
 #include "../RHI_FidelityFX.h"
 #include "../Core/Debugging.h"
 //================================
@@ -147,7 +147,7 @@ namespace Spartan
         SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));
     }
 
-    void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline)
+    void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline)
     {
         // validate
         SP_ASSERT(cmd_buffer != nullptr);
@@ -202,7 +202,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Queue::Present(void* swapchain, const uint32_t image_index, vector<RHI_Semaphore*>& wait_semaphores)
+    void RHI_Queue::Present(void* swapchain, const uint32_t image_index, vector<RHI_SyncPrimitive*>& wait_semaphores)
     {
         array<VkSemaphore, 3> vk_wait_semaphores = { nullptr, nullptr, nullptr };
 

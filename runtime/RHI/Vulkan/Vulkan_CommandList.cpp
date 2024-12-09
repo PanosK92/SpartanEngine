@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Sampler.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
-#include "../RHI_Semaphore.h"
+#include "../RHI_SyncPrimitive.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
@@ -446,8 +446,8 @@ namespace Spartan
         }
 
         // semaphores
-        m_rendering_complete_semaphore          = make_shared<RHI_Semaphore>(RHI_SyncPrimitive_Type::Semaphore, name);
-        m_rendering_complete_semaphore_timeline = make_shared<RHI_Semaphore>(RHI_SyncPrimitive_Type::SemaphoreTimeline, name);
+        m_rendering_complete_semaphore          = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name);
+        m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, name);
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
@@ -523,7 +523,7 @@ namespace Spartan
         // won't present, and won't wait for this semaphore, so we need to reset it
         if (m_rendering_complete_semaphore->IsSignaled())
         {
-            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(RHI_SyncPrimitive_Type::Semaphore, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
+            m_rendering_complete_semaphore = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
         }
 
         queue->Submit(

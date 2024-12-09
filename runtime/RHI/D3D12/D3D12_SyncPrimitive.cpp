@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2024 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,37 +19,34 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ====================
 #include "pch.h"
-#include "../RHI_Fence.h"
-#include "../RHI_Implementation.h"
-#include "../RHI_Device.h"
-//================================
+#include "../RHI_SyncPrimitive.h"
+//===============================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-    RHI_Fence::RHI_Fence(const char* name /*= nullptr*/)
+    RHI_SyncPrimitive::RHI_SyncPrimitive(const RHI_SyncPrimitive_Type type, const char* name)
     {
 
     }
 
-    RHI_Fence::~RHI_Fence()
+    RHI_SyncPrimitive::~RHI_SyncPrimitive()
     {
 
     }
 
-    bool RHI_Fence::IsSignaled()
+    void RHI_SyncPrimitive::Wait(const uint64_t value, const uint64_t timeout)
     {
-        return true;
+
     }
 
-    bool RHI_Fence::Wait(uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
+    uint64_t RHI_SyncPrimitive::GetValue()
     {
-        return true;
-    }
-
-    void RHI_Fence::Reset()
-    {
-
+        return 0;
     }
 }
