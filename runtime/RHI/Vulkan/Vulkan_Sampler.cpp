@@ -47,7 +47,7 @@ namespace Spartan
         sampler_info.minLod              = 0.0f;
         sampler_info.maxLod              = FLT_MAX;
     
-        SP_ASSERT_VK_MSG(vkCreateSampler(RHI_Context::device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_rhi_resource)), "Failed to create sampler");
+        SP_ASSERT_VK(vkCreateSampler(RHI_Context::device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_rhi_resource)));
     }
 
     RHI_Sampler::~RHI_Sampler()

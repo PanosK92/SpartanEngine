@@ -377,12 +377,12 @@ static const char* vkresult_to_string(const VkResult result)
     }
 }
 
-#define SP_ASSERT_VK_MSG(vk_result, text_message)          \
+#define SP_ASSERT_VK(vk_result)                            \
     if (vk_result != VK_SUCCESS)                           \
     {                                                      \
         Log::SetLogToFile(true);                           \
         SP_LOG_ERROR("%s", vkresult_to_string(vk_result)); \
-        SP_ASSERT(false && text_message);                  \
+        SP_ASSERT(false);                                  \
     }
 #endif
 

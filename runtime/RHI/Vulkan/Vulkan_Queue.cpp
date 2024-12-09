@@ -60,13 +60,13 @@ namespace Spartan
 
             // create the first one
             VkCommandPool cmd_pool = nullptr;
-            SP_ASSERT_VK_MSG(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool), "Failed to create command pool");
+            SP_ASSERT_VK(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool));
             RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, m_object_name + string("_0"));
             m_rhi_resources[0] = static_cast<void*>(cmd_pool);
 
             // create the second one
             cmd_pool = nullptr;
-            SP_ASSERT_VK_MSG(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool), "Failed to create command pool");
+            SP_ASSERT_VK(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool));
             RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, m_object_name + string("_1"));
             m_rhi_resources[1] = static_cast<void*>(cmd_pool);
         }
@@ -137,14 +137,14 @@ namespace Spartan
             }
 
             // reset
-            SP_ASSERT_VK_MSG(vkResetCommandPool(RHI_Context::device, pool, 0), "Failed to reset command pool");
+            SP_ASSERT_VK(vkResetCommandPool(RHI_Context::device, pool, 0));
         }
     }
 
     void RHI_Queue::Wait()
     {
         lock_guard<mutex> lock(get_mutex(this));
-        SP_ASSERT_VK_MSG(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))), "Failed to wait for queue");
+        SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));
     }
 
     void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline)
@@ -197,7 +197,7 @@ namespace Spartan
                 SP_ASSERT_MSG(false, "GPU crash");
             }
 
-            SP_ASSERT_VK_MSG(result, "Submission failed");
+            SP_ASSERT_VK(result);
             semaphore->SetSignaled(true);
         }
     }
@@ -223,6 +223,6 @@ namespace Spartan
 
         lock_guard<mutex> lock(get_mutex(this));
         void* queue = RHI_Device::GetQueueRhiResource(m_type);
-        SP_ASSERT_VK_MSG(vkQueuePresentKHR(static_cast<VkQueue>(queue), &present_info), "Failed to present");
+        SP_ASSERT_VK(vkQueuePresentKHR(static_cast<VkQueue>(queue), &present_info));
     }
 }

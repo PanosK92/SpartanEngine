@@ -131,8 +131,7 @@ namespace Spartan
             pipeline_layout_info.pPushConstantRanges        = push_constant_ranges.data();
 
             // create
-            SP_ASSERT_VK_MSG(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_rhi_resource_pipeline)),
-                "Failed to create pipeline layout");
+            SP_ASSERT_VK(vkCreatePipelineLayout(RHI_Context::device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_rhi_resource_pipeline)));
 
             // name
             RHI_Device::SetResourceName(m_rhi_resource_pipeline, RHI_Resource_Type::PipelineLayout, pipeline_state.name);
@@ -440,7 +439,7 @@ namespace Spartan
                     pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_rhi_resource_pipeline);
                     pipeline_info.flags                        = m_state.vrs_input_texture ? VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR : 0;
 
-                    SP_ASSERT_VK_MSG(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline), "Failed to create graphics pipeline");
+                    SP_ASSERT_VK(vkCreateGraphicsPipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline));
                     RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, pipeline_state.name);
                 }
             }
@@ -451,7 +450,7 @@ namespace Spartan
                 pipeline_info.layout                      = static_cast<VkPipelineLayout>(m_rhi_resource_pipeline);
                 pipeline_info.stage                       = shader_stages[0];
 
-                SP_ASSERT_VK_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),"Failed to create compute pipeline");
+                SP_ASSERT_VK(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline));
                 RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, pipeline_state.name);
             }
         }

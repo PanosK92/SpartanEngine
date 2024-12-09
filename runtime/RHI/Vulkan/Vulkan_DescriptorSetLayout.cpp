@@ -122,9 +122,7 @@ namespace Spartan
         create_info.pBindings                       = layout_bindings.data();
 
         // descriptor set layout
-        SP_ASSERT_VK_MSG(
-            vkCreateDescriptorSetLayout(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_rhi_resource)),
-            "Failed to allocate descriptor set layout");
+        SP_ASSERT_VK(vkCreateDescriptorSetLayout(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_rhi_resource)));
 
         // name
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::DescriptorSetLayout, m_object_name);

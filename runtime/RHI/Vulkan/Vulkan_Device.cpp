@@ -672,7 +672,7 @@ namespace Spartan
                 allocator_info.instance               = RHI_Context::instance;
                 allocator_info.vulkanApiVersion       = version::used;
                 allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-                SP_ASSERT_VK_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator), "Failed to create memory allocator");
+                SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
             }
 
             // allocator external
@@ -687,7 +687,7 @@ namespace Spartan
                 #endif
                 allocator_info.pTypeExternalMemoryHandleTypes = external_memory_handle_types.data();
 
-                SP_ASSERT_VK_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator_external), "Failed to create external memory allocator");
+                SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator_external));
             }
 
             // register version
@@ -924,7 +924,7 @@ namespace Spartan
                   layout_info.pNext                           = &layout_binding_flags;
 
                   VkDescriptorSetLayout* layout = &layouts[static_cast<uint32_t>(resource_type)];
-                  SP_ASSERT_VK_MSG(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, layout), "Failed to create descriptor set layout");
+                  SP_ASSERT_VK(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, layout));
                   RHI_Device::SetResourceName(static_cast<void*>(*layout), RHI_Resource_Type::DescriptorSetLayout, debug_name);
             }
 
@@ -946,7 +946,7 @@ namespace Spartan
 
                 // create
                 VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(resource_type)];
-                SP_ASSERT_VK_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set), "Failed to allocate descriptor set");
+                SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set));
                 RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
             }
 
@@ -1238,8 +1238,8 @@ namespace Spartan
             info_settings.pSettings    = settings.data();
             info_settings.settingCount = static_cast<uint32_t>(settings.size());
 
-            // create the Vulkan instance
-            SP_ASSERT_VK_MSG(vkCreateInstance(&info_instance, nullptr, &RHI_Context::instance), "Failed to create instance");
+            // create the vulkan instance
+            SP_ASSERT_VK(vkCreateInstance(&info_instance, nullptr, &RHI_Context::instance));
 
             functions::get_pointers();
             validation_layer::logging::enable();
@@ -1324,7 +1324,7 @@ namespace Spartan
                 create_info.enabledExtensionCount        = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
-                SP_ASSERT_VK_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device), "Failed to create device");
+                SP_ASSERT_VK(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device));
                 SP_LOG_INFO("Vulkan %s", version::to_string().c_str());
             }
         }
@@ -1664,7 +1664,7 @@ namespace Spartan
 
         // create
         SP_ASSERT(descriptors::descriptor_pool == nullptr);
-        SP_ASSERT_VK_MSG(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool), "Failed to create descriptor pool");
+        SP_ASSERT_VK(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool));
 
         Profiler::m_descriptor_set_count = 0;
     }
@@ -1721,7 +1721,7 @@ namespace Spartan
 
         // allocate
         SP_ASSERT(resource == nullptr);
-        SP_ASSERT_VK_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)), "Failed to allocate descriptor set");
+        SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)));
 
         // track allocations
         descriptors::allocated_descriptor_sets++;
@@ -1888,14 +1888,14 @@ namespace Spartan
         // create the buffer
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
-        SP_ASSERT_VK_MSG(vmaCreateBuffer(
+        SP_ASSERT_VK(vmaCreateBuffer(
             vulkan_memory_allocator::allocator,
                 &buffer_create_info,
                 &allocation_create_info,
                 reinterpret_cast<VkBuffer*>(&resource),
                 &allocation,
-                &allocation_info),
-        "Failed to created buffer");
+                &allocation_info)
+        );
 
         // if a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data_initial != nullptr)
@@ -1908,9 +1908,9 @@ namespace Spartan
             // it. Map/unmap operations don't do that automatically.
 
             void* mapped_data = nullptr;
-            SP_ASSERT_VK_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data), "Failed to map allocation");
+            SP_ASSERT_VK(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data));
             memcpy(mapped_data, data_initial, size);
-            SP_ASSERT_VK_MSG(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size), "Failed to flush allocation");
+            SP_ASSERT_VK(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size));
             vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation);
         }
 
@@ -2005,7 +2005,7 @@ namespace Spartan
                 );
             }
 
-            SP_ASSERT_VK_MSG(result, "Failed to create image");
+            SP_ASSERT_VK(result);
 
             // set allocation name and data
             //vmaSetAllocationUserData(allocator, allocation, resource);
@@ -2031,7 +2031,7 @@ namespace Spartan
 
             HANDLE win32_handle;
             static PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR = (PFN_vkGetMemoryWin32HandleKHR)vkGetDeviceProcAddr(RHI_Context::device, "vkGetMemoryWin32HandleKHR");
-            SP_ASSERT_VK_MSG(vkGetMemoryWin32HandleKHR(RHI_Context::device, &get_handle_info, &win32_handle), "Failed to get memory handle");
+            SP_ASSERT_VK(vkGetMemoryWin32HandleKHR(RHI_Context::device, &get_handle_info, &win32_handle));
 
             texture->SetExternalMemoryHandle(static_cast<void*>(win32_handle));
             #else
@@ -2062,7 +2062,7 @@ namespace Spartan
         vulkan_memory_allocator::AllocationData* allocation_data = vulkan_memory_allocator::get_allocation_from_resource(resource);
         if (allocation_data->allocation)
         {
-            SP_ASSERT_VK_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation_data->allocation, reinterpret_cast<void**>(&mapped_data)), "Failed to map memory");
+            SP_ASSERT_VK(vmaMapMemory(vulkan_memory_allocator::allocator, allocation_data->allocation, reinterpret_cast<void**>(&mapped_data)));
         }
     }
 
