@@ -23,23 +23,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../Core/SpartanObject.h"
-#include "RHI_Definitions.h"
 //================================
 
 namespace Spartan
 {
+    enum class RHI_SyncPrimitive_Type
+    {
+        Semaphore,
+        SemaphoreTimeline,
+        Max
+    };
+
     class RHI_Semaphore : public SpartanObject
     {
     public:
-        RHI_Semaphore(bool is_timeline = false, const char* name = nullptr);
+        RHI_Semaphore(const RHI_SyncPrimitive_Type type, const char* name = nullptr);
         ~RHI_Semaphore();
 
         // sync
         void Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
-        void Signal(const uint64_t value) const;
+        void Signal(const uint64_t value);
 
         // value
-        uint64_t GetValue() const;
+        uint64_t GetValue();
         uint64_t GetWaitValue() const           { return m_value_wait; }
         void SetWaitValue(const uint64_t value) { m_value_wait = value; }
 
@@ -51,9 +57,9 @@ namespace Spartan
         void* GetRhiResource() { return m_rhi_resource; }
 
     private:
-        void* m_rhi_resource  = nullptr;
-        bool m_is_timeline    = false;
-        uint64_t m_value_wait = 0;
-        bool m_signaled       = false;
+        RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
+        void* m_rhi_resource          = nullptr;
+        uint64_t m_value_wait         = 0;
+        bool m_signaled               = false;
     };
 }
