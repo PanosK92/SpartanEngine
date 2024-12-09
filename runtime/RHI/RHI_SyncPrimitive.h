@@ -35,14 +35,6 @@ namespace Spartan
         Max
     };
 
-    enum class RHI_Sync_State
-    {
-        Idle,
-        Submitted,
-        Max,
-    };
-
-
     class RHI_SyncPrimitive : public SpartanObject
     {
     public:
@@ -65,15 +57,10 @@ namespace Spartan
         // misc
         void Reset();
 
-        // state
-        RHI_Sync_State GetStateCpu()                 const { return m_state_cpu; }
-        void SetStateCpu(const RHI_Sync_State state)       { m_state_cpu = state; }
-
         // rhi
         void* GetRhiResource() { return m_rhi_resource; }
 
     private:
-        RHI_Sync_State m_state_cpu    = RHI_Sync_State::Idle;
         RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
         void* m_rhi_resource          = nullptr;
         uint64_t m_value_wait         = 0;
