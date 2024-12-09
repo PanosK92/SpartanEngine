@@ -46,11 +46,11 @@ namespace Spartan
         void* GetRhiResource() { return m_rhi_resource; }
 
         // State
-        RHI_Sync_State GetStateCpu()                 const { return n_state_cpu; }
-        void SetStateCpu(const RHI_Sync_State state)       { n_state_cpu = state; }
+        RHI_Sync_State GetStateCpu()                 const { return m_state_cpu; }
+        void SetStateCpu(const RHI_Sync_State state)       { m_state_cpu = state; }
 
     private:
         void* m_rhi_resource           = nullptr;
-        RHI_Sync_State n_state_cpu = RHI_Sync_State::Idle;
+        RHI_Sync_State m_state_cpu = RHI_Sync_State::Idle;
     };
 }

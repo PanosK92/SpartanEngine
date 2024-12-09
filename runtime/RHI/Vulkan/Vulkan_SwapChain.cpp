@@ -123,12 +123,10 @@ namespace Spartan
         vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
         {
             uint32_t format_count;
-            SP_ASSERT_VK_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, nullptr),
-                "Failed to get physical device surface format count");
+            SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, nullptr));
 
             vector<VkSurfaceFormatKHR> surface_formats(format_count);
-            SP_ASSERT_VK_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, &surface_formats[0]),
-                "Failed to get physical device surfaces");
+            SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, &surface_formats[0]));
 
             return surface_formats;
         }
@@ -168,9 +166,7 @@ namespace Spartan
 
             // Get physical device surface capabilities
             VkSurfaceCapabilitiesKHR surface_capabilities;
-            SP_ASSERT_VK_MSG(
-                vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities),
-                "Failed to get surface capabilities");
+            SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities));
 
             // Simply select the first composite alpha format available
             for (VkCompositeAlphaFlagBitsKHR& composite_alpha : composite_alpha_flags)
@@ -229,12 +225,12 @@ namespace Spartan
                 "Failed to created window surface");
 
             VkBool32 present_support = false;
-            SP_ASSERT_VK_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
+            SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceSupportKHR(
                 RHI_Context::device_physical,
                 RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
                 surface,
-                &present_support),
-                "Failed to get physical device surface support");
+                &present_support)
+            );
 
             SP_ASSERT_MSG(present_support, "The device does not support this kind of surface");
         }
@@ -284,8 +280,7 @@ namespace Spartan
             create_info.clipped        = VK_TRUE;
             create_info.oldSwapchain   = nullptr;
 
-            SP_ASSERT_VK_MSG(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain),
-                "Failed to create swapchain");
+            SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain));
 
             set_hdr_metadata(swap_chain);
         }
@@ -293,8 +288,8 @@ namespace Spartan
         // images
         {
             uint32_t image_count = 0;
-            SP_ASSERT_VK_MSG(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, nullptr), "Failed to get swapchain image count");
-            SP_ASSERT_VK_MSG(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())), "Failed to get swapchain image count");
+            SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, nullptr));
+            SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
 
             // transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
             if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
@@ -423,14 +418,14 @@ namespace Spartan
         RHI_Fence* signal_fence         = m_image_acquired_fence[m_sync_index].get();
 
         // acquire next image
-        SP_ASSERT_VK_MSG(vkAcquireNextImageKHR(
+        SP_ASSERT_VK(vkAcquireNextImageKHR(
             RHI_Context::device,                                          // device
             static_cast<VkSwapchainKHR>(m_rhi_swapchain),                 // swapchain
             numeric_limits<uint64_t>::max(),                              // timeout - wait/block
             static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()), // signal semaphore
             static_cast<VkFence>(signal_fence->GetRhiResource()),         // signal fence
             &m_image_index                                                // pImageIndex
-        ), "Failed to acquire next image");
+        ));
     }
 
     void RHI_SwapChain::Present()
