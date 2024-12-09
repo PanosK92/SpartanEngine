@@ -29,6 +29,7 @@ namespace Spartan
 {
     enum class RHI_SyncPrimitive_Type
     {
+        Fence,
         Semaphore,
         SemaphoreTimeline,
         Max
@@ -49,9 +50,12 @@ namespace Spartan
         uint64_t GetWaitValue() const           { return m_value_wait; }
         void SetWaitValue(const uint64_t value) { m_value_wait = value; }
 
-        // misc
-        bool IsSignaled() const               { return m_signaled; }
+        // signaling
+        bool IsSignaled();
         void SetSignaled(const bool signaled) { m_signaled = signaled; }
+
+        // misc
+        void Reset();
 
         // rhi
         void* GetRhiResource() { return m_rhi_resource; }

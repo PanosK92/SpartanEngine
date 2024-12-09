@@ -30,6 +30,14 @@ namespace Spartan
 {
     namespace fence
     {
+        void create(void*& resource)
+        {
+            VkFenceCreateInfo fence_info = {};
+            fence_info.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+            SP_ASSERT_VK(vkCreateFence(RHI_Context::device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&resource)));
+        }
+
         bool is_signaled(void*& resource)
         {
             return vkGetFenceStatus(RHI_Context::device, reinterpret_cast<VkFence>(resource)) == VK_SUCCESS;
@@ -87,7 +95,7 @@ namespace Spartan
             semaphore_signal_info.semaphore             = static_cast<VkSemaphore>(resource);
             semaphore_signal_info.value                 = value;
 
-            SP_ASSERT_VK(vkSignalSemaphore(RHI_Context::device, &semaphore_signal_info), "Failed to signal semaphore");
+            SP_ASSERT_VK(vkSignalSemaphore(RHI_Context::device, &semaphore_signal_info));
         }
 
         uint64_t get_value(void*& resource)
@@ -103,7 +111,14 @@ namespace Spartan
     {
         m_type = type;
 
-        semaphore::create(type, m_rhi_resource);
+        if (m_type == RHI_SyncPrimitive_Type::Fence)
+        {
+            fence::create(m_rhi_resource);
+        }
+        else
+        { 
+            semaphore::create(type, m_rhi_resource);
+        }
 
         if (name)
         {
@@ -117,15 +132,23 @@ namespace Spartan
         if (!m_rhi_resource)
             return;
 
-        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Semaphore, m_rhi_resource);
+        RHI_Device::DeletionQueueAdd(m_type == RHI_SyncPrimitive_Type::Fence ? RHI_Resource_Type::Fence : RHI_Resource_Type::Semaphore, m_rhi_resource);
+
         m_rhi_resource = nullptr;
     }
 
     void RHI_Semaphore::Wait(const uint64_t value, const uint64_t timeout) 
     {
-        SP_ASSERT(m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
+        SP_ASSERT(m_type == RHI_SyncPrimitive_Type::Fence || m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
 
-        semaphore::wait(value, timeout, m_rhi_resource);
+        if (m_type == RHI_SyncPrimitive_Type::Fence)
+        {
+            fence::wait(timeout, m_rhi_resource);
+        }
+        else
+        { 
+            semaphore::wait(value, timeout, m_rhi_resource);
+        }
     }
 
     void RHI_Semaphore::Signal(const uint64_t value)
@@ -140,5 +163,17 @@ namespace Spartan
         SP_ASSERT(m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
 
         return semaphore::get_value(m_rhi_resource);
+    }
+
+    bool RHI_Semaphore::IsSignaled()
+    {
+        return m_type == RHI_SyncPrimitive_Type::Fence ? fence::is_signaled(m_rhi_resource) : m_signaled;
+    }
+
+    void RHI_Semaphore::Reset()
+    {
+        SP_ASSERT(m_type == RHI_SyncPrimitive_Type::Fence);
+
+        fence::reset(m_rhi_resource);
     }
 }
