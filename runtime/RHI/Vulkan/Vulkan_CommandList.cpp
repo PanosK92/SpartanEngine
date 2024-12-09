@@ -447,8 +447,8 @@ namespace Spartan
         }
 
         // semaphores
-        m_rendering_complete_semaphore          = make_shared<RHI_Semaphore>(false, name);
-        m_rendering_complete_semaphore_timeline = make_shared<RHI_Semaphore>(true, name);
+        m_rendering_complete_semaphore          = make_shared<RHI_Semaphore>(RHI_SyncPrimitive_Type::Semaphore, name);
+        m_rendering_complete_semaphore_timeline = make_shared<RHI_Semaphore>(RHI_SyncPrimitive_Type::SemaphoreTimeline, name);
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
@@ -524,7 +524,7 @@ namespace Spartan
         // won't present, and won't wait for this semaphore, so we need to reset it
         if (m_rendering_complete_semaphore->IsSignaled())
         {
-            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(false, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
+            m_rendering_complete_semaphore = make_shared<RHI_Semaphore>(RHI_SyncPrimitive_Type::Semaphore, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
         }
 
         queue->Submit(
