@@ -49,8 +49,7 @@ namespace Spartan
     class RHI_Viewport;
     class RHI_Texture;
     class RHI_Shader;
-    class RHI_Semaphore;
-    class RHI_Fence;
+    class RHI_SyncPrimitive;
     struct RHI_Texture_Mip;
     struct RHI_Texture_Slice;
     struct RHI_Vertex_Undefined;
@@ -282,13 +281,6 @@ namespace Spartan
         Transfer_Destination,
         Present_Source,
         Max
-    };
-
-    enum class RHI_Sync_State
-    {
-        Idle,
-        Submitted,
-        Max,
     };
 
     enum RHI_Shader_Type

@@ -25,11 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_Fence.h"
-#include "../RHI_Semaphore.h"
+#include "../RHI_SyncPrimitive.h"
 #include "../RHI_Queue.h"
 #include "../Display/Display.h"
-#include "../Rendering/Renderer.h"
 SP_WARNINGS_OFF
 #include <SDL_vulkan.h>
 SP_WARNINGS_ON
@@ -345,9 +343,9 @@ namespace Spartan
 
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
-            string name            = (string("swapchain_image_acquired_") + to_string(i));
-            m_image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
-            m_image_acquired_fence[i]     = make_shared<RHI_Fence>(name.c_str());
+            string name                   = (string("swapchain_image_acquired_") + to_string(i));
+            m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
+            m_image_acquired_fence[i]     = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Fence, name.c_str());
         }
     }
 
@@ -408,14 +406,14 @@ namespace Spartan
     {
         if (m_sync_index != numeric_limits<uint32_t>::max())
         {
-            m_image_acquired_fence[m_sync_index]->Wait();
+            m_image_acquired_fence[m_sync_index]->Wait(0);
             m_image_acquired_fence[m_sync_index]->Reset();
         }
 
         // get sync objects
-        m_sync_index                    = (m_sync_index + 1) % m_buffer_count;
-        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[m_sync_index].get();
-        RHI_Fence* signal_fence         = m_image_acquired_fence[m_sync_index].get();
+        m_sync_index                        = (m_sync_index + 1) % m_buffer_count;
+        RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_sync_index].get();
+        RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_sync_index].get();
 
         // acquire next image
         SP_ASSERT_VK(vkAcquireNextImageKHR(
@@ -441,7 +439,7 @@ namespace Spartan
         bool has_work_to_present        = cmd_list->GetState() == RHI_CommandListState::Submitted;
         if (presents_to_this_swapchain && has_work_to_present)
         {
-            RHI_Semaphore* semaphore = cmd_list->GetRenderingCompleteSemaphore();
+            RHI_SyncPrimitive* semaphore = cmd_list->GetRenderingCompleteSemaphore();
             if (semaphore->IsSignaled())
             {
                 semaphore->SetSignaled(false);
@@ -451,7 +449,7 @@ namespace Spartan
         }
 
         // semaphore from vkAcquireNextImageKHR
-        RHI_Semaphore* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
+        RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
         // present

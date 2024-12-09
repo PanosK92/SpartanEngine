@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "../RHI_Device.h"
-#include "../RHI_Semaphore.h"
+#include "../RHI_SyncPrimitive.h"
 #include "../RHI_Implementation.h"
 //================================
 
@@ -107,7 +107,7 @@ namespace Spartan
         }
     }
 
-    RHI_Semaphore::RHI_Semaphore(const RHI_SyncPrimitive_Type type, const char* name)
+    RHI_SyncPrimitive::RHI_SyncPrimitive(const RHI_SyncPrimitive_Type type, const char* name)
     {
         m_type = type;
 
@@ -127,7 +127,7 @@ namespace Spartan
         }
     }
 
-    RHI_Semaphore::~RHI_Semaphore()
+    RHI_SyncPrimitive::~RHI_SyncPrimitive()
     {
         if (!m_rhi_resource)
             return;
@@ -137,7 +137,7 @@ namespace Spartan
         m_rhi_resource = nullptr;
     }
 
-    void RHI_Semaphore::Wait(const uint64_t value, const uint64_t timeout) 
+    void RHI_SyncPrimitive::Wait(const uint64_t value, const uint64_t timeout) 
     {
         SP_ASSERT(m_type == RHI_SyncPrimitive_Type::Fence || m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
 
@@ -151,26 +151,26 @@ namespace Spartan
         }
     }
 
-    void RHI_Semaphore::Signal(const uint64_t value)
+    void RHI_SyncPrimitive::Signal(const uint64_t value)
     {
         SP_ASSERT(m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
 
         semaphore::signal(value, m_rhi_resource);
     }
 
-    uint64_t RHI_Semaphore::GetValue()
+    uint64_t RHI_SyncPrimitive::GetValue()
     {
         SP_ASSERT(m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
 
         return semaphore::get_value(m_rhi_resource);
     }
 
-    bool RHI_Semaphore::IsSignaled()
+    bool RHI_SyncPrimitive::IsSignaled()
     {
         return m_type == RHI_SyncPrimitive_Type::Fence ? fence::is_signaled(m_rhi_resource) : m_signaled;
     }
 
-    void RHI_Semaphore::Reset()
+    void RHI_SyncPrimitive::Reset()
     {
         SP_ASSERT(m_type == RHI_SyncPrimitive_Type::Fence);
 

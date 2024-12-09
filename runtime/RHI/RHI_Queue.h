@@ -41,8 +41,8 @@ namespace Spartan
         // core
         void NextCommandList();
         void Wait();
-        void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_Semaphore* semaphore, RHI_Semaphore* semaphore_timeline);
-        void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
+        void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline);
+        void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_SyncPrimitive*>& wait_semaphores);
 
         // misc
         auto& GetCommandListPool()        { return m_using_pool_a ? m_cmd_lists_0 : m_cmd_lists_1; }

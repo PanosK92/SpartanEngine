@@ -23,34 +23,60 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../Core/SpartanObject.h"
-#include "RHI_Definitions.h"
 //================================
 
 namespace Spartan
 {
-    class RHI_Fence : public SpartanObject
+    enum class RHI_SyncPrimitive_Type
+    {
+        Fence,
+        Semaphore,
+        SemaphoreTimeline,
+        Max
+    };
+
+    enum class RHI_Sync_State
+    {
+        Idle,
+        Submitted,
+        Max,
+    };
+
+
+    class RHI_SyncPrimitive : public SpartanObject
     {
     public:
-        RHI_Fence(const char* name = nullptr);
-        ~RHI_Fence();
+        RHI_SyncPrimitive(const RHI_SyncPrimitive_Type type, const char* name = nullptr);
+        ~RHI_SyncPrimitive();
 
-        // Returns true if the false was signaled.
+        // sync
+        void Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
+        void Signal(const uint64_t value);
+
+        // value
+        uint64_t GetValue();
+        uint64_t GetWaitValue() const           { return m_value_wait; }
+        void SetWaitValue(const uint64_t value) { m_value_wait = value; }
+
+        // signaling
         bool IsSignaled();
+        void SetSignaled(const bool signaled) { m_signaled = signaled; }
 
-        // Returns true when the fence is signaled and false in case of a timeout.
-        bool Wait(uint64_t timeout_nanoseconds = 1000000000 /* one second */);
-
-        // Resets the fence
+        // misc
         void Reset();
 
-        void* GetRhiResource() { return m_rhi_resource; }
-
-        // State
+        // state
         RHI_Sync_State GetStateCpu()                 const { return m_state_cpu; }
         void SetStateCpu(const RHI_Sync_State state)       { m_state_cpu = state; }
 
+        // rhi
+        void* GetRhiResource() { return m_rhi_resource; }
+
     private:
-        void* m_rhi_resource           = nullptr;
-        RHI_Sync_State m_state_cpu = RHI_Sync_State::Idle;
+        RHI_Sync_State m_state_cpu    = RHI_Sync_State::Idle;
+        RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
+        void* m_rhi_resource          = nullptr;
+        uint64_t m_value_wait         = 0;
+        bool m_signaled               = false;
     };
 }
