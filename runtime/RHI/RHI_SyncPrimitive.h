@@ -62,8 +62,10 @@ namespace Spartan
 
     private:
         RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
-        void* m_rhi_resource          = nullptr;
         uint64_t m_value_wait         = 0;
         bool m_signaled               = false;
+
+        // rhi
+        void* m_rhi_resource = nullptr;
     };
 }

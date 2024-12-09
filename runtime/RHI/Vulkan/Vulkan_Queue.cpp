@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =======================
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_FidelityFX.h"
 #include "../Core/Debugging.h"
-//================================
+#include "../Core/ProgressTracker.h"
+//==================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -143,7 +144,6 @@ namespace Spartan
 
     void RHI_Queue::Wait()
     {
-        lock_guard<mutex> lock(get_mutex(this));
         SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));
     }
 
@@ -154,7 +154,13 @@ namespace Spartan
         SP_ASSERT(semaphore != nullptr);
         SP_ASSERT(semaphore_timeline != nullptr);
 
-        lock_guard<mutex> lock(get_mutex(this));
+        // locking only during texture loading to stage data without race conditions
+        unique_lock<mutex> lock;
+        if (ProgressTracker::IsLoading())
+        {
+            lock = unique_lock<mutex>(get_mutex(this));
+        }
+
         VkSemaphoreSubmitInfo semaphores[2] = {};
 
         // semaphore binary
