@@ -24,7 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "ThreadPool.h"
 #include "ProgressTracker.h"
+#include "../Profiling/RenderDoc.h"
 #include "../Profiling/Profiler.h"
+#include "../Core/Debugging.h"
 #include "../Core/Window.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
@@ -136,6 +138,11 @@ namespace Spartan
 
     void Renderer::Initialize()
     {
+        if (Debugging::IsRenderdocEnabled())
+        {
+            RenderDoc::OnPreDeviceCreation();
+        }
+
         RHI_Device::Initialize();
 
         // resolution
@@ -175,8 +182,10 @@ namespace Spartan
         ThreadPool::AddTask([]()
         {
             m_initialized_third_party = false;
+
             RHI_FidelityFX::Initialize();
             RHI_OpenImageDenoise::Initialize();
+
             m_initialized_third_party = true;
         });
 
@@ -262,6 +271,7 @@ namespace Spartan
 
         RHI_OpenImageDenoise::Shutdown();
         RHI_FidelityFX::Shutdown();
+        RenderDoc::Shutdown();
         RHI_Device::Destroy();
     }
 
