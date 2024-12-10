@@ -43,7 +43,6 @@ namespace Spartan
     {
     public:
         static void Initialize();
-        static void Shutdown();
         static void PostTick();
 
         static void TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list = nullptr);

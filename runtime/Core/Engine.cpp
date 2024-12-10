@@ -102,7 +102,6 @@ namespace Spartan
         ThreadPool::Shutdown();
         Event::Shutdown();
         Audio::Shutdown();
-        Profiler::Shutdown();
         Window::Shutdown();
         ImageImporter::Shutdown();
         FontImporter::Shutdown();

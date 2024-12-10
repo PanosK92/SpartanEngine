@@ -191,11 +191,6 @@ namespace Spartan
         cpu_name = get_cpu_name();
     }
 
-    void Profiler::Shutdown()
-    {
-        ClearRhiMetrics();
-    }
-
     void Profiler::PostTick()
     {
         // compute timings
@@ -263,6 +258,23 @@ namespace Spartan
         {
             DrawPerformanceMetrics();
         }
+
+        m_rhi_draw                       = 0;
+        m_rhi_timeblock_count            = 0;
+        m_rhi_pipeline_bindings          = 0;
+        m_rhi_pipeline_barriers          = 0;
+        m_rhi_bindings_buffer_index      = 0;
+        m_rhi_bindings_buffer_vertex     = 0;
+        m_rhi_bindings_buffer_constant   = 0;
+        m_rhi_bindings_buffer_structured = 0;
+        m_rhi_bindings_sampler           = 0;
+        m_rhi_bindings_texture_sampled   = 0;
+        m_rhi_bindings_shader_vertex     = 0;
+        m_rhi_bindings_shader_pixel      = 0;
+        m_rhi_bindings_shader_compute    = 0;
+        m_rhi_bindings_render_target     = 0;
+        m_rhi_bindings_texture_storage   = 0;
+        m_rhi_bindings_descriptor_set    = 0;
     }
 
     void Profiler::ReadTimeBlocks()
@@ -344,7 +356,7 @@ namespace Spartan
         time_gpu_min    = numeric_limits<float>::max();
         time_gpu_max    = numeric_limits<float>::lowest();
         time_gpu_last   = 0.0f;
-    }
+    }                   
 
     const vector<TimeBlock>& Profiler::GetTimeBlocks()
     {
