@@ -277,7 +277,7 @@ namespace Spartan
             TimeBlock& time_block = m_time_blocks_write[i];
 
             // check if we reached the end of the array
-            if (time_block.GetType() == TimeBlockType::Undefined)
+            if (time_block.GetType() == TimeBlockType::Max)
                 break;
 
             // skip incomplete time blocks and let the use know
@@ -319,7 +319,12 @@ namespace Spartan
 
     void Profiler::TimeBlockEnd()
     {
-        if (TimeBlock* time_block = GetLastIncompleteTimeBlock())
+        if (TimeBlock* time_block = GetLastIncompleteTimeBlock(TimeBlockType::Cpu))
+        {
+            time_block->End();
+        }
+
+        if (TimeBlock* time_block = GetLastIncompleteTimeBlock(TimeBlockType::Gpu))
         {
             time_block->End();
         }
@@ -401,19 +406,20 @@ namespace Spartan
         return is_stuttering_gpu;
     }
 
-    TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlockType type /*= TimeBlock_Undefined*/)
+   TimeBlock* Profiler::GetLastIncompleteTimeBlock(const TimeBlockType type)
     {
         for (int i = m_time_block_index; i >= 0; i--)
         {
             TimeBlock& time_block = m_time_blocks_write[i];
-
-            if (type == time_block.GetType() || type == TimeBlockType::Undefined)
+    
+            // if type is Max, match any type; otherwise, match the requested type
+            if (type == TimeBlockType::Max || time_block.GetType() == type)
             {
                 if (!time_block.IsComplete())
                     return &time_block;
             }
         }
-
+    
         return nullptr;
     }
 
