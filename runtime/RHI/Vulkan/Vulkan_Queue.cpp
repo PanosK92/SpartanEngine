@@ -227,7 +227,6 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = &image_index;
 
-        lock_guard<mutex> lock(get_mutex(this));
         void* queue = RHI_Device::GetQueueRhiResource(m_type);
         SP_ASSERT_VK(vkQueuePresentKHR(static_cast<VkQueue>(queue), &present_info));
     }
