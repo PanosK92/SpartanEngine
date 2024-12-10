@@ -193,6 +193,7 @@ namespace Spartan
             submit_info.pCommandBufferInfos      = &cmd_buffer_info;
 
             VkResult result = vkQueueSubmit2(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), 1, &submit_info, nullptr);
+
             if (result == VK_ERROR_DEVICE_LOST)
             {
                 if (Debugging::IsBreadcrumbsEnabled())
@@ -200,7 +201,7 @@ namespace Spartan
                     RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved();
                 }
 
-                SP_ASSERT_MSG(false, "GPU crash");
+                SP_ERROR_WINDOW("GPU crash");
             }
 
             SP_ASSERT_VK(result);
@@ -210,7 +211,7 @@ namespace Spartan
 
     void RHI_Queue::Present(void* swapchain, const uint32_t image_index, vector<RHI_SyncPrimitive*>& wait_semaphores)
     {
-        array<VkSemaphore, 3> vk_wait_semaphores = { nullptr, nullptr, nullptr };
+        array<VkSemaphore, 3> vk_wait_semaphores = { nullptr };
 
         // get semaphore vulkan resources
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
@@ -227,7 +228,6 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = &image_index;
 
-        void* queue = RHI_Device::GetQueueRhiResource(m_type);
-        SP_ASSERT_VK(vkQueuePresentKHR(static_cast<VkQueue>(queue), &present_info));
+        SP_ASSERT_VK(vkQueuePresentKHR(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), &present_info));
     }
 }
