@@ -111,7 +111,7 @@ namespace Spartan
 
         static void AcquireGpuData();
         static void DrawPerformanceMetrics();
-        static TimeBlock* GetLastIncompleteTimeBlock(TimeBlockType type = TimeBlockType::Undefined);
+        static TimeBlock* GetLastIncompleteTimeBlock(const TimeBlockType type);
     };
 
     class ScopedTimeBlock

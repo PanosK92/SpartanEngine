@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include <chrono>
-#include <memory>
 #include "../RHI/RHI_Definitions.h"
 //=================================
 
@@ -35,7 +34,7 @@ namespace Spartan
     {
         Cpu,
         Gpu,
-        Undefined
+        Max
     };
 
     class TimeBlock
@@ -61,7 +60,7 @@ namespace Spartan
         static uint32_t m_max_tree_depth;
 
         const char* m_name         = nullptr;
-        TimeBlockType m_type       = TimeBlockType::Undefined;
+        TimeBlockType m_type       = TimeBlockType::Max;
         float m_duration           = 0.0f;
         const TimeBlock* m_parent  = nullptr;
         uint32_t m_tree_depth      = 0;
