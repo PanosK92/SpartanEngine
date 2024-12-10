@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Profiler.h"
-#include "RenderDoc.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_SwapChain.h"
@@ -191,17 +190,11 @@ namespace Spartan
         m_time_blocks_write.resize(initial_capacity);
 
         cpu_name = get_cpu_name();
-
-        if (Debugging::IsRenderdocEnabled())
-        {
-            RenderDoc::OnPreDeviceCreation();
-        }
     }
 
     void Profiler::Shutdown()
     {
         ClearRhiMetrics();
-        RenderDoc::Shutdown();
     }
 
     void Profiler::PreTick()
