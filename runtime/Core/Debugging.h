@@ -28,9 +28,7 @@ namespace Spartan
     public:
         static void Initialize(const bool is_amd)
         {
-            #ifdef DEBUG
             m_breadcrumbs_enabled = m_breadcrumbs_enabled ? is_amd : false;
-            #endif
         }
 
         static bool IsValidationLayerEnabled()              { return m_validation_layer_enabled; }
