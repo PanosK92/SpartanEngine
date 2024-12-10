@@ -749,7 +749,8 @@ namespace Spartan
             btVector3 force_position;
             tire_friction_model::compute_tire_force(m_parameters, i, velocity_vehicle, &force, &force_position);
 
-            m_parameters.body->applyForce(force, force_position);
+            // disable for now as they don't behave well, I think I need to ditch the bullet raycast vehicle and implement my own
+            //m_parameters.body->applyForce(force, force_position);
         }
 
         // anti-roll bar
