@@ -38,8 +38,6 @@ using namespace std;
 
 namespace Spartan
 {
-    ProfilerGranularity granularity = ProfilerGranularity::Light;
-
     // metrics - rhi
     uint32_t Profiler::m_rhi_draw                       = 0;
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
@@ -58,31 +56,33 @@ namespace Spartan
     uint32_t Profiler::m_rhi_bindings_texture_storage   = 0;
     uint32_t Profiler::m_rhi_bindings_descriptor_set    = 0;
 
-    // metrics - time
-    float Profiler::m_time_frame_avg  = 0.0f;
-    float Profiler::m_time_frame_min  = numeric_limits<float>::max();
-    float Profiler::m_time_frame_max  = numeric_limits<float>::lowest();
-    float Profiler::m_time_frame_last = 0.0f;
-    float Profiler::m_time_cpu_avg    = 0.0f;
-    float Profiler::m_time_cpu_min    = numeric_limits<float>::max();
-    float Profiler::m_time_cpu_max    = numeric_limits<float>::lowest();
-    float Profiler::m_time_cpu_last   = 0.0f;
-    float Profiler::m_time_gpu_avg    = 0.0f;
-    float Profiler::m_time_gpu_min    = numeric_limits<float>::max();
-    float Profiler::m_time_gpu_max    = numeric_limits<float>::lowest();
-    float Profiler::m_time_gpu_last   = 0.0f;
-
     // misc
     uint32_t Profiler::m_descriptor_set_count = 0;
 
     namespace
     {
+        ProfilerGranularity granularity = ProfilerGranularity::Light;
+
+        // metrics - time
+        float time_frame_avg  = 0.0f;
+        float time_frame_min  = numeric_limits<float>::max();
+        float time_frame_max  = numeric_limits<float>::lowest();
+        float time_frame_last = 0.0f;
+        float time_cpu_avg    = 0.0f;
+        float time_cpu_min    = numeric_limits<float>::max();
+        float time_cpu_max    = numeric_limits<float>::lowest();
+        float time_cpu_last   = 0.0f;
+        float time_gpu_avg    = 0.0f;
+        float time_gpu_min    = numeric_limits<float>::max();
+        float time_gpu_max    = numeric_limits<float>::lowest();
+        float time_gpu_last   = 0.0f;
+
         // profiling options
-        const uint32_t initial_capacity = 256;
-        bool profile_cpu                = true;
-        bool profile_gpu                = true;
-        float profiling_interval_sec    = 0.25f;
-        float time_since_profiling_sec  = profiling_interval_sec;
+        const uint32_t max_timeblocks  = 256;
+        bool profile_cpu               = true;
+        bool profile_gpu               = true;
+        float profiling_interval_sec   = 0.25f;
+        float time_since_profiling_sec = profiling_interval_sec;
 
         const uint32_t frames_to_accumulate = static_cast<uint32_t>(4.0f / profiling_interval_sec);
         const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
@@ -114,8 +114,8 @@ namespace Spartan
         float metrics_time_since_last_update = profiling_interval_sec;
 
         // misc
+        string cpu_name           = "N/A";
         bool poll                 = false;
-        bool increase_capacity    = false;
         bool allow_time_block_end = true;
 
         string format_float(float value)
@@ -139,7 +139,6 @@ namespace Spartan
             return ss.str();
         }
 
-        string cpu_name = "N/A";
         string get_cpu_name()
         {
             #ifdef _WIN32
@@ -184,10 +183,10 @@ namespace Spartan
   
     void Profiler::Initialize()
     {
-        m_time_blocks_read.reserve(initial_capacity);
-        m_time_blocks_read.resize(initial_capacity);
-        m_time_blocks_write.reserve(initial_capacity);
-        m_time_blocks_write.resize(initial_capacity);
+        m_time_blocks_read.reserve(max_timeblocks);
+        m_time_blocks_read.resize(max_timeblocks);
+        m_time_blocks_write.reserve(max_timeblocks);
+        m_time_blocks_write.resize(max_timeblocks);
 
         cpu_name = get_cpu_name();
     }
@@ -197,41 +196,14 @@ namespace Spartan
         ClearRhiMetrics();
     }
 
-    void Profiler::PreTick()
-    {
-        if (!Debugging::IsGpuTimingEnabled())
-            return;
-
-        if (increase_capacity)
-        {
-            SwapBuffers();
-
-            // double the size
-            const uint32_t size_old = static_cast<uint32_t>(m_time_blocks_write.size());
-            const uint32_t size_new = size_old << 1;
-
-            m_time_blocks_read.reserve(size_new);
-            m_time_blocks_read.resize(size_new);
-            m_time_blocks_write.reserve(size_new);
-            m_time_blocks_write.resize(size_new);
-
-            increase_capacity = false;
-            poll              = true;
-
-            SP_LOG_WARNING("Time block list has grown to %d. Consider making the default capacity as large by default, to avoid re-allocating.", size_new);
-        }
-
-        ClearRhiMetrics();
-    }
-
     void Profiler::PostTick()
     {
         // compute timings
         {
-            is_stuttering_cpu = m_time_cpu_last > (m_time_cpu_avg + stutter_delta_ms);
-            is_stuttering_gpu = m_time_gpu_last > (m_time_gpu_avg + stutter_delta_ms);
-            m_time_cpu_last   = 0.0f;
-            m_time_gpu_last   = 0.0f;
+            is_stuttering_cpu = time_cpu_last > (time_cpu_avg + stutter_delta_ms);
+            is_stuttering_gpu = time_gpu_last > (time_gpu_avg + stutter_delta_ms);
+            time_cpu_last   = 0.0f;
+            time_gpu_last   = 0.0f;
 
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
@@ -240,33 +212,33 @@ namespace Spartan
 
                 if (!time_block.GetParent() && time_block.GetType() == TimeBlockType::Cpu)
                 {
-                    m_time_cpu_last += time_block.GetDuration();
+                    time_cpu_last += time_block.GetDuration();
                 }
 
                 if (!time_block.GetParent() && time_block.GetType() == TimeBlockType::Gpu)
                 {
-                    m_time_gpu_last += time_block.GetDuration();
+                    time_gpu_last += time_block.GetDuration();
                 }
             }
 
             // cpu
-            m_time_cpu_avg = (m_time_cpu_avg * weight_history) + m_time_cpu_last * weight_delta;
-            m_time_cpu_min = Math::Helper::Min(m_time_cpu_min, m_time_cpu_last);
-            m_time_cpu_max = Math::Helper::Max(m_time_cpu_max, m_time_cpu_last);
+            time_cpu_avg = (time_cpu_avg * weight_history) + time_cpu_last * weight_delta;
+            time_cpu_min = Math::Helper::Min(time_cpu_min, time_cpu_last);
+            time_cpu_max = Math::Helper::Max(time_cpu_max, time_cpu_last);
 
             // gpu
-            m_time_gpu_avg = (m_time_gpu_avg * weight_history) + m_time_gpu_last * weight_delta;
-            m_time_gpu_min = Math::Helper::Min(m_time_gpu_min, m_time_gpu_last);
-            m_time_gpu_max = Math::Helper::Max(m_time_gpu_max, m_time_gpu_last);
+            time_gpu_avg = (time_gpu_avg * weight_history) + time_gpu_last * weight_delta;
+            time_gpu_min = Math::Helper::Min(time_gpu_min, time_gpu_last);
+            time_gpu_max = Math::Helper::Max(time_gpu_max, time_gpu_last);
 
             // frame
-            m_time_frame_last = static_cast<float>(Timer::GetDeltaTimeMs());
-            m_time_frame_avg  = (m_time_frame_avg * weight_history) + m_time_frame_last * weight_delta;
-            m_time_frame_min  = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
-            m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
+            time_frame_last = static_cast<float>(Timer::GetDeltaTimeMs());
+            time_frame_avg  = (time_frame_avg * weight_history) + time_frame_last * weight_delta;
+            time_frame_min  = Math::Helper::Min(time_frame_min, time_frame_last);
+            time_frame_max  = Math::Helper::Max(time_frame_max, time_frame_last);
 
             // fps  
-            m_fps = 1000.0f / m_time_frame_avg;
+            m_fps = 1000.0f / time_frame_avg;
         }
 
         // check whether we should profile or not
@@ -284,7 +256,7 @@ namespace Spartan
         if (poll && Debugging::IsGpuTimingEnabled())
         {
             AcquireGpuData();
-            SwapBuffers();
+            ReadTimeBlocks();
         }
 
         if (Renderer::GetOption<bool>(Renderer_Option::PerformanceMetrics))
@@ -293,37 +265,36 @@ namespace Spartan
         }
     }
 
-    void Profiler::SwapBuffers()
+    void Profiler::ReadTimeBlocks()
     {
-        // copy completed time blocks write to time blocks read vector (double buffering)
+        // clear read array
+        m_time_blocks_read.clear();
+        m_time_blocks_read.resize(max_timeblocks);
+
+        // copy from write array to read array
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_time_blocks_write.size()); i++)
         {
-            uint32_t pass_index_gpu = 0;
+            TimeBlock& time_block = m_time_blocks_write[i];
 
-            for (uint32_t i = 0; i < static_cast<uint32_t>(m_time_blocks_read.size()); i++)
+            // check if we reached the end of the array
+            if (time_block.GetType() == TimeBlockType::Undefined)
+                break;
+
+            // skip incomplete time blocks and let the use know
+            if (!time_block.IsComplete())
             {
-                TimeBlock& time_block = m_time_blocks_write[i];
-
-                // compute time block duration
-                if (time_block.IsComplete())
-                {
-                    if (time_block.GetType() == TimeBlockType::Gpu)
-                    {
-                        pass_index_gpu += 2;
-                    }
-                }
-                else if (time_block.GetType() != TimeBlockType::Undefined) // if undefined, then it wasn't used this frame, nothing wrong with that
-                {
-                    SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
-                }
-
-                // copy over
-                m_time_blocks_read[i] = time_block;
-
-                // reset
-                time_block.Reset();
+                SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
+                continue;
             }
+
+            // copy
+            m_time_blocks_read[i] = time_block;
         }
-        
+
+        // clear write array
+        m_time_blocks_write.clear();
+        m_time_blocks_write.resize(max_timeblocks);
+
         m_time_block_index = -1;
     }
 
@@ -341,10 +312,9 @@ namespace Spartan
         // last incomplete block of the same type, is the parent
         TimeBlock* time_block_parent = GetLastIncompleteTimeBlock(type);
 
-        if (TimeBlock* time_block = GetNewTimeBlock())
-        {
-            time_block->Begin(++m_rhi_timeblock_count, func_name, type, time_block_parent, cmd_list);
-        }
+        // get new time block
+        TimeBlock& new_time_block = m_time_blocks_write[++m_time_block_index];
+        new_time_block.Begin(++m_rhi_timeblock_count, func_name, type, time_block_parent, cmd_list);
     }
 
     void Profiler::TimeBlockEnd()
@@ -357,18 +327,18 @@ namespace Spartan
 
     void Profiler::ClearMetrics()
     {
-        m_time_frame_avg  = 0.0f;
-        m_time_frame_min  = numeric_limits<float>::max();
-        m_time_frame_max  = numeric_limits<float>::lowest();
-        m_time_frame_last = 0.0f;
-        m_time_cpu_avg    = 0.0f;
-        m_time_cpu_min    = numeric_limits<float>::max();
-        m_time_cpu_max    = numeric_limits<float>::lowest();
-        m_time_cpu_last   = 0.0f;
-        m_time_gpu_avg    = 0.0f;
-        m_time_gpu_min    = numeric_limits<float>::max();
-        m_time_gpu_max    = numeric_limits<float>::lowest();
-        m_time_gpu_last   = 0.0f;
+        time_frame_avg  = 0.0f;
+        time_frame_min  = numeric_limits<float>::max();
+        time_frame_max  = numeric_limits<float>::lowest();
+        time_frame_last = 0.0f;
+        time_cpu_avg    = 0.0f;
+        time_cpu_min    = numeric_limits<float>::max();
+        time_cpu_max    = numeric_limits<float>::lowest();
+        time_cpu_last   = 0.0f;
+        time_gpu_avg    = 0.0f;
+        time_gpu_min    = numeric_limits<float>::max();
+        time_gpu_max    = numeric_limits<float>::lowest();
+        time_gpu_last   = 0.0f;
     }
 
     const vector<TimeBlock>& Profiler::GetTimeBlocks()
@@ -378,17 +348,17 @@ namespace Spartan
 
     float Profiler::GetTimeCpuLast()
     {
-        return m_time_cpu_last;
+        return time_cpu_last;
     }
 
     float Profiler::GetTimeGpuLast()
     {
-        return m_time_gpu_last;
+        return time_gpu_last;
     }
 
     float Profiler::GetTimeFrameLast()
     {
-        return m_time_frame_last;
+        return time_frame_last;
     }
 
     float Profiler::GetFps()
@@ -429,19 +399,6 @@ namespace Spartan
     bool Profiler::IsGpuStuttering()
     {
         return is_stuttering_gpu;
-    }
-
-    TimeBlock* Profiler::GetNewTimeBlock()
-    {
-        // increase capacity if needed
-        if (m_time_block_index + 1 >= static_cast<int>(m_time_blocks_write.size()))
-        {
-            increase_capacity = true;
-            return nullptr;
-        }
-
-        // return a time block
-        return &m_time_blocks_write[++m_time_block_index];
     }
 
     TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlockType type /*= TimeBlock_Undefined*/)
@@ -503,15 +460,15 @@ namespace Spartan
         // overview
         oss_metrics
             << "FPS:\t\t\t" << m_fps << endl
-            << "Time:\t\t\t"  << m_time_frame_avg << " ms" << endl
+            << "Time:\t\t\t"  << time_frame_avg << " ms" << endl
             << "Frame:\t\t"   << Renderer::GetFrameNumber() << endl;
 
         // detailed times
         oss_metrics
             << endl     << "\t\t" << "\t\tavg"                      << "\t\t" << "\tmin"                        << "\t\t" << "\tmax"                        << "\t\t" << "\tlast"                                 << endl
-            << "Total:" << "\t\t" << format_float(m_time_frame_avg) << "\t\t" << format_float(m_time_frame_min) << "\t\t" << format_float(m_time_frame_max) << "\t\t" << format_float(m_time_frame_last) << " ms" << endl
-            << "CPU:"   << "\t\t" << format_float(m_time_cpu_avg)   << "\t\t" << format_float(m_time_cpu_min)   << "\t\t" << format_float(m_time_cpu_max)   << "\t\t" << format_float(m_time_cpu_last)   << " ms" << endl
-            << "GPU:"   << "\t\t" << format_float(m_time_gpu_avg)   << "\t\t" << format_float(m_time_gpu_min)   << "\t\t" << format_float(m_time_gpu_max)   << "\t\t" << format_float(m_time_gpu_last)   << " ms" << endl;
+            << "Total:" << "\t\t" << format_float(time_frame_avg) << "\t\t" << format_float(time_frame_min) << "\t\t" << format_float(time_frame_max) << "\t\t" << format_float(time_frame_last) << " ms" << endl
+            << "CPU:"   << "\t\t" << format_float(time_cpu_avg)   << "\t\t" << format_float(time_cpu_min)   << "\t\t" << format_float(time_cpu_max)   << "\t\t" << format_float(time_cpu_last)   << " ms" << endl
+            << "GPU:"   << "\t\t" << format_float(time_gpu_avg)   << "\t\t" << format_float(time_gpu_min)   << "\t\t" << format_float(time_gpu_max)   << "\t\t" << format_float(time_gpu_last)   << " ms" << endl;
 
         // gpu
         oss_metrics << endl << "GPU" << endl

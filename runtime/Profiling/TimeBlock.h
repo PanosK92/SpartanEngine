@@ -46,7 +46,6 @@ namespace Spartan
 
         void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr);
         void End();
-        void Reset();
 
         TimeBlockType GetType()      const { return m_type; }
         const char* GetName()        const { return m_name; }

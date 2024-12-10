@@ -112,7 +112,6 @@ namespace Spartan
     void Engine::Tick()
     {
         // pre-tick
-        Profiler::PreTick();
         Input::PreTick();
 
         // tick
