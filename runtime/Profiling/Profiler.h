@@ -44,7 +44,6 @@ namespace Spartan
     public:
         static void Initialize();
         static void Shutdown();
-        static void PreTick();
         static void PostTick();
 
         static void TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list = nullptr);
@@ -83,26 +82,12 @@ namespace Spartan
         static uint32_t m_rhi_bindings_texture_storage;
         static uint32_t m_rhi_bindings_descriptor_set;
 
-        // metrics - time
-        static float m_time_frame_avg ;
-        static float m_time_frame_min ;
-        static float m_time_frame_max ;
-        static float m_time_frame_last;
-        static float m_time_cpu_avg;
-        static float m_time_cpu_min;
-        static float m_time_cpu_max;
-        static float m_time_cpu_last;
-        static float m_time_gpu_avg;
-        static float m_time_gpu_min;
-        static float m_time_gpu_max;
-        static float m_time_gpu_last;
-
         // misc
         static uint32_t m_descriptor_set_count;
         static ProfilerGranularity GetGranularity();
 
     private:
-        static void SwapBuffers();
+        static void ReadTimeBlocks();
 
         static void ClearRhiMetrics()
         {
@@ -124,7 +109,6 @@ namespace Spartan
             m_rhi_bindings_descriptor_set    = 0;
         }
 
-        static TimeBlock* GetNewTimeBlock();
         static void AcquireGpuData();
         static void DrawPerformanceMetrics();
         static TimeBlock* GetLastIncompleteTimeBlock(TimeBlockType type = TimeBlockType::Undefined);

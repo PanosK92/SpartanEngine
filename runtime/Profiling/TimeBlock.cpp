@@ -22,9 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "TimeBlock.h"
-#include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"
-#include "../Rendering/Renderer.h"
 //=================================
 
 //= NAMESPACES =====
@@ -37,7 +35,7 @@ namespace Spartan
 
     TimeBlock::~TimeBlock()
     {
-        Reset();
+
     }
 
     void TimeBlock::Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/)
@@ -90,17 +88,6 @@ namespace Spartan
         }
 
         m_is_complete = true;
-    }
-
-    void TimeBlock::Reset()
-    {
-        m_name           = nullptr;
-        m_parent         = nullptr;
-        m_tree_depth     = 0;
-        m_duration       = 0.0f;
-        m_max_tree_depth = 0;
-        m_type           = TimeBlockType::Undefined;
-        m_is_complete    = false;
     }
 
     uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)
