@@ -356,7 +356,7 @@ namespace Spartan
         time_gpu_min    = numeric_limits<float>::max();
         time_gpu_max    = numeric_limits<float>::lowest();
         time_gpu_last   = 0.0f;
-    }                   
+    }
 
     const vector<TimeBlock>& Profiler::GetTimeBlocks()
     {
