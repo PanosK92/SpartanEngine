@@ -490,7 +490,7 @@ namespace Spartan
                 Display::GetName(),
                 Display::GetRefreshRate(),
                 Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
-                Display::GetLuminanceMax(),
+                static_cast<uint32_t>(Display::GetLuminanceMax()),
 
                 static_cast<uint32_t>(Renderer::GetResolutionRender().x),
                 static_cast<uint32_t>(Renderer::GetResolutionRender().y),
