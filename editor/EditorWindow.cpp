@@ -442,7 +442,7 @@ namespace
 
         void world_on_download_finished()
         {
-            Spartan::ProgressTracker::SetLoadingStateGlobal(false);
+            Spartan::ProgressTracker::SetGlobalLoadingState(false);
             visible = true;
         }
     
@@ -468,7 +468,7 @@ namespace
                         if (ImGui::Button("Yes"))
                         {
                             Spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
-                            Spartan::ProgressTracker::SetLoadingStateGlobal(true);
+                            Spartan::ProgressTracker::SetGlobalLoadingState(true);
                             visible_download = false;
                         }
             

@@ -1214,7 +1214,7 @@ namespace Spartan
     {
         ThreadPool::AddTask([default_world]()
         {
-            ProgressTracker::SetLoadingStateGlobal(true);
+            ProgressTracker::SetGlobalLoadingState(true);
 
             switch (default_world)
             {
@@ -1229,7 +1229,7 @@ namespace Spartan
                 default: SP_ASSERT_MSG(false, "Unhandled default world"); break;
             }
 
-            ProgressTracker::SetLoadingStateGlobal(false);
+            ProgressTracker::SetGlobalLoadingState(false);
         });
     }
 }

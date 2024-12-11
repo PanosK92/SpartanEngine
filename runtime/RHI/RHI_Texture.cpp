@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_CommandList.h"
 #include "../IO/FileStream.h"
 #include "../Resource/Import/ImageImporter.h"
+#include "../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #include "compressonator.h"
 SP_WARNINGS_ON
@@ -230,7 +231,7 @@ namespace Spartan
 
     RHI_Texture::RHI_Texture(const string& file_path) : IResource(ResourceType::Texture)
     {
-         LoadFromFile(file_path);
+        LoadFromFile(file_path);
     }
 
     RHI_Texture::~RHI_Texture()
@@ -311,6 +312,8 @@ namespace Spartan
             return;
         }
 
+        ProgressTracker::SetGlobalLoadingState(true);
+
         m_type            = RHI_Texture_Type::Type2D;
         m_depth           = 1;
         m_flags          |= RHI_Texture_Srv;
@@ -390,6 +393,8 @@ namespace Spartan
         { 
             PrepareForGpu();
         }
+
+        ProgressTracker::SetGlobalLoadingState(false);
     }
 
     RHI_Texture_Mip& RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
