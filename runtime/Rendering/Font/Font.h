@@ -130,6 +130,8 @@ namespace Spartan
         std::vector<FontData> m_font_data;
         std::shared_ptr<RHI_Texture> m_atlas;
         std::shared_ptr<RHI_Texture> m_atlas_outline;
+        std::vector<RHI_Vertex_PosTex> m_vertices;
+        std::vector<uint32_t> m_indices;
 
         // buffers
         std::array<FontBuffer, font_buffer_count> m_buffers;

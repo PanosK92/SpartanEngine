@@ -61,40 +61,36 @@ namespace Spartan
 
     namespace
     {
+        // profiling options
         ProfilerGranularity granularity = ProfilerGranularity::Light;
+        const uint32_t max_timeblocks   = 256;
+        bool profile_cpu                = true;
+        bool profile_gpu                = true;
+        float profiling_interval_sec    = 0.25f;
+        float time_since_profiling_sec  = profiling_interval_sec;
 
         // metrics - time
-        float time_frame_avg  = 0.0f;
-        float time_frame_min  = numeric_limits<float>::max();
-        float time_frame_max  = numeric_limits<float>::lowest();
-        float time_frame_last = 0.0f;
-        float time_cpu_avg    = 0.0f;
-        float time_cpu_min    = numeric_limits<float>::max();
-        float time_cpu_max    = numeric_limits<float>::lowest();
-        float time_cpu_last   = 0.0f;
-        float time_gpu_avg    = 0.0f;
-        float time_gpu_min    = numeric_limits<float>::max();
-        float time_gpu_max    = numeric_limits<float>::lowest();
-        float time_gpu_last   = 0.0f;
-
-        // profiling options
-        const uint32_t max_timeblocks  = 256;
-        bool profile_cpu               = true;
-        bool profile_gpu               = true;
-        float profiling_interval_sec   = 0.25f;
-        float time_since_profiling_sec = profiling_interval_sec;
-
+        float time_frame_avg                = 0.0f;
+        float time_frame_min                = numeric_limits<float>::max();
+        float time_frame_max                = numeric_limits<float>::lowest();
+        float time_frame_last               = 0.0f;
+        float time_cpu_avg                  = 0.0f;
+        float time_cpu_min                  = numeric_limits<float>::max();
+        float time_cpu_max                  = numeric_limits<float>::lowest();
+        float time_cpu_last                 = 0.0f;
+        float time_gpu_avg                  = 0.0f;
+        float time_gpu_min                  = numeric_limits<float>::max();
+        float time_gpu_max                  = numeric_limits<float>::lowest();
+        float time_gpu_last                 = 0.0f;
         const uint32_t frames_to_accumulate = static_cast<uint32_t>(4.0f / profiling_interval_sec);
         const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
         const float weight_history          = (1.0f - weight_delta);
+        float m_fps                         = 0.0f;
 
         // time blocks (double buffered)
         int m_time_block_index = -1;
         vector<TimeBlock> m_time_blocks_write;
         vector<TimeBlock> m_time_blocks_read;
-
-        // fps
-        float m_fps = 0.0f;
 
         // gpu
         string gpu_name               = "N/A";
@@ -108,36 +104,10 @@ namespace Spartan
         bool is_stuttering_cpu = false;
         bool is_stuttering_gpu = false;
 
-        // metric drawing
-        ostringstream oss_metrics;
-        string metrics_str;
-        float metrics_time_since_last_update = profiling_interval_sec;
-
         // misc
         string cpu_name           = "N/A";
         bool poll                 = false;
         bool allow_time_block_end = true;
-
-        string format_float(float value)
-        {
-            stringstream ss;
-
-            // clamp to a certain range to avoid padding and alignment headaches
-            value = Math::Helper::Clamp(value, 0.0f, 99.99f);
-
-            // set fixed-point notation with 2 decimal places
-            ss << fixed << setprecision(2);
-
-            // output the integer part with the fill character '0' and the minimum width of 2 characters
-            int integer_part = static_cast<int>(value);
-            ss << setfill('0') << setw(2) << integer_part;
-
-            // output the decimal point and decimal part
-            float decimal_part = value - integer_part;
-            ss << "." << setfill('0') << setw(2) << static_cast<int>(round(decimal_part * 100));
-
-            return ss.str();
-        }
 
         string get_cpu_name()
         {
@@ -449,92 +419,98 @@ namespace Spartan
 
     void Profiler::DrawPerformanceMetrics()
     {
+        static ostringstream oss_metrics;
+        static string metrics_str;
+        static float metrics_time_since_last_update = profiling_interval_sec;
+
+        auto format_float = [](float value)
+        {
+            // clamp to a certain range to avoid padding and alignment headaches
+            value = Math::Helper::Clamp(value, 0.0f, 99.99f);
+            
+            char buffer[8]; // 8 characters should be enough: "00.00\0"
+            sprintf(buffer, "%02d.%02d", 
+                static_cast<int>(value), 
+                static_cast<int>(round((value - static_cast<int>(value)) * 100))
+            );
+            
+            return string(buffer);
+        };
+
         metrics_time_since_last_update += static_cast<float>(Timer::GetDeltaTimeSec());
-        if (metrics_time_since_last_update < profiling_interval_sec)
+        if (metrics_time_since_last_update >= profiling_interval_sec)
         {
-            Renderer::DrawString(metrics_str, Math::Vector2(0.01f, 0.01f));
-            return;
+            metrics_time_since_last_update = 0.0f;
+            
+            // clear
+            oss_metrics.str("");
+            oss_metrics.clear();
+
+            // set fixed-point notation with 2 decimal places
+            oss_metrics << fixed << setprecision(2);
+
+            // overview
+            oss_metrics
+                << "FPS:\t\t\t" << m_fps << endl
+                << "Time:\t\t\t"  << time_frame_avg << " ms" << endl
+                << "Frame:\t\t"   << Renderer::GetFrameNumber() << endl;
+
+            // detailed times
+            oss_metrics
+                << endl     << "\t\t" << "\t\tavg"                    << "\t\t" << "\tmin"                        << "\t\t" << "\tmax"                        << "\t\t" << "\tlast"                                 << endl
+                << "Total:" << "\t\t" << format_float(time_frame_avg) << "\t\t" << format_float(time_frame_min) << "\t\t" << format_float(time_frame_max) << "\t\t" << format_float(time_frame_last) << " ms" << endl
+                << "CPU:"   << "\t\t" << format_float(time_cpu_avg)   << "\t\t" << format_float(time_cpu_min)   << "\t\t" << format_float(time_cpu_max)   << "\t\t" << format_float(time_cpu_last)   << " ms" << endl
+                << "GPU:"   << "\t\t" << format_float(time_gpu_avg)   << "\t\t" << format_float(time_gpu_min)   << "\t\t" << format_float(time_gpu_max)   << "\t\t" << format_float(time_gpu_last)   << " ms" << endl;
+
+            // gpu
+            oss_metrics << endl << "GPU" << endl
+                << "Name:\t\t\t"    << gpu_name << endl
+                << "Memory:\t\t"    << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
+                << "API:\t\t\t\t\t" << RHI_Context::api_type_str << "\t" << gpu_api << endl
+                << "Driver:\t\t\t"  << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
+
+            // cpu
+            oss_metrics << endl << "CPU" << endl
+                << "Name:\t\t\t\t\t\t"  << cpu_name << endl
+                << "Threads:\t\t\t\t\t" << thread::hardware_concurrency() << endl
+                << "Worker threads:\t"  << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl
+                #ifdef __AVX2__
+                << "AVX2:\t\t\t\t\t\t\tYes" << endl;
+                #else
+                << "AVX2:\t\t\t\t\t\t\tNo" << endl;
+                #endif
+
+            // display
+            float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+            oss_metrics << "\nDisplay\n"
+                << "Name:\t\t\t"   << Display::GetName() << endl
+                << "Hz:\t\t\t\t\t" << Display::GetRefreshRate() << endl
+                << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl
+                << "Max nits:\t\t" << Display::GetLuminanceMax() << endl
+                << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << " - " << resolution_scale * 100.0f << "%" << endl
+                << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
+                << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl;
+
+            // graphics api
+            oss_metrics << "\nGraphics API" << endl;
+            oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t\t\t"  << m_rhi_draw << endl;
+            oss_metrics << "Index buffer bindings:\t\t\t" << m_rhi_bindings_buffer_index   << endl
+                        << "Vertex buffer bindings:\t\t"  << m_rhi_bindings_buffer_vertex  << endl
+                        << "Descriptor set bindings:\t\t" << m_rhi_bindings_descriptor_set << endl
+                        << "Bindings:\t\t\t\t\t\t\t\t\t"  << m_rhi_pipeline_bindings << endl
+                        << "Barriers:\t\t\t\t\t\t\t\t\t"  << m_rhi_pipeline_barriers << endl;
+
+            // resources
+            oss_metrics << "\nResources\n"
+                << "Textures:\t\t\t\t\t\t\t\t"  << ResourceCache::GetResourceCount(ResourceType::Texture)  << endl
+                << "Materialst:\t\t\t\t\t\t\t"  << ResourceCache::GetResourceCount(ResourceType::Material) << endl
+                << "Pipelines:\t\t\t\t\t\t\t\t" << RHI_Device::GetPipelineCount()                          << endl
+                << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << rhi_max_descriptor_set_count;
+
+            // draw at the top-left of the screen
+            metrics_str = oss_metrics.str();
         }
-        metrics_time_since_last_update = 0.0f;
-        
-        const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture);
-        const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
-        const uint32_t pipeline_count = RHI_Device::GetPipelineCount();
 
-        // get the graphics driver vendor
-        string api_vendor_name = "NVIDIA";
-        if (RHI_Device::GetPrimaryPhysicalDevice()->IsAmd())
-        {
-            api_vendor_name = "AMD";
-        }
-
-        // clear
-        oss_metrics.str("");
-        oss_metrics.clear();
-
-        // set fixed-point notation with 2 decimal places
-        oss_metrics << fixed << setprecision(2);
-
-        // overview
-        oss_metrics
-            << "FPS:\t\t\t" << m_fps << endl
-            << "Time:\t\t\t"  << time_frame_avg << " ms" << endl
-            << "Frame:\t\t"   << Renderer::GetFrameNumber() << endl;
-
-        // detailed times
-        oss_metrics
-            << endl     << "\t\t" << "\t\tavg"                      << "\t\t" << "\tmin"                        << "\t\t" << "\tmax"                        << "\t\t" << "\tlast"                                 << endl
-            << "Total:" << "\t\t" << format_float(time_frame_avg) << "\t\t" << format_float(time_frame_min) << "\t\t" << format_float(time_frame_max) << "\t\t" << format_float(time_frame_last) << " ms" << endl
-            << "CPU:"   << "\t\t" << format_float(time_cpu_avg)   << "\t\t" << format_float(time_cpu_min)   << "\t\t" << format_float(time_cpu_max)   << "\t\t" << format_float(time_cpu_last)   << " ms" << endl
-            << "GPU:"   << "\t\t" << format_float(time_gpu_avg)   << "\t\t" << format_float(time_gpu_min)   << "\t\t" << format_float(time_gpu_max)   << "\t\t" << format_float(time_gpu_last)   << " ms" << endl;
-
-        // gpu
-        oss_metrics << endl << "GPU" << endl
-            << "Name:\t\t\t"    << gpu_name << endl
-            << "Memory:\t\t"    << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
-            << "API:\t\t\t\t\t" << RHI_Context::api_type_str << "\t" << gpu_api << endl
-            << "Driver:\t\t\t"  << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
-
-        // cpu
-        oss_metrics << endl << "CPU" << endl
-            << "Name:\t\t\t\t\t\t"  << cpu_name << endl
-            << "Threads:\t\t\t\t\t" << thread::hardware_concurrency() << endl
-            << "Worker threads:\t"  << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl
-            #ifdef __AVX2__
-            << "AVX2:\t\t\t\t\t\t\tYes" << endl;
-            #else
-            << "AVX2:\t\t\t\t\t\t\tNo" << endl;
-            #endif
-
-        // display
-        float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
-        oss_metrics << "\nDisplay\n"
-            << "Name:\t\t\t"   << Display::GetName() << endl
-            << "Hz:\t\t\t\t\t" << Display::GetRefreshRate() << endl
-            << "HDR:\t\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl
-            << "Max nits:\t\t" << Display::GetLuminanceMax() << endl
-            << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << " - " << resolution_scale * 100.0f << "%" << endl
-            << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
-            << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl;
-
-        // graphics api
-        oss_metrics << "\nGraphics API" << endl;
-        oss_metrics << "Draw:\t\t\t\t\t\t\t\t\t\t\t"  << m_rhi_draw << endl;
-        oss_metrics << "Index buffer bindings:\t\t\t" << m_rhi_bindings_buffer_index   << endl
-                    << "Vertex buffer bindings:\t\t"  << m_rhi_bindings_buffer_vertex  << endl
-                    << "Descriptor set bindings:\t\t" << m_rhi_bindings_descriptor_set << endl
-                    << "Bindings:\t\t\t\t\t\t\t\t\t"  << m_rhi_pipeline_bindings << endl
-                    << "Barriers:\t\t\t\t\t\t\t\t\t"  << m_rhi_pipeline_barriers << endl;
-
-        // resources
-        oss_metrics << "\nResources\n"
-            << "Textures:\t\t\t\t\t\t\t\t"  << texture_count          << endl
-            << "Materialst:\t\t\t\t\t\t\t"  << material_count         << endl
-            << "Pipelines:\t\t\t\t\t\t\t\t" << pipeline_count         << endl
-            << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << rhi_max_descriptor_set_count;
-
-        // draw at the top-left of the screen
-        metrics_str = oss_metrics.str();
         Renderer::DrawString(metrics_str, Math::Vector2(0.01f, 0.01f));
     }
 
