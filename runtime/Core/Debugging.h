@@ -42,13 +42,13 @@ namespace Spartan
         static bool IsBreadcrumbsEnabled()                  { return m_breadcrumbs_enabled; }
 
     private:
-        inline static bool m_validation_layer_enabled        = false; // enables vulkan validation, high cpu overhead per draw
-        inline static bool m_gpu_assisted_validation_enabled = false; // gpu-based validation, significant cpu and gpu cost
-        inline static bool m_logging_to_file_enabled         = false; // logs to file, high cpu cost due to disk i/o
-        inline static bool m_breadcrumbs_enabled             = false; // tracks gpu crashes and writes info into breadcrumbs.txt, minimal overhead - will be ignored for non-amd gpus
-        inline static bool m_renderdoc_enabled               = false; // integrates renderdoc, high cpu overhead from api wrapping
-        inline static bool m_gpu_marking_enabled             = true;  // negligible cost
-        inline static bool m_gpu_timing_enabled              = true;  // negligible cost
-        inline static bool m_shader_optimization_enabled     = true;  // high cost when off
+        inline static bool m_validation_layer_enabled        = false; // Enables Vulkan diagnostic layers, incurs significant per-draw CPU performance overhead
+        inline static bool m_gpu_assisted_validation_enabled = false; // Performs GPU-based validation with substantial CPU and GPU performance impact
+        inline static bool m_logging_to_file_enabled         = false; // Writes diagnostic logs to disk, causes high CPU overhead due to file I/O operations
+        inline static bool m_breadcrumbs_enabled             = false; // Tracks GPU crash information in breadcrumbs.txt, minimal overhead (AMD GPUs only)
+        inline static bool m_renderdoc_enabled               = false; // Integrates RenderDoc graphics debugging, introduces high CPU overhead from API wrapping
+        inline static bool m_gpu_marking_enabled             = true;  // Enables GPU resource marking with negligible performance cost
+        inline static bool m_gpu_timing_enabled              = true;  // Enables GPU performance timing with negligible performance cost
+        inline static bool m_shader_optimization_enabled     = true;  // Controls shader optimization, disabling has significant performance implications
     };
 }

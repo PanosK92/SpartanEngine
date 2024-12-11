@@ -122,8 +122,22 @@ namespace Spartan
         Vector2 cursor       = position;
         float starting_pos_x = cursor.x;
 
+        // allocate ahead of time
+        {
+            // calculate the required size for vertices and indices
+            size_t required_vertices_count = text.length() * 6;       // 6 vertices per character
+            size_t required_indices_count  = required_vertices_count; // 1 index per vertex
+
+            // reserve memory for class members
+            m_vertices.reserve(required_vertices_count);
+            m_indices.reserve(required_indices_count);
+
+            // clear existing data (reuse preallocated memory)
+            m_vertices.clear();
+            m_indices.clear();
+        }
+
         // generate vertices - draw each latter onto a quad
-        vector<RHI_Vertex_PosTex> vertices;
         for (char character : text)
         {
             Glyph& glyph = m_glyphs[character];
@@ -149,14 +163,14 @@ namespace Spartan
             else
             {
                 // first triangle in quad.
-                vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
-                vertices.emplace_back(cursor.x + glyph.offset_x + glyph.width,  cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
-                vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom); // bottom left
+                m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
+                m_vertices.emplace_back(cursor.x + glyph.offset_x + glyph.width,  cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
+                m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom); // bottom left
 
                 // second triangle in quad
-                vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
-                vertices.emplace_back(cursor.x + glyph.offset_x  + glyph.width, cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_right, glyph.uv_y_top);    // top right
-                vertices.emplace_back(cursor.x + glyph.offset_x  + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
+                m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
+                m_vertices.emplace_back(cursor.x + glyph.offset_x  + glyph.width, cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_right, glyph.uv_y_top);    // top right
+                m_vertices.emplace_back(cursor.x + glyph.offset_x  + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
 
                 // advance
                 cursor.x += glyph.horizontal_advance;
@@ -164,14 +178,13 @@ namespace Spartan
         }
 
         // generate indices
-        vector<uint32_t> indices;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(vertices.size()); i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_vertices.size()); i++)
         {
-            indices.emplace_back(i);
+            m_indices.emplace_back(i);
         }
 
         // store the generated data for this text
-        m_font_data.emplace_back(vertices, indices, position);
+        m_font_data.emplace_back(m_vertices, m_indices, position);
     }
 
     bool Font::HasText() const
