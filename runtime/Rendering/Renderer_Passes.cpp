@@ -676,7 +676,7 @@ namespace Spartan
                         {
                             pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? shader_h : nullptr;
                             pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? shader_d : nullptr;
-                            set_pipeline       = true;
+                            set_pipeline                         = true;
                         }
                     }
 
@@ -702,7 +702,9 @@ namespace Spartan
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
-                        m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f); // alpha testing
+                        bool is_tesselated     = material->IsTessellated();
+                        bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
+                        m_pcb_pass_cpu.set_f3_value(is_tesselated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f);
                         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                     }
 
