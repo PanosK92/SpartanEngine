@@ -168,7 +168,7 @@ namespace Spartan
         if (!m_audio_clip)
             return 0.0f;
     
-        m_audio_clip->GetProgress();
+        return m_audio_clip->GetProgress();
     }
     
     void AudioSource::SetMute(bool mute)
