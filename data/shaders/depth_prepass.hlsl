@@ -27,9 +27,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
 
-    Surface surface;
-    surface.flags = GetMaterial().flags;
-    if (!surface.is_tessellated())
+    const bool is_tesselated = pass_get_f3_value().x == 1.0f;
+    if (!is_tesselated)
     {
         vertex = transform_to_clip_space(vertex);
     }
@@ -39,7 +38,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 
 void main_ps(gbuffer_vertex vertex)
 {
-    const bool has_albedo       = pass_get_f3_value().x == 1.0f;
+    const bool has_albedo       = pass_get_f3_value().y == 1.0f;
     const float alpha_threshold = get_alpha_threshold(vertex.position); // distance based alpha threshold
 
     if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold)
