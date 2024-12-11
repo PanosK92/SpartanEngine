@@ -149,17 +149,17 @@ namespace Spartan
 
     void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline)
     {
-        // validate
-        SP_ASSERT(cmd_buffer != nullptr);
-        SP_ASSERT(semaphore != nullptr);
-        SP_ASSERT(semaphore_timeline != nullptr);
-
         // locking only during texture loading to stage data without race conditions
         unique_lock<mutex> lock;
         if (ProgressTracker::IsLoading())
         {
             lock = unique_lock<mutex>(get_mutex(this));
         }
+
+        // validate
+        SP_ASSERT(cmd_buffer != nullptr);
+        SP_ASSERT(semaphore != nullptr);
+        SP_ASSERT(semaphore_timeline != nullptr);
 
         VkSemaphoreSubmitInfo semaphores[2] = {};
 
@@ -211,9 +211,8 @@ namespace Spartan
 
     void RHI_Queue::Present(void* swapchain, const uint32_t image_index, vector<RHI_SyncPrimitive*>& wait_semaphores)
     {
-        array<VkSemaphore, 3> vk_wait_semaphores = { nullptr };
-
         // get semaphore vulkan resources
+        array<VkSemaphore, 3> vk_wait_semaphores = { nullptr };
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
         for (uint32_t i = 0; i < semaphore_count; i++)
         {

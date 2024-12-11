@@ -31,7 +31,6 @@ namespace Spartan
     {
         ModelImporter,
         World,
-        Resource,
         Terrain,
         Max
     };

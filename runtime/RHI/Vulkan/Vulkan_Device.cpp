@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
+#include "../Core/ProgressTracker.h"
 #include "../Rendering/Renderer.h"
 #include "../RHI_Device.h"
 #include "../RHI_Implementation.h"
@@ -2138,6 +2139,9 @@ namespace Spartan
         queues::condition_variable_immediate_execution.wait(lock, [] { return !queues::is_immediate_executing; });
         queues::is_immediate_executing = true;
 
+        // immediate command lists are used to stage data when loading textures
+        ProgressTracker::SetLoadingStateGlobal(true);
+
         // get command pool
         queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
         queues::queue->NextCommandList();
@@ -2150,6 +2154,8 @@ namespace Spartan
     {
         cmd_list->Submit(queues::queue, 0);
         cmd_list->WaitForExecution();
+
+        ProgressTracker::SetLoadingStateGlobal(false);
 
         // signal that it's safe to proceed with the next ImmediateBegin()
         queues::is_immediate_executing = false;
