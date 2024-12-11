@@ -144,12 +144,19 @@ namespace Spartan
 
     void RHI_Queue::Wait()
     {
+        // when loading textures (other threads) the queue will be used to submit data for staging
+        unique_lock<mutex> lock;
+        if (ProgressTracker::IsLoading())
+        {
+            lock = unique_lock<mutex>(get_mutex(this));
+        }
+
         SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));
     }
 
     void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline)
     {
-        // locking only during texture loading to stage data without race conditions
+        // when loading textures (other threads) the queue will be used to submit data for staging
         unique_lock<mutex> lock;
         if (ProgressTracker::IsLoading())
         {
@@ -211,6 +218,13 @@ namespace Spartan
 
     void RHI_Queue::Present(void* swapchain, const uint32_t image_index, vector<RHI_SyncPrimitive*>& wait_semaphores)
     {
+        // when loading textures (other threads) the queue will be used to submit data for staging
+        unique_lock<mutex> lock;
+        if (ProgressTracker::IsLoading())
+        {
+            lock = unique_lock<mutex>(get_mutex(this));
+        }
+
         // get semaphore vulkan resources
         array<VkSemaphore, 3> vk_wait_semaphores = { nullptr };
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());

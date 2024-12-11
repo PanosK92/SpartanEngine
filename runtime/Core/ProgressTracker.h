@@ -59,6 +59,6 @@ namespace Spartan
     public:
         static Progress& GetProgress(const ProgressType progress_type);
         static bool IsLoading();
-        static void SetLoadingStateGlobal(const bool is_loading);
+        static void SetGlobalLoadingState(const bool is_loading);
     };
 }

@@ -105,7 +105,7 @@ namespace Spartan
         return false;
     }
 
-    void ProgressTracker::SetLoadingStateGlobal(const bool is_loading)
+    void ProgressTracker::SetGlobalLoadingState(const bool is_loading)
     {
         anonymous_jobs = is_loading ? (anonymous_jobs + 1) : (anonymous_jobs - 1);
     }
