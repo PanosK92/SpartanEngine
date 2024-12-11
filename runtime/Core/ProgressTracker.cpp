@@ -33,17 +33,17 @@ namespace Spartan
 {
     namespace
     { 
-        array<Progress, 4> m_progresses;
-        mutex m_mutex_progress_access;
-        mutex m_mutex_jobs;
-        bool is_loading_global = false;
+        array<Progress, 4> progresses;
+        mutex mutex_progress_access;
+        mutex mutex_jobs;
+        atomic<uint32_t> anonymous_jobs = 0;
     }
 
     void Progress::Start(const uint32_t job_count, const std::string& text)
     {
         SP_ASSERT_MSG(GetFraction() == 1.0f, "The previous progress tracking hasn't finished");
 
-        lock_guard lock(m_mutex_jobs);
+        lock_guard lock(mutex_jobs);
 
         m_job_count = job_count;
         m_jobs_done = 0;
@@ -52,7 +52,7 @@ namespace Spartan
 
     float Progress::GetFraction() const
     {
-        lock_guard lock(m_mutex_jobs);
+        lock_guard lock(mutex_jobs);
 
         if (m_job_count == 0)
             return 1.0f;
@@ -67,7 +67,7 @@ namespace Spartan
 
     void Progress::JobDone()
     {
-        lock_guard lock(m_mutex_jobs);
+        lock_guard lock(mutex_jobs);
 
         SP_ASSERT_MSG(m_jobs_done + 1 <= m_job_count, "Job count exceeded");
         m_jobs_done++;
@@ -85,18 +85,18 @@ namespace Spartan
 
     Progress& ProgressTracker::GetProgress(const ProgressType progress_type)
     {
-        lock_guard lock(m_mutex_progress_access);
-        return m_progresses[static_cast<uint32_t>(progress_type)];
+        lock_guard lock(mutex_progress_access);
+        return progresses[static_cast<uint32_t>(progress_type)];
     }
 
     bool ProgressTracker::IsLoading()
     {
-        if (is_loading_global)
+        if (anonymous_jobs > 0)
             return true;
 
-        lock_guard lock(m_mutex_progress_access);
+        lock_guard lock(mutex_progress_access);
 
-        for (const Progress& progress : m_progresses)
+        for (const Progress& progress : progresses)
         {
             if (progress.IsProgressing())
                 return true;
@@ -107,6 +107,6 @@ namespace Spartan
 
     void ProgressTracker::SetLoadingStateGlobal(const bool is_loading)
     {
-        is_loading_global = is_loading;
+        anonymous_jobs = is_loading ? (anonymous_jobs + 1) : (anonymous_jobs - 1);
     }
 }

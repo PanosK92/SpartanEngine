@@ -33,10 +33,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_Buffer.h"
+#include "../RHI/RHI_Device.h"
 #ifdef _MSC_VER
 #include "../RHI/RHI_FidelityFX.h"
 #endif
-#include "../RHI/RHI_Device.h"
+
 //========================================
 
 //= NAMESPACES ===============
@@ -579,7 +580,7 @@ namespace Spartan
         {
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
             standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture>(dir_texture + "foam.jpg");
-        } 
+        }
     }
 
     void Renderer::CreateStandardMaterials()
