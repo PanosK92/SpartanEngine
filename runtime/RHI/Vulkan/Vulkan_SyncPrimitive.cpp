@@ -109,20 +109,17 @@ namespace Spartan
 
     RHI_SyncPrimitive::RHI_SyncPrimitive(const RHI_SyncPrimitive_Type type, const char* name)
     {
-        m_type = type;
+        m_type        = type;
+        m_object_name = name;
 
         if (m_type == RHI_SyncPrimitive_Type::Fence)
         {
             fence::create(m_rhi_resource);
+            RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Fence, name);
         }
         else
         { 
             semaphore::create(type, m_rhi_resource);
-        }
-
-        if (name)
-        {
-            m_object_name = name;
             RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Semaphore, name);
         }
     }
