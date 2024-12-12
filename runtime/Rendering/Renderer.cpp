@@ -160,7 +160,7 @@ namespace Spartan
             // this is done because FSR 2 is not good at doing TAA if the render resolution is the same as the output resolution
             SetResolutionRender(1920, 1080, false);
 
-            // the resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
+            // the resolution/size of the editor's viewport, this is overridden by the editor based on the actual viewport size
             SetViewport(static_cast<float>(width), static_cast<float>(height));
         }
 

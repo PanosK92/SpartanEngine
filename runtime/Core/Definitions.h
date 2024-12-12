@@ -81,11 +81,11 @@ struct sp_info
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
 
 #if defined(_MSC_VER)
-    #define SP_WARNING_WINDOW(text_message)                                       \
-    {                                                                             \
-        MessageBeep(MB_ICONWARNING);                                              \
-        HWND hwnd = GetConsoleWindow();                                           \
-        MessageBox(hwnd, WIDE_STR(text_message), L"Warning", MB_OK | MB_TOPMOST); \
+    #define SP_WARNING_WINDOW(text_message)                                                  \
+    {                                                                                        \
+        MessageBeep(MB_ICONWARNING);                                                         \
+        HWND hwnd = GetConsoleWindow();                                                      \
+        MessageBoxW(hwnd, L##text_message, L"Warning", MB_OK | MB_TOPMOST | MB_ICONWARNING); \
     }
 #else
     #define SP_WARNING_WINDOW(text_message)    \
@@ -99,12 +99,12 @@ struct sp_info
 
 //= ERROR WINDOW =================================================================
 #if defined(_MSC_VER)
-    #define SP_ERROR_WINDOW(text_message)                                       \
-    {                                                                           \
-        MessageBeep(MB_ICONERROR);                                              \
-        HWND hwnd = GetConsoleWindow();                                         \
-        MessageBox(hwnd, WIDE_STR(text_message), L"Error", MB_OK | MB_TOPMOST); \
-        SP_DEBUG_BREAK();                                                       \
+    #define SP_ERROR_WINDOW(text_message)                                                \
+    {                                                                                    \
+        MessageBeep(MB_ICONERROR);                                                       \
+        HWND hwnd = GetConsoleWindow();                                                  \
+        MessageBoxW(hwnd, L##text_message, L"Error", MB_OK | MB_TOPMOST | MB_ICONERROR); \
+        SP_DEBUG_BREAK();                                                                \
     }
 #else
     #define SP_ERROR_WINDOW(text_message)    \
