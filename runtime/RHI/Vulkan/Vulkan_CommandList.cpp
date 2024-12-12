@@ -104,7 +104,7 @@ namespace Spartan
                     if (!is_destination_mask)
                     {
                         return make_tuple(
-                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 
+                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                             VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT
                         );
                     }
@@ -117,31 +117,30 @@ namespace Spartan
                 case VK_IMAGE_LAYOUT_PREINITIALIZED:
                     SP_ASSERT_MSG(!is_destination_mask, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
                     return make_tuple(
-                        VK_PIPELINE_STAGE_2_HOST_BIT, 
+                        VK_PIPELINE_STAGE_2_HOST_BIT,
                         VK_ACCESS_2_HOST_WRITE_BIT
                     );
 
                 case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
                     return make_tuple(
-                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                         VK_ACCESS_2_NONE
                     );
 
                 case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
                     return make_tuple(
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT, 
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                         VK_ACCESS_2_TRANSFER_READ_BIT
                     );
 
                 case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
                     return make_tuple(
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT, 
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                         VK_ACCESS_2_TRANSFER_WRITE_BIT
                     );
 
                 case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
                    {
-                        // todo: use this for more fine-grained synchronization
                         VkPipelineStageFlags2 used_stages = 0;
                         used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
                         used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
@@ -150,9 +149,7 @@ namespace Spartan
                         used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
 
                         return make_tuple(
-                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | 
-                            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | 
-                            VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT, 
+                            used_stages,
                             VK_ACCESS_2_SHADER_READ_BIT
                         );
                     }
@@ -161,9 +158,9 @@ namespace Spartan
                     if (is_depth)
                     {
                         return make_tuple(
-                            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | 
+                            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
                             VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR | 
+                            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR |
                             VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR
                         );
                     }
@@ -171,15 +168,15 @@ namespace Spartan
                     {
                         return make_tuple(
                             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | 
+                            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
                             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
                         );
                     }
 
                 case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
                     return make_tuple(
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | 
-                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | 
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
                         VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                         VK_ACCESS_2_SHADER_READ_BIT
                     );
@@ -193,7 +190,7 @@ namespace Spartan
                 case VK_IMAGE_LAYOUT_GENERAL:
                     return make_tuple(
                         VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT | 
+                        VK_ACCESS_2_SHADER_READ_BIT |
                         VK_ACCESS_2_SHADER_WRITE_BIT
                     );
 

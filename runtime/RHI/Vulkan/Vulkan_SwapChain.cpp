@@ -491,7 +491,7 @@ namespace Spartan
 
     void RHI_SwapChain::SetVsync(const bool enabled)
     {
-        // For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+        // for v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
 
         if ((m_present_mode == RHI_Present_Mode::Fifo) != enabled)
         {
@@ -504,7 +504,7 @@ namespace Spartan
 
     bool RHI_SwapChain::GetVsync()
     {
-        // For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+        // for v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
         return m_present_mode == RHI_Present_Mode::Fifo;
     }
 
