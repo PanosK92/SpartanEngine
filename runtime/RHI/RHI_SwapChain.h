@@ -65,12 +65,12 @@ namespace Spartan
         void Present();
 
         // properties
-        uint32_t GetWidth()       const { return m_width; }
-        uint32_t GetHeight()      const { return m_height; }
+        uint32_t GetWidth() const        { return m_width; }
+        uint32_t GetHeight() const      { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
-        RHI_Format GetFormat()    const { return m_format; }
-        void* GetRhiRt()          const { return m_rhi_rt[m_image_index]; }
-        void* GetRhiRtv()         const { return m_rhi_rtv[m_image_index]; }
+        RHI_Format GetFormat() const    { return m_format; }
+        void* GetRhiRt() const          { return m_rhi_rt[m_image_index]; }
+        void* GetRhiRtv() const         { return m_rhi_rtv[m_image_index]; }
 
         // layout
         RHI_Image_Layout GetLayout() const;
@@ -93,7 +93,7 @@ namespace Spartan
         uint32_t m_sync_index                                    = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
         void* m_sdl_window                                       = nullptr;
-        std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Max, RHI_Image_Layout::Max, RHI_Image_Layout::Max };
+        std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Max };
         std::array<std::shared_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_semaphore;
         std::array<std::shared_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_fence;
         std::vector<RHI_SyncPrimitive*> m_wait_semaphores;
@@ -101,7 +101,7 @@ namespace Spartan
         // rhi
         void* m_rhi_swapchain                         = nullptr;
         void* m_rhi_surface                           = nullptr;
-        std::array<void*, max_buffer_count> m_rhi_rt  = { nullptr, nullptr, nullptr};
-        std::array<void*, max_buffer_count> m_rhi_rtv = { nullptr, nullptr, nullptr};
+        std::array<void*, max_buffer_count> m_rhi_rt  = { nullptr };
+        std::array<void*, max_buffer_count> m_rhi_rtv = { nullptr };
     };
 }

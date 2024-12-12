@@ -406,7 +406,7 @@ namespace Spartan
     {
         if (m_sync_index != numeric_limits<uint32_t>::max())
         {
-            m_image_acquired_fence[m_sync_index]->Wait(0);
+            m_image_acquired_fence[m_sync_index]->Wait();
             m_image_acquired_fence[m_sync_index]->Reset();
         }
 
