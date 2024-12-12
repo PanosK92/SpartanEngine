@@ -1354,7 +1354,10 @@ namespace Spartan
 
         // gpu dependent actions
         {
-            Debugging::Initialize(GetPrimaryPhysicalDevice()->IsAmd());
+            if (Debugging::IsBreadcrumbsEnabled())
+            { 
+                SP_ASSERT_MSG(GetPrimaryPhysicalDevice()->IsAmd(), "Breadcrumbs are only supported on AMD GPUs");
+            }
 
             if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirments())
             {
@@ -1447,7 +1450,7 @@ namespace Spartan
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
 
-            // Find the local device memory heap size
+            // find the local device memory heap size
             uint64_t vram_size_bytes = 0;
             for (uint32_t i = 0; i < device_memory_properties.memoryHeapCount; i++)
             {
@@ -1457,7 +1460,7 @@ namespace Spartan
                     break;
                 }
             }
-            SP_ASSERT(vram_size_bytes >0);
+            SP_ASSERT(vram_size_bytes > 0);
 
             PhysicalDeviceRegister(PhysicalDevice
             (

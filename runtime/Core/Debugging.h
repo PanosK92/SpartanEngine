@@ -26,20 +26,14 @@ namespace Spartan
     class Debugging
     {
     public:
-        static void Initialize(const bool is_amd)
-        {
-            m_breadcrumbs_enabled = m_breadcrumbs_enabled ? is_amd : false;
-        }
-
-        static bool IsValidationLayerEnabled()              { return m_validation_layer_enabled; }
-        static bool IsGpuAssistedValidationEnabled()        { return m_gpu_assisted_validation_enabled; }
-        static bool IsGpuMarkingEnabled()                   { return m_gpu_marking_enabled; }
-        static bool IsGpuTimingEnabled()                    { return m_gpu_timing_enabled; }
-        static void SetGpuTimingEnabled(const bool enabled) { m_gpu_timing_enabled = enabled; }
-        static bool IsRenderdocEnabled()                    { return m_renderdoc_enabled; }
-        static bool IsShaderOptimizationEnabled()           { return m_shader_optimization_enabled; }
-        static bool IsLoggingToFileEnabled()                { return m_logging_to_file_enabled; }
-        static bool IsBreadcrumbsEnabled()                  { return m_breadcrumbs_enabled; }
+        static bool IsValidationLayerEnabled()       { return m_validation_layer_enabled; }
+        static bool IsGpuAssistedValidationEnabled() { return m_gpu_assisted_validation_enabled; }
+        static bool IsGpuMarkingEnabled()            { return m_gpu_marking_enabled; }
+        static bool IsGpuTimingEnabled()             { return m_gpu_timing_enabled; }
+        static bool IsRenderdocEnabled()             { return m_renderdoc_enabled; }
+        static bool IsShaderOptimizationEnabled()    { return m_shader_optimization_enabled; }
+        static bool IsLoggingToFileEnabled()         { return m_logging_to_file_enabled; }
+        static bool IsBreadcrumbsEnabled()           { return m_breadcrumbs_enabled; }
 
     private:
         inline static bool m_validation_layer_enabled        = false; // Enables Vulkan diagnostic layers, incurs significant per-draw CPU performance overhead

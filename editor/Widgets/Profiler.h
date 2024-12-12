@@ -60,10 +60,7 @@ class Profiler : public Widget
 {
 public:
     Profiler(Editor* editor);
-
     void OnTickVisible() override;
-    void OnVisible() override;
-    void OnInvisible() override;
 
 private:
     std::array<float, 400> m_plot;
