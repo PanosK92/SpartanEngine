@@ -474,7 +474,7 @@ typedef FfxErrorCode(*FfxPresentCallbackFunc)(const FfxPresentCallbackDescriptio
 typedef FfxErrorCode(*FfxFrameGenerationDispatchFunc)(const FfxFrameGenerationDispatchDescription* params, void*);
 typedef FfxErrorCode(*FfxWaitCallbackFunc)(wchar_t* fenceName, uint64_t fenceValueToWaitFor);
 
-/// A structure representing the configuration options to pass to FfxFrameInterpolation.
+/// A structure representing the configuration options to pass to FrameInterpolationSwapChain
 ///
 /// @ingroup FfxInterface
 typedef struct FfxFrameGenerationConfig
@@ -492,6 +492,7 @@ typedef struct FfxFrameGenerationConfig
     bool                            onlyPresentInterpolated;         ///< Set to true to only present interpolated frame
     FfxRect2D                       interpolationRect;               ///< Set the area in the backbuffer that will be interpolated 
     uint64_t                        frameID;                         ///< A frame identifier used to synchronize resource usage in workloads
+    bool                            drawDebugPacingLines;            ///< Sets the state of pacing debug lines. Set to true to display debug lines
 } FfxFrameGenerationConfig;
 
 typedef FfxErrorCode (*FfxSwapChainConfigureFrameGenerationFunc)(FfxFrameGenerationConfig const* config);

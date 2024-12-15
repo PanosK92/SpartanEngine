@@ -51,7 +51,7 @@ void ReconstructPrevDepth(FfxInt32x2 iPxPos, FfxUInt32 depthTarget, FfxFloat32 f
 void reconstructPreviousDepth(FfxInt32x2 iPxPos)
 {
     const FfxFloat32x2 fUv = (iPxPos + FfxFloat32(0.5f)) / RenderSize();
-    const FfxFloat32x4 fDistortionFieldUv = SampleDistortionField(fUv);
+    const FfxFloat32x2 fDistortionFieldUv = SampleDistortionField(fUv);
     FfxInt32x2 iDistortionPixelOffset = FfxInt32x2(fDistortionFieldUv.xy * RenderSize());
 
     FfxFloat32x2 fMotionVector = LoadDilatedMotionVector(iPxPos + iDistortionPixelOffset);

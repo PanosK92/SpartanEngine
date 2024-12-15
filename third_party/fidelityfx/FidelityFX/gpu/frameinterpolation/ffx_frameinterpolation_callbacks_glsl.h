@@ -472,9 +472,9 @@ layout (set = 0, binding = 1000) uniform sampler s_LinearClamp;
 
 #if defined(FFX_FRAMEINTERPOLATION_BIND_SRV_DISTORTION_FIELD)
     layout(set = 0, binding = FFX_FRAMEINTERPOLATION_BIND_SRV_DISTORTION_FIELD) uniform texture2D  r_input_distortion_field;
-    FfxFloat32x4 SampleDistortionField(FFX_PARAMETER_IN FfxFloat32x2 fUv)
+    FfxFloat32x2 SampleDistortionField(FFX_PARAMETER_IN FfxFloat32x2 fUv)
     {
-        return textureLod(sampler2D(r_input_distortion_field, s_LinearClamp), fUv, 0.0);
+        return textureLod(sampler2D(r_input_distortion_field, s_LinearClamp), fUv, 0.0).xy;
     }
 #endif
 

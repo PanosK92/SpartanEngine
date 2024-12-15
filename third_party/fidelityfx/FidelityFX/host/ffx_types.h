@@ -272,7 +272,7 @@ typedef int32_t FfxInt32x4[4];
 /// @ingroup ffxHost
 
 
-/// An enumeration of surface formats.
+/// An enumeration of surface formats. Needs to match enum FfxApiSurfaceFormat
 ///
 /// @ingroup SDKTypes
 typedef enum FfxSurfaceFormat {
@@ -307,6 +307,15 @@ typedef enum FfxSurfaceFormat {
     FFX_SURFACE_FORMAT_R8G8_UINT,                   ///<  8 bit per channel, 2 channel unsigned integer format
     FFX_SURFACE_FORMAT_R32_FLOAT,                   ///< 32 bit per channel, 1 channel float format
     FFX_SURFACE_FORMAT_R9G9B9E5_SHAREDEXP,          ///<  9 bit per channel, 5 bit exponent format
+
+    FFX_SURFACE_FORMAT_R16G16B16A16_TYPELESS,       ///< 16 bit per channel, 4 channel typeless format
+    FFX_SURFACE_FORMAT_R32G32_TYPELESS,             ///< 32 bit per channel, 2 channel typeless format
+    FFX_SURFACE_FORMAT_R10G10B10A2_TYPELESS,        ///< 10 bit per 3 channel, 2 bit for 1 channel typeless format
+    FFX_SURFACE_FORMAT_R16G16_TYPELESS,             ///< 16 bit per channel, 2 channel typeless format
+    FFX_SURFACE_FORMAT_R16_TYPELESS,                ///< 16 bit per channel, 1 channel typeless format
+    FFX_SURFACE_FORMAT_R8_TYPELESS,                 ///<  8 bit per channel, 1 channel typeless format
+    FFX_SURFACE_FORMAT_R8G8_TYPELESS,               ///<  8 bit per channel, 2 channel typeless format
+    FFX_SURFACE_FORMAT_R32_TYPELESS,                ///< 32 bit per channel, 1 channel typeless format
 } FfxSurfaceFormat;
 
 typedef enum FfxIndexFormat
@@ -1269,11 +1278,22 @@ typedef struct FfxFrameGenerationDispatchDescription {
     uint64_t                        frameID;
 } FfxFrameGenerationDispatchDescription;
 
+//struct definition matches FfxApiEffectMemoryUsage
 typedef struct FfxEffectMemoryUsage
 {
     uint64_t totalUsageInBytes;
     uint64_t aliasableUsageInBytes;
 } FfxEffectMemoryUsage;
+
+//struct definition matches FfxApiSwapchainFramePacingTuning
+typedef struct FfxSwapchainFramePacingTuning
+{
+    float    safetyMarginInMs; // in Millisecond
+    float    varianceFactor; // valid range [0.0,1.0]
+    bool     allowHybridSpin; //Allows pacing spinlock to sleep.
+    uint32_t hybridSpinTime;  //How long to spin when hybridSpin is enabled. Measured in timer resolution units. Not recommended to go below 2. Will result in frequent overshoots.
+    bool     allowWaitForSingleObjectOnFence; //Allows to call WaitForSingleObject() instead of spinning for fence value.
+} FfxSwapchainFramePacingTuning;
 
 #ifdef __cplusplus
 }
