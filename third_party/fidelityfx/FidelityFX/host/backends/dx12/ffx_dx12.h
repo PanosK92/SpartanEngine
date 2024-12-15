@@ -309,10 +309,11 @@ FFX_API FfxResource ffxGetFrameinterpolationTextureDX12(FfxSwapchain gameSwapCha
 /// @ingroup DX12FrameInterpolation
 FFX_API FfxErrorCode ffxSetFrameGenerationConfigToSwapchainDX12(FfxFrameGenerationConfig const* config);
 
-//enum values should match enum FfxApiConfigureFrameGenerationSwapChainKeyDX12
+//enum value matches enum FfxApiConfigureFrameGenerationSwapChainKeyDX12
 typedef enum FfxFrameInterpolationSwapchainConfigureKey
 {
-    FFX_FI_SWAPCHAIN_CONFIGURE_KEY_WAITCALLBACK = 0
+    FFX_FI_SWAPCHAIN_CONFIGURE_KEY_WAITCALLBACK = 0,
+    FFX_FI_SWAPCHAIN_CONFIGURE_KEY_FRAMEPACINGTUNING = 2,
 } FfxFrameInterpolationSwapchainConfigureKey;
 
 /// Configures <c><i>FfxSwapchain</i></c> via KeyValue API post <c><i>FfxSwapchain</i></c> context creation

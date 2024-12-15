@@ -43,7 +43,7 @@
 /// FidelityFX Super Resolution 0 patch version.
 ///
 /// @ingroup FSR3
-#define FFX_FSR3_VERSION_PATCH      (2)
+#define FFX_FSR3_VERSION_PATCH      (3)
 
 /// FidelityFX Super Resolution 3 context count
 ///
@@ -139,6 +139,7 @@ typedef enum FfxFsr3FrameGenerationFlags
 {
     FFX_FSR3_FRAME_GENERATION_FLAG_DRAW_DEBUG_TEAR_LINES    = FFX_FRAMEINTERPOLATION_DISPATCH_DRAW_DEBUG_TEAR_LINES,  ///< A bit indicating that the debug tear lines will be drawn to the interpolated output.
     FFX_FSR3_FRAME_GENERATION_FLAG_DRAW_DEBUG_VIEW          = FFX_FRAMEINTERPOLATION_DISPATCH_DRAW_DEBUG_VIEW,  ///< A bit indicating that the interpolated output resource will contain debug views with relevant information.
+    FFX_FSR3_FRAME_GENERATION_FLAG_DRAW_DEBUG_PACING_LINES  = FFX_FRAMEINTERPOLATION_DISPATCH_DRAW_DEBUG_PACING_LINES  ///< A bit indicating that the debug pacing lines will be drawn to the generated output.
 } FfxFsr3FrameGenerationFlags;
 
 typedef enum FfxFsr3UpscalingFlags
