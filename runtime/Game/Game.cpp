@@ -95,8 +95,8 @@ namespace Spartan
             shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
             renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Quad).get());
             renderable->SetDefaultMaterial();
-            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, 170.0f);
-            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, 170.0f);
+            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, entity->GetScale().x);
+            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, entity->GetScale().z);
             
             // add physics components
             shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
