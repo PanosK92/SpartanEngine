@@ -107,12 +107,6 @@ namespace Spartan
                 output[i + 1] = roughness[i + (is_gltf ? 1 : 0)];
                 output[i + 2] = metalness[i + (is_gltf ? 2 : 0)];
                 output[i + 3] = height[i];
-
-                //if (output[i + 0] == (byte)255 && output[i + 1] == (byte)77 && output[i + 2] == (byte)0 && output[i + 3] == (byte)127)
-                //{
-                //    SP_ASSERT_MSG(false, "The top half of the packed material texture has the same value [255, 77, 0, 127]");
-                //    break;
-                //}
             }
         }
 
