@@ -334,7 +334,7 @@ namespace Spartan
                 create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-                SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])) == VK_SUCCESS, "Failed to create swapchain RTV");
+                SP_ASSERT_VK(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])));
             }
         }
 
@@ -344,8 +344,8 @@ namespace Spartan
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             string name                   = (string("swapchain_image_acquired_") + to_string(i));
-            m_image_acquired_semaphore[i] = make_unique<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
-            m_image_acquired_fence[i]     = make_unique<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Fence, name.c_str());
+            m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
+            m_image_acquired_fence[i]     = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Fence, name.c_str());
         }
     }
 

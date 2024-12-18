@@ -31,10 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    static const uint8_t max_buffer_count = 3;
-    static const RHI_Format format_sdr    = RHI_Format::R8G8B8A8_Unorm;
-    static const RHI_Format format_hdr    = RHI_Format::R10G10B10A2_Unorm;
-
     class RHI_SwapChain : public SpartanObject
     {
     public:
@@ -76,6 +72,10 @@ namespace Spartan
         RHI_Image_Layout GetLayout() const;
         void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
 
+        static const uint8_t max_buffer_count = 3;
+        static const RHI_Format format_sdr    = RHI_Format::R8G8B8A8_Unorm;
+        static const RHI_Format format_hdr    = RHI_Format::R10G10B10A2_Unorm;
+
     private:
         void Create();
         void Destroy();
@@ -94,8 +94,8 @@ namespace Spartan
         uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
         void* m_sdl_window                                       = nullptr;
         std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Max };
-        std::array<std::unique_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_semaphore;
-        std::array<std::unique_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_fence;
+        std::array<std::shared_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_semaphore;
+        std::array<std::shared_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_fence;
         std::vector<RHI_SyncPrimitive*> m_wait_semaphores;
 
         // rhi
