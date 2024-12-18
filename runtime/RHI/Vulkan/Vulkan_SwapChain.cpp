@@ -344,8 +344,8 @@ namespace Spartan
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             string name                   = (string("swapchain_image_acquired_") + to_string(i));
-            m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
-            m_image_acquired_fence[i]     = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Fence, name.c_str());
+            m_image_acquired_semaphore[i] = make_unique<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
+            m_image_acquired_fence[i]     = make_unique<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Fence, name.c_str());
         }
     }
 
@@ -360,7 +360,14 @@ namespace Spartan
         }
 
         m_rhi_rtv.fill(nullptr);
-        m_image_acquired_semaphore.fill(nullptr);
+
+        for (auto& semaphore : m_image_acquired_semaphore)
+        {
+            if (semaphore)
+            { 
+                semaphore = unique_ptr<RHI_SyncPrimitive>(nullptr);
+            }
+        }
 
         RHI_Device::QueueWaitAll();
 

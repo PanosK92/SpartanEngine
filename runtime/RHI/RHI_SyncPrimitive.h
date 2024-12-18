@@ -42,7 +42,7 @@ namespace Spartan
         ~RHI_SyncPrimitive();
 
         // sync
-        void Wait(const uint64_t value = 0, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
+        void Wait(const uint64_t value = 0, const uint64_t timeout_nanoseconds = 1000000000 /* 1 second */);
         void Signal(const uint64_t value);
 
         // value

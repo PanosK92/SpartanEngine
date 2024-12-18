@@ -184,6 +184,7 @@ namespace Spartan
                     case SDL_WINDOWEVENT_SIZE_CHANGED:
                         width  = static_cast<uint32_t>(sdl_event.window.data1);
                         height = static_cast<uint32_t>(sdl_event.window.data2);
+                        SP_FIRE_EVENT(EventType::WindowResized);
                         break;
                     case SDL_WINDOWEVENT_MINIMIZED:
                         break;
@@ -230,11 +231,12 @@ namespace Spartan
         }
 
         // handle shortcuts
-
-        // toggle full screen
-        if (Input::GetKey(KeyCode::Alt_Right) && Input::GetKeyDown(KeyCode::Enter))
         {
-            ToggleFullScreen();
+            // toggle full screen
+            if (Input::GetKey(KeyCode::Alt_Right) && Input::GetKeyDown(KeyCode::Enter))
+            {
+                ToggleFullScreen();
+            }
         }
     }
 

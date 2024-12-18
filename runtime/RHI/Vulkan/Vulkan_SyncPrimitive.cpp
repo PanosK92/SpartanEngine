@@ -134,17 +134,17 @@ namespace Spartan
         m_rhi_resource = nullptr;
     }
 
-    void RHI_SyncPrimitive::Wait(const uint64_t value, const uint64_t timeout) 
+    void RHI_SyncPrimitive::Wait(const uint64_t value, const uint64_t timeout_nanoseconds)
     {
         SP_ASSERT(m_type == RHI_SyncPrimitive_Type::Fence || m_type == RHI_SyncPrimitive_Type::SemaphoreTimeline);
 
         if (m_type == RHI_SyncPrimitive_Type::Fence)
         {
-            fence::wait(timeout, m_rhi_resource);
+            fence::wait(timeout_nanoseconds, m_rhi_resource);
         }
         else
         { 
-            semaphore::wait(value, timeout, m_rhi_resource);
+            semaphore::wait(value, timeout_nanoseconds, m_rhi_resource);
         }
     }
 
