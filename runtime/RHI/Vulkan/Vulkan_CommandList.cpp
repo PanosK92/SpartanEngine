@@ -1603,10 +1603,10 @@ namespace Spartan
                 barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
                 break;
             case RHI_Buffer_Type::Constant:
-                barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
                 break;
             default:
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                SP_ASSERT_MSG(false, "Unknown buffer type");
                 break;
         }
     
