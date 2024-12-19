@@ -1570,6 +1570,38 @@ namespace Spartan
         m_timeblock_active = nullptr;
     }
 
+    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
+    {
+        vkCmdUpdateBuffer
+        (
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkBuffer>(buffer->GetRhiResource()),
+            offset,
+            size,
+            data
+        );
+    
+        VkBufferMemoryBarrier barrier = {};
+        barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        barrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+        barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+        barrier.buffer                = static_cast<VkBuffer>(buffer->GetRhiResource());
+        barrier.offset                = offset;
+        barrier.size                  = size;
+    
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            VK_PIPELINE_STAGE_TRANSFER_BIT,     // stage where the write happens
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // stage where subsequent commands can read from the buffer
+            0,
+            0, nullptr,
+            1, &barrier,
+            0, nullptr
+        );
+    }
+
     void RHI_CommandList::InsertBarrierTexture(
         void* image,
         const uint32_t aspect_mask,

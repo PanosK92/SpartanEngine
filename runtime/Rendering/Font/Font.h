@@ -26,9 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include "Glyph.h"
 #include "../Color.h"
-#include "../../RHI/RHI_Definitions.h"
 #include "../../Resource/IResource.h"
-#include "../../Core/Definitions.h"
+#include "../../RHI/RHI_Definitions.h"
 //====================================
 
 namespace Spartan
@@ -59,13 +58,6 @@ namespace Spartan
         std::vector<uint32_t> indices;
         Math::Vector2 position;
     };
-
-    struct FontBuffer
-    {
-        std::shared_ptr<RHI_Buffer> vertex;
-        std::shared_ptr<RHI_Buffer> index;
-    };
-    const uint32_t font_buffer_count = 3;
 
     class Font : public IResource
     {
@@ -104,13 +96,13 @@ namespace Spartan
         void SetAtlasOutline(const std::shared_ptr<RHI_Texture>& atlas) { m_atlas_outline = atlas; }
 
         // misc
-        void UpdateVertexAndIndexBuffers();
+        void UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list);
         uint32_t GetIndexCount();
 
         // properties
         void SetSize(uint32_t size);
-        RHI_Buffer* GetIndexBuffer() const                          { return m_buffers[m_buffer_index].index.get(); }
-        RHI_Buffer* GetVertexBuffer() const                         { return m_buffers[m_buffer_index].vertex.get(); }
+        RHI_Buffer* GetIndexBuffer() const                          { return m_buffer_index.get(); }
+        RHI_Buffer* GetVertexBuffer() const                         { return m_buffer_vertex.get(); }
         uint32_t GetSize() const                                    { return m_font_size; }
         Font_Hinting_Type GetHinting() const                        { return m_hinting; }
         auto GetForceAutohint() const                               { return m_force_autohint; }
@@ -132,9 +124,7 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_atlas_outline;
         std::vector<RHI_Vertex_PosTex> m_vertices;
         std::vector<uint32_t> m_indices;
-
-        // buffers
-        std::array<FontBuffer, font_buffer_count> m_buffers;
-        uint32_t m_buffer_index = 0;
+        std::shared_ptr<RHI_Buffer> m_buffer_index;
+        std::shared_ptr<RHI_Buffer> m_buffer_vertex;
     };
 }

@@ -144,6 +144,9 @@ namespace Spartan
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
         void EndTimeblock();
 
+        // updates
+        void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
+
         // memory barriers
         void InsertBarrierTexture(
             void* image,
