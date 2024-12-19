@@ -1572,53 +1572,82 @@ namespace Spartan
 
     void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
     {
-        vkCmdUpdateBuffer
-        (
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            static_cast<VkBuffer>(buffer->GetRhiResource()),
-            offset,
-            size,
-            data
-        );
+        SP_ASSERT(buffer);
+        SP_ASSERT(size);
+        SP_ASSERT(data);
+        SP_ASSERT(offset + size <= buffer->GetObjectSize());
 
-        VkBufferMemoryBarrier barrier = {};
-        barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-        barrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-        barrier.buffer                = static_cast<VkBuffer>(buffer->GetRhiResource());
-        barrier.offset                = offset;
-        barrier.size                  = size;
-
-        // set dstAccessMask based on buffer type
-        switch (buffer->GetType()) {
-            case RHI_Buffer_Type::Vertex:
-            case RHI_Buffer_Type::Instance:
-                barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-                break;
-            case RHI_Buffer_Type::Index:
-                barrier.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
-                break;
-            case RHI_Buffer_Type::Storage:
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-                break;
-            case RHI_Buffer_Type::Constant:
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
-                break;
-            default:
-                SP_ASSERT_MSG(false, "Unknown buffer type");
-                break;
+        // zero out mapped data if it's a font buffer
+        bool is_font_buffer = buffer->GetType() == RHI_Buffer_Type::Index || buffer->GetType() == RHI_Buffer_Type::Vertex;
+        if (is_font_buffer)
+        {
+            memset(buffer->GetMappedData(), 0, buffer->GetObjectSize());
         }
+
+        // deduce if the update can be done via vkCmdUpdateBuffer and synchronized with a barrier
+        bool vkCmdUpdateBuffer_compliant  = true;
+        vkCmdUpdateBuffer_compliant      &= (offset % 4 == 0); // offset must be a multiple of 4
+        vkCmdUpdateBuffer_compliant      &= (size % 4 == 0);   // size must be a multiple of 4
+        vkCmdUpdateBuffer_compliant      &= (size <= 65536);   // size must not exceed 65536 bytes
+
+        if (vkCmdUpdateBuffer_compliant)
+        { 
+            vkCmdUpdateBuffer
+            (
+                static_cast<VkCommandBuffer>(m_rhi_resource),
+                static_cast<VkBuffer>(buffer->GetRhiResource()),
+                offset,
+                size,
+                data
+            );
     
-        vkCmdPipelineBarrier(
-            static_cast<VkCommandBuffer>(m_rhi_resource),
-            VK_PIPELINE_STAGE_TRANSFER_BIT,     // stage where the write happens
-            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // stage where subsequent commands can read from the buffer
-            0,
-            0, nullptr,
-            1, &barrier,
-            0, nullptr
-        );
+            VkBufferMemoryBarrier barrier = {};
+            barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            barrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
+            barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+            barrier.buffer                = static_cast<VkBuffer>(buffer->GetRhiResource());
+            barrier.offset                = offset;
+            barrier.size                  = size;
+    
+            // set dstAccessMask based on buffer type
+            switch (buffer->GetType()) {
+                case RHI_Buffer_Type::Vertex:
+                case RHI_Buffer_Type::Instance:
+                    barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Index:
+                    barrier.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Storage:
+                    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::Constant:
+                    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+                    break;
+                default:
+                    SP_ASSERT_MSG(false, "Unknown buffer type");
+                    break;
+            }
+     
+            if (vkCmdUpdateBuffer_compliant) {
+                vkCmdPipelineBarrier(
+                    static_cast<VkCommandBuffer>(m_rhi_resource),
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,     // stage where the write happens
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // stage where subsequent commands can read from the buffer
+                    0,
+                    0, nullptr,
+                    1, &barrier,
+                    0, nullptr
+                );
+            }
+        }
+        else
+        {
+            // big bindless arrays will fall into this category, it's okay if they are done asynchronously like that
+            void* mapped_data = static_cast<char*>(buffer->GetMappedData()) + offset;
+            memcpy(mapped_data, data, size);
+        }
     }
 
     void RHI_CommandList::InsertBarrierTexture(
