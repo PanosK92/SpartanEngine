@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/Import/FontImporter.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_Buffer.h"
+#include "../../RHI/RHI_CommandList.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -45,12 +46,8 @@ namespace Spartan
 
     Font::Font(const string& file_path, const uint32_t font_size, const Color& color) : IResource(ResourceType::Font)
     {
-        for (uint32_t i = 0; i < font_buffer_count; i++)
-        {
-            m_buffers[i].vertex = make_shared<RHI_Buffer>();
-            m_buffers[i].index  = make_shared<RHI_Buffer>();
-        }
-
+        m_buffer_vertex   = make_shared<RHI_Buffer>();
+        m_buffer_index    = make_shared<RHI_Buffer>();
         m_char_max_width  = 0;
         m_char_max_height = 0;
         m_color           = color;
@@ -90,12 +87,6 @@ namespace Spartan
         // don't accumulate text if the renderer hasn't rendered a frame yet
         if (Renderer::GetFrameNumber() < 1)
             return;
-
-        // new frame
-        if (text.empty())
-        {
-            m_buffer_index = (m_buffer_index + 1) % font_buffer_count;
-        }
 
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
@@ -197,7 +188,7 @@ namespace Spartan
         m_font_size = Helper::Clamp<uint32_t>(size, 8, 50);
     }
 
-    void Font::UpdateVertexAndIndexBuffers()
+    void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)
     {
         if (m_font_data.empty())
             return;
@@ -223,9 +214,9 @@ namespace Spartan
         }
     
         // grow buffers
-        if (vertices.size() > GetVertexBuffer()->GetElementCount())
+        if (vertices.size() > m_buffer_vertex->GetElementCount())
         {
-            m_buffers[m_buffer_index].vertex = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
+            m_buffer_vertex = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
                 sizeof(vertices[0]),
                 static_cast<uint32_t>(vertices.size()),
                 static_cast<void*>(&vertices[0]),
@@ -233,7 +224,7 @@ namespace Spartan
                 "font"
             );
     
-             m_buffers[m_buffer_index].index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
+             m_buffer_index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
                 sizeof(indices[0]),
                 static_cast<uint32_t>(indices.size()),
                 static_cast<void*>(&indices[0]),
@@ -243,32 +234,15 @@ namespace Spartan
         }
     
         // copy the data over to the gpu
-        {
-            if (RHI_Vertex_PosTex* vertex_buffer = static_cast<RHI_Vertex_PosTex*>(GetVertexBuffer()->GetMappedData()))
-            {
-                // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
-                memset(vertex_buffer, 0, GetVertexBuffer()->GetObjectSize());
-                
-                // now copy your actual vertices
-                copy(vertices.begin(), vertices.end(), vertex_buffer);
-            }
-
-            if (uint32_t* index_buffer = static_cast<uint32_t*>(GetIndexBuffer()->GetMappedData()))
-            {
-                // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
-                memset(index_buffer, 0, GetIndexBuffer()->GetObjectSize());
-                
-                // now copy your actual indices
-                copy(indices.begin(), indices.end(), index_buffer);
-            }
-        }
+        cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, vertices.size() * sizeof(RHI_Vertex_PosTex), vertices.data());
+        cmd_list->UpdateBuffer(m_buffer_index.get(), 0, indices.size() * sizeof(uint32_t), indices.data());
     
         m_font_data.clear();
     }
 
     uint32_t Font::GetIndexCount()
     {
-        SP_ASSERT(GetIndexBuffer());
-        return GetIndexBuffer()->GetElementCount();
+        SP_ASSERT(m_buffer_index);
+        return m_buffer_index->GetElementCount();
     }
 }
