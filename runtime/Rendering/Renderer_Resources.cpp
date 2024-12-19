@@ -76,17 +76,11 @@ namespace Spartan
         buffer(Renderer_Buffer::ConstantFrame) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame), element_count, nullptr, true, "frame");
 
         // single dispatch downsample buffer
-        {
-            uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
-            uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
-            buffer(Renderer_Buffer::StorageSpd) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
+        uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
+        uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
+        buffer(Renderer_Buffer::StorageSpd) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
 
-            // only needs to be set once, then after each use SPD resets it itself
-            uint32_t counter_value = 0;
-            buffer(Renderer_Buffer::StorageSpd)->Update(nullptr, &counter_value);
-        }
-
-        uint32_t stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
+        stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
         buffer(Renderer_Buffer::StorageMaterials) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
 
         stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;

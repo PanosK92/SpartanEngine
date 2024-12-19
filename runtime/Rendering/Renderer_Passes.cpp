@@ -1829,6 +1829,15 @@ namespace Spartan
                 return;
         }
 
+        // only needs to be set once, then after each use SPD resets it itself
+        static bool initialized = false;
+        if (!initialized)
+        { 
+            uint32_t counter_value = 0;
+            GetBuffer(Renderer_Buffer::StorageSpd)->Update(cmd_list, &counter_value);
+            initialized = true;
+        }
+
         cmd_list->BeginMarker("downscale");
         {
             // set pipeline state
