@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/Style.h"
-#include "Widgets/TitleBar.h"
+#include "Widgets/MenuBar.h"
 #include "Widgets/ProgressDialog.h"
 #include "Widgets/Properties.h"
 #include "Widgets/Viewport.h"
@@ -49,7 +49,7 @@ namespace
 {
     float font_size           = 18.0f;
     float font_scale          = 1.0f;
-    TitleBar* widget_menu_bar = nullptr;
+    MenuBar* widget_menu_bar = nullptr;
     Widget* widget_world      = nullptr;
 
     void process_event(Spartan::sp_variant data)
@@ -104,8 +104,8 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<Properties>(this));
     m_widgets.emplace_back(make_shared<WorldViewer>(this));
     widget_world = m_widgets.back().get();
-    m_widgets.emplace_back(make_shared<TitleBar>(this));
-    widget_menu_bar = static_cast<TitleBar*>(m_widgets.back().get());
+    m_widgets.emplace_back(make_shared<MenuBar>(this));
+    widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
 
     // allow imgui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(Spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
@@ -202,7 +202,7 @@ void Editor::BeginWindow()
     
     // set window position and size
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float padding_offset    = 2.0f * (style.FramePadding.y - TitleBar::GetPadding().y) - 1.0f;
+    const float padding_offset    = 2.0f * (style.FramePadding.y - MenuBar::GetPadding().y) - 1.0f;
     const float offset_y          = widget_menu_bar ? widget_menu_bar->GetHeight() + padding_offset : 0;
     
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y - offset_y));

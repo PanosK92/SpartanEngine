@@ -124,8 +124,7 @@ namespace
             "Hoplite, Roman Koshchei,      Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,         N/A",
             "Hoplite, Kristi Kercyku,      Albania,          GitHub,     https://github.com/kristiker,                             Identified g-buffer depth testing issue,         N/A",
         
-            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                  N/A",
-            "Patron,  Kinjal Kishor,       India,            GitHub,     https://github.com/kinjalkishor,                          GitHub Sponsor,                                  N/A",
+            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                  N/A"
         };
 
         vector<string> comma_seperate_contributors(const vector<string>& contributors)

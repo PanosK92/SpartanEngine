@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
-class TitleBar : public Widget
+class MenuBar : public Widget
 {
 public:
-    TitleBar(Editor* editor);
+    MenuBar(Editor* editor);
 
     void OnTick() override;
     void ShowWorldSaveDialog();
