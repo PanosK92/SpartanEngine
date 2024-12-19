@@ -123,7 +123,7 @@ namespace Spartan
         //=====================================================================================================================
 
     private:
-        static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);
+        static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
 
         // resource creation
         static void CreateBuffers();
@@ -181,7 +181,7 @@ namespace Spartan
         // event handlers
         static void OnClear();
         static void OnFullScreenToggled();
-        static void OnSyncPoint(RHI_CommandList* cmd_list);
+        static void OnUpdateBuffers(RHI_CommandList* cmd_list);
 
         // misc
         static void AddLinesToBeRendered();
@@ -190,7 +190,7 @@ namespace Spartan
 
         // bindless
         static void BindlessUpdateMaterials();
-        static void BindlessUpdateLights();
+        static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
 
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;

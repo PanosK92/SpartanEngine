@@ -1580,16 +1580,35 @@ namespace Spartan
             size,
             data
         );
-    
+
         VkBufferMemoryBarrier barrier = {};
         barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         barrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
         barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
         barrier.buffer                = static_cast<VkBuffer>(buffer->GetRhiResource());
         barrier.offset                = offset;
         barrier.size                  = size;
+
+        // set dstAccessMask based on buffer type
+        switch (buffer->GetType()) {
+            case RHI_Buffer_Type::Vertex:
+            case RHI_Buffer_Type::Instance:
+                barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                break;
+            case RHI_Buffer_Type::Index:
+                barrier.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
+                break;
+            case RHI_Buffer_Type::Storage:
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+            case RHI_Buffer_Type::Constant:
+                barrier.dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
+                break;
+            default:
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+        }
     
         vkCmdPipelineBarrier(
             static_cast<VkCommandBuffer>(m_rhi_resource),

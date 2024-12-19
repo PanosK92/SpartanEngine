@@ -82,6 +82,7 @@ namespace Spartan
         // bindless
         static array<RHI_Texture*, rhi_max_array_size> bindless_textures;
         bool bindless_materials_dirty = true;
+        bool bindless_lights_dirty    = true;
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
@@ -216,8 +217,8 @@ namespace Spartan
             // subscribe
             SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_STATIC(BindlessUpdateMaterials));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_STATIC(BindlessUpdateLights));
+            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless_materials_dirty = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( bindless_lights_dirty    = true; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -305,7 +306,7 @@ namespace Spartan
             cmd_list_graphics->Begin(queue_graphics);
             //cmd_list_compute->Begin(queue_compute);
 
-            OnSyncPoint(cmd_list_graphics);
+            OnUpdateBuffers(cmd_list_graphics);
             ProduceFrame(cmd_list_graphics, cmd_list_compute);
 
             // blit to back buffer when not in editor mode
@@ -402,7 +403,7 @@ namespace Spartan
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
-    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list)
+    void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
     {
         // matrices
         {
@@ -479,7 +480,7 @@ namespace Spartan
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
 
         // set
-        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(&m_cb_frame_cpu);
+        GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
     }
 
     void Renderer::SetEntities(unordered_map<uint64_t, shared_ptr<Entity>>& entities)
@@ -528,12 +529,8 @@ namespace Spartan
         }
 
         m_mutex_renderables.unlock();
-
-        // update structures that rely on the renderables
-        {
-            BindlessUpdateMaterials();
-            BindlessUpdateLights();
-        }
+        bindless_materials_dirty = true;
+        bindless_lights_dirty    = true;
     }
 
     bool Renderer::CanUseCmdList()
@@ -576,37 +573,45 @@ namespace Spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::OnSyncPoint(RHI_CommandList* cmd_list_graphics)
+    void Renderer::OnUpdateBuffers(RHI_CommandList* cmd_list)
     {
-        // is_sync_point: the command pool has exhausted its command lists and 
-        // is about to reset them, this is an opportune moment for us to perform
-        // certain operations, knowing that no rendering commands are currently
-        // executing and no resources are being used by any command list
-        m_resource_index++;
-        bool is_sync_point = m_resource_index == resources_frame_lifetime;
-        if (is_sync_point)
+
+        // reset dynamic buffers and parse deletion queue
         {
-            m_resource_index = 0;
-
-            // delete any rhi resources that have accumulated
-            if (RHI_Device::DeletionQueueNeedsToParse())
+            m_resource_index++;
+            bool is_sync_point = m_resource_index == resources_frame_lifetime;
+            if (is_sync_point)
             {
-                RHI_Device::QueueWaitAll();
-                RHI_Device::DeletionQueueParse();
-            }
+                m_resource_index = 0;
 
-            // reset dynamic buffer offsets
-            GetBuffer(Renderer_Buffer::StorageSpd)->ResetOffset();
-            GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
+                // delete any rhi resources that have accumulated
+                if (RHI_Device::DeletionQueueNeedsToParse())
+                {
+                    RHI_Device::QueueWaitAll();
+                    RHI_Device::DeletionQueueParse();
+                }
 
-            if (bindless_materials_dirty)
-            {
-                RHI_Device::UpdateBindlessResources(nullptr, &bindless_textures);
-                bindless_materials_dirty = false;
+                // reset dynamic buffer offsets
+                GetBuffer(Renderer_Buffer::StorageSpd)->ResetOffset();
+                GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
             }
         }
 
-        UpdateConstantBufferFrame(cmd_list_graphics);
+        if (bindless_materials_dirty)
+        {
+            BindlessUpdateMaterials();                                        // properties
+            RHI_Device::UpdateBindlessResources(nullptr, &bindless_textures); // textures
+            bindless_materials_dirty = false;
+        }
+
+        if (bindless_lights_dirty)
+        {
+            BindlessUpdateLights(cmd_list);
+            bindless_lights_dirty = false;
+        }
+
+        UpdateFrameConstantBuffer(cmd_list);
+
         AddLinesToBeRendered();
     }
 
@@ -961,16 +966,13 @@ namespace Spartan
             // material properties
             Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->ResetOffset();
             uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
-            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->Update(&properties[0], update_size);
-    
-            // material textures
-            bindless_materials_dirty = true;
+            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->Update(nullptr, &properties[0], update_size);
         }
 
         index = 0;
     }
 
-    void Renderer::BindlessUpdateLights()
+    void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
     {
         static array<Sb_Light, rhi_max_array_size_lights> properties;
 
@@ -1034,7 +1036,7 @@ namespace Spartan
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
         RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::StorageLights);
         buffer->ResetOffset();
-        buffer->Update(&properties[0], update_size);
+        buffer->Update(cmd_list, &properties[0], update_size);
     }
 
     void Renderer::Screenshot(const string& file_path)

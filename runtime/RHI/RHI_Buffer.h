@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "../Core/SpartanObject.h"
+#include "RHI_Definitions.h"
 //================================
 
 namespace Spartan
@@ -68,7 +69,7 @@ namespace Spartan
         ~RHI_Buffer() { RHI_DestroyResource(); }
 
         // storage and constant buffer updating
-        void Update(void* data_cpu, const uint32_t size = 0);
+        void Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size = 0);
         void ResetOffset() { m_offset = 0; first_update = true; }
 
         // propeties
@@ -78,6 +79,7 @@ namespace Spartan
         uint32_t GetOffset()   const        { return m_offset; }
         void* GetMappedData() const         { return m_data_gpu; }
         void* GetRhiResource() const        { return m_rhi_resource; }
+        RHI_Buffer_Type GetType() const     { return m_type; }
 
     private:
         RHI_Buffer_Type m_type      = RHI_Buffer_Type::Max;

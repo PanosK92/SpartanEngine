@@ -83,7 +83,7 @@ namespace Spartan
 
             // only needs to be set once, then after each use SPD resets it itself
             uint32_t counter_value = 0;
-            buffer(Renderer_Buffer::StorageSpd)->Update(&counter_value);
+            buffer(Renderer_Buffer::StorageSpd)->Update(nullptr, &counter_value);
         }
 
         uint32_t stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
