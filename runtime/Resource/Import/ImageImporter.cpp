@@ -445,7 +445,10 @@ namespace Spartan
         texture->SetHeight(FreeImage_GetHeight(bitmap));
         texture->SetChannelCount(get_channel_count(bitmap));
         texture->SetFormat(get_rhi_format(texture->GetBitsPerChannel(), texture->GetChannelCount()));
-        texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(bitmap));
+        if (FreeImage_GetBPP(bitmap) == 32)
+        { 
+            texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(bitmap));
+        }
 
         // copy data over
         texture->AllocateMip();
