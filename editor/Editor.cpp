@@ -47,10 +47,9 @@ using namespace std;
 
 namespace
 {
-    float font_size           = 18.0f;
-    float font_scale          = 1.0f;
-    MenuBar* widget_menu_bar = nullptr;
-    Widget* widget_world      = nullptr;
+    float font_size      = 18.0f;
+    float font_scale     = 1.0f;
+    Widget* widget_world = nullptr;
 
     void process_event(Spartan::sp_variant data)
     {
@@ -104,8 +103,7 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<Properties>(this));
     m_widgets.emplace_back(make_shared<WorldViewer>(this));
     widget_world = m_widgets.back().get();
-    m_widgets.emplace_back(make_shared<MenuBar>(this));
-    widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
+    MenuBar::Initialize(this);
 
     // allow imgui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(Spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
@@ -156,6 +154,7 @@ void Editor::Tick()
                 {
                     widget->Tick();
                 }
+                MenuBar::Tick();
 
                 ImGui::End();
 
@@ -198,22 +197,15 @@ void Editor::BeginWindow()
         ImGuiWindowFlags_NoBringToFrontOnFocus |
         ImGuiWindowFlags_NoNavFocus;
     
-    ImGuiStyle& style = ImGui::GetStyle();
-    
-    // set window position and size
+    // set window position and size - this keeps the MenuBar in the right place and at the right size
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    const float padding_offset    = 2.0f * (style.FramePadding.y - MenuBar::GetPadding().y) - 1.0f;
-    const float offset_y          = widget_menu_bar ? widget_menu_bar->GetHeight() + padding_offset : 0;
-    
-    ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y - offset_y));
-    ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
-    ImGui::SetNextWindowViewport(viewport->ID);
-    
+    ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y));
+    ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y));
+
     // set window style
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(0.0f, 0.0f));
-    ImGui::SetNextWindowBgAlpha(0.0f);
     
     // begin window
     std::string name = "##main_window";

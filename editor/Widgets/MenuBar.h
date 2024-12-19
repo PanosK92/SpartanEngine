@@ -21,19 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
-#include "Widget.h"
-//=================
+// FWD DECLARATIONS =
+class Editor;
+//===================
 
-class MenuBar : public Widget
+class MenuBar
 {
 public:
-    MenuBar(Editor* editor);
+    static void Initialize(Editor* editor);
+    static void Tick();
 
-    void OnTick() override;
+    static void ShowWorldSaveDialog();
+    static void ShowWorldLoadDialog();
 
-    void ShowWorldSaveDialog();
-    void ShowWorldLoadDialog();
-
-    static ImVec2 GetPadding() { return { 14.0f, 8.0f }; }
+    static float GetPaddingX() { return 14.0f; }
+    static float GetPaddingY() { return 8.0f; }
 };
