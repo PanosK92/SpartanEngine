@@ -22,9 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "WorldViewer.h"
 #include "Properties.h"
-#include "TitleBar.h"
+#include "MenuBar.h"
 #include "Viewport.h"
-#include "Game/Game.h"
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
@@ -36,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Commands/CommandStack.h"
 #include "Input/Input.h"
 #include "FileSystem.h"
-#include "Resource/ResourceCache.h"
 #include "Core/Engine.h"
 #include "../ImGui/ImGuiExtension.h"
 SP_WARNINGS_OFF
@@ -472,7 +470,7 @@ void WorldViewer::HandleKeyShortcuts()
 
         if (file_path.empty())
         {
-            m_editor->GetWidget<TitleBar>()->ShowWorldSaveDialog();
+            m_editor->GetWidget<MenuBar>()->ShowWorldSaveDialog();
         }
         else
         {
@@ -483,7 +481,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Load: Ctrl + L
     if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::L))
     {
-        m_editor->GetWidget<TitleBar>()->ShowWorldLoadDialog();
+        m_editor->GetWidget<MenuBar>()->ShowWorldLoadDialog();
     }
 
     // Undo and Redo: Ctrl + Z, Ctrl + Shift + Z

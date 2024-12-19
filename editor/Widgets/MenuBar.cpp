@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "TitleBar.h"
+#include "MenuBar.h"
 #include "../EditorWindow.h"
 #include "Profiler.h"
 #include "ShaderEditor.h"
@@ -87,7 +87,7 @@ namespace
 
             const ImGuiStyle& style   = ImGui::GetStyle();
             const float size_avail_y  = 2.0f * style.FramePadding.y + button_size;
-            const float button_size_y = button_size + 2.0f * TitleBar::GetPadding().y;
+            const float button_size_y = button_size + 2.0f * MenuBar::GetPadding().y;
             const float offset_y      = (button_size_y - size_avail_y) * 0.5f;
 
             ImGui::SetCursorPosY(offset_y);
@@ -106,14 +106,14 @@ namespace
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             const float size_avail_x      = viewport->Size.x;
-            const float button_size_final = button_size * Spartan::Window::GetDpiScale() + TitleBar::GetPadding().x * 2.0f;
+            const float button_size_final = button_size * Spartan::Window::GetDpiScale() + MenuBar::GetPadding().x * 2.0f;
             float num_buttons             = 1.0f;
             float size_toolbar            = num_buttons * button_size_final;
             float cursor_pos_x            = (size_avail_x - size_toolbar) * 0.5f;
 
             // play button
             {
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, TitleBar::GetPadding().y - 5.0f });
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPadding().y - 5.0f });
 
                toolbar_button(
                    IconType::Button_Play, "Play",
@@ -126,7 +126,7 @@ namespace
             }
 
             // all the other buttons
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { TitleBar::GetPadding().x - 1.0f, TitleBar::GetPadding().y - 5.0f });
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPadding().x - 1.0f, MenuBar::GetPadding().y - 5.0f });
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
             {
                 num_buttons  = 6.0f;
@@ -203,7 +203,7 @@ namespace
     }
 }
 
-TitleBar::TitleBar(Editor* _editor) : Widget(_editor)
+MenuBar::MenuBar(Editor* _editor) : Widget(_editor)
 {
     m_title     = "title_bar";
     m_is_window = false;
@@ -219,7 +219,7 @@ TitleBar::TitleBar(Editor* _editor) : Widget(_editor)
     Spartan::Engine::SetFlag(Spartan::EngineMode::Playing, false);
 }
 
-void TitleBar::OnTick()
+void MenuBar::OnTick()
 {
     // menu
     {
@@ -258,7 +258,7 @@ void TitleBar::OnTick()
     DrawFileDialog();
 }
 
-void TitleBar::EntryWorld()
+void MenuBar::EntryWorld()
 {
     if (ImGui::BeginMenu("World"))
     {
@@ -296,7 +296,7 @@ void TitleBar::EntryWorld()
     }
 }
 
-void TitleBar::EntryView()
+void MenuBar::EntryView()
 {
     if (ImGui::BeginMenu("View"))
     {
@@ -334,7 +334,7 @@ void TitleBar::EntryView()
     }
 }
 
-void TitleBar::EntryHelp()
+void MenuBar::EntryHelp()
 {
     if (ImGui::BeginMenu("Help"))
     {
@@ -369,19 +369,19 @@ void TitleBar::EntryHelp()
     }
 }
 
-void TitleBar::ShowWorldSaveDialog()
+void MenuBar::ShowWorldSaveDialog()
 {
     file_dialog->SetOperation(FileDialog_Op_Save);
     show_file_dialog = true;
 }
 
-void TitleBar::ShowWorldLoadDialog()
+void MenuBar::ShowWorldLoadDialog()
 {
     file_dialog->SetOperation(FileDialog_Op_Load);
     show_file_dialog = true;
 }
 
-void TitleBar::DrawFileDialog() const
+void MenuBar::DrawFileDialog() const
 {
     if (show_file_dialog)
     {
