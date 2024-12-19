@@ -21,22 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "MenuBar.h"
-#include "../EditorWindow.h"
-#include "Profiler.h"
-#include "ShaderEditor.h"
-#include "RenderOptions.h"
-#include "TextureViewer.h"
-#include "ResourceViewer.h"
-#include "AssetBrowser.h"
-#include "Console.h"
-#include "Properties.h"
-#include "Viewport.h"
-#include "WorldViewer.h"
-#include "../Widgets/FileDialog.h"
+#include "EditorWindows.h"
+#include "Widgets/Profiler.h"
+#include "Widgets/ShaderEditor.h"
+#include "Widgets/RenderOptions.h"
+#include "Widgets/TextureViewer.h"
+#include "Widgets/ResourceViewer.h"
+#include "Widgets/AssetBrowser.h"
+#include "Widgets/Console.h"
+#include "Widgets/Properties.h"
+#include "Widgets/Viewport.h"
+#include "Widgets/WorldViewer.h"
+#include "Widgets/FileDialog.h"
+#include "Widgets/Style.h"
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
-#include <Debugging.h>
-#include "Style.h"
+#include "Debugging.h"
 //================================
 
 //= NAMESPACES =====
@@ -155,7 +155,7 @@ namespace
         {
             if (ImGui::BeginMenu("View"))
             {
-                if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", EditorWindow::GetVisiblityWindowShortcuts()))
+                if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", EditorWindows::GetVisiblityWindowShortcuts()))
                 {
 
                 }
@@ -193,7 +193,7 @@ namespace
         {
             if (ImGui::BeginMenu("Help"))
             {
-                ImGui::MenuItem("About", nullptr, EditorWindow::GetVisiblityWindowAbout());
+                ImGui::MenuItem("About", nullptr, EditorWindows::GetVisiblityWindowAbout());
 
                 if (ImGui::MenuItem("Sponsor", nullptr, nullptr))
                 {

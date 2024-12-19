@@ -21,7 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include "Editor.h"
-#include "EditorWindow.h"
+#include "EditorWindows.h"
+#include "MenuBar.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "ImGui/ImGuiExtension.h"
@@ -30,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/Style.h"
-#include "Widgets/MenuBar.h"
 #include "Widgets/ProgressDialog.h"
 #include "Widgets/Properties.h"
 #include "Widgets/Viewport.h"
@@ -111,7 +111,7 @@ Editor::Editor(const vector<string>& args)
     // register imgui as a third party library (will show up in the about window)
     Spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
-    EditorWindow::Initialize(this);
+    EditorWindows::Initialize(this);
 }
 
 Editor::~Editor()
@@ -159,7 +159,7 @@ void Editor::Tick()
                 ImGui::End();
 
                 // various windows that don't belnog to a certain widget
-                EditorWindow::Tick();
+                EditorWindows::Tick();
             }
         }
 

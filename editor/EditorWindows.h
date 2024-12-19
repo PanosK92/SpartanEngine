@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class Editor;
 
-class EditorWindow
+class EditorWindows
 {
 public:
     static void Initialize(Editor* editor);
