@@ -53,18 +53,174 @@ namespace
     string file_dialog_selection_path;
     unique_ptr<FileDialog> file_dialog;
 
-    namespace
+    template <class T>
+    void menu_entry()
     {
-        template <class T>
-        void menu_entry()
-        {
-            T* widget = editor->GetWidget<T>();
+        T* widget = editor->GetWidget<T>();
 
-            // menu item with checkmark based on widget->GetVisible()
-            if (ImGui::MenuItem(widget->GetTitle().c_str(), nullptr, widget->GetVisible()))
+        // menu item with checkmark based on widget->GetVisible()
+        if (ImGui::MenuItem(widget->GetTitle().c_str(), nullptr, widget->GetVisible()))
+        {
+            // toggle visibility
+            widget->SetVisible(!widget->GetVisible());
+        }
+    }
+
+    namespace windows
+    {
+        void ShowWorldSaveDialog()
+        {
+            file_dialog->SetOperation(FileDialog_Op_Save);
+            show_file_dialog = true;
+        }
+        
+        void ShowWorldLoadDialog()
+        {
+            file_dialog->SetOperation(FileDialog_Op_Load);
+            show_file_dialog = true;
+        }
+        
+        void DrawFileDialog()
+        {
+            if (show_file_dialog)
             {
-                // toggle visibility
-                widget->SetVisible(!widget->GetVisible());
+                ImGui::SetNextWindowFocus();
+            }
+        
+            if (file_dialog->Show(&show_file_dialog, editor, nullptr, &file_dialog_selection_path))
+            {
+                // load world
+                if (file_dialog->GetOperation() == FileDialog_Op_Open || file_dialog->GetOperation() == FileDialog_Op_Load)
+                {
+                    if (Spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
+                    {
+                        EditorHelper::LoadWorld(file_dialog_selection_path);
+                        show_file_dialog = false;
+                    }
+                }
+                // save world
+                else if (file_dialog->GetOperation() == FileDialog_Op_Save)
+                {
+                    if (file_dialog->GetFilter() == FileDialog_Filter_World)
+                    {
+                        EditorHelper::SaveWorld(file_dialog_selection_path);
+                        show_file_dialog = false;
+                    }
+                }
+            }
+        }
+    }
+
+    namespace buttons_menu
+    {
+        void world()
+        {
+            if (ImGui::BeginMenu("World"))
+            {
+                if (ImGui::MenuItem("New"))
+                {
+                    Spartan::World::Clear();
+                }
+
+                ImGui::Separator();
+
+                // the engine has changed a lot, so I need to re-write resource cache serialization/deserialization
+                // grey out the options so users know that the functionality is part of the engine but currently disabled
+                ImGui::BeginDisabled(true);
+                {
+                    if (ImGui::MenuItem("Load"))
+                    {
+                        windows::ShowWorldLoadDialog();
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::MenuItem("Save", "Ctrl+S"))
+                    {
+                        windows::ShowWorldSaveDialog();
+                    }
+
+                    if (ImGui::MenuItem("Save As...", "Ctrl+S"))
+                    {
+                        windows::ShowWorldSaveDialog();
+                    }
+                }
+                ImGui::EndDisabled();
+
+                ImGui::EndMenu();
+            }
+        }
+
+        void view()
+        {
+            if (ImGui::BeginMenu("View"))
+            {
+                if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", EditorWindow::GetVisiblityWindowShortcuts()))
+                {
+
+                }
+
+                if (ImGui::BeginMenu("Widgets"))
+                {
+                    menu_entry<Profiler>();
+                    menu_entry<ShaderEditor>();
+                    menu_entry<RenderOptions>();
+                    menu_entry<TextureViewer>();
+                    menu_entry<ResourceViewer>();
+                    menu_entry<AssetBrowser>();
+                    menu_entry<Console>();
+                    menu_entry<Properties>();
+                    menu_entry<Viewport>();
+                    menu_entry<WorldViewer>();
+
+                    ImGui::EndMenu();
+                }
+
+                if (ImGui::BeginMenu("ImGui"))
+                {
+                    ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
+                    ImGui::MenuItem("Style", nullptr, &show_imgui_style_window);
+                    ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_widow);
+
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndMenu();
+            }
+        }
+
+        void help()
+        {
+            if (ImGui::BeginMenu("Help"))
+            {
+                ImGui::MenuItem("About", nullptr, EditorWindow::GetVisiblityWindowAbout());
+
+                if (ImGui::MenuItem("Sponsor", nullptr, nullptr))
+                {
+                    Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
+                }
+
+                if (ImGui::MenuItem("Contributing", nullptr, nullptr))
+                {
+                    Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
+                }
+
+                if (ImGui::MenuItem("Perks of a contributor", nullptr, nullptr))
+                {
+                    Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
+                }
+
+                if (ImGui::MenuItem("Report a bug", nullptr, nullptr))
+                {
+                    Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/issues/new/choose");
+                }
+
+                if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
+                {
+                    Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
+                }
+
+                ImGui::EndMenu();
             }
         }
     }
@@ -174,7 +330,8 @@ namespace
         }
     }
 
-    namespace buttons_window
+    // window buttons like minimize, maximize, close (not used yet)
+    namespace buttons_titlebar
     {
         void tick()
         {
@@ -205,7 +362,7 @@ namespace
 
 MenuBar::MenuBar(Editor* _editor) : Widget(_editor)
 {
-    m_title     = "title_bar";
+    m_title     = "menu_bar";
     m_is_window = false;
     editor      = _editor;
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
@@ -222,22 +379,14 @@ MenuBar::MenuBar(Editor* _editor) : Widget(_editor)
 void MenuBar::OnTick()
 {
     // menu
+    if (ImGui::BeginMainMenuBar())
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, GetPadding());
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        buttons_menu::world();
+        buttons_menu::view();
+        buttons_menu::help();
+        buttons_toolbar::tick();
 
-        if (ImGui::BeginMainMenuBar())
-        {
-            EntryWorld();
-            EntryView();
-            EntryHelp();
-
-            buttons_toolbar::tick();
-
-            ImGui::EndMainMenuBar();
-        }
-
-        ImGui::PopStyleVar(2);
+        ImGui::EndMainMenuBar();
     }
 
     // windows
@@ -255,158 +404,15 @@ void MenuBar::OnTick()
         editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);
     }
 
-    DrawFileDialog();
-}
-
-void MenuBar::EntryWorld()
-{
-    if (ImGui::BeginMenu("World"))
-    {
-        if (ImGui::MenuItem("New"))
-        {
-            Spartan::World::Clear();
-        }
-
-        ImGui::Separator();
-
-        // the engine has changed a lot, so I need to re-write resource cache serialization/deserialization
-        // grey out the options so users know that the functionality is part of the engine but currently disabled
-        ImGui::BeginDisabled(true);
-        {
-            if (ImGui::MenuItem("Load"))
-            {
-                ShowWorldLoadDialog();
-            }
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Save", "Ctrl+S"))
-            {
-                ShowWorldSaveDialog();
-            }
-
-            if (ImGui::MenuItem("Save As...", "Ctrl+S"))
-            {
-                ShowWorldSaveDialog();
-            }
-        }
-        ImGui::EndDisabled();
-
-        ImGui::EndMenu();
-    }
-}
-
-void MenuBar::EntryView()
-{
-    if (ImGui::BeginMenu("View"))
-    {
-        if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", EditorWindow::GetVisiblityWindowShortcuts()))
-        {
-
-        }
-
-        if (ImGui::BeginMenu("Widgets"))
-        {
-            menu_entry<Profiler>();
-            menu_entry<ShaderEditor>();
-            menu_entry<RenderOptions>();
-            menu_entry<TextureViewer>();
-            menu_entry<ResourceViewer>();
-            menu_entry<AssetBrowser>();
-            menu_entry<Console>();
-            menu_entry<Properties>();
-            menu_entry<Viewport>();
-            menu_entry<WorldViewer>();
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("ImGui"))
-        {
-            ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
-            ImGui::MenuItem("Style", nullptr, &show_imgui_style_window);
-            ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_widow);
-
-            ImGui::EndMenu();
-        }
-
-        ImGui::EndMenu();
-    }
-}
-
-void MenuBar::EntryHelp()
-{
-    if (ImGui::BeginMenu("Help"))
-    {
-        ImGui::MenuItem("About", nullptr, EditorWindow::GetVisiblityWindowAbout());
-
-        if (ImGui::MenuItem("Sponsor", nullptr, nullptr))
-        {
-            Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
-        }
-
-        if (ImGui::MenuItem("Contributing", nullptr, nullptr))
-        {
-            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
-        }
-
-        if (ImGui::MenuItem("Perks of a contributor", nullptr, nullptr))
-        {
-            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
-        }
-
-        if (ImGui::MenuItem("Report a bug", nullptr, nullptr))
-        {
-            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/issues/new/choose");
-        }
-
-        if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
-        {
-            Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
-        }
-
-        ImGui::EndMenu();
-    }
+    windows::DrawFileDialog();
 }
 
 void MenuBar::ShowWorldSaveDialog()
 {
-    file_dialog->SetOperation(FileDialog_Op_Save);
-    show_file_dialog = true;
+    windows::ShowWorldSaveDialog();
 }
 
 void MenuBar::ShowWorldLoadDialog()
 {
-    file_dialog->SetOperation(FileDialog_Op_Load);
-    show_file_dialog = true;
-}
-
-void MenuBar::DrawFileDialog() const
-{
-    if (show_file_dialog)
-    {
-        ImGui::SetNextWindowFocus();
-    }
-
-    if (file_dialog->Show(&show_file_dialog, m_editor, nullptr, &file_dialog_selection_path))
-    {
-        // load world
-        if (file_dialog->GetOperation() == FileDialog_Op_Open || file_dialog->GetOperation() == FileDialog_Op_Load)
-        {
-            if (Spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
-            {
-                EditorHelper::LoadWorld(file_dialog_selection_path);
-                show_file_dialog = false;
-            }
-        }
-        // save world
-        else if (file_dialog->GetOperation() == FileDialog_Op_Save)
-        {
-            if (file_dialog->GetFilter() == FileDialog_Filter_World)
-            {
-                EditorHelper::SaveWorld(file_dialog_selection_path);
-                show_file_dialog = false;
-            }
-        }
-    }
+    windows::ShowWorldLoadDialog();
 }

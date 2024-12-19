@@ -31,14 +31,9 @@ public:
     MenuBar(Editor* editor);
 
     void OnTick() override;
+
     void ShowWorldSaveDialog();
     void ShowWorldLoadDialog();
 
     static ImVec2 GetPadding() { return { 14.0f, 8.0f }; }
-
-private:
-    void DrawFileDialog() const;
-    void EntryWorld();
-    void EntryView();
-    void EntryHelp();
 };
