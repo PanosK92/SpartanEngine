@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MenuBar.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
-#include "ImGui/ImGuiExtension.h"
+#include "ImGui/ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl2.h"
 #include "Widgets/AssetBrowser.h"

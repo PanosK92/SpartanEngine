@@ -77,7 +77,7 @@ public:
         });
     }
 
-    static Editor* editor;
+    inline static Editor* editor = nullptr;
 };
 
 namespace ImGuiSp

@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INLUCDES ====================
+//= INLUCDES =====================
 #include "EditorWindows.h"
 #include "ImGui/Source/imgui.h"
-#include "ImGui/ImGuiExtension.h"
+#include "ImGui/ImGui_Extension.h"
 #include "Core/FileSystem.h"
 #include <sstream>
 #include "Settings.h"
@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "Game/Game.h"
 #include "Core/ProgressTracker.h"
-//===============================
+//================================
 
 //= NAMESPACES =====
 using namespace std;

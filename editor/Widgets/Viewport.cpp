@@ -19,15 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================================
+//= INCLUDES =============================
 #include "Viewport.h"
 #include "AssetBrowser.h"
 #include "WorldViewer.h"
 #include "RHI/RHI_Device.h"
-#include "../ImGui/ImGuiExtension.h"
-#include "../ImGui/Implementation/ImGui_TransformGizmo.h"
+#include "../ImGui/ImGui_Extension.h"
+#include "../ImGui/ImGui_TransformGizmo.h"
 #include "Settings.h"
-//=======================================================
+//========================================
 
 //= NAMESPACES =========
 using namespace std;

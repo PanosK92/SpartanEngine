@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
-#include "../Source/ImGuizmo/ImGuizmo.h"
-#include "../Source/imgui.h"
+//= INCLUDES =========================
+#include "Source/ImGuizmo/ImGuizmo.h"
+#include "Source/imgui.h"
 #include "World/Entity.h"
 #include "World/Components/Camera.h"
 #include "Rendering/Renderer.h"
@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Commands/CommandStack.h"
 #include "Commands/CommandTransform.h"
 #include "Engine.h"
-//======================================
+//====================================
 
 namespace ImGui::TransformGizmo
 {
