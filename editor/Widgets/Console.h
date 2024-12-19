@@ -21,16 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ====================
 #include "Widget.h"
 #include <memory>
 #include <functional>
 #include <deque>
-#include <atomic>
 #include <mutex>
 #include "Logging/ILogger.h"
-#include "../ImGui/Implementation/ImGui_Style.h"
-//==========================
+#include "../ImGui/ImGui_Style.h"
+//===============================
 
 struct LogPackage
 {

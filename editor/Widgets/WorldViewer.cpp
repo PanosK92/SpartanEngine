@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "WorldViewer.h"
 #include "Properties.h"
-#include "MenuBar.h"
+#include "../MenuBar.h"
 #include "Viewport.h"
 #include "World/Entity.h"
 #include "World/Components/Light.h"
@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "FileSystem.h"
 #include "Core/Engine.h"
-#include "../ImGui/ImGuiExtension.h"
+#include "../ImGui/ImGui_Extension.h"
 SP_WARNINGS_OFF
 #include "../ImGui/Source/imgui_stdlib.h"
 SP_WARNINGS_ON

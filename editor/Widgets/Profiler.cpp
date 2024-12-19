@@ -19,12 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ========================
 #include "Profiler.h"
-#include "../ImGui/ImGuiExtension.h"
+#include "../ImGui/ImGui_Extension.h"
 #include "Profiling/Profiler.h"
-#include <Debugging.h>
-//==================================
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
