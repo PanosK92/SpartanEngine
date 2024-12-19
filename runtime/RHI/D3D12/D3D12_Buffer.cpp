@@ -40,7 +40,7 @@ namespace Spartan
 
     }
 
-    void RHI_Buffer::Update(void* data_cpu, const uint32_t size)
+    void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
 
     }

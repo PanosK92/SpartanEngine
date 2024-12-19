@@ -234,8 +234,13 @@ namespace Spartan
         }
     
         // copy the data over to the gpu
-        cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, vertices.size() * sizeof(RHI_Vertex_PosTex), vertices.data());
-        cmd_list->UpdateBuffer(m_buffer_index.get(), 0, indices.size() * sizeof(uint32_t), indices.data());
+        {
+            memset(m_buffer_vertex->GetMappedData(), 0, m_buffer_vertex->GetObjectSize()); // zero out mapped data
+            cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, vertices.size() * sizeof(RHI_Vertex_PosTex), vertices.data());
+
+            memset(m_buffer_index->GetMappedData(), 0, m_buffer_index->GetObjectSize()); // zero out mapped data
+            cmd_list->UpdateBuffer(m_buffer_index.get(), 0, indices.size() * sizeof(uint32_t), indices.data());
+        }
     
         m_font_data.clear();
     }
