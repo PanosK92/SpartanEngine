@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INLUCDES ====================
-#include "EditorWindow.h"
+#include "EditorWindows.h"
 #include "ImGui/Source/imgui.h"
 #include "ImGui/ImGuiExtension.h"
 #include "Core/FileSystem.h"
@@ -509,7 +509,7 @@ namespace
     }
 }
 
-void EditorWindow::Initialize(Editor* editor_in)
+void EditorWindows::Initialize(Editor* editor_in)
 {
     editor = editor_in;
 
@@ -521,7 +521,7 @@ void EditorWindow::Initialize(Editor* editor_in)
     default_worlds::visible          =  default_worlds::downloaded;
 }
 
-void EditorWindow::Tick()
+void EditorWindows::Tick()
 {
     // visibility
     {
@@ -552,12 +552,12 @@ void EditorWindow::Tick()
     }
 }
 
-bool* EditorWindow::GetVisiblityWindowAbout()
+bool* EditorWindows::GetVisiblityWindowAbout()
 {
     return &about::visible;
 }
 
-bool* EditorWindow::GetVisiblityWindowShortcuts()
+bool* EditorWindows::GetVisiblityWindowShortcuts()
 {
     return &shortcuts::visible;
 }
