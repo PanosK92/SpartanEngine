@@ -115,7 +115,7 @@ namespace Spartan
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name);
     }
 
-    void RHI_Buffer::Update(void* data_cpu, const uint32_t size)
+    void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
         SP_ASSERT_MSG(m_mappable,                           "Can't update unmappable buffer");
         SP_ASSERT_MSG(data_cpu != nullptr,                  "Invalid cpu data");
@@ -132,11 +132,20 @@ namespace Spartan
             m_offset += m_stride;
         }
 
-        // persistently mapped so a memcpy is enough
-        memcpy(
-            reinterpret_cast<std::byte*>(m_data_gpu) + m_offset, // destination
-            reinterpret_cast<std::byte*>(data_cpu),              // source
-            size != 0 ? size : m_stride                          // size
-        );
-    } 
+        // update
+        if (cmd_list)
+        {
+            // vkCmdUpdateBuffer and vkCmdPipelineBarrier
+            cmd_list->UpdateBuffer(this, m_offset, size != 0 ? size : m_stride, data_cpu);
+        }
+        else
+        {
+            // direct and async
+            memcpy(
+                reinterpret_cast<std::byte*>(m_data_gpu) + m_offset, // destination
+                reinterpret_cast<std::byte*>(data_cpu),              // source
+                size != 0 ? size : m_stride                          // size
+            );
+        }
+    }
 }
