@@ -575,7 +575,6 @@ namespace Spartan
 
     void Renderer::OnUpdateBuffers(RHI_CommandList* cmd_list)
     {
-
         // reset dynamic buffers and parse deletion queue
         {
             m_resource_index++;
@@ -599,7 +598,7 @@ namespace Spartan
 
         if (bindless_materials_dirty)
         {
-            BindlessUpdateMaterials();                                        // properties
+            BindlessUpdateMaterials(cmd_list);                                // properties
             RHI_Device::UpdateBindlessResources(nullptr, &bindless_textures); // textures
             bindless_materials_dirty = false;
         }
@@ -851,7 +850,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque,   GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque));
     }
     
-    void Renderer::BindlessUpdateMaterials()
+    void Renderer::BindlessUpdateMaterials(RHI_CommandList* cmd_list)
     {
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
@@ -966,7 +965,7 @@ namespace Spartan
             // material properties
             Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->ResetOffset();
             uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
-            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->Update(nullptr, &properties[0], update_size);
+            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->Update(cmd_list, &properties[0], update_size);
         }
 
         index = 0;

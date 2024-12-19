@@ -117,7 +117,8 @@ namespace Spartan
 
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
-        SP_ASSERT_MSG(m_mappable,                           "Can't update unmappable buffer");
+        SP_ASSERT(cmd_list);
+        SP_ASSERT_MSG(m_mappable,                           "Can't update unmapped buffer");
         SP_ASSERT_MSG(data_cpu != nullptr,                  "Invalid cpu data");
         SP_ASSERT_MSG(m_data_gpu != nullptr,                "Invalid gpu data");
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size, "Out of memory");
@@ -132,20 +133,7 @@ namespace Spartan
             m_offset += m_stride;
         }
 
-        // update
-        if (cmd_list)
-        {
-            // vkCmdUpdateBuffer and vkCmdPipelineBarrier
-            cmd_list->UpdateBuffer(this, m_offset, size != 0 ? size : m_stride, data_cpu);
-        }
-        else
-        {
-            // direct and async
-            memcpy(
-                reinterpret_cast<std::byte*>(m_data_gpu) + m_offset, // destination
-                reinterpret_cast<std::byte*>(data_cpu),              // source
-                size != 0 ? size : m_stride                          // size
-            );
-        }
+        // vkCmdUpdateBuffer and vkCmdPipelineBarrier
+        cmd_list->UpdateBuffer(this, m_offset, size != 0 ? size : m_stride, data_cpu);
     }
 }
