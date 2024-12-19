@@ -297,21 +297,59 @@ namespace Spartan
 
         bool has_transparent_pixels(FIBITMAP* bitmap)
         {
-            SP_ASSERT(FreeImage_GetBPP(bitmap) == 32);
-
-            for (unsigned y = 0; y < FreeImage_GetHeight(bitmap); ++y)
+            // Check if the bitmap supports alpha channel
+            FREE_IMAGE_TYPE image_type = FreeImage_GetImageType(bitmap);
+            int bpp = FreeImage_GetBPP(bitmap);
+        
+            if (image_type == FIT_BITMAP && (bpp == 32 || bpp == 24)) 
             {
-                BYTE* bits = FreeImage_GetScanLine(bitmap, y);
-                for (unsigned x = 0; x < FreeImage_GetWidth(bitmap); ++x)
+                if (bpp == 32) // Direct check for alpha channel
                 {
-                    BYTE alpha = bits[FI_RGBA_ALPHA];
-                    if (alpha != 255)
-                        return true;
-
-                    bits += 4; // move to the next pixel (assuming 4 bytes per pixel)
+                    for (unsigned y = 0; y < FreeImage_GetHeight(bitmap); ++y)
+                    {
+                        BYTE* bits = FreeImage_GetScanLine(bitmap, y);
+                        for (unsigned x = 0; x < FreeImage_GetWidth(bitmap); ++x)
+                        {
+                            BYTE alpha = bits[FI_RGBA_ALPHA];
+                            if (alpha != 255)
+                                return true;
+        
+                            bits += 4; // move to the next pixel (4 bytes per pixel for 32-bit)
+                        }
+                    }
+                }
+                else if (bpp == 24) // For 24-bit, we need to check if there's a transparency mask
+                {
+                    // If there's a transparency mask, we'll check it
+                    if (FreeImage_GetTransparencyCount(bitmap) > 0)
+                    {
+                        for (unsigned i = 0; i < FreeImage_GetTransparencyCount(bitmap); ++i)
+                        {
+                            if (FreeImage_GetTransparencyTable(bitmap)[i] != 255)
+                                return true;
+                        }
+                    }
+                    // If no transparency mask, 24-bit images are assumed to be fully opaque
                 }
             }
-
+            else if (image_type == FIT_RGBA16) // 16-bit per channel, including alpha
+            {
+                // For 64-bit or other formats with explicit alpha
+                for (unsigned y = 0; y < FreeImage_GetHeight(bitmap); ++y)
+                {
+                    WORD* bits = (WORD*)FreeImage_GetScanLine(bitmap, y);
+                    for (unsigned x = 0; x < FreeImage_GetWidth(bitmap); ++x)
+                    {
+                        WORD alpha = bits[3]; // Assuming RGBA order, alpha at index 3
+                        if (alpha != 0xFFFF) // 16-bit alpha, 0xFFFF is fully opaque
+                            return true;
+        
+                        bits += 4; // move to next pixel (4 words for RGBA16)
+                    }
+                }
+            }
+            // Other formats might not have transparency or are treated as fully opaque
+        
             return false;
         }
     }
@@ -445,10 +483,7 @@ namespace Spartan
         texture->SetHeight(FreeImage_GetHeight(bitmap));
         texture->SetChannelCount(get_channel_count(bitmap));
         texture->SetFormat(get_rhi_format(texture->GetBitsPerChannel(), texture->GetChannelCount()));
-        if (FreeImage_GetBPP(bitmap) == 32)
-        { 
-            texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(bitmap));
-        }
+        texture->SetFlag(RHI_Texture_Transparent, has_transparent_pixels(bitmap));
 
         // copy data over
         texture->AllocateMip();
