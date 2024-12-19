@@ -243,7 +243,7 @@ namespace
 
             const ImGuiStyle& style   = ImGui::GetStyle();
             const float size_avail_y  = 2.0f * style.FramePadding.y + button_size;
-            const float button_size_y = button_size + 2.0f * MenuBar::GetPadding().y;
+            const float button_size_y = button_size + 2.0f * MenuBar::GetPaddingY();
             const float offset_y      = (button_size_y - size_avail_y) * 0.5f;
 
             ImGui::SetCursorPosY(offset_y);
@@ -262,14 +262,14 @@ namespace
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             const float size_avail_x      = viewport->Size.x;
-            const float button_size_final = button_size * Spartan::Window::GetDpiScale() + MenuBar::GetPadding().x * 2.0f;
+            const float button_size_final = button_size * Spartan::Window::GetDpiScale() + MenuBar::GetPaddingX() * 2.0f;
             float num_buttons             = 1.0f;
             float size_toolbar            = num_buttons * button_size_final;
             float cursor_pos_x            = (size_avail_x - size_toolbar) * 0.5f;
 
             // play button
             {
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPadding().y - 5.0f });
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPaddingY() - 5.0f });
 
                toolbar_button(
                    IconType::Button_Play, "Play",
@@ -282,7 +282,7 @@ namespace
             }
 
             // all the other buttons
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPadding().x - 1.0f, MenuBar::GetPadding().y - 5.0f });
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
             {
                 num_buttons  = 6.0f;
@@ -360,10 +360,8 @@ namespace
     }
 }
 
-MenuBar::MenuBar(Editor* _editor) : Widget(_editor)
+void MenuBar::Initialize(Editor* _editor)
 {
-    m_title     = "menu_bar";
-    m_is_window = false;
     editor      = _editor;
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
@@ -376,17 +374,24 @@ MenuBar::MenuBar(Editor* _editor) : Widget(_editor)
     Spartan::Engine::SetFlag(Spartan::EngineMode::Playing, false);
 }
 
-void MenuBar::OnTick()
+void MenuBar::Tick()
 {
     // menu
-    if (ImGui::BeginMainMenuBar())
     {
-        buttons_menu::world();
-        buttons_menu::view();
-        buttons_menu::help();
-        buttons_toolbar::tick();
+        ImGuiStyle& style = ImGui::GetStyle();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, 8.0f));
 
-        ImGui::EndMainMenuBar();
+        if (ImGui::BeginMainMenuBar())
+        {
+            buttons_menu::world();
+            buttons_menu::view();
+            buttons_menu::help();
+            buttons_toolbar::tick();
+
+            ImGui::EndMainMenuBar();
+        }
+
+        ImGui::PopStyleVar();
     }
 
     // windows
