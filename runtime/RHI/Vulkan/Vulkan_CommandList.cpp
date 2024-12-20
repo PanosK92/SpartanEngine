@@ -253,6 +253,15 @@ namespace Spartan
                 auto [src_stages, src_access] = get_layout_sync_info(barrier.oldLayout, false, is_depth, pso);
                 auto [dst_stages, dst_access] = get_layout_sync_info(barrier.newLayout, true,  is_depth, pso);
 
+                // todo: fix swapchain error
+                //if (barrier.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+                //{
+                //    src_stages  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                //    dst_stages  = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                //    src_access  = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                //    dst_access  = VK_ACCESS_NONE;
+                //}
+
                 barrier.srcAccessMask = src_access; // retrieve source synchronization info
                 barrier.srcStageMask  = src_stages; // retrieve source synchronization info
                 barrier.dstAccessMask = dst_access; // retrieve destination synchronization info
@@ -1577,6 +1586,9 @@ namespace Spartan
         SP_ASSERT(data);
         SP_ASSERT(offset + size <= buffer->GetObjectSize());
 
+        // vkCmdUpdateBuffer is only allowed outside of render passes
+        RenderPassEnd();
+
         // zero out mapped data if it's a font buffer
         bool is_font_buffer = buffer->GetType() == RHI_Buffer_Type::Index || buffer->GetType() == RHI_Buffer_Type::Vertex;
         if (is_font_buffer)
@@ -1630,17 +1642,17 @@ namespace Spartan
                     break;
             }
      
-            if (vkCmdUpdateBuffer_compliant) {
-                vkCmdPipelineBarrier(
-                    static_cast<VkCommandBuffer>(m_rhi_resource),
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,     // stage where the write happens
-                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // stage where subsequent commands can read from the buffer
-                    0,
-                    0, nullptr,
-                    1, &barrier,
-                    0, nullptr
-                );
-            }
+            vkCmdPipelineBarrier(
+                static_cast<VkCommandBuffer>(m_rhi_resource),
+                VK_PIPELINE_STAGE_TRANSFER_BIT,     // stage where the write happens
+                VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // stage where subsequent commands can read from the buffer
+                0,
+                0, nullptr,
+                1, &barrier,
+                0, nullptr
+            );
+
+            Profiler::m_rhi_pipeline_barriers++;
         }
         else
         {

@@ -46,15 +46,19 @@ namespace Spartan
     {
         RHI_DestroyResource();
 
+        // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT  -> mappable
+        // VK_MEMORY_PROPERTY_HOST_COHERENT_BIT -> persistently mapped (flushless)
+        // VK_BUFFER_USAGE_TRANSFER_DST_BIT     -> vkCmdUpdateBuffer()
+
         if (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index || m_type == RHI_Buffer_Type::Instance)
         {
-            bool vertex                = m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Instance;
-            VkBufferUsageFlagBits type = vertex ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+            bool vertex                       = m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Instance;
+            VkBufferUsageFlagBits flags_usage = vertex ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
             if (m_mappable)
             {
-                uint32_t flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
-                RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, type, flags_memory, nullptr, m_object_name.c_str());
+                uint32_t flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+                RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, flags_memory, nullptr, m_object_name.c_str());
             }
             else
             {
@@ -63,7 +67,7 @@ namespace Spartan
                 RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
 
                 // create destination buffer, it's faster but we can only copy data into it
-                RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | type, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
+                RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags_usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
 
                 // copy staging buffer to destination buffer
                 VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
@@ -90,7 +94,7 @@ namespace Spartan
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
             if (m_mappable)
             {
-                flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
+                flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
             }
             VkBufferUsageFlags flags_usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
@@ -107,7 +111,7 @@ namespace Spartan
 
             // create
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
-            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags_memory, nullptr, m_object_name.c_str());
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, flags_memory, nullptr, m_object_name.c_str());
         }
 
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");

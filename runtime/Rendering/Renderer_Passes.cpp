@@ -2298,6 +2298,8 @@ namespace Spartan
 
         cmd_list->BeginMarker("text");
 
+        font->UpdateVertexAndIndexBuffers(cmd_list);
+
         // set pipeline state
         static RHI_PipelineState pso;
         pso.name                             = "text";
@@ -2310,7 +2312,6 @@ namespace Spartan
         pso.clear_color[0]                   = rhi_color_load;
         cmd_list->SetPipelineState(pso);
 
-        font->UpdateVertexAndIndexBuffers(cmd_list);
         cmd_list->SetBufferVertex(font->GetVertexBuffer());
         cmd_list->SetBufferIndex(font->GetIndexBuffer());
         cmd_list->SetCullMode(RHI_CullMode::Back);
