@@ -221,7 +221,7 @@ namespace Spartan
                 static_cast<uint32_t>(vertices.size()),
                 static_cast<void*>(&vertices[0]),
                 true,
-                "font"
+                "font_vertex"
             );
     
              m_buffer_index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
@@ -229,7 +229,7 @@ namespace Spartan
                 static_cast<uint32_t>(indices.size()),
                 static_cast<void*>(&indices[0]),
                 true,
-                "font"
+                "font_index"
             );
         }
     
