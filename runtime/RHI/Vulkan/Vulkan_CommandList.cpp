@@ -1586,9 +1586,6 @@ namespace Spartan
         SP_ASSERT(data);
         SP_ASSERT(offset + size <= buffer->GetObjectSize());
 
-        // vkCmdUpdateBuffer is only allowed outside of render passes
-        RenderPassEnd();
-
         // zero out mapped data if it's a font buffer
         bool is_font_buffer = buffer->GetType() == RHI_Buffer_Type::Index || buffer->GetType() == RHI_Buffer_Type::Vertex;
         if (is_font_buffer)
@@ -1603,7 +1600,9 @@ namespace Spartan
         vkCmdUpdateBuffer_compliant      &= (size <= 65536);   // size must not exceed 65536 bytes
 
         if (vkCmdUpdateBuffer_compliant)
-        { 
+        {
+            RenderPassEnd();
+
             vkCmdUpdateBuffer
             (
                 static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -1613,45 +1612,43 @@ namespace Spartan
                 data
             );
     
-            VkBufferMemoryBarrier barrier = {};
-            barrier.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-            barrier.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
-            barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-            barrier.buffer                = static_cast<VkBuffer>(buffer->GetRhiResource());
-            barrier.offset                = offset;
-            barrier.size                  = size;
+            VkBufferMemoryBarrier2 barrier = {};
+            barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier.srcStageMask           = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            barrier.srcAccessMask          = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            barrier.dstStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            barrier.dstAccessMask          = VK_ACCESS_TRANSFER_WRITE_BIT; // write after write
+            barrier.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
+            barrier.offset                 = offset;
+            barrier.size                   = size;
     
-            // set dstAccessMask based on buffer type
             switch (buffer->GetType()) {
                 case RHI_Buffer_Type::Vertex:
                 case RHI_Buffer_Type::Instance:
-                    barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Index:
-                    barrier.dstAccessMask = VK_ACCESS_INDEX_READ_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Storage:
-                    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Constant:
-                    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
                     break;
                 default:
                     SP_ASSERT_MSG(false, "Unknown buffer type");
                     break;
             }
      
-            vkCmdPipelineBarrier(
-                static_cast<VkCommandBuffer>(m_rhi_resource),
-                VK_PIPELINE_STAGE_TRANSFER_BIT,     // stage where the write happens
-                VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, // stage where subsequent commands can read from the buffer
-                0,
-                0, nullptr,
-                1, &barrier,
-                0, nullptr
-            );
+            VkDependencyInfo dependency_info         = {};
+            dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+            dependency_info.bufferMemoryBarrierCount = 1;
+            dependency_info.pBufferMemoryBarriers    = &barrier;
 
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
             Profiler::m_rhi_pipeline_barriers++;
         }
         else
@@ -1696,7 +1693,7 @@ namespace Spartan
         VkImageMemoryBarrier2 barrier           = image_barrier::create(layout_old, layout_new, image, aspect_mask, mip_index, mip_range, array_length, is_depth, m_pso);
         dependency_info.pImageMemoryBarriers    = &barrier;
 
-        RenderPassEnd(); // you can't have a barrier inside a render pass
+        RenderPassEnd();
         vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
     }
