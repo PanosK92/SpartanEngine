@@ -1593,13 +1593,14 @@ namespace Spartan
             memset(buffer->GetMappedData(), 0, buffer->GetObjectSize());
         }
 
-        // deduce if the update can be done via vkCmdUpdateBuffer and synchronized with a barrier
-        bool vkCmdUpdateBuffer_compliant  = true;
-        vkCmdUpdateBuffer_compliant      &= (offset % 4 == 0); // offset must be a multiple of 4
-        vkCmdUpdateBuffer_compliant      &= (size % 4 == 0);   // size must be a multiple of 4
-        vkCmdUpdateBuffer_compliant      &= (size <= 65536);   // size must not exceed 65536 bytes
+        // check for vkCmdUpdateBuffer compliance to deduce if this is a small and synchronized update
+        // non-compliant updates are done via a memcpy, and they are there for the big bindless arrays
+        bool synchronized_update  = true;
+        synchronized_update      &= (offset % 4 == 0); // offset must be a multiple of 4
+        synchronized_update      &= (size % 4 == 0);   // size must be a multiple of 4
+        synchronized_update      &= (size <= 65536);   // size must not exceed 65536 bytes
 
-        if (vkCmdUpdateBuffer_compliant)
+        if (synchronized_update)
         {
             RenderPassEnd();
 
@@ -1651,9 +1652,8 @@ namespace Spartan
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
             Profiler::m_rhi_pipeline_barriers++;
         }
-        else
+        else // big bindless arrays (update rarely and don't require synchronization)
         {
-            // big bindless arrays will fall into this category, it's okay if they are done asynchronously like that
             void* mapped_data = static_cast<char*>(buffer->GetMappedData()) + offset;
             memcpy(mapped_data, data, size);
         }
