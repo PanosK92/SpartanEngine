@@ -382,7 +382,7 @@ static const char* vkresult_to_string(const VkResult result)
     {                                                      \
         Log::SetLogToFile(true);                           \
         SP_LOG_ERROR("%s", vkresult_to_string(vk_result)); \
-        SP_ASSERT(false);                                  \
+        SP_ASSERT(false && "Vulkan call failed");          \
     }
 #endif
 
