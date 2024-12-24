@@ -437,4 +437,5 @@ namespace Spartan
     const uint8_t  rhi_max_mip_count             = 13;
     const uint32_t rhi_all_mips                  = std::numeric_limits<uint32_t>::max();
     const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
+    const uint32_t rhi_max_buffer_update_size    = 65536; // vkCmdUpdateBuffer has a limit of 65536 bytes
 }

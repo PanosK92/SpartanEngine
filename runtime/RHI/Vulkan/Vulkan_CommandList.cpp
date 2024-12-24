@@ -1580,19 +1580,12 @@ namespace Spartan
         SP_ASSERT(data);
         SP_ASSERT(offset + size <= buffer->GetObjectSize());
 
-        // zero out mapped data if it's a font buffer
-        bool is_font_buffer = buffer->GetType() == RHI_Buffer_Type::Index || buffer->GetType() == RHI_Buffer_Type::Vertex;
-        if (is_font_buffer)
-        {
-            memset(buffer->GetMappedData(), 0, buffer->GetObjectSize());
-        }
-
         // check for vkCmdUpdateBuffer compliance to deduce if this is a small and synchronized update
         // non-compliant updates are done via a memcpy, and they are there for the big bindless arrays
         bool synchronized_update  = true;
-        synchronized_update      &= (offset % 4 == 0); // offset must be a multiple of 4
-        synchronized_update      &= (size % 4 == 0);   // size must be a multiple of 4
-        synchronized_update      &= (size <= 65536);   // size must not exceed 65536 bytes
+        synchronized_update      &= (offset % 4 == 0);                    // offset must be a multiple of 4
+        synchronized_update      &= (size % 4 == 0);                      // size must be a multiple of 4
+        synchronized_update      &= (size <= rhi_max_buffer_update_size); // size must not exceed 65536 bytes
 
         if (synchronized_update)
         {
