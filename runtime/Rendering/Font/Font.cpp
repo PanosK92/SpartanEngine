@@ -84,19 +84,6 @@ namespace Spartan
 
     void Font::AddText(const string& text, const Vector2& position_screen_percentage)
     {
-        // limit added texts to prevent memory growth if rendering hasn't reset m_font_data
-        {
-            uint32_t size_bytes = 0;
-            for (const FontData& text_data : m_font_data)
-            {
-                size_bytes += static_cast<uint32_t>(text_data.vertices.size()) * sizeof(text_data.vertices[0]);
-            }
-
-            // vkCmdUpdateBuffer has a limit of 65536 bytes, memcpy is used beyond that
-            if (size_bytes >= 65536 || Renderer::GetFrameNumber() < 1)
-                return;
-        }
-
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
         const float aspect_ratio    = viewport_width / viewport_height;
@@ -162,7 +149,7 @@ namespace Spartan
             }
             else
             {
-                // first triangle in quad.
+                // first triangle in quad
                 m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
                 m_vertices.emplace_back(cursor.x + glyph.offset_x + glyph.width,  cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
                 m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom); // bottom left
@@ -209,16 +196,11 @@ namespace Spartan
     
         for (const FontData& text_data : m_font_data)
         {
-            // insert vertices for this text entry
             vertices.insert(vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
-    
-            // adjust indices to reference the correct vertices
             for (uint32_t index : text_data.indices)
             {
                 indices.push_back(index + vertex_offset);
             }
-    
-            // update vertex offset for the next text entry
             vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
         }
     
@@ -234,7 +216,7 @@ namespace Spartan
                     "font_vertex"
                 );
             }
-
+    
             if (indices.size() > m_buffer_index->GetElementCount())
             {
                 m_buffer_index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
@@ -246,10 +228,42 @@ namespace Spartan
                 );
             }
         }
-    
-        // copy the data over to the gpu
-        cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, m_buffer_vertex->GetObjectSize(), vertices.data());
-        cmd_list->UpdateBuffer(m_buffer_index.get(), 0, m_buffer_index->GetObjectSize(), indices.data());
+
+        // update vertex buffer in chunks
+        {
+            const size_t vertex_size = sizeof(vertices[0]);
+            size_t vertices_size     = vertices.size() * vertex_size;
+            size_t offset            = 0;
+
+            // zero out
+            memset(m_buffer_vertex->GetMappedData(), 0, m_buffer_vertex->GetObjectSize());
+
+            // update
+            while (offset < vertices_size)
+            {
+                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), vertices_size - offset);
+                cmd_list->UpdateBuffer(m_buffer_vertex.get(), offset, current_chunk_size, &vertices[offset / vertex_size]);
+                offset += current_chunk_size;
+            }
+        }
+
+        // update index buffer in chunks
+        {
+            const size_t index_size = sizeof(indices[0]);
+            size_t offset           = 0;
+            size_t indices_size     = indices.size() * index_size;
+
+            // zero out
+            memset(m_buffer_index->GetMappedData(), 0, m_buffer_index->GetObjectSize());
+
+            // update
+            while (offset < indices_size)
+            {
+                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), indices_size - offset);
+                cmd_list->UpdateBuffer(m_buffer_index.get(), offset, current_chunk_size, &indices[offset / index_size]);
+                offset += current_chunk_size;
+            }
+        }
 
         m_font_data.clear();
     }
