@@ -84,9 +84,18 @@ namespace Spartan
 
     void Font::AddText(const string& text, const Vector2& position_screen_percentage)
     {
-        // don't accumulate text if the renderer hasn't rendered a frame yet
-        if (Renderer::GetFrameNumber() < 1)
-            return;
+        // limit added texts to prevent memory growth if rendering hasn't reset m_font_data
+        {
+            uint32_t size_bytes = 0;
+            for (const FontData& text_data : m_font_data)
+            {
+                size_bytes += static_cast<uint32_t>(text_data.vertices.size()) * sizeof(text_data.vertices[0]);
+            }
+
+            // vkCmdUpdateBuffer has a limit of 65536 bytes, memcpy is used beyond that
+            if (size_bytes >= 65536)
+                return;
+        }
 
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
@@ -213,24 +222,29 @@ namespace Spartan
             vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
         }
     
-        // grow buffers
-        if (vertices.size() > m_buffer_vertex->GetElementCount())
+        // grow buffers if needed
         {
-            m_buffer_vertex = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
-                sizeof(vertices[0]),
-                static_cast<uint32_t>(vertices.size()),
-                static_cast<void*>(&vertices[0]),
-                true,
-                "font_vertex"
-            );
-    
-             m_buffer_index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
-                sizeof(indices[0]),
-                static_cast<uint32_t>(indices.size()),
-                static_cast<void*>(&indices[0]),
-                true,
-                "font_index"
-            );
+            if (vertices.size() > m_buffer_vertex->GetElementCount())
+            {
+                m_buffer_vertex = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
+                    sizeof(vertices[0]),
+                    static_cast<uint32_t>(vertices.size()),
+                    static_cast<void*>(&vertices[0]),
+                    true,
+                    "font_vertex"
+                );
+            }
+
+            if (indices.size() > m_buffer_index->GetElementCount())
+            {
+                m_buffer_index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
+                    sizeof(indices[0]),
+                    static_cast<uint32_t>(indices.size()),
+                    static_cast<void*>(&indices[0]),
+                    true,
+                    "font_index"
+                );
+            }
         }
     
         // copy the data over to the gpu
@@ -242,7 +256,6 @@ namespace Spartan
 
     uint32_t Font::GetIndexCount()
     {
-        SP_ASSERT(m_buffer_index);
         return m_buffer_index->GetElementCount();
     }
 }
