@@ -41,7 +41,6 @@ namespace Spartan
     // metrics - rhi
     uint32_t Profiler::m_rhi_draw                       = 0;
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
-    uint32_t Profiler::m_rhi_pipeline_bindings          = 0;
     uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_vertex     = 0;
@@ -54,7 +53,6 @@ namespace Spartan
     uint32_t Profiler::m_rhi_bindings_shader_compute    = 0;
     uint32_t Profiler::m_rhi_bindings_render_target     = 0;
     uint32_t Profiler::m_rhi_bindings_texture_storage   = 0;
-    uint32_t Profiler::m_rhi_bindings_descriptor_set    = 0;
 
     // misc
     uint32_t Profiler::m_descriptor_set_count = 0;
@@ -231,7 +229,6 @@ namespace Spartan
 
         m_rhi_draw                       = 0;
         m_rhi_timeblock_count            = 0;
-        m_rhi_pipeline_bindings          = 0;
         m_rhi_pipeline_barriers          = 0;
         m_rhi_bindings_buffer_index      = 0;
         m_rhi_bindings_buffer_vertex     = 0;
@@ -244,7 +241,6 @@ namespace Spartan
         m_rhi_bindings_shader_compute    = 0;
         m_rhi_bindings_render_target     = 0;
         m_rhi_bindings_texture_storage   = 0;
-        m_rhi_bindings_descriptor_set    = 0;
     }
 
     void Profiler::ReadTimeBlocks()
@@ -461,14 +457,9 @@ namespace Spartan
                 "Draw:\t\t\t\t\t\t\t\t\t\t\t%u\n"
                 "Index buffer bindings:\t\t\t%u\n"
                 "Vertex buffer bindings:\t\t%u\n"
-                "Descriptor set bindings:\t\t%u\n"
-                "Bindings:\t\t\t\t\t\t\t\t\t%u\n"
-                "Barriers:\t\t\t\t\t\t\t\t\t%u\n\n"
-                "Resources\n"
-                "Textures:\t\t\t\t\t\t\t\t%u\n"
-                "Materials:\t\t\t\t\t\t\t%u\n"
-                "Pipelines:\t\t\t\t\t\t\t\t%u\n"
-                "Descriptor set capacity:\t%u/%u",
+                "Barriers:\t\t\t\t\t\t\t\t\t%u\n"
+                "Pipelines:\t\t\t\t\t\t\t\t\t%u\n"
+                "Descriptor set capacity:\t\t%u/%u",
 
                 m_fps,
                 time_frame_avg,
@@ -505,12 +496,7 @@ namespace Spartan
                 m_rhi_draw,
                 m_rhi_bindings_buffer_index,
                 m_rhi_bindings_buffer_vertex,
-                m_rhi_bindings_descriptor_set,
-                m_rhi_pipeline_bindings,
                 m_rhi_pipeline_barriers,
-
-                ResourceCache::GetResourceCount(ResourceType::Texture),
-                ResourceCache::GetResourceCount(ResourceType::Material),
                 RHI_Device::GetPipelineCount(),
                 m_descriptor_set_count, rhi_max_descriptor_set_count
             );

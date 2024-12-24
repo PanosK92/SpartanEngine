@@ -302,7 +302,6 @@ namespace Spartan
             );
 
             bind_dynamic = false;
-            Profiler::m_rhi_bindings_descriptor_set++;
         }
 
         void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
@@ -326,8 +325,6 @@ namespace Spartan
                 0,                                                    // dynamicOffsetCount
                 nullptr                                               // pDynamicOffsets
             );
-
-            Profiler::m_rhi_bindings_descriptor_set++;
         }
     }
 
@@ -566,9 +563,6 @@ namespace Spartan
             // bind
             VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
-
-            // profile
-            Profiler::m_rhi_pipeline_bindings++;
 
             // set some dynamic states
             if (m_pso.IsGraphics())
