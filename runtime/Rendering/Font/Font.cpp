@@ -93,7 +93,7 @@ namespace Spartan
             }
 
             // vkCmdUpdateBuffer has a limit of 65536 bytes, memcpy is used beyond that
-            if (size_bytes >= 65536)
+            if (size_bytes >= 65536 || Renderer::GetFrameNumber() < 1)
                 return;
         }
 

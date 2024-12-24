@@ -66,7 +66,6 @@ namespace Spartan
         // metrics - rhi
         static uint32_t m_rhi_draw;
         static uint32_t m_rhi_timeblock_count;
-        static uint32_t m_rhi_pipeline_bindings;
         static uint32_t m_rhi_pipeline_barriers;
         static uint32_t m_rhi_bindings_buffer_index;
         static uint32_t m_rhi_bindings_buffer_vertex;
@@ -79,7 +78,6 @@ namespace Spartan
         static uint32_t m_rhi_bindings_shader_compute;
         static uint32_t m_rhi_bindings_render_target;
         static uint32_t m_rhi_bindings_texture_storage;
-        static uint32_t m_rhi_bindings_descriptor_set;
 
         // misc
         static uint32_t m_descriptor_set_count;
@@ -92,7 +90,6 @@ namespace Spartan
         {
             m_rhi_draw                       = 0;
             m_rhi_timeblock_count            = 0;
-            m_rhi_pipeline_bindings          = 0;
             m_rhi_pipeline_barriers          = 0;
             m_rhi_bindings_buffer_index      = 0;
             m_rhi_bindings_buffer_vertex     = 0;
@@ -105,7 +102,6 @@ namespace Spartan
             m_rhi_bindings_shader_compute    = 0;
             m_rhi_bindings_render_target     = 0;
             m_rhi_bindings_texture_storage   = 0;
-            m_rhi_bindings_descriptor_set    = 0;
         }
 
         static void AcquireGpuData();
