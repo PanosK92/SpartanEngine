@@ -153,7 +153,7 @@ static const D3D12_BLEND_OP d3d12_blend_operation[] =
     D3D12_BLEND_OP_MAX
 };
 
-#endif
+#endif // API_GRAPHICS_D3D12
 
 // definition - vulkan
 #if defined(API_GRAPHICS_VULKAN) 
