@@ -382,9 +382,10 @@ static const char* vkresult_to_string(const VkResult result)
     {                                                      \
         Log::SetLogToFile(true);                           \
         SP_LOG_ERROR("%s", vkresult_to_string(vk_result)); \
-        SP_ASSERT(false && "Vulkan call failed");          \
-    }
-#endif
+        SP_ASSERT(vk_result);                              \
+    }                                                      \
+    
+#endif // API_GRAPHICS_VULKAN
 
 // RHI_Context
 #include "RHI_Definitions.h"

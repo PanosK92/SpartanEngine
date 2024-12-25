@@ -2296,11 +2296,11 @@ namespace Spartan
         if (!shader_v || !shader_v->IsCompiled() || !shader_p || !shader_p->IsCompiled() || !draw || !font->HasText())
             return;
 
-        cmd_list->BeginMarker("text");
+        cmd_list->BeginTimeblock("text");
 
         font->UpdateVertexAndIndexBuffers(cmd_list);
 
-        // set pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.name                             = "text";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
@@ -2310,39 +2310,30 @@ namespace Spartan
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
         pso.render_target_color_textures[0]  = tex_out;
         pso.clear_color[0]                   = rhi_color_load;
-        cmd_list->SetPipelineState(pso);
 
+        // set shared state
+        cmd_list->SetPipelineState(pso);
         cmd_list->SetBufferVertex(font->GetVertexBuffer());
         cmd_list->SetBufferIndex(font->GetIndexBuffer());
         cmd_list->SetCullMode(RHI_CullMode::Back);
 
-        // outline
-        cmd_list->BeginTimeblock("text_outline");
+        // draw outline
         if (font->GetOutline() != Font_Outline_None && font->GetOutlineSize() != 0)
         {
-            // set pass constants
             m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
             cmd_list->PushConstants(m_pcb_pass_cpu);
-
-            // draw
             cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline().get());
             cmd_list->DrawIndexed(font->GetIndexCount());
         }
-        cmd_list->EndTimeblock();
 
-        // inline
-        cmd_list->BeginTimeblock("text_inline");
+        // draw inline
         {
-            // set pass constants
             m_pcb_pass_cpu.set_f4_value(font->GetColor());
             cmd_list->PushConstants(m_pcb_pass_cpu);
-
-            // draw
             cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas().get());
             cmd_list->DrawIndexed(font->GetIndexCount());
         }
-        cmd_list->EndTimeblock();
 
-        cmd_list->EndMarker();
+        cmd_list->EndTimeblock();
     }
 }
