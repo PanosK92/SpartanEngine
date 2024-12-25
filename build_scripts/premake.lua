@@ -130,6 +130,8 @@ function solution_configuration()
             platforms { "windows" }
         elseif os.target() == "linux" then
             platforms { "linux" }
+		elseif os.target() == "freebsd" then
+            platforms { "freebsd" }
         end
 
         -- system & architecture
@@ -143,7 +145,12 @@ function solution_configuration()
                 system "linux"
                 architecture "x86_64"
 				buildoptions { "-mavx2" }
-        end
+		elseif os.target() == "freebsd" then
+            filter { "platforms:FreeBSD" }
+                system "freebsd"
+                architecture "x86_64"
+				buildoptions { "-mavx2" }        
+		end
 
         -- "Debug"
         filter "configurations:debug"
@@ -207,12 +214,18 @@ function runtime_project_configuration()
 			includedirs { "../third_party/meshoptimizer" }
 			includedirs { "../third_party/dxc" }
             includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
-        else
+        elseif os.target() == "linux" then
             includedirs { "/usr/include/SDL2" }
             includedirs { "/usr/include/assimp" }
             includedirs { "/usr/include/bullet" }
             includedirs { "/usr/include/freetype2" }
             includedirs { "/usr/include/renderdoc" }
+		elseif os.target() == "freebsd" then
+			includedirs { "/usr/local/include/SDL2" }
+            includedirs { "/usr/local/include/assimp" }
+            includedirs { "/usr/local/include/bullet" }
+            includedirs { "/usr/local/include/freetype2" }
+            includedirs { "/usr/local/include/renderdoc" }
         end
 
   includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
@@ -305,10 +318,13 @@ function editor_project_configuration()
         if os.target() == "windows" then
             includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
             includedirs { "../third_party/sdl/sdl" }  	   -- SDL, used by ImGui to create windows
-        else
+        elseif os.target() == "linux" then
             includedirs { "/usr/include/SDL2" }
             includedirs { "/usr/include/freetype2" }
-        end
+		elseif os.target() == "freebsd" then
+		    includedirs { "/usr/local/include/SDL2" }
+            includedirs { "/usr/local/include/freetype2" }        
+		end
 
         -- Libraries
         libdirs (LIBRARY_DIR)

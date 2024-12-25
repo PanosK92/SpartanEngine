@@ -20,6 +20,7 @@
 import sys
 import subprocess
 import importlib
+import platform
 
 def install_and_import(package):
     try:
@@ -74,14 +75,23 @@ def download_file(url, destination, expected_hash):
 
 def extract_archive(archive_path, destination_path, is_windows, use_working_dir=False):
     # Determine the path to 7z based on the use_working_dir flag
+    seven_zip_exe = '7z'
     if use_working_dir:
         seven_zip_exe = '7z.exe' if is_windows else '7za'
     else:
         exe_dir = os.path.join(os.getcwd(), 'build_scripts')
-        seven_zip_exe = os.path.join(exe_dir, '7z.exe' if is_windows else '7za')
+        if is_windows:
+            seven_zip_exe = os.path.join(exe_dir, '7z.exe')
+        elif platform.system() == 'Linux':
+            seven_zip_exe = os.path.join(exe_dir, '7za')
+        elif platform.system() == "FreeBSD":
+            seven_zip_exe = os.path.join(exe_dir, '/usr/local/bin/7z')
+        else:
+            print("Unsupported platform!")
+            return
 
     # Construct the command
-    cmd = f"{seven_zip_exe} x {archive_path} -o{destination_path} -aoa"
+    cmd = f"{seven_zip_exe} x {archive_path} -o{destination_path}"
 
     print(f"Extracting {archive_path} to {destination_path} using: {seven_zip_exe}")
 
@@ -93,7 +103,6 @@ def extract_archive(archive_path, destination_path, is_windows, use_working_dir=
         print(f"An error occurred while extracting: {e}")
         print(f"Error output: {e.stderr}")
         raise  # Re-raise the exception for higher-level error handling if needed
-
     except FileNotFoundError:
         print(f"The 7z executable was not found at {seven_zip_exe}. Please check the path or installation.")
         raise
