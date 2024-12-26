@@ -22,13 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON
 #define SPARTAN_COMMON
 
-//= INCLUDES ==========================
-#include "common_buffers.hlsl"
-#include "common_samplers.hlsl"
-#include "common_textures_storage.hlsl"
+//= INCLUDES ====================
+#include "common_resources.hlsl"
 #include "common_colorspace.hlsl"
 #include "common_sampling.hlsl"
-//=====================================
+//===============================
 
 /*------------------------------------------------------------------------------
     CONSTANTS

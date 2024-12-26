@@ -78,11 +78,11 @@ struct Surface
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
         // access resources
-        float4 sample_albedo   = use_albedo ? tex_albedo[position_screen] : 0.0f;
-        float4 sample_normal   = tex_normal[position_screen];
-        float4 sample_material = tex_material[position_screen];
-        float sample_depth     = tex_depth[position_screen].r;
-        Material material      = buffer_materials[sample_normal.a];
+        float4 sample_albedo        = use_albedo ? tex_albedo[position_screen] : 0.0f;
+        float4 sample_normal        = tex_normal[position_screen];
+        float4 sample_material      = tex_material[position_screen];
+        float sample_depth          = tex_depth[position_screen].r;
+        MaterialParameters material = material_parameters[sample_normal.a];
         
         // fill properties
         pos                   = position_screen;
@@ -240,23 +240,23 @@ struct Light
 
     void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
-        index             = (uint)pass_get_f3_value2().x;
-        Light_ light      = buffer_lights[index];
-        flags             = light.flags;
-        transform         = light.transform;
-        color             = light.color.rgb;
-        position          = light.position.xyz;
-        intensity         = light.intensity;
-        near              = 0.01f;
-        far               = light.range;
-        angle             = light.angle;
-        forward           = is_point() ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
-        distance_to_pixel = length(surface_position - position);
-        to_pixel          = compute_direction(position, surface_position);
-        n_dot_l           = saturate(dot(surface_normal, -to_pixel));
-        attenuation       = compute_attenuation(surface_position);
-        resolution        = compute_resolution();
-        texel_size        = 1.0f / resolution;
+        index                 = (uint)pass_get_f3_value2().x;
+        LightParameters light = light_parameters[index];
+        flags                 = light.flags;
+        transform             = light.transform;
+        color                 = light.color.rgb;
+        position              = light.position.xyz;
+        intensity             = light.intensity;
+        near                  = 0.01f;
+        far                   = light.range;
+        angle                 = light.angle;
+        forward               = is_point() ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
+        distance_to_pixel     = length(surface_position - position);
+        to_pixel              = compute_direction(position, surface_position);
+        n_dot_l               = saturate(dot(surface_normal, -to_pixel));
+        attenuation           = compute_attenuation(surface_position);
+        resolution            = compute_resolution();
+        texel_size            = 1.0f / resolution;
 
         radiance = color * intensity * attenuation * n_dot_l * occlusion;
     }

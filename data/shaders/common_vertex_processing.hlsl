@@ -237,8 +237,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     gbuffer_vertex vertex;
 
     // compute uv
-    Material material = GetMaterial();
-    vertex.uv         = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
+    MaterialParameters material = GetMaterial();
+    vertex.uv                   = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
 
     // compute the final world transform
     bool is_instanced         = instance_id != 0; // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
@@ -273,7 +273,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 {
     // get material and surface
-    Material material = GetMaterial();
+    MaterialParameters material = GetMaterial();
     Surface surface; surface.flags = material.flags;
     
      // apply ambient animation - done here so it can benefit from potentially tessellated surfaces
@@ -374,12 +374,12 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     }
 
     // displace
-    Material material = GetMaterial(); Surface surface; surface.flags = material.flags;
+    MaterialParameters material = GetMaterial(); Surface surface; surface.flags = material.flags;
     bool tessellated  = input.edges[0] > 1.0f || input.edges[1] > 1.0f || input.edges[2] > 1.0f || input.inside > 1.0f;
     if (surface.has_texture_height() && tessellated)
     {
         float height              = 1.0f - GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).a;
-        float strength            = GetMaterial().height * 0.1f;
+        float strength            = material.height * 0.1f;
         float3 tangent_1          = patch[1].position - patch[0].position;
         float3 tangent_2          = patch[2].position - patch[0].position;
         float3 normal_stable      = cross(tangent_1, tangent_2);
