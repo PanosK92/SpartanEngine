@@ -1671,14 +1671,9 @@ namespace Spartan
             uint32_t storage_textures         = 0;
             uint32_t storage_buffers          = 0;
             uint32_t dynamic_constant_buffers = 0;
-            uint32_t samplers                 = 0;
             for (const RHI_Descriptor& descriptor : descriptors_)
             {
-                if (descriptor.type == RHI_Descriptor_Type::Sampler)
-                {
-                    samplers++;
-                }
-                else if (descriptor.type == RHI_Descriptor_Type::Texture)
+                if (descriptor.type == RHI_Descriptor_Type::Texture)
                 {
                     textures++;
                 }
@@ -1696,7 +1691,6 @@ namespace Spartan
                 }
             }
 
-            SP_ASSERT_MSG(samplers                 <= rhi_max_array_size, "Descriptor set requires more samplers");
             SP_ASSERT_MSG(textures                 <= rhi_max_array_size, "Descriptor set requires more textures");
             SP_ASSERT_MSG(storage_textures         <= rhi_max_array_size, "Descriptor set requires more storage textures");
             SP_ASSERT_MSG(storage_buffers          <= rhi_max_array_size, "Descriptor set requires more dynamic storage buffers");
@@ -1737,9 +1731,6 @@ namespace Spartan
 
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
     {
-        if (descriptor.type == RHI_Descriptor_Type::Sampler)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
-
         if (descriptor.type == RHI_Descriptor_Type::Texture)
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 

@@ -116,10 +116,6 @@ namespace Spartan
         template<typename T>
         void PushConstants(const T& data) { PushConstants(0, sizeof(T), &data); }
 
-        // sampler
-        void SetSampler(const uint32_t slot, RHI_Sampler* sampler) const;
-        void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
-
         // texture
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0, const bool uav = false);
         void SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true); }

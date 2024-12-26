@@ -47,7 +47,6 @@ namespace Spartan
         // set
         void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer);
         void SetBuffer(const uint32_t slot, RHI_Buffer* buffer);
-        void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range);
 
         // dynamic offsets

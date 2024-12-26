@@ -81,19 +81,6 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetSampler(const uint32_t slot, RHI_Sampler* sampler)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptors)
-        {
-            if (descriptor.slot == slot + rhi_shader_register_shift_s)
-            {
-                descriptor.data = static_cast<void*>(sampler);
-
-                return;
-            }
-        }
-    }
-
     void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range)
     {
         bool mip_specified      = mip_index != rhi_all_mips;

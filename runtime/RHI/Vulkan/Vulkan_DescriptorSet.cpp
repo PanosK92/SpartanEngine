@@ -71,17 +71,7 @@ namespace Spartan
             uint32_t descriptor_index_start = 0;
             uint32_t descriptor_count       = 1;
 
-            if (descriptor.type == RHI_Descriptor_Type::Sampler)
-            {
-                image_index++;
-
-                info_images[image_index].sampler     = static_cast<VkSampler>(static_cast<RHI_Sampler*>(descriptor.data)->GetRhiResource());
-                info_images[image_index].imageView   = nullptr;
-                info_images[image_index].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-                descriptor_index_start = image_index;
-            }
-            else if (descriptor.type == RHI_Descriptor_Type::Texture || descriptor.type == RHI_Descriptor_Type::TextureStorage)
+            if (descriptor.type == RHI_Descriptor_Type::Texture || descriptor.type == RHI_Descriptor_Type::TextureStorage)
             {
                 RHI_Texture* texture     = static_cast<RHI_Texture*>(descriptor.data);
                 const bool mip_specified = descriptor.mip != rhi_all_mips;

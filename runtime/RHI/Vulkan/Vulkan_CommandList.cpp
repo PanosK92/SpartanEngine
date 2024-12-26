@@ -1293,20 +1293,6 @@ namespace Spartan
         descriptor_sets::bind_dynamic = true;
     }
 
-    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        if (!m_descriptor_layout_current)
-        {
-            SP_LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetObjectName().c_str());
-            return;
-        }
-
-        // Set (will only happen if it's not already set)
-        m_descriptor_layout_current->SetSampler(slot, sampler);
-    }
-
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

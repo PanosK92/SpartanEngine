@@ -285,11 +285,6 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
     
-    void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
-    {
-        SP_ASSERT_MSG(false, "Function is not implemented");
-    }
-
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= rhi_all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");

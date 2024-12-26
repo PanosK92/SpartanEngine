@@ -261,7 +261,6 @@ namespace Spartan
 
     enum class RHI_Descriptor_Type
     {
-        Sampler,
         Texture,
         TextureStorage,
         PushConstantBuffer,
