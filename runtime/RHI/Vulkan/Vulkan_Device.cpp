@@ -1663,40 +1663,6 @@ namespace Spartan
 
     void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_Descriptor>& descriptors_)
     {
-        // verify that an allocation is possible
-        {
-            SP_ASSERT_MSG(descriptors::allocated_descriptor_sets < rhi_max_descriptor_set_count, "Reached descriptor set limit");
-
-            uint32_t textures                 = 0;
-            uint32_t storage_textures         = 0;
-            uint32_t storage_buffers          = 0;
-            uint32_t dynamic_constant_buffers = 0;
-            for (const RHI_Descriptor& descriptor : descriptors_)
-            {
-                if (descriptor.type == RHI_Descriptor_Type::Texture)
-                {
-                    textures++;
-                }
-                else if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
-                {
-                    storage_textures++;
-                }
-                else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
-                {
-                    storage_buffers++;
-                }
-                else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-                {
-                    dynamic_constant_buffers++;
-                }
-            }
-
-            SP_ASSERT_MSG(textures                 <= rhi_max_array_size, "Descriptor set requires more textures");
-            SP_ASSERT_MSG(storage_textures         <= rhi_max_array_size, "Descriptor set requires more storage textures");
-            SP_ASSERT_MSG(storage_buffers          <= rhi_max_array_size, "Descriptor set requires more dynamic storage buffers");
-            SP_ASSERT_MSG(dynamic_constant_buffers <= rhi_max_array_size, "Descriptor set requires more dynamic constant buffers");
-        }
-
         // describe
         array<void*, 1> descriptor_set_layouts    = { descriptor_set_layout->GetRhiResource() };
         VkDescriptorSetAllocateInfo allocate_info = {};

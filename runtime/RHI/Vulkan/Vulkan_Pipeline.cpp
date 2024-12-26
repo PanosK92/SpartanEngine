@@ -86,19 +86,15 @@ namespace Spartan
 
         // pipeline layout
         {
-            // order is important here, as it will be used to index the descriptor sets
-            array<void*, 4> layouts =
+            // build descriptor set layouts array - must much the order in common_textures_storage.hlsl
+            array<void*, static_cast<size_t>(RHI_Device_Bindless_Resource::Max) + 1> layouts;
             {
-                descriptor_set_layout->GetRhiResource(),
-                RHI_Device::GetDescriptorSetLayout(RHI_Device_Bindless_Resource::MaterialTextures),
-                RHI_Device::GetDescriptorSetLayout(RHI_Device_Bindless_Resource::SamplersComparison),
-                RHI_Device::GetDescriptorSetLayout(RHI_Device_Bindless_Resource::SamplersRegular)
-            };
-
-            // validate descriptor set layouts
-            for (void* layout : layouts)
-            {
-                SP_ASSERT(layout != nullptr);
+                layouts[0] = descriptor_set_layout->GetRhiResource();
+                
+                for (size_t i = 0; i < static_cast<size_t>(RHI_Device_Bindless_Resource::Max); i++)
+                {
+                    layouts[i + 1] = RHI_Device::GetDescriptorSetLayout(static_cast<RHI_Device_Bindless_Resource>(i));
+                }
             }
 
             // push constant buffers
