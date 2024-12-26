@@ -306,11 +306,12 @@ namespace Spartan
         }
     }
 
-    enum class RHI_Device_Resource
+    enum class RHI_Device_Bindless_Resource
     {
-        sampler_comparison,
-        sampler_regular,
-        textures_material
+        SamplersComparison,
+        SamplersRegular,
+        MaterialTextures,
+        Max
     };
 
     static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
@@ -419,10 +420,10 @@ namespace Spartan
 
     // shader register slot shifts (required to produce spirv from hlsl)
     // 000-099 is push constant buffer range
-    const uint32_t rhi_shader_shift_register_u   = 100;
-    const uint32_t rhi_shader_shift_register_b   = 200;
-    const uint32_t rhi_shader_shift_register_t   = 300;
-    const uint32_t rhi_shader_shift_register_s   = 400;
+    const uint32_t rhi_shader_register_shift_u   = 100;
+    const uint32_t rhi_shader_register_shift_b   = 200;
+    const uint32_t rhi_shader_register_shift_t   = 300;
+    const uint32_t rhi_shader_register_shift_s   = 400;
     const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
     const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     const float    rhi_depth_dont_care           = std::numeric_limits<float>::max();

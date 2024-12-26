@@ -49,8 +49,8 @@ namespace Spartan
         static void CreateDescriptorPool();
         static void AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const std::vector<RHI_Descriptor>& descriptors);
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
-        static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
-        static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
+        static void* GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type);
+        static void* GetDescriptorSetLayout(const RHI_Device_Bindless_Resource resource_type);
         static void UpdateBindlessResources(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers, std::array<RHI_Texture*, rhi_max_array_size>* textures);
 
         // pipelines

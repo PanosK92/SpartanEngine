@@ -308,9 +308,9 @@ namespace Spartan
         {
             array<void*, 3> resources =
             {
-                RHI_Device::GetDescriptorSet(RHI_Device_Resource::textures_material),
-                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_comparison),
-                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular)
+                RHI_Device::GetDescriptorSet(RHI_Device_Bindless_Resource::MaterialTextures),
+                RHI_Device::GetDescriptorSet(RHI_Device_Bindless_Resource::SamplersComparison),
+                RHI_Device::GetDescriptorSet(RHI_Device_Bindless_Resource::SamplersRegular)
             };
 
             VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;

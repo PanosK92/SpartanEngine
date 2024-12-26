@@ -118,10 +118,10 @@ namespace Spartan
                 arguments.emplace_back("-fspv-preserve-interface"); // preserves all interface variables in the entry point, even when those variables are unused
 
                 // shift registers to avoid conflicts
-                arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
-                arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // binding number shift for b-type (buffer) register
-                arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // binding number shift for t-type (texture) register
-                arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // binding number shift for s-type (sampler) register
+                arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
+                arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_b)); arguments.emplace_back("all"); // binding number shift for b-type (buffer) register
+                arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_t)); arguments.emplace_back("all"); // binding number shift for t-type (texture) register
+                arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_s)); arguments.emplace_back("all"); // binding number shift for s-type (sampler) register
             }
 
             // directX conventions

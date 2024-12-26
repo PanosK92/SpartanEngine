@@ -52,7 +52,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.slot == slot + rhi_shader_shift_register_b)
+            if (descriptor.slot == slot + rhi_shader_register_shift_b)
             {
                 descriptor.data           = static_cast<void*>(constant_buffer); // needed for vkUpdateDescriptorSets()
                 descriptor.range          = constant_buffer->GetStride();        // needed for vkUpdateDescriptorSets()
@@ -70,7 +70,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.slot == slot + rhi_shader_shift_register_u)
+            if (descriptor.slot == slot + rhi_shader_register_shift_u)
             {
                 descriptor.data           = static_cast<void*>(buffer);
                 descriptor.range          = buffer->GetStride();
@@ -85,7 +85,7 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.slot == slot + rhi_shader_shift_register_s)
+            if (descriptor.slot == slot + rhi_shader_register_shift_s)
             {
                 descriptor.data = static_cast<void*>(sampler);
 
@@ -104,7 +104,7 @@ namespace Spartan
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             bool is_storage = layout == RHI_Image_Layout::General;
-            uint32_t shift  = is_storage ? rhi_shader_shift_register_u : rhi_shader_shift_register_t;
+            uint32_t shift  = is_storage ? rhi_shader_register_shift_u : rhi_shader_register_shift_t;
 
             if (descriptor.slot == (slot + shift))
             {
