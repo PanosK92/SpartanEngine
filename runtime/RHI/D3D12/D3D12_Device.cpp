@@ -257,7 +257,12 @@ namespace Spartan
         return false;
     }
 
-    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers, array<RHI_Texture*, rhi_max_array_size>* textures)
+    void RHI_Device::UpdateBindlessResources(
+        array<RHI_Texture*, rhi_max_array_size>* material_textures,
+        RHI_Buffer* material_parameters,
+        RHI_Buffer* light_parameters,
+        const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers
+    )
     {
 
     }

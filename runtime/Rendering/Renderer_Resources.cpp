@@ -58,7 +58,7 @@ namespace Spartan
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)> render_targets;
         array<shared_ptr<RHI_Shader>,  static_cast<uint32_t>(Renderer_Shader::max)>       shaders;
         array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>      samplers;
-        array<shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>        buffers;
+        array<shared_ptr<RHI_Buffer>,  static_cast<uint32_t>(Renderer_Buffer::Max)>       buffers;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_StandardTexture::Max)> standard_textures;
@@ -76,20 +76,21 @@ namespace Spartan
         buffer(Renderer_Buffer::ConstantFrame) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame), element_count, nullptr, true, "frame");
 
         // single dispatch downsample buffer
-        uint32_t times_used_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
-        uint32_t stride              = static_cast<uint32_t>(sizeof(uint32_t));
-        buffer(Renderer_Buffer::StorageSpd) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
+        uint32_t times_used_in_frame        = 12; // safe to tweak this, if it's not enough the engine will assert
+        uint32_t stride                     = static_cast<uint32_t>(sizeof(uint32_t));
+        buffer(Renderer_Buffer::SpdCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
 
-        stride = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
-        buffer(Renderer_Buffer::StorageMaterials) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
+        stride                                      = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
+        buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
 
-        stride = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
-        buffer(Renderer_Buffer::StorageLights) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
+        stride                                   = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
+        buffer(Renderer_Buffer::LightParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
     }
 
     void Renderer::CreateDepthStencilStates()
     {
         #define depth_stencil_state(x) depth_stencil_states[static_cast<uint8_t>(x)]
+
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
         depth_stencil_state(Renderer_DepthStencilState::Off)              = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never);
         depth_stencil_state(Renderer_DepthStencilState::ReadEqual)        = make_shared<RHI_DepthStencilState>(true,  false, RHI_Comparison_Function::Equal);
@@ -118,7 +119,7 @@ namespace Spartan
     {
         #define blend_state(x) blend_states[static_cast<uint8_t>(x)]
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        blend_state(Renderer_BlendState::Off) = make_shared<RHI_BlendState>(false);
+        blend_state(Renderer_BlendState::Off)      = make_shared<RHI_BlendState>(false);
         blend_state(Renderer_BlendState::Alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
         blend_state(Renderer_BlendState::Additive) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
     }
@@ -165,7 +166,7 @@ namespace Spartan
             }
         }
 
-        RHI_Device::UpdateBindlessResources(&samplers, nullptr);
+        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &samplers);
     }
 
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)

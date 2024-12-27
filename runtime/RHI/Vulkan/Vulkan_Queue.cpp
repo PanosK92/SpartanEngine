@@ -208,7 +208,7 @@ namespace Spartan
                     RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved();
                 }
 
-                SP_ERROR_WINDOW("GPU crash");
+                SP_ERROR_WINDOW("GPU crashed");
             }
 
             SP_ASSERT_VK(result);

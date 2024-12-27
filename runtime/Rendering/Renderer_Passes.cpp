@@ -365,9 +365,7 @@ namespace Spartan
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
-        cmd_list->SetBuffer(Renderer_BindingsUav::sb_materials, GetBuffer(Renderer_Buffer::StorageMaterials));
-        cmd_list->SetBuffer(Renderer_BindingsUav::sb_lights,    GetBuffer(Renderer_Buffer::StorageLights));
-        cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::StorageSpd));
+        cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::SpdCounter));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)
@@ -1834,7 +1832,7 @@ namespace Spartan
         if (!initialized)
         { 
             uint32_t counter_value = 0;
-            GetBuffer(Renderer_Buffer::StorageSpd)->Update(cmd_list, &counter_value);
+            GetBuffer(Renderer_Buffer::SpdCounter)->Update(cmd_list, &counter_value);
             initialized = true;
         }
 

@@ -309,6 +309,8 @@ namespace Spartan
     {
         // must match order of appearance in common_textures_storage.hlsl
         MaterialTextures,
+        MaterialParameters,
+        LightParameters,
         SamplersComparison,
         SamplersRegular,
         Max

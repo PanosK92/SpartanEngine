@@ -140,20 +140,20 @@ namespace Spartan
         sss         = 23,
 
         // bindless
-        materials = 24
+        material_textures   = 24,
+        material_parameters = 25,
+        light_parameters    = 26
     };
 
     enum class Renderer_BindingsUav
     {
-        sb_materials      = 0,
-        sb_lights         = 1,
-        tex               = 2,
-        tex2              = 3,
-        tex3              = 4,
-        tex4              = 5,
-        tex_sss           = 6,
-        sb_spd            = 7,
-        tex_spd           = 8,
+        tex               = 0,
+        tex2              = 1,
+        tex3              = 2,
+        tex4              = 3,
+        tex_sss           = 4,
+        sb_spd            = 5,
+        tex_spd           = 6,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -263,9 +263,9 @@ namespace Spartan
     enum class Renderer_Buffer
     {
         ConstantFrame,
-        StorageSpd,
-        StorageMaterials,
-        StorageLights,
+        SpdCounter,
+        MaterialParameters,
+        LightParameters,
         Max
     };
 

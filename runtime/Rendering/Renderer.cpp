@@ -591,21 +591,30 @@ namespace Spartan
                 }
 
                 // reset dynamic buffer offsets
-                GetBuffer(Renderer_Buffer::StorageSpd)->ResetOffset();
+                GetBuffer(Renderer_Buffer::SpdCounter)->ResetOffset();
                 GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
             }
         }
 
         if (bindless_materials_dirty)
         {
-            BindlessUpdateMaterials(cmd_list);                                // properties
-            RHI_Device::UpdateBindlessResources(nullptr, &bindless_textures); // textures
+            // update parameters buffer
+            BindlessUpdateMaterialsParameters(cmd_list);
+
+            // update bindless descriptors with the textures and the parameters
+            RHI_Device::UpdateBindlessResources(&bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr);
+
             bindless_materials_dirty = false;
         }
 
         if (bindless_lights_dirty)
         {
+            // update parameters buffer
             BindlessUpdateLights(cmd_list);
+
+            // update the bindless descriptor with the light parameters
+            RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr);
+
             bindless_lights_dirty = false;
         }
 
@@ -850,7 +859,7 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque,   GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque));
     }
     
-    void Renderer::BindlessUpdateMaterials(RHI_CommandList* cmd_list)
+    void Renderer::BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list)
     {
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
@@ -963,9 +972,9 @@ namespace Spartan
         // gpu
         {
             // material properties
-            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->ResetOffset();
+            Renderer::GetBuffer(Renderer_Buffer::MaterialParameters)->ResetOffset();
             uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
-            Renderer::GetBuffer(Renderer_Buffer::StorageMaterials)->Update(cmd_list, &properties[0], update_size);
+            Renderer::GetBuffer(Renderer_Buffer::MaterialParameters)->Update(cmd_list, &properties[0], update_size);
         }
 
         index = 0;
@@ -1033,7 +1042,7 @@ namespace Spartan
 
         // cpu to gpu
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::StorageLights);
+        RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
         buffer->Update(cmd_list, &properties[0], update_size);
     }

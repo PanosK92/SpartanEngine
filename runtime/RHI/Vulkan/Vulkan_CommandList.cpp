@@ -306,12 +306,11 @@ namespace Spartan
 
         void set_bindless(const RHI_PipelineState pso, void* resource, void* pipeline_layout)
         {
-            array<void*, 3> resources =
+            array<void*, static_cast<size_t>(RHI_Device_Bindless_Resource::Max)> resources;
+            for (size_t i = 0; i < static_cast<size_t>(resources.size()); i++)
             {
-                RHI_Device::GetDescriptorSet(RHI_Device_Bindless_Resource::MaterialTextures),
-                RHI_Device::GetDescriptorSet(RHI_Device_Bindless_Resource::SamplersComparison),
-                RHI_Device::GetDescriptorSet(RHI_Device_Bindless_Resource::SamplersRegular)
-            };
+                resources[i] = RHI_Device::GetDescriptorSet(static_cast<RHI_Device_Bindless_Resource>(i));
+            }
 
             VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
             vkCmdBindDescriptorSets
@@ -319,7 +318,7 @@ namespace Spartan
                 static_cast<VkCommandBuffer>(resource),               // commandBuffer
                 bind_point,                                           // pipelineBindPoint
                 static_cast<VkPipelineLayout>(pipeline_layout),       // layout
-                1,                                                    // firstSet
+                1,                                                    // firstSet - 0 is reserved for the old-school/dynamic/bind based descriptor sets
                 static_cast<uint32_t>(resources.size()),              // descriptorSetCount
                 reinterpret_cast<VkDescriptorSet*>(resources.data()), // pDescriptorSets
                 0,                                                    // dynamicOffsetCount

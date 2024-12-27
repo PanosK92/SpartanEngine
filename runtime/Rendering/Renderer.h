@@ -189,7 +189,7 @@ namespace Spartan
         static void DestroyResources();
 
         // bindless
-        static void BindlessUpdateMaterials(RHI_CommandList* cmd_list);
+        static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);
         static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
 
         // misc

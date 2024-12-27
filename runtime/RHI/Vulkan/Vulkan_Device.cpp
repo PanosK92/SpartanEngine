@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
+#include "../RHI_Buffer.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -402,7 +403,7 @@ namespace Spartan
         {
             VkDebugUtilsMessengerEXT messenger;
 
-            VKAPI_ATTR VkBool32 VKAPI_CALL callback
+            VKAPI_ATTR VkBool32 VKAPI_CALL log
             (
                 VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
                 VkDebugUtilsMessageTypeFlagsEXT msg_type,
@@ -460,7 +461,7 @@ namespace Spartan
                     create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
                     create_info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
                     create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-                    create_info.pfnUserCallback                    = callback;
+                    create_info.pfnUserCallback                    = log;
 
                     functions::create_messenger(RHI_Context::instance, &create_info, nullptr, &messenger);
                 }
@@ -904,14 +905,25 @@ namespace Spartan
             array<VkDescriptorSet, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> sets;
             array<VkDescriptorSetLayout, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> layouts;
 
-            void create_layout(const RHI_Device_Bindless_Resource resource_type, const uint32_t binding, const uint32_t resource_count, const string& debug_name)
+            void create_layout(const RHI_Device_Bindless_Resource type, const uint32_t count, const uint32_t binding, const string& name)
             {
                   VkDescriptorSetLayoutBinding layout_binding = {};
                   layout_binding.binding                      = binding;
-                  layout_binding.descriptorType               = resource_type == RHI_Device_Bindless_Resource::MaterialTextures ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLER;
-                  layout_binding.descriptorCount              = rhi_max_array_size;
-                  layout_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-                  layout_binding.pImmutableSamplers           = nullptr;
+                  layout_binding.descriptorType               = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+                  if (type == RHI_Device_Bindless_Resource::MaterialTextures)
+                  {
+                      layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                  }
+                  else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters)
+                  {
+                      layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                  }
+                  else if (type == RHI_Device_Bindless_Resource::SamplersComparison || type == RHI_Device_Bindless_Resource::SamplersRegular)
+                  {
+                      layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+                  }
+                  layout_binding.descriptorCount    = count;
+                  layout_binding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
                   VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
 
@@ -927,39 +939,39 @@ namespace Spartan
                   layout_info.flags                           = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
                   layout_info.pNext                           = &layout_binding_flags;
 
-                  VkDescriptorSetLayout* layout = &layouts[static_cast<uint32_t>(resource_type)];
+                  VkDescriptorSetLayout* layout = &layouts[static_cast<uint32_t>(type)];
                   SP_ASSERT_VK(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, layout));
-                  RHI_Device::SetResourceName(static_cast<void*>(*layout), RHI_Resource_Type::DescriptorSetLayout, debug_name);
+                  RHI_Device::SetResourceName(static_cast<void*>(*layout), RHI_Resource_Type::DescriptorSetLayout, name);
             }
 
-            void create_set(const RHI_Device_Bindless_Resource resource_type, const uint32_t resource_count, const string& debug_name)
+            void create_set(const RHI_Device_Bindless_Resource type, const uint32_t count, const string& debug_name)
             {
                 // allocate descriptor set with actual descriptor count
                 VkDescriptorSetVariableDescriptorCountAllocateInfoEXT real_descriptor_count_info = {};
                 real_descriptor_count_info.sType                                                 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-                real_descriptor_count_info.descriptorSetCount                                    = 1;               // one descriptor set
-                real_descriptor_count_info.pDescriptorCounts                                     = &resource_count; // actual number of textures being used
+                real_descriptor_count_info.descriptorSetCount                                    = 1;      // one descriptor set
+                real_descriptor_count_info.pDescriptorCounts                                     = &count; // actual number of textures being used
 
                 // allocate descriptor set
                 VkDescriptorSetAllocateInfo allocation_info = {};
                 allocation_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
                 allocation_info.descriptorPool              = descriptors::descriptor_pool;
                 allocation_info.descriptorSetCount          = 1;
-                allocation_info.pSetLayouts                 = &layouts[static_cast<uint32_t>(resource_type)];
+                allocation_info.pSetLayouts                 = &layouts[static_cast<uint32_t>(type)];
                 allocation_info.pNext                       = &real_descriptor_count_info;
 
                 // create
-                VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(resource_type)];
+                VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(type)];
                 SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set));
                 RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
             }
 
-            void update(const void* data, const uint32_t count, const uint32_t slot, const RHI_Device_Bindless_Resource type, const string& name)
+            void update(void* data, const uint32_t count, const uint32_t slot, const RHI_Device_Bindless_Resource type, const string& name)
             {
                 // deduce binding from slot (HLSL register style)
                 uint32_t binding = 0;
-                if (type == RHI_Device_Bindless_Resource::MaterialTextures)
-                { 
+                if (type == RHI_Device_Bindless_Resource::MaterialTextures  || type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters)
+                {
                     binding = rhi_shader_register_shift_t + slot;
                 }
                 else
@@ -967,31 +979,28 @@ namespace Spartan
                     binding = rhi_shader_register_shift_s + slot;
                 }
 
-                // create layout and and layout set (if needed)
+                // on the first run, create layout and set
                 if (layouts[static_cast<uint32_t>(type)] == nullptr)
                 {
-                    create_layout(type, binding, count, name);
+                    create_layout(type, count, binding, name);
                     create_set(type, count, name);
                 }
             
                 // update
+                if (type == RHI_Device_Bindless_Resource::MaterialTextures || type == RHI_Device_Bindless_Resource::SamplersRegular || type == RHI_Device_Bindless_Resource::SamplersComparison)
                 {
                     vector<VkDescriptorImageInfo> image_infos(count);
                     if (type == RHI_Device_Bindless_Resource::MaterialTextures)
                     {
                         const auto* textures = static_cast<const array<RHI_Texture*, rhi_max_array_size>*>(data);
-
+            
                         for (uint32_t i = 0; i < count; ++i)
                         {
-                            RHI_Texture* texture = (*textures)[i];
-                            if (!texture)
-                                continue;
-            
-                            // get texture, fallback to checkerboard texture if null
-                            void* srv_default = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard)->GetRhiSrv();
-                            void* resource    = texture ? texture->GetRhiSrv() : srv_default;
-            
-                            image_infos[i].sampler     = nullptr;
+                            // get texture with fallback to a default texture
+                            RHI_Texture* texture   = (*textures)[i];
+                            void* resource_default = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard)->GetRhiSrv();
+                            void* resource         = (texture && texture->GetRhiSrv()) ? texture->GetRhiSrv() : resource_default;
+
                             image_infos[i].imageView   = static_cast<VkImageView>(resource);
                             image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                         }
@@ -999,12 +1008,10 @@ namespace Spartan
                     else if (type == RHI_Device_Bindless_Resource::SamplersRegular || type == RHI_Device_Bindless_Resource::SamplersComparison)
                     {
                         const auto* samplers = static_cast<const shared_ptr<RHI_Sampler>*>(data);
-
+            
                         for (uint32_t i = 0; i < count; ++i)
                         {
-                            image_infos[i].sampler     = static_cast<VkSampler>(samplers[i]->GetRhiResource());
-                            image_infos[i].imageView   = nullptr;
-                            image_infos[i].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                            image_infos[i].sampler = static_cast<VkSampler>(samplers[i]->GetRhiResource());
                         }
                     }
             
@@ -1016,6 +1023,26 @@ namespace Spartan
                     descriptor_write.descriptorType       = type == RHI_Device_Bindless_Resource::MaterialTextures ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLER;
                     descriptor_write.descriptorCount      = count;
                     descriptor_write.pImageInfo           = image_infos.data();
+            
+                    vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
+                }
+                else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters)
+                {
+                    RHI_Buffer* buffer = static_cast<RHI_Buffer*>(data);
+
+                    VkDescriptorBufferInfo buffer_info = {};
+                    buffer_info.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
+                    buffer_info.offset                 = 0;
+                    buffer_info.range                  = buffer->GetObjectSize();
+            
+                    VkWriteDescriptorSet descriptor_write = {};
+                    descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    descriptor_write.dstSet               = sets[static_cast<uint32_t>(type)];
+                    descriptor_write.dstBinding           = binding;
+                    descriptor_write.dstArrayElement      = 0; // starting element in the array
+                    descriptor_write.descriptorType       = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                    descriptor_write.descriptorCount      = count;
+                    descriptor_write.pBufferInfo          = &buffer_info;
             
                     vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
                 }
@@ -1713,7 +1740,12 @@ namespace Spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::UpdateBindlessResources(const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers, array<RHI_Texture*, rhi_max_array_size>* textures)
+    void RHI_Device::UpdateBindlessResources(
+        array<RHI_Texture*, rhi_max_array_size>* material_textures,
+        RHI_Buffer* material_parameters,
+        RHI_Buffer* light_parameters,
+        const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers
+    )
     {
         if (samplers)
         {
@@ -1745,27 +1777,21 @@ namespace Spartan
             }
         }
 
-        // textures
+        // lights
+        if (light_parameters)
         {
-            const uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::materials);
+            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::light_parameters);
+            descriptors::bindless::update(light_parameters, 1, binding_slot, RHI_Device_Bindless_Resource::LightParameters, "light_parameters");
+        }
 
-            // by the time vkCmdBindDescriptorSets runs, we can't have a null descriptor set, so make sure there is something there
-            {
-                bool first_run   = descriptors::bindless::sets[static_cast<uint32_t>(RHI_Device_Bindless_Resource::MaterialTextures)] == nullptr;
-                bool no_textures = textures == nullptr;
+        // textures
+        if (material_textures || material_parameters)
+        {
+            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::material_textures);
+            descriptors::bindless::update(&material_textures[0], rhi_max_array_size, binding_slot, RHI_Device_Bindless_Resource::MaterialTextures, "material_textures");
 
-                if (first_run && no_textures)
-                {
-                    array<RHI_Texture*, rhi_max_array_size> array_dummy;
-                    array_dummy.fill(nullptr);
-                    descriptors::bindless::update(&array_dummy[0], static_cast<uint32_t>(array_dummy.size()), binding_slot, RHI_Device_Bindless_Resource::MaterialTextures, "material_textures");
-                }
-            }
-
-            if (textures)
-            {
-                descriptors::bindless::update(&textures[0], rhi_max_array_size, binding_slot, RHI_Device_Bindless_Resource::MaterialTextures, "material_textures");
-            }
+            binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::material_parameters);
+            descriptors::bindless::update(material_parameters, 1, binding_slot, RHI_Device_Bindless_Resource::MaterialParameters, "material_parameters");
         }
     }
 
