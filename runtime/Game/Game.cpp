@@ -678,7 +678,7 @@ namespace Spartan
 
         void create_sponza()
         {
-            create_camera(Vector3(-27.405f, 3.5f, -0.07f), Vector3(-8.5f, 90.0f, 0.0f));
+            create_camera(Vector3(19.2692f, 2.65f, 0.1677), Vector3(-18.0f, -90.0f, 0.0f));
             create_sun(LightIntensity::black_hole, false);
             create_music("project\\music\\jake_chudnow_olive.mp3");
 
