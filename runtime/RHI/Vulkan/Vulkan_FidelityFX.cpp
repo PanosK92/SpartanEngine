@@ -505,7 +505,7 @@ namespace Spartan
             const uint32_t cascade_resolution       = 64;
             const bool     sdf_center_around_camera = true;
             const float    sdf_ray_normal_offset    = 0.5f;            // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
-            const float    sdf_ray_epsilon          = 0.1f;            // epsilon value for ray marching to be used with brixelizer for rays
+            const float    sdf_ray_epsilon          = 0.5f;            // epsilon value for ray marching to be used with brixelizer for rays
             const uint32_t bricks_per_update_max    = 1 << 14;         // maximum number of bricks to be updated
             const uint32_t triangle_references_max  = 32 * (1 << 20);  // maximum number of triangle voxel references to be stored in the update
             const uint32_t triangle_swap_size       = 300 * (1 << 20); // size of the swap space available to be used for storing triangles in the update
@@ -553,7 +553,7 @@ namespace Spartan
                 Irradiance, // brixelizer gi
                 Max
             };
-            DebugMode debug_mode            = DebugMode::Max;
+            DebugMode debug_mode            = DebugMode::Max; // overwrites light_diffuse_gi render target
             bool debug_mode_arrow_switch    = false;
             bool debug_mode_aabbs_and_stats = false;
             bool debug_mode_log_instances   = false;

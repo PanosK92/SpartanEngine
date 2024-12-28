@@ -100,7 +100,7 @@ namespace Spartan
                 "The dimensions must be equal"
             );
 
-            // gltf stores occlusion, roughness and metalness in the same texture, as r, g, b channels respectively
+            // just like gltf: occlusion, roughness and metalness as r, g, b channels respectively
             for (size_t i = 0; i < occlusion.size(); i += 4)
             {
                 output[i + 0] = occlusion[i];
@@ -335,6 +335,18 @@ namespace Spartan
             RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness, slot);
             RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height,    slot);
 
+            RHI_Texture* reference_texture = texture_color      ? texture_color      :
+                                             texture_alpha_mask ? texture_alpha_mask :
+                                             texture_occlusion  ? texture_occlusion  :
+                                             texture_roughness  ? texture_roughness  :
+                                             texture_metalness  ? texture_metalness  :
+                                             texture_height;
+                    
+            uint32_t reference_width     = reference_texture ? reference_texture->GetWidth()    : 1;
+            uint32_t reference_height    = reference_texture ? reference_texture->GetHeight()   : 1;
+            uint32_t reference_depth     = reference_texture ? reference_texture->GetDepth()    : 1;
+            uint32_t reference_mip_count = reference_texture ? reference_texture->GetMipCount() : 1;
+
             // pack textures
             {
                 // step 1: pack alpha mask into color alpha
@@ -356,43 +368,35 @@ namespace Spartan
                 // step 2: pack occlusion, roughness, metalness, and height into a single texture
                 {
                     // generate unique name by hashing texture IDs
-                    size_t hash_value = 0;
-                    if (texture_occlusion) hash_value ^= texture_occlusion->GetObjectId();
-                    if (texture_roughness) hash_value ^= texture_roughness->GetObjectId();
-                    if (texture_metalness) hash_value ^= texture_metalness->GetObjectId();
-                    if (texture_height)    hash_value ^= texture_height->GetObjectId();
+                    string tex_name;
+                    {
+                        uint64_t hash = 0;
+                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_occlusion ? texture_occlusion->GetObjectId() : 0));
+                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_roughness ? texture_roughness->GetObjectId() : 0));
+                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_metalness ? texture_metalness->GetObjectId() : 0));
+                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_height    ? texture_height->GetObjectId()    : 0));
+                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(reference_width));
+                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(reference_height));
 
-                    // fetch the packed texture that corresponds to the hash (in case it was already packed)
-                    const string tex_name                  = "texture_packed_" + to_string(hash_value);
+                        tex_name = "texture_packed_" + to_string(hash);
+                    }
+
                     shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
-
                     if (!texture_packed)
                     {
                         bool textures_are_compressed = (texture_occlusion  && texture_occlusion->IsCompressedFormat()) ||
                                                        (texture_roughness  && texture_roughness->IsCompressedFormat()) ||
                                                        (texture_metalness  && texture_metalness->IsCompressedFormat()) ||
                                                        (texture_height     && texture_height->IsCompressedFormat());
-                    
-                        RHI_Texture* texture_reference = texture_color      ? texture_color      :
-                                                         texture_alpha_mask ? texture_alpha_mask :
-                                                         texture_occlusion  ? texture_occlusion  :
-                                                         texture_roughness  ? texture_roughness  :
-                                                         texture_metalness  ? texture_metalness  :
-                                                         texture_height;
-                    
-                        uint32_t width     = texture_reference ? texture_reference->GetWidth()    : 1;
-                        uint32_t height    = texture_reference ? texture_reference->GetHeight()   : 1;
-                        uint32_t depth     = texture_reference ? texture_reference->GetDepth()    : 1;
-                        uint32_t mip_count = texture_reference ? texture_reference->GetMipCount() : 1;
-                        
+
                         // create packed texture
                         texture_packed = make_shared<RHI_Texture>
                         (
                             RHI_Texture_Type::Type2D,
-                            width,
-                            height,
-                            depth,
-                            mip_count,
+                            reference_width,
+                            reference_height,
+                            reference_depth,
+                            reference_mip_count,
                             RHI_Format::R8G8B8A8_Unorm,
                             RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
                             tex_name.c_str()
@@ -401,7 +405,7 @@ namespace Spartan
                         texture_packed->AllocateMip();
                         
                         // create some default data to replace missing textures
-                        const size_t texture_size = width * height * 4;
+                        const size_t texture_size = reference_width * reference_height * 4;
                         vector<byte> texture_one(texture_size, static_cast<byte>(255));
                         vector<byte> texture_zero(texture_size, static_cast<byte>(0));
                         vector<byte> texture_half(texture_size, static_cast<byte>(127));
@@ -452,19 +456,19 @@ namespace Spartan
                 }
             }
 
-             // determine if the material is optimized
-             bool is_optimized = GetTexture(MaterialTextureType::Packed) != nullptr;
-             for (RHI_Texture* texture : m_textures)
-             {
-                 if (texture && texture->IsCompressedFormat())
-                 {
-                     is_optimized = true;
-                     break;
-                 }
-             }
-             SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
-
-             m_resource_state = ResourceState::PreparedForGpu;
+            // determine if the material is optimized
+            bool is_optimized = GetTexture(MaterialTextureType::Packed) != nullptr;
+            for (RHI_Texture* texture : m_textures)
+            {
+                if (texture && texture->IsCompressedFormat())
+                {
+                    is_optimized = true;
+                    break;
+                }
+            }
+            SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
+            
+            m_resource_state = ResourceState::PreparedForGpu;
         });
     }
 
