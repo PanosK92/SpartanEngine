@@ -375,6 +375,8 @@ namespace Spartan
                         hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_roughness ? texture_roughness->GetObjectId() : 0));
                         hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_metalness ? texture_metalness->GetObjectId() : 0));
                         hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_height    ? texture_height->GetObjectId()    : 0));
+                        // dimensions are hashed to ensure we don't get a packed texture using the above textures but at a different resolution
+                        // however, if the texture IDs are the same, their resolution should be the same, this could suggest the we are shrinking them to early
                         hash          = rhi_hash_combine(hash, static_cast<uint64_t>(reference_width));
                         hash          = rhi_hash_combine(hash, static_cast<uint64_t>(reference_height));
 
