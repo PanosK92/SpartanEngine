@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Window.h"
 #include "Renderer.h"
-#include "../Geometry/geometrygenerator.h"
+#include "../Core/geometry_generator.h"
 #include "../World/Components/Light.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
@@ -37,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef _MSC_VER
 #include "../RHI/RHI_FidelityFX.h"
 #endif
-
 //========================================
 
 //= NAMESPACES ===============
@@ -150,7 +149,7 @@ namespace Spartan
         // anisotropic
         {
             // compute mip bias for enhanced texture detail in upsampling, applicable when output resolution is higher than render resolution
-            // this adjustment, beneficial even without FSR 2, ensures textures remain detailed at higher output resolutions by applying a negative bias
+            // this adjustment, beneficial even without FSR, ensures textures remain detailed at higher output resolutions by applying a negative bias
             float mip_bias_new = 0.0f;
             if (GetResolutionOutput().x > GetResolutionRender().x)
             {

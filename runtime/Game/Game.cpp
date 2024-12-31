@@ -657,14 +657,16 @@ namespace Spartan
                             Renderable* renderable = child->GetComponent<Renderable>().get();
                             renderable->SetFlag(RenderableFlags::CastsShadows, false); // cheaper and screen space shadows are enough
 
-                            // tweak material
-                            Material* material = renderable->GetMaterial();
+                            // create material as the model doesn't do it
+                            shared_ptr<Material> material = make_shared<Material>();
+                            material->SetResourceFilePath("project\\terrain\\vegetation_plant_1\\ormbunke" + string(EXTENSION_MATERIAL));
                             material->SetColor(Color::standard_white);
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_plant_1\\ormbunke.png");
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                            renderable->SetMaterial(material);
 
                             // generate instances
                             vector<Matrix> instances;
@@ -678,7 +680,7 @@ namespace Spartan
 
         void create_sponza()
         {
-            create_camera(Vector3(19.2692f, 2.65f, 0.1677), Vector3(-18.0f, -90.0f, 0.0f));
+            create_camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
             create_sun(LightIntensity::black_hole, false);
             create_music("project\\music\\jake_chudnow_olive.mp3");
 
