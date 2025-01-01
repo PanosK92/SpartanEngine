@@ -204,28 +204,39 @@ void Properties::Inspect(const shared_ptr<Material> material)
     m_inspected_material = material;
 }
 
-void Properties::ShowTransform(shared_ptr<Entity> entity) const
+void Properties::ShowTransform(shared_ptr<Entity> entity) const 
 {
     if (component_begin("Transform", IconType::Component_Transform, nullptr, true, false))
     {
-        //= REFLECT ==================================================
-        Vector3 position = entity->GetPositionLocal();
-        Vector3 rotation = entity->GetRotationLocal().ToEulerAngles();
-        Vector3 scale    = entity->GetScaleLocal();
-        //============================================================
+        //= REFLECT =====================================
+        Vector3 position    = entity->GetPositionLocal();
+        Quaternion rotation = entity->GetRotationLocal();
+        Vector3 scale       = entity->GetScaleLocal();
+        //===============================================
+
+        // convert current rotation to Euler angles for display
+        static Vector3 last_frame_euler = rotation.ToEulerAngles();
+        Vector3 current_euler           = last_frame_euler;
 
         ImGui::AlignTextToFramePadding();
         ImGuiSp::vector3("Position (m)", position);
         ImGui::SameLine();
-        ImGuiSp::vector3("Rotation (degrees)", rotation);
+        ImGuiSp::vector3("Rotation (degrees)", current_euler);
         ImGui::SameLine();
         ImGuiSp::vector3("Scale", scale);
 
-        //= MAP ========================================================
+        // calculate the the rotation delta, convert it to a quaternion, and apply it, avoiding gimbal lock
+        Vector3 delta_euler         = current_euler - last_frame_euler;
+        last_frame_euler            = current_euler;
+        Quaternion delta_quaternion = Quaternion::FromEulerAngles(delta_euler);
+        rotation                    = delta_quaternion * rotation;
+        rotation.Normalize();
+
+        //= MAP ===========================
         entity->SetPositionLocal(position);
         entity->SetScaleLocal(scale);
-        entity->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
-        //==============================================================
+        entity->SetRotationLocal(rotation);
+        //=================================
     }
     component_end();
 }

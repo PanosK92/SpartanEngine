@@ -114,7 +114,7 @@ namespace Spartan::Math
             );
         }
 
-        static inline Quaternion FromToRotation(const Vector3& start, const Vector3& end)
+        static Quaternion FromToRotation(const Vector3& start, const Vector3& end)
         {
             const Vector3 normStart = start.Normalized();
             const Vector3 normEnd   = end.Normalized();
@@ -144,7 +144,7 @@ namespace Spartan::Math
             }
         }
 
-        static inline Quaternion FromLookRotation(const Vector3& direction, const Vector3& up_direction = Vector3::Up)
+        static Quaternion FromLookRotation(const Vector3& direction, const Vector3& up_direction = Vector3::Up)
         {
             Quaternion result;
             const Vector3 forward = direction.Normalized();
@@ -165,9 +165,9 @@ namespace Spartan::Math
             return result;
         }
 
-        static inline Quaternion FromToRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
+        static Quaternion FromToRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
 
-        static inline Quaternion Lerp(const Quaternion& a, const Quaternion& b, const float t)
+        static Quaternion Lerp(const Quaternion& a, const Quaternion& b, const float t)
         {
             Quaternion quaternion;
 
@@ -183,7 +183,7 @@ namespace Spartan::Math
             return quaternion.Normalized();
         }
 
-        static inline Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
+        static Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
         {
             const float x     = Qa.x;
             const float y     = Qa.y;
@@ -254,7 +254,6 @@ namespace Spartan::Math
             }
         }
 
-         // Returns Euler angles in degrees
         Vector3 ToEulerAngles() const
         {
             // Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
@@ -289,9 +288,9 @@ namespace Spartan::Math
             );
         }
 
-        // Euler angles to quaternion (input in degrees)
-        static inline auto FromEulerAngles(const Vector3& rotation)                           { return FromYawPitchRoll(rotation.y * Helper::DEG_TO_RAD, rotation.x * Helper::DEG_TO_RAD, rotation.z * Helper::DEG_TO_RAD); }
-        static inline auto FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * Helper::DEG_TO_RAD,  rotationX * Helper::DEG_TO_RAD,  rotationZ * Helper::DEG_TO_RAD); }
+        // euler angles to quaternion (input in degrees)
+        static Quaternion FromEulerAngles(const Vector3& rotation)                           { return FromYawPitchRoll(rotation.y * Helper::DEG_TO_RAD, rotation.x * Helper::DEG_TO_RAD, rotation.z * Helper::DEG_TO_RAD); }
+        static Quaternion FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * Helper::DEG_TO_RAD,  rotationX * Helper::DEG_TO_RAD,  rotationZ * Helper::DEG_TO_RAD); }
 
         // Returns yaw in degrees
         float Yaw() const   { return ToEulerAngles().y; }
