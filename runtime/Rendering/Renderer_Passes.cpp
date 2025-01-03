@@ -987,8 +987,6 @@ namespace Spartan
                         break;
                     }
 
-                    float near = 1.0f;
-                    float far  = 0.0f;
                     Math::Matrix view_projection = GetCamera()->GetViewProjectionMatrix();
                     Vector4 p = {};
                     if (light->GetLightType() == LightType::Directional)
@@ -1016,6 +1014,8 @@ namespace Spartan
                     );
 
                     // light index writes into the texture array index
+                    float near = 1.0f;
+                    float far  = 0.0f;
                     m_pcb_pass_cpu.set_f3_value(near, far, array_slice_index++);
                     m_pcb_pass_cpu.set_f3_value2(1.0f / tex_sss->GetWidth(), 1.0f / tex_sss->GetHeight(), 0.0f);
 

@@ -109,20 +109,8 @@ namespace Spartan
         Vector2 cursor       = position;
         float starting_pos_x = cursor.x;
 
-        // allocate ahead of time
-        {
-            // calculate the required size for vertices and indices
-            size_t required_vertices_count = text.length() * 6;       // 6 vertices per character
-            size_t required_indices_count  = required_vertices_count; // 1 index per vertex
-
-            // reserve memory for class members
-            m_vertices.reserve(required_vertices_count);
-            m_indices.reserve(required_indices_count);
-
-            // clear existing data (reuse preallocated memory)
-            m_vertices.clear();
-            m_indices.clear();
-        }
+        m_vertices.clear();
+        m_indices.clear();
 
         // generate vertices - draw each latter onto a quad
         for (char character : text)
@@ -189,41 +177,45 @@ namespace Spartan
         if (m_font_data.empty())
             return;
     
-        // combine all vertices/indices into one
-        vector<RHI_Vertex_PosTex> vertices;
-        vector<uint32_t> indices;
-        uint32_t vertex_offset = 0;
-    
-        for (const FontData& text_data : m_font_data)
+        // merge all vertices and indices
         {
-            vertices.insert(vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
-            for (uint32_t index : text_data.indices)
+            m_vertices.clear();
+            m_indices.clear();
+
+            uint32_t vertex_offset = 0;
+            for (const FontData& text_data : m_font_data)
             {
-                indices.push_back(index + vertex_offset);
+                m_vertices.insert(m_vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
+                for (uint32_t index : text_data.indices)
+                {
+                    m_indices.push_back(index + vertex_offset);
+                }
+                vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
             }
-            vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
         }
-    
+
         // grow buffers if needed
         {
-            if (vertices.size() > m_buffer_vertex->GetElementCount())
+            if (m_vertices.size() > m_buffer_vertex->GetElementCount())
             {
-                m_buffer_vertex = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex,
-                    sizeof(vertices[0]),
-                    static_cast<uint32_t>(vertices.size()),
-                    static_cast<void*>(&vertices[0]),
-                    true,
+                m_buffer_vertex = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Vertex,                  // type
+                    sizeof(m_vertices[0]),                    // stride
+                    static_cast<uint32_t>(m_vertices.size()), // element count
+                    static_cast<void*>(&m_vertices[0]),       // data
+                    true,                                     // mappable
                     "font_vertex"
                 );
             }
     
-            if (indices.size() > m_buffer_index->GetElementCount())
+            if (m_indices.size() > m_buffer_index->GetElementCount())
             {
-                m_buffer_index = make_shared<RHI_Buffer>(RHI_Buffer_Type::Index,
-                    sizeof(indices[0]),
-                    static_cast<uint32_t>(indices.size()),
-                    static_cast<void*>(&indices[0]),
-                    true,
+                m_buffer_index = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Index,                  // type
+                    sizeof(m_indices[0]),                    // stride
+                    static_cast<uint32_t>(m_indices.size()), // element count
+                    static_cast<void*>(&m_indices[0]),       // data
+                    true,                                    // mappable
                     "font_index"
                 );
             }
@@ -231,36 +223,40 @@ namespace Spartan
 
         // update vertex buffer in chunks
         {
-            const size_t vertex_size = sizeof(vertices[0]);
-            size_t vertices_size     = vertices.size() * vertex_size;
+            const size_t vertex_size = sizeof(m_vertices[0]);
+            size_t size              = m_vertices.size() * vertex_size;
             size_t offset            = 0;
 
             // zero out
             memset(m_buffer_vertex->GetMappedData(), 0, m_buffer_vertex->GetObjectSize());
 
             // update
-            while (offset < vertices_size)
+            while (offset < size)
             {
-                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), vertices_size - offset);
-                cmd_list->UpdateBuffer(m_buffer_vertex.get(), offset, current_chunk_size, &vertices[offset / vertex_size]);
+                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), size - offset);
+
+                cmd_list->UpdateBuffer(m_buffer_vertex.get(), offset, current_chunk_size, &m_vertices[offset / vertex_size]);
+
                 offset += current_chunk_size;
             }
         }
 
         // update index buffer in chunks
         {
-            const size_t index_size = sizeof(indices[0]);
+            const size_t index_size = sizeof(m_indices[0]);
+            size_t size             = m_indices.size() * index_size;
             size_t offset           = 0;
-            size_t indices_size     = indices.size() * index_size;
 
             // zero out
             memset(m_buffer_index->GetMappedData(), 0, m_buffer_index->GetObjectSize());
 
             // update
-            while (offset < indices_size)
+            while (offset < size)
             {
-                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), indices_size - offset);
-                cmd_list->UpdateBuffer(m_buffer_index.get(), offset, current_chunk_size, &indices[offset / index_size]);
+                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), size - offset);
+
+                cmd_list->UpdateBuffer(m_buffer_index.get(), offset, current_chunk_size, &m_indices[offset / index_size]);
+
                 offset += current_chunk_size;
             }
         }

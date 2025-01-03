@@ -38,12 +38,12 @@ namespace Spartan
 {
     namespace
     {
-        float orthographic_extent_near = 12.0f;
+        float orthographic_extent_near = 16.0f;
         float orthographic_extent_far  = 128.0f;
 
         float get_world_depth()
         {
-            return World::GetBoundinBox().GetExtents().Abs().Max();
+            return World::GetBoundinBox().GetExtents().Abs().Max() * 2.0f;
         }
 
         float get_sensible_range(const LightType type)
@@ -439,7 +439,7 @@ namespace Spartan
             {
                 target = camera->GetEntity()->GetPosition();
             }
-            Vector3 position = target - GetEntity()->GetForward() * get_world_depth() * 3.0f;
+            Vector3 position = target - GetEntity()->GetForward() * get_world_depth() * 1.5f;
 
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up); // near
             m_matrix_view[1] = m_matrix_view[0];                                      // far
@@ -457,37 +457,32 @@ namespace Spartan
 
     void Light::ComputeProjectionMatrix()
     {
-        if (!m_texture_depth)
-            return;
-
-        float near_plane = 0.01f;
+        const float near_plane = 0.01f;
 
         if (m_light_type == LightType::Directional)
         {
             for (uint32_t i = 0; i < 2; i++)
             {
-                // determine the orthographic extent based on the cascade index
-                float extent = (i == 0) ? orthographic_extent_near : orthographic_extent_far;
-
-                // orthographic bounds
-                float left       = -extent;
-                float right      = extent;
-                float bottom     = -extent;
-                float top        = extent;
-                float far_plane  = get_world_depth() * 4.0f;
-
+                float extent           = (i == 0) ? orthographic_extent_near : orthographic_extent_far;
+                float left             = -extent;
+                float right            = extent;
+                float bottom           = -extent;
+                float top              = extent;
+                float far_plane        = get_world_depth() * 4.0f;
                 m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
-                m_frustums[i] = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
+                m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
             }
         }
         else if (m_light_type == LightType::Spot)
         {
+            if (!m_texture_depth)
+                return;
+
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
             const float fov          = m_angle_rad * 2.0f;
-            Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
-
-            m_matrix_projection[0] = projection;
-            m_frustums[0]          = Frustum(m_matrix_view[0], projection, m_range);
+            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
+            m_matrix_projection[0]   = projection;
+            m_frustums[0]            = Frustum(m_matrix_view[0], projection, m_range);
         }
     }
 

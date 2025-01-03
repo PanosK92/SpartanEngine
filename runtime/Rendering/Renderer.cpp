@@ -139,12 +139,47 @@ namespace Spartan
 
     void Renderer::Initialize()
     {
-        if (Debugging::IsRenderdocEnabled())
+        // device
         {
-            RenderDoc::OnPreDeviceCreation();
+            if (Debugging::IsRenderdocEnabled())
+            {
+                RenderDoc::OnPreDeviceCreation();
+            }
+
+            RHI_Device::Initialize();
         }
 
-        RHI_Device::Initialize();
+        // set options (after the device has been created since it can clamp values like max shadow resolution etc)
+        m_options.clear();
+        SetOption(Renderer_Option::WhitePoint,                  350.0f);
+        SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
+        SetOption(Renderer_Option::Bloom,                       1.0f);                                                 // non-zero values activate it and control the intensity
+        SetOption(Renderer_Option::MotionBlur,                  1.0f);
+        SetOption(Renderer_Option::DepthOfField,                1.0f);
+        SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
+        SetOption(Renderer_Option::ScreenSpaceShadows,          static_cast<float>(Renderer_ScreenspaceShadow::Bend));
+        SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
+        SetOption(Renderer_Option::GlobalIllumination,          0.5f);                                                 // 0.5 is the percentage of the internal resolution (options are 25%, 50%, 75% and 100%)
+        SetOption(Renderer_Option::Anisotropy,                  16.0f);
+        SetOption(Renderer_Option::ShadowResolution,            4096.0f);
+        SetOption(Renderer_Option::Exposure,                    1.0f);
+        SetOption(Renderer_Option::Sharpness,                   0.0f);                                                 // becomes the upsampler's sharpness as well
+        SetOption(Renderer_Option::Fog,                         1.0f);                                                 // controls the intensity of the volumetric fog as well
+        SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                 // these is only a toggle for the volumetric fog
+        SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 3 for taa
+        SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
+        SetOption(Renderer_Option::ResolutionScale,             1.0f);
+        SetOption(Renderer_Option::VariableRateShading,         0.0f);
+        SetOption(Renderer_Option::Vsync,                       0.0f);
+        SetOption(Renderer_Option::TransformHandle,             1.0f);
+        SetOption(Renderer_Option::SelectionOutline,            1.0f);
+        SetOption(Renderer_Option::Grid,                        1.0f);
+        SetOption(Renderer_Option::Lights,                      1.0f);
+        SetOption(Renderer_Option::Physics,                     0.0f);
+        SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
+        SetOption(Renderer_Option::OcclusionCulling,            0.0f);                                                 // disabled by default as it's a WIP (you can see the query delays)
+
+
 
         // resolution
         {
@@ -166,18 +201,22 @@ namespace Spartan
         }
 
         // swap chain
-        swap_chain = make_shared<RHI_SwapChain>
-        (
-            Window::GetHandleSDL(),
-            Window::GetWidth(),
-            Window::GetHeight(),
-            // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
-            // note: fifo is not supported on linux, it will be ignored
-            GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
-            swap_chain_buffer_count,
-            Display::GetHdr(),
-            "renderer"
-        );
+        {
+            swap_chain = make_shared<RHI_SwapChain>
+            (
+                Window::GetHandleSDL(),
+                Window::GetWidth(),
+                Window::GetHeight(),
+                // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
+                // note: fifo is not supported on linux, it will be ignored
+                GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
+                swap_chain_buffer_count,
+                Display::GetHdr(),
+                "renderer"
+            );
+
+            SetOption(Renderer_Option::Hdr, swap_chain->IsHdr() ? 1.0f : 0.0f);
+        }
 
         // third party tool initialization
         ThreadPool::AddTask([]()
@@ -223,37 +262,6 @@ namespace Spartan
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
         }
-
-        // options
-        m_options.clear();
-        SetOption(Renderer_Option::Hdr,                         swap_chain->IsHdr() ? 1.0f : 0.0f);
-        SetOption(Renderer_Option::WhitePoint,                  350.0f);
-        SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-        SetOption(Renderer_Option::Bloom,                       1.0f);                                                 // non-zero values activate it and control the intensity
-        SetOption(Renderer_Option::MotionBlur,                  1.0f);
-        SetOption(Renderer_Option::DepthOfField,                1.0f);
-        SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
-        SetOption(Renderer_Option::ScreenSpaceShadows,          static_cast<float>(Renderer_ScreenspaceShadow::Bend));
-        SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
-        SetOption(Renderer_Option::GlobalIllumination,          0.5f);                                                 // 0.5 is the percentage of the internal resolution (options are 25%, 50%, 75% and 100%)
-        SetOption(Renderer_Option::Anisotropy,                  16.0f);
-        SetOption(Renderer_Option::ShadowResolution,            4096.0f);
-        SetOption(Renderer_Option::Exposure,                    1.0f);
-        SetOption(Renderer_Option::Sharpness,                   0.0f);                                                 // becomes the upsampler's sharpness as well
-        SetOption(Renderer_Option::Fog,                         1.0f);                                                 // controls the intensity of the volumetric fog as well
-        SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                 // these is only a toggle for the volumetric fog
-        SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 3 for taa
-        SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
-        SetOption(Renderer_Option::ResolutionScale,             1.0f);
-        SetOption(Renderer_Option::VariableRateShading,         0.0f);
-        SetOption(Renderer_Option::Vsync,                       0.0f);
-        SetOption(Renderer_Option::TransformHandle,             1.0f);
-        SetOption(Renderer_Option::SelectionOutline,            1.0f);
-        SetOption(Renderer_Option::Grid,                        1.0f);
-        SetOption(Renderer_Option::Lights,                      1.0f);
-        SetOption(Renderer_Option::Physics,                     0.0f);
-        SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
-        SetOption(Renderer_Option::OcclusionCulling,            0.0f);                                                 // disabled by default as it's a WIP (you can see the query delays)
     }
 
     void Renderer::Shutdown()
