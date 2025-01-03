@@ -496,7 +496,7 @@ namespace Spartan
 
             // parameters
             FfxBrixelizerGIInternalResolution internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
-            const float    voxel_size               = 0.05f;
+            const float    voxel_size               = 0.2f;
             const float    cascade_size_ratio       = 2.0f;
             const uint32_t cascade_count            = 8;         // max is 24
             const uint32_t cascade_offset           = 16;        // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
