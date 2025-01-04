@@ -259,7 +259,6 @@ namespace Spartan
 
             // sky
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
-            render_target(Renderer_RenderTarget::skybox)    = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 256, 256, 6, 1,         RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox"); // for fidelityfx
         }
 
         RHI_Device::QueueWaitAll();
@@ -421,13 +420,8 @@ namespace Spartan
         }
 
         // sky
-        {
-            shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
-
-            shader(Renderer_Shader::skysphere_to_skybox_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::skysphere_to_skybox_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere_to_skybox.hlsl", async);
-        }
+        shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
 
         // fxaa
         shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();

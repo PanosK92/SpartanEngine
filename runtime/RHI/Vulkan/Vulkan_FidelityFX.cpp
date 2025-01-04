@@ -62,20 +62,21 @@ namespace Spartan
     namespace
     {
         // shared among all contexts
-        FfxInterface ffx_interface        = {};
-        Matrix view                       = Matrix::Identity;
-        Matrix view_previous              = Matrix::Identity;
-        Matrix projection                 = Matrix::Identity;
-        Matrix projection_previous        = Matrix::Identity;
-        Matrix view_projection            = Matrix::Identity;
-        Matrix view_inverted              = Matrix::Identity;
-        Matrix projection_inverted        = Matrix::Identity;
-        Matrix view_projection_previous   = Matrix::Identity;
-        Matrix view_projection_inverted   = Matrix::Identity;
-        uint32_t resolution_render_width  = 0;
-        uint32_t resolution_render_height = 0;
-        uint32_t resolution_output_width  = 0;
-        uint32_t resolution_output_height = 0;
+        FfxInterface ffx_interface             = {};
+        Matrix view                            = Matrix::Identity;
+        Matrix view_previous                   = Matrix::Identity;
+        Matrix projection                      = Matrix::Identity;
+        Matrix projection_previous             = Matrix::Identity;
+        Matrix view_projection                 = Matrix::Identity;
+        Matrix view_inverted                   = Matrix::Identity;
+        Matrix projection_inverted             = Matrix::Identity;
+        Matrix view_projection_previous        = Matrix::Identity;
+        Matrix view_projection_inverted        = Matrix::Identity;
+        uint32_t resolution_render_width       = 0;
+        uint32_t resolution_render_height      = 0;
+        uint32_t resolution_output_width       = 0;
+        uint32_t resolution_output_height      = 0;
+        shared_ptr<RHI_Texture> texture_skybox = nullptr;
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
         {
@@ -830,6 +831,12 @@ namespace Spartan
 
         // assets
         {
+            // shared
+            {
+                // empty skybox (the engine uses a skysphere)
+                texture_skybox = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 1, 1, 6, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox");
+            }
+
             // brixelizer gi
             {
                 // sdf atlas texture
@@ -918,6 +925,9 @@ namespace Spartan
         brixelizer_gi::texture_normal_previous = nullptr;
         brixelizer_gi::buffer_cascade_aabb_tree.fill(nullptr);
         brixelizer_gi::buffer_cascade_brick_map.fill(nullptr);
+
+        // shared
+        texture_skybox = nullptr;
     #endif
     }
 
@@ -1103,7 +1113,6 @@ namespace Spartan
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
         RHI_Texture* tex_brdf,
-        RHI_Texture* tex_skybox,
         RHI_Texture* tex_output
     )
     {
@@ -1114,14 +1123,14 @@ namespace Spartan
 
         // set resources
         sssr::description_dispatch.commandList        = to_ffx_cmd_list(cmd_list);
-        sssr::description_dispatch.color              = to_ffx_resource(tex_color,    L"sssr_color");
-        sssr::description_dispatch.depth              = to_ffx_resource(tex_depth,    L"sssr_depth");
-        sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity, L"sssr_velocity");
-        sssr::description_dispatch.normal             = to_ffx_resource(tex_normal,   L"sssr_normal");
-        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material, L"sssr_roughness");
-        sssr::description_dispatch.environmentMap     = to_ffx_resource(tex_skybox,   L"sssr_environment");
-        sssr::description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,     L"sssr_brdf");
-        sssr::description_dispatch.output             = to_ffx_resource(tex_output,   L"sssr_output");
+        sssr::description_dispatch.color              = to_ffx_resource(tex_color,            L"sssr_color");
+        sssr::description_dispatch.depth              = to_ffx_resource(tex_depth,            L"sssr_depth");
+        sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity,         L"sssr_velocity");
+        sssr::description_dispatch.normal             = to_ffx_resource(tex_normal,           L"sssr_normal");
+        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material,         L"sssr_roughness");
+        sssr::description_dispatch.environmentMap     = to_ffx_resource(texture_skybox.get(), L"sssr_environment");
+        sssr::description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,             L"sssr_brdf");
+        sssr::description_dispatch.output             = to_ffx_resource(tex_output,           L"sssr_output");
  
         // set render size
         sssr::description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_color->GetWidth()  * resolution_scale);
@@ -1140,7 +1149,7 @@ namespace Spartan
         sssr::description_dispatch.temporalStabilityFactor              = 0.8f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         sssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         sssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
-        sssr::description_dispatch.iblFactor                            = 1.0f;
+        sssr::description_dispatch.iblFactor                            = 0.0f;
         sssr::description_dispatch.roughnessChannel                     = 0;
         sssr::description_dispatch.isRoughnessPerceptual                = true;
         sssr::description_dispatch.roughnessThreshold                   = 1.0f;  // regions with a roughness value greater than this threshold won't spawn rays
@@ -1345,7 +1354,6 @@ namespace Spartan
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
-        RHI_Texture* tex_skybox,
         array<RHI_Texture*, 8>& tex_noise,
         RHI_Texture* tex_diffuse_gi,
         RHI_Texture* tex_specular_gi,
@@ -1368,7 +1376,7 @@ namespace Spartan
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, projection_previous);
 
         // set resources
-        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(tex_skybox,                                    L"brixelizer_gi_environment");
+        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(texture_skybox.get(),                          L"brixelizer_gi__environment");
         brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous");
         brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                     L"brixelizer_gi_depth");
         brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),   L"brixelizer_gi_depth_previous");
@@ -1401,7 +1409,7 @@ namespace Spartan
         brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true; // if false, we assume roughness squared was stored in the Gbuffer
         brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;    // the channel to read the roughness from the roughness texture
         brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f; // regions with a roughness value greater than this threshold won't spawn specular rays
-        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 1.0f; // value to scale the contribution from the environment map
+        brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f; // value to scale the contribution from the environment map
         brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -1.0f;
         brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = -1.0f;
         set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);

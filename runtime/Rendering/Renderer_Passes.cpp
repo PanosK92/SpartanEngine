@@ -950,7 +950,6 @@ namespace Spartan
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
                 GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut),
-                GetRenderTarget(Renderer_RenderTarget::skybox),
                 GetRenderTarget(Renderer_RenderTarget::ssr)
             );
 
@@ -1054,11 +1053,9 @@ namespace Spartan
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
         // acquire resources
-        RHI_Shader* shader_skysphere           = GetShader(Renderer_Shader::skysphere_c);
-        RHI_Shader* shader_skysphere_to_skybox = GetShader(Renderer_Shader::skysphere_to_skybox_c);
-        RHI_Texture* tex_skysphere             = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_skybox                = GetRenderTarget(Renderer_RenderTarget::skybox);
-        if (!shader_skysphere->IsCompiled() || !shader_skysphere_to_skybox->IsCompiled())
+        RHI_Shader* shader_skysphere = GetShader(Renderer_Shader::skysphere_c);
+        RHI_Texture* tex_skysphere   = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        if (!shader_skysphere->IsCompiled())
             return;
 
         // get directional light
@@ -1083,41 +1080,18 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("skysphere");
         {
-            // atmospheric scattering
-            {
-                // set pipeline state
-                static RHI_PipelineState pso_skysphere;
-                pso_skysphere.name             = "skysphere";
-                pso_skysphere.shaders[Compute] = shader_skysphere;
-                cmd_list->SetPipelineState(pso_skysphere);
+            // set pipeline state
+            static RHI_PipelineState pso_skysphere;
+            pso_skysphere.name             = "skysphere";
+            pso_skysphere.shaders[Compute] = shader_skysphere;
+            cmd_list->SetPipelineState(pso_skysphere);
 
-                // set pass constants
-                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
-                cmd_list->Dispatch(tex_skysphere);
-            }
-
-            // write the skysphere to a small cubemap because fidelityfx requires it
-            {
-                // pipeline
-                static RHI_PipelineState pso_skysphere_to_skybox;
-                pso_skysphere_to_skybox.name             = "skysphere_to_skybox";
-                pso_skysphere_to_skybox.shaders[Compute] = shader_skysphere_to_skybox;
-                cmd_list->SetPipelineState(pso_skysphere_to_skybox);
-
-                // textures
-                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, tex_skybox);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue_0));
-
-                // dispatch
-                const uint32_t thread_group_count   = 8;
-                const uint32_t thread_group_count_x = (tex_skysphere->GetWidth() + thread_group_count - 1) / thread_group_count;
-                const uint32_t thread_group_count_y = (tex_skysphere->GetHeight() + thread_group_count - 1) / thread_group_count;
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, 6);
-            }
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
+            cmd_list->Dispatch(tex_skysphere);
         }
         cmd_list->EndTimeblock();
     }
@@ -1240,7 +1214,6 @@ namespace Spartan
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
-                    GetRenderTarget(Renderer_RenderTarget::skybox),
                     noise_textures,
                     GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi),
                     GetRenderTarget(Renderer_RenderTarget::light_specular_gi),
