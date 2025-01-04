@@ -368,4 +368,9 @@ namespace Spartan
     {
 
     }
+
+    void RHI_CommandList::InsertPendingBarrierGroup()
+    {
+
+    }
 }
