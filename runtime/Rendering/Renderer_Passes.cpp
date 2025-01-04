@@ -761,10 +761,10 @@ namespace Spartan
         float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
         cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
 
-        // transition to a readable state since they will never be written again
-        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_depth_opaque->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_depth_output->SetLayout(RHI_Image_Layout::General, cmd_list);
+        // transition to a readable state since they won't be written again during the frame
+        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_depth_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
 
         cmd_list->EndTimeblock();
     }

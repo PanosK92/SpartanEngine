@@ -120,10 +120,9 @@ namespace Spartan
             case RHI_Format::R8G8_Unorm:
                 return FFX_SURFACE_FORMAT_R8G8_UNORM;
             case RHI_Format::R32_Float:
-            case RHI_Format::D32_Float:
                 return FFX_SURFACE_FORMAT_R32_FLOAT;
-            case RHI_Format::Max:
-                return FFX_SURFACE_FORMAT_UNKNOWN;
+            case RHI_Format::D32_Float:
+                return FFX_SURFACE_FORMAT_R32_FLOAT; // shouldn't this be FFX_SURFACE_FORMAT_R32_TYPELESS?
             default:
                 SP_ASSERT_MSG(false, "Unsupported format");
                 return FFX_SURFACE_FORMAT_UNKNOWN;
@@ -162,8 +161,6 @@ namespace Spartan
                 return RHI_Format::R8G8_Unorm;
             case FFX_SURFACE_FORMAT_R32_FLOAT:
                 return RHI_Format::R32_Float;
-            case FFX_SURFACE_FORMAT_UNKNOWN:
-                return RHI_Format::Max;
             default:
                 SP_ASSERT_MSG(false, "Unsupported FFX format");
                 return RHI_Format::Max;
@@ -1115,8 +1112,8 @@ namespace Spartan
 
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
-        // transition the depth to shader read, to avoid validation errors caused by ffx
-        // when trying to create a depth view that is incompatible with the resource properties
+        // fidelityfx is trying to transition the depth texture to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, which causes a validation error
+        // to work around that the buggy code, we transition it to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL here, manually
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         cmd_list->InsertPendingBarrierGroup();
 
@@ -1126,7 +1123,7 @@ namespace Spartan
         sssr::description_dispatch.depth              = to_ffx_resource(tex_depth,    L"sssr_depth");
         sssr::description_dispatch.motionVectors      = to_ffx_resource(tex_velocity, L"sssr_velocity");
         sssr::description_dispatch.normal             = to_ffx_resource(tex_normal,   L"sssr_normal");
-        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material, L"sssr_roughness");   // FfxSssrDispatchDescription specifies the channel
+        sssr::description_dispatch.materialParameters = to_ffx_resource(tex_material, L"sssr_roughness");
         sssr::description_dispatch.environmentMap     = to_ffx_resource(tex_skybox,   L"sssr_environment");
         sssr::description_dispatch.brdfTexture        = to_ffx_resource(tex_brdf,     L"sssr_brdf");
         sssr::description_dispatch.output             = to_ffx_resource(tex_output,   L"sssr_output");
