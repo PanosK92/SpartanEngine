@@ -449,9 +449,15 @@ namespace Spartan
 
         Pass_Text(cmd_list_graphics, rt_output);
 
-        // transition the render target to a readable state so it can be rendered
-        // within the viewport or copied to the swap chain back buffer
+        // perform early transitions (for next frame)
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque)->SetLayout(RHI_Image_Layout::Transfer_Destination, cmd_list_graphics);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface)->SetLayout(RHI_Image_Layout::Transfer_Destination, cmd_list_graphics);
     }
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
