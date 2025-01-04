@@ -115,7 +115,7 @@ namespace Spartan
         }
 
         // create window
-        m_title = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
+        m_title = string(sp_info::name) + " " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
         window  = SDL_CreateWindow(
             m_title.c_str(), // window title
             0,               // initial x position
