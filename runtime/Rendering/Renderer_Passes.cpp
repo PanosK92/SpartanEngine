@@ -761,10 +761,11 @@ namespace Spartan
         float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
         cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
 
-        // transition to a readable state since they won't be written again during the frame
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_depth_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        // perform early resource transitions
+        tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);         // depth attachment for g-buffer right after
+        tex_depth_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // never written during this frame
+        tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // never written during this frame
+        cmd_list->InsertPendingBarrierGroup();
 
         cmd_list->EndTimeblock();
     }
@@ -884,6 +885,14 @@ namespace Spartan
             draw_renderable(cmd_list, pso, GetCamera().get(), renderable.get());
         }
 
+        // perform early resource transitions
+        tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_material->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        cmd_list->InsertPendingBarrierGroup();
+
         cmd_list->EndTimeblock();
     }
 
@@ -923,6 +932,8 @@ namespace Spartan
         if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
         { 
             cmd_list->BeginTimeblock("ssr");
+
+            cmd_list->RenderPassEnd();
 
             RHI_FidelityFX::SSSR_Dispatch(
                 cmd_list,

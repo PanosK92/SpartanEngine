@@ -1112,11 +1112,6 @@ namespace Spartan
 
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
-        // fidelityfx is trying to transition the depth texture to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, which causes a validation error
-        // to work around that the buggy code, we transition it to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL here, manually
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        cmd_list->InsertPendingBarrierGroup();
-
         // set resources
         sssr::description_dispatch.commandList        = to_ffx_cmd_list(cmd_list);
         sssr::description_dispatch.color              = to_ffx_resource(tex_color,    L"sssr_color");

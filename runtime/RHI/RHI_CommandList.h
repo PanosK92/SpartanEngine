@@ -159,8 +159,9 @@ namespace Spartan
         void InsertPendingBarrierGroup();
 
         // misc
+        void RenderPassEnd();
         void SetIgnoreClearValues(const bool ignore_clear_values) { m_ignore_clear_values = ignore_clear_values; }
-        RHI_SyncPrimitive* GetRenderingCompleteSemaphore()            { return m_rendering_complete_semaphore.get(); }
+        RHI_SyncPrimitive* GetRenderingCompleteSemaphore()        { return m_rendering_complete_semaphore.get(); }
         void* GetRhiResource() const                              { return m_rhi_resource; }
         const RHI_CommandListState GetState() const               { return m_state; }
         uint64_t GetSwapchainId() const                           { return m_swapchain_id; }
@@ -168,7 +169,6 @@ namespace Spartan
     private:
         void PreDraw();
         void RenderPassBegin();
-        void RenderPassEnd();
 
         // sync
         std::shared_ptr<RHI_SyncPrimitive> m_rendering_complete_semaphore;
