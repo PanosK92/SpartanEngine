@@ -391,25 +391,31 @@ namespace Spartan
         }
 
         if (shared_ptr<Camera> camera = GetCamera())
-        { 
-            // shadow maps
-            {
-                Pass_ShadowMaps(cmd_list_graphics, false);
-                if (mesh_index_transparent != -1)
-                {
-                    Pass_ShadowMaps(cmd_list_graphics, true);
-                }
-            }
+        {
+            Pass_Visibility(cmd_list_graphics);
 
             // render at render resolution (only opaques)
             {
                 bool is_transparent = false;
-                Pass_Visibility(cmd_list_graphics);
+
                 Pass_Depth_Prepass(cmd_list_graphics);
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
+
+                // shadows
+                {
+                    // shadow maps
+                    Pass_ShadowMaps(cmd_list_graphics, false);
+                    if (mesh_index_transparent != -1)
+                    {
+                        Pass_ShadowMaps(cmd_list_graphics, true);
+                    }
+
+                    // screen space
+                    Pass_Sss(cmd_list_graphics);
+                }
+
                 Pass_Ssr(cmd_list_graphics);
                 Pass_Ssao(cmd_list_graphics);
-                Pass_Sss(cmd_list_graphics);
                 Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
@@ -499,11 +505,11 @@ namespace Spartan
             return;
 
         lock_guard lock(m_mutex_renderables);
-        cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_alpha_color" : "shadow_maps_depth");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
 
         // set pso
         static RHI_PipelineState pso;
-        pso.name                             = "shadow_maps_depth";
+        pso.name                             = "shadow_maps";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.blend_state                      = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha) : GetBlendState(Renderer_BlendState::Off);
         pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadEqual) : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
