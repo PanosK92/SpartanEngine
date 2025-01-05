@@ -19,11 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES ============
 #include "pch.h"
 #include "../RHI_Queue.h"
-#include "../RHI_Device.h"
-//========================
+//=======================
 
 //= NAMESPACES =====
 using namespace std;
@@ -35,11 +34,6 @@ namespace Spartan
     {
         m_object_name = name;
         m_type        = queue_type;
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
-        {
-            SP_ASSERT_MSG(false, "Function not implmented");
-        }
     }
 
     RHI_Queue::~RHI_Queue()
