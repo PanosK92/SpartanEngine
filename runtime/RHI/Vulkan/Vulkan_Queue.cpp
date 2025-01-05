@@ -52,7 +52,7 @@ namespace Spartan
         m_object_name = name;
         m_type        = queue_type;
 
-        // command pools
+        // command pool
         {
             VkCommandPoolCreateInfo cmd_pool_info = {};
             cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -62,24 +62,14 @@ namespace Spartan
             // create the first one
             VkCommandPool cmd_pool = nullptr;
             SP_ASSERT_VK(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool));
-            RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, m_object_name + string("_0"));
-            m_rhi_resources[0] = static_cast<void*>(cmd_pool);
-
-            // create the second one
-            cmd_pool = nullptr;
-            SP_ASSERT_VK(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool));
-            RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, m_object_name + string("_1"));
-            m_rhi_resources[1] = static_cast<void*>(cmd_pool);
+            RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, m_object_name);
+            m_rhi_resource = static_cast<void*>(cmd_pool);
         }
 
         // command lists
-        for (uint32_t i = 0; i < cmd_lists_per_pool; i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
         {
-            string name = m_object_name + "_cmd_pool_0_" + to_string(0);
-            m_cmd_lists_0[i] = make_shared<RHI_CommandList>(m_rhi_resources[0], name.c_str());
-
-            name = m_object_name + "_cmd_pool_1_" + to_string(0);
-            m_cmd_lists_1[i] = make_shared<RHI_CommandList>(m_rhi_resources[1], name.c_str());
+            m_cmd_lists[i] = make_shared<RHI_CommandList>(m_rhi_resource, (("cmd_list_") + to_string(i)).c_str());
         }
     }
 
@@ -87,49 +77,31 @@ namespace Spartan
     {
         Wait();
 
-        for (uint32_t i = 0; i < cmd_lists_per_pool; i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
         {
-            VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists_0[i]->GetRhiResource());
+            VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists[i]->GetRhiResource());
             vkFreeCommandBuffers(
                 RHI_Context::device,
-                static_cast<VkCommandPool>(m_rhi_resources[0]),
-                1,
-                &vk_cmd_buffer
-            );
-
-            vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists_1[i]->GetRhiResource());
-            vkFreeCommandBuffers(
-                RHI_Context::device,
-                static_cast<VkCommandPool>(m_rhi_resources[1]),
+                static_cast<VkCommandPool>(m_rhi_resource),
                 1,
                 &vk_cmd_buffer
             );
         }
 
-        vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resources[0]), nullptr);
-        vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resources[1]), nullptr);
+        vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resource), nullptr);
     }
 
     void RHI_Queue::NextCommandList()
     {
-        if (m_first_tick)
-        {
-            m_first_tick = false;
-        }
-
         m_index++;
 
-        // if we have no more command lists, switch to the other pool
-        if (m_index == cmd_lists_per_pool)
+        // reset if needed
+        if (m_index == static_cast<uint32_t>(m_cmd_lists.size()))
         {
-            // switch command pool
-            m_index            = 0;
-            m_using_pool_a     = !m_using_pool_a;
-            auto& cmd_lists    = m_using_pool_a ? m_cmd_lists_0 : m_cmd_lists_1;
-            VkCommandPool pool = static_cast<VkCommandPool>(m_rhi_resources[m_using_pool_a ? 0 : 1]);
+            m_index  = 0;
 
             // wait
-            for (shared_ptr<RHI_CommandList> cmd_list : cmd_lists)
+            for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists)
             {
                 if (cmd_list->GetState() == RHI_CommandListState::Submitted)
                 {
@@ -138,7 +110,7 @@ namespace Spartan
             }
 
             // reset
-            SP_ASSERT_VK(vkResetCommandPool(RHI_Context::device, pool, 0));
+            SP_ASSERT_VK(vkResetCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resource), 0));
         }
     }
 
@@ -162,11 +134,6 @@ namespace Spartan
         {
             lock = unique_lock<mutex>(get_mutex(this));
         }
-
-        // validate
-        SP_ASSERT(cmd_buffer != nullptr);
-        SP_ASSERT(semaphore != nullptr);
-        SP_ASSERT(semaphore_timeline != nullptr);
 
         VkSemaphoreSubmitInfo semaphores[2] = {};
 

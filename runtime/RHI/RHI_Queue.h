@@ -30,33 +30,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    const uint32_t cmd_lists_per_pool = 8;
-
     class RHI_Queue : public SpartanObject
     {
     public:
         RHI_Queue(const RHI_Queue_Type queue_type, const char* name);
         ~RHI_Queue();
 
-        // core
         void NextCommandList();
         void Wait();
         void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline);
         void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_SyncPrimitive*>& wait_semaphores);
 
         // misc
-        auto& GetCommandListPool()        { return m_using_pool_a ? m_cmd_lists_0 : m_cmd_lists_1; }
-        RHI_CommandList* GetCommandList() { return GetCommandListPool()[m_index].get(); }
+        RHI_CommandList* GetCommandList() { return m_cmd_lists[m_index].get(); }
         RHI_Queue_Type GetType() const    { return m_type; }
 
     private:
-        std::array<std::shared_ptr<RHI_CommandList>, cmd_lists_per_pool> m_cmd_lists_0;
-        std::array<std::shared_ptr<RHI_CommandList>, cmd_lists_per_pool> m_cmd_lists_1;
-        std::array<void*, 2> m_rhi_resources;
-
-        uint32_t m_index      = 0;
-        bool m_using_pool_a   = true;
-        bool m_first_tick     = true;
-        RHI_Queue_Type m_type = RHI_Queue_Type::Max;
+        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists = { nullptr, nullptr };
+        void* m_rhi_resource                                        = nullptr;
+        uint32_t m_index                                            = 0;
+        RHI_Queue_Type m_type                                       = RHI_Queue_Type::Max;
     };
 }
