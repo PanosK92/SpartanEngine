@@ -918,7 +918,7 @@ namespace Spartan
                 properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Emission)   ? (1U << 6)  : 0;
                 properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Occlusion)  ? (1U << 7)  : 0;
                 properties[index].flags |= material->GetProperty(MaterialProperty::TextureSlopeBased)  ? (1U << 8)  : 0;
-                properties[index].flags |= material->GetProperty(MaterialProperty::VertexAnimateWind)  ? (1U << 9) : 0;
+                properties[index].flags |= material->GetProperty(MaterialProperty::WindAnimation)      ? (1U << 9) : 0;
                 properties[index].flags |= material->GetProperty(MaterialProperty::VertexAnimateWater) ? (1U << 10) : 0;
                 properties[index].flags |= material->IsTessellated()                                   ? (1U << 11) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected

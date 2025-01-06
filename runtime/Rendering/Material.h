@@ -70,7 +70,7 @@ namespace Spartan
         TextureOffsetX,       // offset of the texture along the X-axis
         TextureOffsetY,       // offset of the texture along the Y-axis
         TextureSlopeBased,    // applies texture mapping based on the mesh slope
-        VertexAnimateWind,    // applies vertex-based animation to simulate wind
+        WindAnimation,        // applies vertex-based animation to simulate wind
         VertexAnimateWater,   // applies vertex-based animation to simulate water flow
         CullMode,             // sets the culling mode based on RHI_CullMode enum values
         Gltf,                 // indicates if the material was imported from a glTF file

@@ -864,6 +864,11 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
         }
 
+        // wind animation
+        bool wind_animation = material->GetProperty(MaterialProperty::WindAnimation) != 0.0f;
+        ImGui::Checkbox("Wind animation", &wind_animation);
+        material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
+
         //= MAP ===============================================================================
         material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);
         material->SetProperty(MaterialProperty::TextureTilingY, tiling.y);

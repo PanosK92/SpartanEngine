@@ -636,7 +636,7 @@ namespace Spartan
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_tree_2\\branches_color.png");
                             material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\vegetation_tree_2\\branches_normal.png");
                             material->SetTexture(MaterialTextureType::Occlusion,          "project\\terrain\\vegetation_tree_2\\branches_ao.png");
-                            material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
+                            material->SetProperty(MaterialProperty::WindAnimation,        1.0f);
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
@@ -663,7 +663,7 @@ namespace Spartan
                             material->SetColor(Color::standard_white);
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_plant_1\\ormbunke.png");
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                            material->SetProperty(MaterialProperty::VertexAnimateWind,    1.0f);
+                            material->SetProperty(MaterialProperty::WindAnimation,    1.0f);
                             material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
                             renderable->SetMaterial(material);
