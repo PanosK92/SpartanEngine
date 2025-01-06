@@ -61,7 +61,7 @@ namespace Spartan
         void Present();
 
         // properties
-        uint32_t GetWidth() const        { return m_width; }
+        uint32_t GetWidth() const       { return m_width; }
         uint32_t GetHeight() const      { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
         RHI_Format GetFormat() const    { return m_format; }
@@ -72,9 +72,9 @@ namespace Spartan
         RHI_Image_Layout GetLayout() const;
         void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
 
-        static const uint8_t max_buffer_count = 3;
-        static const RHI_Format format_sdr    = RHI_Format::R8G8B8A8_Unorm;
-        static const RHI_Format format_hdr    = RHI_Format::R10G10B10A2_Unorm;
+        static const uint8_t buffer_count  = 2;
+        static const RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
+        static const RHI_Format format_hdr = RHI_Format::R10G10B10A2_Unorm;
 
     private:
         void Create();
@@ -90,18 +90,18 @@ namespace Spartan
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
         // misc
-        uint32_t m_sync_index                                    = std::numeric_limits<uint32_t>::max();
-        uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
-        void* m_sdl_window                                       = nullptr;
-        std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Max };
-        std::array<std::shared_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_semaphore;
-        std::array<std::shared_ptr<RHI_SyncPrimitive>, max_buffer_count> m_image_acquired_fence;
+        uint32_t m_sync_index                                = std::numeric_limits<uint32_t>::max();
+        uint32_t m_image_index                               = std::numeric_limits<uint32_t>::max();
+        void* m_sdl_window                                   = nullptr;
+        std::array<RHI_Image_Layout, buffer_count> m_layouts = { RHI_Image_Layout::Max };
+        std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_semaphore;
+        std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_fence;
         std::vector<RHI_SyncPrimitive*> m_wait_semaphores;
 
         // rhi
-        void* m_rhi_swapchain                         = nullptr;
-        void* m_rhi_surface                           = nullptr;
-        std::array<void*, max_buffer_count> m_rhi_rt  = { nullptr };
-        std::array<void*, max_buffer_count> m_rhi_rtv = { nullptr };
+        void* m_rhi_swapchain                     = nullptr;
+        void* m_rhi_surface                       = nullptr;
+        std::array<void*, buffer_count> m_rhi_rt  = { nullptr };
+        std::array<void*, buffer_count> m_rhi_rtv = { nullptr };
     };
 }
