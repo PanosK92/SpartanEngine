@@ -140,8 +140,8 @@ namespace Spartan
     private:
         void ComputeMatrices();
         void ProcessInput();
-        void ProcessInputFpsControl();
-        void ProcessInputLerpToEntity();
+        void Input_FpsControl();
+        void Input_LerpToEntity();
 
         uint32_t m_flags                             = 0;
         float m_aperture                             = 2.8f;         // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration

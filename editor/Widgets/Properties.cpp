@@ -863,10 +863,31 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
         }
 
-        // wind animation
-        bool wind_animation = material->GetProperty(MaterialProperty::WindAnimation) != 0.0f;
-        ImGui::Checkbox("Wind animation", &wind_animation);
-        material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
+        // rendering
+        {
+            // cull mode
+            {
+                static vector<string> cull_modes =
+                {
+                    "Back",
+                    "Front",
+                    "None"
+                };
+        
+                ImGui::Text("Culling");
+                ImGui::SameLine(column_pos_x);
+                uint32_t cull_mode_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::CullMode));
+                if (ImGuiSp::combo_box("##mat_cull_mode", cull_modes, &cull_mode_index))
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(cull_mode_index));
+                }
+            }
+
+            // wind animation
+            bool wind_animation = material->GetProperty(MaterialProperty::WindAnimation) != 0.0f;
+            ImGui::Checkbox("Wind animation", &wind_animation);
+            material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
+        }
 
         //= MAP ===============================================================================
         material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);

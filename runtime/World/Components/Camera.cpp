@@ -156,7 +156,7 @@ namespace Spartan
         return IsInViewFrustum(box);
     }
 
-    const Math::Ray Camera::ComputePickingRay()
+    const Ray Camera::ComputePickingRay()
     {
         Vector3 ray_start     = GetEntity()->GetPosition();
         Vector3 ray_direction = ScreenToWorldCoordinates(Input::GetMousePositionRelativeToEditorViewport(), 1.0f);
@@ -327,17 +327,16 @@ namespace Spartan
     {
         if (GetFlag(CameraFlags::CanBeControlled))
         {
-            ProcessInputFpsControl();
+            Input_FpsControl();
         }
 
         // shortcuts
         {
-            // focus on selected entity: f
-            ProcessInputLerpToEntity();
+            Input_LerpToEntity(); // f
         }
     }
 
-    void Camera::ProcessInputFpsControl()
+    void Camera::Input_FpsControl()
     {
         static const float movement_speed_max = 5.0f;
         static float movement_acceleration    = 1.0f;
@@ -582,7 +581,7 @@ namespace Spartan
         }
     }
 
-    void Camera::ProcessInputLerpToEntity()
+    void Camera::Input_LerpToEntity()
     {
         // set focused entity as a lerp target
         if (Input::GetKeyDown(KeyCode::F))

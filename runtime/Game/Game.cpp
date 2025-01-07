@@ -689,9 +689,11 @@ namespace Spartan
 
         void create_sponza()
         {
+            // set the mood
             create_camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
             create_sun(LightIntensity::black_hole, false);
             create_music("project\\music\\jake_chudnow_olive.mp3");
+            Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
             // point light
             {
@@ -797,8 +799,6 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                 }
             }
-
-            Renderer::SetWind(Renderer::GetWind() * 0.2f);
         }
 
         void create_doom()
