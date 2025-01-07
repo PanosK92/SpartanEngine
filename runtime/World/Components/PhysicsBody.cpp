@@ -171,21 +171,7 @@ namespace Spartan
 
     PhysicsBody::PhysicsBody(Entity* entity) : Component(entity)
     {
-        m_in_world         = false;
-        m_mass             = default_mass;
-        m_restitution      = default_restitution;
-        m_friction         = default_friction;
-        m_friction_rolling = default_friction_rolling;
-        m_use_gravity      = true;
-        m_gravity          = Physics::GetGravity();
-        m_is_kinematic     = false;
-        m_position_lock    = Vector3::Zero;
-        m_rotation_lock    = Vector3::Zero;
-        m_rigid_body       = nullptr;
-        m_shape_type       = PhysicsShape::Box;
-        m_center_of_mass   = Vector3::Zero;
-        m_size             = Vector3::One;
-        m_shape            = nullptr;
+        m_gravity = Physics::GetGravity();
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -272,7 +258,6 @@ namespace Spartan
         stream->Write(m_is_kinematic);
         stream->Write(m_position_lock);
         stream->Write(m_rotation_lock);
-        stream->Write(m_in_world);
         stream->Write(uint32_t(m_shape_type));
         stream->Write(m_size);
         stream->Write(m_center_of_mass);
@@ -289,7 +274,6 @@ namespace Spartan
         stream->Read(&m_is_kinematic);
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
-        stream->Read(&m_in_world);
         m_shape_type = PhysicsShape(stream->ReadAs<uint32_t>());
         stream->Read(&m_size);
         stream->Read(&m_center_of_mass);
@@ -710,8 +694,6 @@ namespace Spartan
                 SetLinearVelocity(Vector3::Zero);
                 SetAngularVelocity(Vector3::Zero);
             }
-
-            m_in_world = true;
         }
     }
 
@@ -720,7 +702,6 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        // release any constraints that refer to it
         for (const auto& constraint : m_constraints)
         {
             constraint->ReleaseConstraint();
@@ -728,12 +709,7 @@ namespace Spartan
 
         if (m_rigid_body)
         {
-            if (m_in_world)
-            {
-                Physics::RemoveBody(reinterpret_cast<btRigidBody*&>(m_rigid_body));
-                m_in_world = false;
-            }
-
+            Physics::RemoveBody(reinterpret_cast<btRigidBody*&>(m_rigid_body));
             delete rigid_body->getMotionState();
             delete rigid_body;
             m_rigid_body = nullptr;
@@ -979,9 +955,9 @@ namespace Spartan
             {
                 // create
                 btConvexHullShape* shape_convex = new btConvexHullShape(
-                reinterpret_cast<btScalar*>(&vertices[0]),
-                static_cast<uint32_t>(vertices.size()),
-                static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))
+                    reinterpret_cast<btScalar*>(&vertices[0]),
+                    static_cast<uint32_t>(vertices.size()),
+                    static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))
                 );
                 shape_convex->optimizeConvexHull();
                 

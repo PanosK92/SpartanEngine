@@ -158,7 +158,6 @@ namespace Spartan
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
-        bool IsInWorld() const        { return m_in_world; }
         void* GetBtRigidBody() const  { return m_rigid_body; }
         std::shared_ptr<Car> GetCar() { return m_car; }
 
@@ -167,11 +166,11 @@ namespace Spartan
         void RemoveBodyFromWorld();
         void UpdateShape();
 
-        float m_mass                   = 0.0f;
-        float m_friction               = 0.0f;
-        float m_friction_rolling       = 0.0f;
-        float m_restitution            = 0.0f;
-        bool m_use_gravity             = false;
+        float m_mass                   = 1.0f;
+        float m_friction               = 1.0f;
+        float m_friction_rolling       = 0.002f;
+        float m_restitution            = 0.2f;
+        bool m_use_gravity             = true;
         bool m_is_kinematic            = false;
         Math::Vector3 m_gravity        = Math::Vector3::Zero;
         Math::Vector3 m_position_lock  = Math::Vector3::Zero;
@@ -182,7 +181,6 @@ namespace Spartan
         PhysicsBodyType m_body_type    = PhysicsBodyType::RigidBody;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
-        bool m_in_world                = false;
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;
         std::shared_ptr<Car> m_car     = nullptr;
