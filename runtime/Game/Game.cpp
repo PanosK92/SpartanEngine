@@ -721,7 +721,7 @@ namespace Spartan
                 }
 
                 // disable dirt decals since they look bad
-            // they are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them
+                // they are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them
                 entity->GetDescendantByName("decals_1st_floor")->SetActive(false);
                 entity->GetDescendantByName("decals_2nd_floor")->SetActive(false);
                 entity->GetDescendantByName("decals_3rd_floor")->SetActive(false);

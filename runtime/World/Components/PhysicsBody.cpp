@@ -62,12 +62,6 @@ namespace Spartan
         #define rigid_body static_cast<btRigidBody*>(m_rigid_body)
         #define vehicle    static_cast<btRaycastVehicle*>(m_vehicle)
 
-        const float default_deactivation_time = 2000;
-        const float default_mass              = 1.0f;
-        const float default_restitution       = 0.2f;
-        const float default_friction          = 1.0f;
-        const float default_friction_rolling  = 0.0f;
-
         btTransform compute_transform(const Vector3& position, const Quaternion& rotation, const Vector3& scale)
         {
             btTransform transform;
@@ -654,7 +648,7 @@ namespace Spartan
 
                 rigid_body->setCollisionFlags(flags);
                 rigid_body->forceActivationState((m_is_kinematic || m_body_type == PhysicsBodyType::Vehicle) ? DISABLE_DEACTIVATION : ISLAND_SLEEPING);
-                rigid_body->setDeactivationTime(default_deactivation_time);
+                rigid_body->setDeactivationTime(2000); // 2 seconds
             }
 
             // gravity
