@@ -577,17 +577,16 @@ namespace Spartan
             return;
         }
 
-        // compute local inertia so that we can transfer it to the new body
+        // calculate inertia
         btVector3 inertia = btVector3(0, 0, 0);
         {
-            bool is_static          = m_mass == 0.0f;                     // static objects don't have inertia
-            bool is_supported_shape = m_shape_type != PhysicsShape::Mesh; // shapes like btBvhTriangleMeshShape don't support local inertia
-            bool support_inertia    = !is_static && is_supported_shape;
-            if (m_rigid_body && support_inertia && shape)
+            // maintain any previous inertia (if any)
+            if (m_rigid_body)
             {
                 inertia = rigid_body->getLocalInertia();
-                shape->calculateLocalInertia(m_mass, inertia);
             }
+
+            shape->calculateLocalInertia(m_mass, inertia);
         }
 
         // remove and delete the old body
