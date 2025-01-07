@@ -56,7 +56,6 @@ namespace Spartan
         Capsule,
         Cone,
         Terrain,
-        MeshConvexHull,
         Mesh,
         Max
     };

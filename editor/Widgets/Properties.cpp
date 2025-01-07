@@ -534,8 +534,7 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
                 "Capsule",
                 "Cone",
                 "Terrain",
-                "Mesh Convex Hull (Cheap)",
-                "Mesh (Expensive)"
+                "Mesh"
             };
 
             ImGui::Text("Shape Type");
@@ -946,7 +945,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
  
-        //= MAP =============================================================================================================================================
+        //= MAP =======================================================================================================================================================
         if (aperture != camera->GetAperture())                             camera->SetAperture(aperture);
         if (shutter_speed != camera->GetShutterSpeed())                    camera->SetShutterSpeed(shutter_speed);
         if (iso != camera->GetIso())                                       camera->SetIso(iso);
@@ -954,7 +953,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         if (near_plane != camera->GetNearPlane())                          camera->SetNearPlane(near_plane);
         if (far_plane != camera->GetFarPlane())                            camera->SetFarPlane(far_plane);
         if (first_person_control_enabled != camera->GetFlag(CameraFlags::CanBeControlled)) camera->SetFlag(CameraFlags::CanBeControlled, first_person_control_enabled);
-        //===================================================================================================================================================
+        //=============================================================================================================================================================
     }
     component_end();
 }

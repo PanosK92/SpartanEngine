@@ -85,7 +85,7 @@ namespace Spartan
             return transform;
         }
 
-        bool is_hollow(Renderable* renderable, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
+        bool can_a_capsule_enter(Renderable* renderable, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
         {
             // skip objects which are too small for a human to fit inside
             if (renderable->GetBoundingBox(BoundingBoxType::Transformed).Volume() < 1.0f)
@@ -166,6 +166,7 @@ namespace Spartan
     PhysicsBody::PhysicsBody(Entity* entity) : Component(entity)
     {
         m_gravity = Physics::GetGravity();
+        m_car     = make_shared<Car>();
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -267,12 +268,7 @@ namespace Spartan
 
     void PhysicsBody::SetMass(float mass)
     {
-        mass = Helper::Max(mass, 0.0f);
-        if (mass != m_mass)
-        {
-            m_mass = mass;
-            AddBodyToWorld();
-        }
+        m_mass = Helper::Max(mass, 0.0f);
     }
 
     void PhysicsBody::SetFriction(float friction)
@@ -433,7 +429,12 @@ namespace Spartan
 
     void PhysicsBody::SetRotationLock(const Vector3& lock)
     {
-        if (!m_rigid_body || m_rotation_lock == lock)
+        if (!m_rigid_body)
+        {
+            SP_LOG_WARNING("This call needs to happen after SetShapeType()");
+        }
+
+        if (m_rotation_lock == lock)
             return;
 
         m_rotation_lock = lock;
@@ -579,6 +580,7 @@ namespace Spartan
 
         // calculate inertia
         btVector3 inertia = btVector3(0, 0, 0);
+        if (m_mass != 0.0f)
         {
             // maintain any previous inertia (if any)
             if (m_rigid_body)
@@ -589,7 +591,6 @@ namespace Spartan
             shape->calculateLocalInertia(m_mass, inertia);
         }
 
-        // remove and delete the old body
         RemoveBodyFromWorld();
 
         // create rigid body
@@ -601,7 +602,7 @@ namespace Spartan
             construction_info.m_restitution     = m_restitution;
             construction_info.m_collisionShape  = static_cast<btCollisionShape*>(m_shape);
             construction_info.m_localInertia    = inertia;
-            construction_info.m_motionState     = new MotionState(this); // we delete this manually later
+            construction_info.m_motionState     = new MotionState(this); // RemoveBodyFromWorld() deletes this
 
             m_rigid_body = new btRigidBody(construction_info);
             rigid_body->setUserPointer(this);
@@ -615,11 +616,6 @@ namespace Spartan
 
         if (m_body_type == PhysicsBodyType::Vehicle)
         {
-            if (!m_car)
-            {
-                m_car = make_unique<Car>();
-            }
-
             m_car->Create(rigid_body, m_entity_ptr);
         }
 
@@ -711,8 +707,6 @@ namespace Spartan
         m_size.x = Helper::Clamp(m_size.x, Helper::SMALL_FLOAT, INFINITY);
         m_size.y = Helper::Clamp(m_size.y, Helper::SMALL_FLOAT, INFINITY);
         m_size.z = Helper::Clamp(m_size.z, Helper::SMALL_FLOAT, INFINITY);
-
-        UpdateShape();
     }
 
     void PhysicsBody::SetShapeType(PhysicsShape type)
@@ -730,7 +724,6 @@ namespace Spartan
             return;
 
         m_body_type = type;
-        AddBodyToWorld();
     }
     
     bool PhysicsBody::RayTraceIsGrounded() const
@@ -816,6 +809,8 @@ namespace Spartan
     
     void PhysicsBody::UpdateShape()
     {
+        SP_ASSERT(m_shape_type != PhysicsShape::Max);
+
         if (shape)
         {
             delete shape;
@@ -826,7 +821,7 @@ namespace Spartan
         vector<uint32_t> indices;
         vector<RHI_Vertex_PosTexNorTan> vertices;
         shared_ptr<Renderable> renderable = nullptr;
-        if (m_shape_type == PhysicsShape::Mesh || m_shape_type == PhysicsShape::MeshConvexHull)
+        if (m_shape_type == PhysicsShape::Mesh)
         {
             // get renderable
             renderable = GetEntity()->GetComponent<Renderable>();
@@ -914,53 +909,59 @@ namespace Spartan
 
             case PhysicsShape::Mesh:
             {
-                btTriangleMesh* shape_local = new btTriangleMesh();
-                for (uint32_t i = 0; i < static_cast<uint32_t>(indices.size()); i += 3)
-                {
-                    btVector3 vertex0(vertices[indices[i]].pos[0],     vertices[indices[i]].pos[1],     vertices[indices[i]].pos[2]);
-                    btVector3 vertex1(vertices[indices[i + 1]].pos[0], vertices[indices[i + 1]].pos[1], vertices[indices[i + 1]].pos[2]);
-                    btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
-                    shape_local->addTriangle(vertex0, vertex1, vertex2);
-                }
-                shape_local->setScaling(vector_to_bt(size));
+                // determine how much detail is needed for this shape
+                const bool is_enterable = can_a_capsule_enter(renderable.get(), vertices, size);
+                const bool is_low_poly  = vertices.size() < 1000;
+                const bool convex_hull  = !is_enterable && !is_low_poly;
 
-                m_shape = new btBvhTriangleMeshShape(shape_local, true);
-                break;
-            }
-
-            case PhysicsShape::MeshConvexHull:
-            {
-                // create
-                btConvexHullShape* shape_convex = new btConvexHullShape(
-                    reinterpret_cast<btScalar*>(&vertices[0]),
-                    static_cast<uint32_t>(vertices.size()),
-                    static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))
-                );
-                shape_convex->optimizeConvexHull();
-                
-                // add to compound
-                btCompoundShape* shape_compound = new btCompoundShape();
-                if (renderable->HasInstancing())
+                if (convex_hull)
                 {
-                    for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
+                    // create
+                    btConvexHullShape* shape_convex = new btConvexHullShape(
+                        reinterpret_cast<btScalar*>(&vertices[0]),
+                        static_cast<uint32_t>(vertices.size()),
+                        static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))
+                    );
+                    shape_convex->optimizeConvexHull();
+                    
+                    // add to compound
+                    btCompoundShape* shape_compound = new btCompoundShape();
+                    if (renderable->HasInstancing())
                     {
-                        Matrix world_transform = renderable->GetInstanceTransform(instance_index);
-                        shape_compound->addChildShape(compute_transform(world_transform.GetTranslation(), world_transform.GetRotation(), world_transform.GetScale()), shape_convex);
+                        for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
+                        {
+                            Matrix world_transform = renderable->GetInstanceTransform(instance_index);
+                            shape_compound->addChildShape(compute_transform(world_transform.GetTranslation(), world_transform.GetRotation(), world_transform.GetScale()), shape_convex);
+                        }
                     }
+                    else
+                    {
+                        shape_compound->addChildShape(compute_transform(Vector3::Zero, Quaternion::Identity, size), shape_convex);
+                    }
+                    
+                    m_shape = shape_compound;
                 }
                 else
                 {
-                    shape_compound->addChildShape(compute_transform(Vector3::Zero, Quaternion::Identity, size), shape_convex);
+                    btTriangleMesh* shape_local = new btTriangleMesh();
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(indices.size()); i += 3)
+                    {
+                        btVector3 vertex0(vertices[indices[i]].pos[0],     vertices[indices[i]].pos[1],     vertices[indices[i]].pos[2]);
+                        btVector3 vertex1(vertices[indices[i + 1]].pos[0], vertices[indices[i + 1]].pos[1], vertices[indices[i + 1]].pos[2]);
+                        btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
+                        shape_local->addTriangle(vertex0, vertex1, vertex2);
+                    }
+                    shape_local->setScaling(vector_to_bt(size));
+
+                    m_shape = new btBvhTriangleMeshShape(shape_local, true);
+                    m_mass  = 0.0f; // btBvhTriangleMeshShape is static
                 }
-                
-                m_shape = shape_compound;
+
                 break;
             }
         }
 
         static_cast<btCollisionShape*>(m_shape)->setUserPointer(this);
-
-        // re-add the body to the world so it's re-created with the new shape
         AddBodyToWorld();
     }
 }
