@@ -341,7 +341,7 @@ namespace Spartan
             if (debug::enabled && wheel_info->m_bIsFrontWheel)
             {
                 const float arrow_size = 0.02f;
-                Vector3 start          = ToVector3(*force_position);
+                Vector3 start          = bt_to_vector(*force_position);
 
                 // draw fz force
                 Math::Vector3 fz_end = start + Math::Vector3(parameters.pacejka_fz[wheel_index] * wheel_forward_dir) * 0.2f;
@@ -818,7 +818,7 @@ namespace Spartan
                 btTransform& transform_bt = m_parameters.vehicle->getWheelInfo(wheel_index).m_worldTransform;
 
                 // set the bullet transform to the wheel transform
-                transform->SetPosition(ToVector3(transform_bt.getOrigin()));
+                transform->SetPosition(bt_to_vector(transform_bt.getOrigin()));
 
                 // ToQuaternion() works with everything but the wheels, I suspect that this is because bullet uses a different
                 // rotation order since it's using a right-handed coordinate system, hence a simple quaternion conversion won't work

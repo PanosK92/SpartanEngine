@@ -96,7 +96,7 @@ namespace Spartan
             world_info->water_density            = 0;
             world_info->water_offset             = 0;
             world_info->water_normal             = btVector3(0, 0, 0);
-            world_info->m_gravity                = ToBtVector3(gravity);
+            world_info->m_gravity                = vector_to_bt(gravity);
         }
         else
         {
@@ -107,7 +107,7 @@ namespace Spartan
         }
 
         // setup
-        world->setGravity(ToBtVector3(gravity));
+        world->setGravity(vector_to_bt(gravity));
         world->getDispatchInfo().m_useContinuous = true;
         world->getSolverInfo().m_splitImpulse    = false;
         world->getSolverInfo().m_numIterations   = max_solve_iterations;
@@ -195,8 +195,8 @@ namespace Spartan
 
     vector<btRigidBody*> Physics::RayCast(const Vector3& start, const Vector3& end)
     {
-        btVector3 bt_start = ToBtVector3(start);
-        btVector3 bt_end   = ToBtVector3(end);
+        btVector3 bt_start = vector_to_bt(start);
+        btVector3 bt_end   = vector_to_bt(end);
 
         btCollisionWorld::AllHitsRayResultCallback ray_callback(bt_start, bt_end);
         world->rayTest(bt_start, bt_end, ray_callback);
@@ -218,15 +218,15 @@ namespace Spartan
 
     Vector3 Physics::RayCastFirstHitPosition(const Math::Vector3& start, const Math::Vector3& end)
     {
-        btVector3 bt_start = ToBtVector3(start);
-        btVector3 bt_end   = ToBtVector3(end);
+        btVector3 bt_start = vector_to_bt(start);
+        btVector3 bt_end   = vector_to_bt(end);
 
         btCollisionWorld::ClosestRayResultCallback ray_callback(bt_start, bt_end);
         world->rayTest(bt_start, bt_end, ray_callback);
 
         if (ray_callback.hasHit())
         {
-            return ToVector3(ray_callback.m_hitPointWorld);
+            return bt_to_vector(ray_callback.m_hitPointWorld);
         }
 
         return Vector3::Infinity;
@@ -316,8 +316,8 @@ namespace Spartan
             Vector3 ray_direction = picking_ray.GetDirection();
             Vector3 ray_end       = ray_start + ray_direction * camera->GetFarPlane();
 
-            btVector3 bt_ray_start = ToBtVector3(ray_start);
-            btVector3 bt_ray_end   = ToBtVector3(ray_end);
+            btVector3 bt_ray_start = vector_to_bt(ray_start);
+            btVector3 bt_ray_end   = vector_to_bt(ray_end);
             btCollisionWorld::ClosestRayResultCallback ray_callback(bt_ray_start, bt_ray_end);
 
             ray_callback.m_flags |= btTriangleRaycastCallback::kF_UseGjkConvexCastRaytest;
@@ -345,7 +345,7 @@ namespace Spartan
                     }
                 }
 
-                hit_position              = ToVector3(pick_position);
+                hit_position              = bt_to_vector(pick_position);
                 picking_distance_previous = (hit_position - ray_start).Length();
             }
         }
@@ -379,7 +379,7 @@ namespace Spartan
                     // keep it at the same picking distance
                     ray_direction *= picking_distance_previous;
                     Vector3 new_pivot_b = ray_start + ray_direction;
-                    pick_constraint->setPivotB(ToBtVector3(new_pivot_b));
+                    pick_constraint->setPivotB(vector_to_bt(new_pivot_b));
                 }
             }
         }

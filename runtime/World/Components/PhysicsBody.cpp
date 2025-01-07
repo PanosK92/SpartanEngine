@@ -45,6 +45,7 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+#include <BulletCollision/CollisionShapes/btCompoundShape.h>
 SP_WARNINGS_ON
 //====================================================================
 
@@ -57,16 +58,88 @@ namespace Spartan
 {
     namespace
     {
+        #define shape      static_cast<btCollisionShape*>(m_shape)
+        #define rigid_body static_cast<btRigidBody*>(m_rigid_body)
+        #define vehicle    static_cast<btRaycastVehicle*>(m_vehicle)
+
         const float default_deactivation_time = 2000;
         const float default_mass              = 1.0f;
         const float default_restitution       = 0.2f;
         const float default_friction          = 1.0f;
         const float default_friction_rolling  = 0.0f;
-    }
 
-    #define shape static_cast<btCollisionShape*>(m_shape)
-    #define rigid_body static_cast<btRigidBody*>(m_rigid_body)
-    #define vehicle static_cast<btRaycastVehicle*>(m_vehicle)
+        btTransform compute_transform(const Vector3& position, const Quaternion& rotation, const Vector3& scale)
+        {
+            btTransform transform;
+            transform.setIdentity();
+        
+            btQuaternion bt_rotation = quaternion_to_bt(rotation);
+            btVector3 bt_position    = vector_to_bt(position);
+        
+            btMatrix3x3& basis = transform.getBasis();
+            basis.setValue(scale.x, 0, 0,
+                           0, scale.y, 0,
+                           0, 0, scale.z);
+        
+            // Create a transform from the rotation quaternion
+            btTransform rotation_transform(bt_rotation);
+            transform = rotation_transform * transform;
+        
+            // Set the position
+            transform.setOrigin(bt_position);
+        
+            return transform;
+        }
+
+        bool is_hollow(Renderable* renderable, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
+        {
+            // skip objects which are too small for a human to fit inside
+            if (renderable->GetBoundingBox(BoundingBoxType::Transformed).Volume() < 1.0f)
+                return false;
+
+            // human dimensions
+            float capsuleHeight = 1.8f; // meters
+            float capsuleRadius = 0.5f; // meters
+        
+            auto is_inside_capsule = [&](const Vector3& point)
+            {
+                Vector3 pointToBase = point - Vector3(0.0f, 0.0f, 0.0f); // base at y = 0
+                float distanceFromCenter = sqrt(pointToBase.x * pointToBase.x + pointToBase.z * pointToBase.z);
+                
+                // check if inside the cylindrical part
+                if (point.y >= 0.0f && point.y <= capsuleHeight)
+                {
+                    return distanceFromCenter <= capsuleRadius;
+                }
+                
+                // check if inside the cap part (hemispheres)
+                if (point.y > 0.0f && point.y < capsuleHeight)
+                {
+                    float yDistanceFromCap = fabs(point.y - capsuleHeight);
+                    float capRadius = sqrt(capsuleRadius * capsuleRadius - yDistanceFromCap * yDistanceFromCap);
+                    return distanceFromCenter <= capRadius;
+                }
+                
+                return false; // Point outside the capsule
+            };
+        
+            int outside_vertex_count = 0;
+            for (const auto& vertex : vertices)
+            {
+                Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * scale;
+
+                if (!is_inside_capsule(position))
+                {
+                    outside_vertex_count++;
+                }
+            }
+        
+            float outside_percentage     = static_cast<float>(outside_vertex_count) / vertices.size();
+            const float hollow_threshold = 0.90f; // 90%
+        
+            return outside_percentage >= hollow_threshold;
+        }
+    }
 
     class MotionState : public btMotionState
     {
@@ -79,15 +152,15 @@ namespace Spartan
             const Vector3 last_position    = m_rigidBody->GetEntity()->GetPosition();
             const Quaternion last_rotation = m_rigidBody->GetEntity()->GetRotation();
 
-            worldTrans.setOrigin(ToBtVector3(last_position + last_rotation * m_rigidBody->GetCenterOfMass()));
-            worldTrans.setRotation(ToBtQuaternion(last_rotation));
+            worldTrans.setOrigin(vector_to_bt(last_position + last_rotation * m_rigidBody->GetCenterOfMass()));
+            worldTrans.setRotation(quaternion_to_bt(last_rotation));
         }
 
         // bullet -> engine
         void setWorldTransform(const btTransform& worldTrans) override
         {
-            const Quaternion new_rotation = ToQuaternion(worldTrans.getRotation());
-            const Vector3 new_position    = ToVector3(worldTrans.getOrigin()) - new_rotation * m_rigidBody->GetCenterOfMass();
+            const Quaternion new_rotation = bt_to_quaternion(worldTrans.getRotation());
+            const Vector3 new_position    = bt_to_vector(worldTrans.getOrigin()) - new_rotation * m_rigidBody->GetCenterOfMass();
 
             m_rigidBody->GetEntity()->SetPosition(new_position);
             m_rigidBody->GetEntity()->SetRotation(new_rotation);
@@ -113,7 +186,6 @@ namespace Spartan
         m_center_of_mass   = Vector3::Zero;
         m_size             = Vector3::One;
         m_shape            = nullptr;
-        m_car              = make_shared<Car>();
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -295,7 +367,7 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        rigid_body->setLinearVelocity(ToBtVector3(velocity));
+        rigid_body->setLinearVelocity(vector_to_bt(velocity));
         if (velocity != Vector3::Zero && activate)
         {
             Activate();
@@ -307,7 +379,7 @@ namespace Spartan
         if (!m_rigid_body)
             return Vector3::Zero;
 
-        return ToVector3(rigid_body->getLinearVelocity());
+        return bt_to_vector(rigid_body->getLinearVelocity());
     }
     
 	void PhysicsBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
@@ -315,7 +387,7 @@ namespace Spartan
         if (!m_rigid_body)
             return;
 
-        rigid_body->setAngularVelocity(ToBtVector3(velocity));
+        rigid_body->setAngularVelocity(vector_to_bt(velocity));
         if (velocity != Vector3::Zero && activate)
         {
             Activate();
@@ -331,11 +403,11 @@ namespace Spartan
 
         if (mode == PhysicsForce::Constant)
         {
-            rigid_body->applyCentralForce(ToBtVector3(force));
+            rigid_body->applyCentralForce(vector_to_bt(force));
         }
         else if (mode == PhysicsForce::Impulse)
         {
-            rigid_body->applyCentralImpulse(ToBtVector3(force));
+            rigid_body->applyCentralImpulse(vector_to_bt(force));
         }
     }
 
@@ -348,11 +420,11 @@ namespace Spartan
 
         if (mode == PhysicsForce::Constant)
         {
-            rigid_body->applyForce(ToBtVector3(force), ToBtVector3(position));
+            rigid_body->applyForce(vector_to_bt(force), vector_to_bt(position));
         }
         else if (mode == PhysicsForce::Impulse)
         {
-            rigid_body->applyImpulse(ToBtVector3(force), ToBtVector3(position));
+            rigid_body->applyImpulse(vector_to_bt(force), vector_to_bt(position));
         }
     }
 
@@ -365,11 +437,11 @@ namespace Spartan
 
         if (mode == PhysicsForce::Constant)
         {
-            rigid_body->applyTorque(ToBtVector3(torque));
+            rigid_body->applyTorque(vector_to_bt(torque));
         }
         else if (mode == PhysicsForce::Impulse)
         {
-            rigid_body->applyTorqueImpulse(ToBtVector3(torque));
+            rigid_body->applyTorqueImpulse(vector_to_bt(torque));
         }
     }
 
@@ -384,7 +456,7 @@ namespace Spartan
             return;
 
         m_position_lock = lock;
-        rigid_body->setLinearFactor(ToBtVector3(Vector3::One - lock));
+        rigid_body->setLinearFactor(vector_to_bt(Vector3::One - lock));
     }
 
     void PhysicsBody::SetRotationLock(bool lock)
@@ -398,12 +470,12 @@ namespace Spartan
             return;
 
         m_rotation_lock = lock;
-        rigid_body->setAngularFactor(ToBtVector3(Vector3::One - lock));
+        rigid_body->setAngularFactor(vector_to_bt(Vector3::One - lock));
 
         // recalculate inertia since bullet doesn't seem to be doing it automatically
         btVector3 inertia;
         rigid_body->getCollisionShape()->calculateLocalInertia(m_mass, inertia);
-        rigid_body->setMassProps(m_mass, inertia * ToBtVector3(Vector3::One - lock));
+        rigid_body->setMassProps(m_mass, inertia * vector_to_bt(Vector3::One - lock));
     }
 
     void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)
@@ -417,7 +489,7 @@ namespace Spartan
         if (m_rigid_body)
         {
             const btTransform& transform = rigid_body->getWorldTransform();
-            return ToVector3(transform.getOrigin()) - ToQuaternion(transform.getRotation()) * m_center_of_mass;
+            return bt_to_vector(transform.getOrigin()) - bt_to_quaternion(transform.getRotation()) * m_center_of_mass;
         }
     
         return Vector3::Zero;
@@ -430,7 +502,7 @@ namespace Spartan
 
         // set position to world transform
         btTransform& transform_world = rigid_body->getWorldTransform();
-        transform_world.setOrigin(ToBtVector3(position + ToQuaternion(transform_world.getRotation()) * m_center_of_mass));
+        transform_world.setOrigin(vector_to_bt(position + bt_to_quaternion(transform_world.getRotation()) * m_center_of_mass));
 
         // set position to interpolated world transform
         btTransform transform_world_interpolated = rigid_body->getInterpolationWorldTransform();
@@ -445,7 +517,7 @@ namespace Spartan
 
     Quaternion PhysicsBody::GetRotation() const
     {
-        return m_rigid_body ? ToQuaternion(rigid_body->getWorldTransform().getRotation()) : Quaternion::Identity;
+        return m_rigid_body ? bt_to_quaternion(rigid_body->getWorldTransform().getRotation()) : Quaternion::Identity;
     }
 
     void PhysicsBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
@@ -457,10 +529,10 @@ namespace Spartan
         // set rotation to world transform
         const Vector3 oldPosition = GetPosition();
         btTransform& transform_world = rigid_body->getWorldTransform();
-        transform_world.setRotation(ToBtQuaternion(rotation));
+        transform_world.setRotation(quaternion_to_bt(rotation));
         if (m_center_of_mass != Vector3::Zero)
         {
-            transform_world.setOrigin(ToBtVector3(oldPosition + rotation * m_center_of_mass));
+            transform_world.setOrigin(vector_to_bt(oldPosition + rotation * m_center_of_mass));
         }
 
         // set rotation to interpolated world transform
@@ -534,22 +606,16 @@ namespace Spartan
     {
         SP_ASSERT(shape != nullptr);
 
-        // a vehicle with a mass of zero or less will cause crash
-        if (m_body_type == PhysicsBodyType::Vehicle && m_mass <= 0.0f)
-        {
-            m_mass = 0.01f;
-        }
-
         // compute local inertia so that we can transfer it to the new body
-        btVector3 local_intertia = btVector3(0, 0, 0);
+        btVector3 inertia = btVector3(0, 0, 0);
         {
             bool is_static          = m_mass == 0.0f;                     // static objects don't have inertia
             bool is_supported_shape = m_shape_type != PhysicsShape::Mesh; // shapes like btBvhTriangleMeshShape don't support local inertia
             bool support_inertia    = !is_static && is_supported_shape;
             if (m_rigid_body && support_inertia && shape)
             {
-                local_intertia = rigid_body->getLocalInertia();
-                shape->calculateLocalInertia(m_mass, local_intertia);
+                inertia = rigid_body->getLocalInertia();
+                shape->calculateLocalInertia(m_mass, inertia);
             }
         }
 
@@ -564,7 +630,7 @@ namespace Spartan
             construction_info.m_rollingFriction = m_friction_rolling;
             construction_info.m_restitution     = m_restitution;
             construction_info.m_collisionShape  = static_cast<btCollisionShape*>(m_shape);
-            construction_info.m_localInertia    = local_intertia;
+            construction_info.m_localInertia    = inertia;
             construction_info.m_motionState     = new MotionState(this); // we delete this manually later
 
             m_rigid_body = new btRigidBody(construction_info);
@@ -579,6 +645,11 @@ namespace Spartan
 
         if (m_body_type == PhysicsBodyType::Vehicle)
         {
+            if (!m_car)
+            {
+                m_car = make_unique<Car>();
+            }
+
             m_car->Create(rigid_body, m_entity_ptr);
         }
 
@@ -614,7 +685,7 @@ namespace Spartan
                 }
 
                 rigid_body->setFlags(flags);
-                rigid_body->setGravity(m_use_gravity ? ToBtVector3(m_gravity) : btVector3(0.0f, 0.0f, 0.0f));
+                rigid_body->setGravity(m_use_gravity ? vector_to_bt(m_gravity) : btVector3(0.0f, 0.0f, 0.0f));
             }
         }
 
@@ -717,7 +788,7 @@ namespace Spartan
         float min_y = aabb_min.y();
 
         // get the lowest point of the body
-        Vector3 ray_start = ToVector3(rigid_body->getWorldTransform().getOrigin());
+        Vector3 ray_start = bt_to_vector(rigid_body->getWorldTransform().getOrigin());
         ray_start.y       = min_y + 0.1f; // offset of 0.1f to avoid starting inside/at the ground
 
         // return the first hit
@@ -744,7 +815,7 @@ namespace Spartan
         float min_y = aabb_min.y();
 
         // get the starting position
-        Vector3 ray_start = ToVector3(rigid_body->getWorldTransform().getOrigin());
+        Vector3 ray_start = bt_to_vector(rigid_body->getWorldTransform().getOrigin());
         ray_start.y       = min_y + ray_length;                     // raise it
         ray_start         = ray_start + forward * forward_distance; // move it forward
         // at this point, ray_start is likely to be above the stair step
@@ -827,7 +898,7 @@ namespace Spartan
         switch (m_shape_type)
         {
             case PhysicsShape::Box:
-                m_shape = new btBoxShape(ToBtVector3(size * 0.5f));
+                m_shape = new btBoxShape(vector_to_bt(size * 0.5f));
                 break;
 
             case PhysicsShape::Sphere:
@@ -839,7 +910,7 @@ namespace Spartan
                 break;
 
             case PhysicsShape::Cylinder:
-                m_shape = new btCylinderShape(ToBtVector3(size * 0.5f));
+                m_shape = new btCylinderShape(vector_to_bt(size * 0.5f));
                 break;
 
             case PhysicsShape::Capsule:
@@ -875,7 +946,7 @@ namespace Spartan
                     false                                 // Flip quad edges or not
                 );
                 
-                shape_local->setLocalScaling(ToBtVector3(size));
+                shape_local->setLocalScaling(vector_to_bt(size));
                 m_shape = shape_local;
 
                 // calculate the offset needed to re-center the terrain
@@ -898,7 +969,7 @@ namespace Spartan
                     btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
                     shape_local->addTriangle(vertex0, vertex1, vertex2);
                 }
-                shape_local->setScaling(ToBtVector3(size));
+                shape_local->setScaling(vector_to_bt(size));
 
                 m_shape = new btBvhTriangleMeshShape(shape_local, true);
                 break;
@@ -906,16 +977,30 @@ namespace Spartan
 
             case PhysicsShape::MeshConvexHull:
             {
-                btConvexHullShape* shape_approximated = new btConvexHullShape(
-                    (btScalar*)&vertices[0],                                 // points
-                    renderable->GetVertexCount(),                            // point count
-                    static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
-
-                shape_approximated->setLocalScaling(ToBtVector3(size));
-
-                // turn it into a proper convex hull since btConvexHullShape is an approximation
-                m_shape = static_cast<btConvexHullShape*>(shape_approximated);
-                static_cast<btConvexHullShape*>(m_shape)->optimizeConvexHull();
+                // create
+                btConvexHullShape* shape_convex = new btConvexHullShape(
+                reinterpret_cast<btScalar*>(&vertices[0]),
+                static_cast<uint32_t>(vertices.size()),
+                static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))
+                );
+                shape_convex->optimizeConvexHull();
+                
+                // add to compound
+                btCompoundShape* shape_compound = new btCompoundShape();
+                if (renderable->HasInstancing())
+                {
+                    for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
+                    {
+                        Matrix world_transform = renderable->GetInstanceTransform(instance_index);
+                        shape_compound->addChildShape(compute_transform(world_transform.GetTranslation(), world_transform.GetRotation(), world_transform.GetScale()), shape_convex);
+                    }
+                }
+                else
+                {
+                    shape_compound->addChildShape(compute_transform(Vector3::Zero, Quaternion::Identity, size), shape_convex);
+                }
+                
+                m_shape = shape_compound;
                 break;
             }
         }

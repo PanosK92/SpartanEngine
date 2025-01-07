@@ -233,16 +233,16 @@ namespace Spartan
         case POINT2POINT_CONSTRAINT_TYPE:
         {
             auto* point_constraint = dynamic_cast<btPoint2PointConstraint*>(m_constraint);
-            point_constraint->setPivotA(ToBtVector3(own_body_scaled_position));
-            point_constraint->setPivotB(ToBtVector3(other_body_scaled_position));
+            point_constraint->setPivotA(vector_to_bt(own_body_scaled_position));
+            point_constraint->setPivotB(vector_to_bt(other_body_scaled_position));
         }
         break;
 
         case HINGE_CONSTRAINT_TYPE:
         {
             auto* hinge_constraint = dynamic_cast<btHingeConstraint*>(m_constraint);
-            btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
-            btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+            btTransform own_frame(quaternion_to_bt(m_rotation), vector_to_bt(own_body_scaled_position));
+            btTransform other_frame(quaternion_to_bt(m_rotationOther), vector_to_bt(other_body_scaled_position));
             hinge_constraint->setFrames(own_frame, other_frame);
         }
         break;
@@ -250,8 +250,8 @@ namespace Spartan
         case SLIDER_CONSTRAINT_TYPE:
         {
             auto* slider_constraint = dynamic_cast<btSliderConstraint*>(m_constraint);
-            btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
-            btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+            btTransform own_frame(quaternion_to_bt(m_rotation), vector_to_bt(own_body_scaled_position));
+            btTransform other_frame(quaternion_to_bt(m_rotationOther), vector_to_bt(other_body_scaled_position));
             slider_constraint->setFrames(own_frame, other_frame);
         }
         break;
@@ -259,8 +259,8 @@ namespace Spartan
         case CONETWIST_CONSTRAINT_TYPE:
         {
             auto* cone_twist_constraint = dynamic_cast<btConeTwistConstraint*>(m_constraint);
-            btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
-            btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+            btTransform own_frame(quaternion_to_bt(m_rotation), vector_to_bt(own_body_scaled_position));
+            btTransform other_frame(quaternion_to_bt(m_rotationOther), vector_to_bt(other_body_scaled_position));
             cone_twist_constraint->setFrames(own_frame, other_frame);
         }
         break;
@@ -310,30 +310,30 @@ namespace Spartan
         {
             case ConstraintType_Point:
                 {
-                    m_constraint = new btPoint2PointConstraint(*bt_own_body, *bt_other_body, ToBtVector3(own_body_scaled_position), ToBtVector3(other_body_scaled_position));
+                    m_constraint = new btPoint2PointConstraint(*bt_own_body, *bt_other_body, vector_to_bt(own_body_scaled_position), vector_to_bt(other_body_scaled_position));
                 }
                 break;
 
             case ConstraintType_Hinge:
                 {
-                    btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
-                    btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+                    btTransform own_frame(quaternion_to_bt(m_rotation), vector_to_bt(own_body_scaled_position));
+                    btTransform other_frame(quaternion_to_bt(m_rotationOther), vector_to_bt(other_body_scaled_position));
                     m_constraint = new btHingeConstraint(*bt_own_body, *bt_other_body, own_frame, other_frame);
                 }
                 break;
 
             case ConstraintType_Slider:
                 {
-                    btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
-                    btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+                    btTransform own_frame(quaternion_to_bt(m_rotation), vector_to_bt(own_body_scaled_position));
+                    btTransform other_frame(quaternion_to_bt(m_rotationOther), vector_to_bt(other_body_scaled_position));
                     m_constraint = new btSliderConstraint(*bt_own_body, *bt_other_body, own_frame, other_frame, false);
                 }
                 break;
 
             case ConstraintType_ConeTwist:
                 {
-                    btTransform own_frame(ToBtQuaternion(m_rotation), ToBtVector3(own_body_scaled_position));
-                    btTransform other_frame(ToBtQuaternion(m_rotationOther), ToBtVector3(other_body_scaled_position));
+                    btTransform own_frame(quaternion_to_bt(m_rotation), vector_to_bt(own_body_scaled_position));
+                    btTransform other_frame(quaternion_to_bt(m_rotationOther), vector_to_bt(other_body_scaled_position));
                     m_constraint = new btConeTwistConstraint(*bt_own_body, *bt_other_body, own_frame, other_frame);
                 }
                 break;

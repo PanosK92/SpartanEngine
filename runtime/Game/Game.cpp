@@ -622,6 +622,11 @@ namespace Spartan
                             // generate instances
                             terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
                             renderable->SetInstances(instances);
+
+                             // make the bark collidable
+                            shared_ptr<PhysicsBody> rigid_body = bark->AddComponent<PhysicsBody>();
+                            rigid_body->SetMass(0.0f);
+                            rigid_body->SetShapeType(PhysicsShape::Box);
                         }
 
                         if (Entity* branches = entity->GetDescendantByName("Branches"))
