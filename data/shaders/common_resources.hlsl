@@ -65,6 +65,9 @@ struct FrameBufferData
     
     double time;
     float2 padding;
+
+    float3 wind; // direction and length
+    float padding2;
 };
 
 // 128 byte push constant buffer used by every pass

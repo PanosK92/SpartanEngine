@@ -75,44 +75,42 @@ struct vertex_processing
             return lerp(hash(i), hash(i + 1.0), f);
         }
 
-        static float3 apply_wind(uint instance_id, float3 position_vertex, float3 animation_pivot, float time)
+        static float3 apply_wind(uint instance_id, float3 position_vertex, float3 animation_pivot, float3 wind, float time)
         {
-            const float3 base_wind_direction    = float3(1, 0, 0);
-            const float wind_vertex_sway_extent = 0.4f; // oscillation amplitude
-            const float wind_vertex_sway_speed  = 4.0f; // oscillation frequency
+            const float sway_extent       = 0.3f;  // maximum sway amplitude
+            const float sway_speed        = 2.0f;  // sway frequency
+            const float noise_scale       = 0.1f;  // scale of low-frequency noise
+            const float flutter_intensity = 0.05f; // intensity of fluttering
         
-            // base oscillation, a combination of two sine waves with a phase difference
-            float phase_offset = float(instance_id) * PI_HALF;
-            float phase1       = (time * wind_vertex_sway_speed) + position_vertex.x + phase_offset;
-            
-            // phase difference to ensure continuous motion
-            float phase_diff = PI / 3.0f; // choosing a non-half-multiples of PI to avoid total cancellation
-            float phase2     = phase1 + phase_diff;
-            float base_wave1 = sin(phase1);
-            float base_wave2 = sin(phase2);
-            
-            // perlin noise for low-frequency wind changes
-            float low_freq_noise = perlin_noise(time * 0.1f);
-            float wind_direction_factor = lerp(-1.0f, 1.0f, low_freq_noise);
-            float3 wind_direction = base_wind_direction * wind_direction_factor;
-            
-            // high-frequency perlin noise for flutter
-            float high_freq_noise = perlin_noise(position_vertex.x * 10.0f + time * 10.0f) - 0.5f;
-            
-            // combine all factors
-            float combined_wave = (base_wave1 + base_wave2 + high_freq_noise) / 3.0f;
-            
-            // reduce sway at the bottom, increase at the top
+            // normalize wind direction and calculate magnitude
+            float3 wind_direction = normalize(wind);
+            float wind_magnitude = length(wind);
+        
+            // height-based sway factor (stronger sway at higher points)
             float sway_factor = saturate((position_vertex.y - animation_pivot.y) / GetMaterial().world_space_height);
-            
-            // calculate final offset
-            float3 offset = wind_direction * combined_wave * wind_vertex_sway_extent * sway_factor;
-            
-            position_vertex.xyz += offset;
-            
+        
+            // base sinusoidal sway
+            float phase_offset = float(instance_id) * 0.25f * PI; // unique phase per instance
+            float base_wave    = sin(time * sway_speed + phase_offset);
+        
+            // add low-frequency perlin noise for smooth directional variation
+            float low_freq_noise           = perlin_noise(time * noise_scale + instance_id * 0.1f);
+            float directional_variation    = lerp(-0.5f, 0.5f, low_freq_noise); // smooth variation
+            float3 adjusted_wind_direction = wind_direction + directional_variation;
+        
+            // add high-frequency flutter (localized and rapid movement)
+            float flutter = sin(position_vertex.x * 10.0f + time * 15.0f) * flutter_intensity;
+        
+            // combine all factors for sway
+            float combined_wave = base_wave + flutter;
+            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * sway_factor;
+        
+            // apply the calculated sway to the vertex
+            position_vertex += sway_offset;
+        
             return position_vertex;
         }
-
+        
         static float3 apply_player_bend(float3 position_vertex, float3 animation_pivot)
         {
             // calculate horizontal distance to player
@@ -214,11 +212,11 @@ struct vertex_processing
         }
     };
 
-    static float3 ambient_animation(Surface surface, float3 position, float3 animation_pivot, uint instance_id, float time)
+    static float3 ambient_animation(Surface surface, float3 position, float3 animation_pivot, uint instance_id, float3 wind, float time)
     {
         if (surface.vertex_animate_wind())
         {
-            position = vegetation::apply_wind(instance_id, position, animation_pivot, time);
+            position = vegetation::apply_wind(instance_id, position, animation_pivot, wind, time);
             position = vegetation::apply_player_bend(position, animation_pivot);
         }
     
@@ -247,7 +245,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // clip the last row as it has encoded data in the first two elements
     matrix full              = pass_get_transform_previous();
     matrix<float, 3, 3> temp = (float3x3)full;
-    // manually construt a matrix that can be multiplied with another matrix
+    // manually construct a matrix that can be multiplied with another matrix
     matrix transform_previous = matrix(
         temp._m00, temp._m01, temp._m02, 0.0f,
         temp._m10, temp._m11, temp._m12, 0.0f,
@@ -276,17 +274,28 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
     MaterialParameters material = GetMaterial();
     Surface surface; surface.flags = material.flags;
     
-     // apply ambient animation - done here so it can benefit from potentially tessellated surfaces
-    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, extract_position(vertex.transform), vertex.instance_id, (float)buffer_frame.time);
-#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
-    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, extract_position(vertex.transform_previous), vertex.instance_id, (float)buffer_frame.time - buffer_frame.delta_time);
-#endif
+    // apply ambient animation - done here so that it can benefit from potentially tessellated surfaces
+    vertex.position = vertex_processing::ambient_animation(
+        surface,
+        vertex.position,
+        extract_position(vertex.transform),
+        vertex.instance_id,
+        buffer_frame.wind,
+        (float)buffer_frame.time
+    );
+
+    vertex.position_previous = vertex_processing::ambient_animation(
+        surface,
+        vertex.position_previous,
+        extract_position(vertex.transform_previous),
+        vertex.instance_id,
+        buffer_frame.wind,
+        (float)buffer_frame.time - buffer_frame.delta_time
+    );
     
     vertex.position_clip          = mul(float4(vertex.position, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_unjittered : buffer_frame.view_projection);
     vertex.position_clip_current  = vertex.position_clip;
-#ifndef TRANSFORM_IGNORE_PREVIOUS_POSITION
     vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_previous_unjittered : buffer_frame.view_projection_previous);
-#endif
 
     return vertex;
 }
