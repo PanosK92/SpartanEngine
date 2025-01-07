@@ -445,8 +445,8 @@ namespace Spartan
                         // Access info (usage: SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION,
                         // write_barriers: 0, queue: VkQueue 0x1d7ba2ef110[graphics], submit: 2988, batch: 0, batch_tag: 91515, command:
                         // vkCmdPipelineBarrier2, command_buffer: VkCommandBuffer 0x1d7bfd21870[cmd_list_1], seq_no: 62, reset_no: 1419).
-                        //if (p_callback_data->messageIdNumber == 0xe17ab4ae || p_callback_data->messageIdNumber == 0x42f2f4ed)
-                            //return VK_FALSE;
+                        if (p_callback_data->messageIdNumber == 0xe17ab4ae || p_callback_data->messageIdNumber == 0x42f2f4ed)
+                            return VK_FALSE;
                     }
                 }
 

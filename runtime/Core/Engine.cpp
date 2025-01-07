@@ -95,11 +95,14 @@ namespace Spartan
 
     void Engine::Shutdown()
     {
+        // the thread pool can hold state from other systems
+        // so shut it down first (it waits) to avoid crashes due to race conditions
+        ThreadPool::Shutdown();
+
         ResourceCache::Shutdown();
         World::Shutdown();
         Renderer::Shutdown();
         Physics::Shutdown();
-        ThreadPool::Shutdown();
         Event::Shutdown();
         Audio::Shutdown();
         Window::Shutdown();

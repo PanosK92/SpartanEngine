@@ -552,6 +552,8 @@ namespace Spartan
         m_pso = pso;
         RHI_Device::GetOrCreatePipeline(m_pso, m_pipeline, m_descriptor_layout_current);
 
+        RenderPassBegin();
+
         // set pipeline
         {
             // get vulkan pipeline object
@@ -600,8 +602,6 @@ namespace Spartan
             Renderer::SetStandardResources(this);
             descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout(), m_descriptor_layout_current);
         }
-
-        RenderPassBegin();
     }
 
     void RHI_CommandList::RenderPassBegin()

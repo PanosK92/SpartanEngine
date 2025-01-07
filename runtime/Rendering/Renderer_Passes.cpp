@@ -1998,8 +1998,6 @@ namespace Spartan
         pso.render_target_color_textures[0]  = tex_out;
         cmd_list->SetPipelineState(pso);
 
-        cmd_list->SetCullMode(RHI_CullMode::Back);
-
         auto draw_icon = [&cmd_list](Entity* entity, RHI_Texture* texture)
         {
             const Vector3 pos_world        = entity->GetPosition();
@@ -2130,15 +2128,13 @@ namespace Spartan
         pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
         pso.primitive_toplogy                = RHI_PrimitiveTopology::LineList;
 
-        // world space rendering
-        m_pcb_pass_cpu.transform = Matrix::Identity;
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
         // draw independent lines
         const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
         const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
-        if (draw_lines_depth_off || draw_lines_depth_on)
+        if ((draw_lines_depth_off || draw_lines_depth_on) && !m_line_vertices.empty())
         {
+            m_pcb_pass_cpu.transform = Matrix::Identity;
+            cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->SetCullMode(RHI_CullMode::None);
 
             // grow vertex buffer (if needed)
@@ -2148,49 +2144,36 @@ namespace Spartan
                 m_vertex_buffer_lines = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(m_line_vertices[0]), vertex_count, static_cast<void*>(&m_line_vertices[0]), true, "lines");
             }
 
-            if (vertex_count != 0)
+            // update vertex buffer
+            RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->GetMappedData());
+            memset(buffer, 0, m_vertex_buffer_lines->GetObjectSize());
+            copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+
+            // depth off
+            if (draw_lines_depth_off)
             {
-                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->GetMappedData());
-
-                // update vertex buffer
-                {
-                    // zero out the entire buffer first - this is because the buffer grows but doesn't shrink back (so it can hold previous data)
-                    memset(buffer, 0, m_vertex_buffer_lines->GetObjectSize());
-                    copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
-                }
-
-                // depth off
-                if (draw_lines_depth_off)
-                {
-                    cmd_list->BeginMarker("depth_off");
-
-                    // set pipeline state
-                    pso.blend_state         = GetBlendState(Renderer_BlendState::Off);
-                    pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off);
-                    cmd_list->SetPipelineState(pso);
-                 
-                    cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                    cmd_list->Draw(m_lines_index_depth_off + 1);
-
-                    cmd_list->EndMarker();
-                }
-
-                // depth on
-                if (m_lines_index_depth_on > (vertex_count / 2) - 1)
-                {
-                    cmd_list->BeginMarker("depth_on");
-
-                    // set pipeline state
-                    pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha);
-                    pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
-                    cmd_list->SetPipelineState(pso);
-
-                    cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                    cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
-
-                    cmd_list->EndMarker();
-                }
+                // set pipeline state
+                pso.blend_state         = GetBlendState(Renderer_BlendState::Off);
+                pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off);
+                cmd_list->SetPipelineState(pso);
+             
+                cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
+                cmd_list->Draw(m_lines_index_depth_off + 1);
             }
+
+            // depth on
+            if (m_lines_index_depth_on > (vertex_count / 2) - 1)
+            {
+                // set pipeline state
+                pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha);
+                pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
+                cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
+            }
+
+            cmd_list->SetCullMode(RHI_CullMode::Back);
         }
 
         m_lines_index_depth_off = numeric_limits<uint32_t>::max();                         // max +1 will wrap it to 0
