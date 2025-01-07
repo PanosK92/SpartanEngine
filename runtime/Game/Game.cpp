@@ -752,24 +752,24 @@ namespace Spartan
                 entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
                 entity->SetScale(scale);
 
-                // disable back face culling
+                // disable back face culling and enable wind
                 {
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
 
                     if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
 
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
                 }
             }
@@ -781,6 +781,12 @@ namespace Spartan
                 entity->SetObjectName("sponza_ivy");
                 entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
                 entity->SetScale(scale);
+
+                if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                }
             }
         }
 

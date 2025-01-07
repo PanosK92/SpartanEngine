@@ -817,29 +817,6 @@ namespace Spartan
             m_shape = nullptr;
         }
 
-        // get common prerequisites for certain shapes
-        vector<uint32_t> indices;
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        shared_ptr<Renderable> renderable = nullptr;
-        if (m_shape_type == PhysicsShape::Mesh)
-        {
-            // get renderable
-            renderable = GetEntity()->GetComponent<Renderable>();
-            if (!renderable || !renderable->HasMesh())
-            {
-                SP_LOG_WARNING("For a mesh shape to be constructed, there needs to be a Renderable component with a mesh");
-                return;
-            }
-
-            // get geometry
-            renderable->GetGeometry(&indices, &vertices);
-            if (vertices.empty())
-            {
-                SP_LOG_WARNING("A shape can't be constructed without vertices");
-                return;
-            }
-        }
-
         Vector3 size = m_size * GetEntity()->GetScale();
 
         // construct new shape
@@ -909,6 +886,26 @@ namespace Spartan
 
             case PhysicsShape::Mesh:
             {
+                // get common prerequisites for certain shapes
+                vector<uint32_t> indices;
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                shared_ptr<Renderable> renderable = GetEntity()->GetComponent<Renderable>();
+            
+                // get renderable
+                if (!renderable)
+                {
+                    SP_LOG_WARNING("PhysicsShape::Mesh requires a renderable component to be present");
+                    return;
+                }
+
+                // get geometry
+                renderable->GetGeometry(&indices, &vertices);
+                if (vertices.empty())
+                {
+                    SP_LOG_WARNING("PhysicsShape::Mesh requires the renderable component to contain vertices");
+                    return;
+                }
+
                 // determine how much detail is needed for this shape
                 const bool is_enterable = can_a_capsule_enter(renderable.get(), vertices, size);
                 const bool is_low_poly  = vertices.size() < 1000;
