@@ -179,7 +179,7 @@ namespace Spartan
         SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
         SetOption(Renderer_Option::OcclusionCulling,            0.0f);                                                 // disabled by default as it's a WIP (you can see the query delays)
 
-        SetWind(Vector3(1.0f, 0.0f, 0.5f) * 5.0f);
+        SetWind(Vector3(1.0f, 0.0f, 0.5f));
 
         // resolution
         {
@@ -545,6 +545,11 @@ namespace Spartan
     {
         RHI_CommandList* cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCommandList();
         return cmd_list->GetState() == RHI_CommandListState::Recording;
+    }
+
+    const Vector3& Renderer::GetWind()
+    {
+        return m_cb_frame_cpu.wind;
     }
 
     void Renderer::SetWind(const Math::Vector3& wind)

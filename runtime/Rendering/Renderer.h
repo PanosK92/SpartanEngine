@@ -83,6 +83,9 @@ namespace Spartan
         static void Screenshot(const std::string& file_path);
         static void SetEntities(std::unordered_map<uint64_t, std::shared_ptr<Entity>>& entities);
         static bool CanUseCmdList();
+
+        // wind
+        static const Math::Vector3& GetWind();
         static void SetWind(const Math::Vector3& wind);
 
         //= RESOLUTION/SIZE =============================================================================

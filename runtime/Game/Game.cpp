@@ -788,6 +788,8 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                 }
             }
+
+            Renderer::SetWind(Renderer::GetWind() * 0.2f);
         }
 
         void create_doom()

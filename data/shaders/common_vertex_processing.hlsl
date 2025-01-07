@@ -84,7 +84,7 @@ struct vertex_processing
         
             // normalize wind direction and calculate magnitude
             float3 wind_direction = normalize(wind);
-            float wind_magnitude = length(wind);
+            float wind_magnitude  = length(wind);
         
             // height-based sway factor (stronger sway at higher points)
             float sway_factor = saturate((position_vertex.y - animation_pivot.y) / GetMaterial().world_space_height);
@@ -103,7 +103,7 @@ struct vertex_processing
         
             // combine all factors for sway
             float combined_wave = base_wave + flutter;
-            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * sway_factor;
+            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * sway_factor * wind_magnitude;
         
             // apply the calculated sway to the vertex
             position_vertex += sway_offset;
