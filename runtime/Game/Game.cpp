@@ -754,18 +754,27 @@ namespace Spartan
 
                 // disable back face culling and enable wind
                 {
+                    // these are the ropes and the metal rings that hold them
+                    if (Material* material = entity->GetDescendantByName("curtain_03_1")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                    }
+
+                    // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
 
+                     // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
 
+                     // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));

@@ -265,34 +265,37 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.transform          = transform;
     vertex.transform_previous = transform_previous;
 
+    // vertex processing
+    {
+        // get material and surface
+        MaterialParameters material = GetMaterial();
+        Surface surface; surface.flags = material.flags;
+        
+        // apply ambient animation - done here so that it can benefit from potentially tessellated surfaces
+        vertex.position = vertex_processing::ambient_animation(
+            surface,
+            vertex.position,
+            extract_position(vertex.transform),
+            vertex.instance_id,
+            buffer_frame.wind,
+            (float)buffer_frame.time
+        );
+
+        vertex.position_previous = vertex_processing::ambient_animation(
+            surface,
+            vertex.position_previous,
+            extract_position(vertex.transform_previous),
+            vertex.instance_id,
+            buffer_frame.wind,
+            (float)buffer_frame.time - buffer_frame.delta_time
+        );
+    }
+
     return vertex;
 }
 
 gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 {
-    // get material and surface
-    MaterialParameters material = GetMaterial();
-    Surface surface; surface.flags = material.flags;
-    
-    // apply ambient animation - done here so that it can benefit from potentially tessellated surfaces
-    vertex.position = vertex_processing::ambient_animation(
-        surface,
-        vertex.position,
-        extract_position(vertex.transform),
-        vertex.instance_id,
-        buffer_frame.wind,
-        (float)buffer_frame.time
-    );
-
-    vertex.position_previous = vertex_processing::ambient_animation(
-        surface,
-        vertex.position_previous,
-        extract_position(vertex.transform_previous),
-        vertex.instance_id,
-        buffer_frame.wind,
-        (float)buffer_frame.time - buffer_frame.delta_time
-    );
-    
     vertex.position_clip          = mul(float4(vertex.position, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_unjittered : buffer_frame.view_projection);
     vertex.position_clip_current  = vertex.position_clip;
     vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_previous_unjittered : buffer_frame.view_projection_previous);
