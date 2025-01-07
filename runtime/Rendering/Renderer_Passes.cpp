@@ -2116,26 +2116,21 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("lines");
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.render_target_color_textures[0]  = tex_out;
-        pso.clear_color[0]                   = rhi_color_load;
-        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
-        pso.primitive_toplogy                = RHI_PrimitiveTopology::LineList;
-
-        // draw independent lines
         const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
         const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
         if ((draw_lines_depth_off || draw_lines_depth_on) && !m_line_vertices.empty())
         {
-            m_pcb_pass_cpu.transform = Matrix::Identity;
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->SetCullMode(RHI_CullMode::None);
+            cmd_list->BeginTimeblock("lines");
+
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+            pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.render_target_color_textures[0]  = tex_out;
+            pso.clear_color[0]                   = rhi_color_load;
+            pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
+            pso.primitive_toplogy                = RHI_PrimitiveTopology::LineList;
 
             // grow vertex buffer (if needed)
             uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
@@ -2148,6 +2143,10 @@ namespace Spartan
             RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->GetMappedData());
             memset(buffer, 0, m_vertex_buffer_lines->GetObjectSize());
             copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+
+            m_pcb_pass_cpu.transform = Matrix::Identity;
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->SetCullMode(RHI_CullMode::None);
 
             // depth off
             if (draw_lines_depth_off)
@@ -2174,12 +2173,12 @@ namespace Spartan
             }
 
             cmd_list->SetCullMode(RHI_CullMode::Back);
+
+            cmd_list->EndTimeblock();
         }
 
         m_lines_index_depth_off = numeric_limits<uint32_t>::max();                         // max +1 will wrap it to 0
         m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2
-
-        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)

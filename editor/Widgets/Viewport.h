@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES ======
 #include "Widget.h"
-#include "RHI/RHI_Viewport.h"
-//===========================
+//=================
 
 class Viewport : public Widget
 {

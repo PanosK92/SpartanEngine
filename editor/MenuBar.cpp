@@ -227,7 +227,7 @@ namespace
 
     namespace buttons_toolbar
     {
-        float button_size               = 19.0f;
+        float button_size = 19.0f;
         unordered_map<IconType, Widget*> widgets;
 
         // a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
