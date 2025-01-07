@@ -99,9 +99,9 @@ namespace Spartan
             renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, entity->GetScale().z);
             
             // add physics components
-            shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
-            rigid_body->SetMass(0.0f); // static
-            rigid_body->SetShapeType(PhysicsShape::StaticPlane);
+            shared_ptr<PhysicsBody> physics_body = entity->AddComponent<PhysicsBody>();
+            physics_body->SetShapeType(PhysicsShape::StaticPlane);
+            physics_body->SetMass(0.0f);
         }
 
         void create_camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
@@ -414,9 +414,9 @@ namespace Spartan
                 renderable->SetMaterial(material);
 
                 // add physics components
-                shared_ptr<PhysicsBody> rigid_body = entity->AddComponent<PhysicsBody>();
-                rigid_body->SetMass(15.0f);
-                rigid_body->SetShapeType(PhysicsShape::Box);
+                shared_ptr<PhysicsBody> physics_body = entity->AddComponent<PhysicsBody>();
+                physics_body->SetShapeType(PhysicsShape::Box);
+                physics_body->SetMass(15.0f);
             }
 
             // flight helmet
@@ -437,6 +437,7 @@ namespace Spartan
                 entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                physics_body->SetShapeType(PhysicsShape::MeshConvexHull);
                 physics_body->SetMass(8.0f);
             }
 
@@ -451,6 +452,7 @@ namespace Spartan
                 if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
                 {
                     PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::MeshConvexHull);
                     physics_body->SetMass(8.0f);
                 }
             }
@@ -562,8 +564,9 @@ namespace Spartan
                 // add water and vegetation
                 {
                     // add physics so we can walk on it
-                    PhysicsBody* rigid_body = m_default_terrain->AddComponent<PhysicsBody>().get();
-                    rigid_body->SetMass(0.0f);
+                    PhysicsBody* physics_body = m_default_terrain->AddComponent<PhysicsBody>().get();
+                    physics_body->SetShapeType(PhysicsShape::Terrain);
+                    physics_body->SetMass(0.0f);
    
                     // water
                     {

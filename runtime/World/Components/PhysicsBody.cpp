@@ -179,16 +179,6 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
-
-        if (GetEntity()->GetComponent<Renderable>())
-        {
-            m_shape_type = PhysicsShape::MeshConvexHull;
-        }
-
-        if (GetEntity()->GetComponent<Terrain>())
-        {
-            m_shape_type = PhysicsShape::Terrain;
-        }
     }
 
     PhysicsBody::~PhysicsBody()
@@ -199,7 +189,6 @@ namespace Spartan
     void PhysicsBody::OnInitialize()
     {
         Component::OnInitialize();
-        UpdateShape();
     }
 
     void PhysicsBody::OnRemove()
@@ -582,7 +571,11 @@ namespace Spartan
 
     void PhysicsBody::AddBodyToWorld()
     {
-        SP_ASSERT(shape != nullptr);
+        if (!shape)
+        {
+            SP_LOG_WARNING("To modify the physics body of \"%s\", you need to first call SetShapeType()", GetEntity()->GetObjectName().c_str());
+            return;
+        }
 
         // compute local inertia so that we can transfer it to the new body
         btVector3 inertia = btVector3(0, 0, 0);
@@ -727,15 +720,6 @@ namespace Spartan
     {
         if (m_shape_type == type)
             return;
-
-        if (type == PhysicsShape::Terrain)
-        {
-            if (!m_entity_ptr->GetComponent<Terrain>())
-            {
-                SP_LOG_WARNING("Can't set terrain shape as there is no terrain component");
-                return;
-            }
-        }
 
         m_shape_type = type;
         UpdateShape();

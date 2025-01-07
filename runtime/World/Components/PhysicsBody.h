@@ -57,7 +57,8 @@ namespace Spartan
         Cone,
         Terrain,
         MeshConvexHull,
-        Mesh
+        Mesh,
+        Max
     };
 
     class PhysicsBody : public Component
@@ -177,7 +178,7 @@ namespace Spartan
         Math::Vector3 m_rotation_lock  = Math::Vector3::Zero;
         Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
         Math::Vector3 m_size           = Math::Vector3::One;
-        PhysicsShape m_shape_type      = PhysicsShape::Box;
+        PhysicsShape m_shape_type      = PhysicsShape::Max;
         PhysicsBodyType m_body_type    = PhysicsBodyType::RigidBody;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
