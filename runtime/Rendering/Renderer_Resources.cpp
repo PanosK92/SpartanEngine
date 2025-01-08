@@ -536,7 +536,7 @@ namespace Spartan
         create_mesh(MeshType::Grid);
 
         // this buffers holds all debug primitives that can be drawn
-        m_vertex_buffer_lines = make_shared<RHI_Buffer>();
+        m_lines_vertex_buffer = make_shared<RHI_Buffer>();
     }
 
     void Renderer::CreateStandardTextures()

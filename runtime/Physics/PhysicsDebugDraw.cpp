@@ -54,9 +54,8 @@ namespace Spartan
         Renderer::DrawLine(
             reinterpret_cast<const Vector3&>(from),
             reinterpret_cast<const Vector3&>(to),
-            reinterpret_cast<const Color&>(color_from),
-            reinterpret_cast<const Color&>(color_to),
-            true
+            Color(color_from.getX(), color_from.getY(), color_from.getZ(), 1.0f),
+            Color(color_to.getX(), color_to.getY(), color_to.getZ(), 1.0f)
         );
     }
 

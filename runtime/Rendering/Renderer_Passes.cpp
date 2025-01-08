@@ -2110,15 +2110,11 @@ namespace Spartan
 
     void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        // acquire resources
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::line_v);
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::line_p);
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
+        RHI_Shader* shader_v  = GetShader(Renderer_Shader::line_v);
+        RHI_Shader* shader_p  = GetShader(Renderer_Shader::line_p);
+        uint32_t vertex_count = static_cast<uint32_t>(m_lines_vertices.size());
 
-        const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
-        const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
-        if ((draw_lines_depth_off || draw_lines_depth_on) && !m_line_vertices.empty())
+        if (shader_v->IsCompiled() && shader_p->IsCompiled() && vertex_count != 0)
         {
             cmd_list->BeginTimeblock("lines");
 
@@ -2127,58 +2123,34 @@ namespace Spartan
             pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
             pso.render_target_color_textures[0]  = tex_out;
             pso.clear_color[0]                   = rhi_color_load;
             pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
             pso.primitive_toplogy                = RHI_PrimitiveTopology::LineList;
+            cmd_list->SetPipelineState(pso);
 
-            // grow vertex buffer (if needed)
-            uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
-            if (vertex_count > m_vertex_buffer_lines->GetElementCount())
+            // grow vertex buffer (if needed) 
+            if (vertex_count > m_lines_vertex_buffer->GetElementCount())
             {
-                m_vertex_buffer_lines = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(m_line_vertices[0]), vertex_count, static_cast<void*>(&m_line_vertices[0]), true, "lines");
+                m_lines_vertex_buffer = make_shared<RHI_Buffer>(RHI_Buffer_Type::Vertex, sizeof(m_lines_vertices[0]), vertex_count, static_cast<void*>(&m_lines_vertices[0]), true, "lines");
             }
 
-            // update vertex buffer
-            RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->GetMappedData());
-            memset(buffer, 0, m_vertex_buffer_lines->GetObjectSize());
-            copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+            // update and set vertex buffer
+            RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_lines_vertex_buffer->GetMappedData());
+            memset(buffer, 0, m_lines_vertex_buffer->GetObjectSize());
+            copy(m_lines_vertices.begin(), m_lines_vertices.end(), buffer);
+            cmd_list->SetBufferVertex(m_lines_vertex_buffer.get());
 
-            m_pcb_pass_cpu.transform = Matrix::Identity;
-            cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->SetCullMode(RHI_CullMode::None);
-
-            // depth off
-            if (draw_lines_depth_off)
-            {
-                // set pipeline state
-                pso.blend_state         = GetBlendState(Renderer_BlendState::Off);
-                pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off);
-                cmd_list->SetPipelineState(pso);
-             
-                cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                cmd_list->Draw(m_lines_index_depth_off + 1);
-            }
-
-            // depth on
-            if (m_lines_index_depth_on > (vertex_count / 2) - 1)
-            {
-                // set pipeline state
-                pso.blend_state         = GetBlendState(Renderer_BlendState::Alpha);
-                pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
-            }
-
+            cmd_list->Draw(static_cast<uint32_t>(m_lines_vertices.size()));
             cmd_list->SetCullMode(RHI_CullMode::Back);
 
             cmd_list->EndTimeblock();
         }
 
-        m_lines_index_depth_off = numeric_limits<uint32_t>::max();                         // max +1 will wrap it to 0
-        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2
+        m_lines_vertices.clear();
     }
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)

@@ -55,10 +55,8 @@ namespace Spartan
     Pcb_Pass Renderer::m_pcb_pass_cpu;
 
     // line rendering
-    shared_ptr<RHI_Buffer> Renderer::m_vertex_buffer_lines;
-    vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
-    uint32_t Renderer::m_lines_index_depth_off;
-    uint32_t Renderer::m_lines_index_depth_on;
+    shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
+    vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
 
     // misc
     uint32_t Renderer::m_resource_index                           = 0;
@@ -275,7 +273,7 @@ namespace Spartan
 
             m_renderables.clear();
             swap_chain            = nullptr;
-            m_vertex_buffer_lines = nullptr;
+            m_lines_vertex_buffer = nullptr;
         }
 
         RHI_OpenImageDenoise::Shutdown();

@@ -345,11 +345,11 @@ namespace Spartan
 
                 // draw fz force
                 Math::Vector3 fz_end = start + Math::Vector3(parameters.pacejka_fz[wheel_index] * wheel_forward_dir) * 0.2f;
-                Renderer::DrawDirectionalArrow(start, fz_end, arrow_size, Color(0.0f, 1.0f, 0.0f, 1.0f), false);
+                Renderer::DrawDirectionalArrow(start, fz_end, arrow_size, Color(0.0f, 1.0f, 0.0f, 1.0f));
 
                 // draw fx force
                 Math::Vector3 fx_end = start + Math::Vector3(parameters.pacejka_fx[wheel_index] * wheel_right_dir) * 0.2f;
-                Renderer::DrawDirectionalArrow(start, fx_end, arrow_size, Color(1.0f, 0.0f, 0.0f, 1.0f), false);
+                Renderer::DrawDirectionalArrow(start, fx_end, arrow_size, Color(1.0f, 0.0f, 0.0f, 1.0f));
             }
         }
     }

@@ -32,7 +32,6 @@ struct vertex
 vertex main_vs(vertex input)
 {
     input.position.w = 1.0f;
-    input.position   = mul(input.position, buffer_pass.transform);
     input.position   = mul(input.position, buffer_frame.view_projection_unjittered);
     
     return input;
