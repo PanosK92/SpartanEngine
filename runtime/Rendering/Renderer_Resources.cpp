@@ -102,16 +102,16 @@ namespace Spartan
         float bias              = Light::GetBias();
         float bias_clamp        = 0.0f;
         float bias_slope_scaled = Light::GetBiasSlopeScaled();
-        float line_width        = 2.0f;
+        float line_width        = 3.0f;
 
         // Solid_Transparent: The transparents are rendered at output resolution, without taa/jitter, therefore we need to bias them to avoid z-fighting from the opaque depth
 
         #define rasterizer_state(x) rasterizer_states[static_cast<uint8_t>(x)]
         //                                                                                               fill mode,    depth clip enabled,  bias,       bias clamp,       slope scaled bias, line width
-        rasterizer_state(Renderer_RasterizerState::Solid)             = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  0.0f,             0.0f,       0.0f,              0.0f);
+        rasterizer_state(Renderer_RasterizerState::Solid)             = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  0.0f,             0.0f,       0.0f,              line_width);
         rasterizer_state(Renderer_RasterizerState::Wireframe)         = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Wireframe, true,  0.0f,             0.0f,       0.0f,              line_width);
-        rasterizer_state(Renderer_RasterizerState::Light_point_spot)  = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  bias,             bias_clamp, bias_slope_scaled, 0.0f);
-        rasterizer_state(Renderer_RasterizerState::Light_directional) = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     false, bias * 0.1f,      bias_clamp, bias_slope_scaled, 0.0f);
+        rasterizer_state(Renderer_RasterizerState::Light_point_spot)  = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  bias,             bias_clamp, bias_slope_scaled, line_width);
+        rasterizer_state(Renderer_RasterizerState::Light_directional) = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     false, bias * 0.1f,      bias_clamp, bias_slope_scaled, line_width);
     }
 
     void Renderer::CreateBlendStates()

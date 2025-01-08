@@ -49,6 +49,9 @@ namespace Spartan
 
     void PhysicsDebugDraw::drawLine(const btVector3& from, const btVector3& to, const btVector3& color_from, const btVector3& color_to)
     {
+        if (Engine::IsFlagSet(EngineMode::Playing))
+            return;
+
         // a bit dangerous to reinterpret these parameters but this is a performance critical path
         // a better way would be to use a custom physics debug draw since the one from Bullet is extremely slow
         Renderer::DrawLine(
