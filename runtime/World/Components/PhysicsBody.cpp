@@ -255,6 +255,13 @@ namespace Spartan
     void PhysicsBody::SetMass(float mass)
     {
         m_mass = Helper::Max(mass, 0.0f);
+
+        // if the shape doesn't exist, the physics body hasn't been initialized yet
+        // so don't do anything and allow the user to set whatever properties they want
+        if (shape)
+        {
+            UpdateShape();
+        }
     }
 
     void PhysicsBody::SetFriction(float friction)
