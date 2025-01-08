@@ -46,6 +46,7 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include <BulletCollision/CollisionShapes/btCompoundShape.h>
+#include <BulletCollision/Gimpact/btGImpactShape.h>
 SP_WARNINGS_ON
 //====================================================================
 
@@ -85,52 +86,37 @@ namespace Spartan
             return transform;
         }
 
-        bool can_a_capsule_enter(Renderable* renderable, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
+        bool can_fit_the_player(Entity* entity, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
         {
-            // skip objects which are too small for a human to fit inside
-            if (renderable->GetBoundingBox(BoundingBoxType::Transformed).Volume() < 1.0f)
-                return false;
-
-            // human dimensions
-            float capsuleHeight = 1.8f; // meters
-            float capsuleRadius = 0.5f; // meters
+            const BoundingBox& bounding_box = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::Transformed);
         
-            auto is_inside_capsule = [&](const Vector3& point)
-            {
-                Vector3 pointToBase = point - Vector3(0.0f, 0.0f, 0.0f); // base at y = 0
-                float distanceFromCenter = sqrt(pointToBase.x * pointToBase.x + pointToBase.z * pointToBase.z);
-                
-                // check if inside the cylindrical part
-                if (point.y >= 0.0f && point.y <= capsuleHeight)
-                {
-                    return distanceFromCenter <= capsuleRadius;
-                }
-                
-                // check if inside the cap part (hemispheres)
-                if (point.y > 0.0f && point.y < capsuleHeight)
-                {
-                    float yDistanceFromCap = fabs(point.y - capsuleHeight);
-                    float capRadius = sqrt(capsuleRadius * capsuleRadius - yDistanceFromCap * yDistanceFromCap);
-                    return distanceFromCenter <= capRadius;
-                }
-                
-                return false; // Point outside the capsule
-            };
+            // skip tiny objects
+            if (bounding_box.Volume() < 1.0f)
+                return false;
+        
+            // a sphere of 2 meters could fit most humans
+            float radius   = 2.0f;
+            Vector3 center = bounding_box.GetCenter();
         
             int outside_vertex_count = 0;
             for (const auto& vertex : vertices)
             {
-                Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * scale;
-
-                if (!is_inside_capsule(position))
+                // scale the vertex position
+                Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * entity->GetMatrix();
+        
+                // check if the vertex is outside the sphere
+                float distance_squared = (position - center).LengthSquared();
+                if (distance_squared > radius * radius)
                 {
                     outside_vertex_count++;
                 }
             }
         
+            // calculate the percentage of vertices outside the sphere
             float outside_percentage     = static_cast<float>(outside_vertex_count) / vertices.size();
-            const float hollow_threshold = 0.90f; // 90%
+            const float hollow_threshold = 0.8f;
         
+            // return true if most of the vertices are outside the sphere
             return outside_percentage >= hollow_threshold;
         }
     }
@@ -138,29 +124,29 @@ namespace Spartan
     class MotionState : public btMotionState
     {
     public:
-        MotionState(PhysicsBody* rigidBody) { m_rigidBody = rigidBody; }
+        MotionState(PhysicsBody* rigid_body_) { m_rigid_body = rigid_body_; }
 
         // engine -> bullet
-        void getWorldTransform(btTransform& worldTrans) const override
+        void getWorldTransform(btTransform& transform) const override
         {
-            const Vector3 last_position    = m_rigidBody->GetEntity()->GetPosition();
-            const Quaternion last_rotation = m_rigidBody->GetEntity()->GetRotation();
+            const Vector3 last_position    = m_rigid_body->GetEntity()->GetPosition();
+            const Quaternion last_rotation = m_rigid_body->GetEntity()->GetRotation();
 
-            worldTrans.setOrigin(vector_to_bt(last_position + last_rotation * m_rigidBody->GetCenterOfMass()));
-            worldTrans.setRotation(quaternion_to_bt(last_rotation));
+            transform.setOrigin(vector_to_bt(last_position + last_rotation * m_rigid_body->GetCenterOfMass()));
+            transform.setRotation(quaternion_to_bt(last_rotation));
         }
 
         // bullet -> engine
-        void setWorldTransform(const btTransform& worldTrans) override
+        void setWorldTransform(const btTransform& transform) override
         {
-            const Quaternion new_rotation = bt_to_quaternion(worldTrans.getRotation());
-            const Vector3 new_position    = bt_to_vector(worldTrans.getOrigin()) - new_rotation * m_rigidBody->GetCenterOfMass();
+            const Quaternion new_rotation = bt_to_quaternion(transform.getRotation());
+            const Vector3 new_position    = bt_to_vector(transform.getOrigin()) - new_rotation * m_rigid_body->GetCenterOfMass();
 
-            m_rigidBody->GetEntity()->SetPosition(new_position);
-            m_rigidBody->GetEntity()->SetRotation(new_rotation);
+            m_rigid_body->GetEntity()->SetPosition(new_position);
+            m_rigid_body->GetEntity()->SetRotation(new_rotation);
         }
     private:
-        PhysicsBody* m_rigidBody;
+        PhysicsBody* m_rigid_body;
     };
 
     PhysicsBody::PhysicsBody(Entity* entity) : Component(entity)
@@ -907,7 +893,7 @@ namespace Spartan
                 }
 
                 // determine how much detail is needed for this shape
-                const bool is_enterable = can_a_capsule_enter(renderable.get(), vertices, size);
+                const bool is_enterable = can_fit_the_player(GetEntity(), vertices, size);
                 const bool is_low_poly  = vertices.size() < 1000;
                 const bool convex_hull  = !is_enterable && !is_low_poly;
 
@@ -940,18 +926,26 @@ namespace Spartan
                 }
                 else
                 {
-                    btTriangleMesh* shape_local = new btTriangleMesh();
+                    // create
+                    btTriangleMesh* mesh = new btTriangleMesh();
                     for (uint32_t i = 0; i < static_cast<uint32_t>(indices.size()); i += 3)
                     {
                         btVector3 vertex0(vertices[indices[i]].pos[0],     vertices[indices[i]].pos[1],     vertices[indices[i]].pos[2]);
                         btVector3 vertex1(vertices[indices[i + 1]].pos[0], vertices[indices[i + 1]].pos[1], vertices[indices[i + 1]].pos[2]);
                         btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
-                        shape_local->addTriangle(vertex0, vertex1, vertex2);
-                    }
-                    shape_local->setScaling(vector_to_bt(size));
 
-                    m_shape = new btBvhTriangleMeshShape(shape_local, true);
-                    m_mass  = 0.0f; // btBvhTriangleMeshShape is static
+                        mesh->addTriangle(vertex0, vertex1, vertex2);
+                    }
+
+                    // convert to btBvhTriangleMeshShape
+                    btBvhTriangleMeshShape* shape_triangle_mesh = new btBvhTriangleMeshShape(mesh, true);
+                    shape_triangle_mesh->setLocalScaling(vector_to_bt(size));
+
+                    // btBvhTriangleMeshShape is static and expensive to collide with
+                    m_is_kinematic = true;
+                    m_mass         = 0.0f;
+
+                    m_shape = shape_triangle_mesh;
                 }
 
                 break;

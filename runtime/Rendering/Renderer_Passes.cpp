@@ -2122,7 +2122,7 @@ namespace Spartan
             static RHI_PipelineState pso;
             pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Wireframe);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
             pso.render_target_color_textures[0]  = tex_out;

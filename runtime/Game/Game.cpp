@@ -740,8 +740,8 @@ namespace Spartan
                     if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
-                        physics_body->SetMass(0.0f); // static
                     }
                 }
             }
@@ -822,7 +822,7 @@ namespace Spartan
                     if (entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f); // static
+                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -895,7 +895,7 @@ namespace Spartan
                     if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f); // static
+                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -924,7 +924,7 @@ namespace Spartan
                     if (entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f); // static
+                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -952,7 +952,7 @@ namespace Spartan
                     if (entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f); // static
+                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
