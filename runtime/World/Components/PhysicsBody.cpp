@@ -86,12 +86,12 @@ namespace Spartan
             return transform;
         }
 
-        bool can_fit_the_player(Entity* entity, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
+        bool can_player_fit(Entity* entity, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
         {
             const BoundingBox& bounding_box = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::Transformed);
         
             // skip tiny objects
-            if (bounding_box.Volume() < 1.0f)
+            if (bounding_box.Volume() < 8.0f) // 2x2x2
                 return false;
         
             // a sphere of 2 meters could fit most humans
@@ -900,7 +900,7 @@ namespace Spartan
                 }
 
                 // determine how much detail is needed for this shape
-                const bool is_enterable = can_fit_the_player(GetEntity(), vertices, size);
+                const bool is_enterable = can_player_fit(GetEntity(), vertices, size);
                 const bool is_low_poly  = vertices.size() < 1000;
                 const bool convex_hull  = !is_enterable && !is_low_poly;
 
