@@ -901,8 +901,7 @@ namespace Spartan
 
                 // determine how much detail is needed for this shape
                 const bool is_enterable = can_player_fit(GetEntity(), vertices, size);
-                const bool is_low_poly  = vertices.size() < 1000;
-                const bool convex_hull  = !is_enterable && !is_low_poly;
+                const bool convex_hull  = !is_enterable;
 
                 if (convex_hull)
                 {

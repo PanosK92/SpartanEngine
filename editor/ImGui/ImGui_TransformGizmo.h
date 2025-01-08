@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::TransformGizmo
 {
+    const  Spartan::Math::Vector3 snap =  Spartan::Math::Vector3(0.1f, 0.1f, 0.1f);
+
     bool first_use = true;
     Spartan::Math::Vector3 position_previous;
     Spartan::Math::Quaternion rotation_previous;
@@ -79,9 +81,7 @@ namespace ImGui::TransformGizmo
         // enable/disable gizmo
         ImGuizmo::Enable(entity != nullptr);
         if (!entity)
-        {
             return;
-        }
 
         // switch between position, rotation and scale operations, with W, E and R respectively
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
@@ -101,29 +101,34 @@ namespace ImGui::TransformGizmo
             }
         }
 
-        ImGuizmo::MODE transform_space = ImGuizmo::WORLD;
-
-        // Get some data
-        const Spartan::Math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
+        // get matrices
         const Spartan::Math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
-
+        const Spartan::Math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
+ 
         // begin
         const bool is_orthographic = false;
         ImGuizmo::SetOrthographic(is_orthographic);
         ImGuizmo::BeginFrame();
 
         // map transform to ImGuizmo
-        Spartan::Math::Vector3 position    = entity->GetPosition();
-        Spartan::Math::Vector3 scale       = entity->GetScale();
-        Spartan::Math::Quaternion rotation = entity->GetRotation();
-
+        Spartan::Math::Vector3 position        = entity->GetPosition();
+        Spartan::Math::Vector3 scale           = entity->GetScale();
+        Spartan::Math::Quaternion rotation     = entity->GetRotation();
         Spartan::Math::Matrix transform_matrix = Spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
 
         // set viewport rectangle
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &transform_matrix.m00, nullptr, nullptr);
+        ImGuizmo::Manipulate(
+            &matrix_view.m00,
+            &matrix_projection.m00,
+            transform_operation,
+            ImGuizmo::WORLD,
+            &transform_matrix.m00,
+            nullptr,
+            &snap.x
+        );
 
         // map imguizmo to transform
         if (ImGuizmo::IsUsing())
@@ -154,6 +159,6 @@ namespace ImGui::TransformGizmo
 
     static bool allow_picking()
     {
-        return !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();        
+        return !ImGuizmo::IsOver() && !ImGuizmo::IsUsing();
     }
 }
