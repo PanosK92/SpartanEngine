@@ -43,7 +43,21 @@ namespace Spartan
     namespace meshoptimizer
     {
         // documentation: https://meshoptimizer.org/
-        
+
+        void simplify(vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, size_t index_count)
+        {
+            float threshold           = 0.8f;
+            float target_error        = 0.05f;
+            size_t target_index_count = static_cast<size_t>(index_count * threshold);
+
+            vector<uint32_t> indices_simplified(indices.size());
+            index_count = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
+                          &vertices[0].pos[0], static_cast<uint32_t>(vertices.size()), sizeof(RHI_Vertex_PosTexNorTan),
+                          target_index_count, target_error);
+
+            indices = indices_simplified;
+        }
+
         void optimize(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
         {
             size_t vertex_count = vertices.size();
@@ -58,7 +72,7 @@ namespace Spartan
                                                                 vertex_count,
                                                                 sizeof(RHI_Vertex_PosTexNorTan));
 
-            // note: When we import with Assimp, JoinIdenticalVertices is used, so we don't need to remove duplicates here
+            // note: when we import with Assimp, JoinIdenticalVertices is used, so we don't need to remove duplicates here
 
             // optimization #1: improve the locality of the vertices
             meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
@@ -70,14 +84,7 @@ namespace Spartan
             meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
         
             // optimization #4: create a simplified version of the model
-            float threshold           = 0.8f;
-            float target_error        = 0.05f;
-            size_t target_index_count = (size_t)(index_count * threshold);
-            vector<unsigned int> indices_simplified(indices.size());
-            size_t OptIndexCount = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
-                                                    &vertices[0].pos[0], vertex_count, sizeof(RHI_Vertex_PosTexNorTan), target_index_count, target_error);
-        
-            indices = indices_simplified;
+            simplify(indices, vertices, index_count);
         }
     }
 
