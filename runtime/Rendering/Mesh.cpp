@@ -70,14 +70,14 @@ namespace Spartan
             meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
         
             // optimization #4: create a simplified version of the model
-            float threshold           = 1.0f;
-            float target_error        = 0.0f;
+            float threshold           = 0.8f;
+            float target_error        = 0.05f;
             size_t target_index_count = (size_t)(index_count * threshold);
             vector<unsigned int> indices_simplified(indices.size());
             size_t OptIndexCount = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
                                                     &vertices[0].pos[0], vertex_count, sizeof(RHI_Vertex_PosTexNorTan), target_index_count, target_error);
         
-            indices  = indices_simplified;
+            indices = indices_simplified;
         }
     }
 
