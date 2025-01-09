@@ -341,7 +341,7 @@ namespace
             const float offset_right      = 120.0f * spartan::Window::GetDpiScale();
             ImGui::SetCursorPosX(size_avail_x - offset_right);
 
-            spartan::Math::Vector2 icon_size = spartan::Math::Vector2(24.0f, 24.0f);
+            spartan::math::Vector2 icon_size = spartan::math::Vector2(24.0f, 24.0f);
             if (ImGuiSp::image_button(nullptr, IconType::Window_Minimize, icon_size, false))
             {
                 spartan::Window::Minimize();

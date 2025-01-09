@@ -70,24 +70,24 @@ namespace spartan
         void Deserialize(FileStream* stream) override;
 
         // matrices
-        const Math::Matrix& GetViewMatrix() const           { return m_view; }
-        const Math::Matrix& GetProjectionMatrix() const     { return m_projection; }
-        const Math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
+        const math::Matrix& GetViewMatrix() const           { return m_view; }
+        const math::Matrix& GetProjectionMatrix() const     { return m_projection; }
+        const math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
 
         // ray casting
-        const Math::Ray ComputePickingRay();
+        const math::Ray ComputePickingRay();
 
         // picks the nearest entity under the mouse cursor
         void Pick();
 
         // converts a world point to a screen point
-        void WorldToScreenCoordinates(const Math::Vector3& position_world, Math::Vector2& position_screen) const;
+        void WorldToScreenCoordinates(const math::Vector3& position_world, math::Vector2& position_screen) const;
 
         // converts a world bounding box to a screen rectangle
-        Math::Rectangle WorldToScreenCoordinates(const Math::BoundingBox& bounding_box) const;
+        math::Rectangle WorldToScreenCoordinates(const math::BoundingBox& bounding_box) const;
 
         // converts a screen point to a world point. Z can be 0.0f to 1.0f and it will lerp between the near and far plane
-        Math::Vector3 ScreenToWorldCoordinates(const Math::Vector2& position_screen, const float z) const;
+        math::Vector3 ScreenToWorldCoordinates(const math::Vector2& position_screen, const float z) const;
 
         // aperture
         float GetAperture() const              { return m_aperture; }
@@ -120,7 +120,7 @@ namespace spartan
         void SetFovHorizontalDeg(float fov);
   
         // frustum
-        bool IsInViewFrustum(const Math::BoundingBox& bounding_box) const;
+        bool IsInViewFrustum(const math::BoundingBox& bounding_box) const;
         bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
 
         // flags
@@ -133,8 +133,8 @@ namespace spartan
         void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
         std::shared_ptr<Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
 
-        Math::Matrix ComputeViewMatrix() const;
-        Math::Matrix ComputeProjection(const float near_plane, const float far_plane);
+        math::Matrix ComputeViewMatrix() const;
+        math::Matrix ComputeProjection(const float near_plane, const float far_plane);
         void FocusOnSelectedEntity();
 
     private:
@@ -147,33 +147,33 @@ namespace spartan
         float m_aperture                             = 2.8f;         // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
         float m_shutter_speed                        = 1.0f / 60.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
         float m_iso                                  = 500.0f;       // sensitivity to light
-        float m_fov_horizontal_rad                   = Math::Helper::DegreesToRadians(90.0f);
+        float m_fov_horizontal_rad                   = math::helper::DegreesToRadians(90.0f);
         float m_near_plane                           = 0.1f;
         float m_far_plane                            = 4000.0f;
         ProjectionType m_projection_type             = Projection_Perspective;
-        Math::Matrix m_view                          = Math::Matrix::Identity;
-        Math::Matrix m_projection                    = Math::Matrix::Identity;
-        Math::Matrix m_projection_non_reverse_z      = Math::Matrix::Identity;
-        Math::Matrix m_view_projection               = Math::Matrix::Identity;
-        Math::Matrix m_view_projection_non_reverse_z = Math::Matrix::Identity;
-        Math::Vector3 m_position                     = Math::Vector3::Zero;
-        Math::Quaternion m_rotation                  = Math::Quaternion::Identity;
-        Math::Vector2 m_mouse_last_position          = Math::Vector2::Zero;
-        Math::Vector3 m_movement_speed               = Math::Vector3::Zero;
+        math::Matrix m_view                          = math::Matrix::Identity;
+        math::Matrix m_projection                    = math::Matrix::Identity;
+        math::Matrix m_projection_non_reverse_z      = math::Matrix::Identity;
+        math::Matrix m_view_projection               = math::Matrix::Identity;
+        math::Matrix m_view_projection_non_reverse_z = math::Matrix::Identity;
+        math::Vector3 m_position                     = math::Vector3::Zero;
+        math::Quaternion m_rotation                  = math::Quaternion::Identity;
+        math::Vector2 m_mouse_last_position          = math::Vector2::Zero;
+        math::Vector3 m_movement_speed               = math::Vector3::Zero;
         float m_movement_scroll_accumulator          = 0.0f;
-        Math::Vector2 m_mouse_smoothed               = Math::Vector2::Zero;
-        Math::Vector2 m_first_person_rotation        = Math::Vector2::Zero;
+        math::Vector2 m_mouse_smoothed               = math::Vector2::Zero;
+        math::Vector2 m_first_person_rotation        = math::Vector2::Zero;
         float m_mouse_sensitivity                    = 0.2f;
         float m_mouse_smoothing                      = 0.5f;
         bool m_lerp_to_target_p                      = false;
         bool m_lerp_to_target_r                      = false;
         float m_lerp_to_target_alpha                 = 0.0f;
         float m_lerp_to_target_distance              = 0.0f;
-        Math::Vector3 m_lerp_to_target_position      = Math::Vector3::Zero;
-        Math::Quaternion m_lerp_to_target_rotation   = Math::Quaternion::Identity;
+        math::Vector3 m_lerp_to_target_position      = math::Vector3::Zero;
+        math::Quaternion m_lerp_to_target_rotation   = math::Quaternion::Identity;
         PhysicsBody* m_physics_body_to_control       = nullptr;
         RHI_Viewport m_last_known_viewport;
-        Math::Frustum m_frustum;
+        math::Frustum m_frustum;
         std::weak_ptr<spartan::Entity> m_selected_entity;
     };
 }

@@ -38,19 +38,19 @@ namespace spartan
     {
         std::string name;
         std::vector<AnimationVertexWeight> vertexWeights;
-        Math::Matrix offset;
+        math::Matrix offset;
     };
 
     struct KeyVector
     {
         double time;
-        Math::Vector3 value;
+        math::Vector3 value;
     };
 
     struct KeyQuaternion
     {
         double time;
-        Math::Quaternion value;
+        math::Quaternion value;
     };
 
     struct AnimationNode

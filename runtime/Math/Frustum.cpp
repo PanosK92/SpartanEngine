@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace spartan::Math
+namespace spartan::math
 {
     Frustum::Frustum(const Matrix& view, const Matrix& projection, float screen_depth)
     {
@@ -154,7 +154,7 @@ namespace spartan::Math
                 return Intersection::Outside;
 
             // else if the distance is between +- radius, then we intersect
-            if (static_cast<float>(Helper::Abs(distance)) < radius)
+            if (static_cast<float>(helper::Abs(distance)) < radius)
                 return Intersection::Intersects;
         }
 

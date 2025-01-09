@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    namespace Math
+    namespace math
     {
         class Vector2;
     }
@@ -56,7 +56,7 @@ namespace spartan
     {
         std::vector<RHI_Vertex_PosTex> vertices;
         std::vector<uint32_t> indices;
-        Math::Vector2 position;
+        math::Vector2 position;
     };
 
     class Font : public IResource
@@ -70,7 +70,7 @@ namespace spartan
         void LoadFromFile(const std::string& file_path) override;
 
         // text
-        void AddText(const std::string& text, const Math::Vector2& position_screen_percentage);
+        void AddText(const std::string& text, const math::Vector2& position_screen_percentage);
         bool HasText() const;
 
         // color

@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     // forward declaration
-    namespace Math { class Rectangle; }
+    namespace math { class Rectangle; }
 
     enum class RHI_CommandListState : uint8_t
     {
@@ -92,7 +92,7 @@ namespace spartan
         void SetViewport(const RHI_Viewport& viewport) const;
         
         // scissor
-        void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
+        void SetScissorRectangle(const math::Rectangle& scissor_rectangle) const;
 
         // cull mode
         void SetCullMode(const RHI_CullMode cull_mode);

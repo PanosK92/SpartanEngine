@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    namespace Math
+    namespace math
     {
         class Rectangle
         {
@@ -86,10 +86,10 @@ namespace spartan
 
             void Merge(const Vector2& point)
             {
-                left   = Math::Helper::Min(left,   point.x);
-                top    = Math::Helper::Min(top,    point.y);
-                right  = Math::Helper::Max(right,  point.x);
-                bottom = Math::Helper::Max(bottom, point.y);
+                left   = math::helper::Min(left,   point.x);
+                top    = math::helper::Min(top,    point.y);
+                right  = math::helper::Max(right,  point.x);
+                bottom = math::helper::Max(bottom, point.y);
             }
 
             bool Intersects(const Rectangle& other) const

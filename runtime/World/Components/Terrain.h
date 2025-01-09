@@ -31,7 +31,7 @@ namespace spartan
 {
     class Mesh;
     class Material;
-    namespace Math
+    namespace math
     {
         class Vector3;
     }
@@ -64,7 +64,7 @@ namespace spartan
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
         void Generate();
-        void GenerateTransforms(std::vector<Math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop);
+        void GenerateTransforms(std::vector<math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop);
 
         uint32_t GetVertexCount() const         { return m_vertex_count; }
         uint32_t GetIndexCount() const          { return m_index_count; }

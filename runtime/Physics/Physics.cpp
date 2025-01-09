@@ -42,7 +42,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ================
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //=============================
 
 namespace spartan
@@ -61,14 +61,14 @@ namespace spartan
         int max_solve_iterations       = 256;
         const float internal_time_step = 1.0f / 200.0f; // 200 Hz - needed for car simulation
         float accumulator              = 0.0f;
-        Math::Vector3 gravity          = Math::Vector3(0.0f, -9.81f, 0.0f);
+        math::Vector3 gravity          = math::Vector3(0.0f, -9.81f, 0.0f);
 
         // picking
         btRigidBody* picked_body                = nullptr;
         btTypedConstraint* picked_constraint    = nullptr;
         int activation_state                    = 0;
-        Math::Vector3 hit_position              = Math::Vector3::Zero;
-        Math::Vector3 picking_position_previous = Math::Vector3::Zero;
+        math::Vector3 hit_position              = math::Vector3::Zero;
+        math::Vector3 picking_position_previous = math::Vector3::Zero;
         float picking_distance_previous         = 0.0f;
 
         const bool soft_body_support = true;
@@ -216,7 +216,7 @@ namespace spartan
         return hit_bodies;
     }
 
-    Vector3 Physics::RayCastFirstHitPosition(const Math::Vector3& start, const Math::Vector3& end)
+    Vector3 Physics::RayCastFirstHitPosition(const math::Vector3& start, const math::Vector3& end)
     {
         btVector3 bt_start = vector_to_bt(start);
         btVector3 bt_end   = vector_to_bt(end);

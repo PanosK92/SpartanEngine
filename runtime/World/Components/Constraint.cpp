@@ -38,7 +38,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -369,7 +369,7 @@ namespace spartan
             case HINGE_CONSTRAINT_TYPE:
                 {
                     auto* hinge_constraint = dynamic_cast<btHingeConstraint*>(m_constraint);
-                    hinge_constraint->setLimit(m_lowLimit.x * Helper::DEG_TO_RAD, m_highLimit.x * Helper::DEG_TO_RAD);
+                    hinge_constraint->setLimit(m_lowLimit.x * helper::DEG_TO_RAD, m_highLimit.x * helper::DEG_TO_RAD);
                 }
                 break;
 
@@ -377,16 +377,16 @@ namespace spartan
                 {
                     auto* slider_constraint = dynamic_cast<btSliderConstraint*>(m_constraint);
                     slider_constraint->setUpperLinLimit(m_highLimit.x);
-                    slider_constraint->setUpperAngLimit(m_highLimit.y * Helper::DEG_TO_RAD);
+                    slider_constraint->setUpperAngLimit(m_highLimit.y * helper::DEG_TO_RAD);
                     slider_constraint->setLowerLinLimit(m_lowLimit.x);
-                    slider_constraint->setLowerAngLimit(m_lowLimit.y * Helper::DEG_TO_RAD);
+                    slider_constraint->setLowerAngLimit(m_lowLimit.y * helper::DEG_TO_RAD);
                 }
                 break;
 
             case CONETWIST_CONSTRAINT_TYPE:
                 {
                     auto* cone_twist_constraint = dynamic_cast<btConeTwistConstraint*>(m_constraint);
-                    cone_twist_constraint->setLimit(m_highLimit.y * Helper::DEG_TO_RAD, m_highLimit.y * Helper::DEG_TO_RAD, m_highLimit.x * Helper::DEG_TO_RAD);
+                    cone_twist_constraint->setLimit(m_highLimit.y * helper::DEG_TO_RAD, m_highLimit.y * helper::DEG_TO_RAD, m_highLimit.x * helper::DEG_TO_RAD);
                 }
                 break;
 

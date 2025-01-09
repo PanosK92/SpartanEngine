@@ -62,7 +62,7 @@ namespace grid_partitioning
             return result;
         }
 
-        static GridKey get_key(const spartan::Math::Vector3& position)
+        static GridKey get_key(const spartan::math::Vector3& position)
         {
             return
             {
@@ -73,13 +73,13 @@ namespace grid_partitioning
         }
     };
 
-    void reorder_instances_into_cell_chunks(std::vector<spartan::Math::Matrix>& instance_transforms, std::vector<uint32_t>& cell_end_indices)
+    void reorder_instances_into_cell_chunks(std::vector<spartan::math::Matrix>& instance_transforms, std::vector<uint32_t>& cell_end_indices)
     {
         // populate the grid map
-        std::unordered_map<GridKey, std::vector<spartan::Math::Matrix>, GridKeyHash> grid_map;
+        std::unordered_map<GridKey, std::vector<spartan::math::Matrix>, GridKeyHash> grid_map;
         for (const auto& instance : instance_transforms)
         {
-            spartan::Math::Vector3 position = instance.GetTranslation();
+            spartan::math::Vector3 position = instance.GetTranslation();
 
             GridKey key = GridKeyHash::get_key(position);
             grid_map[key].push_back(instance);

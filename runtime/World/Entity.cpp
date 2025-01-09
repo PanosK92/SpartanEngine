@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -431,9 +431,9 @@ namespace spartan
         m_scale_local = scale;
 
         // a scale of 0 will cause a division by zero when decomposing the world transform matrix
-        m_scale_local.x = (m_scale_local.x == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.x;
-        m_scale_local.y = (m_scale_local.y == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.y;
-        m_scale_local.z = (m_scale_local.z == 0.0f) ? Helper::SMALL_FLOAT : m_scale_local.z;
+        m_scale_local.x = (m_scale_local.x == 0.0f) ? helper::SMALL_FLOAT : m_scale_local.x;
+        m_scale_local.y = (m_scale_local.y == 0.0f) ? helper::SMALL_FLOAT : m_scale_local.y;
+        m_scale_local.z = (m_scale_local.z == 0.0f) ? helper::SMALL_FLOAT : m_scale_local.z;
 
         UpdateTransform();
     }

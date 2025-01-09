@@ -30,7 +30,7 @@ namespace spartan
 {
     class Entity;
 
-    namespace Math
+    namespace math
     {
         class RayHit
         {

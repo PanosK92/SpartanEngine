@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // engine macros
 #include "Definitions.h"
 
-//= STD =====================
+//= std =====================
 #include <string>
 #include <algorithm>
 #include <type_traits>
@@ -57,18 +57,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===========================
 
 //= RUNTIME ====================
-// Core
+// core
 #include "Engine.h"
 #include "Event.h"
 #include "Settings.h"
 #include "Timer.h"
 #include "FileSystem.h"
 #include "Stopwatch.h"
-
-// Logging
+// logging
 #include "../Logging/Log.h"
-
-// Math
+// math
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
@@ -80,7 +78,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 #include "../Math/Frustum.h"
 #include "../Math/Plane.h"
-#include "../Math/MathHelper.h"
+#include "../Math/Helper.h"
 //==============================
 
 #if !defined(_MSC_VER)

@@ -41,7 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -489,7 +489,7 @@ namespace spartan
             SetCullMode(RHI_CullMode::Back);
 
             // scissor rectangle
-            Math::Rectangle scissor_rect;
+            math::Rectangle scissor_rect;
             scissor_rect.left   = 0.0f;
             scissor_rect.top    = 0.0f;
             scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
@@ -575,7 +575,7 @@ namespace spartan
                 }
 
                 // scissor rectangle
-                Math::Rectangle scissor_rect;
+                math::Rectangle scissor_rect;
                 scissor_rect.left   = 0.0f;
                 scissor_rect.top    = 0.0f;
                 scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
@@ -1156,7 +1156,7 @@ namespace spartan
         );
     }
 
-    void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
+    void RHI_CommandList::SetScissorRectangle(const math::Rectangle& scissor_rectangle) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -1446,10 +1446,10 @@ namespace spartan
 
         uint64_t start    = queries::timestamp::data[index_timestamp];
         uint64_t end      = queries::timestamp::data[index_timestamp + 1];
-        uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
+        uint64_t duration = math::helper::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
         float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
 
-        return Math::Helper::Clamp<float>(duration_ms, 0.0f, numeric_limits<float>::max());
+        return math::helper::Clamp<float>(duration_ms, 0.0f, numeric_limits<float>::max());
     }
 
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)

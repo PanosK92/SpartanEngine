@@ -62,7 +62,7 @@ namespace spartan
         // geometry
         void SetGeometry(
             Mesh* mesh,
-            const Math::BoundingBox aabb = Math::BoundingBox::Undefined,
+            const math::BoundingBox aabb = math::BoundingBox::Undefined,
             uint32_t index_offset  = 0, uint32_t index_count  = 0,
             uint32_t vertex_offset = 0, uint32_t vertex_count = 0
         );
@@ -72,7 +72,7 @@ namespace spartan
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
         uint32_t GetInstancePartitionCount() const                         { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
-        const Math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t index = 0);
+        const math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t index = 0);
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
@@ -95,9 +95,9 @@ namespace spartan
         // instancing
         bool HasInstancing() const                              { return !m_instances.empty(); }
         RHI_Buffer* GetInstanceBuffer() const                   { return m_instance_buffer.get(); }
-        Math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
+        math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
         uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
-        void SetInstances(const std::vector<Math::Matrix>& instances);
+        void SetInstances(const std::vector<math::Matrix>& instances);
 
         // misc
         uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
@@ -119,22 +119,22 @@ namespace spartan
         uint32_t m_geometry_vertex_count             = 0;
         Mesh* m_mesh                                 = nullptr;
         bool m_bounding_box_dirty                    = true;
-        Math::BoundingBox m_bounding_box             = Math::BoundingBox::Undefined;
-        Math::BoundingBox m_bounding_box_transformed = Math::BoundingBox::Undefined;
-        std::vector<Math::BoundingBox> m_bounding_box_instances;
-        std::vector<Math::BoundingBox> m_bounding_box_instance_group;
+        math::BoundingBox m_bounding_box             = math::BoundingBox::Undefined;
+        math::BoundingBox m_bounding_box_transformed = math::BoundingBox::Undefined;
+        std::vector<math::BoundingBox> m_bounding_box_instances;
+        std::vector<math::BoundingBox> m_bounding_box_instance_group;
 
         // material
         bool m_material_default = false;
         Material* m_material    = nullptr;
 
         // instancing
-        std::vector<Math::Matrix> m_instances;
+        std::vector<math::Matrix> m_instances;
         std::vector<uint32_t> m_instance_group_end_indices;
         std::shared_ptr<RHI_Buffer> m_instance_buffer;
 
         // misc
-        Math::Matrix m_transform_previous = Math::Matrix::Identity;
+        math::Matrix m_transform_previous = math::Matrix::Identity;
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
     };
 }

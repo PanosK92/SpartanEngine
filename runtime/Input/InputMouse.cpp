@@ -30,7 +30,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -124,7 +124,7 @@ namespace spartan
         return m_mouse_position;
     }
 
-    void Input::SetMousePosition(const Math::Vector2& position)
+    void Input::SetMousePosition(const math::Vector2& position)
     {
         if (SDL_WarpMouseGlobal(static_cast<int>(position.x), static_cast<int>(position.y)) != 0)
         {
@@ -135,17 +135,17 @@ namespace spartan
         m_mouse_position = position;
     }
 
-    const spartan::Math::Vector2& Input::GetMouseDelta()
+    const spartan::math::Vector2& Input::GetMouseDelta()
     {
         return m_mouse_delta;
     }
 
-    const spartan::Math::Vector2& Input::GetMouseWheelDelta()
+    const spartan::math::Vector2& Input::GetMouseWheelDelta()
     {
         return m_mouse_wheel_delta;
     }
 
-    void Input::SetEditorViewportOffset(const Math::Vector2& offset)
+    void Input::SetEditorViewportOffset(const math::Vector2& offset)
     {
         m_editor_viewport_offset = offset;
     }

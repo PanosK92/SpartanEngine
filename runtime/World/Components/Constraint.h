@@ -63,29 +63,29 @@ namespace spartan
         ConstraintType GetConstraintType() const { return m_constraintType; }
         void SetConstraintType(ConstraintType type);
 
-        const Math::Vector2& GetHighLimit() const { return m_highLimit; }
+        const math::Vector2& GetHighLimit() const { return m_highLimit; }
         // Set high limit. Interpretation is constraint type specific.
-        void SetHighLimit(const Math::Vector2& limit);
+        void SetHighLimit(const math::Vector2& limit);
 
-        const Math::Vector2& GetLowLimit() const { return m_lowLimit; }
+        const math::Vector2& GetLowLimit() const { return m_lowLimit; }
         // Set low limit. Interpretation is constraint type specific.
-        void SetLowLimit(const Math::Vector2& limit);
+        void SetLowLimit(const math::Vector2& limit);
 
-        const Math::Vector3& GetPosition() const { return m_position; }
+        const math::Vector3& GetPosition() const { return m_position; }
         // Set constraint position relative to own body.
-        void SetPosition(const Math::Vector3& position);
+        void SetPosition(const math::Vector3& position);
 
-        const Math::Quaternion& GetRotation() const { return m_rotation; }
+        const math::Quaternion& GetRotation() const { return m_rotation; }
         // Set constraint rotation relative to own body.
-        void SetRotation(const Math::Quaternion& rotation);
+        void SetRotation(const math::Quaternion& rotation);
 
-        const Math::Vector3& GetPositionOther() const { return m_positionOther; }
+        const math::Vector3& GetPositionOther() const { return m_positionOther; }
         // Set constraint position relative to other body.
-        void SetPositionOther(const Math::Vector3& position);
+        void SetPositionOther(const math::Vector3& position);
 
-        const Math::Quaternion& GetRotationOther() const { return m_rotationOther; }
+        const math::Quaternion& GetRotationOther() const { return m_rotationOther; }
         // Set constraint rotation relative to other body.
-        void SetRotationOther(const Math::Quaternion& rotation);
+        void SetRotationOther(const math::Quaternion& rotation);
         
         std::weak_ptr<Entity> GetBodyOther() const { return m_bodyOther; }
         void SetBodyOther(const std::weak_ptr<Entity>& body_other);
@@ -100,14 +100,14 @@ namespace spartan
         btTypedConstraint* m_constraint;
 
         ConstraintType m_constraintType;
-        Math::Vector3 m_position;
-        Math::Quaternion m_rotation;
-        Math::Vector2 m_highLimit;
-        Math::Vector2 m_lowLimit;
+        math::Vector3 m_position;
+        math::Quaternion m_rotation;
+        math::Vector2 m_highLimit;
+        math::Vector2 m_lowLimit;
 
         std::weak_ptr<Entity> m_bodyOther;
-        Math::Vector3 m_positionOther;
-        Math::Quaternion m_rotationOther;
+        math::Vector3 m_positionOther;
+        math::Quaternion m_rotationOther;
     
         float m_errorReduction;
         float m_constraintForceMixing;

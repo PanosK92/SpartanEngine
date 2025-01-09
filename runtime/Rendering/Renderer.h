@@ -39,7 +39,7 @@ namespace spartan
     class Entity;
     class Camera;
     class Light;
-    namespace Math
+    namespace math
     {
         class BoundingBox;
         class Frustum;
@@ -55,14 +55,14 @@ namespace spartan
         static void Tick();
 
         // primitive rendering (useful for debugging)
-        static void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines);
-        static void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Color& color = Color::standard_renderer_lines);
-        static void DrawBox(const Math::BoundingBox& box, const Color& color = Color::standard_renderer_lines);
-        static void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines);
-        static void DrawSphere(const Math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines);
-        static void DrawDirectionalArrow(const Math::Vector3& start, const Math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines);
-        static void DrawPlane(const Math::Plane& plane, const Color& color = Color::standard_renderer_lines);
-        static void DrawString(const std::string& text, const Math::Vector2& position_screen_percentage);
+        static void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines);
+        static void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines);
+        static void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines);
+        static void DrawCircle(const math::Vector3& center, const math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines);
+        static void DrawSphere(const math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines);
+        static void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines);
+        static void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines);
+        static void DrawString(const std::string& text, const math::Vector2& position_screen_percentage);
 
         // options
         template<typename T>
@@ -85,8 +85,8 @@ namespace spartan
         static bool CanUseCmdList();
 
         // wind
-        static const Math::Vector3& GetWind();
-        static void SetWind(const Math::Vector3& wind);
+        static const math::Vector3& GetWind();
+        static void SetWind(const math::Vector3& wind);
 
         //= RESOLUTION/SIZE =============================================================================
         // viewport
@@ -94,11 +94,11 @@ namespace spartan
         static void SetViewport(float width, float height);
 
         // resolution render
-        static const Math::Vector2& GetResolutionRender();
+        static const math::Vector2& GetResolutionRender();
         static void SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources = true);
 
         // resolution output
-        static const Math::Vector2& GetResolutionOutput();
+        static const math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
   

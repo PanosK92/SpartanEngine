@@ -33,6 +33,6 @@ public:
     void OnTickVisible() override;
 
 private:
-    spartan::Math::Vector2 m_offset = spartan::Math::Vector2::Zero;
+    spartan::math::Vector2 m_offset = spartan::math::Vector2::Zero;
     float m_window_padding          = 4.0f;
 };

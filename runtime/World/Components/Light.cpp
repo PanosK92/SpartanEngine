@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===================================
 
 //= NAMESPACES ===============
-using namespace spartan::Math;
+using namespace spartan::math;
 using namespace std;
 //============================
 
@@ -391,7 +391,7 @@ namespace spartan
 
     void Light::SetRange(float range)
     {
-        range = Helper::Clamp(range, 0.0f, numeric_limits<float>::max());
+        range = helper::Clamp(range, 0.0f, numeric_limits<float>::max());
         if (range == m_range)
             return;
 
@@ -401,7 +401,7 @@ namespace spartan
 
     void Light::SetAngle(float angle)
     {
-        angle = Helper::Clamp(angle, 0.0f, Math::Helper::PI_2);
+        angle = helper::Clamp(angle, 0.0f, math::helper::PI_2);
         if (angle == m_angle_rad)
             return;
 

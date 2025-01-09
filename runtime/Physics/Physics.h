@@ -48,8 +48,8 @@ namespace spartan
         static void Shutdown();
         static void Tick();
 
-        static std::vector<btRigidBody*> RayCast(const Math::Vector3& start, const Math::Vector3& end);
-        static Math::Vector3 RayCastFirstHitPosition(const Math::Vector3& start, const Math::Vector3& end);
+        static std::vector<btRigidBody*> RayCast(const math::Vector3& start, const math::Vector3& end);
+        static math::Vector3 RayCastFirstHitPosition(const math::Vector3& start, const math::Vector3& end);
 
         // body
         static void AddBody(btRigidBody* body);
@@ -64,7 +64,7 @@ namespace spartan
         static void RemoveConstraint(btTypedConstraint*& constraint);
 
         // misc
-        static Math::Vector3& GetGravity();
+        static math::Vector3& GetGravity();
         static btSoftBodyWorldInfo& GetSoftWorldInfo();
         static void* GetPhysicsDebugDraw();
         static void* GetWorld();

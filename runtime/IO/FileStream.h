@@ -67,12 +67,12 @@ namespace spartan
             std::is_same<T, double>::value              ||
             std::is_same<T, long double>::value         ||
             std::is_same<T, std::byte>::value           ||
-            std::is_same<T, Math::Vector2>::value       ||
-            std::is_same<T, Math::Vector3>::value       ||
-            std::is_same<T, Math::Vector4>::value       ||
+            std::is_same<T, math::Vector2>::value       ||
+            std::is_same<T, math::Vector3>::value       ||
+            std::is_same<T, math::Vector4>::value       ||
             std::is_same<T, Color>::value               ||
-            std::is_same<T, Math::Quaternion>::value    ||
-            std::is_same<T, Math::BoundingBox>::value
+            std::is_same<T, math::Quaternion>::value    ||
+            std::is_same<T, math::BoundingBox>::value
         >::type>
         void Write(T value)
         {
@@ -107,12 +107,12 @@ namespace spartan
             std::is_same<T, double>::value              ||
             std::is_same<T, long double>::value         ||
             std::is_same<T, std::byte>::value           ||
-            std::is_same<T, Math::Vector2>::value       ||
-            std::is_same<T, Math::Vector3>::value       ||
-            std::is_same<T, Math::Vector4>::value       ||
+            std::is_same<T, math::Vector2>::value       ||
+            std::is_same<T, math::Vector3>::value       ||
+            std::is_same<T, math::Vector4>::value       ||
             std::is_same<T, Color>::value               ||
-            std::is_same<T, Math::Quaternion>::value    ||
-            std::is_same<T, Math::BoundingBox>::value
+            std::is_same<T, math::Quaternion>::value    ||
+            std::is_same<T, math::BoundingBox>::value
         >::type>
         void Read(T* value)
         {

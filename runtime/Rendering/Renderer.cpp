@@ -45,7 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -69,8 +69,8 @@ namespace spartan
     namespace
     {
         // resolution & viewport
-        Math::Vector2 m_resolution_render = Math::Vector2::Zero;
-        Math::Vector2 m_resolution_output = Math::Vector2::Zero;
+        math::Vector2 m_resolution_render = math::Vector2::Zero;
+        math::Vector2 m_resolution_output = math::Vector2::Zero;
         RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
 
         // rhi resources
@@ -85,7 +85,7 @@ namespace spartan
         // misc
         unordered_map<Renderer_Option, float> m_options;
         uint64_t frame_num                   = 0;
-        Math::Vector2 jitter_offset          = Math::Vector2::Zero;
+        math::Vector2 jitter_offset          = math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
@@ -550,7 +550,7 @@ namespace spartan
         return m_cb_frame_cpu.wind;
     }
 
-    void Renderer::SetWind(const Math::Vector3& wind)
+    void Renderer::SetWind(const math::Vector3& wind)
     {
         m_cb_frame_cpu.wind = wind;
     }
@@ -654,16 +654,16 @@ namespace spartan
             // anisotropy
             if (option == Renderer_Option::Anisotropy)
             {
-                value = Helper::Clamp(value, 0.0f, 16.0f);
+                value = helper::Clamp(value, 0.0f, 16.0f);
             }
             // shadow resolution
             else if (option == Renderer_Option::ShadowResolution)
             {
-                value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
+                value = helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
             }
             else if (option == Renderer_Option::ResolutionScale)
             {
-                value = Helper::Clamp(value, 0.5f, 1.0f);
+                value = helper::Clamp(value, 0.5f, 1.0f);
             }
         }
 

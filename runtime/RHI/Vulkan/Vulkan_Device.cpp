@@ -41,7 +41,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -148,7 +148,7 @@ namespace spartan
 
                 // choose the version which is supported by both the sdk and the driver
                 uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
-                app_info.apiVersion  = Helper::Min(sdk_version, driver_version);
+                app_info.apiVersion  = helper::Min(sdk_version, driver_version);
 
                 // 1.3 the minimum required version as we are using extensions from 1.3
                 if (app_info.apiVersion < VK_API_VERSION_1_3)
@@ -2148,7 +2148,7 @@ namespace spartan
 
     // markers
 
-    void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color)
+    void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color)
     {
         VkDebugUtilsLabelEXT label = {};
         label.sType                = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;

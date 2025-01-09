@@ -130,18 +130,18 @@ namespace spartan
         static bool GetMouseCursorVisible();
         static void SetMouseIsInViewport(const bool is_in_viewport);
         static bool GetMouseIsInViewport();
-        static const Math::Vector2& GetMousePosition();
-        static void SetMousePosition(const Math::Vector2& position);
-        static const Math::Vector2& GetMouseDelta();
-        static const Math::Vector2& GetMouseWheelDelta();
-        static void SetEditorViewportOffset(const Math::Vector2& offset);
-        static const Math::Vector2 GetMousePositionRelativeToWindow();
-        static const Math::Vector2 GetMousePositionRelativeToEditorViewport();
+        static const math::Vector2& GetMousePosition();
+        static void SetMousePosition(const math::Vector2& position);
+        static const math::Vector2& GetMouseDelta();
+        static const math::Vector2& GetMouseWheelDelta();
+        static void SetEditorViewportOffset(const math::Vector2& offset);
+        static const math::Vector2 GetMousePositionRelativeToWindow();
+        static const math::Vector2 GetMousePositionRelativeToEditorViewport();
 
         // gamepad
         static bool IsGamepadConnected();
-        static const Math::Vector2& GetGamepadThumbStickLeft();
-        static const Math::Vector2& GetGamepadThumbStickRight();
+        static const math::Vector2& GetGamepadThumbStickLeft();
+        static const math::Vector2& GetGamepadThumbStickRight();
         static float GetGamepadTriggerLeft();
         static float GetGamepadTriggerRight();
 

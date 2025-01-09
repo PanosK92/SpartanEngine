@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ===============
 using namespace std;
 using namespace spartan;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace

@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ===========
 #include "Widget.h"
-#include "Math/MathHelper.h"
+#include "Math/Helper.h"
 #include <array>
-//==========================
+//======================
 
 struct Timings
 {
@@ -33,8 +33,8 @@ struct Timings
 
     void AddSample(const float sample)
     {
-        m_min = spartan::Math::Helper::Min(m_min, sample);
-        m_max = spartan::Math::Helper::Max(m_max, sample);
+        m_min = spartan::math::helper::Min(m_min, sample);
+        m_max = spartan::math::helper::Max(m_max, sample);
         m_sum += sample;
         m_sample_count++;
         m_avg = float(m_sum / static_cast<float>(m_sample_count));

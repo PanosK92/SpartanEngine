@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <immintrin.h>
 //=====================
 
-namespace spartan::Math
+namespace spartan::math
 {
     class Matrix
     {
@@ -174,7 +174,7 @@ namespace spartan::Math
 
             if (scale > 0.0f)
             {
-                sqrt = Helper::Sqrt(scale + 1.0f);
+                sqrt = helper::Sqrt(scale + 1.0f);
                 quaternion.w = sqrt * 0.5f;
                 sqrt = 0.5f / sqrt;
 
@@ -186,7 +186,7 @@ namespace spartan::Math
             }
             if ((mRot.m00 >= mRot.m11) && (mRot.m00 >= mRot.m22))
             {
-                sqrt = Helper::Sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
+                sqrt = helper::Sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
                 half = 0.5f / sqrt;
 
                 quaternion.x = 0.5f * sqrt;
@@ -198,7 +198,7 @@ namespace spartan::Math
             }
             if (mRot.m11 > mRot.m22)
             {
-                sqrt = Helper::Sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
+                sqrt = helper::Sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
                 half = 0.5f / sqrt;
 
                 quaternion.x = (mRot.m10 + mRot.m01) * half;
@@ -208,7 +208,7 @@ namespace spartan::Math
 
                 return quaternion;
             }
-            sqrt = Helper::Sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
+            sqrt = helper::Sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
             half = 0.5f / sqrt;
 
             quaternion.x = (mRot.m20 + mRot.m02) * half;
@@ -230,9 +230,9 @@ namespace spartan::Math
             __m128 row2 = _mm_setr_ps(m20, m21, m22, 0.0f);
         
             // Calculate signs (using scalar math as it's only done once per row)
-            float xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
-            float ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
-            float zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
+            float xs = (helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
+            float ys = (helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
+            float zs = (helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
         
             // Square each component
             __m128 square0 = _mm_mul_ps(row0, row0);
@@ -251,18 +251,18 @@ namespace spartan::Math
         
             // Extract results and apply signs
             return Vector3(
-                xs * Helper::Sqrt(_mm_cvtss_f32(square0)),
-                ys * Helper::Sqrt(_mm_cvtss_f32(square1)),
-                zs * Helper::Sqrt(_mm_cvtss_f32(square2))
+                xs * helper::Sqrt(_mm_cvtss_f32(square0)),
+                ys * helper::Sqrt(_mm_cvtss_f32(square1)),
+                zs * helper::Sqrt(_mm_cvtss_f32(square2))
             );
         #else
-            const int xs = (Helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
-            const int ys = (Helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
-            const int zs = (Helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
+            const int xs = (helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
+            const int ys = (helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
+            const int zs = (helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
             return Vector3(
-                static_cast<float>(xs) * Helper::Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
-                static_cast<float>(ys) * Helper::Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
-                static_cast<float>(zs) * Helper::Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
+                static_cast<float>(xs) * helper::Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
+                static_cast<float>(ys) * helper::Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
+                static_cast<float>(zs) * helper::Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
             );
         #endif
         }
@@ -315,7 +315,7 @@ namespace spartan::Math
 
         static Matrix CreatePerspectiveFieldOfViewLH(float fov_y_radians, float aspect_ratio, float near_plane, float far_plane)
         {
-            const float tan_half_fovy = Helper::Tan(fov_y_radians / 2);
+            const float tan_half_fovy = helper::Tan(fov_y_radians / 2);
             const float f             = 1.0f / tan_half_fovy;
             const float range_inv     = 1.0f / (far_plane - near_plane);
 
@@ -489,7 +489,7 @@ namespace spartan::Math
 
             for (unsigned i = 0; i < 16; ++i)
             {
-                if (!Helper::Equals(data_left[i], data_right[i]))
+                if (!helper::Equals(data_left[i], data_right[i]))
                     return false;
             }
 

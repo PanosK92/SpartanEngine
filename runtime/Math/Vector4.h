@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ======
 #include <string>
-#include "MathHelper.h"
-//=====================
+#include "Helper.h"
+//=================
 
-namespace spartan::Math
+namespace spartan::math
 {
     class Vector3;
     class Matrix;
@@ -97,7 +97,7 @@ namespace spartan::Math
         }
 
         // Returns the length
-        [[nodiscard]] float Length()        const { return Helper::Sqrt(x * x + y * y + z * z + w * w); }
+        [[nodiscard]] float Length()        const { return helper::Sqrt(x * x + y * y + z * z + w * w); }
         // Returns the squared length
         [[nodiscard]] float LengthSquared() const { return x * x + y * y + z * z + w * w; }
 
@@ -105,9 +105,9 @@ namespace spartan::Math
         void Normalize()
         {
             const auto length_squared = LengthSquared();
-            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
+                const auto length_inverted = 1.0f / helper::Sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -119,9 +119,9 @@ namespace spartan::Math
         [[nodiscard]] Vector4 Normalized() const
         {
             const auto length_squared = LengthSquared();
-            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
+                const auto length_inverted = 1.0f / helper::Sqrt(length_squared);
                 return (*this) * length_inverted;
             }
             else

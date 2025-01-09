@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 //===============
 
-namespace spartan::Math
+namespace spartan::math
 {
     enum class Intersection
     {
@@ -37,7 +37,7 @@ namespace spartan::Math
     };
 }
 
-namespace spartan::Math::Helper
+namespace spartan::math::helper
 {
     constexpr float SMALL_FLOAT = std::numeric_limits<float>::min();     // the smallest value that can be represented while maintaining the standard format of floating-point numbers
     constexpr float EPSILON     = std::numeric_limits<float>::epsilon(); // the smallest change detectable in calculations around the number 1.0

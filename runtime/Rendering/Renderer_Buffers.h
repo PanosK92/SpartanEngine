@@ -33,34 +33,34 @@ namespace spartan
     // low frequency - updates once per frame
     struct Cb_Frame
     {
-        Math::Matrix view;
-        Math::Matrix view_inv;
-        Math::Matrix view_previous;
-        Math::Matrix projection;
-        Math::Matrix projection_inv;
-        Math::Matrix projection_previous;
-        Math::Matrix view_projection;
-        Math::Matrix view_projection_inv;
-        Math::Matrix view_projection_ortho;
-        Math::Matrix view_projection_unjittered;
-        Math::Matrix view_projection_previous;
-        Math::Matrix view_projection_previous_unjittered;
+        math::Matrix view;
+        math::Matrix view_inv;
+        math::Matrix view_previous;
+        math::Matrix projection;
+        math::Matrix projection_inv;
+        math::Matrix projection_previous;
+        math::Matrix view_projection;
+        math::Matrix view_projection_inv;
+        math::Matrix view_projection_ortho;
+        math::Matrix view_projection_unjittered;
+        math::Matrix view_projection_previous;
+        math::Matrix view_projection_previous_unjittered;
 
-        Math::Vector2 resolution_render;
-        Math::Vector2 resolution_output;
+        math::Vector2 resolution_render;
+        math::Vector2 resolution_output;
 
-        Math::Vector2 taa_jitter_current;
-        Math::Vector2 taa_jitter_previous;
+        math::Vector2 taa_jitter_current;
+        math::Vector2 taa_jitter_previous;
 
         float directional_light_intensity;
         float delta_time;
         uint32_t frame;
         uint32_t options;
 
-        Math::Vector3 camera_position;
+        math::Vector3 camera_position;
         float camera_near;
 
-        Math::Vector3 camera_direction;
+        math::Vector3 camera_direction;
         float camera_far;
 
         float camera_last_movement_time;
@@ -68,13 +68,13 @@ namespace spartan
         float hdr_max_nits;
         float hdr_white_point;
 
-        Math::Vector3 camera_position_previous;
+        math::Vector3 camera_position_previous;
         float resolution_scale;
 
         double time;
-        Math::Vector2 padding;
+        math::Vector2 padding;
 
-        Math::Vector3 wind;
+        math::Vector3 wind;
         float padding2;
 
         void set_bit(const bool set, const uint32_t bit)
@@ -120,10 +120,10 @@ namespace spartan
     // 128 byte push constant buffer - updates per pass/draw
     struct Pcb_Pass
     {
-        Math::Matrix transform = Math::Matrix::Identity;
-        Math::Matrix m_value   = Math::Matrix::Identity;
+        math::Matrix transform = math::Matrix::Identity;
+        math::Matrix m_value   = math::Matrix::Identity;
 
-        void set_transform_previous(const Math::Matrix& transform_previous)
+        void set_transform_previous(const math::Matrix& transform_previous)
         {
             m_value = transform_previous;
         }
@@ -134,7 +134,7 @@ namespace spartan
             m_value.m30 = y;
         }
 
-        void set_f3_value(const Math::Vector3& value)
+        void set_f3_value(const math::Vector3& value)
         {
             m_value.m00 = value.x;
             m_value.m01 = value.y;
@@ -148,7 +148,7 @@ namespace spartan
             m_value.m02 = z;
         };
 
-        void set_f3_value2(const Math::Vector3& value)
+        void set_f3_value2(const math::Vector3& value)
         {
             m_value.m20 = value.x;
             m_value.m21 = value.y;
@@ -194,10 +194,10 @@ namespace spartan
 
     struct Sb_Material
     {
-        Math::Vector4 color = Math::Vector4::Zero;
+        math::Vector4 color = math::Vector4::Zero;
 
-        Math::Vector2 tiling_uv = Math::Vector2::Zero;
-        Math::Vector2 offset_uv = Math::Vector2::Zero;
+        math::Vector2 tiling_uv = math::Vector2::Zero;
+        math::Vector2 offset_uv = math::Vector2::Zero;
 
         float roughness_mul = 0.0f;
         float metallic_mul  = 0.0f;
@@ -210,7 +210,7 @@ namespace spartan
         float subsurface_scattering;
 
         float sheen;
-        Math::Vector3 sheen_tint;
+        math::Vector3 sheen_tint;
 
         float anisotropic;
         float anisotropic_rotation;
@@ -220,19 +220,19 @@ namespace spartan
 
     struct Sb_Light
     {
-        Math::Matrix view_projection[2];
+        math::Matrix view_projection[2];
 
         Color color;
 
-        Math::Vector3 position;
+        math::Vector3 position;
         float intensity;
 
-        Math::Vector3 direction;
+        math::Vector3 direction;
         float range;
 
         float angle;
         uint32_t flags;
-        Math::Vector2 padding;
+        math::Vector2 padding;
 
         bool operator==(const Sb_Light& rhs)
         {

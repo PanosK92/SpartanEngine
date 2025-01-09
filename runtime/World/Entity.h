@@ -108,38 +108,38 @@ namespace spartan
         const auto& GetAllComponents() const { return m_components; }
 
         //= POSITION ======================================================================
-        Math::Vector3 GetPosition()             const { return m_matrix.GetTranslation(); }
-        const Math::Vector3& GetPositionLocal() const { return m_position_local; }
-        void SetPosition(const Math::Vector3& position);
-        void SetPositionLocal(const Math::Vector3& position);
+        math::Vector3 GetPosition()             const { return m_matrix.GetTranslation(); }
+        const math::Vector3& GetPositionLocal() const { return m_position_local; }
+        void SetPosition(const math::Vector3& position);
+        void SetPositionLocal(const math::Vector3& position);
         //=================================================================================
 
         //= ROTATION ======================================================================
-        Math::Quaternion GetRotation()             const { return m_matrix.GetRotation(); }
-        const Math::Quaternion& GetRotationLocal() const { return m_rotation_local; }
-        void SetRotation(const Math::Quaternion& rotation);
-        void SetRotationLocal(const Math::Quaternion& rotation);
+        math::Quaternion GetRotation()             const { return m_matrix.GetRotation(); }
+        const math::Quaternion& GetRotationLocal() const { return m_rotation_local; }
+        void SetRotation(const math::Quaternion& rotation);
+        void SetRotationLocal(const math::Quaternion& rotation);
         //=================================================================================
 
         //= SCALE ================================================================
-        Math::Vector3 GetScale()             const { return m_matrix.GetScale(); }
-        const Math::Vector3& GetScaleLocal() const { return m_scale_local; }
-        void SetScale(const Math::Vector3& scale);
-        void SetScaleLocal(const Math::Vector3& scale);
+        math::Vector3 GetScale()             const { return m_matrix.GetScale(); }
+        const math::Vector3& GetScaleLocal() const { return m_scale_local; }
+        void SetScale(const math::Vector3& scale);
+        void SetScaleLocal(const math::Vector3& scale);
         //========================================================================
 
         //= TRANSLATION/ROTATION ==================
-        void Translate(const Math::Vector3& delta);
-        void Rotate(const Math::Quaternion& delta);
+        void Translate(const math::Vector3& delta);
+        void Rotate(const math::Quaternion& delta);
         //=========================================
 
         //= DIRECTIONS ================================================
-        const Math::Vector3& GetUp() const       { return m_up; }
-        const Math::Vector3& GetDown() const     { return m_down; }
-        const Math::Vector3& GetForward() const  { return m_forward; }
-        const Math::Vector3& GetBackward() const { return m_backward; }
-        const Math::Vector3& GetRight() const    { return m_right; }
-        const Math::Vector3& GetLeft() const     { return m_left; }
+        const math::Vector3& GetUp() const       { return m_up; }
+        const math::Vector3& GetDown() const     { return m_down; }
+        const math::Vector3& GetForward() const  { return m_forward; }
+        const math::Vector3& GetBackward() const { return m_backward; }
+        const math::Vector3& GetRight() const    { return m_right; }
+        const math::Vector3& GetLeft() const     { return m_left; }
         //=============================================================
 
         //= HIERARCHY ===================================================================================
@@ -160,10 +160,10 @@ namespace spartan
         std::vector<Entity*>& GetChildren()       { return m_children; }
         //===============================================================================================
 
-        const Math::Matrix& GetMatrix() const              { return m_matrix; }
-        const Math::Matrix& GetLocalMatrix() const         { return m_matrix_local; }
-        const Math::Matrix& GetMatrixPrevious() const      { return m_matrix_previous; }
-        void SetMatrixPrevious(const Math::Matrix& matrix) { m_matrix_previous = matrix; }
+        const math::Matrix& GetMatrix() const              { return m_matrix; }
+        const math::Matrix& GetLocalMatrix() const         { return m_matrix_local; }
+        const math::Matrix& GetMatrixPrevious() const      { return m_matrix_previous; }
+        void SetMatrixPrevious(const math::Matrix& matrix) { m_matrix_previous = matrix; }
         bool IsMoving() const;
 
     private:
@@ -171,24 +171,24 @@ namespace spartan
         std::array<std::shared_ptr<Component>, 13> m_components;
 
         void UpdateTransform();
-        Math::Matrix GetParentTransformMatrix() const;
+        math::Matrix GetParentTransformMatrix() const;
 
         // local
-        Math::Vector3 m_position_local    = Math::Vector3::Zero;
-        Math::Quaternion m_rotation_local = Math::Quaternion::Identity;
-        Math::Vector3 m_scale_local       = Math::Vector3::One;
+        math::Vector3 m_position_local    = math::Vector3::Zero;
+        math::Quaternion m_rotation_local = math::Quaternion::Identity;
+        math::Vector3 m_scale_local       = math::Vector3::One;
 
-        Math::Matrix m_matrix          = Math::Matrix::Identity;
-        Math::Matrix m_matrix_previous = Math::Matrix::Identity;
-        Math::Matrix m_matrix_local    = Math::Matrix::Identity;
+        math::Matrix m_matrix          = math::Matrix::Identity;
+        math::Matrix m_matrix_previous = math::Matrix::Identity;
+        math::Matrix m_matrix_local    = math::Matrix::Identity;
 
         // computed during UpdateTransform() and cached for performance
-        Math::Vector3 m_forward  = Math::Vector3::Zero;
-        Math::Vector3 m_backward = Math::Vector3::Zero;
-        Math::Vector3 m_up       = Math::Vector3::Zero;
-        Math::Vector3 m_down     = Math::Vector3::Zero;
-        Math::Vector3 m_right    = Math::Vector3::Zero;
-        Math::Vector3 m_left     = Math::Vector3::Zero;
+        math::Vector3 m_forward  = math::Vector3::Zero;
+        math::Vector3 m_backward = math::Vector3::Zero;
+        math::Vector3 m_up       = math::Vector3::Zero;
+        math::Vector3 m_down     = math::Vector3::Zero;
+        math::Vector3 m_right    = math::Vector3::Zero;
+        math::Vector3 m_left     = math::Vector3::Zero;
 
         std::weak_ptr<Entity> m_parent;  // the parent of this entity
         std::vector<Entity*> m_children; // the children of this entity

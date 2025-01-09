@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector3.h"
 //==================
 
-namespace spartan::Math
+namespace spartan::math
 {
     class Quaternion
     {
@@ -120,7 +120,7 @@ namespace spartan::Math
             const Vector3 normEnd   = end.Normalized();
             const float d           = normStart.Dot(normEnd);
 
-            if (d > -1.0f + Helper::EPSILON)
+            if (d > -1.0f + helper::EPSILON)
             {
                 const Vector3 c = normStart.Cross(normEnd);
                 const float s = sqrtf((1.0f + d) * 2.0f);
@@ -135,12 +135,12 @@ namespace spartan::Math
             else
             {
                 Vector3 axis = Vector3::Right.Cross(normStart);
-                if (axis.Length() < Helper::EPSILON)
+                if (axis.Length() < helper::EPSILON)
                 {
                     axis = Vector3::Up.Cross(normStart);
                 }
 
-                return FromAngleAxis(180.0f * Helper::DEG_TO_RAD, axis);
+                return FromAngleAxis(180.0f * helper::DEG_TO_RAD, axis);
             }
         }
 
@@ -150,7 +150,7 @@ namespace spartan::Math
             const Vector3 forward = direction.Normalized();
 
             Vector3 v = forward.Cross(up_direction);
-            if (v.LengthSquared() >= Helper::SMALL_FLOAT)
+            if (v.LengthSquared() >= helper::SMALL_FLOAT)
             {
                 v.Normalize();
                 const Vector3 up    = v.Cross(forward);
@@ -213,9 +213,9 @@ namespace spartan::Math
         void Normalize()
         {
             const auto length_squared = LengthSquared();
-            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
+                const auto length_inverted = 1.0f / helper::Sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -226,9 +226,9 @@ namespace spartan::Math
         Quaternion Normalized() const
         {
             const auto length_squared = LengthSquared();
-            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
+                const auto length_inverted = 1.0f / helper::Sqrt(length_squared);
                 return (*this) * length_inverted;
             }
             else
@@ -244,7 +244,7 @@ namespace spartan::Math
             {
                 return Conjugate();
             }
-            else if (length_squared >= Helper::SMALL_FLOAT)
+            else if (length_squared >= helper::SMALL_FLOAT)
             {
                 return Conjugate() * (1.0f / length_squared);
             }
@@ -266,7 +266,7 @@ namespace spartan::Math
                 (
                     -90.0f,
                     0.0f,
-                    -atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
+                    -atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * helper::RAD_TO_DEG
                 );
             }
 
@@ -276,21 +276,21 @@ namespace spartan::Math
                 (
                     90.0f,
                     0.0f,
-                    atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
+                    atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * helper::RAD_TO_DEG
                 );
             }
 
             return Vector3
             (
-                asinf(check) * Helper::RAD_TO_DEG,
-                atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * Helper::RAD_TO_DEG,
-                atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * Helper::RAD_TO_DEG
+                asinf(check) * helper::RAD_TO_DEG,
+                atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * helper::RAD_TO_DEG,
+                atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * helper::RAD_TO_DEG
             );
         }
 
         // euler angles to quaternion (input in degrees)
-        static Quaternion FromEulerAngles(const Vector3& rotation)                           { return FromYawPitchRoll(rotation.y * Helper::DEG_TO_RAD, rotation.x * Helper::DEG_TO_RAD, rotation.z * Helper::DEG_TO_RAD); }
-        static Quaternion FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * Helper::DEG_TO_RAD,  rotationX * Helper::DEG_TO_RAD,  rotationZ * Helper::DEG_TO_RAD); }
+        static Quaternion FromEulerAngles(const Vector3& rotation)                           { return FromYawPitchRoll(rotation.y * helper::DEG_TO_RAD, rotation.x * helper::DEG_TO_RAD, rotation.z * helper::DEG_TO_RAD); }
+        static Quaternion FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * helper::DEG_TO_RAD,  rotationX * helper::DEG_TO_RAD,  rotationZ * helper::DEG_TO_RAD); }
 
         // Returns yaw in degrees
         float Yaw() const   { return ToEulerAngles().y; }
@@ -335,7 +335,7 @@ namespace spartan::Math
         // Equality
         bool operator==(const Quaternion& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }
         bool operator!=(const Quaternion& rhs) const { return !(*this == rhs); }
-        bool Equals(const Quaternion& rhs)     const { return Helper::Equals(x, rhs.x) && Helper::Equals(y, rhs.y) && Helper::Equals(z, rhs.z) && Helper::Equals(w, rhs.w); }
+        bool Equals(const Quaternion& rhs)     const { return helper::Equals(x, rhs.x) && helper::Equals(y, rhs.y) && helper::Equals(z, rhs.z) && helper::Equals(w, rhs.w); }
 
         std::string ToString() const;
         float x, y, z, w;

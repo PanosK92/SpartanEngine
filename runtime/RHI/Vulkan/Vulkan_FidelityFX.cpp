@@ -52,7 +52,7 @@ SP_WARNINGS_ON
 //=============================================
 
 //= NAMESPACES ===============
-using namespace spartan::Math;
+using namespace spartan::math;
 using namespace std;
 //============================
 

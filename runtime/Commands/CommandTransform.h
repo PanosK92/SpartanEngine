@@ -32,7 +32,7 @@ namespace spartan
     class CommandTransform : public spartan::Command
     {
     public:
-        CommandTransform(spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale);
+        CommandTransform(spartan::Entity* entity, math::Vector3 old_position, math::Quaternion old_rotation, math::Vector3 old_scale);
 
         virtual void OnApply() override;
         virtual void OnRevert() override;
@@ -41,12 +41,12 @@ namespace spartan
 
         uint64_t m_entity_id{ UINT64_MAX };
 
-        Math::Vector3 m_new_position;
-        Math::Quaternion m_new_rotation;
-        Math::Vector3 m_new_scale;
+        math::Vector3 m_new_position;
+        math::Quaternion m_new_rotation;
+        math::Vector3 m_new_scale;
 
-        Math::Vector3 m_old_position;
-        Math::Quaternion m_old_rotation;
-        Math::Vector3 m_old_scale;
+        math::Vector3 m_old_position;
+        math::Quaternion m_old_rotation;
+        math::Vector3 m_old_scale;
     };
 }

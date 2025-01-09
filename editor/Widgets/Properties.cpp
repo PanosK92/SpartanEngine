@@ -42,7 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES =========
 using namespace std;
 using namespace spartan;
-using namespace Math;
+using namespace math;
 //======================
 
 weak_ptr<Entity> Properties::m_inspected_entity;
@@ -252,7 +252,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         static vector<string> types = { "Directional", "Point", "Spot" };
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
-        float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
+        float angle                 = light->GetAngle() * math::helper::RAD_TO_DEG * 2.0f;
         bool shadows                = light->GetFlag(spartan::LightFlags::Shadows);
         bool shadows_transparent    = light->GetFlag(spartan::LightFlags::ShadowsTransparent);
         bool shadows_screen_space   = light->GetFlag(spartan::LightFlags::ShadowsScreenSpace);
@@ -362,7 +362,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
         //= MAP ===================================================================================================================
         if (intensity != light->GetIntensityLumens())                     light->SetIntensity(intensity);
-        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
+        if (angle != light->GetAngle() * math::helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * math::helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                   light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
         if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);
@@ -679,12 +679,12 @@ void Properties::ShowMaterial(Material* material) const
     if (component_begin("Material", IconType::Component_Material, nullptr, false))
     {
         //= REFLECT ================================================
-        Math::Vector2 tiling = Vector2(
+        math::Vector2 tiling = Vector2(
             material->GetProperty(MaterialProperty::TextureTilingX),
             material->GetProperty(MaterialProperty::TextureTilingY)
         );
 
-        Math::Vector2 offset = Vector2(
+        math::Vector2 offset = Vector2(
             material->GetProperty(MaterialProperty::TextureOffsetX),
             material->GetProperty(MaterialProperty::TextureOffsetY)
         );

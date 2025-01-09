@@ -48,7 +48,7 @@ namespace ImGui::RHI
 {
     //= NAMESPACES =========
     using namespace spartan;
-    using namespace Math;
+    using namespace math;
     using namespace std;
     //======================
 
@@ -301,7 +301,7 @@ namespace ImGui::RHI
                     {
                         // set scissor rectangle
                         {
-                            Math::Rectangle scissor_rect;
+                            math::Rectangle scissor_rect;
                             scissor_rect.left   = pcmd->ClipRect.x - draw_data->DisplayPos.x;
                             scissor_rect.top    = pcmd->ClipRect.y - draw_data->DisplayPos.y;
                             scissor_rect.right  = pcmd->ClipRect.z - draw_data->DisplayPos.x;

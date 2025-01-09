@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace spartan::Math
+namespace spartan::math
 {
     Ray::Ray(const Vector3& start, const Vector3& direction)
     {
@@ -39,13 +39,13 @@ namespace spartan::Math
     {
         // If undefined, no hit (infinite distance)
         if (box == BoundingBox::Undefined)
-            return Helper::INFINITY_;
+            return helper::INFINITY_;
         
         // check for ray origin being inside the box
         if (box.Intersects(m_origin) == Intersection::Inside)
             return 0.0f;
 
-        float distance = Helper::INFINITY_;
+        float distance = helper::INFINITY_;
 
         // Check for intersecting in the X-direction
         if (m_origin.x < box.GetMin().x && m_direction.x > 0.0f)
@@ -131,7 +131,7 @@ namespace spartan::Math
     float Ray::HitDistance(const Plane& plane, Vector3* intersection_point /*= nullptr*/) const
     {
         float d = plane.normal.Dot(m_direction);
-        if (Helper::Abs(d) >= Helper::SMALL_FLOAT)
+        if (helper::Abs(d) >= helper::SMALL_FLOAT)
         {
             float t = -(plane.normal.Dot(m_origin) + plane.d) / d;
             if (t >= 0.0f)
@@ -144,12 +144,12 @@ namespace spartan::Math
             }
             else
             {
-                return Helper::INFINITY_;
+                return helper::INFINITY_;
             }
         }
         else
         {
-            return Helper::INFINITY_;
+            return helper::INFINITY_;
         }
     }
 
@@ -165,7 +165,7 @@ namespace spartan::Math
         Vector3 p(m_direction.Cross(edge2));
         float det = edge1.Dot(p);
 
-        if (det >= Helper::SMALL_FLOAT)
+        if (det >= helper::SMALL_FLOAT)
         {
             // Calculate u & v parameters and test
             Vector3 t(m_origin - v1);
@@ -193,7 +193,7 @@ namespace spartan::Math
             }
         }
 
-        return Helper::INFINITY_;
+        return helper::INFINITY_;
     }
 
     float Ray::HitDistance(const Sphere& sphere) const
@@ -213,7 +213,7 @@ namespace spartan::Math
     
         // No solution
         if (d < 0.0f)
-            return Helper::INFINITY_;
+            return helper::INFINITY_;
 
         // Get the nearer solution
         float dSqrt = sqrtf(d);
@@ -250,7 +250,7 @@ namespace spartan::Math
         float d2121 = p21.Dot(p21);
         
         float d = d2121 * d4343 - d4321 * d4321;
-        if (Helper::Abs(d) < Helper::SMALL_FLOAT)
+        if (helper::Abs(d) < helper::SMALL_FLOAT)
             return m_origin;
 
         float n = d1343 * d4321 - d1321 * d4343;

@@ -186,19 +186,19 @@ namespace spartan
 
             // cpu
             time_cpu_avg = (time_cpu_avg * weight_history) + time_cpu_last * weight_delta;
-            time_cpu_min = Math::Helper::Min(time_cpu_min, time_cpu_last);
-            time_cpu_max = Math::Helper::Max(time_cpu_max, time_cpu_last);
+            time_cpu_min = math::helper::Min(time_cpu_min, time_cpu_last);
+            time_cpu_max = math::helper::Max(time_cpu_max, time_cpu_last);
 
             // gpu
             time_gpu_avg = (time_gpu_avg * weight_history) + time_gpu_last * weight_delta;
-            time_gpu_min = Math::Helper::Min(time_gpu_min, time_gpu_last);
-            time_gpu_max = Math::Helper::Max(time_gpu_max, time_gpu_last);
+            time_gpu_min = math::helper::Min(time_gpu_min, time_gpu_last);
+            time_gpu_max = math::helper::Max(time_gpu_max, time_gpu_last);
 
             // frame
             time_frame_last = static_cast<float>(Timer::GetDeltaTimeMs());
             time_frame_avg  = (time_frame_avg * weight_history) + time_frame_last * weight_delta;
-            time_frame_min  = Math::Helper::Min(time_frame_min, time_frame_last);
-            time_frame_max  = Math::Helper::Max(time_frame_max, time_frame_last);
+            time_frame_min  = math::helper::Min(time_frame_min, time_frame_last);
+            time_frame_max  = math::helper::Max(time_frame_max, time_frame_last);
 
             // fps  
             m_fps = 1000.0f / time_frame_avg;
@@ -503,7 +503,7 @@ namespace spartan
         }
     
         // Draw directly from the static buffer
-        Renderer::DrawString(string(metrics_buffer), Math::Vector2(0.01f, 0.01f));
+        Renderer::DrawString(string(metrics_buffer), math::Vector2(0.01f, 0.01f));
     }
 
     ProfilerGranularity Profiler::GetGranularity()

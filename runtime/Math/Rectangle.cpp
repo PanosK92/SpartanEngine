@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace spartan::Math
+namespace spartan::math
 {
     const Rectangle Rectangle::Zero(0.0f, 0.0f, 0.0f, 0.0f);
 }

@@ -116,15 +116,15 @@ namespace spartan
         auto GetAngle() const { return m_angle_rad; }
 
         // matrices
-        const Math::Matrix& GetViewMatrix(uint32_t index) const       { return m_matrix_view[index]; }
-        const Math::Matrix& GetProjectionMatrix(uint32_t index) const { return m_matrix_projection[index]; }
+        const math::Matrix& GetViewMatrix(uint32_t index) const       { return m_matrix_view[index]; }
+        const math::Matrix& GetProjectionMatrix(uint32_t index) const { return m_matrix_projection[index]; }
 
         // textures
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
 
         // frustum
-        bool IsInViewFrustum(const Math::BoundingBox& bounding_box, const uint32_t index) const;
+        bool IsInViewFrustum(const math::BoundingBox& bounding_box, const uint32_t index) const;
         bool IsInViewFrustum(Renderable* renderable, const uint32_t index) const;
 
         // index
@@ -147,9 +147,9 @@ namespace spartan
         // shadows
         std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
-        std::array<Math::Frustum, 2> m_frustums;
-        std::array<Math::Matrix, 2> m_matrix_view;
-        std::array<Math::Matrix, 2> m_matrix_projection;
+        std::array<math::Frustum, 2> m_frustums;
+        std::array<math::Matrix, 2> m_matrix_view;
+        std::array<math::Matrix, 2> m_matrix_projection;
 
         // misc
         uint32_t m_flags                      = 0;
@@ -157,7 +157,7 @@ namespace spartan
         Color m_color_rgb                     = Color::standard_black;;
         float m_temperature_kelvin            = 0.0f;
         float m_range                         = 0.0f;
-        float m_angle_rad                     = Math::Helper::DEG_TO_RAD * 30.0f;
+        float m_angle_rad                     = math::helper::DEG_TO_RAD * 30.0f;
         uint32_t m_index                      = 0;
         bool m_filtering_pending              = false;
         float m_time_since_last_filtering_sec = 0.0f;

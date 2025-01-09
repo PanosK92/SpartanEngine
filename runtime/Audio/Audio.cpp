@@ -121,7 +121,7 @@ namespace spartan
         if (m_listener)
         {
             auto position = m_listener->GetPosition();
-            auto velocity = Math::Vector3::Zero;
+            auto velocity = math::Vector3::Zero;
             auto forward  = m_listener->GetForward();
             auto up       = m_listener->GetUp();
 

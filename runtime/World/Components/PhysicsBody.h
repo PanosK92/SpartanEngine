@@ -33,7 +33,7 @@ namespace spartan
     class Constraint;
     class Physics;
     class Car;
-    namespace Math { class Quaternion; }
+    namespace math { class Quaternion; }
 
     enum class PhysicsBodyType
     {
@@ -93,50 +93,50 @@ namespace spartan
         // gravity
         void SetUseGravity(bool gravity);
         bool GetUseGravity() const { return m_use_gravity; };
-        Math::Vector3 GetGravity() const { return m_gravity; }
-        void SetGravity(const Math::Vector3& gravity);
+        math::Vector3 GetGravity() const { return m_gravity; }
+        void SetGravity(const math::Vector3& gravity);
 
         // kinematic
         void SetIsKinematic(bool kinematic);
         bool GetIsKinematic() const { return m_is_kinematic; }
 
         // forces
-        void SetLinearVelocity(const Math::Vector3& velocity, const bool activate = true) const;
-        Math::Vector3 GetLinearVelocity() const;
-        void SetAngularVelocity(const Math::Vector3& velocity, const bool activate = true) const;
-        void ApplyForce(const Math::Vector3& force, PhysicsForce mode) const;
-        void ApplyForceAtPosition(const Math::Vector3& force, const Math::Vector3& position, PhysicsForce mode) const;
-        void ApplyTorque(const Math::Vector3& torque, PhysicsForce mode) const;
+        void SetLinearVelocity(const math::Vector3& velocity, const bool activate = true) const;
+        math::Vector3 GetLinearVelocity() const;
+        void SetAngularVelocity(const math::Vector3& velocity, const bool activate = true) const;
+        void ApplyForce(const math::Vector3& force, PhysicsForce mode) const;
+        void ApplyForceAtPosition(const math::Vector3& force, const math::Vector3& position, PhysicsForce mode) const;
+        void ApplyTorque(const math::Vector3& torque, PhysicsForce mode) const;
 
         // position lock
         void SetPositionLock(bool lock);
-        void SetPositionLock(const Math::Vector3& lock);
-        Math::Vector3 GetPositionLock() const { return m_position_lock; }
+        void SetPositionLock(const math::Vector3& lock);
+        math::Vector3 GetPositionLock() const { return m_position_lock; }
 
         // rotation lock
         void SetRotationLock(bool lock);
-        void SetRotationLock(const Math::Vector3& lock);
-        Math::Vector3 GetRotationLock() const { return m_rotation_lock; }
+        void SetRotationLock(const math::Vector3& lock);
+        math::Vector3 GetRotationLock() const { return m_rotation_lock; }
 
         // center of mass
-        void SetCenterOfMass(const Math::Vector3& center_of_mass);
-        const Math::Vector3& GetCenterOfMass() const { return m_center_of_mass; }
+        void SetCenterOfMass(const math::Vector3& center_of_mass);
+        const math::Vector3& GetCenterOfMass() const { return m_center_of_mass; }
 
         // position
-        Math::Vector3 GetPosition() const;
-        void SetPosition(const Math::Vector3& position, const bool activate = true) const;
+        math::Vector3 GetPosition() const;
+        void SetPosition(const math::Vector3& position, const bool activate = true) const;
 
         // rotation
-        Math::Quaternion GetRotation() const;
-        void SetRotation(const Math::Quaternion& rotation, const bool activate = true) const;
+        math::Quaternion GetRotation() const;
+        void SetRotation(const math::Quaternion& rotation, const bool activate = true) const;
 
         // constraint
         void AddConstraint(Constraint* constraint);
         void RemoveConstraint(Constraint* constraint);
 
         // bounding box
-        const Math::Vector3& GetBoundingBox() const { return m_size; }
-        void SetBoundingBox(const Math::Vector3& boundingBox);
+        const math::Vector3& GetBoundingBox() const { return m_size; }
+        void SetBoundingBox(const math::Vector3& boundingBox);
 
         // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
@@ -148,7 +148,7 @@ namespace spartan
 
         // ray tracing
         bool RayTraceIsGrounded() const;
-        Math::Vector3 RayTraceIsNearStairStep(const Math::Vector3& forward) const;
+        math::Vector3 RayTraceIsNearStairStep(const math::Vector3& forward) const;
 
         // dimensional properties
         float GetCapsuleVolume();
@@ -172,11 +172,11 @@ namespace spartan
         float m_restitution            = 0.2f;
         bool m_use_gravity             = true;
         bool m_is_kinematic            = false;
-        Math::Vector3 m_gravity        = Math::Vector3::Zero;
-        Math::Vector3 m_position_lock  = Math::Vector3::Zero;
-        Math::Vector3 m_rotation_lock  = Math::Vector3::Zero;
-        Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
-        Math::Vector3 m_size           = Math::Vector3::One;
+        math::Vector3 m_gravity        = math::Vector3::Zero;
+        math::Vector3 m_position_lock  = math::Vector3::Zero;
+        math::Vector3 m_rotation_lock  = math::Vector3::Zero;
+        math::Vector3 m_center_of_mass = math::Vector3::Zero;
+        math::Vector3 m_size           = math::Vector3::One;
         PhysicsShape m_shape_type      = PhysicsShape::Max;
         PhysicsBodyType m_body_type    = PhysicsBodyType::RigidBody;
         uint32_t terrain_width         = 0;

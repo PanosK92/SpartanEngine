@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES ======
 #include <string>
-#include "MathHelper.h"
-//=====================
+#include "Helper.h"
+//=================
 
-namespace spartan::Math
+namespace spartan::math
 {
     class Vector2
     {
@@ -130,7 +130,7 @@ namespace spartan::Math
         //===================================================================================
 
         // Returns the length
-        [[nodiscard]] float Length() const { return Helper::Sqrt(x * x + y * y); }
+        [[nodiscard]] float Length() const { return helper::Sqrt(x * x + y * y); }
         // Returns the squared length
         [[nodiscard]] float LengthSquared() const { return x * x + y * y; }
 

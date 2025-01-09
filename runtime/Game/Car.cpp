@@ -35,7 +35,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -96,7 +96,7 @@ namespace spartan
         constexpr float brake_ramp_speed                        = 5000.0f;                                   // rate at which brake force increases (human pressing the brake and vehicle applying brake pads)
                                                                                                              
         // steering                                                                                          
-        constexpr float steering_angle_max                      = 40.0f * Math::Helper::DEG_TO_RAD;          // the maximum steering angle of the front wheels
+        constexpr float steering_angle_max                      = 40.0f * math::helper::DEG_TO_RAD;          // the maximum steering angle of the front wheels
         constexpr float steering_return_speed                   = 5.0f;                                      // the speed at which the steering wheel returns to the center
                                                                                                              
         // aerodynamics                                                                                      
@@ -141,12 +141,12 @@ namespace spartan
             oss << fixed << setprecision(2);
 
             oss << "Wheel: " << wheel_name << "\n";
-            oss << "Steering: " << static_cast<float>(wheel_info.m_steering) * Math::Helper::RAD_TO_DEG << " deg\n";
+            oss << "Steering: " << static_cast<float>(wheel_info.m_steering) * math::helper::RAD_TO_DEG << " deg\n";
             oss << "Angular velocity: " << static_cast<float>(wheel_info.m_deltaRotation * 0.5f) / static_cast<float>(Physics::GetTimeStepInternalSec()) << " rad/s\n";
             oss << "Torque: " << wheel_info.m_engineForce << " N\n";
             oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
             oss << "Slip ratio: " << parameters.pacejka_slip_ratio[wheel_index] << " ( Fz: " << parameters.pacejka_fz[wheel_index] << " N ) \n";
-            oss << "Slip angle: " << parameters.pacejka_slip_angle[wheel_index] * Math::Helper::RAD_TO_DEG << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
+            oss << "Slip angle: " << parameters.pacejka_slip_angle[wheel_index] * math::helper::RAD_TO_DEG << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
 
             return oss.str();
         }
@@ -166,7 +166,7 @@ namespace spartan
             oss.clear();
             oss << fixed << setprecision(2);
 
-            oss << "Speed: "     << Math::Helper::Abs<float>(speed) << " Km/h\n"; // meters per second
+            oss << "Speed: "     << math::helper::Abs<float>(speed) << " Km/h\n"; // meters per second
             oss << "Torque: "    << parameters.engine_torque << " N·m \n";        // Newton meters
             oss << "RPM: "       << parameters.engine_rpm << " rpm\n";            // revolutions per minute, not an SI unit, but commonly used
             oss << "Gear: "      << parameters.gear << "\n";                      // gear has no unit
@@ -221,13 +221,13 @@ namespace spartan
             else // reverse
             {
                 // in reverse, both velocities are negative, so we take their absolute values
-                numerator = Math::Helper::Abs(velocity_vehicle) - Math::Helper::Abs(velocity_wheel);
+                numerator = math::helper::Abs(velocity_vehicle) - math::helper::Abs(velocity_wheel);
             }
 
-            float denominator      = Math::Helper::Max(Math::Helper::Abs(velocity_wheel), Math::Helper::SMALL_FLOAT);
+            float denominator      = math::helper::Max(math::helper::Abs(velocity_wheel), math::helper::SMALL_FLOAT);
             float slip_ratio       = numerator / denominator;
 
-            return Math::Helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
+            return math::helper::Clamp<float>(slip_ratio, -1.0f, 1.0f);
         }
 
         float compute_slip_angle(const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
@@ -241,9 +241,9 @@ namespace spartan
             if (vehicle_velocity.length() < 0.05f)
                 return 0.0f;
 
-            float v_z        = Math::Helper::Abs(vehicle_velocity.dot(wheel_forward));
-            float v_x        = Math::Helper::Abs(vehicle_velocity.dot(wheel_side));
-            float slip_angle = atan2(v_x, v_z + Math::Helper::SMALL_FLOAT);
+            float v_z        = math::helper::Abs(vehicle_velocity.dot(wheel_forward));
+            float v_x        = math::helper::Abs(vehicle_velocity.dot(wheel_side));
+            float slip_angle = atan2(v_x, v_z + math::helper::SMALL_FLOAT);
 
             return slip_angle;
         }
@@ -262,7 +262,7 @@ namespace spartan
             }
             else // slip angle
             {
-                slip *= Math::Helper::RAD_TO_DEG; // to degrees
+                slip *= math::helper::RAD_TO_DEG; // to degrees
             }
 
             // coefficients from the pacejka '94 model
@@ -285,10 +285,10 @@ namespace spartan
             // compute the parameters for the Pacejka ’94 formula
             float Fz  = normal_load;
             float C   = b0;
-            float D   = Fz * (b1 * Fz + b2) + Math::Helper::SMALL_FLOAT;
+            float D   = Fz * (b1 * Fz + b2) + math::helper::SMALL_FLOAT;
             float BCD = (b3 * Fz * Fz + b4 * Fz) * exp(-b5 * Fz);
             float B   = BCD / (C * D);
-            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * Math::Helper::Sign(slip + (b9 * Fz + b10)));
+            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * math::helper::Sign(slip + (b9 * Fz + b10)));
             float H   = b9 * Fz + b10;
             float V   = b11 * Fz + b12;
             float Bx1 = B * (slip + H);
@@ -344,11 +344,11 @@ namespace spartan
                 Vector3 start          = bt_to_vector(*force_position);
 
                 // draw fz force
-                Math::Vector3 fz_end = start + Math::Vector3(parameters.pacejka_fz[wheel_index] * wheel_forward_dir) * 0.2f;
+                math::Vector3 fz_end = start + math::Vector3(parameters.pacejka_fz[wheel_index] * wheel_forward_dir) * 0.2f;
                 Renderer::DrawDirectionalArrow(start, fz_end, arrow_size, Color(0.0f, 1.0f, 0.0f, 1.0f));
 
                 // draw fx force
-                Math::Vector3 fx_end = start + Math::Vector3(parameters.pacejka_fx[wheel_index] * wheel_right_dir) * 0.2f;
+                math::Vector3 fx_end = start + math::Vector3(parameters.pacejka_fx[wheel_index] * wheel_right_dir) * 0.2f;
                 Renderer::DrawDirectionalArrow(start, fx_end, arrow_size, Color(1.0f, 0.0f, 0.0f, 1.0f));
             }
         }
@@ -496,10 +496,10 @@ namespace spartan
             {
                 btWheelInfo* wheel_info       = &parameters.vehicle->getWheelInfo(0);
                 float wheel_angular_velocity  = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
-                float wheel_rpm               = (wheel_angular_velocity * 60.0f) / (2.0f * Math::Helper::PI);
+                float wheel_rpm               = (wheel_angular_velocity * 60.0f) / (2.0f * math::helper::PI);
                 float target_rpm              = tuning::engine_idle_rpm + wheel_rpm * parameters.gear_ratio * tuning::gearbox_final_drive;
-                target_rpm                   *= Math::Helper::Abs<float>(parameters.throttle);
-                target_rpm                    = Math::Helper::Clamp(target_rpm, tuning::engine_idle_rpm, tuning::engine_max_rpm);
+                target_rpm                   *= math::helper::Abs<float>(parameters.throttle);
+                target_rpm                    = math::helper::Clamp(target_rpm, tuning::engine_idle_rpm, tuning::engine_max_rpm);
 
                 const float rev_up_down_speed = 0.1f;
                 parameters.engine_rpm = lerp(parameters.engine_rpm, target_rpm, rev_up_down_speed);
@@ -669,7 +669,7 @@ namespace spartan
         // compute engine torque and/or breaking force
         {
             // determine when to stop breaking
-            if (Math::Helper::Abs<float>(GetSpeedMetersPerSecond()) < 0.1f)
+            if (math::helper::Abs<float>(GetSpeedMetersPerSecond()) < 0.1f)
             {
                 m_parameters.break_until_opposite_torque = false;
             }
@@ -719,7 +719,7 @@ namespace spartan
             }
 
             // lerp to new steering angle - real life vehicles don't snap their wheels to the target angle
-            m_parameters.steering_angle = Math::Helper::Lerp<float>(m_parameters.steering_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
+            m_parameters.steering_angle = math::helper::Lerp<float>(m_parameters.steering_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
 
             // set the steering angle
             m_parameters.vehicle->setSteeringValue(m_parameters.steering_angle, tuning::wheel_fl);
@@ -779,11 +779,11 @@ namespace spartan
 
             if (breaking > 0.0f)
             {
-                m_parameters.break_force = Math::Helper::Min<float>(m_parameters.break_force + tuning::brake_ramp_speed * delta_time_sec * breaking, tuning::brake_force_max);
+                m_parameters.break_force = math::helper::Min<float>(m_parameters.break_force + tuning::brake_ramp_speed * delta_time_sec * breaking, tuning::brake_force_max);
             }
             else
             {
-                m_parameters.break_force = Math::Helper::Max<float>(m_parameters.break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
+                m_parameters.break_force = math::helper::Max<float>(m_parameters.break_force - tuning::brake_ramp_speed * delta_time_sec, 0.0f);
             }
 
             float bullet_brake_force = m_parameters.break_force * 0.03f;
@@ -805,7 +805,7 @@ namespace spartan
         // steering wheel
         if (m_parameters.transform_steering_wheel)
         {
-            m_parameters.transform_steering_wheel->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_parameters.steering_angle * Math::Helper::RAD_TO_DEG));
+            m_parameters.transform_steering_wheel->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_parameters.steering_angle * math::helper::RAD_TO_DEG));
         }
 
         // wheels
@@ -825,7 +825,7 @@ namespace spartan
                 float x, y, z;
                 transform_bt.getRotation().getEulerZYX(x, y, z);
                 float steering_angle_rad = m_parameters.vehicle->getSteeringValue(wheel_index);
-                Quaternion rotation = Quaternion::FromEulerAngles(z * Math::Helper::RAD_TO_DEG, steering_angle_rad * Math::Helper::RAD_TO_DEG, 0.0f);
+                Quaternion rotation = Quaternion::FromEulerAngles(z * math::helper::RAD_TO_DEG, steering_angle_rad * math::helper::RAD_TO_DEG, 0.0f);
                 transform->SetRotationLocal(rotation);
             }
         }

@@ -85,7 +85,7 @@ namespace spartan
         uint32_t GetIndexCount() const;
 
         // aabb
-        const Math::BoundingBox& GetAabb() const { return m_aabb; }
+        const math::BoundingBox& GetAabb() const { return m_aabb; }
 
         // gpu buffers
         void CreateGpuBuffers();
@@ -117,7 +117,7 @@ namespace spartan
         std::shared_ptr<RHI_Buffer> m_index_buffer;
 
         // aabb
-        Math::BoundingBox m_aabb;
+        math::BoundingBox m_aabb;
 
         // misc
         std::mutex m_mutex;

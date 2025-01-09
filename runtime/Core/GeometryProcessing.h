@@ -33,7 +33,7 @@ namespace spartan::geometry_processing
 {
     static void generate_cube(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
-        using namespace Math;
+        using namespace math;
 
         // front
         vertices->emplace_back(Vector3(-0.5f, -0.5f, -0.5f), Vector2(0, 1), Vector3(0, 0, -1), Vector3(0, 1, 0));
@@ -98,7 +98,7 @@ namespace spartan::geometry_processing
 
     static void generate_quad(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
-        using namespace Math;
+        using namespace math;
 
         vertices->emplace_back(Vector3(-0.5f, 0.0f, 0.5f),  Vector2(0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)); // 0 top-left
         vertices->emplace_back(Vector3(0.5f,  0.0f, 0.5f),  Vector2(1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)); // 1 top-right
@@ -115,7 +115,7 @@ namespace spartan::geometry_processing
 
     static void generate_grid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
     {
-        using namespace Math;
+        using namespace math;
 
         const float spacing = 1.0f / static_cast<float>(resolution - 1); // Ensures the last vertex lands on 1.0
         const Vector3 normal(0, 1, 0);
@@ -158,14 +158,14 @@ namespace spartan::geometry_processing
 
     static void generate_sphere(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, int slices = 20, int stacks = 20)
     {
-        using namespace Math;
+        using namespace math;
 
         Vector3 normal = Vector3(0, 1, 0);
         Vector3 tangent = Vector3(1, 0, 0);
         vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent);
 
-        const float phiStep   = Helper::PI / stacks;
-        const float thetaStep = 2.0f * Helper::PI / slices;
+        const float phiStep   = helper::PI / stacks;
+        const float thetaStep = 2.0f * helper::PI / slices;
 
         for (int i = 1; i <= stacks - 1; i++)
         {
@@ -181,7 +181,7 @@ namespace spartan::geometry_processing
 
                 Vector3 t = Vector3(-radius * sin(phi) * sin(theta), 0, radius * sin(phi) * cos(theta)).Normalized();
                 Vector3 n = p.Normalized();
-                Vector2 uv = Vector2(theta / (Helper::PI * 2), phi / Helper::PI);
+                Vector2 uv = Vector2(theta / (helper::PI * 2), phi / helper::PI);
                 vertices->emplace_back(p, uv, n, t);
             }
         }
@@ -223,7 +223,7 @@ namespace spartan::geometry_processing
 
     static void generate_cylinder(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radiusTop = 1.0f, float radiusBottom = 1.0f, float height = 1.0f, int slices = 15, int stacks = 15)
     {
-        using namespace Math;
+        using namespace math;
 
         const float stackHeight = height / stacks;
         const float radiusStep = (radiusTop - radiusBottom) / stacks;
@@ -233,7 +233,7 @@ namespace spartan::geometry_processing
         {
             const float y = -0.5f * height + i * stackHeight;
             const float r = radiusBottom + i * radiusStep;
-            const float dTheta = 2.0f * Helper::PI / slices;
+            const float dTheta = 2.0f * helper::PI / slices;
             for (int j = 0; j <= slices; j++)
             {
                 const float c = cos(j * dTheta);
@@ -270,7 +270,7 @@ namespace spartan::geometry_processing
         // Build top cap
         int baseIndex = (int)vertices->size();
         float y = 0.5f * height;
-        const float dTheta = 2.0f * Helper::PI / slices;
+        const float dTheta = 2.0f * helper::PI / slices;
 
         Vector3 normal;
         Vector3 tangent;

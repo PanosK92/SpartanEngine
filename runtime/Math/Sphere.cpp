@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 //==================
 
-namespace spartan::Math
+namespace spartan::math
 {
     Sphere::Sphere(const Vector3& center, const float radius)
     {

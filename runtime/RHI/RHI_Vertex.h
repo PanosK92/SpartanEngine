@@ -32,7 +32,7 @@ namespace spartan
 {
     struct RHI_Vertex_Pos
     {
-        RHI_Vertex_Pos(const Math::Vector3& position)
+        RHI_Vertex_Pos(const math::Vector3& position)
         {
             this->pos[0] = position.x;
             this->pos[1] = position.y;
@@ -54,7 +54,7 @@ namespace spartan
             tex[1] = tex_y;
         }
 
-        RHI_Vertex_PosTex(const Math::Vector3& pos, const Math::Vector2& tex)
+        RHI_Vertex_PosTex(const math::Vector3& pos, const math::Vector2& tex)
         {
             this->pos[0] = pos.x;
             this->pos[1] = pos.y;
@@ -72,7 +72,7 @@ namespace spartan
     {
         RHI_Vertex_PosCol() = default;
 
-        RHI_Vertex_PosCol(const Math::Vector3& pos, const Color& col)
+        RHI_Vertex_PosCol(const math::Vector3& pos, const Color& col)
         {
             this->pos[0] = pos.x;
             this->pos[1] = pos.y;
@@ -101,10 +101,10 @@ namespace spartan
     {
         RHI_Vertex_PosTexNorTan() = default;
         RHI_Vertex_PosTexNorTan(
-            const Math::Vector3& pos,
-            const Math::Vector2& tex,
-            const Math::Vector3& nor = Math::Vector3::Zero,
-            const Math::Vector3& tan = Math::Vector3::Zero)
+            const math::Vector3& pos,
+            const math::Vector2& tex,
+            const math::Vector3& nor = math::Vector3::Zero,
+            const math::Vector3& tan = math::Vector3::Zero)
         {
             this->pos[0] = pos.x;
             this->pos[1] = pos.y;

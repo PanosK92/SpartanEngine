@@ -120,7 +120,7 @@ private:
     const bool m_drop_shadow    = true;
     const float m_item_size_min = 50.0f;
     const float m_item_size_max = 200.0f;
-    const spartan::Math::Vector4 m_content_background_color = spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
+    const spartan::math::Vector4 m_content_background_color = spartan::math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
 
     // Flags
     bool m_is_window;
@@ -141,7 +141,7 @@ private:
     FileDialog_Operation m_operation;
     FileDialog_Filter m_filter;
     std::vector<FileDialogItem> m_items;
-    spartan::Math::Vector2 m_item_size;
+    spartan::math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
     std::string m_current_path;
 

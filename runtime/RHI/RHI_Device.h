@@ -98,7 +98,7 @@ namespace spartan
         static bool PropertyIsShadingRateSupported()                  { return m_is_shading_rate_supported; }
 
         // markers
-        static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color);
+        static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color);
         static void MarkerEnd(RHI_CommandList* cmd_list);
 
         // misc

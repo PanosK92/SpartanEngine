@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -196,7 +196,7 @@ namespace spartan
     
         // Priority for the channel, from 0 (most important) 
         // to 256 (least important), default = 128.
-        m_priority = static_cast<int>(Helper::Clamp(priority, 0, 255));
+        m_priority = static_cast<int>(helper::Clamp(priority, 0, 255));
         m_audio_clip->SetPriority(m_priority);
     }
     
@@ -205,7 +205,7 @@ namespace spartan
         if (!m_audio_clip)
             return;
     
-        m_volume = Helper::Clamp(volume, 0.0f, 1.0f);
+        m_volume = helper::Clamp(volume, 0.0f, 1.0f);
         m_audio_clip->SetVolume(m_volume);
     }
     
@@ -214,7 +214,7 @@ namespace spartan
         if (!m_audio_clip)
             return;
     
-        m_pitch = Helper::Clamp(pitch, 0.0f, 3.0f);
+        m_pitch = helper::Clamp(pitch, 0.0f, 3.0f);
         m_audio_clip->SetPitch(m_pitch);
     }
     
@@ -224,7 +224,7 @@ namespace spartan
             return;
     
         // Pan level, from -1.0 (left) to 1.0 (right).
-        m_pan = Helper::Clamp(pan, -1.0f, 1.0f);
+        m_pan = helper::Clamp(pan, -1.0f, 1.0f);
         m_audio_clip->SetPan(m_pan);
     }
 

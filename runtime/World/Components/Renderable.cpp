@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -116,7 +116,7 @@ namespace spartan
 
     void Renderable::SetGeometry(
         Mesh* mesh,
-        const Math::BoundingBox aabb /*= Math::BoundingBox::Undefined*/,
+        const math::BoundingBox aabb /*= math::BoundingBox::Undefined*/,
         uint32_t index_offset  /*= 0*/, uint32_t index_count  /*= 0*/,
         uint32_t vertex_offset /*= 0*/, uint32_t vertex_count /*= 0 */
     )

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace spartan::Math
+namespace spartan::math
 {
     const Matrix Matrix::Identity
     (

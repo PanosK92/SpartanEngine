@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
-#include "MathHelper.h"
+//= INCLUDES =======
+#include "Helper.h"
 #include "Vector3.h"
-//=====================
+//==================
 
 namespace spartan
 {
     struct RHI_Vertex_PosTexNorTan;
 
-    namespace Math
+    namespace math
     {
         class Matrix;
 

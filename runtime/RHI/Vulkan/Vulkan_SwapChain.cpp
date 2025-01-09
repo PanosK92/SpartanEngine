@@ -35,7 +35,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -241,8 +241,8 @@ namespace spartan
         SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
         // clamp size between the supported min and max
-        m_width  = Math::Helper::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        m_height = Math::Helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        m_width  = math::helper::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        m_height = math::helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
         // swap chain
         VkSwapchainKHR swap_chain;

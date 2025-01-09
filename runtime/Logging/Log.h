@@ -34,7 +34,7 @@ namespace spartan
 
     // Forward declarations
     class Entity;
-    namespace Math
+    namespace math
     {
         class Quaternion;
         class Matrix;
@@ -101,11 +101,11 @@ namespace spartan
         }
 
         // nath
-        static void Write(const Math::Vector2& value, LogType type);
-        static void Write(const Math::Vector3& value, LogType type);
-        static void Write(const Math::Vector4& value, LogType type);
-        static void Write(const Math::Quaternion& value, LogType type);
-        static void Write(const Math::Matrix& value, LogType type);
+        static void Write(const math::Vector2& value, LogType type);
+        static void Write(const math::Vector3& value, LogType type);
+        static void Write(const math::Vector4& value, LogType type);
+        static void Write(const math::Quaternion& value, LogType type);
+        static void Write(const math::Matrix& value, LogType type);
 
         // manually handled types
         static void Write(const bool value, const LogType type)                            { Write(value ? "True" : "False", type); }

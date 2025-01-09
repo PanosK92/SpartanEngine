@@ -102,12 +102,12 @@
 #include "Math/Vector4.h"
 
 #define IM_VEC2_CLASS_EXTRA                                           \
-        ImVec2(const spartan::Math::Vector2& f) { x = f.x; y = f.y; } \
-        operator spartan::Math::Vector2() const { return spartan::Math::Vector2(x,y); }
+        ImVec2(const spartan::math::Vector2& f) { x = f.x; y = f.y; } \
+        operator spartan::math::Vector2() const { return spartan::math::Vector2(x,y); }
 
 #define IM_VEC4_CLASS_EXTRA                                                             \
-        ImVec4(const spartan::Math::Vector4& f) { x = f.x; y = f.y; z = f.z; w = f.w; } \
-        operator spartan::Math::Vector4() const { return spartan::Math::Vector4(x, y, z, w); }
+        ImVec4(const spartan::math::Vector4& f) { x = f.x; y = f.y; z = f.z; w = f.w; } \
+        operator spartan::math::Vector4() const { return spartan::math::Vector4(x, y, z, w); }
 
 //---- ...Or use Dear ImGui's own very basic math operators.
 //#define IMGUI_DEFINE_MATH_OPERATORS

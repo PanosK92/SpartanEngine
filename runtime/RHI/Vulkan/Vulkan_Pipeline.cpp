@@ -206,7 +206,7 @@ namespace spartan
                 vertex_input_binding_descs.push_back
                 ({
                     1,                            // binding
-                    sizeof(Math::Matrix),         // stride
+                    sizeof(math::Matrix),         // stride
                     VK_VERTEX_INPUT_RATE_INSTANCE // inputRate
                 });
             }
@@ -237,7 +237,7 @@ namespace spartan
                         static_cast<uint32_t>(vertex_attribute_descs.size()), // location, assuming the next available location
                         1,                                                    // binding
                         VK_FORMAT_R32G32B32A32_SFLOAT,                        // format, assuming 32-bit float components
-                        static_cast<uint32_t>(i * sizeof(Math::Vector4))                             // offset, assuming Math::Vector4 is the type of each row
+                        static_cast<uint32_t>(i * sizeof(math::Vector4))                             // offset, assuming math::Vector4 is the type of each row
                     });
                 }
             }
@@ -280,7 +280,7 @@ namespace spartan
             rasterizer_state.cullMode                = vulkan_cull_mode[static_cast<uint32_t>(RHI_CullMode::Back)];
             rasterizer_state.frontFace               = VK_FRONT_FACE_CLOCKWISE;
             rasterizer_state.depthBiasEnable         = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
-            rasterizer_state.depthBiasConstantFactor = Math::Helper::Floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
+            rasterizer_state.depthBiasConstantFactor = math::helper::Floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
             rasterizer_state.depthBiasClamp          = m_state.rasterizer_state->GetDepthBiasClamp();
             rasterizer_state.depthBiasSlopeFactor    = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
         }

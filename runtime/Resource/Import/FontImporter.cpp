@@ -31,7 +31,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -223,8 +223,8 @@ namespace spartan
                     continue;
 
                 FT_Bitmap* bitmap   = &face->glyph->bitmap;
-                width               = Helper::Max<uint32_t>(width,  bitmap->width);
-                height              = Helper::Max<uint32_t>(height, bitmap->rows);
+                width               = helper::Max<uint32_t>(width,  bitmap->width);
+                height              = helper::Max<uint32_t>(height, bitmap->rows);
             }
 
             *max_width  = width  + outline_size * 2;
@@ -239,7 +239,7 @@ namespace spartan
 
             const uint32_t glyph_count    = GLYPH_END - GLYPH_START;
             const uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
-            const uint32_t row_count      = static_cast<uint32_t>(Helper::Ceil(float(glyph_count) / float(glyphs_per_row)));
+            const uint32_t row_count      = static_cast<uint32_t>(helper::Ceil(float(glyph_count) / float(glyphs_per_row)));
 
             *atlas_width        = ATLAS_WIDTH;
             *atlas_height       = max_height * row_count;

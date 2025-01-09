@@ -32,7 +32,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ================
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //=============================
 
 namespace spartan

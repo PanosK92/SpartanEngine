@@ -51,7 +51,7 @@ namespace spartan
     namespace
     { 
         std::string m_title;
-        Math::Vector2 m_position = Math::Vector2::Zero;
+        math::Vector2 m_position = math::Vector2::Zero;
         uint32_t width           = 1280;
         uint32_t height          = 720;
         float dpi_scale          = 1.0f;

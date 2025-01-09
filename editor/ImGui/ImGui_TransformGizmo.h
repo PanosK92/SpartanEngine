@@ -35,12 +35,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::TransformGizmo
 {
-    const  spartan::Math::Vector3 snap =  spartan::Math::Vector3(0.1f, 0.1f, 0.1f);
+    const  spartan::math::Vector3 snap =  spartan::math::Vector3(0.1f, 0.1f, 0.1f);
 
     bool first_use = true;
-    spartan::Math::Vector3 position_previous;
-    spartan::Math::Quaternion rotation_previous;
-    spartan::Math::Vector3 scale_previous;
+    spartan::math::Vector3 position_previous;
+    spartan::math::Quaternion rotation_previous;
+    spartan::math::Vector3 scale_previous;
 
     void apply_style()
     {
@@ -102,8 +102,8 @@ namespace ImGui::TransformGizmo
         }
 
         // get matrices
-        const spartan::Math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
-        const spartan::Math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
+        const spartan::math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
+        const spartan::math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
  
         // begin
         const bool is_orthographic = false;
@@ -111,10 +111,10 @@ namespace ImGui::TransformGizmo
         ImGuizmo::BeginFrame();
 
         // map transform to ImGuizmo
-        spartan::Math::Vector3 position        = entity->GetPosition();
-        spartan::Math::Vector3 scale           = entity->GetScale();
-        spartan::Math::Quaternion rotation     = entity->GetRotation();
-        spartan::Math::Matrix transform_matrix = spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
+        spartan::math::Vector3 position        = entity->GetPosition();
+        spartan::math::Vector3 scale           = entity->GetScale();
+        spartan::math::Quaternion rotation     = entity->GetRotation();
+        spartan::math::Matrix transform_matrix = spartan::math::Matrix::GenerateRowFirst(position, rotation, scale);
 
         // set viewport rectangle
         ImGuizmo::SetDrawlist();

@@ -55,7 +55,7 @@ namespace spartan
         {
             r = 255;
             g = temp;
-            g = 99.4708025861f * Math::Helper::Log(g) - 161.1195681661f;
+            g = 99.4708025861f * math::helper::Log(g) - 161.1195681661f;
 
             if (temp <= 19)
             {
@@ -64,22 +64,22 @@ namespace spartan
             else
             {
                 b = temp - 10.0f;
-                b = 138.5177312231f * Math::Helper::Log(b) - 305.0447927307f;
+                b = 138.5177312231f * math::helper::Log(b) - 305.0447927307f;
             }
         }
         else
         {
             r = temp - 60.0f;
-            r = A_R * Math::Helper::Pow(r, B_R);
+            r = A_R * math::helper::Pow(r, B_R);
             g = temp - 60.0f;
-            g = A_G * Math::Helper::Pow(g, B_G);
+            g = A_G * math::helper::Pow(g, B_G);
             b = 255;
         }
 
         // Clamp RGB values to [0, 1]
-        r = Math::Helper::Clamp(r / 255.0f, 0.0f, 1.0f);
-        g = Math::Helper::Clamp(g / 255.0f, 0.0f, 1.0f);
-        b = Math::Helper::Clamp(b / 255.0f, 0.0f, 1.0f);
+        r = math::helper::Clamp(r / 255.0f, 0.0f, 1.0f);
+        g = math::helper::Clamp(g / 255.0f, 0.0f, 1.0f);
+        b = math::helper::Clamp(b / 255.0f, 0.0f, 1.0f);
     }
 
     Color::Color(const float r, const float g, const float b, const float a /*= 1.0f*/)

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ===============
 using namespace std;
 using namespace spartan;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace
@@ -133,7 +133,7 @@ namespace
             ImGui::InputFloat("", &value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
-            value = Math::Helper::Clamp(value, min, max);
+            value = math::helper::Clamp(value, min, max);
 
             // Only update if changed
             if (Renderer::GetOption<float>(render_option) != value)

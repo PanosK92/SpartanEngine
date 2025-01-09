@@ -137,7 +137,7 @@ namespace ImGuiSp
         return ImGui::Button(label);
     }
 
-    static bool image_button(spartan::RHI_Texture* texture, const IconType icon, const spartan::Math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
+    static bool image_button(spartan::RHI_Texture* texture, const IconType icon, const spartan::math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
     {
         if (!border)
         {
@@ -183,7 +183,7 @@ namespace ImGuiSp
         );
     }
 
-    static void image(spartan::RHI_Texture* texture, const spartan::Math::Vector2& size, bool border = false)
+    static void image(spartan::RHI_Texture* texture, const spartan::math::Vector2& size, bool border = false)
     {
         if (!border)
         {
@@ -410,11 +410,11 @@ namespace ImGuiSp
         return selection_made;
     }
 
-    static void vector3(const char* label, spartan::Math::Vector3& vector)
+    static void vector3(const char* label, spartan::math::Vector3& vector)
     {
         const float label_indetation = 15.0f * spartan::Window::GetDpiScale();
 
-        const auto show_float = [](spartan::Math::Vector3 axis, float* value)
+        const auto show_float = [](spartan::math::Vector3 axis, float* value)
         {
             const float label_float_spacing = 15.0f * spartan::Window::GetDpiScale();
             const float step                = 0.01f;
@@ -422,7 +422,7 @@ namespace ImGuiSp
             // Label
             ImGui::TextUnformatted(axis.x == 1.0f ? "X" : axis.y == 1.0f ? "Y" : "Z");
             ImGui::SameLine(label_float_spacing);
-            spartan::Math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
+            spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
 
             // Float
             ImGui::PushItemWidth(128.0f);
@@ -435,8 +435,8 @@ namespace ImGuiSp
             static const ImU32 color_x                 = IM_COL32(168, 46, 2, 255);
             static const ImU32 color_y                 = IM_COL32(112, 162, 22, 255);
             static const ImU32 color_z                 = IM_COL32(51, 122, 210, 255);
-            static const spartan::Math::Vector2 size   = spartan::Math::Vector2(4.0f, 19.0f);
-            static const spartan::Math::Vector2 offset = spartan::Math::Vector2(5.0f, 4.0);
+            static const spartan::math::Vector2 size   = spartan::math::Vector2(4.0f, 19.0f);
+            static const spartan::math::Vector2 offset = spartan::math::Vector2(5.0f, 4.0);
             pos_post_label += offset;
             ImRect axis_color_rect = ImRect(pos_post_label.x, pos_post_label.y, pos_post_label.x + size.x, pos_post_label.y + size.y);
             ImGui::GetWindowDrawList()->AddRectFilled(axis_color_rect.Min, axis_color_rect.Max, axis.x == 1.0f ? color_x : axis.y == 1.0f ? color_y : color_z);
@@ -446,9 +446,9 @@ namespace ImGuiSp
         ImGui::Indent(label_indetation);
         ImGui::TextUnformatted(label);
         ImGui::Unindent(label_indetation);
-        show_float(spartan::Math::Vector3(1.0f, 0.0f, 0.0f), &vector.x);
-        show_float(spartan::Math::Vector3(0.0f, 1.0f, 0.0f), &vector.y);
-        show_float(spartan::Math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
+        show_float(spartan::math::Vector3(1.0f, 0.0f, 0.0f), &vector.x);
+        show_float(spartan::math::Vector3(0.0f, 1.0f, 0.0f), &vector.y);
+        show_float(spartan::math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
         ImGui::EndGroup();
     };
 

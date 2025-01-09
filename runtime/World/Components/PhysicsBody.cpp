@@ -52,7 +52,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace spartan::Math;
+using namespace spartan::math;
 //============================
 
 namespace spartan
@@ -254,7 +254,7 @@ namespace spartan
 
     void PhysicsBody::SetMass(float mass)
     {
-        m_mass = Helper::Max(mass, 0.0f);
+        m_mass = helper::Max(mass, 0.0f);
 
         // if the shape doesn't exist, the physics body hasn't been initialized yet
         // so don't do anything and allow the user to set whatever properties they want
@@ -697,9 +697,9 @@ namespace spartan
             return;
 
         m_size   = bounding_box;
-        m_size.x = Helper::Clamp(m_size.x, Helper::SMALL_FLOAT, INFINITY);
-        m_size.y = Helper::Clamp(m_size.y, Helper::SMALL_FLOAT, INFINITY);
-        m_size.z = Helper::Clamp(m_size.z, Helper::SMALL_FLOAT, INFINITY);
+        m_size.x = helper::Clamp(m_size.x, helper::SMALL_FLOAT, INFINITY);
+        m_size.y = helper::Clamp(m_size.y, helper::SMALL_FLOAT, INFINITY);
+        m_size.z = helper::Clamp(m_size.z, helper::SMALL_FLOAT, INFINITY);
     }
 
     void PhysicsBody::SetShapeType(PhysicsShape type)
@@ -766,7 +766,7 @@ namespace spartan
 
         Vector3 hit_position = Physics::RayCastFirstHitPosition(ray_start, ray_end);
 
-        bool is_scalable = Helper::Abs(hit_position.y - min_y) <= max_scalable_height;
+        bool is_scalable = helper::Abs(hit_position.y - min_y) <= max_scalable_height;
         bool is_above    = hit_position.y > min_y;
 
         return (is_scalable && is_above) ? hit_position : Vector3::Infinity;
@@ -784,10 +784,10 @@ namespace spartan
         float cylinder_height = capsule_shape->getHalfHeight() * 2.0f;
 
         // compute the volume of the cylindrical part
-        float cylinder_volume = Math::Helper::PI * radius * radius * cylinder_height;
+        float cylinder_volume = math::helper::PI * radius * radius * cylinder_height;
 
         // compute the volume of the hemispherical ends
-        float hemisphere_volume = (4.0f / 3.0f) * Math::Helper::PI * std::pow(radius, 3.0f);
+        float hemisphere_volume = (4.0f / 3.0f) * math::helper::PI * std::pow(radius, 3.0f);
 
         // total volume is the sum of the cylinder and two hemispheres
         return cylinder_volume + hemisphere_volume;
@@ -833,7 +833,7 @@ namespace spartan
 
             case PhysicsShape::Capsule:
             {
-                float radius = Helper::Max(size.x, size.z) * 0.5f;
+                float radius = helper::Max(size.x, size.z) * 0.5f;
                 float height = size.y;
                 m_shape = new btCapsuleShape(radius, height);
                 break;
