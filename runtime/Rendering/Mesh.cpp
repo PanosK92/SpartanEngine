@@ -25,12 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Entity.h"
-#include "../Resource/ResourceCache.h"
 #include "../IO/FileStream.h"
 #include "../Resource/Import/ModelImporter.h"
-SP_WARNINGS_OFF
-#include "meshoptimizer/meshoptimizer.h"
-SP_WARNINGS_ON
+#include "../Core/GeometryProcessing.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -40,92 +37,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace meshoptimizer
-    {
-        // documentation: https://meshoptimizer.org/
-
-        void simplify(vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, size_t index_count, size_t vertex_target)
-        {
-            float reduction = 0.2f;
-            float error     = 0.01f;
-
-            size_t current_vertex_count = indices.size() / 3;
-            vector<uint32_t> indices_simplified(indices.size());
-
-            // loop until the current vertex count is less than or equal to the target vertex count
-            while (current_vertex_count > vertex_target)
-            {
-                float threshold           = 1.0f - reduction;
-                size_t target_index_count = static_cast<size_t>(index_count * threshold);
-        
-                index_count = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
-                              &vertices[0].pos[0], static_cast<uint32_t>(vertices.size()), sizeof(RHI_Vertex_PosTexNorTan),
-                              target_index_count, error);
-        
-                indices = indices_simplified;
-
-                // if meshoptimizer taps out, break
-                uint32_t vertex_count_new = index_count / 3;
-                if (current_vertex_count == vertex_count_new)
-                    break;
-
-                current_vertex_count  = vertex_count_new;
-                error                += 0.01f;
-            }
-        }
-
-        void optimize(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
-        {
-            size_t vertex_count = vertices.size();
-            size_t index_count  = indices.size();
-
-            // create a remap table
-            vector<unsigned int> remap(index_count);
-            size_t vertex_count_optimized = meshopt_generateVertexRemap(remap.data(), 
-                                                                indices.data(),
-                                                                index_count,
-                                                                vertices.data(),
-                                                                vertex_count,
-                                                                sizeof(RHI_Vertex_PosTexNorTan));
-
-            // note: when we import with Assimp, JoinIdenticalVertices is used, so we don't need to remove duplicates here
-
-            // optimization #1: improve the locality of the vertices
-            meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
-        
-            // optimization #2: reduce pixel overdraw
-            meshopt_optimizeOverdraw(indices.data(), indices.data(), index_count, &(vertices[0].pos[0]), vertex_count, sizeof(RHI_Vertex_PosTexNorTan), 1.05f);
-        
-            // optimization #3: optimize access to the vertex buffer
-            meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
-        
-            // optimization #4: create a simplified version of the model
-            {
-                auto get_vertex_target = [](uint32_t vertex_count)
-                {
-                    tuple<float, uint32_t> agressivness_table[] =
-                    {
-                        { 0.3f, 30000 }, // ultra agressive
-                        { 0.5f, 20000 }, // agressive
-                        { 0.7f, 15000 }, // balanced
-                        { 0.9f, 5000  }  // gentle
-                    };
-                
-                    for (const auto& [reduction_percentage, vertex_threshold] : agressivness_table)
-                    {
-                        if (vertex_count > vertex_threshold)
-                        {
-                            return static_cast<uint32_t>(vertex_count * reduction_percentage);
-                        }
-                    }
-                    return vertex_count; // native
-                };
-                
-                simplify(indices, vertices, index_count, get_vertex_target(vertex_count));
-            }
-        }
-    }
-
     Mesh::Mesh() : IResource(ResourceType::Mesh)
     {
         m_flags = GetDefaultFlags();
@@ -236,11 +147,11 @@ namespace Spartan
         }
     }
 
-   void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, uint32_t* vertex_offset_out, uint32_t* index_offset_out)
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, uint32_t* vertex_offset_out, uint32_t* index_offset_out)
     {
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
         {
-            meshoptimizer::optimize(vertices, indices);
+            Geometry::optimize(vertices, indices);
         }
 
         lock_guard lock(m_mutex);

@@ -21,10 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ===========================
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
-//============================
+SP_WARNINGS_OFF
+#include "meshoptimizer/meshoptimizer.h"
+SP_WARNINGS_ON
+//======================================
 
 namespace Spartan::Geometry
 {
@@ -110,7 +113,7 @@ namespace Spartan::Geometry
         indices->emplace_back(1);
     }
 
-    void generate_grid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
+    static void generate_grid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
     {
         using namespace Math;
 
@@ -140,12 +143,12 @@ namespace Spartan::Geometry
                 int bottomLeft  = (i + 1) * resolution + j;
                 int bottomRight = (i + 1) * resolution + j + 1;
 
-                // Triangle 1 (Top-Left, Bottom-Left, Bottom-Right)
+                // triangle 1 (top-left, bottom-left, bottom-right)
                 indices->emplace_back(topLeft);
                 indices->emplace_back(bottomLeft);
                 indices->emplace_back(bottomRight);
 
-                // Triangle 2 (Top-Left, Bottom-Right, Top-Right)
+                // triangle 2 (top-left, bottom-right, top-right)
                 indices->emplace_back(topLeft);
                 indices->emplace_back(bottomRight);
                 indices->emplace_back(topRight);
@@ -328,5 +331,86 @@ namespace Spartan::Geometry
     static void generate_cone(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, float radius = 1.0f, float height = 2.0f)
     {
         generate_cylinder(vertices, indices, 0.0f, radius, height);
+    }
+
+    static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t index_count, size_t vertex_target)
+    {
+        float reduction = 0.2f;
+        float error     = 0.01f;
+    
+        size_t current_vertex_count = indices.size() / 3;
+        std::vector<uint32_t> indices_simplified(indices.size());
+    
+        // loop until the current vertex count is less than or equal to the target vertex count
+        while (current_vertex_count > vertex_target)
+        {
+            float threshold           = 1.0f - reduction;
+            size_t target_index_count = static_cast<size_t>(index_count * threshold);
+    
+            index_count = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
+                          &vertices[0].pos[0], static_cast<uint32_t>(vertices.size()), sizeof(RHI_Vertex_PosTexNorTan),
+                          target_index_count, error);
+    
+            indices = indices_simplified;
+    
+            // if meshoptimizer taps out, break
+            size_t vertex_count_new = index_count / 3;
+            if (current_vertex_count == vertex_count_new)
+                break;
+    
+            current_vertex_count  = vertex_count_new;
+            error                += 0.01f;
+        }
+    }
+    
+    static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
+    {
+        size_t vertex_count = vertices.size();
+        size_t index_count  = indices.size();
+    
+        // create a remap table
+        std::vector<unsigned int> remap(index_count);
+        size_t vertex_count_optimized = meshopt_generateVertexRemap(remap.data(), 
+                                                            indices.data(),
+                                                            index_count,
+                                                            vertices.data(),
+                                                            vertex_count,
+                                                            sizeof(RHI_Vertex_PosTexNorTan));
+    
+        // note: when we import with Assimp, JoinIdenticalVertices is used, so we don't need to remove duplicates here
+    
+        // optimization #1: improve the locality of the vertices
+        meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
+    
+        // optimization #2: reduce pixel overdraw
+        meshopt_optimizeOverdraw(indices.data(), indices.data(), index_count, &(vertices[0].pos[0]), vertex_count, sizeof(RHI_Vertex_PosTexNorTan), 1.05f);
+    
+        // optimization #3: optimize access to the vertex buffer
+        meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
+    
+        // optimization #4: create a simplified version of the model
+        {
+            auto get_vertex_target = [](size_t vertex_count)
+            {
+                std::tuple<float, size_t> agressivness_table[] =
+                {
+                    { 0.3f, 30000 }, // ultra agressive
+                    { 0.5f, 20000 }, // agressive
+                    { 0.7f, 15000 }, // balanced
+                    { 0.9f, 5000  }  // gentle
+                };
+            
+                for (const auto& [reduction_percentage, vertex_threshold] : agressivness_table)
+                {
+                    if (vertex_count > vertex_threshold)
+                    {
+                        return static_cast<size_t>(vertex_count * reduction_percentage);
+                    }
+                }
+                return vertex_count; // native
+            };
+            
+            simplify(indices, vertices, index_count, get_vertex_target(vertex_count));
+        }
     }
 }
