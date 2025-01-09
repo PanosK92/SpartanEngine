@@ -44,18 +44,34 @@ namespace Spartan
     {
         // documentation: https://meshoptimizer.org/
 
-        void simplify(vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, size_t index_count)
+        void simplify(vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, size_t index_count, size_t vertex_target)
         {
-            float threshold           = 0.8f;
-            float target_error        = 0.05f;
-            size_t target_index_count = static_cast<size_t>(index_count * threshold);
+            float reduction = 0.2f;
+            float error     = 0.01f;
 
+            size_t current_vertex_count = indices.size() / 3;
             vector<uint32_t> indices_simplified(indices.size());
-            index_count = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
-                          &vertices[0].pos[0], static_cast<uint32_t>(vertices.size()), sizeof(RHI_Vertex_PosTexNorTan),
-                          target_index_count, target_error);
 
-            indices = indices_simplified;
+            // loop until the current vertex count is less than or equal to the target vertex count
+            while (current_vertex_count > vertex_target)
+            {
+                float threshold           = 1.0f - reduction;
+                size_t target_index_count = static_cast<size_t>(index_count * threshold);
+        
+                index_count = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
+                              &vertices[0].pos[0], static_cast<uint32_t>(vertices.size()), sizeof(RHI_Vertex_PosTexNorTan),
+                              target_index_count, error);
+        
+                indices = indices_simplified;
+
+                // if meshoptimizer taps out, break
+                uint32_t vertex_count_new = index_count / 3;
+                if (current_vertex_count == vertex_count_new)
+                    break;
+
+                current_vertex_count  = vertex_count_new;
+                error                += 0.01f;
+            }
         }
 
         void optimize(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
@@ -84,7 +100,29 @@ namespace Spartan
             meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
         
             // optimization #4: create a simplified version of the model
-            simplify(indices, vertices, index_count);
+            {
+                auto get_vertex_target = [](uint32_t vertex_count)
+                {
+                    tuple<float, uint32_t> agressivness_table[] =
+                    {
+                        { 0.3f, 30000 }, // ultra agressive
+                        { 0.5f, 20000 }, // agressive
+                        { 0.7f, 15000 }, // balanced
+                        { 0.9f, 5000  }  // gentle
+                    };
+                
+                    for (const auto& [reduction_percentage, vertex_threshold] : agressivness_table)
+                    {
+                        if (vertex_count > vertex_threshold)
+                        {
+                            return static_cast<uint32_t>(vertex_count * reduction_percentage);
+                        }
+                    }
+                    return vertex_count; // native
+                };
+                
+                simplify(indices, vertices, index_count, get_vertex_target(vertex_count));
+            }
         }
     }
 
