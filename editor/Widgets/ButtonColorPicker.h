@@ -35,8 +35,8 @@ public:
 
     void Update();
 
-    void SetColor(const Spartan::Color& color) { m_color = color; }
-    const Spartan::Color& GetColor()     const { return m_color; }
+    void SetColor(const spartan::Color& color) { m_color = color; }
+    const spartan::Color& GetColor()     const { return m_color; }
 
 private:
     bool m_is_visible          = false;
@@ -49,7 +49,7 @@ private:
     bool m_show_rgb            = true;
     bool m_show_hsv            = false;
     bool m_show_hex            = true;
-    Spartan::Color m_color     = Spartan::Color(0, 0, 0, 1);
+    spartan::Color m_color     = spartan::Color(0, 0, 0, 1);
     uint32_t m_combo_box_index = 0;
     std::string m_window_title;
     std::string m_color_picker_label;

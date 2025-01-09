@@ -26,10 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::Math;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     // device properties
     float RHI_Device::m_timestamp_period                        = 0;

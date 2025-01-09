@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definitions.h"
 //==========================
 
-namespace Spartan
+namespace spartan
 {
     class PhysicalDevice
     {

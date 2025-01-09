@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Color.h"
 //==============================
 
-namespace Spartan
+namespace spartan
 {
     enum FileStream_Mode : uint32_t
     {

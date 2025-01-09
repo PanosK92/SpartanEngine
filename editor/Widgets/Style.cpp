@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =========
 using namespace std;
-using namespace Spartan;
+using namespace spartan;
 using namespace Math;
 using namespace ImGui::Style;
 //======================
@@ -48,7 +48,7 @@ Style::Style(Editor* editor) : Widget(editor)
 
     ImGui::Style::SetupImGuiBase();
 
-    if(Spartan::FileSystem::Exists("imgui_style_user.bin")){
+    if(spartan::FileSystem::Exists("imgui_style_user.bin")){
         LoadStyleColors("imgui_style_user.bin");
     }else{
         ImGui::Style::StyleSpartan();
@@ -57,7 +57,7 @@ Style::Style(Editor* editor) : Widget(editor)
         ImGui::Style::SetupImGuiColors();
     }
 
-    style.ScaleAllSizes(Spartan::Window::GetDpiScale());
+    style.ScaleAllSizes(spartan::Window::GetDpiScale());
 
 }
 

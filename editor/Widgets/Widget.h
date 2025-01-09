@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==================================
 struct ImGuiWindow;
 class Editor;
-namespace Spartan { class Context; }
+namespace spartan { class Context; }
 //==================================
 
 constexpr float k_widget_default_property = -1.0f;
@@ -63,7 +63,7 @@ public:
     void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_push_count++; }
 
     // properties
-    Spartan::Math::Vector2 GetCenter() const;
+    spartan::Math::Vector2 GetCenter() const;
     float GetHeight()                  const { return m_height; }
     ImGuiWindow* GetWindow()           const { return m_window; }
     const auto& GetTitle()             const { return m_title; }
@@ -77,10 +77,10 @@ protected:
     int m_flags                           = ImGuiWindowFlags_NoCollapse;
     float m_height                        = 0;
     float m_alpha                         = -1.0f;
-    Spartan::Math::Vector2 m_size_initial = k_widget_default_property;
-    Spartan::Math::Vector2 m_size_min     = k_widget_default_property;
-    Spartan::Math::Vector2 m_size_max     = FLT_MAX;
-    Spartan::Math::Vector2 m_padding      = k_widget_default_property;
+    spartan::Math::Vector2 m_size_initial = k_widget_default_property;
+    spartan::Math::Vector2 m_size_min     = k_widget_default_property;
+    spartan::Math::Vector2 m_size_max     = FLT_MAX;
+    spartan::Math::Vector2 m_padding      = k_widget_default_property;
     std::string m_title                   = "Title";
 
     // the ImGui window this widget corresponds to

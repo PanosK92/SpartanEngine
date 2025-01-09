@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui_internal.h"
 //=========================================
 
-namespace Spartan { class Entity; }
+namespace spartan { class Entity; }
 
 class WorldViewer : public Widget
 {
@@ -35,16 +35,16 @@ public:
     WorldViewer(Editor* editor);
 
     void OnTickVisible() override;
-    void SetSelectedEntity(const std::shared_ptr<Spartan::Entity> entity);
+    void SetSelectedEntity(const std::shared_ptr<spartan::Entity> entity);
 
 private:
     // Tree
     void TreeShow();
     void OnTreeBegin();
     void OnTreeEnd();
-    void TreeAddEntity(std::shared_ptr<Spartan::Entity> entity);
+    void TreeAddEntity(std::shared_ptr<spartan::Entity> entity);
     void HandleClicking();
-    void EntityHandleDragDrop(std::shared_ptr<Spartan::Entity> entity_ptr) const;
+    void EntityHandleDragDrop(std::shared_ptr<spartan::Entity> entity_ptr) const;
 
     // Misc
     void Popups();
@@ -53,8 +53,8 @@ private:
     void HandleKeyShortcuts();
 
     // Context menu actions
-    static void ActionEntityDelete(const std::shared_ptr<Spartan::Entity> entity);
-    static Spartan::Entity* ActionEntityCreateEmpty();
+    static void ActionEntityDelete(const std::shared_ptr<spartan::Entity> entity);
+    static spartan::Entity* ActionEntityCreateEmpty();
     static void ActionEntityCreateCube();
     static void ActionEntityCreateQuad();
     static void ActionEntityCreateSphere();
@@ -70,7 +70,7 @@ private:
     static void ActionEntityCreateAudioSource();
     static void ActionEntityCreateAudioListener();
 
-    std::shared_ptr<Spartan::Entity> m_entity_empty;
+    std::shared_ptr<spartan::Entity> m_entity_empty;
     bool m_expand_to_selection      = false;
     bool m_expanded_to_selection    = false;
     ImRect m_selected_entity_rect;

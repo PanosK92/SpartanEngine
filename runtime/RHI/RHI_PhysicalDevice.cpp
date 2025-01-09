@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Spartan
+namespace spartan
 {
     string PhysicalDevice::decode_api_version(const uint32_t version)
     {

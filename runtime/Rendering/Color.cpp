@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Spartan
+namespace spartan
 {
     // Most of the color/temperature values are derived from: https://physicallybased.info/ 
     // Might get inaccurate over 40000 K (which is really the limit that you should be using)

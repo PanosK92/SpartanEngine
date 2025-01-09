@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Color.h"
 //==========================
 
-namespace Spartan
+namespace spartan
 {
     // low frequency - updates once per frame
     struct Cb_Frame

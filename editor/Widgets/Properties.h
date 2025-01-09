@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Widgets/ButtonColorPicker.h"
 //=======================================
 
-namespace Spartan
+namespace spartan
 {
     class Entity;
     class Transform;
@@ -53,24 +53,24 @@ public:
 
     void OnTickVisible() override;
 
-    static void Inspect(const std::shared_ptr<Spartan::Entity> entity);
-    static void Inspect(const std::shared_ptr<Spartan::Material> material);
+    static void Inspect(const std::shared_ptr<spartan::Entity> entity);
+    static void Inspect(const std::shared_ptr<spartan::Material> material);
 
     // inspected resources
-    static std::weak_ptr<Spartan::Entity> m_inspected_entity;
-    static std::weak_ptr<Spartan::Material> m_inspected_material;
+    static std::weak_ptr<spartan::Entity> m_inspected_entity;
+    static std::weak_ptr<spartan::Material> m_inspected_material;
 
 private:
-    void ShowTransform(std::shared_ptr<Spartan::Entity> transform) const;
-    void ShowLight(std::shared_ptr<Spartan::Light> light) const;
-    void ShowRenderable(std::shared_ptr<Spartan::Renderable> renderable) const;
-    void ShowPhysicsBody(std::shared_ptr<Spartan::PhysicsBody> rigid_body) const;
-    void ShowConstraint(std::shared_ptr<Spartan::Constraint> constraint) const;
-    void ShowMaterial(Spartan::Material* material) const;
-    void ShowCamera(std::shared_ptr<Spartan::Camera> camera) const;
-    void ShowTerrain(std::shared_ptr<Spartan::Terrain> terrain) const;
-    void ShowAudioSource(std::shared_ptr<Spartan::AudioSource> audio_source) const;
-    void ShowAudioListener(std::shared_ptr<Spartan::AudioListener> audio_listener) const;
+    void ShowTransform(std::shared_ptr<spartan::Entity> transform) const;
+    void ShowLight(std::shared_ptr<spartan::Light> light) const;
+    void ShowRenderable(std::shared_ptr<spartan::Renderable> renderable) const;
+    void ShowPhysicsBody(std::shared_ptr<spartan::PhysicsBody> rigid_body) const;
+    void ShowConstraint(std::shared_ptr<spartan::Constraint> constraint) const;
+    void ShowMaterial(spartan::Material* material) const;
+    void ShowCamera(std::shared_ptr<spartan::Camera> camera) const;
+    void ShowTerrain(std::shared_ptr<spartan::Terrain> terrain) const;
+    void ShowAudioSource(std::shared_ptr<spartan::AudioSource> audio_source) const;
+    void ShowAudioListener(std::shared_ptr<spartan::AudioListener> audio_listener) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

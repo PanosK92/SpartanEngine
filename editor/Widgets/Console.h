@@ -37,8 +37,8 @@ struct LogPackage
     unsigned int error_level = 0;
 };
 
-// Implementation of Spartan::ILogger so the engine can log into the editor
-class EngineLogger : public Spartan::ILogger
+// Implementation of spartan::ILogger so the engine can log into the editor
+class EngineLogger : public spartan::ILogger
 {
 public:
     typedef std::function<void(LogPackage)> log_func;

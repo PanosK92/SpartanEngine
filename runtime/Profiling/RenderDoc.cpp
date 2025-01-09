@@ -39,7 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Spartan
+namespace spartan
 {
     static RENDERDOC_API_1_5_0* rdc_api = nullptr;
     static void* rdc_module             = nullptr;

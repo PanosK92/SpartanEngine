@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector3.h"
 //=====================
 
-namespace Spartan
+namespace spartan
 {
     struct RHI_Vertex_PosTexNorTan;
 

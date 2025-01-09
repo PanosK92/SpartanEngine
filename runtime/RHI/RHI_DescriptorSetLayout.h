@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // These descriptors are used to created a descriptor set.
 // The descriptor set is what is actually bound before any draw/dispatch calls.
  
-namespace Spartan
+namespace spartan
 {
     class RHI_DescriptorSetLayout : public SpartanObject
     {

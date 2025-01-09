@@ -35,10 +35,10 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::Math;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     // notes:
     // 1. the simulation relies on bullet physics but can be transfered elsewhere

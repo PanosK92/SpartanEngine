@@ -124,7 +124,7 @@ void Widget::OnPreBegin()
     }
 }
 
-Spartan::Math::Vector2 Widget::GetCenter() const
+spartan::Math::Vector2 Widget::GetCenter() const
 {
     ImVec2 pos    = m_window->Pos;
     ImVec2 sze    = m_window->Size;

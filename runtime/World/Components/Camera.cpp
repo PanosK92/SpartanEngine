@@ -34,11 +34,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===================================
 
 //= NAMESPACES ===============
-using namespace Spartan::Math;
+using namespace spartan::Math;
 using namespace std;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     Camera::Camera(Entity* entity) : Component(entity)
     {
@@ -399,7 +399,7 @@ namespace Spartan
                 }
                 else if (mouse_position.x <= edge_padding)
                 {
-                    mouse_position.x = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
+                    mouse_position.x = static_cast<float>(spartan::Display::GetWidth() - edge_padding - 1);
                     Input::SetMousePosition(mouse_position);
                 }
             }

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Rectangle.h"
 //=================================
 
-namespace Spartan
+namespace spartan
 {
     class Entity;
     class Renderable;
@@ -174,6 +174,6 @@ namespace Spartan
         PhysicsBody* m_physics_body_to_control       = nullptr;
         RHI_Viewport m_last_known_viewport;
         Math::Frustum m_frustum;
-        std::weak_ptr<Spartan::Entity> m_selected_entity;
+        std::weak_ptr<spartan::Entity> m_selected_entity;
     };
 }

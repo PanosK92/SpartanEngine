@@ -28,8 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan;
-using namespace Spartan::Math;
+using namespace spartan;
+using namespace spartan::Math;
 //============================
 
 namespace
@@ -39,8 +39,8 @@ namespace
     ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_Resizable;
 
     // options sizes
-    #define width_input_numeric 120.0f * Spartan::Window::GetDpiScale()
-    #define width_combo_box     120.0f * Spartan::Window::GetDpiScale()
+    #define width_input_numeric 120.0f * spartan::Window::GetDpiScale()
+    #define width_combo_box     120.0f * spartan::Window::GetDpiScale()
 
     // misc
     vector<DisplayMode> display_modes;
@@ -241,7 +241,7 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
             }
 
-            ImGui::BeginDisabled(!Spartan::RHI_Device::PropertyIsShadingRateSupported());
+            ImGui::BeginDisabled(!spartan::RHI_Device::PropertyIsShadingRateSupported());
             { 
                 option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
             }

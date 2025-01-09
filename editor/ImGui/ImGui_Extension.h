@@ -50,30 +50,30 @@ public:
     static void LoadMesh(const std::string& file_path, const uint32_t mesh_flags)
     {
         // load the model asynchronously
-        Spartan::ThreadPool::AddTask([file_path, mesh_flags]()
+        spartan::ThreadPool::AddTask([file_path, mesh_flags]()
         {
-            Spartan::ResourceCache::Load<Spartan::Mesh>(file_path, mesh_flags);
+            spartan::ResourceCache::Load<spartan::Mesh>(file_path, mesh_flags);
         });
     }
 
     static void LoadWorld(const std::string& file_path)
     {
         // loading a world resets everything so it's important to ensure that no tasks are running
-        Spartan::ThreadPool::Flush(true);
+        spartan::ThreadPool::Flush(true);
 
         // load the scene asynchronously
-        Spartan::ThreadPool::AddTask([file_path]()
+        spartan::ThreadPool::AddTask([file_path]()
         {
-            Spartan::World::LoadFromFile(file_path);
+            spartan::World::LoadFromFile(file_path);
         });
     }
 
     static void SaveWorld(const std::string& file_path)
     {
         // save the scene asynchronously
-        Spartan::ThreadPool::AddTask([file_path]()
+        spartan::ThreadPool::AddTask([file_path]()
         {
-            Spartan::World::SaveToFile(file_path);
+            spartan::World::SaveToFile(file_path);
         });
     }
 
@@ -137,7 +137,7 @@ namespace ImGuiSp
         return ImGui::Button(label);
     }
 
-    static bool image_button(Spartan::RHI_Texture* texture, const IconType icon, const Spartan::Math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
+    static bool image_button(spartan::RHI_Texture* texture, const IconType icon, const spartan::Math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
     {
         if (!border)
         {
@@ -183,7 +183,7 @@ namespace ImGuiSp
         );
     }
 
-    static void image(Spartan::RHI_Texture* texture, const Spartan::Math::Vector2& size, bool border = false)
+    static void image(spartan::RHI_Texture* texture, const spartan::Math::Vector2& size, bool border = false)
     {
         if (!border)
         {
@@ -205,7 +205,7 @@ namespace ImGuiSp
         }
     }
 
-    static void image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
+    static void image(spartan::RHI_Texture* texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
     {
         ImGui::Image(
             reinterpret_cast<ImTextureID>(texture),
@@ -273,15 +273,15 @@ namespace ImGuiSp
     }
 
     // image slot
-    static void image_slot(Spartan::RHI_Texture* texture_in, const std::function<void(Spartan::RHI_Texture*)>& setter)
+    static void image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
     {
-        const ImVec2 slot_size  = ImVec2(80 * Spartan::Window::GetDpiScale());
-        const float button_size = 15.0f * Spartan::Window::GetDpiScale();
+        const ImVec2 slot_size  = ImVec2(80 * spartan::Window::GetDpiScale());
+        const float button_size = 15.0f * spartan::Window::GetDpiScale();
 
         // Image
         ImGui::BeginGroup();
         {
-            Spartan::RHI_Texture* texture = texture_in;
+            spartan::RHI_Texture* texture = texture_in;
             const ImVec2 pos_image        = ImGui::GetCursorPos();
             const ImVec2 pos_button       = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
 
@@ -309,7 +309,7 @@ namespace ImGuiSp
         {
             try
             {
-                if (const auto tex = Spartan::ResourceCache::Load<Spartan::RHI_Texture>(std::get<const char*>(payload->data)).get())
+                if (const auto tex = spartan::ResourceCache::Load<spartan::RHI_Texture>(std::get<const char*>(payload->data)).get())
                 {
                     setter(tex);
                 }
@@ -342,7 +342,7 @@ namespace ImGuiSp
         {
             ImVec2 position_cursor       = imgui_io.MousePos;
             float position_left          = static_cast<float>(screen_edge_padding);
-            float position_right         = static_cast<float>(Spartan::Display::GetWidth() - screen_edge_padding);
+            float position_right         = static_cast<float>(spartan::Display::GetWidth() - screen_edge_padding);
             bool is_on_right_screen_edge = position_cursor.x >= position_right;
             bool is_on_left_screen_edge  = position_cursor.x <= position_left;
 
@@ -410,19 +410,19 @@ namespace ImGuiSp
         return selection_made;
     }
 
-    static void vector3(const char* label, Spartan::Math::Vector3& vector)
+    static void vector3(const char* label, spartan::Math::Vector3& vector)
     {
-        const float label_indetation = 15.0f * Spartan::Window::GetDpiScale();
+        const float label_indetation = 15.0f * spartan::Window::GetDpiScale();
 
-        const auto show_float = [](Spartan::Math::Vector3 axis, float* value)
+        const auto show_float = [](spartan::Math::Vector3 axis, float* value)
         {
-            const float label_float_spacing = 15.0f * Spartan::Window::GetDpiScale();
+            const float label_float_spacing = 15.0f * spartan::Window::GetDpiScale();
             const float step                = 0.01f;
 
             // Label
             ImGui::TextUnformatted(axis.x == 1.0f ? "X" : axis.y == 1.0f ? "Y" : "Z");
             ImGui::SameLine(label_float_spacing);
-            Spartan::Math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
+            spartan::Math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
 
             // Float
             ImGui::PushItemWidth(128.0f);
@@ -435,8 +435,8 @@ namespace ImGuiSp
             static const ImU32 color_x                 = IM_COL32(168, 46, 2, 255);
             static const ImU32 color_y                 = IM_COL32(112, 162, 22, 255);
             static const ImU32 color_z                 = IM_COL32(51, 122, 210, 255);
-            static const Spartan::Math::Vector2 size   = Spartan::Math::Vector2(4.0f, 19.0f);
-            static const Spartan::Math::Vector2 offset = Spartan::Math::Vector2(5.0f, 4.0);
+            static const spartan::Math::Vector2 size   = spartan::Math::Vector2(4.0f, 19.0f);
+            static const spartan::Math::Vector2 offset = spartan::Math::Vector2(5.0f, 4.0);
             pos_post_label += offset;
             ImRect axis_color_rect = ImRect(pos_post_label.x, pos_post_label.y, pos_post_label.x + size.x, pos_post_label.y + size.y);
             ImGui::GetWindowDrawList()->AddRectFilled(axis_color_rect.Min, axis_color_rect.Max, axis.x == 1.0f ? color_x : axis.y == 1.0f ? color_y : color_z);
@@ -446,16 +446,16 @@ namespace ImGuiSp
         ImGui::Indent(label_indetation);
         ImGui::TextUnformatted(label);
         ImGui::Unindent(label_indetation);
-        show_float(Spartan::Math::Vector3(1.0f, 0.0f, 0.0f), &vector.x);
-        show_float(Spartan::Math::Vector3(0.0f, 1.0f, 0.0f), &vector.y);
-        show_float(Spartan::Math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
+        show_float(spartan::Math::Vector3(1.0f, 0.0f, 0.0f), &vector.x);
+        show_float(spartan::Math::Vector3(0.0f, 1.0f, 0.0f), &vector.y);
+        show_float(spartan::Math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
         ImGui::EndGroup();
     };
 
     inline ButtonPress window_yes_no(const char* title, const char* text)
     {
         // Set position
-        ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
+        ImVec2 position     = ImVec2(spartan::Display::GetWidth() * 0.5f, spartan::Display::GetHeight() * 0.5f);
         ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
         ImGui::SetNextWindowPos(position, ImGuiCond_Always, pivot_center);
 

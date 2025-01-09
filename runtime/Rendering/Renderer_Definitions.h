@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 //================
 
-namespace Spartan
+namespace spartan
 {
     // we are using double buffering so 5 is enough
     constexpr uint8_t resources_frame_lifetime = 5;

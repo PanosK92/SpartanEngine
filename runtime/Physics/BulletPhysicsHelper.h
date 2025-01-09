@@ -29,22 +29,22 @@ SP_WARNINGS_OFF
 SP_WARNINGS_ON
 //==================================
 
-inline Spartan::Math::Vector3 bt_to_vector(const btVector3& vector)
+inline spartan::Math::Vector3 bt_to_vector(const btVector3& vector)
 {
-    return Spartan::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
+    return spartan::Math::Vector3(vector.getX(), vector.getY(), vector.getZ());
 }
 
-inline btVector3 vector_to_bt(const Spartan::Math::Vector3& vector)
+inline btVector3 vector_to_bt(const spartan::Math::Vector3& vector)
 {
     return btVector3(vector.x, vector.y, vector.z);
 }
 
-inline btQuaternion quaternion_to_bt(const Spartan::Math::Quaternion& quaternion)
+inline btQuaternion quaternion_to_bt(const spartan::Math::Quaternion& quaternion)
 {
     return btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
 }
 
-inline Spartan::Math::Quaternion bt_to_quaternion(const btQuaternion& quaternion)
+inline spartan::Math::Quaternion bt_to_quaternion(const btQuaternion& quaternion)
 {
-    return Spartan::Math::Quaternion(quaternion.getX(), quaternion.getY(), quaternion.getZ(), quaternion.getW());
+    return spartan::Math::Quaternion(quaternion.getX(), quaternion.getY(), quaternion.getZ(), quaternion.getW());
 }

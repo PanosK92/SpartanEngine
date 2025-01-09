@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 //=================================
 
-namespace Spartan
+namespace spartan
 {
     // This function returns a pointer to a static buffer. It's not thread-safe,
     // but it avoids memory allocation issues.

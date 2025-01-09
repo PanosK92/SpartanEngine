@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =========
 using namespace std;
-using namespace Spartan;
+using namespace spartan;
 //======================
 
 namespace
@@ -58,7 +58,7 @@ void ShaderEditor::OnTickVisible()
 void ShaderEditor::ShowShaderSource()
 {
     ImVec2 content_region = ImGui::GetContentRegionAvail();
-    ImVec2 size           = ImVec2(content_region.x * source_pane_vertical_split_percentage, content_region.y - source_pane_bottom_margin * Spartan::Window::GetDpiScale());
+    ImVec2 size           = ImVec2(content_region.x * source_pane_vertical_split_percentage, content_region.y - source_pane_bottom_margin * spartan::Window::GetDpiScale());
 
     if (ImGui::BeginChild("##shader_editor_source", size, true, ImGuiWindowFlags_NoScrollbar))
     {
@@ -108,7 +108,7 @@ void ShaderEditor::ShowShaderList()
 {
     GetShaderInstances();
 
-    ImVec2 size = ImVec2(0.0f, ImGui::GetContentRegionAvail().y - source_pane_bottom_margin * Spartan::Window::GetDpiScale());
+    ImVec2 size = ImVec2(0.0f, ImGui::GetContentRegionAvail().y - source_pane_bottom_margin * spartan::Window::GetDpiScale());
 
     if (ImGui::BeginChild("##shader_editor_list", size, true, ImGuiWindowFlags_HorizontalScrollbar))
     {

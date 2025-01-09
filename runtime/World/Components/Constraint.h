@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class btTypedConstraint;
 
-namespace Spartan
+namespace spartan
 {
     class PhysicsBody;
     class Entity;

@@ -78,14 +78,14 @@ public:
     Icon() = default;
     Icon(IconType type, const std::string& file_path);
 
-    Spartan::RHI_Texture* GetTexture() const;
-    void SetTexture(std::shared_ptr<Spartan::RHI_Texture> texture);
+    spartan::RHI_Texture* GetTexture() const;
+    void SetTexture(std::shared_ptr<spartan::RHI_Texture> texture);
     std::string GetFilePath() const;
     IconType GetType() const { return m_type; }
 
 private:
     IconType m_type = IconType::Undefined;
-    std::shared_ptr<Spartan::RHI_Texture> m_texture;
+    std::shared_ptr<spartan::RHI_Texture> m_texture;
 };
 
 class IconLoader
@@ -93,6 +93,6 @@ class IconLoader
 public:
     static void Initialize();
 
-    static Spartan::RHI_Texture* GetTextureByType(IconType type);
+    static spartan::RHI_Texture* GetTextureByType(IconType type);
     static Icon* LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined);
 };

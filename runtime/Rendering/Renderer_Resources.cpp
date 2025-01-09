@@ -41,10 +41,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::Math;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     namespace
     {
@@ -490,33 +490,33 @@ namespace Spartan
 
             if (type == MeshType::Cube)
             {
-                Geometry::generate_cube(&vertices, &indices);
+                geometry_processing::generate_cube(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cube" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Quad)
             {
-                Geometry::generate_quad(&vertices, &indices);
+                geometry_processing::generate_quad(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Grid)
             {
                 uint32_t resolution = 40;
-                Geometry::generate_grid(&vertices, &indices, resolution);
+                geometry_processing::generate_grid(&vertices, &indices, resolution);
                 mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Sphere)
             {
-                Geometry::generate_sphere(&vertices, &indices);
+                geometry_processing::generate_sphere(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_sphere" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Cylinder)
             {
-                Geometry::generate_cylinder(&vertices, &indices);
+                geometry_processing::generate_cylinder(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cylinder" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Cone)
             {
-                Geometry::generate_cone(&vertices, &indices);
+                geometry_processing::generate_cone(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MODEL);
             }
 

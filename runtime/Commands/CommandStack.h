@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Commands/CircularStack.h"
 //==============================
 
-namespace Spartan {
+namespace spartan {
 // @todo make editor setting instead of compile time constant expression
 constexpr uint64_t max_undo_steps = 128;
 
@@ -57,7 +57,7 @@ public:
     static void Redo();
 
 protected:
-    static Spartan::CircularStack<std::shared_ptr<Command>> m_undo_buffer;
-    static Spartan::CircularStack<std::shared_ptr<Command>> m_redo_buffer;
+    static spartan::CircularStack<std::shared_ptr<Command>> m_undo_buffer;
+    static spartan::CircularStack<std::shared_ptr<Command>> m_redo_buffer;
 };
 }

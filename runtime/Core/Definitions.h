@@ -116,7 +116,7 @@ struct sp_info
 //================================================================================
 
 //= STACKTRACE========================
-namespace Spartan
+namespace spartan
 {
     const char* get_callstack_c_str();
 }
@@ -127,19 +127,19 @@ namespace Spartan
 #define SP_ASSERT(expression)                                         \
 if (!(expression))                                                    \
 {                                                                     \
-    Spartan::Log::SetLogToFile(true);                                 \
+    spartan::Log::SetLogToFile(true);                                 \
     SP_LOG_ERROR("Assertion failed: " #expression);                   \
-    SP_LOG_ERROR("Callstack:\n%s",    Spartan::get_callstack_c_str());\
+    SP_LOG_ERROR("Callstack:\n%s",    spartan::get_callstack_c_str());\
     assert(expression);                                               \
 }
 
 #define SP_ASSERT_MSG(expression, text_message)                       \
 if (!(expression))                                                    \
 {                                                                     \
-    Spartan::Log::SetLogToFile(true);                                 \
+    spartan::Log::SetLogToFile(true);                                 \
     SP_LOG_ERROR("Assertion failed: " #expression);                   \
     SP_LOG_ERROR("Message: %s",       text_message);                  \
-    SP_LOG_ERROR("Callstack:\n%s",    Spartan::get_callstack_c_str());\
+    SP_LOG_ERROR("Callstack:\n%s",    spartan::get_callstack_c_str());\
     assert(expression && text_message);                               \
 }
 

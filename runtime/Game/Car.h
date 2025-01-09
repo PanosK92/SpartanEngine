@@ -26,7 +26,7 @@ class btRaycastVehicle;
 class btRigidBody;
 //========================
 
-namespace Spartan
+namespace spartan
 {
     //= FORWARD DECLARATIONS =
     class Transform;

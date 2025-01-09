@@ -27,7 +27,7 @@ SP_WARNINGS_OFF
 SP_WARNINGS_ON
 //==================================
 
-namespace Spartan
+namespace spartan
 {
     class PhysicsDebugDraw : public btIDebugDraw
     {

@@ -54,15 +54,15 @@ public:
     {
         m_path        = path;
         m_icon        = icon;
-        m_id          = Spartan::SpartanObject::GenerateObjectId();
-        m_isDirectory = Spartan::FileSystem::IsDirectory(path);
-        m_label       = Spartan::FileSystem::GetFileNameFromFilePath(path);
+        m_id          = spartan::SpartanObject::GenerateObjectId();
+        m_isDirectory = spartan::FileSystem::IsDirectory(path);
+        m_label       = spartan::FileSystem::GetFileNameFromFilePath(path);
     }
 
     const auto& GetPath()              const { return m_path; }
     const auto& GetLabel()             const { return m_label; }
     auto GetId()                       const { return m_id; }
-    Spartan::RHI_Texture* GetTexture() const { return m_icon->GetTexture(); }
+    spartan::RHI_Texture* GetTexture() const { return m_icon->GetTexture(); }
     auto IsDirectory()                 const { return m_isDirectory; }
     auto GetTimeSinceLastClickMs()     const { return static_cast<float>(m_time_since_last_click.count()); }
 
@@ -120,7 +120,7 @@ private:
     const bool m_drop_shadow    = true;
     const float m_item_size_min = 50.0f;
     const float m_item_size_max = 200.0f;
-    const Spartan::Math::Vector4 m_content_background_color = Spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
+    const spartan::Math::Vector4 m_content_background_color = spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
 
     // Flags
     bool m_is_window;
@@ -141,7 +141,7 @@ private:
     FileDialog_Operation m_operation;
     FileDialog_Filter m_filter;
     std::vector<FileDialogItem> m_items;
-    Spartan::Math::Vector2 m_item_size;
+    spartan::Math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
     std::string m_current_path;
 

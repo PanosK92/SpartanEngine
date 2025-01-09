@@ -45,10 +45,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::Math;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     // constant and push constant buffers
     Cb_Frame Renderer::m_cb_frame_cpu;

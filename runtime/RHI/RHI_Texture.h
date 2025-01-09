@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 //================================
 
-namespace Spartan
+namespace spartan
 {
     enum class RHI_Texture_Type
     {

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //=============================
 
 // Declarations
-namespace Spartan
+namespace spartan
 {
     class RHI_Context;
     class RHI_Queue;

@@ -75,7 +75,7 @@ namespace
             
                 if (ImGui::Button("Sponsor"))
                 {
-                    Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
+                    spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
                 }
             }
             ImGui::End();
@@ -187,21 +187,21 @@ namespace
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                     if (ImGuiSp::button("Panos Karabelas"))
                     {
-                        Spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
+                        spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
                     }
         
                     ImGui::SameLine();
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                     if (ImGuiSp::button("GitHub"))
                     {
-                        Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
+                        spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
                     }
         
                     ImGui::SameLine();
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                     if (ImGuiSp::button("X"))
                     {
-                        Spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas1");
+                        spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas1");
                     }
                 }
                 ImGui::EndGroup();
@@ -268,7 +268,7 @@ namespace
                         ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
                         if (ImGui::Button(button_text.c_str()))
                         {
-                            Spartan::FileSystem::OpenUrl(button_url);
+                            spartan::FileSystem::OpenUrl(button_url);
                         }
                         ImGui::PopID();
     
@@ -332,7 +332,7 @@ namespace
                         ImGui::TableSetupColumn("URL");
                         ImGui::TableHeadersRow();
         
-                        for (const Spartan::third_party_lib& lib : Spartan::Settings::GetThirdPartyLibs())
+                        for (const spartan::third_party_lib& lib : spartan::Settings::GetThirdPartyLibs())
                         {
                             // switch row
                             ImGui::TableNextRow();
@@ -355,7 +355,7 @@ namespace
                             ImGui::PushID(lib.url.c_str());
                             if (ImGuiSp::button("URL"))
                             {
-                                Spartan::FileSystem::OpenUrl(lib.url);
+                                spartan::FileSystem::OpenUrl(lib.url);
                             }
                             ImGui::PopID();
                         }
@@ -441,7 +441,7 @@ namespace
 
         void world_on_download_finished()
         {
-            Spartan::ProgressTracker::SetGlobalLoadingState(false);
+            spartan::ProgressTracker::SetGlobalLoadingState(false);
             visible = true;
         }
     
@@ -466,8 +466,8 @@ namespace
                     {
                         if (ImGui::Button("Yes"))
                         {
-                            Spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
-                            Spartan::ProgressTracker::SetGlobalLoadingState(true);
+                            spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
+                            spartan::ProgressTracker::SetGlobalLoadingState(true);
                             visible_download = false;
                         }
             
@@ -492,14 +492,14 @@ namespace
                     ImGui::Text("Select the world you would like to load and click \"Ok\"");
             
                     // list
-                    ImGui::PushItemWidth(500.0f * Spartan::Window::GetDpiScale());
+                    ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
                     ImGui::ListBox("##list_box", &world_index, worlds, IM_ARRAYSIZE(worlds), IM_ARRAYSIZE(worlds));
                     ImGui::PopItemWidth();
             
                     // button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
-                        Spartan::Game::Load(static_cast<Spartan::DefaultWorld>(world_index));
+                        spartan::Game::Load(static_cast<spartan::DefaultWorld>(world_index));
                         visible = false;
                     }
                 }
@@ -514,9 +514,9 @@ void EditorWindows::Initialize(Editor* editor_in)
     editor = editor_in;
 
     // the sponsor window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
-    sponsor::visible = !Spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
+    sponsor::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
 
-    default_worlds::downloaded       = !Spartan::FileSystem::IsDirectoryEmpty(Spartan::ResourceCache::GetProjectDirectory());
+    default_worlds::downloaded       = !spartan::FileSystem::IsDirectoryEmpty(spartan::ResourceCache::GetProjectDirectory());
     default_worlds::visible_download = !default_worlds::downloaded;
     default_worlds::visible          =  default_worlds::downloaded;
 }
@@ -545,7 +545,7 @@ void EditorWindows::Tick()
 
     // shortcuts
     {
-        if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::P))
+        if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::P))
         {
             shortcuts::visible = !shortcuts::visible;
         }

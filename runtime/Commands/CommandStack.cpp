@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Spartan
+namespace spartan
 {
-    Spartan::CircularStack<shared_ptr<Command>> CommandStack::m_undo_buffer = Spartan::CircularStack<shared_ptr<Command>>(Spartan::max_undo_steps);
-    Spartan::CircularStack<shared_ptr<Command>> CommandStack::m_redo_buffer = Spartan::CircularStack<shared_ptr<Command>>(Spartan::max_undo_steps);
+    spartan::CircularStack<shared_ptr<Command>> CommandStack::m_undo_buffer = spartan::CircularStack<shared_ptr<Command>>(spartan::max_undo_steps);
+    spartan::CircularStack<shared_ptr<Command>> CommandStack::m_redo_buffer = spartan::CircularStack<shared_ptr<Command>>(spartan::max_undo_steps);
 
     void CommandStack::Undo()
     {

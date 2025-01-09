@@ -48,11 +48,11 @@ using namespace std;
 
 namespace
 {
-    weak_ptr <Spartan::Entity> entity_clicked;
-    weak_ptr <Spartan::Entity> entity_hovered;
+    weak_ptr <spartan::Entity> entity_clicked;
+    weak_ptr <spartan::Entity> entity_hovered;
     ImGuiSp::DragDropPayload g_payload;
     bool popup_rename_entity       = false;
-    Spartan::Entity* entity_copied = nullptr;
+    spartan::Entity* entity_copied = nullptr;
 }
 
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
@@ -69,9 +69,9 @@ void WorldViewer::OnTickVisible()
     if (ImGui::IsMouseReleased(0))
     {
         // Make sure that the mouse was released while on the same entity
-        if (shared_ptr<Spartan::Entity> entity_clicked_raw = entity_clicked.lock())
+        if (shared_ptr<spartan::Entity> entity_clicked_raw = entity_clicked.lock())
         {
-            if (shared_ptr<Spartan::Entity> entity_hovered_raw = entity_hovered.lock())
+            if (shared_ptr<spartan::Entity> entity_hovered_raw = entity_hovered.lock())
             {
                 if (entity_hovered_raw->GetObjectId() == entity_clicked_raw->GetObjectId())
                 {
@@ -88,12 +88,12 @@ void WorldViewer::TreeShow()
 {
     OnTreeBegin();
 
-    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);
+    bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     ImGui::BeginDisabled(is_in_game_mode);
     {
         // iterate over root entities directly, omitting the root node
-        vector<shared_ptr<Spartan::Entity>> root_entities = Spartan::World::GetRootEntities();
-        for (const shared_ptr<Spartan::Entity>& entity : root_entities)
+        vector<shared_ptr<spartan::Entity>> root_entities = spartan::World::GetRootEntities();
+        for (const shared_ptr<spartan::Entity>& entity : root_entities)
         {
             if (entity->IsActive())
             {
@@ -126,7 +126,7 @@ void WorldViewer::OnTreeEnd()
     Popups();
 }
 
-void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
+void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
 {
     if (!entity)
         return;
@@ -135,17 +135,17 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth;
 
     // flag - is expandable (does it have has children) ?
-    const vector<Spartan::Entity*>& children  = entity->GetChildren();
+    const vector<spartan::Entity*>& children  = entity->GetChildren();
     bool has_children                         = !children.empty();
     node_flags                               |= has_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
     // flag - is it selected?
-    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);
+    bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     if (!is_in_game_mode)
     { 
-        if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
+        if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
         {
-            if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
+            if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
                 node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
 
@@ -188,7 +188,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
         {
             for (const auto& child : children)
             {
-                TreeAddEntity(Spartan::World::GetEntityById(child->GetObjectId()));
+                TreeAddEntity(spartan::World::GetEntityById(child->GetObjectId()));
             }
         }
 
@@ -216,7 +216,7 @@ void WorldViewer::HandleClicking()
     // Right click on item - Select and show context menu
     if (ImGui::IsMouseClicked(1))
     {
-        if (shared_ptr<Spartan::Entity> entity = entity_hovered.lock())
+        if (shared_ptr<spartan::Entity> entity = entity_hovered.lock())
         {            
             SetSelectedEntity(entity);
         }
@@ -231,7 +231,7 @@ void WorldViewer::HandleClicking()
     }
 }
 
-void WorldViewer::EntityHandleDragDrop(shared_ptr<Spartan::Entity> entity_ptr) const
+void WorldViewer::EntityHandleDragDrop(shared_ptr<spartan::Entity> entity_ptr) const
 {
     // Drag
     if (ImGui::BeginDragDropSource())
@@ -245,7 +245,7 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<Spartan::Entity> entity_ptr) c
     if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
     {
         const uint64_t entity_id = get<uint64_t>(payload->data);
-        if (const shared_ptr<Spartan::Entity>& dropped_entity = Spartan::World::GetEntityById(entity_id))
+        if (const shared_ptr<spartan::Entity>& dropped_entity = spartan::World::GetEntityById(entity_id))
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
@@ -255,16 +255,16 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<Spartan::Entity> entity_ptr) c
     }
 }
 
-void WorldViewer::SetSelectedEntity(const std::shared_ptr<Spartan::Entity> entity)
+void WorldViewer::SetSelectedEntity(const std::shared_ptr<spartan::Entity> entity)
 {
     // while in game mode the tree is not interactive, so don't allow selection
-    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);
+    bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     if (is_in_game_mode)
         return;
 
     m_expand_to_selection = true;
 
-    if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
+    if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
     {
         camera->SetSelectedEntity(entity);
     }
@@ -284,8 +284,8 @@ void WorldViewer::PopupContextMenu() const
         return;
 
     // Get selected entity
-    shared_ptr<Spartan::Entity> selected_entity = nullptr;
-    if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
+    shared_ptr<spartan::Entity> selected_entity = nullptr;
+    if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
     {
         selected_entity = camera->GetSelectedEntity();
     }
@@ -309,7 +309,7 @@ void WorldViewer::PopupContextMenu() const
 
     if (ImGui::MenuItem("Focus") && on_entity)
     {
-        Spartan::Renderer::GetCamera()->FocusOnSelectedEntity();
+        spartan::Renderer::GetCamera()->FocusOnSelectedEntity();
     }
 
     if (ImGui::MenuItem("Delete", "Delete") && on_entity)
@@ -425,7 +425,7 @@ void WorldViewer::PopupEntityRename() const
 
     if (ImGui::BeginPopup("##RenameEntity"))
     {
-        shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity();
+        shared_ptr<spartan::Entity> selected_entity = spartan::Renderer::GetCamera()->GetSelectedEntity();
         if (!selected_entity)
         {
             ImGui::CloseCurrentPopup();
@@ -452,11 +452,11 @@ void WorldViewer::PopupEntityRename() const
 void WorldViewer::HandleKeyShortcuts()
 {
     // Delete
-    if (Spartan::Input::GetKey(Spartan::KeyCode::Delete))
+    if (spartan::Input::GetKey(spartan::KeyCode::Delete))
     {
-        if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
+        if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
         { 
-            if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
+            if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
                 ActionEntityDelete(selected_entity);
             }
@@ -464,9 +464,9 @@ void WorldViewer::HandleKeyShortcuts()
     }
 
     // Save: Ctrl + S
-    if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::S))
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::S))
     {
-        const string& file_path = Spartan::World::GetFilePath();
+        const string& file_path = spartan::World::GetFilePath();
 
         if (file_path.empty())
         {
@@ -474,44 +474,44 @@ void WorldViewer::HandleKeyShortcuts()
         }
         else
         {
-            EditorHelper::SaveWorld(Spartan::World::GetFilePath());
+            EditorHelper::SaveWorld(spartan::World::GetFilePath());
         }
     }
 
     // Load: Ctrl + L
-    if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::L))
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::L))
     {
         m_editor->GetWidget<MenuBar>()->ShowWorldLoadDialog();
     }
 
     // Undo and Redo: Ctrl + Z, Ctrl + Shift + Z
-    if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::Z))
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::Z))
     {
-        if (Spartan::Input::GetKey(Spartan::KeyCode::Shift_Left))
+        if (spartan::Input::GetKey(spartan::KeyCode::Shift_Left))
         {
-            Spartan::CommandStack::Redo();
+            spartan::CommandStack::Redo();
         }
         else
         {
-            Spartan::CommandStack::Undo();
+            spartan::CommandStack::Undo();
         }
     }
 }
 
-void WorldViewer::ActionEntityDelete(const shared_ptr<Spartan::Entity> entity)
+void WorldViewer::ActionEntityDelete(const shared_ptr<spartan::Entity> entity)
 {
     SP_ASSERT_MSG(entity != nullptr, "Entity is null");
 
-    Spartan::World::RemoveEntity(entity.get());
+    spartan::World::RemoveEntity(entity.get());
 }
 
-Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
+spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
 {
-    shared_ptr<Spartan::Entity> entity = Spartan::World::CreateEntity();
+    shared_ptr<spartan::Entity> entity = spartan::World::CreateEntity();
     
-    if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
+    if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
+        if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {
             entity->SetParent(selected_entity);
         }
@@ -523,8 +523,8 @@ Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
 void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::MeshType::Cube);
+    auto renderable = entity->AddComponent<spartan::Renderable>();
+    renderable->SetGeometry(spartan::MeshType::Cube);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cube");
 }
@@ -532,8 +532,8 @@ void WorldViewer::ActionEntityCreateCube()
 void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::MeshType::Quad);
+    auto renderable = entity->AddComponent<spartan::Renderable>();
+    renderable->SetGeometry(spartan::MeshType::Quad);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Quad");
 }
@@ -541,8 +541,8 @@ void WorldViewer::ActionEntityCreateQuad()
 void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::MeshType::Sphere);
+    auto renderable = entity->AddComponent<spartan::Renderable>();
+    renderable->SetGeometry(spartan::MeshType::Sphere);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Sphere");
 }
@@ -550,8 +550,8 @@ void WorldViewer::ActionEntityCreateSphere()
 void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::MeshType::Cylinder);
+    auto renderable = entity->AddComponent<spartan::Renderable>();
+    renderable->SetGeometry(spartan::MeshType::Cylinder);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cylinder");
 }
@@ -559,8 +559,8 @@ void WorldViewer::ActionEntityCreateCylinder()
 void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
-    auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::MeshType::Cone);
+    auto renderable = entity->AddComponent<spartan::Renderable>();
+    renderable->SetGeometry(spartan::MeshType::Cone);
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cone");
 }
@@ -568,21 +568,21 @@ void WorldViewer::ActionEntityCreateCone()
 void WorldViewer::ActionEntityCreateCamera()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::Camera>();
+    entity->AddComponent<spartan::Camera>();
     entity->SetObjectName("Camera");
 }
 
 void WorldViewer::ActionEntityCreateTerrain()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::Terrain>();
+    entity->AddComponent<spartan::Terrain>();
     entity->SetObjectName("Terrain");
 }
 
 void WorldViewer::ActionEntityCreateLightDirectional()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::Light>()->SetLightType(Spartan::LightType::Directional);
+    entity->AddComponent<spartan::Light>()->SetLightType(spartan::LightType::Directional);
     entity->SetObjectName("Directional");
 }
 
@@ -591,9 +591,9 @@ void WorldViewer::ActionEntityCreateLightPoint()
     auto entity = ActionEntityCreateEmpty();
     entity->SetObjectName("Point");
 
-    shared_ptr<Spartan::Light> light = entity->AddComponent<Spartan::Light>();
-    light->SetLightType(Spartan::LightType::Point);
-    light->SetIntensity(Spartan::LightIntensity::bulb_150_watt);
+    shared_ptr<spartan::Light> light = entity->AddComponent<spartan::Light>();
+    light->SetLightType(spartan::LightType::Point);
+    light->SetIntensity(spartan::LightIntensity::bulb_150_watt);
 }
 
 void WorldViewer::ActionEntityCreateLightSpot()
@@ -601,35 +601,35 @@ void WorldViewer::ActionEntityCreateLightSpot()
     auto entity = ActionEntityCreateEmpty();
     entity->SetObjectName("Spot");
 
-    shared_ptr<Spartan::Light> light = entity->AddComponent<Spartan::Light>();
-    light->SetLightType(Spartan::LightType::Spot);
-    light->SetIntensity(Spartan::LightIntensity::bulb_150_watt);
+    shared_ptr<spartan::Light> light = entity->AddComponent<spartan::Light>();
+    light->SetLightType(spartan::LightType::Spot);
+    light->SetIntensity(spartan::LightIntensity::bulb_150_watt);
 }
 
 void WorldViewer::ActionEntityCreatePhysicsBody()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::PhysicsBody>();
+    entity->AddComponent<spartan::PhysicsBody>();
     entity->SetObjectName("PhysicsBody");
 }
 
 void WorldViewer::ActionEntityCreateConstraint()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::Constraint>();
+    entity->AddComponent<spartan::Constraint>();
     entity->SetObjectName("Constraint");
 }
 
 void WorldViewer::ActionEntityCreateAudioSource()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::AudioSource>();
+    entity->AddComponent<spartan::AudioSource>();
     entity->SetObjectName("AudioSource");
 }
 
 void WorldViewer::ActionEntityCreateAudioListener()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<Spartan::AudioListener>();
+    entity->AddComponent<spartan::AudioListener>();
     entity->SetObjectName("AudioListener");
 }

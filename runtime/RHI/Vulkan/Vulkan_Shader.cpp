@@ -38,7 +38,7 @@ using namespace std;
 using namespace SPIRV_CROSS_NAMESPACE;
 //====================================
 
-namespace Spartan
+namespace spartan
 {
     namespace
     {

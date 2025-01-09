@@ -32,10 +32,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ================
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::Math;
 //=============================
 
-namespace Spartan
+namespace spartan
 {
     Mesh::Mesh() : IResource(ResourceType::Mesh)
     {
@@ -151,7 +151,7 @@ namespace Spartan
     {
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
         {
-            Geometry::optimize(vertices, indices);
+            geometry_processing::optimize(vertices, indices);
         }
 
         lock_guard lock(m_mutex);

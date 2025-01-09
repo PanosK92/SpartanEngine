@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Vertex.h"
 //============================
 
-namespace Spartan::Math
+namespace spartan::Math
 {
     const BoundingBox BoundingBox::Undefined(Vector3::Infinity, Vector3::InfinityNeg);
 

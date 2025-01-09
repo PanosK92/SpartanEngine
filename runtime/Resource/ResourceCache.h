@@ -24,9 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============
 #include "IResource.h"
 #include "../Logging/Log.h"
+#include <mutex>
 //=========================
 
-namespace Spartan
+namespace spartan
 {
     enum class ResourceDirectory
     {

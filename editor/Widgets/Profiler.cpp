@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::Math;
 //============================
 
 namespace
 {
-    void show_time_block(const Spartan::TimeBlock& time_block)
+    void show_time_block(const spartan::TimeBlock& time_block)
     {
         const float m_tree_depth_stride = 10;
 
@@ -107,29 +107,29 @@ void Profiler::OnTickVisible()
             ImGui::EndCombo();
         }
 
-        float interval = Spartan::Profiler::GetUpdateInterval();
+        float interval = spartan::Profiler::GetUpdateInterval();
         ImGui::SetNextItemWidth(-1); // use all available horizontal space
         ImGui::SliderFloat("##update_interval", &interval, 0.0f, 0.5f, "Update Interval = %.2f");
-        Spartan::Profiler::SetUpdateInterval(interval);
+        spartan::Profiler::SetUpdateInterval(interval);
 
         ImGui::Separator();
     }
 
-    Spartan::TimeBlockType type            = mode_hardware == 0 ? Spartan::TimeBlockType::Gpu : Spartan::TimeBlockType::Cpu;
-    vector<Spartan::TimeBlock> time_blocks = Spartan::Profiler::GetTimeBlocks();
+    spartan::TimeBlockType type            = mode_hardware == 0 ? spartan::TimeBlockType::Gpu : spartan::TimeBlockType::Cpu;
+    vector<spartan::TimeBlock> time_blocks = spartan::Profiler::GetTimeBlocks();
     uint32_t time_block_count              = static_cast<uint32_t>(time_blocks.size());
-    float time_last                        = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::GetTimeCpuLast() : Spartan::Profiler::GetTimeGpuLast();
+    float time_last                        = type == spartan::TimeBlockType::Cpu ? spartan::Profiler::GetTimeCpuLast() : spartan::Profiler::GetTimeGpuLast();
 
     if (mode_sort == 1) // sort by Duration, descending
     {
-        sort(time_blocks.begin(), time_blocks.end(), [](const Spartan::TimeBlock& a, const Spartan::TimeBlock& b)
+        sort(time_blocks.begin(), time_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
             {
                 return a.GetDuration() > b.GetDuration(); // Note: Changed from < to > for descending order
             });
     }
     else if (mode_sort == 0) // sort Alphabetically
     {
-        sort(time_blocks.begin(), time_blocks.end(), [](const Spartan::TimeBlock& a, const Spartan::TimeBlock& b)
+        sort(time_blocks.begin(), time_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
         {
             return a.GetName() < b.GetName();
         });
@@ -172,7 +172,7 @@ void Profiler::OnTickVisible()
             if (ImGuiSp::button("Clear")) { m_timings.Clear(); }
             ImGui::SameLine();
             ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_last, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
-            bool is_stuttering = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::IsCpuStuttering() : Spartan::Profiler::IsGpuStuttering();
+            bool is_stuttering = type == spartan::TimeBlockType::Cpu ? spartan::Profiler::IsCpuStuttering() : spartan::Profiler::IsGpuStuttering();
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
         }
@@ -191,12 +191,12 @@ void Profiler::OnTickVisible()
     }
 
     // vram
-    if (type == Spartan::TimeBlockType::Gpu)
+    if (type == spartan::TimeBlockType::Gpu)
     {
         ImGui::Separator();
 
-        const uint32_t memory_used      = Spartan::Profiler::GpuGetMemoryUsed();
-        const uint32_t memory_available = Spartan::Profiler::GpuGetMemoryAvailable();
+        const uint32_t memory_used      = spartan::Profiler::GpuGetMemoryUsed();
+        const uint32_t memory_available = spartan::Profiler::GpuGetMemoryAvailable();
         const string overlay            = "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
 
         ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());

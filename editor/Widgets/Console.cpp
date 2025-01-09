@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =========
 using namespace std;
-using namespace Spartan;
+using namespace spartan;
 using namespace Math;
 //======================
 
@@ -70,7 +70,7 @@ void Console::OnTickVisible()
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(nullptr, IconType::Console, 15.0f * Spartan::Window::GetDpiScale(), false, m_log_type_color[index]))
+        if (ImGuiSp::image_button(nullptr, IconType::Console, 15.0f * spartan::Window::GetDpiScale(), false, m_log_type_color[index]))
         {
             visibility = !visibility;
         }
@@ -86,7 +86,7 @@ void Console::OnTickVisible()
     button_log_type_visibility_toggle(2);
 
     // text filter
-    const float label_width = 37.0f * Spartan::Window::GetDpiScale();
+    const float label_width = 37.0f * spartan::Window::GetDpiScale();
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
     ImGui::Separator();
 

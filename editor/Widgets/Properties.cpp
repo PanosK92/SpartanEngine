@@ -41,7 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =========
 using namespace std;
-using namespace Spartan;
+using namespace spartan;
 using namespace Math;
 //======================
 
@@ -50,8 +50,8 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
 {
-    #define column_pos_x 180.0f * Spartan::Window::GetDpiScale()
-    #define item_width   120.0f * Spartan::Window::GetDpiScale()
+    #define column_pos_x 180.0f * spartan::Window::GetDpiScale()
+    #define item_width   120.0f * spartan::Window::GetDpiScale()
 
     string context_menu_id;
     shared_ptr<Component> copied_component = nullptr;
@@ -151,7 +151,7 @@ Properties::Properties(Editor* editor) : Widget(editor)
 
 void Properties::OnTickVisible()
 {
-    bool is_in_game_mode = Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);
+    bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     ImGui::BeginDisabled(is_in_game_mode);
     {
         ImGui::PushItemWidth(item_width);
@@ -253,10 +253,10 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
-        bool shadows                = light->GetFlag(Spartan::LightFlags::Shadows);
-        bool shadows_transparent    = light->GetFlag(Spartan::LightFlags::ShadowsTransparent);
-        bool shadows_screen_space   = light->GetFlag(Spartan::LightFlags::ShadowsScreenSpace);
-        bool volumetric             = light->GetFlag(Spartan::LightFlags::Volumetric);
+        bool shadows                = light->GetFlag(spartan::LightFlags::Shadows);
+        bool shadows_transparent    = light->GetFlag(spartan::LightFlags::ShadowsTransparent);
+        bool shadows_screen_space   = light->GetFlag(spartan::LightFlags::ShadowsScreenSpace);
+        bool volumetric             = light->GetFlag(spartan::LightFlags::Volumetric);
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
         //======================================================================================
@@ -366,10 +366,10 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         if (range != light->GetRange())                                   light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
         if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);
-        light->SetFlag(Spartan::LightFlags::ShadowsTransparent, shadows_transparent);
-        light->SetFlag(Spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
-        light->SetFlag(Spartan::LightFlags::Volumetric, volumetric);
-        light->SetFlag(Spartan::LightFlags::Shadows, shadows);
+        light->SetFlag(spartan::LightFlags::ShadowsTransparent, shadows_transparent);
+        light->SetFlag(spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
+        light->SetFlag(spartan::LightFlags::Volumetric, volumetric);
+        light->SetFlag(spartan::LightFlags::Shadows, shadows);
         //=========================================================================================================================
     }
     component_end();
@@ -745,7 +745,7 @@ void Properties::ShowMaterial(Material* material) const
                         MaterialTextureType texture_type = static_cast<MaterialTextureType>(mat_tex);
                         
                         // create a lambda that captures both the type and slot for the setter
-                        auto setter = [material, texture_type, slot](Spartan::RHI_Texture* texture) 
+                        auto setter = [material, texture_type, slot](spartan::RHI_Texture* texture) 
                         { 
                             material->SetTexture(texture_type, texture, slot);
                         };
@@ -1002,9 +1002,9 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
                 terrain->SetHeightMap(texture);
             });
 
-            if (ImGuiSp::button("Generate", ImVec2(82.0f * Spartan::Window::GetDpiScale(), 0)))
+            if (ImGuiSp::button("Generate", ImVec2(82.0f * spartan::Window::GetDpiScale(), 0)))
             {
-                Spartan::ThreadPool::AddTask([terrain]()
+                spartan::ThreadPool::AddTask([terrain]()
                 {
                     terrain->Generate();
                 });

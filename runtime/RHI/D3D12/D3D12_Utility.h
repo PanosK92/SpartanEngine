@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 //================================
 
-namespace Spartan::d3d12_utility
+namespace spartan::d3d12_utility
 {
     namespace error
     {

@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Color.h"
 //================================
 
-namespace Spartan
+namespace spartan
 {
     //= FWD DECLARATIONS =
     class Camera;

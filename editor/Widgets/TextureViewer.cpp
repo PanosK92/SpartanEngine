@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =========
 using namespace std;
-using namespace Spartan;
+using namespace spartan;
 using namespace Math;
 //======================
 
@@ -55,7 +55,7 @@ namespace
     void show_texture(RHI_Texture* texture)
     {
         // calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
-        float bottom_padding              = 200.0f * Spartan::Window::GetDpiScale(); // to fit the information text
+        float bottom_padding              = 200.0f * spartan::Window::GetDpiScale(); // to fit the information text
         float texture_shrink_percentage_x = ImGui::GetWindowWidth() / static_cast<float>(texture->GetWidth()) * 0.95f; // 0.95 to avoid not be hidden by the scroll bar
         float texture_shrink_percentage_y = ImGui::GetWindowHeight() / static_cast<float>(texture->GetHeight() + bottom_padding);
         float texture_shrink_percentage   = min(texture_shrink_percentage_x, texture_shrink_percentage_y);
@@ -166,7 +166,7 @@ void TextureViewer::OnTickVisible()
         if (texture_current->GetMipCount() > 1)
         {
             ImGui::SameLine();
-            ImGui::PushItemWidth(85 * Spartan::Window::GetDpiScale());
+            ImGui::PushItemWidth(85 * spartan::Window::GetDpiScale());
             ImGui::InputInt("Mip", &mip_level);
             ImGui::PopItemWidth();
             mip_level = Math::Helper::Clamp(mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
@@ -176,7 +176,7 @@ void TextureViewer::OnTickVisible()
         if (texture_current->GetDepth() > 1)
         {
             ImGui::SameLine();
-            ImGui::PushItemWidth(85 * Spartan::Window::GetDpiScale());
+            ImGui::PushItemWidth(85 * spartan::Window::GetDpiScale());
             ImGui::InputInt("Array", &array_level);
             ImGui::PopItemWidth();
             array_level = Math::Helper::Clamp(array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);

@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace ImGui::RHI
 {
     //= NAMESPACES =========
-    using namespace Spartan;
+    using namespace spartan;
     using namespace Math;
     using namespace std;
     //======================
@@ -275,7 +275,7 @@ namespace ImGui::RHI
         }
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
         bool gpu_timing  = is_main_window;
-        cmd_list->BeginTimeblock(name, true, Spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
+        cmd_list->BeginTimeblock(name, true, spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);
         cmd_list->SetPipelineState(pso);
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);
@@ -412,7 +412,7 @@ namespace ImGui::RHI
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Present_Mode::Immediate,
             2,
-            Spartan::Display::GetHdr(),
+            spartan::Display::GetHdr(),
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 

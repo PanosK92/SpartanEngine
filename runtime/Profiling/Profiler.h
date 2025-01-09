@@ -27,11 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TimeBlock.h"
 //====================
 
-#define SP_PROFILE_CPU_START(name) Spartan::Profiler::TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
-#define SP_PROFILE_CPU_END()       Spartan::Profiler::TimeBlockEnd();
+#define SP_PROFILE_CPU_START(name) spartan::Profiler::TimeBlockStart(name, spartan::TimeBlockType::Cpu, nullptr);
+#define SP_PROFILE_CPU_END()       spartan::Profiler::TimeBlockEnd();
 #define SP_PROFILE_CPU()           ScopedTimeBlock time_block = ScopedTimeBlock(__FUNCTION__);
 
-namespace Spartan
+namespace spartan
 {
     enum class ProfilerGranularity
     {
@@ -114,7 +114,7 @@ namespace Spartan
     public:
         ScopedTimeBlock(const char* name = nullptr)
         {
-            Profiler::TimeBlockStart(name, Spartan::TimeBlockType::Cpu);
+            Profiler::TimeBlockStart(name, spartan::TimeBlockType::Cpu);
         }
 
         ~ScopedTimeBlock()

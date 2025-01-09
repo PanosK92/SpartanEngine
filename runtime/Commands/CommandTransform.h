@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 //==============================
 
-namespace Spartan
+namespace spartan
 {
-    class CommandTransform : public Spartan::Command
+    class CommandTransform : public spartan::Command
     {
     public:
-        CommandTransform(Spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale);
+        CommandTransform(spartan::Entity* entity, Math::Vector3 old_position, Math::Quaternion old_rotation, Math::Vector3 old_scale);
 
         virtual void OnApply() override;
         virtual void OnRevert() override;

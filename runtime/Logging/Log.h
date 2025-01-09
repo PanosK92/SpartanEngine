@@ -24,17 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include <string>
 #include <memory>
-#include <mutex>
-#include <vector>
-#include "../Core/Definitions.h"
-#include "ILogger.h"
 //==============================
 
-namespace Spartan
+namespace spartan
 {
-    #define SP_LOG_INFO(text, ...)    { Spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), ## __VA_ARGS__); }
-    #define SP_LOG_WARNING(text, ...) { Spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), ## __VA_ARGS__); }
-    #define SP_LOG_ERROR(text, ...)   { Spartan::Log::WriteFError(std::string(__FUNCTION__)   + ": " + std::string(text), ## __VA_ARGS__); }
+    #define SP_LOG_INFO(text, ...)    { spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), ## __VA_ARGS__); }
+    #define SP_LOG_WARNING(text, ...) { spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), ## __VA_ARGS__); }
+    #define SP_LOG_ERROR(text, ...)   { spartan::Log::WriteFError(std::string(__FUNCTION__)   + ": " + std::string(text), ## __VA_ARGS__); }
 
     // Forward declarations
     class Entity;

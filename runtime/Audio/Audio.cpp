@@ -40,7 +40,7 @@ using namespace FMOD;
 #endif
 //===================
 
-namespace Spartan
+namespace spartan
 {
     namespace
     { 

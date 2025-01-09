@@ -51,7 +51,7 @@ namespace
     float font_scale     = 1.0f;
     Widget* widget_world = nullptr;
 
-    void process_event(Spartan::sp_variant data)
+    void process_event(spartan::sp_variant data)
     {
         SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
         ImGui_ImplSDL2_ProcessEvent(event_sdl);
@@ -60,7 +60,7 @@ namespace
 
 Editor::Editor(const vector<string>& args)
 {
-    Spartan::Engine::Initialize(args);
+    spartan::Engine::Initialize(args);
     ImGui::CreateContext();
 
     // configure ImGui
@@ -76,13 +76,13 @@ Editor::Editor(const vector<string>& args)
     ImFontConfig config; // config for bold font (mainly for use in headers)
     config.GlyphOffset.y = -2.0f;
 
-    const string dir_fonts = Spartan::ResourceCache::GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
-    font_normal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), font_size * Spartan::Window::GetDpiScale());
-    font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * Spartan::Window::GetDpiScale(), &config);
+    const string dir_fonts = spartan::ResourceCache::GetResourceDirectory(spartan::ResourceDirectory::Fonts) + "/";
+    font_normal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), font_size * spartan::Window::GetDpiScale());
+    font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * spartan::Window::GetDpiScale(), &config);
     io.FontGlobalScale     = font_scale;
 
     // initialise imgui backends
-    SP_ASSERT_MSG(ImGui_ImplSDL2_InitForVulkan(static_cast<SDL_Window*>(Spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
+    SP_ASSERT_MSG(ImGui_ImplSDL2_InitForVulkan(static_cast<SDL_Window*>(spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
     // initialization of some helper static classes
@@ -106,10 +106,10 @@ Editor::Editor(const vector<string>& args)
     MenuBar::Initialize(this);
 
     // allow imgui to get event's from the engine's event processing loop
-    SP_SUBSCRIBE_TO_EVENT(Spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
+    SP_SUBSCRIBE_TO_EVENT(spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 
     // register imgui as a third party library (will show up in the about window)
-    Spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+    spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
     EditorWindows::Initialize(this);
 }
@@ -123,15 +123,15 @@ Editor::~Editor()
         ImGui::DestroyContext();
     }
 
-    Spartan::Engine::Shutdown();
+    spartan::Engine::Shutdown();
 }
 
 void Editor::Tick()
 {
     // main loop
-    while (!Spartan::Window::WantsToClose())
+    while (!spartan::Window::WantsToClose())
     {
-        bool render_editor = Spartan::Engine::IsFlagSet(Spartan::EngineMode::EditorVisible);
+        bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible);
 
         // logic
         {
@@ -143,7 +143,7 @@ void Editor::Tick()
             }
 
             // engine
-            Spartan::Engine::Tick();
+            spartan::Engine::Tick();
 
             // editor
             if (render_editor)
@@ -168,11 +168,11 @@ void Editor::Tick()
         {
             ImGui::Render();
 
-            if (Spartan::Renderer::CanUseCmdList())
+            if (spartan::Renderer::CanUseCmdList())
             {
                 // main window
                 ImGui::RHI::render(ImGui::GetDrawData());
-                Spartan::Renderer::SubmitAndPresent();
+                spartan::Renderer::SubmitAndPresent();
             }
 
             // child windows

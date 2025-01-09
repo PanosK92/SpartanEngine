@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Definitions.h"
 //====================================
 
-namespace Spartan
+namespace spartan
 {
     namespace Math
     {

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Implementation.h"
 //=============================
 
-namespace Spartan
+namespace spartan
 {
     RHI_Sampler::RHI_Sampler(
         const RHI_Filter filter_min                         /* = RHI_Filter::Nearest */,

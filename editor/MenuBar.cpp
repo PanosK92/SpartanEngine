@@ -92,7 +92,7 @@ namespace
                 // load world
                 if (file_dialog->GetOperation() == FileDialog_Op_Open || file_dialog->GetOperation() == FileDialog_Op_Load)
                 {
-                    if (Spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
+                    if (spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
                     {
                         EditorHelper::LoadWorld(file_dialog_selection_path);
                         show_file_dialog = false;
@@ -119,7 +119,7 @@ namespace
             {
                 if (ImGui::MenuItem("New"))
                 {
-                    Spartan::World::Clear();
+                    spartan::World::Clear();
                 }
 
                 ImGui::Separator();
@@ -197,27 +197,27 @@ namespace
 
                 if (ImGui::MenuItem("Sponsor", nullptr, nullptr))
                 {
-                    Spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
+                    spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
                 }
 
                 if (ImGui::MenuItem("Contributing", nullptr, nullptr))
                 {
-                    Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
+                    spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md");
                 }
 
                 if (ImGui::MenuItem("Perks of a contributor", nullptr, nullptr))
                 {
-                    Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
+                    spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
                 }
 
                 if (ImGui::MenuItem("Report a bug", nullptr, nullptr))
                 {
-                    Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/issues/new/choose");
+                    spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/issues/new/choose");
                 }
 
                 if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
                 {
-                    Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
+                    spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
                 }
 
                 ImGui::EndMenu();
@@ -248,7 +248,7 @@ namespace
 
             ImGui::SetCursorPosY(offset_y);
 
-            if (ImGuiSp::image_button(nullptr, icon_type, button_size * Spartan::Window::GetDpiScale(), false))
+            if (ImGuiSp::image_button(nullptr, icon_type, button_size * spartan::Window::GetDpiScale(), false))
             {
                 on_press();
             }
@@ -262,7 +262,7 @@ namespace
         {
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             const float size_avail_x      = viewport->Size.x;
-            const float button_size_final = button_size * Spartan::Window::GetDpiScale() + MenuBar::GetPaddingX() * 2.0f;
+            const float button_size_final = button_size * spartan::Window::GetDpiScale() + MenuBar::GetPaddingX() * 2.0f;
             float num_buttons             = 1.0f;
             float size_toolbar            = num_buttons * button_size_final;
             float cursor_pos_x            = (size_avail_x - size_toolbar) * 0.5f;
@@ -273,8 +273,8 @@ namespace
 
                toolbar_button(
                    IconType::Button_Play, "Play",
-                   []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing);  },
-                   []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Playing); },
+                   []() { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);  },
+                   []() { return spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); },
                    cursor_pos_x
                );
 
@@ -295,9 +295,9 @@ namespace
                     []() { return false; },
                     []()
                     {
-                        if (Spartan::Debugging::IsRenderdocEnabled())
+                        if (spartan::Debugging::IsRenderdocEnabled())
                         {
-                            Spartan::RenderDoc::FrameCapture();
+                            spartan::RenderDoc::FrameCapture();
                         }
                         else
                         {
@@ -325,7 +325,7 @@ namespace
             //toolbar_button(
             //    IconType::Screenshot, "Screenshot",
             //    []() { return false; },
-            //    []() { return Spartan::Renderer::Screenshot("screenshot.png"); }
+            //    []() { return spartan::Renderer::Screenshot("screenshot.png"); }
             //);
         }
     }
@@ -338,23 +338,23 @@ namespace
             // snap to the right
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             const float size_avail_x      = viewport->Size.x;
-            const float offset_right      = 120.0f * Spartan::Window::GetDpiScale();
+            const float offset_right      = 120.0f * spartan::Window::GetDpiScale();
             ImGui::SetCursorPosX(size_avail_x - offset_right);
 
-            Spartan::Math::Vector2 icon_size = Spartan::Math::Vector2(24.0f, 24.0f);
+            spartan::Math::Vector2 icon_size = spartan::Math::Vector2(24.0f, 24.0f);
             if (ImGuiSp::image_button(nullptr, IconType::Window_Minimize, icon_size, false))
             {
-                Spartan::Window::Minimize();
+                spartan::Window::Minimize();
             }
 
             if (ImGuiSp::image_button(nullptr, IconType::Window_Maximize, icon_size, false))
             {
-                Spartan::Window::Maximize();
+                spartan::Window::Maximize();
             }
 
             if (ImGuiSp::image_button(nullptr, IconType::Window_Close, icon_size, false))
             {
-                Spartan::Window::Close();
+                spartan::Window::Close();
             }
         }
     }
@@ -371,7 +371,7 @@ void MenuBar::Initialize(Editor* _editor)
     buttons_toolbar::widgets[IconType::Component_Options]      = editor->GetWidget<RenderOptions>();
     buttons_toolbar::widgets[IconType::Directory_File_Texture] = editor->GetWidget<TextureViewer>();
 
-    Spartan::Engine::SetFlag(Spartan::EngineMode::Playing, false);
+    spartan::Engine::SetFlag(spartan::EngineMode::Playing, false);
 }
 
 void MenuBar::Tick()

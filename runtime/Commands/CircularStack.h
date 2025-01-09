@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <optional>
 //==============================
 
-namespace Spartan
+namespace spartan
 {
     template <typename T>
     class CircularStack {

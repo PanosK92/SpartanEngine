@@ -29,7 +29,7 @@ SP_WARNINGS_OFF
 SP_WARNINGS_ON
 //======================================
 
-namespace Spartan::Geometry
+namespace spartan::geometry_processing
 {
     static void generate_cube(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {

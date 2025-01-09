@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Spartan::Math
+namespace spartan::Math
 {
     Frustum::Frustum(const Matrix& view, const Matrix& projection, float screen_depth)
     {

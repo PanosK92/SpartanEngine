@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Vector2.h"
 //==================
 
-namespace Spartan
+namespace spartan
 {
     namespace Math
     {

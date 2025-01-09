@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Widgets/TextEditor.h"
 //================================
 
-namespace Spartan
+namespace spartan
 {
     class RHI_Shader;
     class Renderer;
@@ -46,10 +46,10 @@ private:
     void ShowControls();
     void GetShaderInstances();
 
-    Spartan::RHI_Shader* m_shader = nullptr;
+    spartan::RHI_Shader* m_shader = nullptr;
     std::string m_shader_name     = "N/A";
     int32_t m_index_displayed     = -1;
     bool m_first_run              = true;
     std::unique_ptr<TextEditor> m_text_editor;
-    std::vector<Spartan::RHI_Shader*> m_shaders;
+    std::vector<spartan::RHI_Shader*> m_shaders;
 };

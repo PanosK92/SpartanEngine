@@ -35,12 +35,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::TransformGizmo
 {
-    const  Spartan::Math::Vector3 snap =  Spartan::Math::Vector3(0.1f, 0.1f, 0.1f);
+    const  spartan::Math::Vector3 snap =  spartan::Math::Vector3(0.1f, 0.1f, 0.1f);
 
     bool first_use = true;
-    Spartan::Math::Vector3 position_previous;
-    Spartan::Math::Quaternion rotation_previous;
-    Spartan::Math::Vector3 scale_previous;
+    spartan::Math::Vector3 position_previous;
+    spartan::Math::Quaternion rotation_previous;
+    spartan::Math::Vector3 scale_previous;
 
     void apply_style()
     {
@@ -68,15 +68,15 @@ namespace ImGui::TransformGizmo
 
     static void tick()
     {
-        if (Spartan::Engine::IsFlagSet(Spartan::EngineMode::Playing))
+        if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
             return;
 
-        std::shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera();
+        std::shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera();
         if (!camera)
             return;
 
         // get selected entity
-        std::shared_ptr<Spartan::Entity> entity = camera->GetSelectedEntity();
+        std::shared_ptr<spartan::Entity> entity = camera->GetSelectedEntity();
 
         // enable/disable gizmo
         ImGuizmo::Enable(entity != nullptr);
@@ -85,25 +85,25 @@ namespace ImGui::TransformGizmo
 
         // switch between position, rotation and scale operations, with W, E and R respectively
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
-        if (!camera->GetFlag(Spartan::CameraFlags::IsActivelyControlled))
+        if (!camera->GetFlag(spartan::CameraFlags::IsActivelyControlled))
         {
-            if (Spartan::Input::GetKeyDown(Spartan::KeyCode::W))
+            if (spartan::Input::GetKeyDown(spartan::KeyCode::W))
             {
                 transform_operation = ImGuizmo::TRANSLATE;
             }
-            else if (Spartan::Input::GetKeyDown(Spartan::KeyCode::E))
+            else if (spartan::Input::GetKeyDown(spartan::KeyCode::E))
             {
                 transform_operation = ImGuizmo::ROTATE;
             }
-            else if (Spartan::Input::GetKeyDown(Spartan::KeyCode::R))
+            else if (spartan::Input::GetKeyDown(spartan::KeyCode::R))
             {
                 transform_operation = ImGuizmo::SCALE;
             }
         }
 
         // get matrices
-        const Spartan::Math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
-        const Spartan::Math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
+        const spartan::Math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
+        const spartan::Math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
  
         // begin
         const bool is_orthographic = false;
@@ -111,10 +111,10 @@ namespace ImGui::TransformGizmo
         ImGuizmo::BeginFrame();
 
         // map transform to ImGuizmo
-        Spartan::Math::Vector3 position        = entity->GetPosition();
-        Spartan::Math::Vector3 scale           = entity->GetScale();
-        Spartan::Math::Quaternion rotation     = entity->GetRotation();
-        Spartan::Math::Matrix transform_matrix = Spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
+        spartan::Math::Vector3 position        = entity->GetPosition();
+        spartan::Math::Vector3 scale           = entity->GetScale();
+        spartan::Math::Quaternion rotation     = entity->GetRotation();
+        spartan::Math::Matrix transform_matrix = spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
 
         // set viewport rectangle
         ImGuizmo::SetDrawlist();
@@ -149,9 +149,9 @@ namespace ImGui::TransformGizmo
             entity->SetScale(scale);
 
             // end of handling - add the current and previous transforms to the command stack
-            if (Spartan::Input::GetKeyUp(Spartan::KeyCode::Click_Left))
+            if (spartan::Input::GetKeyUp(spartan::KeyCode::Click_Left))
             {
-                Spartan::CommandStack::Add<Spartan::CommandTransform>(entity.get(), position_previous, rotation_previous, scale_previous);
+                spartan::CommandStack::Add<spartan::CommandTransform>(entity.get(), position_previous, rotation_previous, scale_previous);
                 first_use = true;
             }
         }

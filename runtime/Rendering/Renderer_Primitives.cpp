@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::Math;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Color& color_from, const Color& color_to)
     {

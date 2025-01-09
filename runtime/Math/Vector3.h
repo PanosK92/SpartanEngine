@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <immintrin.h>
 //=====================
 
-namespace Spartan::Math
+namespace spartan::Math
 {
     class Vector4;
 

@@ -27,7 +27,7 @@ SP_WARNINGS_OFF
 SP_WARNINGS_ON
 //=====================
 
-namespace Spartan
+namespace spartan
 {
 /*
 Version: dxcompiler.dll: 1.8 - 1.8.2407.7 (416fab6b5); dxil.dll: 1.8(101.8.2407.12)

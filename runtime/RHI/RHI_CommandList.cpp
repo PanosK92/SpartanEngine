@@ -31,7 +31,7 @@ using namespace std;
 using namespace chrono;
 //=====================
 
-namespace Spartan
+namespace spartan
 {
     namespace
     {

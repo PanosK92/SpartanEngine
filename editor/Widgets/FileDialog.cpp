@@ -29,8 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan;
-using namespace Spartan::Math;
+using namespace spartan;
+using namespace spartan::Math;
 //============================
 
 namespace
@@ -154,7 +154,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     ImGui::PopItemWidth();
 
     // Search filter
-    const float label_width = 37.0f * Spartan::Window::GetDpiScale();
+    const float label_width = 37.0f * spartan::Window::GetDpiScale();
     m_search_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
 
     ImGui::Separator();
@@ -398,7 +398,7 @@ void FileDialog::ShowBottom(bool* is_visible)
     if (m_type == FileDialog_Type_Browser)
     {
         // move to the bottom of the window
-        m_offset_bottom = 24.0f * Spartan::Window::GetDpiScale();
+        m_offset_bottom = 24.0f * spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
         string text = (m_displayed_item_count == 1) ? "%d item" : "%d items";
@@ -407,10 +407,10 @@ void FileDialog::ShowBottom(bool* is_visible)
     else
     {
         // move to the bottom of the window
-        m_offset_bottom = 35.0f * Spartan::Window::GetDpiScale();
+        m_offset_bottom = 35.0f * spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
-        ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235 * Spartan::Window::GetDpiScale());
+        ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235 * spartan::Window::GetDpiScale());
         ImGui::InputText("##InputBox", &m_input_box);
         ImGui::PopItemWidth();
 

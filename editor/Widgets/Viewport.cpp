@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES =========
 using namespace std;
-using namespace Spartan;
+using namespace spartan;
 using namespace Math;
 //======================
 
@@ -110,13 +110,13 @@ void Viewport::OnTickVisible()
     }
 
     // entity transform gizmo (will only show if an entity has been picked)
-    if (Renderer::GetOption<bool>(Spartan::Renderer_Option::TransformHandle))
+    if (Renderer::GetOption<bool>(spartan::Renderer_Option::TransformHandle))
     {
         ImGui::TransformGizmo::tick();
     }
 
     // check if the engine wants cursor control
-    if (camera && camera->GetFlag(Spartan::CameraFlags::IsActivelyControlled))
+    if (camera && camera->GetFlag(spartan::CameraFlags::IsActivelyControlled))
     {
         ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     }

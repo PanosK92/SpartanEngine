@@ -39,7 +39,7 @@ struct btSoftBodyWorldInfo;
 class btRaycastVehicle;
 //========================================
 
-namespace Spartan
+namespace spartan
 {
     class Physics
     {
