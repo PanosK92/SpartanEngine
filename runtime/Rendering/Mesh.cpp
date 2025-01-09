@@ -40,121 +40,44 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace
+    namespace meshoptimizer
     {
-        namespace meshoptimizer
+        // documentation: https://meshoptimizer.org/
+        
+        void optimize(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
         {
-            // documentation: https://meshoptimizer.org/
+            size_t vertex_count = vertices.size();
+            size_t index_count  = indices.size();
 
-            void optimize(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
-            {
-                // 1. first, generate a remap table to optimize vertex reuse
-                vector<uint32_t> remap(indices.size());
-                size_t vertex_count = meshopt_generateVertexRemap(
-                    remap.data(),
-                    indices.data(),
-                    indices.size(),
-                    vertices.data(),
-                    vertices.size(),
-                    sizeof(RHI_Vertex_PosTexNorTan)
-                );
-            
-                // 2. create temporary buffers for remapped data
-                vector<RHI_Vertex_PosTexNorTan> vertices_remapped(vertex_count);
-                vector<uint32_t> indices_remapped(indices.size());
-            
-                // 3. remap both buffers
-                meshopt_remapIndexBuffer(
-                    indices_remapped.data(),
-                    indices.data(),
-                    indices.size(),
-                    remap.data()
-                );
-            
-                meshopt_remapVertexBuffer(
-                    vertices_remapped.data(),
-                    vertices.data(),
-                    vertices.size(),
-                    sizeof(RHI_Vertex_PosTexNorTan),
-                    remap.data()
-                );
-            
-                // 4. optimize vertex cache
-                meshopt_optimizeVertexCache(
-                    indices_remapped.data(),
-                    indices_remapped.data(),
-                    indices_remapped.size(),
-                    vertex_count
-                );
-            
-                // 5. optimize overdraw
-                meshopt_optimizeOverdraw(
-                    indices_remapped.data(),
-                    indices_remapped.data(),
-                    indices_remapped.size(),
-                    reinterpret_cast<const float*>(&vertices_remapped[0].pos[0]),
-                    vertex_count,
-                    sizeof(RHI_Vertex_PosTexNorTan),
-                    1.05f
-                );
-            
-                // 6. optimize vertex fetch
-                meshopt_optimizeVertexFetch(
-                    vertices_remapped.data(),
-                    indices_remapped.data(),
-                    indices_remapped.size(),
-                    vertices_remapped.data(),
-                    vertex_count,
-                    sizeof(RHI_Vertex_PosTexNorTan)
-                );
-            
-                // 7. copy optimized buffers back to the input vectors
-                vertices = std::move(vertices_remapped);
-                indices  = std::move(indices_remapped);
-            }
+            // create a remap table
+            vector<unsigned int> remap(index_count);
+            size_t vertex_count_optimized = meshopt_generateVertexRemap(remap.data(), 
+                                                                indices.data(),
+                                                                index_count,
+                                                                vertices.data(),
+                                                                vertex_count,
+                                                                sizeof(RHI_Vertex_PosTexNorTan));
 
-            void simplify(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
-            {
-                const size_t target_index_count = static_cast<size_t>(indices.size() * 0.1f);
-                const float target_error        = 0.01f;
+            // note: When we import with Assimp, JoinIdenticalVertices is used, so we don't need to remove duplicates here
 
-                float result_error = 0.0f;
-                vector<uint32_t> indices_new(indices.size());
-                size_t index_count = meshopt_simplifySloppy(
-                    &indices_new[0],                                  // destination
-                    &indices[0],                                      // indices
-                    indices.size(),                                   // index count
-                    reinterpret_cast<const float*>(&vertices[0].pos), // vertex positions
-                    vertices.size(),                                  // vertex count
-                    sizeof(RHI_Vertex_PosTexNorTan),                  // vertex size
-                    target_index_count,
-                    target_error,
-                    &result_error
-                );
-                indices = indices_new;
-                indices.resize(index_count);
-            }
-
-            void log_mesh_info(const char* name, vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices)
-            {
-                meshopt_VertexCacheStatistics vcs = meshopt_analyzeVertexCache(
-                    indices.data(),
-                    indices.size(),
-                    vertices.size(),
-                    16,
-                    0,
-                    0 
-                );
-                
-                meshopt_VertexFetchStatistics vfs = meshopt_analyzeVertexFetch(
-                    indices.data(),
-                    indices.size(),
-                    vertices.size(),
-                    sizeof(RHI_Vertex_PosTexNorTan)
-                );
-                
-               SP_LOG_INFO("Mesh: %s | Cache miss ratio: %.2f | Transformed vertex ratio: %.2f | Fetch overfetch: %.2f", name, vcs.acmr, vcs.atvr, vfs.overfetch);
-            }
+            // optimization #1: improve the locality of the vertices
+            meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
+        
+            // optimization #2: reduce pixel overdraw
+            meshopt_optimizeOverdraw(indices.data(), indices.data(), index_count, &(vertices[0].pos[0]), vertex_count, sizeof(RHI_Vertex_PosTexNorTan), 1.05f);
+        
+            // optimization #3: optimize access to the vertex buffer
+            meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
+        
+            // optimization #4: create a simplified version of the model
+            float threshold           = 1.0f;
+            float target_error        = 0.0f;
+            size_t target_index_count = (size_t)(index_count * threshold);
+            vector<unsigned int> indices_simplified(indices.size());
+            size_t OptIndexCount = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
+                                                    &vertices[0].pos[0], vertex_count, sizeof(RHI_Vertex_PosTexNorTan), target_index_count, target_error);
+        
+            indices  = indices_simplified;
         }
     }
 
@@ -268,27 +191,29 @@ namespace Spartan
         }
     }
 
-    void Mesh::AddVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertex_offset_out /*= nullptr*/)
+   void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, uint32_t* vertex_offset_out, uint32_t* index_offset_out)
     {
-        lock_guard lock(m_mutex_vertices);
+        if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
+        {
+            meshoptimizer::optimize(vertices, indices);
+        }
 
+        lock_guard lock(m_mutex);
+    
+        // set vertex offset if requested
         if (vertex_offset_out)
         {
             *vertex_offset_out = static_cast<uint32_t>(m_vertices.size());
         }
-
-        m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
-    }
-
-    void Mesh::AddIndices(const vector<uint32_t>& indices, uint32_t* index_offset_out /*= nullptr*/)
-    {
-        lock_guard lock(m_mutex_vertices);
-
+    
+        // set index offset if requested
         if (index_offset_out)
         {
             *index_offset_out = static_cast<uint32_t>(m_indices.size());
         }
-
+    
+        // add
+        m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
         m_indices.insert(m_indices.end(), indices.begin(), indices.end());
     }
 
@@ -332,13 +257,6 @@ namespace Spartan
 
     void Mesh::PostProcess()
     {
-        if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
-        {
-            //meshoptimizer::log_mesh_info(m_object_name.c_str(), m_vertices, m_indices);
-            //meshoptimizer::optimize(m_vertices, m_indices);
-            //meshoptimizer::simplify(m_vertices, m_indices);
-        }
-
         m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
 
         // normalize scale

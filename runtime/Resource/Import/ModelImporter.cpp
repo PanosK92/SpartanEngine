@@ -720,8 +720,7 @@ namespace Spartan
         // add vertex and index data to the mesh
         uint32_t index_offset  = 0;
         uint32_t vertex_offset = 0;
-        mesh->AddIndices(indices,  &index_offset);
-        mesh->AddVertices(vertices, &vertex_offset);
+        mesh->AddGeometry(vertices, indices, &vertex_offset, &index_offset);
 
         // add a renderable component to this entity
         shared_ptr<Renderable> renderable = entity_parent->AddComponent<Renderable>();

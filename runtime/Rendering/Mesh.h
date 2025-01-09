@@ -75,11 +75,8 @@ namespace Spartan
         );
         uint32_t GetMemoryUsage() const;
 
-        // add geometry
-        void AddVertices(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertex_offset_out = nullptr);
-        void AddIndices(const std::vector<uint32_t>& indices, uint32_t* index_offset_out = nullptr);
-
-        // get geometry
+        // geometry
+        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, uint32_t* vertex_offset_out = nullptr, uint32_t* index_offset_out = nullptr);
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices() { return m_vertices; }
         std::vector<uint32_t>& GetIndices()                 { return m_indices; }
 
@@ -122,11 +119,8 @@ namespace Spartan
         // aabb
         Math::BoundingBox m_aabb;
 
-        // sync primitives
-        std::mutex m_mutex_indices;
-        std::mutex m_mutex_vertices;
-
         // misc
+        std::mutex m_mutex;
         std::weak_ptr<Entity> m_root_entity;
         MeshType m_type = MeshType::Custom;
     };

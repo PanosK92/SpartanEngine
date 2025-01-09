@@ -670,8 +670,7 @@ namespace Spartan
         // update with geometry
         shared_ptr<Mesh>& mesh = m_tile_meshes[tile_index];
         mesh->Clear();
-        mesh->AddIndices(m_tile_indices[tile_index]);
-        mesh->AddVertices(m_tile_vertices[tile_index]);
+        mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index]);
         mesh->PostProcess();
 
         // create a child entity, add a renderable, and this mesh tile to it

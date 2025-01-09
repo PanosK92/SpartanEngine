@@ -520,8 +520,7 @@ namespace Spartan
                 mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MODEL);
             }
 
-            mesh->AddIndices(indices);
-            mesh->AddVertices(vertices);
+            mesh->AddGeometry(vertices, indices);
             mesh->SetType(type);
             mesh->PostProcess();
 
