@@ -335,8 +335,6 @@ namespace spartan::geometry_processing
 
     static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t triangle_target)
     {
-        SP_LOG_INFO("Triangles before simplification: %d. Triangle target: %d", indices.size() / 3, triangle_target);
-    
         float reduction               = 0.1f;
         float error                   = 0.1f;
         size_t index_count            = indices.size();
@@ -365,8 +363,6 @@ namespace spartan::geometry_processing
             reduction              += 0.1f;
             error                  += 0.1f;
         }
-    
-        SP_LOG_INFO("Triangles after simplification: %d", indices.size() / 3);
     }
 
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
