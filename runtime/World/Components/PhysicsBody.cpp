@@ -879,11 +879,8 @@ namespace spartan
 
             case PhysicsShape::Mesh:
             {
-                // get common prerequisites for certain shapes
-              
-                shared_ptr<Renderable> renderable = GetEntity()->GetComponent<Renderable>();
-            
                 // get renderable
+                shared_ptr<Renderable> renderable = GetEntity()->GetComponent<Renderable>();
                 if (!renderable)
                 {
                     SP_LOG_WARNING("PhysicsShape::Mesh requires a renderable component to be present");
@@ -931,7 +928,7 @@ namespace spartan
                 }
                 else
                 {
-                    geometry_processing::simplify(m_indices, m_vertices, static_cast<size_t>((m_indices.size() / 3) * 0.2f));
+                    geometry_processing::simplify(m_indices, m_vertices, static_cast<size_t>((m_indices.size() / 3) * 0.05f));
 
                     // create a btTriangleIndexVertexArray using indices and vertices
                     btTriangleIndexVertexArray* index_vertex_array = new btTriangleIndexVertexArray(

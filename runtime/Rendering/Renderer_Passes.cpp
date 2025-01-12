@@ -377,7 +377,6 @@ namespace spartan
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
         Pass_VariableRateShading(cmd_list_graphics);
-        Pass_Skysphere(cmd_list_graphics);
 
         // light integration
         {
@@ -401,19 +400,15 @@ namespace spartan
                 Pass_Depth_Prepass(cmd_list_graphics);
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
 
-                // shadows
+                // shadow maps
+                Pass_ShadowMaps(cmd_list_graphics, false);
+                if (mesh_index_transparent != -1)
                 {
-                    // shadow maps
-                    Pass_ShadowMaps(cmd_list_graphics, false);
-                    if (mesh_index_transparent != -1)
-                    {
-                        Pass_ShadowMaps(cmd_list_graphics, true);
-                    }
-
-                    // screen space
-                    Pass_Sss(cmd_list_graphics);
+                    Pass_ShadowMaps(cmd_list_graphics, true);
                 }
 
+                Pass_Skysphere(cmd_list_graphics);
+                Pass_Sss(cmd_list_graphics);
                 Pass_Ssr(cmd_list_graphics);
                 Pass_Ssao(cmd_list_graphics);
                 Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
