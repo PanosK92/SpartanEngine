@@ -931,16 +931,16 @@ namespace spartan
                 }
                 else
                 {
-                    geometry_processing::simplify(m_indices, m_vertices, static_cast<size_t>(m_vertices.size() * 0.2f));
+                    geometry_processing::simplify(m_indices, m_vertices, static_cast<size_t>((m_indices.size() / 3) * 0.2f));
 
                     // create a btTriangleIndexVertexArray using indices and vertices
                     btTriangleIndexVertexArray* index_vertex_array = new btTriangleIndexVertexArray(
-                        static_cast<int>(m_indices.size() / 3),          // Number of triangles
-                        reinterpret_cast<int*>(&m_indices[0]),           // Pointer to indices
-                        sizeof(uint32_t) * 3,                            // Stride between index sets (3 indices per triangle)
-                        static_cast<int>(m_vertices.size()),             // Number of vertices
-                        reinterpret_cast<float*>(&m_vertices[0].pos[0]), // Pointer to vertex positions
-                        sizeof(m_vertices[0])                            // Stride between vertices
+                        static_cast<int>(m_indices.size() / 3),          // number of triangles
+                        reinterpret_cast<int*>(&m_indices[0]),           // pointer to indices
+                        sizeof(uint32_t) * 3,                            // stride between index sets (3 indices per triangle)
+                        static_cast<int>(m_vertices.size()),             // number of vertices
+                        reinterpret_cast<float*>(&m_vertices[0].pos[0]), // pointer to vertex positions
+                        sizeof(m_vertices[0])                            // stride between vertices
                     );
                     
                     // create a btBvhTriangleMeshShape using the index-vertex array
@@ -948,6 +948,8 @@ namespace spartan
                         index_vertex_array,
                         true // BVH for optimized collisions
                     );
+
+                    // we only need to set the scale as the rotation and position is set set in btMotionState
                     shape_triangle_mesh->setLocalScaling(vector_to_bt(size));
 
                     // btBvhTriangleMeshShape is static and expensive to collide with

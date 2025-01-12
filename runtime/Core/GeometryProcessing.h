@@ -333,36 +333,42 @@ namespace spartan::geometry_processing
         generate_cylinder(vertices, indices, 0.0f, radius, height);
     }
 
-    static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t vertex_target)
+    static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t triangle_target)
     {
-        float reduction             = 0.2f;
-        float error                 = 0.01f;
-        size_t index_count          = indices.size();
-        size_t current_vertex_count = indices.size() / 3;
-
-        // loop until the current vertex count is less than or equal to the target vertex count
+        SP_LOG_INFO("Triangles before simplification: %d. Triangle target: %d", indices.size() / 3, triangle_target);
+    
+        float reduction               = 0.1f;
+        float error                   = 0.1f;
+        size_t index_count            = indices.size();
+        size_t current_triangle_count = indices.size() / 3;
+    
+        // loop until the current triangle count is less than or equal to the target triangle count
         std::vector<uint32_t> indices_simplified(index_count);
-        while (current_vertex_count > vertex_target)
+        while (current_triangle_count > triangle_target)
         {
             float threshold           = 1.0f - reduction;
             size_t target_index_count = static_cast<size_t>(index_count * threshold);
     
-            index_count = meshopt_simplify(indices_simplified.data(), indices.data(), index_count,
-                          &vertices[0].pos[0], static_cast<uint32_t>(vertices.size()), sizeof(RHI_Vertex_PosTexNorTan),
-                          target_index_count, error);
+            index_count = meshopt_simplify(
+                indices_simplified.data(),
+                indices.data(),
+                index_count,
+                &vertices[0].pos[0],
+                static_cast<uint32_t>(vertices.size()),
+                sizeof(RHI_Vertex_PosTexNorTan),
+                target_index_count,
+                error
+            );
     
-            indices = indices_simplified;
-    
-            // if meshoptimizer taps out, break
-            size_t vertex_count_new = index_count / 3;
-            if (current_vertex_count == vertex_count_new)
-                break;
-    
-            current_vertex_count  = vertex_count_new;
-            error                += 0.01f;
+            indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
+            current_triangle_count  = index_count / 3;
+            reduction              += 0.1f;
+            error                  += 0.1f;
         }
-    }
     
+        SP_LOG_INFO("Triangles after simplification: %d", indices.size() / 3);
+    }
+
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
     {
         size_t vertex_count = vertices.size();
@@ -394,10 +400,10 @@ namespace spartan::geometry_processing
             {
                 std::tuple<float, size_t> agressivness_table[] =
                 {
-                    { 0.3f, 30000 }, // ultra agressive
-                    { 0.5f, 20000 }, // agressive
-                    { 0.7f, 15000 }, // balanced
-                    { 0.9f, 5000  }  // gentle
+                    { 0.3f, 10000 }, // ultra aggressive
+                    { 0.5f, 7000  }, // aggressive
+                    { 0.7f, 5000  }, // balanced
+                    { 0.9f, 2000  }  // gentle
                 };
             
                 for (const auto& [reduction_percentage, vertex_threshold] : agressivness_table)
