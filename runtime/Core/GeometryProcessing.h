@@ -299,7 +299,7 @@ namespace spartan::geometry_processing
             indices->push_back(baseIndex + i);
         }
 
-        // Build bottom cap
+        // build bottom cap
         baseIndex = (int)vertices->size();
         y = -0.5f * height;
 
@@ -310,13 +310,13 @@ namespace spartan::geometry_processing
             const float u = x / height + 0.5f;
             const float v = z / height + 0.5f;
 
-            normal =     Vector3(0, -1, 0);
-            tangent        = Vector3(1, 0, 0);
+            normal  = Vector3(0, -1, 0);
+            tangent = Vector3(1, 0, 0);
             vertices->emplace_back(Vector3(x, y, z), Vector2(u, v), normal, tangent);
         }
 
-        normal        = Vector3(0, -1, 0);
-        tangent        = Vector3(1, 0, 0);
+        normal  = Vector3(0, -1, 0);
+        tangent = Vector3(1, 0, 0);
         vertices->emplace_back(Vector3(0, y, 0), Vector2(0.5f, 0.5f), normal, tangent);
 
         centerIndex = (int)vertices->size() - 1;
@@ -339,9 +339,13 @@ namespace spartan::geometry_processing
         float error                   = 0.1f;
         size_t index_count            = indices.size();
         size_t current_triangle_count = indices.size() / 3;
-    
+
+        if (current_triangle_count >= triangle_target)
+            return;
+
         // loop until the current triangle count is less than or equal to the target triangle count
         std::vector<uint32_t> indices_simplified(index_count);
+        uint32_t iteration_count = 0;
         while (current_triangle_count > triangle_target)
         {
             float threshold           = 1.0f - reduction;
@@ -359,9 +363,14 @@ namespace spartan::geometry_processing
             );
     
             indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
-            current_triangle_count  = index_count / 3;
-            reduction              += 0.1f;
-            error                  += 0.1f;
+            current_triangle_count = index_count / 3;
+            reduction              = fmodf(reduction + 0.1f, 1.0f);
+            error                  = fmodf(error + 0.1f, 1.0f);
+
+            // break if meshopt_simplify gives up
+            iteration_count++;
+            if (iteration_count > 10)
+                break;
         }
     }
 
@@ -392,7 +401,7 @@ namespace spartan::geometry_processing
     
         // optimization #4: create a simplified version of the model
         {
-            auto get_vertex_target = [](size_t vertex_count)
+            auto get_triangle_target = [](size_t triangle_count)
             {
                 std::tuple<float, size_t> agressivness_table[] =
                 {
@@ -402,17 +411,17 @@ namespace spartan::geometry_processing
                     { 0.9f, 2000  }  // gentle
                 };
             
-                for (const auto& [reduction_percentage, vertex_threshold] : agressivness_table)
+                for (const auto& [reduction_percentage, triangle_threshold] : agressivness_table)
                 {
-                    if (vertex_count > vertex_threshold)
+                    if (triangle_count > triangle_threshold)
                     {
-                        return static_cast<size_t>(vertex_count * reduction_percentage);
+                        return static_cast<size_t>(triangle_count * reduction_percentage);
                     }
                 }
-                return vertex_count; // native
+                return triangle_count; // native
             };
             
-            simplify(indices, vertices, get_vertex_target(vertex_count));
+            simplify(indices, vertices, get_triangle_target(indices.size() / 3));
         }
     }
 }
