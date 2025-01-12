@@ -946,7 +946,7 @@ namespace spartan
                     // create a btBvhTriangleMeshShape using the index-vertex array
                     btBvhTriangleMeshShape* shape_triangle_mesh = new btBvhTriangleMeshShape(
                         index_vertex_array,
-                        true // BVH for optimized collisions
+                        true // bvh for optimized collisions
                     );
 
                     // we only need to set the scale as the rotation and position is set set in btMotionState

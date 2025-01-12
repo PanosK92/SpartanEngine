@@ -345,13 +345,15 @@ namespace spartan::geometry_processing
 
         // loop until the current triangle count is less than or equal to the target triangle count
         std::vector<uint32_t> indices_simplified(index_count);
-        uint32_t iteration_count = 0;
         while (current_triangle_count > triangle_target)
         {
             float threshold           = 1.0f - reduction;
             size_t target_index_count = static_cast<size_t>(index_count * threshold);
-    
-            index_count = meshopt_simplify(
+
+            if (target_index_count < 3)
+                break;
+
+            size_t index_count_new = meshopt_simplify(
                 indices_simplified.data(),
                 indices.data(),
                 index_count,
@@ -361,16 +363,16 @@ namespace spartan::geometry_processing
                 target_index_count,
                 error
             );
-    
+
+            // break if meshopt_simplify can't simplify further
+            if (index_count_new == index_count)
+                break;
+
+            index_count = index_count_new;
             indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
             current_triangle_count = index_count / 3;
             reduction              = fmodf(reduction + 0.1f, 1.0f);
             error                  = fmodf(error + 0.1f, 1.0f);
-
-            // break if meshopt_simplify gives up
-            iteration_count++;
-            if (iteration_count > 10)
-                break;
         }
     }
 
