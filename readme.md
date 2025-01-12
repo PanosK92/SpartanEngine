@@ -79,7 +79,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Entity-component, event systems and most things you'll expect to find in a modern engine.
 - Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
-# Wiki
+# Documentation
 
 The [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most of your questions, here are some of it's contents:
 
@@ -87,15 +87,18 @@ The [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most 
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
 
-# Interesting facts
+#### Tutorials
+
+While the engine is designed primarily for experienced game developers to experiment, there are resources available for those who prefer a more guided approach.
+
+To get started, take a look at [game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/runtime/Game/Game.cpp). This file contains all the logic for loading and setting up the default worlds within the engine, and it's a great place to understand the core structure of the engine.
+
+# Interesting facts and use cases
 
 - This engine started as a way to learn and enrich my portfolio while I was a university student, circa 2014, represeting over a decade of non-stop development.
 - It's one of the most rewarding projects in terms of the perks you receive should you become a contributor, more [here](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor).
-
-# Use cases
-
-Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, then reach out to me, I'd love to showcase your project.
-
-- Godot uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)
-- Stalker Anomaly has an addon which enchances rendering based on Spartan's source [here](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders)
+- **Godot** uses Spartan's TAA, see [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)
+- **Stalker Anomaly** has an addon which enchances rendering based on Spartan's source [here](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders)
 - Jesse Guerrero, a contributor, wrote a [book](https://www.amazon.com/dp/B0CXG1CMNK?ref_=cm_sw_r_cp_ud_dp_A14WVAH86VH407JE95MG_1) on beginning programming, showcasing Spartan's code, Discord community and the leadership within it.
+
+Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, reach out to me, I'd love to showcase your project.

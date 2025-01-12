@@ -340,7 +340,7 @@ namespace spartan::geometry_processing
         size_t index_count            = indices.size();
         size_t current_triangle_count = indices.size() / 3;
 
-        if (current_triangle_count >= triangle_target)
+        if (triangle_target >= current_triangle_count)
             return;
 
         // loop until the current triangle count is less than or equal to the target triangle count
@@ -405,10 +405,10 @@ namespace spartan::geometry_processing
             {
                 std::tuple<float, size_t> agressivness_table[] =
                 {
-                    { 0.3f, 10000 }, // ultra aggressive
-                    { 0.5f, 7000  }, // aggressive
-                    { 0.7f, 5000  }, // balanced
-                    { 0.9f, 2000  }  // gentle
+                    { 0.2f, 20000 },  // ultra aggressive
+                    { 0.4f, 10000  }, // aggressive
+                    { 0.6f, 5000  },  // balanced
+                    { 0.8f, 2500  }   // gentle
                 };
             
                 for (const auto& [reduction_percentage, triangle_threshold] : agressivness_table)
@@ -420,7 +420,7 @@ namespace spartan::geometry_processing
                 }
                 return triangle_count; // native
             };
-            
+
             simplify(indices, vertices, get_triangle_target(indices.size() / 3));
         }
     }
