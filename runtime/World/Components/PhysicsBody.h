@@ -185,5 +185,7 @@ namespace spartan
         void* m_rigid_body             = nullptr;
         std::shared_ptr<Car> m_car     = nullptr;
         std::vector<Constraint*> m_constraints;
+        std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
+        std::vector<uint32_t> m_indices;
     };
 }

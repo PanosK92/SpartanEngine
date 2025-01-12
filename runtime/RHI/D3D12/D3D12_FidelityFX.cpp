@@ -28,11 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //========================================
 
 //= NAMESPACES ===============
-using namespace Spartan::Math;
+using namespace spartan::math;
 using namespace std;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     void RHI_FidelityFX::Initialize()
     {

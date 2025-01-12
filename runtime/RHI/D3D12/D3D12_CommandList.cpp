@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Device.h"
-#include "../RHI_Sampler.h"
 #include "../RHI_Texture.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_SwapChain.h"
@@ -35,10 +34,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
+using namespace spartan::math;
 //============================
 
-namespace Spartan
+namespace spartan
 {
     RHI_CommandList::RHI_CommandList(void* cmd_pool, const char* name)
     {
@@ -204,7 +203,7 @@ namespace Spartan
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetViewports(1, &d3d12_viewport);
     }
     
-    void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
+    void RHI_CommandList::SetScissorRectangle(const math::Rectangle& scissor_rectangle) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 

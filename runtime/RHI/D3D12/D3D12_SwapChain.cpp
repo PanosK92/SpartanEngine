@@ -29,12 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <wrl/client.h>
 //================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
-using namespace Spartan::Math;
-//=============================
+using namespace spartan::math;
+//============================
 
-namespace Spartan
+namespace spartan
 {
     static DXGI_SWAP_EFFECT get_swap_effect()
     {

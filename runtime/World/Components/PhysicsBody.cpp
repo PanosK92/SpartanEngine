@@ -26,14 +26,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "Terrain.h"
 #include "../Entity.h"
-#include "../RHI/RHI_Vertex.h"
-#include "../RHI/RHI_Texture.h"
+#include "../../RHI/RHI_Vertex.h"
+#include "../../RHI/RHI_Texture.h"
 #include "../../IO/FileStream.h"
-#include "../Game/Car.h"
+#include "../../Game/Car.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-#include "../Rendering/Renderer.h"
-#include "ProgressTracker.h"
+#include "../../Rendering/Renderer.h"
+#include "../../Core/ProgressTracker.h"
+#include "../../Core/GeometryProcessing.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
@@ -46,7 +47,6 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include <BulletCollision/CollisionShapes/btCompoundShape.h>
-#include <BulletCollision/Gimpact/btGImpactShape.h>
 SP_WARNINGS_ON
 //====================================================================
 
@@ -880,8 +880,7 @@ namespace spartan
             case PhysicsShape::Mesh:
             {
                 // get common prerequisites for certain shapes
-                vector<uint32_t> indices;
-                vector<RHI_Vertex_PosTexNorTan> vertices;
+              
                 shared_ptr<Renderable> renderable = GetEntity()->GetComponent<Renderable>();
             
                 // get renderable
@@ -892,23 +891,23 @@ namespace spartan
                 }
 
                 // get geometry
-                renderable->GetGeometry(&indices, &vertices);
-                if (vertices.empty())
+                renderable->GetGeometry(&m_indices, &m_vertices);
+                if (m_vertices.empty())
                 {
                     SP_LOG_WARNING("PhysicsShape::Mesh requires the renderable component to contain vertices");
                     return;
                 }
 
                 // determine how much detail is needed for this shape
-                const bool is_enterable = can_player_fit(GetEntity(), vertices, size);
+                const bool is_enterable = can_player_fit(GetEntity(), m_vertices, size);
                 const bool convex_hull  = !is_enterable;
 
                 if (convex_hull)
                 {
                     // create
                     btConvexHullShape* shape_convex = new btConvexHullShape(
-                        reinterpret_cast<btScalar*>(&vertices[0]),
-                        static_cast<uint32_t>(vertices.size()),
+                        reinterpret_cast<btScalar*>(&m_vertices[0]),
+                        static_cast<uint32_t>(m_vertices.size()),
                         static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))
                     );
                     shape_convex->optimizeConvexHull();
@@ -927,24 +926,28 @@ namespace spartan
                     {
                         shape_compound->addChildShape(compute_transform(Vector3::Zero, Quaternion::Identity, size), shape_convex);
                     }
-                    
+
                     m_shape = shape_compound;
                 }
                 else
                 {
-                    // create
-                    btTriangleMesh* mesh = new btTriangleMesh();
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(indices.size()); i += 3)
-                    {
-                        btVector3 vertex0(vertices[indices[i]].pos[0],     vertices[indices[i]].pos[1],     vertices[indices[i]].pos[2]);
-                        btVector3 vertex1(vertices[indices[i + 1]].pos[0], vertices[indices[i + 1]].pos[1], vertices[indices[i + 1]].pos[2]);
-                        btVector3 vertex2(vertices[indices[i + 2]].pos[0], vertices[indices[i + 2]].pos[1], vertices[indices[i + 2]].pos[2]);
+                    geometry_processing::simplify(m_indices, m_vertices, static_cast<size_t>(m_vertices.size() * 0.2f));
 
-                        mesh->addTriangle(vertex0, vertex1, vertex2);
-                    }
-
-                    // convert to btBvhTriangleMeshShape
-                    btBvhTriangleMeshShape* shape_triangle_mesh = new btBvhTriangleMeshShape(mesh, true);
+                    // create a btTriangleIndexVertexArray using indices and vertices
+                    btTriangleIndexVertexArray* index_vertex_array = new btTriangleIndexVertexArray(
+                        static_cast<int>(m_indices.size() / 3),          // Number of triangles
+                        reinterpret_cast<int*>(&m_indices[0]),           // Pointer to indices
+                        sizeof(uint32_t) * 3,                            // Stride between index sets (3 indices per triangle)
+                        static_cast<int>(m_vertices.size()),             // Number of vertices
+                        reinterpret_cast<float*>(&m_vertices[0].pos[0]), // Pointer to vertex positions
+                        sizeof(m_vertices[0])                            // Stride between vertices
+                    );
+                    
+                    // create a btBvhTriangleMeshShape using the index-vertex array
+                    btBvhTriangleMeshShape* shape_triangle_mesh = new btBvhTriangleMeshShape(
+                        index_vertex_array,
+                        true // BVH for optimized collisions
+                    );
                     shape_triangle_mesh->setLocalScaling(vector_to_bt(size));
 
                     // btBvhTriangleMeshShape is static and expensive to collide with

@@ -333,15 +333,15 @@ namespace spartan::geometry_processing
         generate_cylinder(vertices, indices, 0.0f, radius, height);
     }
 
-    static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t index_count, size_t vertex_target)
+    static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t vertex_target)
     {
-        float reduction = 0.2f;
-        float error     = 0.01f;
-    
+        float reduction             = 0.2f;
+        float error                 = 0.01f;
+        size_t index_count          = indices.size();
         size_t current_vertex_count = indices.size() / 3;
-        std::vector<uint32_t> indices_simplified(indices.size());
-    
+
         // loop until the current vertex count is less than or equal to the target vertex count
+        std::vector<uint32_t> indices_simplified(index_count);
         while (current_vertex_count > vertex_target)
         {
             float threshold           = 1.0f - reduction;
@@ -410,7 +410,7 @@ namespace spartan::geometry_processing
                 return vertex_count; // native
             };
             
-            simplify(indices, vertices, index_count, get_vertex_target(vertex_count));
+            simplify(indices, vertices, get_vertex_target(vertex_count));
         }
     }
 }
