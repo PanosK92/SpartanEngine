@@ -333,8 +333,25 @@ namespace spartan::geometry_processing
         generate_cylinder(vertices, indices, 0.0f, radius, height);
     }
 
+    static void register_meshoptimizer()
+    {
+        static bool registered = false;
+        if (registered)
+            return;
+
+         // always give credit where credit is due
+        const int major = MESHOPTIMIZER_VERSION / 1000;
+        const int minor = (MESHOPTIMIZER_VERSION % 1000) / 10;
+        const int rev   = MESHOPTIMIZER_VERSION % 10;
+        Settings::RegisterThirdPartyLib("meshoptimizer", std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(rev), "https://github.com/zeux/meshoptimizer");
+
+        registered = true;
+    }
+
     static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t triangle_target)
     {
+        register_meshoptimizer();
+
         float reduction               = 0.1f;
         float error                   = 0.1f;
         size_t index_count            = indices.size();
@@ -378,6 +395,8 @@ namespace spartan::geometry_processing
 
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
     {
+        register_meshoptimizer();
+
         size_t vertex_count = vertices.size();
         size_t index_count  = indices.size();
     

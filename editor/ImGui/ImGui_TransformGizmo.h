@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::TransformGizmo
 {
-    const  spartan::math::Vector3 snap =  spartan::math::Vector3(0.1f, 0.1f, 0.1f);
+    const  spartan::math::Vector3 snap = spartan::math::Vector3(0.1f, 0.1f, 0.1f);
 
     bool first_use = true;
     spartan::math::Vector3 position_previous;
