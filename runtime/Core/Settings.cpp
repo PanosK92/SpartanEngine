@@ -174,7 +174,16 @@ namespace spartan
     void Settings::RegisterThirdPartyLib(const string& name, const string& version, const string& url)
     {
         lock_guard<mutex> lock(mutex_register);
+
         m_third_party_libs.emplace_back(name, version, url);
+
+        // maintain alphabetical order
+        sort(m_third_party_libs.begin(), m_third_party_libs.end(),
+            [](const third_party_lib& a, const third_party_lib& b)
+            {
+                return a.name < b.name;
+            }
+        );
     }
 
     const vector<third_party_lib>& Settings::GetThirdPartyLibs()

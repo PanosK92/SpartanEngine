@@ -395,8 +395,6 @@ namespace spartan::geometry_processing
 
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
     {
-        register_meshoptimizer();
-
         size_t vertex_count = vertices.size();
         size_t index_count  = indices.size();
     
