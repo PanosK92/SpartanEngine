@@ -5,9 +5,9 @@
 
 - <img align="left" width="32" src="https://i.pinimg.com/736x/99/65/5e/99655e9fe24eb0a7ea38de683cedb735.jpg"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">X</a>.
   
-- <img align="left" width="32" height="32" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/discord.png">For a community like no other, join our group of 400+ members on [discord](https://discord.gg/TG5r2BS).
+- <img align="left" width="32" height="32" src="https://e7.pngegg.com/pngimages/705/535/png-clipart-computer-icons-discord-logo-discord-icon-rectangle-logo.png">For a community like no other, join our group of 400+ members on [discord](https://discord.gg/TG5r2BS).
   
-- <img align="left" width="32" height="32" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/github.png">For issues and anything directly related to the project, feel free to open an issue.
+- <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/25/25231.png">For issues and anything directly related to the project, feel free to open an issue.
   
 - <img align="left" width="32" height="32" src="https://i0.wp.com/opensource.org/wp-content/uploads/2023/01/cropped-cropped-OSI_Horizontal_Logo_0-e1674081292667.png">Please adhere to the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a>. You're free to copy the code, provided you include the original license.
   
@@ -45,7 +45,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Cutting edge Vulkan renderer.
 - 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
 - On the fly single dispatch GPU-based mip generation for render targets (FidelityFX SPD).
-- On the fly compression and mip generation for material textures (FidelityFX Compressonator).
+- On the fly compression and mip generation for material textures (FidelityFX Compressonator).fantastic_dove_20095v
 - Fully bindless design (materials, lights, even the samplers).
 - Fast dual paraboloid point lights.
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
