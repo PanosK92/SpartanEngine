@@ -427,6 +427,10 @@ namespace spartan
                 entity->SetObjectName("flight_helmet");
                 entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
                 entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
+
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                physics_body->SetMass(8.0f);
+                physics_body->SetShapeType(PhysicsShape::Mesh);
             }
 
             // damaged helmet
