@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Mesh.h"
 #include "../RHI/RHI_Buffer.h"
-#include "../World/Components/Renderable.h"
 #include "../World/Entity.h"
 #include "../IO/FileStream.h"
 #include "../Resource/Import/ModelImporter.h"
@@ -228,18 +227,5 @@ namespace spartan
         }
 
         CreateGpuBuffers();
-    }
-
-    void Mesh::SetMaterial(shared_ptr<Material>& material, Entity* entity) const
-    {
-        SP_ASSERT(material != nullptr);
-        SP_ASSERT(entity != nullptr);
-
-        // create a file path for this material (required for the material to be able to be cached by the resource cache)
-        const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePath()) + material->GetObjectName() + EXTENSION_MATERIAL;
-        material->SetResourceFilePath(spartan_asset_path);
-
-        // create a Renderable and pass the material to it
-        entity->AddComponent<Renderable>()->SetMaterial(material);
     }
 }

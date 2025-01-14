@@ -105,7 +105,6 @@ namespace spartan
         static uint32_t GetDefaultFlags();
 
         void PostProcess();
-        void SetMaterial(std::shared_ptr<Material>& material, Entity* entity) const;
 
     private:
         // geometry
