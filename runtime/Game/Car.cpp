@@ -628,7 +628,7 @@ namespace spartan
             m_parameters.movement_direction = CarMovementState::Stationary;
         }
 
-        if (m_parameters.control_enabled)
+        if (m_parameters.under_control)
         { 
             HandleInput();
         }
@@ -774,7 +774,8 @@ namespace spartan
 
         // braking
         {
-            float breaking = Input::GetKey(KeyCode::Space) ? 1.0f : 0.0f;
+            bool handbrake = !m_parameters.under_control;
+            float breaking = (Input::GetKey(KeyCode::Space) || handbrake) ? 1.0f : 0.0f;
             breaking       = m_parameters.break_until_opposite_torque ? 1.0f : breaking;
 
             if (breaking > 0.0f)
