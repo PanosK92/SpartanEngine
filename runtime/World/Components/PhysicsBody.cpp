@@ -63,26 +63,18 @@ namespace spartan
         #define rigid_body static_cast<btRigidBody*>(m_rigid_body)
         #define vehicle    static_cast<btRaycastVehicle*>(m_vehicle)
 
-        btTransform compute_transform(const Vector3& position, const Quaternion& rotation, const Vector3& scale)
+        btTransform compute_transform(const Vector3& position, const Quaternion& rotation)
         {
-            btTransform transform;
-            transform.setIdentity();
-        
+            // to bullet
             btQuaternion bt_rotation = quaternion_to_bt(rotation);
             btVector3 bt_position    = vector_to_bt(position);
-        
-            btMatrix3x3& basis = transform.getBasis();
-            basis.setValue(scale.x, 0, 0,
-                           0, scale.y, 0,
-                           0, 0, scale.z);
-        
-            // Create a transform from the rotation quaternion
-            btTransform rotation_transform(bt_rotation);
-            transform = rotation_transform * transform;
-        
-            // Set the position
+
+            // to transform
+            btTransform transform;
+            transform.setIdentity();
+            transform.setRotation(bt_rotation);
             transform.setOrigin(bt_position);
-        
+
             return transform;
         }
 
@@ -879,64 +871,65 @@ namespace spartan
 
             case PhysicsShape::Mesh:
             {
-                function<void(Entity*, btCompoundShape*)> recursive_renderable_to_shape = [&](Entity* entity, btCompoundShape* compoundShape)
+                function<void(Entity*, btCompoundShape*, bool)> recursive_renderable_to_shape = [&](Entity* entity, btCompoundShape* shape_compount, const bool is_root_entity)
                 {
                     // get renderable
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     if (renderable)
                     {
-                        // get geometry
-                        vector<uint32_t> indices;
-                        vector<RHI_Vertex_PosTexNorTan> vertices;
-                        renderable->GetGeometry(&indices, &vertices);
-            
-                        if (vertices.empty())
-                        {
-                            SP_LOG_WARNING("PhysicsShape::Mesh requires the renderable component to contain vertices");
-                            return;
-                        }
+                        // get geometry and save it as well
+                        // geometry is saved because btTriangleIndexVertexArray only points it
+                        PhysicsBodyMeshData& mesh_data = m_mesh_data.emplace_back();
+                        renderable->GetGeometry(&mesh_data.indices, &mesh_data.vertices);
+
+                        // the root/calling entity's position and rotation is control by the motion state, no need to apply it here
+                        Vector3 position    = is_root_entity ? Vector3::Zero        : entity->GetPosition();
+                        Quaternion rotation = is_root_entity ? Quaternion::Identity : entity->GetRotation();
             
                         // determine how much detail is needed for this shape
-                        const bool is_enterable = can_player_fit(entity, vertices, size);
-                        const bool convex_hull = !is_enterable;
+                        const bool is_enterable = can_player_fit(entity, mesh_data.vertices, size);
+                        const bool is_dynamic   = m_mass > 0.0f;
+                        const bool convex_hull  = is_dynamic || !is_enterable;
             
                         if (convex_hull)
                         {
                             // create convex hull shape
                             btConvexHullShape* shape_convex = new btConvexHullShape(
-                                reinterpret_cast<btScalar*>(&vertices[0]),
-                                static_cast<uint32_t>(vertices.size()),
+                                reinterpret_cast<btScalar*>(&mesh_data.vertices[0]),
+                                static_cast<uint32_t>(mesh_data.vertices.size()),
                                 static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))
                             );
+
                             shape_convex->optimizeConvexHull();
+                            shape_convex->setLocalScaling(vector_to_bt(size));
             
                             // add to compound
                             if (renderable->HasInstancing())
                             {
                                 for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
                                 {
-                                    Matrix world_transform = renderable->GetInstanceTransform(instance_index);
-                                    compoundShape->addChildShape(compute_transform(world_transform.GetTranslation(), world_transform.GetRotation(), world_transform.GetScale()), shape_convex);
+                                    Matrix transform_instance = renderable->GetInstanceTransform(instance_index) * entity->GetMatrix();
+                                    shape_compount->addChildShape(compute_transform(transform_instance.GetTranslation(), transform_instance.GetRotation()), shape_convex);
                                 }
                             }
                             else
                             {
-                                compoundShape->addChildShape(compute_transform(Vector3::Zero, Quaternion::Identity, size), shape_convex);
+                                shape_compount->addChildShape(compute_transform(position, rotation), shape_convex);
                             }
                         }
                         else
                         {
                             // simplify the geometry if not convex hull
-                            geometry_processing::simplify(indices, vertices, static_cast<size_t>((indices.size() / 3) * 0.05f));
+                            geometry_processing::simplify(mesh_data.indices, mesh_data.vertices, static_cast<size_t>((mesh_data.indices.size() / 3) * 0.05f));
             
                             // create triangle mesh shape
                             btTriangleIndexVertexArray* index_vertex_array = new btTriangleIndexVertexArray(
-                                static_cast<int>(indices.size() / 3),
-                                reinterpret_cast<int*>(&indices[0]),
+                                static_cast<int>(mesh_data.indices.size() / 3),
+                                reinterpret_cast<int*>(&mesh_data.indices[0]),
                                 sizeof(uint32_t) * 3,
-                                static_cast<int>(vertices.size()),
-                                reinterpret_cast<float*>(&vertices[0].pos[0]),
-                                sizeof(vertices[0])
+                                static_cast<int>(mesh_data.vertices.size()),
+                                reinterpret_cast<float*>(&mesh_data.vertices[0].pos[0]),
+                                sizeof(mesh_data.vertices[0])
                             );
             
                             btBvhTriangleMeshShape* shape_triangle_mesh = new btBvhTriangleMeshShape(
@@ -945,12 +938,10 @@ namespace spartan
                             );
             
                             shape_triangle_mesh->setLocalScaling(vector_to_bt(size));
-            
-                            // set properties for kinematic static collision
+
                             m_is_kinematic = true;
-                            m_mass         = 0.0f;
-            
-                            compoundShape->addChildShape(compute_transform(Vector3::Zero, Quaternion::Identity, size), shape_triangle_mesh);
+
+                            shape_compount->addChildShape(compute_transform(Vector3::Zero, Quaternion::Identity), shape_triangle_mesh);
                         }
                     }
             
@@ -958,15 +949,13 @@ namespace spartan
                     vector<Entity*> children = entity->GetChildren();
                     for (Entity* child : children)
                     {
-                        recursive_renderable_to_shape(child, compoundShape);
+                        recursive_renderable_to_shape(child, shape_compount, false);
                     }
                 };
             
-                // create the compound shape
+                // recursively create a compound shape that contains the entity's hierarchy
                 btCompoundShape* shape_compound = new btCompoundShape();
-            
-                // start the recursive process for this entity
-                recursive_renderable_to_shape(GetEntity(), shape_compound);
+                recursive_renderable_to_shape(GetEntity(), shape_compound, true);
             
                 m_shape = shape_compound;
             

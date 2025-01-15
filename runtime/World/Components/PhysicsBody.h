@@ -60,6 +60,12 @@ namespace spartan
         Max
     };
 
+    struct PhysicsBodyMeshData
+    {
+        std::vector<uint32_t> indices;
+        std::vector<RHI_Vertex_PosTexNorTan> vertices;
+    };
+
     class PhysicsBody : public Component
     {
     public:
@@ -166,7 +172,7 @@ namespace spartan
         void RemoveBodyFromWorld();
         void UpdateShape();
 
-        float m_mass                   = 1.0f;
+        float m_mass                   = 0.0f;
         float m_friction               = 1.0f;
         float m_friction_rolling       = 0.002f;
         float m_restitution            = 0.2f;
@@ -184,6 +190,7 @@ namespace spartan
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;
         std::shared_ptr<Car> m_car     = nullptr;
+        std::vector<PhysicsBodyMeshData> m_mesh_data;
         std::vector<Constraint*> m_constraints;
     };
 }

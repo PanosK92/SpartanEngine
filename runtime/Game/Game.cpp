@@ -100,7 +100,6 @@ namespace spartan
             
             // add physics components
             shared_ptr<PhysicsBody> physics_body = entity->AddComponent<PhysicsBody>();
-            physics_body->SetMass(0.0f);
             physics_body->SetShapeType(PhysicsShape::StaticPlane);
         }
 
@@ -570,7 +569,6 @@ namespace spartan
                 {
                     // add physics so we can walk on it
                     PhysicsBody* physics_body = m_default_terrain->AddComponent<PhysicsBody>().get();
-                    physics_body->SetMass(0.0f);
                     physics_body->SetShapeType(PhysicsShape::Terrain);
 
                     // water
@@ -634,7 +632,6 @@ namespace spartan
                             // make the bark collidable
                             shared_ptr<PhysicsBody> physics_body = bark->AddComponent<PhysicsBody>();
                             physics_body->SetShapeType(PhysicsShape::Mesh);
-                            physics_body->SetMass(0.0f);
                         }
 
                         if (Entity* branches = entity->GetDescendantByName("Branches"))
@@ -744,7 +741,6 @@ namespace spartan
                     if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -818,18 +814,8 @@ namespace spartan
                 entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
                 entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
 
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
-                {
-                    if (entity->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f);
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                physics_body->SetShapeType(PhysicsShape::Mesh);
             }
         }
 
@@ -860,7 +846,6 @@ namespace spartan
                     if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f); // static
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -899,7 +884,6 @@ namespace spartan
                     if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -928,7 +912,6 @@ namespace spartan
                     if (entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -956,7 +939,6 @@ namespace spartan
                     if (entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f);
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -1080,7 +1062,6 @@ namespace spartan
                     if (entity->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetMass(0.0f); // static
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
