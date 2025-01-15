@@ -694,12 +694,14 @@ namespace spartan
         m_size.z = helper::Clamp(m_size.z, helper::SMALL_FLOAT, INFINITY);
     }
 
-    void PhysicsBody::SetShapeType(PhysicsShape type)
+    void PhysicsBody::SetShapeType(PhysicsShape type, const bool replicate_hierarchy)
     {
         if (m_shape_type == type)
             return;
 
-        m_shape_type = type;
+        m_shape_type          = type;
+        m_replicate_hierarchy = replicate_hierarchy;
+
         UpdateShape();
     }
 
@@ -871,7 +873,7 @@ namespace spartan
 
             case PhysicsShape::Mesh:
             {
-                function<void(Entity*, btCompoundShape*, bool)> recursive_renderable_to_shape = [&](Entity* entity, btCompoundShape* shape_compount, const bool is_root_entity)
+                function<void(Entity*, btCompoundShape*, bool, bool)> recursive_renderable_to_shape = [&](Entity* entity, btCompoundShape* shape_compount, const bool is_root_entity, const bool replicate_hierarchy)
                 {
                     // get renderable
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
@@ -946,16 +948,19 @@ namespace spartan
                     }
             
                     // recursively process all children
-                    vector<Entity*> children = entity->GetChildren();
-                    for (Entity* child : children)
-                    {
-                        recursive_renderable_to_shape(child, shape_compount, false);
+                    if (replicate_hierarchy)
+                    { 
+                        vector<Entity*> children = entity->GetChildren();
+                        for (Entity* child : children)
+                        {
+                            recursive_renderable_to_shape(child, shape_compount, false, replicate_hierarchy);
+                        }
                     }
                 };
             
                 // recursively create a compound shape that contains the entity's hierarchy
                 btCompoundShape* shape_compound = new btCompoundShape();
-                recursive_renderable_to_shape(GetEntity(), shape_compound, true);
+                recursive_renderable_to_shape(GetEntity(), shape_compound, true, m_replicate_hierarchy);
             
                 m_shape = shape_compound;
             

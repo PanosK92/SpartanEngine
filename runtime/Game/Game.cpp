@@ -429,7 +429,7 @@ namespace spartan
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
                 physics_body->SetMass(8.0f);
-                physics_body->SetShapeType(PhysicsShape::Mesh);
+                physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
 
             // damaged helmet
@@ -815,7 +815,7 @@ namespace spartan
                 entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                physics_body->SetShapeType(PhysicsShape::Mesh);
+                physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
         }
 
@@ -904,17 +904,8 @@ namespace spartan
                 entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
                 entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
 
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
-                {
-                    if (entity->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
         }
 
@@ -930,18 +921,6 @@ namespace spartan
                 entity->SetObjectName("living_Room");
                 entity->SetPosition(Vector3(0.0f, 0.03f, 0.0f));
                 entity->SetScale(Vector3(2.5f, 2.5f, 2.5f));
-
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
-                {
-                    if (entity->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
 
                 // make the radiator metallic
                 if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_93")->GetComponent<Renderable>())
@@ -981,9 +960,9 @@ namespace spartan
                 }
 
                 // disable window blinds
-               entity->GetDescendantByName("Default_1")->SetActive(false);
-               entity->GetDescendantByName("Default_2")->SetActive(false);
-               entity->GetDescendantByName("Default_3")->SetActive(false);
+                entity->GetDescendantByName("Default_1")->SetActive(false);
+                entity->GetDescendantByName("Default_2")->SetActive(false);
+                entity->GetDescendantByName("Default_3")->SetActive(false);
 
                 // make the same come in through the window
                 m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(30.0f, 180.0f, 0.0f));
@@ -1041,6 +1020,18 @@ namespace spartan
                         }
                     }
                 }
+
+               // enable physics for all meshes
+               vector<Entity*> entities;
+               entity->GetDescendants(&entities);
+               for (Entity* entity : entities)
+               {
+                   if (entity->GetComponent<Renderable>() != nullptr)
+                   {
+                       PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                       physics_body->SetShapeType(PhysicsShape::Mesh);
+                   }
+               }
             }
         }
 

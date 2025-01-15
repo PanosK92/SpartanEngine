@@ -146,7 +146,7 @@ namespace spartan
 
         // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
-        void SetShapeType(PhysicsShape type);
+        void SetShapeType(PhysicsShape type, const bool replicate_hierarchy = false);
 
         // body type
         PhysicsBodyType GetBodyType() const { return m_body_type; }
@@ -190,6 +190,7 @@ namespace spartan
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;
         std::shared_ptr<Car> m_car     = nullptr;
+        bool m_replicate_hierarchy     = false;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
         std::vector<Constraint*> m_constraints;
     };
