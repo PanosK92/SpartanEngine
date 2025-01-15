@@ -520,6 +520,9 @@ namespace spartan
                 mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MODEL);
             }
 
+            // don't optimize this geometry as it's made to spec
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+
             mesh->AddGeometry(vertices, indices);
             mesh->SetType(type);
             mesh->PostProcess();
