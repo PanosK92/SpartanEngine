@@ -665,6 +665,8 @@ namespace spartan
         {
             shared_ptr<Mesh>& mesh = m_tile_meshes.emplace_back(make_shared<Mesh>());
             mesh->SetObjectName(name);
+            // don't optimize the terrain as tile seams will be visible
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
         }
 
         // update with geometry
