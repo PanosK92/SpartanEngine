@@ -1122,7 +1122,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set these once
-        cmd_list->SetTexture(Renderer_BindingsSrv::sss,         GetRenderTarget(Renderer_RenderTarget::sss));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,     GetRenderTarget(Renderer_RenderTarget::sss));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTarget::skysphere));
 
         // iterate through all the lights
@@ -1140,7 +1140,7 @@ namespace spartan
 
             if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
             {
-                // do lighitng even if the intensity is 0 as the first light (index 0) clears the render targets in the shader
+                // do lighting even if the intensity is 0 as the first light (index 0) clears the render targets in the shader
 
                 // set shadow maps
                 {
@@ -1297,7 +1297,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssr,               GetRenderTarget(Renderer_RenderTarget::ssr));
-        cmd_list->SetTexture(Renderer_BindingsSrv::sss,               GetRenderTarget(Renderer_RenderTarget::sss));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,           GetRenderTarget(Renderer_RenderTarget::sss));
         cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
         cmd_list->SetTexture(Renderer_BindingsSrv::tex,               GetRenderTarget(Renderer_RenderTarget::light_shadow));

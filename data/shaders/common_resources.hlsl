@@ -77,7 +77,7 @@ struct PassBufferData
     matrix values;
 };
 
-// struct which forms a bindless material parameters array
+// struct which forms the bindless material parameters array
 struct MaterialParameters
 {
     float4 color;
@@ -104,7 +104,7 @@ struct MaterialParameters
     float clearcoat_roughness;
 };
 
-// struct which forms a bindless light parameters array
+// struct which forms the bindless light parameters array
 struct LightParameters
 {
     matrix transform[2];
@@ -131,6 +131,7 @@ Texture2D tex_velocity       : register(t3);
 Texture2D tex_depth          : register(t4);
 Texture2D tex_depth_backface : register(t5);
 Texture2D tex_depth_opaque   : register(t6);
+
 // lighting
 Texture2D tex_light_diffuse     : register(t7);
 Texture2D tex_light_diffuse_gi  : register(t8);
@@ -138,9 +139,11 @@ Texture2D tex_light_specular    : register(t9);
 Texture2D tex_light_specular_gi : register(t10);
 Texture2D tex_light_shadow      : register(t11);
 Texture2D tex_light_volumetric  : register(t12);
+
 // shadow maps
 Texture2DArray tex_light_depth : register(t13);
 Texture2DArray tex_light_color : register(t14);
+
 // misc
 Texture2D tex_lut_ibl     : register(t15);
 Texture2D tex_environment : register(t16);
@@ -150,12 +153,11 @@ Texture2D tex_frame       : register(t19);
 Texture2D tex             : register(t20);
 Texture2D tex2            : register(t21);
 Texture2D tex_font_atlas  : register(t22);
-Texture2DArray tex_sss    : register(t23);
 
 // bindless arrays
-Texture2D material_textures[]                            : register(t24, space1);
-StructuredBuffer<MaterialParameters> material_parameters : register(t25, space2);
-StructuredBuffer<LightParameters> light_parameters       : register(t26, space3);
+Texture2D material_textures[]                            : register(t23, space1);
+StructuredBuffer<MaterialParameters> material_parameters : register(t24, space2);
+StructuredBuffer<LightParameters> light_parameters       : register(t25, space3);
 SamplerComparisonState samplers_comparison[]             : register(s0,  space4);
 SamplerState samplers[]                                  : register(s1,  space5);
 

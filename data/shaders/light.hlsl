@@ -87,7 +87,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 uint array_slice_index = light.get_array_index();
                 if (light.has_shadows_screen_space() && pass_is_opaque() && array_slice_index != -1)
                 {
-                    shadow.a = min(shadow.a, tex_sss[int3(thread_id.xy, array_slice_index)].x);
+                    shadow.a = min(shadow.a, tex_uav_sss[int3(thread_id.xy, array_slice_index)].x);
                 }
             }
 

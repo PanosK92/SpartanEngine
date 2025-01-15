@@ -137,12 +137,11 @@ namespace spartan
         tex         = 20,
         tex2        = 21,
         font_atlas  = 22,
-        sss         = 23,
 
         // bindless
-        material_textures   = 24,
-        material_parameters = 25,
-        light_parameters    = 26
+        material_textures   = 23,
+        material_parameters = 24,
+        light_parameters    = 25
     };
 
     enum class Renderer_BindingsUav
