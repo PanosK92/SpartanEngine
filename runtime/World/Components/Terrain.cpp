@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =============================
 #include "pch.h"
 #include "Terrain.h"
 #include "Renderable.h"
@@ -31,7 +31,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Mesh.h"
 #include "../../Core/ThreadPool.h"
 #include "../../Core/ProgressTracker.h"
-//=======================================
+#include "../../Core/GeometryProcessing.h"
+//========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -578,7 +579,7 @@ namespace spartan
         m_is_generating = true;
 
         // star progress tracking
-        uint32_t job_count = 6;
+        uint32_t job_count = 7;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
 
         uint32_t width  = 0;
@@ -632,14 +633,21 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 5. split into tiles
+        // 5. optimize geometry
+        {
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
+            spartan::geometry_processing::optimize(m_vertices, m_indices);
+            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+        }
+
+        // 6. split into tiles
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
             split_terrain_into_tiles(m_vertices, m_indices, m_tile_vertices, m_tile_indices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 6. create a mesh for each tile
+        // 7. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating tile meshes");
 
