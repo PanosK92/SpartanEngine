@@ -803,7 +803,7 @@ namespace spartan
 
         void create_doom()
         {
-            create_camera(Vector3(-120.0f, 23.0f, -30.0f), Vector3(0.0f, 90.0f, 0.0f));
+            create_camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
             create_sun(LightIntensity::sky_sunlight_noon, false);
             create_music("project\\music\\doom_e1m1.mp3");
 
