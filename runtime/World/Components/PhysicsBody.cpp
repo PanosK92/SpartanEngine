@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright(c) 2016-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -805,36 +805,45 @@ namespace spartan
         }
 
         Vector3 size = m_size * GetEntity()->GetScale();
+        float volume = 1.0f;
 
         // construct new shape
         switch (m_shape_type)
         {
+
             case PhysicsShape::Box:
                 m_shape = new btBoxShape(vector_to_bt(size * 0.5f));
+                volume  = size.x * size.y * size.z; // volume of a box = width * height * depth
                 break;
 
             case PhysicsShape::Sphere:
                 m_shape = new btSphereShape(size.x * 0.5f);
-                break;
-
-            case PhysicsShape::StaticPlane:
-                m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+                volume  = (4.0f / 3.0f) * 3.14f * pow(size.x * 0.5f, 3); // volume of a sphere = (4/3)πr³
                 break;
 
             case PhysicsShape::Cylinder:
                 m_shape = new btCylinderShape(vector_to_bt(size * 0.5f));
+                volume  = 3.14f * pow(size.x * 0.5f, 2) * size.y; // volume of a cylinder = πr²h
                 break;
 
             case PhysicsShape::Capsule:
             {
-                float radius = helper::Max(size.x, size.z) * 0.5f;
-                float height = size.y;
-                m_shape = new btCapsuleShape(radius, height);
+                float radius          = helper::Max(size.x, size.z) * 0.5f;
+                float height          = size.y - 2.0f * radius;                 // exclude spherical caps from the cylindrical height
+                float sphere_volume   = (4.0f / 3.0f) * 3.14f * pow(radius, 3); // volume of spherical caps
+                float cylinder_volume = 3.14f * pow(radius, 2) * height;        // volume of cylindrical body
+                volume                = sphere_volume + cylinder_volume;
+                m_shape               = new btCapsuleShape(radius, size.y);
                 break;
             }
 
             case PhysicsShape::Cone:
                 m_shape = new btConeShape(size.x * 0.5f, size.y);
+                volume  = (1.0f / 3.0f) * 3.14f * pow(size.x * 0.5f, 2) * size.y; // volume of a cone = (1/3)πr²h
+                break;
+
+           case PhysicsShape::StaticPlane:
+                m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
                 break;
 
             case PhysicsShape::Terrain:
@@ -879,6 +888,11 @@ namespace spartan
                     shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     if (renderable)
                     {
+                        if (is_root_entity)
+                        {
+                            volume = renderable->GetBoundingBox(BoundingBoxType::Transformed).Volume();
+                        }
+
                         // get geometry and save it as well
                         // geometry is saved because btTriangleIndexVertexArray only points it
                         PhysicsBodyMeshData& mesh_data = m_mesh_data.emplace_back();
@@ -963,9 +977,17 @@ namespace spartan
                 recursive_renderable_to_shape(GetEntity(), shape_compound, true, m_replicate_hierarchy);
             
                 m_shape = shape_compound;
-            
+
                 break;
             }
+        }
+
+        if (volume > 0.0f && m_mass == mass_auto)
+        {
+            // objects can be hollow, have non-uniform density and be made of multiple materials
+            // we approximate this by using a small density which provides "expected" kg values
+            const float density = 80.0f;
+            m_mass              = density * volume;
         }
 
         static_cast<btCollisionShape*>(m_shape)->setUserPointer(this);

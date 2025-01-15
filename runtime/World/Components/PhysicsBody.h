@@ -167,6 +167,8 @@ namespace spartan
         void* GetBtRigidBody() const  { return m_rigid_body; }
         std::shared_ptr<Car> GetCar() { return m_car; }
 
+        constexpr static inline float mass_auto = FLT_MAX;
+
     private:
         void AddBodyToWorld();
         void RemoveBodyFromWorld();

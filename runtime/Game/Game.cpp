@@ -415,7 +415,7 @@ namespace spartan
 
                 // add physics components
                 shared_ptr<PhysicsBody> physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetMass(15.0f);
+                physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Box);
             }
 
@@ -428,7 +428,7 @@ namespace spartan
                 entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                physics_body->SetMass(8.0f);
+                physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
 
@@ -441,7 +441,7 @@ namespace spartan
                 entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
-                physics_body->SetMass(8.0f);
+                physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh);
             }
 
@@ -456,7 +456,7 @@ namespace spartan
                 if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
                 {
                     PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>().get();
-                    physics_body->SetMass(8.0f);
+                    physics_body->SetMass(PhysicsBody::mass_auto);
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                 }
             }
