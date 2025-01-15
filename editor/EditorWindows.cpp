@@ -49,15 +49,11 @@ namespace
             const float width  = 600.0f;
             const float height = 240.0f;
             
-            // set position
             ImVec2 display_size = ImGui::GetIO().DisplaySize;
-            ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.5f, (display_size.y - height) * 0.7f);
+            ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.15f, (display_size.y - height) * 0.45f);
             ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-            
-            // set size
             ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
             
-            // set focus
             if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
             {
                 ImGui::TextWrapped("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans looking to experiment.");
@@ -75,12 +71,9 @@ namespace
             const float width  = 600.0f;
             const float height = 240.0f;
             
-            // set position
             ImVec2 display_size = ImGui::GetIO().DisplaySize;
-            ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.5f, (display_size.y - height) * 0.5f);
+            ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.15f, (display_size.y - height) * 0.3f);
             ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-            
-            // set size
             ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
             
             // set focus
