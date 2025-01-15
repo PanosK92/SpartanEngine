@@ -58,7 +58,6 @@ namespace
             ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
             
             // set focus
-            ImGui::SetNextWindowFocus();
             if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
             {
                 ImGui::TextWrapped("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans looking to experiment.");
@@ -85,7 +84,6 @@ namespace
             ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
             
             // set focus
-            ImGui::SetNextWindowFocus();
             if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
             {
                 ImGui::TextWrapped(
