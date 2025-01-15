@@ -40,6 +40,33 @@ namespace
 {
     Editor* editor = nullptr;
 
+    namespace introduction
+    {
+        bool visible = true;
+
+        void window()
+        {
+            const float width  = 600.0f;
+            const float height = 240.0f;
+            
+            // set position
+            ImVec2 display_size = ImGui::GetIO().DisplaySize;
+            ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.5f, (display_size.y - height) * 0.7f);
+            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
+            
+            // set size
+            ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
+            
+            // set focus
+            ImGui::SetNextWindowFocus();
+            if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
+            {
+                ImGui::TextWrapped("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans looking to experiment.");
+            }
+            ImGui::End();
+        }
+    }
+
     namespace sponsor
     {
         bool visible = true;
@@ -515,7 +542,8 @@ void EditorWindows::Initialize(Editor* editor_in)
     editor = editor_in;
 
     // the sponsor window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
-    sponsor::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
+    sponsor::visible      = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
+    introduction::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
 
     default_worlds::downloaded       = !spartan::FileSystem::IsDirectoryEmpty(spartan::ResourceCache::GetProjectDirectory());
     default_worlds::visible_download = !default_worlds::downloaded;
@@ -526,6 +554,11 @@ void EditorWindows::Tick()
 {
     // visibility
     {
+        if (introduction::visible)
+        { 
+            introduction::window();
+        }
+
         if (sponsor::visible)
         { 
             sponsor::window();
