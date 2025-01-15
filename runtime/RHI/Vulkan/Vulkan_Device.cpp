@@ -710,23 +710,8 @@ namespace spartan
                 SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator_external));
             }
 
-            // register version
-            {
-                auto version_to_string = [](uint32_t version) -> std::string
-                {
-                     uint32_t major = version / 1000000;
-                     uint32_t minor = (version / 1000) % 1000;
-                     uint32_t patch = version % 1000;
-
-                     // for some reason the version in the code is different that the version
-                     // reported in the github releases, everything is reversed
-                     ostringstream oss;
-                     oss << minor << "." << patch << "." << major;
-                     return oss.str();
-                };
-
-                Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", version_to_string(VMA_VULKAN_VERSION), "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
-            }
+            // register version (I don't think VMA provides version defines)
+            Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.2.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
         }
 
         void destroy()
