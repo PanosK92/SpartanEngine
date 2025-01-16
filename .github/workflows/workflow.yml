@@ -115,8 +115,8 @@ jobs:
           prerelease: true
           title: "Spartan v${{ steps.get_datetime.outputs.version }}"
           files: |
-            spartan_vulkan_release.7z
-            spartan_vulkan_debug.7z
+            spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.7z
+            spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.7z
 
       - name: Set environment file for release
         run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
