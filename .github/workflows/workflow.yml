@@ -46,6 +46,12 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install requests tqdm
 
+      - name: Generate version
+        id: version
+        run: |
+          echo "version=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_ENV
+          echo "Generated version: ${{ env.version }}"
+
       - name: Generate project files
         shell: python
         env:
@@ -60,12 +66,6 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
-      - name: Generate version
-        id: version
-        run: |
-          echo "version=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
-          echo "Generated version: ${{ env.version }}"
-
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         shell: cmd
@@ -73,14 +73,14 @@ jobs:
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           SET BUILD_NAME=spartan_${{ matrix.api }}_${{ matrix.configuration }}_${{ env.version }}
           echo "Build name: %BUILD_NAME%"
-          build_scripts\7z.exe a -bb1 %BUILD_NAME%.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+          build_scripts\7z.exe a -bb1 %BUILD_NAME%.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_${{ matrix.configuration }}.exe
           echo "::set-output name=artifact_name::%BUILD_NAME%.7z"
 
       - name: Upload artifact
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.version }}
+          name: spartan_${{ matrix.api }}_${{ matrix.configuration }}_${{ env.version }}
           path: ${{ steps.create-artifacts.outputs.artifact_name }}
 
   release:
@@ -96,13 +96,13 @@ jobs:
       - name: Download vulkan release build
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.version }}
+          name: spartan_vulkan_Release_${{ env.version }}
           path: spartan_vulkan_release.7z
 
       - name: Download vulkan debug build
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.version }}
+          name: spartan_vulkan_Debug_${{ env.version }}
           path: spartan_vulkan_debug.7z
 
       - name: Publish release
@@ -115,3 +115,6 @@ jobs:
           files: |
             spartan_vulkan_release.7z
             spartan_vulkan_debug.7z
+
+      - name: Set environment file for release
+        run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
