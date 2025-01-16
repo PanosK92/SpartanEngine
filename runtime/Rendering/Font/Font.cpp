@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Renderer.h"
 #include "../../Core/Stopwatch.h"
 #include "../../Resource/Import/FontImporter.h"
-#include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_Buffer.h"
 #include "../../RHI/RHI_CommandList.h"
 //=============================================
@@ -39,9 +38,9 @@ namespace spartan
 {
     namespace
     {
-        constexpr uint8_t ASCII_TAB      = 9;
-        constexpr uint8_t ASCII_NEW_LINE = 10;
-        constexpr uint8_t ASCII_SPACE    = 32;
+        const uint8_t ASCII_TAB      = 9;
+        const uint8_t ASCII_NEW_LINE = 10;
+        const uint8_t ASCII_SPACE    = 32;
     }
 
     Font::Font(const string& file_path, const uint32_t font_size, const Color& color) : IResource(ResourceType::Font)
