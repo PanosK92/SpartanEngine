@@ -48,9 +48,9 @@ We prioritize dialogue and open communication before taking action. If someoneâ€
 ## **Reporting Issues**  
 
 If you encounter behavior that violates this Code of Conduct:  
-- Contact Panos (server admin) directly via Discord DM.  
+- Contact Panos (server admin).  
 
-All reports will be handled confidentially, with the goal of fostering understanding and resolution.  
+
 
 ---
 
