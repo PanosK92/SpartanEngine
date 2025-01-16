@@ -111,9 +111,9 @@ jobs:
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "v${{ steps.get_datetime.outputs.version }}"
+          automatic_release_tag: "${{ steps.get_datetime.outputs.version }}"
           prerelease: true
-          title: "Version ${{ steps.get_datetime.outputs.version }}"
+          title: "Spartan v${{ steps.get_datetime.outputs.version }}"
           files: |
             spartan_vulkan_release.7z
             spartan_vulkan_debug.7z
