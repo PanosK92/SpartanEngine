@@ -103,17 +103,17 @@ jobs:
           name: spartan_vulkan_debug
           path: spartan_vulkan_debug.7z
 
-      - name: Get date for versioning
-        id: get_date
-        run: echo "version=$(date +'%Y.%m.%d')" >> $GITHUB_OUTPUT
+      - name: Get date and time for versioning
+        id: get_datetime
+        run: echo "version=$(date +'%Y.%m.%d-%H.%M')" >> $GITHUB_OUTPUT
 
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "v${{ steps.get_date.outputs.version }}"
+          automatic_release_tag: "v${{ steps.get_datetime.outputs.version }}"
           prerelease: true
-          title: "Version ${{ steps.get_date.outputs.version }}"
+          title: "Version ${{ steps.get_datetime.outputs.version }}"
           files: |
             spartan_vulkan_release.7z
             spartan_vulkan_debug.7z
