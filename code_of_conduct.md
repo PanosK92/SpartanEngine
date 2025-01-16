@@ -31,8 +31,7 @@ While free speech is vital, behaviors that threaten the health and survival of t
 To preserve the community’s integrity, the following behaviors are not allowed:  
 
 - Lying, spreading false information or misrepresenting facts.  
-- Personal attacks, insults, or hostility (e.g., saying “F*** you” or worse).  
-- Repeated disruptive behavior that creates a toxic environment.  
+- Personal attacks, insults, or hostility (e.g., saying “F*** you” or worse).
 - Refusal to engage in constructive dialogue when approached to resolve conflicts.  
 
 ---
