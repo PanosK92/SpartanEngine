@@ -60,26 +60,28 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
+      - name: Generate version
+        id: version
+        run: |
+          echo "version=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
+          echo "Generated version: ${{ env.version }}"
+
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         shell: cmd
         run: |
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
-          IF "${{ matrix.configuration }}" == "Release" (
-            echo "Creating binaries-only archive for Release..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_release.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
-          ) ELSE (
-            echo "Creating binaries-only archive for Debug..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_debug.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmodL.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
-          )
-          echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
+          SET BUILD_NAME=spartan_${{ matrix.api }}_${{ matrix.configuration }}_${{ env.version }}
+          echo "Build name: %BUILD_NAME%"
+          build_scripts\7z.exe a -bb1 %BUILD_NAME%.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+          echo "::set-output name=artifact_name::%BUILD_NAME%.7z"
 
       - name: Upload artifact
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
-          path: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z
+          name: ${{ env.version }}
+          path: ${{ steps.create-artifacts.outputs.artifact_name }}
 
   release:
     if: github.event_name != 'pull_request'
@@ -94,25 +96,22 @@ jobs:
       - name: Download vulkan release build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_release
+          name: ${{ env.version }}
           path: spartan_vulkan_release.7z
 
       - name: Download vulkan debug build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_debug
+          name: ${{ env.version }}
           path: spartan_vulkan_debug.7z
 
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          automatic_release_tag: "${{ env.version }}"
           prerelease: true
-          title: "Development Build"
+          title: "Development Build v${{ env.version }}"
           files: |
             spartan_vulkan_release.7z
             spartan_vulkan_debug.7z
-
-      - name: Set environment file for release
-        run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
