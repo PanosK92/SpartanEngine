@@ -107,6 +107,13 @@ namespace spartan
 
     void ProgressTracker::SetGlobalLoadingState(const bool is_loading)
     {
-        anonymous_jobs = is_loading ? (anonymous_jobs + 1) : (anonymous_jobs - 1);
+        if (is_loading)
+        {
+            anonymous_jobs.fetch_add(1, std::memory_order_relaxed); // increment atomically
+        }
+        else
+        {
+            anonymous_jobs.fetch_sub(1, std::memory_order_relaxed); // decrement atomically
+        }
     }
 }
