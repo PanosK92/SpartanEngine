@@ -40,7 +40,7 @@ To preserve the community’s integrity, the following behaviors are not allowed
 
 We prioritize dialogue and open communication before taking action. If someone’s behavior becomes problematic:  
 
-1. **Direct Discussion**: They will be addressed privately and honestly to resolve the issue.  
+1. **Direct Discussion**: They will be addressed honestly to resolve the issue.  
 2. **Final Option – Ban**: If dialogue fails and the behavior continues to threaten the community’s health, a ban may be issued as a last resort.  
 
 ---
