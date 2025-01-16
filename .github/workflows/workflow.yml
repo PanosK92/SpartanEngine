@@ -105,7 +105,7 @@ jobs:
 
       - name: Get date and time for versioning
         id: get_datetime
-        run: echo "version=$(date +'%Y.%m.%d-%H.%M')" >> $GITHUB_OUTPUT
+        run: echo "version=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_OUTPUT
 
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
