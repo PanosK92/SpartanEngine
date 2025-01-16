@@ -1,23 +1,62 @@
-# Code of Conduct
+# Code of Conduct  
 
-## Purpose
+Welcome to the **Spartan Engine Community**, a space dedicated to growth, collaboration, and innovation. This Code of Conduct is designed to create an atmosphere where everyone feels encouraged to contribute, learn, and thrive while maintaining the values that define this community.  
 
-This Code of Conduct outlines our expectations for participation within the **Spartan Engine** community, as well as steps for addressing unacceptable behavior.
+---
 
-## Expected Behavior:
+## **Core Principles**  
 
-1. **Be Respectful.** Treat everyone with respect. Avoid demeaning, discriminatory, or harassing behavior and speech.
-2. **Be Considerate.** Your work will be used by other people. In turn, you'll depend on the work of others. Any decision you take will affect users and colleagues, so take those consequences into account.
-3. **Offer Constructive Feedback.** Give helpful and constructive criticism. Avoid destructive and negative feedback.
+### **Free Speech and Respect**  
+We believe in the power of dialogue and the exchange of ideas. Disagreeing with someone doesn’t mean you dislike or hate them. Constructive debates are welcome and encouraged, as they are essential for growth.  
 
-## Unacceptable Behavior:
+### **Kindness and Logic**  
+Engage with others in a way that is kind and logical. A good argument doesn’t need insults; it stands on its own merit.  
 
-1. **Harassment.** Including, but not limited to: harmful or prejudicial verbal or written comments related to gender, sexual orientation, race, religion, disability; inappropriate use of nudity, sexual images, and unwarranted sexual attention or advances; cyberstalking or following; sustained disruption of discussions.
-2. **Trolling or Insults.** Comments intended to belittle, insult, or troll others.
-3. **Personal or Political Attacks.** Respect that people have differences of opinion and avoid personal or political attacks.
-4. **Public or Private Harassment.** Harassment is not tolerated in any form.
+### **Self-Preservation of the Community**  
+While free speech is vital, behaviors that threaten the health and survival of the community (e.g., hostile conduct, personal attacks) will not be tolerated.  
 
-## Reporting and Enforcement:
+---
 
-1. **If you are the subject of or witness any violations of this Code of Conduct**, please contact the project maintainer at [panosconroe@hotmail.com](mailto:panosconroe@hotmail.com).
-2. **If a community member engages in unacceptable behavior**, the project maintainers may take any action they deem appropriate, up to and including a temporary ban or permanent expulsion from the community without warning.
+## **Expected Behavior**  
+
+1. **Engage Constructively**: Share your thoughts and opinions without hostility or malice.  
+2. **Be Kind**: Treat others with respect and empathy, even if you strongly disagree.  
+3. **Stay on Topic**: Keep discussions relevant to the community’s goals and focus areas.  
+4. **Help Others**: Extend support, offer insights, and foster connections.  
+
+---
+
+## **Unacceptable Behavior**  
+
+To preserve the community’s integrity, the following behaviors are not allowed:  
+
+- Lying, spreading false information or misrepresenting facts.  
+- Personal attacks, insults, or hostility (e.g., saying “F*** you” or worse).  
+- Repeated disruptive behavior that creates a toxic environment.  
+- Refusal to engage in constructive dialogue when approached to resolve conflicts.  
+
+---
+
+## **Enforcement**  
+
+We prioritize dialogue and open communication before taking action. If someone’s behavior becomes problematic:  
+
+1. **Direct Discussion**: They will be addressed privately and honestly to resolve the issue.  
+2. **Final Option – Ban**: If dialogue fails and the behavior continues to threaten the community’s health, a ban may be issued as a last resort.  
+
+---
+
+## **Reporting Issues**  
+
+If you encounter behavior that violates this Code of Conduct:  
+- Contact Panos (server admin) directly via Discord DM.  
+
+All reports will be handled confidentially, with the goal of fostering understanding and resolution.  
+
+---
+
+## **Final Note**  
+
+The Spartan Engine Community is built on the idea that we can all grow together. By adhering to this Code of Conduct, you’re contributing to an environment where ideas can flourish, connections can deepen, and individuals can evolve.  
+
+Let’s build something great together!  
