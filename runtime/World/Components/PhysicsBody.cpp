@@ -818,20 +818,20 @@ namespace spartan
 
             case PhysicsShape::Sphere:
                 m_shape = new btSphereShape(size.x * 0.5f);
-                volume  = (4.0f / 3.0f) * 3.14f * pow(size.x * 0.5f, 3); // volume of a sphere = (4/3)πr³
+                volume  = (4.0f / 3.0f) * math::helper::PI * powf(size.x * 0.5f, 3); // volume of a sphere = (4/3)πr³
                 break;
 
             case PhysicsShape::Cylinder:
                 m_shape = new btCylinderShape(vector_to_bt(size * 0.5f));
-                volume  = 3.14f * pow(size.x * 0.5f, 2) * size.y; // volume of a cylinder = πr²h
+                volume  = math::helper::PI * powf(size.x * 0.5f, 2) * size.y; // volume of a cylinder = πr²h
                 break;
 
             case PhysicsShape::Capsule:
             {
                 float radius          = helper::Max(size.x, size.z) * 0.5f;
-                float height          = size.y - 2.0f * radius;                 // exclude spherical caps from the cylindrical height
-                float sphere_volume   = (4.0f / 3.0f) * 3.14f * pow(radius, 3); // volume of spherical caps
-                float cylinder_volume = 3.14f * pow(radius, 2) * height;        // volume of cylindrical body
+                float height          = size.y - 2.0f * radius;                             // exclude spherical caps from the cylindrical height
+                float sphere_volume   = (4.0f / 3.0f) * math::helper::PI * powf(radius, 3); // volume of spherical caps
+                float cylinder_volume = math::helper::PI * powf(radius, 2) * height;        // volume of cylindrical body
                 volume                = sphere_volume + cylinder_volume;
                 m_shape               = new btCapsuleShape(radius, size.y);
                 break;
@@ -839,7 +839,7 @@ namespace spartan
 
             case PhysicsShape::Cone:
                 m_shape = new btConeShape(size.x * 0.5f, size.y);
-                volume  = (1.0f / 3.0f) * 3.14f * pow(size.x * 0.5f, 2) * size.y; // volume of a cone = (1/3)πr²h
+                volume  = (1.0f / 3.0f) * math::helper::PI * powf(size.x * 0.5f, 2) * size.y; // volume of a cone = (1/3)πr²h
                 break;
 
            case PhysicsShape::StaticPlane:
