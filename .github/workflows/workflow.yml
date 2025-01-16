@@ -60,10 +60,6 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
-      - name: Get date and time for versioning
-        id: get_datetime
-        run: python -c "from datetime import datetime; print('version='+datetime.utcnow().strftime('%Y.%m.%d.%H.%M'))" >> $GITHUB_OUTPUT
-
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         shell: cmd
@@ -78,16 +74,12 @@ jobs:
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
-      - name: Rename and Upload artifact
+      - name: Upload artifact
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
-        shell: cmd
-        run: |
-          ren spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}_${{ steps.get_datetime.outputs.version }}.7z
-        - name: Upload artifact
-          uses: actions/upload-artifact@v4
-          with:
-            name: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}_${{ steps.get_datetime.outputs.version }}
-            path: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}_${{ steps.get_datetime.outputs.version }}.7z
+        uses: actions/upload-artifact@v4
+        with:
+          name: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
+          path: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z
 
   release:
     if: github.event_name != 'pull_request'
@@ -102,18 +94,26 @@ jobs:
       - name: Download vulkan release build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_release_${{ needs.build.outputs.version }}
+          name: spartan_vulkan_release
           path: .
 
       - name: Download vulkan debug build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_debug_${{ needs.build.outputs.version }}
+          name: spartan_vulkan_debug
           path: .
 
       - name: Get date and time for versioning
         id: get_datetime
         run: echo "version=$(date +'%Y.%m.%d.%H.%M')" >> $GITHUB_OUTPUT
+
+      - name: Rename release artifact
+        run: |
+          mv spartan_vulkan_release.7z spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.7z
+
+      - name: Rename debug artifact
+        run: |
+          mv spartan_vulkan_debug.7z spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.7z
 
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
