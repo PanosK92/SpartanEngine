@@ -60,6 +60,10 @@ jobs:
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
+      - name: Get date and time for versioning
+        id: get_datetime
+        run: python -c "from datetime import datetime; print('version='+datetime.utcnow().strftime('%Y.%m.%d.%H.%M'))" >> $GITHUB_OUTPUT
+
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         shell: cmd
@@ -67,10 +71,10 @@ jobs:
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           IF "${{ matrix.configuration }}" == "Release" (
             echo "Creating binaries-only archive for Release..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_release.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+            build_scripts\7z.exe a -bb1 spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmod.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
           ) ELSE (
             echo "Creating binaries-only archive for Debug..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_debug.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmodL.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
+            build_scripts\7z.exe a -bb1 spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\fmodL.dll .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
@@ -78,8 +82,8 @@ jobs:
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         uses: actions/upload-artifact@v4
         with:
-          name: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}
-          path: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}.7z
+          name: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}_${{ steps.get_datetime.outputs.version }}
+          path: spartan_vulkan_${{ matrix.configuration == 'Release' && 'release' || 'debug' }}_${{ steps.get_datetime.outputs.version }}.7z
 
   release:
     if: github.event_name != 'pull_request'
@@ -94,14 +98,14 @@ jobs:
       - name: Download vulkan release build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_release
-          path: spartan_vulkan_release.7z
+          name: spartan_vulkan_release_${{ needs.build.outputs.version }}
+          path: .
 
       - name: Download vulkan debug build
         uses: actions/download-artifact@v4
         with:
-          name: spartan_vulkan_debug
-          path: spartan_vulkan_debug.7z
+          name: spartan_vulkan_debug_${{ needs.build.outputs.version }}
+          path: .
 
       - name: Get date and time for versioning
         id: get_datetime
