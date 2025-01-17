@@ -500,7 +500,6 @@ namespace spartan
             const uint32_t cascade_offset           = 16;        // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
             const uint32_t cascade_index_start      = cascade_offset + 0;
             const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
-            const uint32_t cascade_resolution       = 64;
             const bool     sdf_center_around_camera = true;
             const float    sdf_ray_normal_offset    = 0.5f;            // distance from a surface along the normal vector to offset the ray origin - below 0.5 I see artifacts
             const float    sdf_ray_epsilon          = 0.5f;            // epsilon value for ray marching to be used with brixelizer for rays
@@ -1376,8 +1375,8 @@ namespace spartan
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.prevProjection, projection_previous);
 
         // set resources
-        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(texture_skybox.get(),                          L"brixelizer_gi__environment");
-        brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous");
+        brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(texture_skybox.get(),                          L"brixelizer_gi_environment");
+        brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous"); // linear
         brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                     L"brixelizer_gi_depth");
         brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),   L"brixelizer_gi_depth_previous");
         brixelizer_gi::description_dispatch_gi.normal           = to_ffx_resource(tex_normal,                                    L"brixelizer_gi_normal");
@@ -1406,9 +1405,9 @@ namespace spartan
         brixelizer_gi::description_dispatch_gi.tMax                    = brixelizer_gi::t_max;
         brixelizer_gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;
         brixelizer_gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;
-        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true; // if false, we assume roughness squared was stored in the Gbuffer
+        brixelizer_gi::description_dispatch_gi.isRoughnessPerceptual   = true; // false for squared g-buffer roughness
         brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;    // the channel to read the roughness from the roughness texture
-        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 1.0f; // regions with a roughness value greater than this threshold won't spawn specular rays
+        brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 0.8f; // regions with a roughness value greater than this threshold won't spawn specular rays
         brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f; // value to scale the contribution from the environment map
         brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -1.0f;
         brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = -1.0f;

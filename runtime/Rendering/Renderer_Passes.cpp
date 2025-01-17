@@ -415,6 +415,8 @@ namespace spartan
                 Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
                 Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
+
+                cmd_list_graphics->Blit(rt_render, GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process), false);
             }
 
             // upscale to output resolution
@@ -1210,7 +1212,7 @@ namespace spartan
                 RHI_FidelityFX::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
-                    GetRenderTarget(Renderer_RenderTarget::frame_output), // previous lit output
+                    GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),

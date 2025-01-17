@@ -204,6 +204,7 @@ namespace spartan
         {
             // frame
             render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render");
+            render_target(Renderer_RenderTarget::frame_render_pre_post_process) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "frame_render_pre_post_process");
 
             // g-buffer
             {
