@@ -1210,7 +1210,7 @@ namespace spartan
                 RHI_FidelityFX::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
-                    GetRenderTarget(Renderer_RenderTarget::frame_render), // previous lit output
+                    GetRenderTarget(Renderer_RenderTarget::frame_output), // previous lit output
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
