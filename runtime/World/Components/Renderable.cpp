@@ -59,7 +59,7 @@ namespace spartan
     {
         if (Material* material = GetMaterial())
         {
-             material->SetProperty(MaterialProperty::WorldSpaceHeight, GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+            material->SetProperty(MaterialProperty::WorldSpaceHeight, GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
         }
     }
 

@@ -54,7 +54,7 @@ struct gbuffer_vertex
 
 static float3 extract_position(matrix transform)
 {
-    return float3(transform._31, transform._32, transform._33);
+    return float3(transform._14, transform._24, transform._34);
 }
 
 struct vertex_processing
@@ -212,21 +212,24 @@ struct vertex_processing
         }
     };
 
-    static float3 ambient_animation(Surface surface, float3 position, float3 animation_pivot, uint instance_id, float3 wind, float time)
+    static float3 ambient_animation(Surface surface, float3 position_vertex, float4x4 transform, uint instance_id, float3 wind, float time)
     {
+        float3 position        = extract_position(transform);
+        float3 animation_pivot = position - float3(0.0f, GetMaterial().world_space_height * 0.5f, 0.0f);
+        
         if (surface.vertex_animate_wind())
         {
-            position = vegetation::apply_wind(instance_id, position, animation_pivot, wind, time);
-            position = vegetation::apply_player_bend(position, animation_pivot);
+            position_vertex = vegetation::apply_wind(instance_id, position_vertex, animation_pivot, wind, time);
+            position_vertex = vegetation::apply_player_bend(position_vertex, animation_pivot);
         }
     
         if (surface.vertex_animate_water())
         {
-            position = water::apply_wave(position, time);
-            position = water::apply_ripple(position, time);
+            position_vertex = water::apply_wave(position_vertex, time);
+            position_vertex = water::apply_ripple(position_vertex, time);
         }
     
-        return position;
+        return position_vertex;
     }
 };
 
@@ -275,7 +278,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         vertex.position = vertex_processing::ambient_animation(
             surface,
             vertex.position,
-            extract_position(vertex.transform),
+            vertex.transform,
             vertex.instance_id,
             buffer_frame.wind,
             (float)buffer_frame.time
@@ -284,7 +287,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         vertex.position_previous = vertex_processing::ambient_animation(
             surface,
             vertex.position_previous,
-            extract_position(vertex.transform_previous),
+            vertex.transform_previous,
             vertex.instance_id,
             buffer_frame.wind,
             (float)buffer_frame.time - buffer_frame.delta_time
