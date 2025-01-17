@@ -55,6 +55,14 @@ namespace spartan
         m_mesh = nullptr;
     }
     
+    void Renderable::OnStart()
+    {
+        if (Material* material = GetMaterial())
+        {
+             material->SetProperty(MaterialProperty::WorldSpaceHeight, GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+        }
+    }
+
     void Renderable::Serialize(FileStream* stream)
     {
         // mesh

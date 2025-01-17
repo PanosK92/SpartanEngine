@@ -884,9 +884,9 @@ void Properties::ShowMaterial(Material* material) const
             }
 
             // wind animation
-            bool wind_animation = material->GetProperty(MaterialProperty::WindAnimation) != 0.0f;
+            bool wind_animation = material->GetProperty(MaterialProperty::AnimationFoliageWind) != 0.0f;
             ImGui::Checkbox("Wind animation", &wind_animation);
-            material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
+            material->SetProperty(MaterialProperty::AnimationFoliageWind, wind_animation ? 1.0f : 0.0f);
         }
 
         //= MAP ===============================================================================

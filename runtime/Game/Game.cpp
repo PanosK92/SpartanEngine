@@ -593,7 +593,7 @@ namespace spartan
                             material->SetProperty(MaterialProperty::Normal,             0.1f);
                             material->SetProperty(MaterialProperty::TextureTilingX,     200.0f);
                             material->SetProperty(MaterialProperty::TextureTilingY,     200.0f);
-                            material->SetProperty(MaterialProperty::VertexAnimateWater, 1.0f);
+                            material->SetProperty(MaterialProperty::AnimationWaterFlow, 1.0f);
                             material->SetProperty(MaterialProperty::CullMode,           static_cast<float>(RHI_CullMode::None));
 
                             // create a file path for this material (required for the material to be able to be cached by the resource cache)
@@ -646,9 +646,7 @@ namespace spartan
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_tree_2\\branches_color.png");
                             material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\vegetation_tree_2\\branches_normal.png");
                             material->SetTexture(MaterialTextureType::Occlusion,          "project\\terrain\\vegetation_tree_2\\branches_ao.png");
-                            material->SetProperty(MaterialProperty::WindAnimation,        1.0f);
-                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                            material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                            material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
                             renderable->SetMaterial(material);
                         }
@@ -673,8 +671,7 @@ namespace spartan
                             material->SetColor(Color::standard_white);
                             material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_plant_1\\ormbunke.png");
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                            material->SetProperty(MaterialProperty::WindAnimation,        1.0f);
-                            material->SetProperty(MaterialProperty::WorldSpaceHeight,     renderable->GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+                            material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                             material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
                             renderable->SetMaterial(material);
 
@@ -759,28 +756,28 @@ namespace spartan
                     // these are the ropes and the metal rings that hold them
                     if (Material* material = entity->GetDescendantByName("curtain_03_1")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                     }
 
                     // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                     }
                 }
             }
@@ -795,8 +792,8 @@ namespace spartan
 
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
                 {
-                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                    material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                    material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                 }
             }
         }

@@ -70,8 +70,8 @@ namespace spartan
         TextureOffsetX,       // offset of the texture along the X-axis
         TextureOffsetY,       // offset of the texture along the Y-axis
         TextureSlopeBased,    // applies texture mapping based on the mesh slope
-        WindAnimation,        // applies vertex-based animation to simulate wind
-        VertexAnimateWater,   // applies vertex-based animation to simulate water flow
+        AnimationFoliageWind, // applies vertex-based animation to simulate wind
+        AnimationWaterFlow,   // applies vertex-based animation to simulate water flow
         CullMode,             // sets the culling mode based on RHI_CullMode enum values
         Gltf,                 // indicates if the material was imported from a glTF file
         Max                   // total number of properties, used to size arrays
@@ -122,7 +122,7 @@ namespace spartan
         bool IsTessellated() const
         {
             // the gbuffer will tesselate in one of these cases
-            return HasTextureOfType(MaterialTextureType::Height) || GetProperty(MaterialProperty::VertexAnimateWater);
+            return HasTextureOfType(MaterialTextureType::Height) || GetProperty(MaterialProperty::AnimationWaterFlow);
         }
 
         // misc
