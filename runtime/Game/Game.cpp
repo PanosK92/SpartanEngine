@@ -843,7 +843,7 @@ namespace spartan
                 entity->GetDescendants(&entities);
                 for (Entity* entity : entities)
                 {
-                    if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
+                    if (entity->IsActive() && entity->GetComponent<Renderable>())
                     {
                         PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
