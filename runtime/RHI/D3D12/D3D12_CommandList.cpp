@@ -368,6 +368,11 @@ namespace spartan
 
     }
 
+    void RHI_CommandList::InsertBarrierBufferReadWrite(RHI_Buffer* buffer)
+    {
+
+    }
+
     void RHI_CommandList::InsertPendingBarrierGroup()
     {
 

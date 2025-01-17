@@ -220,6 +220,10 @@ namespace spartan
             }
         }
 
+        // wait until the buffers are not in use
+        cmd_list->InsertBarrierBufferReadWrite(m_buffer_vertex.get());
+        cmd_list->InsertBarrierBufferReadWrite(m_buffer_index.get());
+
         // update vertex buffer in chunks
         {
             const size_t vertex_size = sizeof(m_vertices[0]);

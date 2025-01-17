@@ -823,7 +823,7 @@ namespace spartan
 
             case PhysicsShape::Cylinder:
                 m_shape = new btCylinderShape(vector_to_bt(size * 0.5f));
-                volume  = helper::PI * powf(size.x * 0.5f, 2) * size.y; //  πr²h
+                volume  = helper::PI * powf(size.x * 0.5f, 2) * size.y; // πr²h
                 break;
 
             case PhysicsShape::Capsule:
@@ -874,7 +874,7 @@ namespace spartan
                 float offset_xz = -0.5f; // don't know why bullet needs this
                 float offset_y  = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
 
-                // set the center of mass to adjust for Bullet's re-centering
+                // set the center of mass to adjust for bullet's re-centering
                 SetCenterOfMass(Vector3(offset_xz, offset_y, offset_xz));
 
                 break;

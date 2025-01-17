@@ -1597,7 +1597,8 @@ namespace spartan
             barrier.offset                 = offset;
             barrier.size                   = size;
     
-            switch (buffer->GetType()) {
+            switch (buffer->GetType())
+            {
                 case RHI_Buffer_Type::Vertex:
                 case RHI_Buffer_Type::Instance:
                     barrier.dstAccessMask |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
@@ -1685,6 +1686,26 @@ namespace spartan
     {
         SP_ASSERT(texture != nullptr);
         InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
+    }
+
+    void RHI_CommandList::InsertBarrierBufferReadWrite(RHI_Buffer* buffer)
+    {
+        VkBufferMemoryBarrier2 barrier = {};
+        barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        barrier.srcStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;                        // wait for all previous stages
+        barrier.srcAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;  // wait for all previous reads and writes
+        barrier.dstStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;                        // allow all future stages
+        barrier.dstAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;  // allow all future reads and writes
+        barrier.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
+        barrier.offset                 = 0;
+        barrier.size                   = VK_WHOLE_SIZE; 
+
+        VkDependencyInfo dependencyInfo         = {};
+        dependencyInfo.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.bufferMemoryBarrierCount = 1;
+        dependencyInfo.pBufferMemoryBarriers    = &barrier;
+
+        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependencyInfo);
     }
 
     void RHI_CommandList::InsertPendingBarrierGroup()

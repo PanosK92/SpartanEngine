@@ -426,28 +426,21 @@ namespace spartan
                         return VK_FALSE;
                     }
 
-                    // legit but they spam every frame
-                    {
-                        // buffer update
-                        if (p_callback_data->messageIdNumber == 0x376bc9df)
-                            return VK_FALSE;
-
-                        // present after write and write after present
-                        // [ SYNC-HAZARD-WRITE-AFTER-PRESENT ]: vkQueueSubmit2(): Hazard WRITE_AFTER_PRESENT for entry 0, VkCommandBuffer
-                        // 0x1d7ba33cc80[cmd_list_0], Submitted access info (submitted_usage: SYNC_IMAGE_LAYOUT_TRANSITION, command:
-                        // vkCmdPipelineBarrier2, seq_no: 15, reset_no: 120, debug_region: imgui_window_main). Access info (prior_usage:
-                        // SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, write_barriers: 0, queue: VkQueue 0x1d7ba2ef110[graphics],
-                        // submit: 387, batch: 0, batch_tag: 9363, vkQueuePresentKHR present_tag:9363, pSwapchains[0]: VkSwapchainKHR
-                        // 0x210d07000000003a[], image_index: 1image: VkImage 0x9f9b41000000003c[swapchain_image_1]).
-                        // 
-                        // [ SYNC-HAZARD-PRESENT-AFTER-WRITE ]: vkQueuePresentKHR(): Hazard PRESENT_AFTER_WRITE for present pSwapchains[0],
-                        // swapchain VkSwapchainKHR 0x210d07000000003a[], image index 0 VkImage 0x5eb05e000000003b[swapchain_image_0],
-                        // Access info (usage: SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION,
-                        // write_barriers: 0, queue: VkQueue 0x1d7ba2ef110[graphics], submit: 2988, batch: 0, batch_tag: 91515, command:
-                        // vkCmdPipelineBarrier2, command_buffer: VkCommandBuffer 0x1d7bfd21870[cmd_list_1], seq_no: 62, reset_no: 1419).
-                        if (p_callback_data->messageIdNumber == 0xe17ab4ae || p_callback_data->messageIdNumber == 0x42f2f4ed)
-                            return VK_FALSE;
-                    }
+                    // present after write and write after present
+                    // [ SYNC-HAZARD-WRITE-AFTER-PRESENT ]: vkQueueSubmit2(): Hazard WRITE_AFTER_PRESENT for entry 0, VkCommandBuffer
+                    // 0x1d7ba33cc80[cmd_list_0], Submitted access info (submitted_usage: SYNC_IMAGE_LAYOUT_TRANSITION, command:
+                    // vkCmdPipelineBarrier2, seq_no: 15, reset_no: 120, debug_region: imgui_window_main). Access info (prior_usage:
+                    // SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, write_barriers: 0, queue: VkQueue 0x1d7ba2ef110[graphics],
+                    // submit: 387, batch: 0, batch_tag: 9363, vkQueuePresentKHR present_tag:9363, pSwapchains[0]: VkSwapchainKHR
+                    // 0x210d07000000003a[], image_index: 1image: VkImage 0x9f9b41000000003c[swapchain_image_1]).
+                    // 
+                    // [ SYNC-HAZARD-PRESENT-AFTER-WRITE ]: vkQueuePresentKHR(): Hazard PRESENT_AFTER_WRITE for present pSwapchains[0],
+                    // swapchain VkSwapchainKHR 0x210d07000000003a[], image index 0 VkImage 0x5eb05e000000003b[swapchain_image_0],
+                    // Access info (usage: SYNC_PRESENT_ENGINE_SYNCVAL_PRESENT_PRESENTED_SYNCVAL, prior_usage: SYNC_IMAGE_LAYOUT_TRANSITION,
+                    // write_barriers: 0, queue: VkQueue 0x1d7ba2ef110[graphics], submit: 2988, batch: 0, batch_tag: 91515, command:
+                    // vkCmdPipelineBarrier2, command_buffer: VkCommandBuffer 0x1d7bfd21870[cmd_list_1], seq_no: 62, reset_no: 1419).
+                    if (p_callback_data->messageIdNumber == 0xe17ab4ae || p_callback_data->messageIdNumber == 0x42f2f4ed)
+                        return VK_FALSE;
                 }
 
                 string msg = "Vulkan: " + string(p_callback_data->pMessage);
