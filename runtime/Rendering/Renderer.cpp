@@ -216,6 +216,12 @@ namespace spartan
             SetOption(Renderer_Option::Hdr, swap_chain->IsHdr() ? 1.0f : 0.0f);
         }
 
+        // tonemapping
+        if (!swap_chain->IsHdr())
+        {
+            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::NautilusACES));
+        }
+
         // third party tool initialization
         ThreadPool::AddTask([]()
         {
