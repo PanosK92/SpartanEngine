@@ -66,12 +66,12 @@ namespace spartan
     
                 float min_height = FLT_MAX;
                 float max_height = -FLT_MAX;
+                Matrix transform = HasInstancing() ? GetEntity()->GetMatrix() * GetInstanceTransform(0) : GetEntity()->GetMatrix();
                 for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
                 {
-                    Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * GetEntity()->GetMatrix();
-                
-                    if (position.y < min_height) min_height = position.y;
-                    if (position.y > max_height) max_height = position.y;
+                    Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * transform;
+                    min_height       = min(min_height, position.y);
+                    max_height       = max(max_height, position.y);
                 }
 
                 material->SetProperty(MaterialProperty::WorldSpaceHeight, max_height - min_height);
