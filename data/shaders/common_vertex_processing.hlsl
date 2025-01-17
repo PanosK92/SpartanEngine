@@ -54,7 +54,7 @@ struct gbuffer_vertex
 
 static float3 extract_position(matrix transform)
 {
-    return float3(transform._14, transform._24, transform._34);
+    return float3(transform._31, transform._32, transform._33);
 }
 
 struct vertex_processing

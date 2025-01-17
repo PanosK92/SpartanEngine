@@ -621,8 +621,9 @@ namespace spartan
 
                             shared_ptr<Material> material = make_shared<Material>(); // create a material manually as the tree comes with empty materials
                             material->SetResourceFilePath("project\\terrain\\vegetation_tree_2\\trunk" + string(EXTENSION_MATERIAL));
-                            material->SetTexture(MaterialTextureType::Color,  "project\\terrain\\vegetation_tree_2\\trunk_color.png");
-                            material->SetTexture(MaterialTextureType::Normal, "project\\terrain\\vegetation_tree_2\\trunk_normal.png");
+                            material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_tree_2\\trunk_color.png");
+                            material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\vegetation_tree_2\\trunk_normal.png");
+                            material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                             renderable->SetMaterial(material);
 
                             // generate instances
