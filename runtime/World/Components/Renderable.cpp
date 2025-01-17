@@ -55,11 +55,27 @@ namespace spartan
         m_mesh = nullptr;
     }
     
-    void Renderable::OnStart()
+   void Renderable::OnStart()
     {
         if (Material* material = GetMaterial())
         {
-            material->SetProperty(MaterialProperty::WorldSpaceHeight, GetBoundingBox(BoundingBoxType::Transformed).GetSize().y);
+            if (material->GetProperty(MaterialProperty::WorldSpaceHeight) == 0.0f)
+            {
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                GetGeometry(nullptr, &vertices);
+    
+                float min_height = FLT_MAX;
+                float max_height = -FLT_MAX;
+                for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
+                {
+                    Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * GetEntity()->GetMatrix();
+                
+                    if (position.y < min_height) min_height = position.y;
+                    if (position.y > max_height) max_height = position.y;
+                }
+
+                material->SetProperty(MaterialProperty::WorldSpaceHeight, max_height - min_height);
+            }
         }
     }
 
