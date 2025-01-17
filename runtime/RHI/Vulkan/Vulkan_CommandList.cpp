@@ -148,7 +148,7 @@ namespace spartan
                         used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
                         used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
 
-                        // a call to ClearTexture() will enter this path with any shaders, so go wide
+                        // a call to ClearTexture() will enter this path without shaders, so go wide
                         if (used_stages == 0)
                         {
                             used_stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
