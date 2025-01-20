@@ -1055,6 +1055,8 @@ namespace spartan
                     }
                 }
             }
+
+            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
         }
     }
 
