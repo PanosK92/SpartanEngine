@@ -916,7 +916,7 @@ namespace spartan
         }
 
         // release static resources now so that they register
-        // themselfs with the RHI for deletion before engine shutdown
+        // themselves with the RHI for deletion before engine shutdown
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
         brixelizer_gi::buffer_scratch          = nullptr;

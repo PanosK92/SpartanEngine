@@ -101,7 +101,7 @@ def main():
     library_destination   = Path("third_party") / "libraries" / "libraries.7z"
     library_expected_hash = '8a20305ee9658dfdfba2aea88f26e6ee3d1330d7e6d26f42bc07bb76150ff1c5'
     file_utilities.download_file(library_url, str(library_destination), library_expected_hash)
-    file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"), sys.argv[1] == "vs2022", False)
+    file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"))
     
     print("3. Copying required DLLs to the binary directory...")
     for lib in paths["third_party_libs"].values():

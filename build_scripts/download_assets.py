@@ -1,4 +1,4 @@
-#Copyright(c) 2016-2024 Panos Karabelas
+#Copyright(c) 2016-2025 Panos Karabelas
 #
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,8 @@ file_expected_hash = 'bebddf7a39e479e0ad9623a9251a465be9fb68a1a0a17ac2212f25de03
 
 def main():
     file_utilities.download_file(file_url, file_destination, file_expected_hash)
-    file_utilities.extract_archive(file_destination, "project/", True, True)
+    file_utilities.extract_archive(file_destination, "project/")
+    input()
 
 if __name__ == "__main__":
     main()

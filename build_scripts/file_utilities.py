@@ -73,33 +73,36 @@ def download_file(url, destination, expected_hash):
     if calculate_file_hash(destination) != expected_hash:
         print(f"ERROR, hash mismatch for {destination}")
         return
-
-def extract_archive(archive_path, destination_path, is_windows, use_working_dir=False):
-    # determine the path to 7z based on the use_working_dir flag
-    seven_zip_exe = Path("build_scripts") / ("7z.exe" if is_windows else "7za")
-    seven_zip_exe = seven_zip_exe.resolve() if use_working_dir else seven_zip_exe
     
-    # convert paths to string for subprocess, ensuring they are quoted if they contain spaces
-    archive_path_str = f'"{Path(archive_path).resolve()}"'
-    destination_path_str = f'"{Path(destination_path).resolve()}"'
+def extract_archive(archive_path, destination_path):
+    # Check if 7z.exe exists locally
+    current_dir_7z  = Path("7z.exe")
+    if current_dir_7z.exists():
+        seven_zip_exe = current_dir_7z
+    else:
+        # define the path where 7z.exe should be if not in the current directory
+        seven_zip_exe = Path("build_scripts") / "7z.exe"
+        seven_zip_exe = seven_zip_exe.resolve()
 
-    # construct the command as a string with quoted paths
-    cmd = f'{str(seven_zip_exe)} x {archive_path_str} -o{destination_path_str} -aoa'
+    # check if the 7z executable exists
+    if not os.path.exists(seven_zip_exe):
+        raise FileNotFoundError(f"The 7z executable was not found at {seven_zip_exe}. Please check the path or installation.")
+    
+    archive_path_str = str(Path(archive_path).resolve())
+    destination_path_str = str(Path(destination_path).resolve())
+
+    cmd = [str(seven_zip_exe), 'x', archive_path_str, '-o'+destination_path_str, '-aoa']
 
     print(f"Extracting {archive_path} to {destination_path} using: {seven_zip_exe}")
 
     try:
-        # execute the command with shell=True to handle paths with spaces
-        result = subprocess.run(cmd, check=True, shell=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print(result.stdout)
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while extracting: {e}")
         print(f"Error output: {e.stderr}")
-        raise  # re-raise the exception for higher-level error handling if needed
-    except FileNotFoundError:
-        print(f"The 7z executable was not found at {seven_zip_exe}. Please check the path or installation.")
         raise
-
+    
 def copy(source, destination):
     def on_rm_error(func, path, exc_info):
         os.chmod(path, stat.S_IWRITE)
