@@ -78,9 +78,9 @@ def copy(source, destination):
     
 def generate_project_files():
     cmd = (
-        f"build_scripts\\premake5.exe --file=build_scripts\\premake.lua {sys.argv[1]} {sys.argv[2]}"
+        f'build_scripts\\premake5.exe --file="build_scripts\\premake.lua" "{sys.argv[1]}" "{sys.argv[2]}"'
         if sys.argv[1] == "vs2022"
-        else f"premake5 --file=build_scripts/premake.lua {sys.argv[1]} {sys.argv[2]}"
+        else f'premake5 --file="build_scripts/premake.lua" "{sys.argv[1]}" "{sys.argv[2]}"'
     )
     subprocess.Popen(cmd, shell=True).communicate()
     
