@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "MenuBar.h"
-#include "EditorWindows.h"
+#include "GeneralWindows.h"
 #include "Widgets/Profiler.h"
 #include "Widgets/ShaderEditor.h"
 #include "Widgets/RenderOptions.h"
