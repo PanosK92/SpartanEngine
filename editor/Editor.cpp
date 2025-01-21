@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include "Editor.h"
-#include "EditorWindows.h"
+#include "GeneralWindows.h"
 #include "MenuBar.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"

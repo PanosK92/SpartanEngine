@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INLUCDES =====================
-#include "EditorWindows.h"
+#include "GeneralWindows.h"
 #include "ImGui/Source/imgui.h"
 #include "ImGui/ImGui_Extension.h"
 #include "Core/FileSystem.h"
@@ -424,9 +424,9 @@ namespace
         }
     }
 
-    namespace default_worlds
+    namespace worlds
     {
-        const char* worlds[] =
+        const char* world_names[] =
         {
             "1. Objects",
             "2. Doom",
@@ -435,27 +435,34 @@ namespace
             "5. Subway",
             "6. Sponza 4K (demanding)",
             "7. Bistro Exterior & Interior (demanding)",
-            "8. Forest Car (very demanding)",
+            "8. Forest Car (demanding)",
         };
         int world_index = 0;
 
-        bool downloaded       = false;
-        bool visible_download = !downloaded;
-        bool visible          = downloaded;
+        bool downloaded_and_extracted = false;
+        bool visible_download_prompt  = !downloaded_and_extracted;
+        bool visible_world_list       = downloaded_and_extracted;
 
         void world_on_download_finished()
         {
             spartan::ProgressTracker::SetGlobalLoadingState(false);
-            visible = true;
+            visible_world_list = true;
         }
-    
+
+        void download_and_extract()
+        {
+             spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
+             spartan::ProgressTracker::SetGlobalLoadingState(true);
+             visible_download_prompt = false;
+        }
+
         void window()
         {
-            if (visible_download)
+            if (visible_download_prompt)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
                 ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
-                if (ImGui::Begin("Default worlds", &visible_download, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                if (ImGui::Begin("Default worlds", &visible_download_prompt, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
                     ImGui::Text("No default worlds are present. Would you like to download them?");
                     ImGui::Separator();
@@ -470,17 +477,15 @@ namespace
                     {
                         if (ImGui::Button("Yes"))
                         {
-                            spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
-                            spartan::ProgressTracker::SetGlobalLoadingState(true);
-                            visible_download = false;
+                            download_and_extract();
                         }
             
                         ImGui::SameLine();
             
                         if (ImGui::Button("No"))
                         {
-                            visible_download = false;
-                            visible          = false;
+                            visible_download_prompt = false;
+                            visible_world_list      = false;
                         }
                     }
                     ImGui::EndGroup();
@@ -488,23 +493,23 @@ namespace
                 ImGui::End();
             }
 
-            if (visible)
+            if (visible_world_list)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                if (ImGui::Begin("World selection", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                if (ImGui::Begin("World selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
                     ImGui::Text("Select the world you would like to load and click \"Ok\"");
             
                     // list
                     ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
-                    ImGui::ListBox("##list_box", &world_index, worlds, IM_ARRAYSIZE(worlds), IM_ARRAYSIZE(worlds));
+                    ImGui::ListBox("##list_box", &world_index, world_names, IM_ARRAYSIZE(world_names), IM_ARRAYSIZE(world_names));
                     ImGui::PopItemWidth();
             
                     // button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
                         spartan::Game::Load(static_cast<spartan::DefaultWorld>(world_index));
-                        visible = false;
+                        visible_world_list = false;
                     }
                 }
                 ImGui::End();
@@ -521,9 +526,27 @@ void GeneralWindows::Initialize(Editor* editor_in)
     sponsor::visible      = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
     introduction::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
 
-    default_worlds::downloaded       = !spartan::FileSystem::IsDirectoryEmpty(spartan::ResourceCache::GetProjectDirectory());
-    default_worlds::visible_download = !default_worlds::downloaded;
-    default_worlds::visible          =  default_worlds::downloaded;
+    // world download
+    {
+        size_t file_count                = spartan::FileSystem::GetFilesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size();
+        worlds::downloaded_and_extracted = file_count > 1; // assets.7z + extracted folders
+
+        if (worlds::downloaded_and_extracted)
+        {
+            worlds::visible_world_list = true;
+        }
+        else
+        {
+            if (file_count == 0)
+            { 
+                worlds::visible_download_prompt = true;
+            }
+            else // assets.7z is present but not extracted
+            {
+                worlds::download_and_extract();
+            }
+        }
+    }
 }
 
 void GeneralWindows::Tick()
@@ -550,7 +573,7 @@ void GeneralWindows::Tick()
             shortcuts::window();
         }
 
-        default_worlds::window();
+        worlds::window();
     }
 
     // shortcuts

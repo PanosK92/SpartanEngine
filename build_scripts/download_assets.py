@@ -26,7 +26,6 @@ file_expected_hash = 'bebddf7a39e479e0ad9623a9251a465be9fb68a1a0a17ac2212f25de03
 def main():
     file_utilities.download_file(file_url, file_destination, file_expected_hash)
     file_utilities.extract_archive(file_destination, "project/")
-    input()
 
 if __name__ == "__main__":
     main()
