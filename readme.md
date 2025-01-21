@@ -3,8 +3,7 @@
 
 <p>Spartan Engine is one of the most advanced one-man game engines out there, pushing the limits of real-time approaches.
 What started as a portfolio project has evolved into a cutting-edge project for developers to explore, learn, and contribute.
-This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans
-looking to experiment, not to build a game. With a thriving Discord community of over 500 members, including industry
+This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans, not for individuals to build a game. With a thriving Discord community of over 500 members, including industry
 veterans, and contribution perks that you won't believe when you see, it's one of the most unique projects you'll come across.</p>
 
 - <img align="left" width="32" src="https://i.pinimg.com/736x/99/65/5e/99655e9fe24eb0a7ea38de683cedb735.jpg"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">X</a>.

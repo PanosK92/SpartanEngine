@@ -111,7 +111,7 @@ Editor::Editor(const vector<string>& args)
     // register imgui as a third party library (will show up in the about window)
     spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
-    EditorWindows::Initialize(this);
+    GeneralWindows::Initialize(this);
 }
 
 Editor::~Editor()
@@ -159,7 +159,7 @@ void Editor::Tick()
                 ImGui::End();
 
                 // various windows that don't belnog to a certain widget
-                EditorWindows::Tick();
+                GeneralWindows::Tick();
             }
         }
 

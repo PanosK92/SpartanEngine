@@ -155,7 +155,7 @@ namespace
         {
             if (ImGui::BeginMenu("View"))
             {
-                if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", EditorWindows::GetVisiblityWindowShortcuts()))
+                if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", GeneralWindows::GetVisiblityWindowShortcuts()))
                 {
 
                 }
@@ -193,7 +193,7 @@ namespace
         {
             if (ImGui::BeginMenu("Help"))
             {
-                ImGui::MenuItem("About", nullptr, EditorWindows::GetVisiblityWindowAbout());
+                ImGui::MenuItem("About", nullptr, GeneralWindows::GetVisiblityWindowAbout());
 
                 if (ImGui::MenuItem("Sponsor", nullptr, nullptr))
                 {

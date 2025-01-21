@@ -116,9 +116,9 @@ namespace spartan
 
     uint32_t Mesh::GetMemoryUsage() const
     {
-        uint32_t size = 0;
-        size += uint32_t(m_indices.size()  * sizeof(uint32_t));
-        size += uint32_t(m_vertices.size() * sizeof(RHI_Vertex_PosTexNorTan));
+        uint32_t size  = 0;
+        size          += uint32_t(m_indices.size()  * sizeof(uint32_t));
+        size          += uint32_t(m_vertices.size() * sizeof(RHI_Vertex_PosTexNorTan));
 
         return size;
     }

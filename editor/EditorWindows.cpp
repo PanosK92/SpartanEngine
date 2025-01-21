@@ -40,62 +40,50 @@ namespace
 {
     Editor* editor = nullptr;
 
-    namespace introduction
+    namespace sponsor
     {
-        bool visible = true;
+        bool visible      = true;
+        const float width = 512.0f;
 
         void window()
         {
-            const float width  = 600.0f;
-            const float height = 240.0f;
-            
-            ImVec2 display_size = ImGui::GetIO().DisplaySize;
-            ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.15f, (display_size.y - height) * 0.45f);
-            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-            ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
-            
-            if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
+            ImGui::SetNextWindowSize(ImVec2(width, width * 0.52f));
+            if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDocking))
             {
-                ImGui::TextWrapped("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans looking to experiment.");
+                ImGui::SetNextItemWidth(width);
+                ImGui::TextWrapped(
+                    "I cover the costs for Dropbox hosting and a GitHub Pro subscription for benefits like assets and package bandwidth."
+                    ""
+                    "If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!"
+                );
+                ImGui::Separator();
+                if (ImGuiSp::button_centered_on_line("Sponsor"))
+                {
+                    spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
+                }
             }
             ImGui::End();
         }
     }
 
-    namespace sponsor
+    namespace introduction
     {
-        bool visible = true;
+        bool visible      = true;
+        const float width = 512.0f;
 
         void window()
         {
-            const float width  = 600.0f;
-            const float height = 240.0f;
-            
-            ImVec2 display_size = ImGui::GetIO().DisplaySize;
-            ImVec2 window_pos   = ImVec2((display_size.x - width) * 0.15f, (display_size.y - height) * 0.3f);
-            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-            ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
-            
-            // set focus
-            if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize))
+            ImGui::SetNextWindowSize(ImVec2(width, width * 0.36f));
+            if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDocking))
             {
-                ImGui::TextWrapped(
-                    "I cover the costs for Dropbox hosting and a GitHub Pro subscription for benefits like assets and package bandwidth."
-                    " "
-                    "If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!"
-                );
-            
+                ImGui::TextWrapped("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans.");
                 ImGui::Separator();
-            
-                float button_width = ImGui::CalcTextSize("Sponsor").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-                float window_width = ImGui::GetWindowSize().x;
-                ImGui::SetCursorPosX((window_width - button_width) * 0.5f);
-            
-                if (ImGui::Button("Sponsor"))
+                if (ImGuiSp::button_centered_on_line("Ok"))
                 {
-                    spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
+                    visible = false;
                 }
-            }
+             }
+
             ImGui::End();
         }
     }
@@ -134,14 +122,12 @@ namespace
             "Spartan, Panos Kolyvakis,     Greece,           LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,                                         N/A",
             "Spartan, Tri Tran,            Belgium,          LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,                                  Starfield",
             "Spartan, Ege,                 Turkey,           X,          https://x.com/egedq,                                      Editor theme & ability to save/load themes,                      N/A",
-                                                                                                                                                                                                    
             "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Provided performance reports,                                    N/A",
             "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GCC compile fixes,                                               N/A",
             "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Added Nautilus tonemapper & spotted lighting/performance issues, N/A",
             "Hoplite, Roman Koshchei,      Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,                         N/A",
             "Hoplite, Kristi Kercyku,      Albania,          GitHub,     https://github.com/kristiker,                             Identified g-buffer depth testing issue,                         N/A",
             "Hoplite, Kinjal Kishor,       India,            X,          https://x.com/kinjalkishor,                               Supported with testing & technical issues,                       N/A",
-                                                                                                                                                                                                    
             "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                                  N/A"
         };
 
@@ -527,7 +513,7 @@ namespace
     }
 }
 
-void EditorWindows::Initialize(Editor* editor_in)
+void GeneralWindows::Initialize(Editor* editor_in)
 {
     editor = editor_in;
 
@@ -540,18 +526,18 @@ void EditorWindows::Initialize(Editor* editor_in)
     default_worlds::visible          =  default_worlds::downloaded;
 }
 
-void EditorWindows::Tick()
+void GeneralWindows::Tick()
 {
-    // visibility
+    // windows
     {
-        if (introduction::visible)
-        { 
-            introduction::window();
-        }
-
         if (sponsor::visible)
         { 
             sponsor::window();
+        }
+
+        if (introduction::visible)
+        { 
+            introduction::window();
         }
 
         if (about::visible)
@@ -576,12 +562,12 @@ void EditorWindows::Tick()
     }
 }
 
-bool* EditorWindows::GetVisiblityWindowAbout()
+bool* GeneralWindows::GetVisiblityWindowAbout()
 {
     return &about::visible;
 }
 
-bool* EditorWindows::GetVisiblityWindowShortcuts()
+bool* GeneralWindows::GetVisiblityWindowShortcuts()
 {
     return &shortcuts::visible;
 }
