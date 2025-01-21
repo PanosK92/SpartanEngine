@@ -94,7 +94,11 @@ namespace
                 {
                     if (spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
                     {
-                        EditorHelper::LoadWorld(file_dialog_selection_path);
+                        spartan::ThreadPool::AddTask([]()
+                        {
+                            spartan::World::LoadFromFile(file_dialog_selection_path);
+                        });
+
                         show_file_dialog = false;
                     }
                 }
@@ -103,7 +107,11 @@ namespace
                 {
                     if (file_dialog->GetFilter() == FileDialog_Filter_World)
                     {
-                        EditorHelper::SaveWorld(file_dialog_selection_path);
+                        spartan::ThreadPool::AddTask([]()
+                        {
+                            spartan::World::SaveToFile(file_dialog_selection_path);
+                        });
+
                         show_file_dialog = false;
                     }
                 }

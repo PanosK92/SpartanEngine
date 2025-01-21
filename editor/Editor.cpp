@@ -87,7 +87,6 @@ Editor::Editor(const vector<string>& args)
 
     // initialization of some helper static classes
     IconLoader::Initialize();
-    EditorHelper::Initialize(this);
 
     // create all imgui widgets
     m_widgets.emplace_back(make_shared<Style>(this));

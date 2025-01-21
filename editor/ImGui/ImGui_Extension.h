@@ -39,47 +39,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Widgets/IconLoader.h"
 //=================================
 
-class EditorHelper
-{
-public:
-    static void Initialize(Editor* editor_)
-    {
-        editor = editor_;
-    }
-
-    static void LoadMesh(const std::string& file_path, const uint32_t mesh_flags)
-    {
-        // load the model asynchronously
-        spartan::ThreadPool::AddTask([file_path, mesh_flags]()
-        {
-            spartan::ResourceCache::Load<spartan::Mesh>(file_path, mesh_flags);
-        });
-    }
-
-    static void LoadWorld(const std::string& file_path)
-    {
-        // loading a world resets everything so it's important to ensure that no tasks are running
-        spartan::ThreadPool::Flush(true);
-
-        // load the scene asynchronously
-        spartan::ThreadPool::AddTask([file_path]()
-        {
-            spartan::World::LoadFromFile(file_path);
-        });
-    }
-
-    static void SaveWorld(const std::string& file_path)
-    {
-        // save the scene asynchronously
-        spartan::ThreadPool::AddTask([file_path]()
-        {
-            spartan::World::SaveToFile(file_path);
-        });
-    }
-
-    inline static Editor* editor = nullptr;
-};
-
 namespace ImGuiSp
 {
     enum class DragPayloadType

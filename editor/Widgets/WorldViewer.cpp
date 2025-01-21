@@ -474,7 +474,10 @@ void WorldViewer::HandleKeyShortcuts()
         }
         else
         {
-            EditorHelper::SaveWorld(spartan::World::GetFilePath());
+            spartan::ThreadPool::AddTask([]()
+            {
+                spartan::World::SaveToFile(spartan::World::GetFilePath());
+            });
         }
     }
 

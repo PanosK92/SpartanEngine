@@ -100,7 +100,11 @@ namespace
                 // Ok button
                 if (ImGuiSp::button_centered_on_line("Ok", 0.5f))
                 {
-                    EditorHelper::LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
+                    spartan::ThreadPool::AddTask([]()
+                    {
+                        spartan::ResourceCache::Load<spartan::Mesh>(mesh_import_file_path, mesh_import_dialog_flags);
+                    });
+
                     mesh_import_dialog_is_visible = false;
                 }
             }
