@@ -749,7 +749,7 @@ namespace spartan
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("sponza_curtains");
-                entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+                entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
                 entity->SetScale(scale);
 
                 // disable back face culling and enable wind
@@ -788,7 +788,7 @@ namespace spartan
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("sponza_ivy");
-                entity->SetPosition(Vector3(0.0f, 0.15f, 0.0f));
+                entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
                 entity->SetScale(scale);
 
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())

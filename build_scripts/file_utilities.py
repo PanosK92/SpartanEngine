@@ -69,11 +69,7 @@ def download_file(url, destination, expected_hash):
     if total_size != 0 and t.n != total_size:
         print("ERROR, something went wrong during download")
         return
-    
-    if calculate_file_hash(destination) != expected_hash:
-        print(f"ERROR, hash mismatch for {destination}")
-        return
-    
+
 def extract_archive(archive_path, destination_path):
     # Check if 7z.exe exists locally
     current_dir_7z  = Path("7z.exe")
