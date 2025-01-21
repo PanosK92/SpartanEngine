@@ -528,8 +528,9 @@ void GeneralWindows::Initialize(Editor* editor_in)
 
     // world download
     {
-        size_t file_count                = spartan::FileSystem::GetFilesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size();
-        worlds::downloaded_and_extracted = file_count > 1; // assets.7z + extracted folders
+        size_t file_count                 = spartan::FileSystem::GetFilesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size();       // assets.7z
+        file_count                       += spartan::FileSystem::GetDirectoriesInDirectory(spartan::ResourceCache::GetProjectDirectory()).size(); // extracted folders
+        worlds::downloaded_and_extracted  = file_count > 1; // assets.7z + extracted folders
 
         if (worlds::downloaded_and_extracted)
         {
