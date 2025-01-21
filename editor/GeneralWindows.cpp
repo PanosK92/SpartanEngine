@@ -440,8 +440,8 @@ namespace
         int world_index = 0;
 
         bool downloaded_and_extracted = false;
-        bool visible_download_prompt  = !downloaded_and_extracted;
-        bool visible_world_list       = downloaded_and_extracted;
+        bool visible_download_prompt  = false;
+        bool visible_world_list       = false;
 
         void world_on_download_finished()
         {
