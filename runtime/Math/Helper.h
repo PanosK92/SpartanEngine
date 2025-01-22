@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ====
-#include <cmath>
-#include <limits>
 #include <random>
 //===============
 
@@ -46,13 +44,11 @@ namespace spartan::math
     constexpr float deg_to_rad = pi / 180.0f;
     constexpr float rad_to_deg = 180.0f / pi;
 
-    inline float cot(float x) { return cos(x) / sin(x); }
-
     template <typename T>
-    constexpr T saturate(T x) { return clamp<T>(x, static_cast<T>(0), static_cast<T>(1)); }
+    constexpr T saturate(T x) { return std::clamp<T>(x, static_cast<T>(0), static_cast<T>(1)); }
 
     template <class T, class U>
-    constexpr T Lerp(T lhs, T rhs, U t) { return lhs * (static_cast<U>(1) - t) + rhs * t; }
+    constexpr T lerp(T lhs, T rhs, U t) { return lhs * (static_cast<U>(1) - t) + rhs * t; }
 
     template <class T>
     constexpr bool approximate_equals(T lhs, T rhs, T error = std::numeric_limits<T>::epsilon()) { return lhs + error >= rhs && lhs - error <= rhs; }

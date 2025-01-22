@@ -414,7 +414,7 @@ namespace spartan
                 const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
 
                 // lerp to it
-                m_mouse_smoothed = Lerp(m_mouse_smoothed, mouse_delta, saturate(1.0f - m_mouse_smoothing));
+                m_mouse_smoothed = lerp(m_mouse_smoothed, mouse_delta, saturate(1.0f - m_mouse_smoothing));
 
                 // accumulate rotation
                 m_first_person_rotation += m_mouse_smoothed;

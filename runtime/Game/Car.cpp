@@ -719,7 +719,7 @@ namespace spartan
             }
 
             // lerp to new steering angle - real life vehicles don't snap their wheels to the target angle
-            m_parameters.steering_angle = math::Lerp<float>(m_parameters.steering_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
+            m_parameters.steering_angle = math::lerp<float>(m_parameters.steering_angle, steering_angle_target, tuning::steering_return_speed * delta_time_sec);
 
             // set the steering angle
             m_parameters.vehicle->setSteeringValue(m_parameters.steering_angle, tuning::wheel_fl);
