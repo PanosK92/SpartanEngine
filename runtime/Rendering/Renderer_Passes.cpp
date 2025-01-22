@@ -1397,8 +1397,8 @@ namespace spartan
         const uint32_t resolution_x       = tex_environment->GetWidth()  >> mip_level;
         const uint32_t resolution_y       = tex_environment->GetHeight() >> mip_level;
         cmd_list->Dispatch(
-            static_cast<uint32_t>(math::Ceil(static_cast<float>(resolution_y) / thread_group_count)),
-            static_cast<uint32_t>(math::Ceil(static_cast<float>(resolution_y) / thread_group_count))
+            static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count)),
+            static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count))
         );
 
         m_environment_mips_to_filter_count--;
@@ -1545,8 +1545,8 @@ namespace spartan
 
                 // Blend
                 uint32_t thread_group_count    = 8;
-                uint32_t thread_group_count_x_ = static_cast<uint32_t>(math::Ceil(static_cast<float>(mip_width_large) / thread_group_count));
-                uint32_t thread_group_count_y_ = static_cast<uint32_t>(math::Ceil(static_cast<float>(mip_height_height) / thread_group_count));
+                uint32_t thread_group_count_x_ = static_cast<uint32_t>(ceil(static_cast<float>(mip_width_large) / thread_group_count));
+                uint32_t thread_group_count_y_ = static_cast<uint32_t>(ceil(static_cast<float>(mip_height_height) / thread_group_count));
                 cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
             }
         }

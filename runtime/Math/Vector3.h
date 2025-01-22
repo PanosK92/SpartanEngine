@@ -68,7 +68,7 @@ namespace spartan::math
         void Normalize()
         {
             const auto length_squared = LengthSquared();
-            if (!EqualsWithError(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
             #ifdef __AVX2__
                 // load x, y, z into an AVX vector (set w component to 0)

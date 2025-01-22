@@ -157,7 +157,7 @@ namespace spartan
         Color m_color_rgb                     = Color::standard_black;;
         float m_temperature_kelvin            = 0.0f;
         float m_range                         = 0.0f;
-        float m_angle_rad                     = math::DEG_TO_RAD * 30.0f;
+        float m_angle_rad                     = math::deg_to_rad * 30.0f;
         uint32_t m_index                      = 0;
         bool m_filtering_pending              = false;
         float m_time_since_last_filtering_sec = 0.0f;

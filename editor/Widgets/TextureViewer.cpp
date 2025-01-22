@@ -169,7 +169,7 @@ void TextureViewer::OnTickVisible()
             ImGui::PushItemWidth(85 * spartan::Window::GetDpiScale());
             ImGui::InputInt("Mip", &mip_level);
             ImGui::PopItemWidth();
-            mip_level = math::Clamp(mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
+            mip_level = clamp(mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
         }
 
         // array level control
@@ -179,7 +179,7 @@ void TextureViewer::OnTickVisible()
             ImGui::PushItemWidth(85 * spartan::Window::GetDpiScale());
             ImGui::InputInt("Array", &array_level);
             ImGui::PopItemWidth();
-            array_level = math::Clamp(array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
+            array_level = clamp(array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
         }
 
         ImGui::BeginGroup();

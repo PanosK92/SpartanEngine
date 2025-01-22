@@ -102,7 +102,7 @@ namespace spartan::math
         void Normalize()
         {
             const auto length_squared = LengthSquared();
-            if (!EqualsWithError(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
                 const auto length_inverted = 1.0f / sqrt(length_squared);
                 x *= length_inverted;
@@ -115,7 +115,7 @@ namespace spartan::math
         [[nodiscard]] Vector4 Normalized() const
         {
             const auto length_squared = LengthSquared();
-            if (!EqualsWithError(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
                 const auto length_inverted = 1.0f / sqrt(length_squared);
                 return (*this) * length_inverted;

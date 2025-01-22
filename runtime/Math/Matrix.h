@@ -315,7 +315,7 @@ namespace spartan::math
 
         static Matrix CreatePerspectiveFieldOfViewLH(float fov_y_radians, float aspect_ratio, float near_plane, float far_plane)
         {
-            const float tan_half_fovy = Tan(fov_y_radians / 2);
+            const float tan_half_fovy = tan(fov_y_radians / 2);
             const float f             = 1.0f / tan_half_fovy;
             const float range_inv     = 1.0f / (far_plane - near_plane);
 
@@ -488,7 +488,7 @@ namespace spartan::math
 
             for (unsigned i = 0; i < 16; ++i)
             {
-                if (!EqualsWithError(data_left[i], data_right[i]))
+                if (!approximate_equals(data_left[i], data_right[i]))
                     return false;
             }
 

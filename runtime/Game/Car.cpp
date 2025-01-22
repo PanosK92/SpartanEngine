@@ -96,7 +96,7 @@ namespace spartan
         constexpr float brake_ramp_speed                        = 5000.0f;                                   // rate at which brake force increases (human pressing the brake and vehicle applying brake pads)
                                                                                                              
         // steering                                                                                          
-        constexpr float steering_angle_max                      = 40.0f * math::DEG_TO_RAD;          // the maximum steering angle of the front wheels
+        constexpr float steering_angle_max                      = 40.0f * math::deg_to_rad;          // the maximum steering angle of the front wheels
         constexpr float steering_return_speed                   = 5.0f;                                      // the speed at which the steering wheel returns to the center
                                                                                                              
         // aerodynamics                                                                                      
@@ -141,12 +141,12 @@ namespace spartan
             oss << fixed << setprecision(2);
 
             oss << "Wheel: " << wheel_name << "\n";
-            oss << "Steering: " << static_cast<float>(wheel_info.m_steering) * math::RAD_TO_DEG << " deg\n";
+            oss << "Steering: " << static_cast<float>(wheel_info.m_steering) * math::rad_to_deg << " deg\n";
             oss << "Angular velocity: " << static_cast<float>(wheel_info.m_deltaRotation * 0.5f) / static_cast<float>(Physics::GetTimeStepInternalSec()) << " rad/s\n";
             oss << "Torque: " << wheel_info.m_engineForce << " N\n";
             oss << "Suspension length: " << wheel_info.m_raycastInfo.m_suspensionLength << " m\n";
             oss << "Slip ratio: " << parameters.pacejka_slip_ratio[wheel_index] << " ( Fz: " << parameters.pacejka_fz[wheel_index] << " N ) \n";
-            oss << "Slip angle: " << parameters.pacejka_slip_angle[wheel_index] * math::RAD_TO_DEG << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
+            oss << "Slip angle: " << parameters.pacejka_slip_angle[wheel_index] * math::rad_to_deg << " ( Fx: " << parameters.pacejka_fx[wheel_index] << " N ) \n";
 
             return oss.str();
         }
@@ -224,10 +224,10 @@ namespace spartan
                 numerator = abs(velocity_vehicle) - abs(velocity_wheel);
             }
 
-            float denominator      = max(abs(velocity_wheel), math::SMALL_FLOAT);
+            float denominator      = max(abs(velocity_wheel), math::small_float);
             float slip_ratio       = numerator / denominator;
 
-            return math::Clamp<float>(slip_ratio, -1.0f, 1.0f);
+            return clamp(slip_ratio, -1.0f, 1.0f);
         }
 
         float compute_slip_angle(const btVector3& wheel_forward, const btVector3& wheel_side, const btVector3& vehicle_velocity)
@@ -243,7 +243,7 @@ namespace spartan
 
             float v_z        = abs(vehicle_velocity.dot(wheel_forward));
             float v_x        = abs(vehicle_velocity.dot(wheel_side));
-            float slip_angle = atan2(v_x, v_z + math::SMALL_FLOAT);
+            float slip_angle = atan2(v_x, v_z + math::small_float);
 
             return slip_angle;
         }
@@ -262,7 +262,7 @@ namespace spartan
             }
             else // slip angle
             {
-                slip *= math::RAD_TO_DEG; // to degrees
+                slip *= math::rad_to_deg; // to degrees
             }
 
             // coefficients from the pacejka '94 model
@@ -285,7 +285,7 @@ namespace spartan
             // compute the parameters for the Pacejka ’94 formula
             float Fz  = normal_load;
             float C   = b0;
-            float D   = Fz * (b1 * Fz + b2) + math::SMALL_FLOAT;
+            float D   = Fz * (b1 * Fz + b2) + math::small_float;
             float BCD = (b3 * Fz * Fz + b4 * Fz) * exp(-b5 * Fz);
             float B   = BCD / (C * D);
             float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * math::Sign(slip + (b9 * Fz + b10)));
@@ -496,10 +496,10 @@ namespace spartan
             {
                 btWheelInfo* wheel_info       = &parameters.vehicle->getWheelInfo(0);
                 float wheel_angular_velocity  = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
-                float wheel_rpm               = (wheel_angular_velocity * 60.0f) / (2.0f * math::PI);
+                float wheel_rpm               = (wheel_angular_velocity * 60.0f) / (2.0f * math::pi);
                 float target_rpm              = tuning::engine_idle_rpm + wheel_rpm * parameters.gear_ratio * tuning::gearbox_final_drive;
                 target_rpm                   *= abs(parameters.throttle);
-                target_rpm                    = math::Clamp(target_rpm, tuning::engine_idle_rpm, tuning::engine_max_rpm);
+                target_rpm                    = clamp(target_rpm, tuning::engine_idle_rpm, tuning::engine_max_rpm);
 
                 const float rev_up_down_speed = 0.1f;
                 parameters.engine_rpm = lerp(parameters.engine_rpm, target_rpm, rev_up_down_speed);
@@ -806,7 +806,7 @@ namespace spartan
         // steering wheel
         if (m_parameters.transform_steering_wheel)
         {
-            m_parameters.transform_steering_wheel->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_parameters.steering_angle * math::RAD_TO_DEG));
+            m_parameters.transform_steering_wheel->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 0.0f, -m_parameters.steering_angle * math::rad_to_deg));
         }
 
         // wheels
@@ -826,7 +826,7 @@ namespace spartan
                 float x, y, z;
                 transform_bt.getRotation().getEulerZYX(x, y, z);
                 float steering_angle_rad = m_parameters.vehicle->getSteeringValue(wheel_index);
-                Quaternion rotation = Quaternion::FromEulerAngles(z * math::RAD_TO_DEG, steering_angle_rad * math::RAD_TO_DEG, 0.0f);
+                Quaternion rotation = Quaternion::FromEulerAngles(z * math::rad_to_deg, steering_angle_rad * math::rad_to_deg, 0.0f);
                 transform->SetRotationLocal(rotation);
             }
         }

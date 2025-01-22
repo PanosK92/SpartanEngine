@@ -241,7 +241,7 @@ namespace spartan
 
             const uint32_t glyph_count    = GLYPH_END - GLYPH_START;
             const uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
-            const uint32_t row_count      = static_cast<uint32_t>(Ceil(float(glyph_count) / float(glyphs_per_row)));
+            const uint32_t row_count      = static_cast<uint32_t>(ceil(float(glyph_count) / float(glyphs_per_row)));
 
             *atlas_width        = ATLAS_WIDTH;
             *atlas_height       = max_height * row_count;

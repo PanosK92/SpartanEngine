@@ -241,8 +241,8 @@ namespace spartan
         SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
         // clamp size between the supported min and max
-        m_width  = math::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        m_height = math::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        m_width  = clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
         // swap chain
         VkSwapchainKHR swap_chain;
@@ -255,7 +255,7 @@ namespace spartan
             create_info.imageColorSpace           = color_space;
             create_info.imageExtent               = { m_width, m_height };
             create_info.imageArrayLayers          = 1;
-            create_info.imageUsage                = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
+            create_info.imageUsage                = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // for rendering on it
             create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
 
             uint32_t queueFamilyIndices[] = { RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute), RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics) };

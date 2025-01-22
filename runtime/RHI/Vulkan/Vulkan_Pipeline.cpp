@@ -280,7 +280,7 @@ namespace spartan
             rasterizer_state.cullMode                = vulkan_cull_mode[static_cast<uint32_t>(RHI_CullMode::Back)];
             rasterizer_state.frontFace               = VK_FRONT_FACE_CLOCKWISE;
             rasterizer_state.depthBiasEnable         = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
-            rasterizer_state.depthBiasConstantFactor = math::Floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
+            rasterizer_state.depthBiasConstantFactor = floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
             rasterizer_state.depthBiasClamp          = m_state.rasterizer_state->GetDepthBiasClamp();
             rasterizer_state.depthBiasSlopeFactor    = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
         }

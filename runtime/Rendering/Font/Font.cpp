@@ -168,7 +168,7 @@ namespace spartan
 
     void Font::SetSize(const uint32_t size)
     {
-        m_font_size = Clamp<uint32_t>(size, 8, 50);
+        m_font_size = clamp<uint32_t>(size, 8, 50);
     }
 
     void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)

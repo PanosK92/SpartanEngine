@@ -79,7 +79,7 @@ namespace spartan
         points.resize(segment_count + 1);
 
         // Compute points on circle
-        float angle_step = math::PI_2 / (float)segment_count;
+        float angle_step = math::pi_2 / (float)segment_count;
         for (uint32_t i = 0; i <= segment_count; i++)
         {
             float angle = (float)i * angle_step;
@@ -110,7 +110,7 @@ namespace spartan
         segment_count = max(segment_count, static_cast<uint32_t>(4));
 
         Vector3 Vertex1, Vertex2, Vertex3, Vertex4;
-        const float AngleInc = 2.f * PI / float(segment_count);
+        const float AngleInc = 2.f * pi / float(segment_count);
         uint32_t NumSegmentsY = segment_count;
         float Latitude = AngleInc;
         uint32_t NumSegmentsX;
@@ -232,7 +232,7 @@ namespace spartan
                         {
                             // tan(angle) = opposite/adjacent
                             // opposite = adjacent * tan(angle)
-                            float opposite = light->GetRange() * math::Tan(light->GetAngle());
+                            float opposite = light->GetRange() * tan(light->GetAngle());
 
                             Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
                             Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp() * opposite;
