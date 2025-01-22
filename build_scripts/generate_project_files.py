@@ -75,17 +75,6 @@ def generate_project_files():
         print(f"An unexpected error occurred: {e}")
         sys.exit(1)
 
-    # Check for generated files based on the action
-    if action == "vs2022":
-        if not Path("spartan.sln").exists():
-            print("Error: spartan.sln not generated.")
-            sys.exit(1)
-    else:
-        makefiles = [Path("Makefile"), Path("editor") / "Makefile", Path("runtime") / "Makefile"]
-        if not any(m.exists() for m in makefiles):
-            print("Error: makefiles not generated")
-            sys.exit(1)
-
 def main():
     is_ci = "ci" in sys.argv
     
@@ -97,9 +86,9 @@ def main():
     file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
 
     print("\n2. Download and extract libraries...")
-    library_url           = 'https://www.dropbox.com/scl/fi/zq64yfpbly1goahmanm4r/libraries.7z?rlkey=m90lngvaosc9i3w8k16f1e1r6&st=5jm4fmqv&dl=1'
+    library_url           = 'https://www.dropbox.com/scl/fi/e9b8eiyvs69zoyarleift/libraries.7z?rlkey=5a3me7rc3os4naev2dyifjbsz&st=1amejgmw&dl=1'
+    library_expected_hash = '89f3dc352d1ff47b059ef1bceed2d89f5ae7989eac60666624f195363a23d85d'
     library_destination   = Path("third_party") / "libraries" / "libraries.7z"
-    library_expected_hash = '8a20305ee9658dfdfba2aea88f26e6ee3d1330d7e6d26f42bc07bb76150ff1c5'
     file_utilities.download_file(library_url, str(library_destination), library_expected_hash)
     file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"))
     

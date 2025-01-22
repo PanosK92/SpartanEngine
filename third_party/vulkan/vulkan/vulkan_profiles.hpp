@@ -111,11 +111,9 @@
     defined(VK_EXT_shader_stencil_export) && \
     defined(VK_EXT_transform_feedback) && \
     defined(VK_KHR_8bit_storage) && \
-    defined(VK_KHR_global_priority) && \
     defined(VK_KHR_load_store_op_none) && \
     defined(VK_KHR_maintenance6) && \
     defined(VK_KHR_map_memory2) && \
-    defined(VK_KHR_push_descriptor) && \
     defined(VK_KHR_shader_expect_assume) && \
     defined(VK_KHR_shader_float_controls2) && \
     defined(VK_KHR_shader_maximal_reconvergence) && \
@@ -229,6 +227,10 @@ typedef struct VpBlockProperties {
     uint32_t apiVersion;
     char blockName[VP_MAX_PROFILE_NAME_SIZE];
 } VpBlockProperties;
+
+typedef struct VpVideoProfileProperties {
+    char name[VP_MAX_PROFILE_NAME_SIZE];
+} VpVideoProfileProperties;
 
 typedef enum VpInstanceCreateFlagBits {
     VP_INSTANCE_CREATE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
@@ -471,6 +473,26 @@ VPAPI_ATTR VkResult vpGetProfilePropertyStructureTypes(
     uint32_t*                                   pStructureTypeCount,
     VkStructureType*                            pStructureTypes);
 
+// Fill the queue family property structures with the requirements of a profile
+VPAPI_ATTR VkResult vpGetProfileQueueFamilyProperties(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t*                                   pPropertyCount,
+    VkQueueFamilyProperties2KHR*                pProperties);
+
+// Query the list of queue family property structure types specified by the profile
+VPAPI_ATTR VkResult vpGetProfileQueueFamilyStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes);
+
 // Query the list of formats with specified requirements by a profile
 VPAPI_ATTR VkResult vpGetProfileFormats(
 #ifdef VP_USE_OBJECT
@@ -500,6 +522,82 @@ VPAPI_ATTR VkResult vpGetProfileFormatStructureTypes(
     const char*                                 pBlockName,
     uint32_t*                                   pStructureTypeCount,
     VkStructureType*                            pStructureTypes);
+
+#ifdef VK_KHR_video_queue
+// Query the list of video profiles specified by the profile
+VPAPI_ATTR VkResult vpGetProfileVideoProfiles(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t*                                   pVideoProfileCount,
+    VpVideoProfileProperties*                   pVideoProfiles);
+
+// Query the video profile info structures for a video profile defined by a profile
+VPAPI_ATTR VkResult vpGetProfileVideoProfileInfo(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    VkVideoProfileInfoKHR*                      pVideoProfileInfo);
+
+// Query the list of video profile info structure types specified by the profile for a video profile
+VPAPI_ATTR VkResult vpGetProfileVideoProfileInfoStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes);
+
+// Query the video capabilities requirements for a video profile defined by a profile
+VPAPI_ATTR VkResult vpGetProfileVideoCapabilities(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    void*                                       pNext);
+
+// Query the list of video capability structure types specified by the profile for a video profile
+VPAPI_ATTR VkResult vpGetProfileVideoCapabilityStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes);
+
+// Query the video format property requirements for a video profile defined by a profile
+VPAPI_ATTR VkResult vpGetProfileVideoFormatProperties(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pPropertyCount,
+    VkVideoFormatPropertiesKHR*                 pProperties);
+
+// Query the list of video format property structure types specified by the profile for a video profile
+VPAPI_ATTR VkResult vpGetProfileVideoFormatStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes);
+#endif  // VK_KHR_video_queue
 
 #include <cstdio>
 
@@ -613,8 +711,10 @@ VPAPI_ATTR bool isPowerOfTwo(double source) {
 
 using PFN_vpStructFiller = void(*)(VkBaseOutStructure* p);
 using PFN_vpStructComparator = bool(*)(VkBaseOutStructure* p);
-using PFN_vpStructChainerCb =  void(*)(VkBaseOutStructure* p, void* pUser);
+using PFN_vpStructChainerCb = void(*)(VkBaseOutStructure* p, void* pUser);
 using PFN_vpStructChainer = void(*)(VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb);
+using PFN_vpStructArrayChainerCb = void(*)(uint32_t count, VkBaseOutStructure* p, void* pUser);
+using PFN_vpStructArrayChainer = void(*)(uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb);
 
 struct VpFeatureDesc {
     PFN_vpStructFiller              pfnFiller;
@@ -640,8 +740,48 @@ struct VpFormatDesc {
 struct VpStructChainerDesc {
     PFN_vpStructChainer             pfnFeature;
     PFN_vpStructChainer             pfnProperty;
-    PFN_vpStructChainer             pfnQueueFamily;
+    PFN_vpStructArrayChainer        pfnQueueFamily;
     PFN_vpStructChainer             pfnFormat;
+};
+
+struct VpVideoProfileInfoDesc {
+    PFN_vpStructFiller              pfnFiller;
+    PFN_vpStructComparator          pfnComparator;
+};
+
+struct VpVideoCapabilityDesc {
+    PFN_vpStructFiller              pfnFiller;
+    PFN_vpStructComparator          pfnComparator;
+};
+
+struct VpVideoFormatDesc {
+    PFN_vpStructFiller              pfnFiller;
+    PFN_vpStructComparator          pfnComparator;
+};
+
+struct VpVideoProfileStructChainerDesc {
+    PFN_vpStructChainer             pfnInfo;
+    PFN_vpStructChainer             pfnCapability;
+    PFN_vpStructArrayChainer        pfnFormat;
+};
+
+struct VpVideoProfileDesc {
+    VpVideoProfileProperties properties;
+
+    uint32_t infoStructTypeCount;
+    const VkStructureType* pInfoStructTypes;
+    VpVideoProfileInfoDesc info;
+
+    uint32_t capabilityStructTypeCount;
+    const VkStructureType* pCapabilityStructTypes;
+    VpVideoCapabilityDesc capability;
+
+    uint32_t formatStructTypeCount;
+    const VkStructureType* pFormatStructTypes;
+    uint32_t formatCount;
+    const VpVideoFormatDesc* pFormats;
+
+    VpVideoProfileStructChainerDesc chainers;
 };
 
 struct VpVariantDesc {
@@ -672,6 +812,9 @@ struct VpVariantDesc {
     const VpFormatDesc* pFormats;
 
     VpStructChainerDesc chainers;
+
+    uint32_t videoProfileCount;
+    const VpVideoProfileDesc* pVideoProfiles;
 };
 
 struct VpCapabilitiesDesc {
@@ -699,6 +842,152 @@ template <typename T>
 VPAPI_ATTR bool vpCheckFlags(const T& actual, const uint64_t expected) {
     return (actual & expected) == expected;
 }
+
+
+#ifdef VK_KHR_video_queue
+VPAPI_ATTR void vpForEachMatchingVideoProfiles(
+    VkVideoProfileInfoKHR*                      pVideoProfileInfo,
+    void*                                       pUser,
+    PFN_vpStructChainerCb                       pfnCb) {
+    const VkVideoChromaSubsamplingFlagsKHR chroma_subsampling_list[] = {
+        VK_VIDEO_CHROMA_SUBSAMPLING_420_BIT_KHR,
+        VK_VIDEO_CHROMA_SUBSAMPLING_422_BIT_KHR,
+        VK_VIDEO_CHROMA_SUBSAMPLING_444_BIT_KHR,
+        VK_VIDEO_CHROMA_SUBSAMPLING_MONOCHROME_BIT_KHR
+    };
+    const VkVideoComponentBitDepthFlagsKHR bit_depth_list[] = {
+        VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR,
+        VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR,
+        VK_VIDEO_COMPONENT_BIT_DEPTH_12_BIT_KHR
+    };
+    for (size_t chromaSubsampling_idx = 0; chromaSubsampling_idx < std::size(chroma_subsampling_list); ++chromaSubsampling_idx) {
+        pVideoProfileInfo->chromaSubsampling = chroma_subsampling_list[chromaSubsampling_idx];
+        for (size_t lumaBitDepth_idx = 0; lumaBitDepth_idx < std::size(bit_depth_list); ++lumaBitDepth_idx) {
+            pVideoProfileInfo->lumaBitDepth = bit_depth_list[lumaBitDepth_idx];
+            for (size_t chromaBitDepth_idx = 0; chromaBitDepth_idx < std::size(bit_depth_list); ++chromaBitDepth_idx) {
+                pVideoProfileInfo->chromaBitDepth = bit_depth_list[chromaBitDepth_idx];
+                {
+                    pVideoProfileInfo->pNext = nullptr;
+                    pVideoProfileInfo->videoCodecOperation = VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR;
+                    VkVideoDecodeH264ProfileInfoKHR var_VideoDecodeH264ProfileInfoKHR = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_PROFILE_INFO_KHR };
+                    var_VideoDecodeH264ProfileInfoKHR.pNext = pVideoProfileInfo->pNext;
+                    pVideoProfileInfo->pNext = &var_VideoDecodeH264ProfileInfoKHR;
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_BASELINE;
+                    var_VideoDecodeH264ProfileInfoKHR.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_PROGRESSIVE_KHR;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_MAIN;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH_444_PREDICTIVE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_BASELINE;
+                    var_VideoDecodeH264ProfileInfoKHR.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_INTERLACED_INTERLEAVED_LINES_BIT_KHR;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_MAIN;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH_444_PREDICTIVE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_BASELINE;
+                    var_VideoDecodeH264ProfileInfoKHR.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_INTERLACED_SEPARATE_PLANES_BIT_KHR;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_MAIN;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH_444_PREDICTIVE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                }
+                {
+                    pVideoProfileInfo->pNext = nullptr;
+                    pVideoProfileInfo->videoCodecOperation = VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR;
+                    VkVideoDecodeH265ProfileInfoKHR var_VideoDecodeH265ProfileInfoKHR = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR };
+                    var_VideoDecodeH265ProfileInfoKHR.pNext = pVideoProfileInfo->pNext;
+                    pVideoProfileInfo->pNext = &var_VideoDecodeH265ProfileInfoKHR;
+                    var_VideoDecodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_MAIN;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_MAIN_10;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_MAIN_STILL_PICTURE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_FORMAT_RANGE_EXTENSIONS;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_SCC_EXTENSIONS;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                }
+                {
+                    pVideoProfileInfo->pNext = nullptr;
+                    pVideoProfileInfo->videoCodecOperation = VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
+                    VkVideoDecodeAV1ProfileInfoKHR var_VideoDecodeAV1ProfileInfoKHR = { VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR };
+                    var_VideoDecodeAV1ProfileInfoKHR.pNext = pVideoProfileInfo->pNext;
+                    pVideoProfileInfo->pNext = &var_VideoDecodeAV1ProfileInfoKHR;
+                    var_VideoDecodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+                    var_VideoDecodeAV1ProfileInfoKHR.filmGrainSupport = VK_TRUE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_HIGH;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_PROFESSIONAL;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+                    var_VideoDecodeAV1ProfileInfoKHR.filmGrainSupport = VK_FALSE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_HIGH;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoDecodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_PROFESSIONAL;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                }
+                {
+                    pVideoProfileInfo->pNext = nullptr;
+                    pVideoProfileInfo->videoCodecOperation = VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_KHR;
+                    VkVideoEncodeH264ProfileInfoKHR var_VideoEncodeH264ProfileInfoKHR = { VK_STRUCTURE_TYPE_VIDEO_ENCODE_H264_PROFILE_INFO_KHR };
+                    var_VideoEncodeH264ProfileInfoKHR.pNext = pVideoProfileInfo->pNext;
+                    pVideoProfileInfo->pNext = &var_VideoEncodeH264ProfileInfoKHR;
+                    var_VideoEncodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_BASELINE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_MAIN;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeH264ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H264_PROFILE_IDC_HIGH_444_PREDICTIVE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                }
+                {
+                    pVideoProfileInfo->pNext = nullptr;
+                    pVideoProfileInfo->videoCodecOperation = VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_KHR;
+                    VkVideoEncodeH265ProfileInfoKHR var_VideoEncodeH265ProfileInfoKHR = { VK_STRUCTURE_TYPE_VIDEO_ENCODE_H265_PROFILE_INFO_KHR };
+                    var_VideoEncodeH265ProfileInfoKHR.pNext = pVideoProfileInfo->pNext;
+                    pVideoProfileInfo->pNext = &var_VideoEncodeH265ProfileInfoKHR;
+                    var_VideoEncodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_MAIN;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_MAIN_10;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_MAIN_STILL_PICTURE;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_FORMAT_RANGE_EXTENSIONS;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeH265ProfileInfoKHR.stdProfileIdc = STD_VIDEO_H265_PROFILE_IDC_SCC_EXTENSIONS;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                }
+                {
+                    pVideoProfileInfo->pNext = nullptr;
+                    pVideoProfileInfo->videoCodecOperation = VK_VIDEO_CODEC_OPERATION_ENCODE_AV1_BIT_KHR;
+                    VkVideoEncodeAV1ProfileInfoKHR var_VideoEncodeAV1ProfileInfoKHR = { VK_STRUCTURE_TYPE_VIDEO_ENCODE_AV1_PROFILE_INFO_KHR };
+                    var_VideoEncodeAV1ProfileInfoKHR.pNext = pVideoProfileInfo->pNext;
+                    pVideoProfileInfo->pNext = &var_VideoEncodeAV1ProfileInfoKHR;
+                    var_VideoEncodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_HIGH;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                    var_VideoEncodeAV1ProfileInfoKHR.stdProfile = STD_VIDEO_AV1_PROFILE_PROFESSIONAL;
+                    pfnCb(reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo), pUser);
+                }
+            }
+        }
+    }
+}
+#endif  // VK_KHR_video_queue
 #ifdef VP_ANDROID_15_minimums
 namespace VP_ANDROID_15_MINIMUMS {
 
@@ -730,7 +1019,9 @@ static const VkStructureType formatStructTypes[] = {
     VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR,
 };
 
+namespace blocks {
 namespace MUST {
+
 static const VkExtensionProperties instanceExtensions[] = {
     VkExtensionProperties{ VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_GOOGLE_SURFACELESS_QUERY_EXTENSION_NAME, 1 },
@@ -995,8 +1286,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -1004,8 +1295,9 @@ static const VpStructChainerDesc chainerDesc = {
         pfnCb(p, pUser);
     },
 };
-} //namespace MUST
+} // namespace MUST
 namespace primitivesGeneratedQuery {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_EXT_PRIMITIVES_GENERATED_QUERY_EXTENSION_NAME, 1 },
 };
@@ -1066,8 +1358,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -1075,8 +1367,9 @@ static const VpStructChainerDesc chainerDesc = {
         pfnCb(p, pUser);
     },
 };
-} //namespace primitivesGeneratedQuery
+} // namespace primitivesGeneratedQuery
 namespace pipelineStatisticsQuery {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -1133,8 +1426,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -1142,8 +1435,9 @@ static const VpStructChainerDesc chainerDesc = {
         pfnCb(p, pUser);
     },
 };
-} //namespace pipelineStatisticsQuery
+} // namespace pipelineStatisticsQuery
 namespace swBresenhamLines {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME, 1 },
 };
@@ -1204,8 +1498,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -1213,8 +1507,9 @@ static const VpStructChainerDesc chainerDesc = {
         pfnCb(p, pUser);
     },
 };
-} //namespace swBresenhamLines
+} // namespace swBresenhamLines
 namespace hwBresenhamLines {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_IMG_RELAXED_LINE_RASTERIZATION_EXTENSION_NAME, 1 },
 };
@@ -1275,8 +1570,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -1284,7 +1579,8 @@ static const VpStructChainerDesc chainerDesc = {
         pfnCb(p, pUser);
     },
 };
-} //namespace hwBresenhamLines
+} // namespace hwBresenhamLines
+} // namespace blocks
 } // namespace VP_ANDROID_15_MINIMUMS
 #endif // VP_ANDROID_15_minimums
 
@@ -1307,7 +1603,9 @@ static const VkStructureType propertyStructTypes[] = {
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
 };
 
+namespace blocks {
 namespace MUST {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_EXT_IMAGE_2D_VIEW_OF_3D_EXTENSION_NAME, 1 },
@@ -1315,11 +1613,9 @@ static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_EXT_PIPELINE_ROBUSTNESS_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_8BIT_STORAGE_EXTENSION_NAME, 1 },
-    VkExtensionProperties{ VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_LOAD_STORE_OP_NONE_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_MAINTENANCE_6_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_MAP_MEMORY_2_EXTENSION_NAME, 1 },
-    VkExtensionProperties{ VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SHADER_EXPECT_ASSUME_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SHADER_FLOAT_CONTROLS_2_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SHADER_MAXIMAL_RECONVERGENCE_EXTENSION_NAME, 1 },
@@ -1333,17 +1629,11 @@ static const VpFeatureDesc featureDesc = {
             switch (p->sType) {
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR: {
                     VkPhysicalDeviceFeatures2KHR* s = static_cast<VkPhysicalDeviceFeatures2KHR*>(static_cast<void*>(p));
-                    s->features.depthClamp = VK_TRUE;
                     s->features.fullDrawIndexUint32 = VK_TRUE;
                     s->features.shaderInt16 = VK_TRUE;
                 } break;
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
                     VkPhysicalDeviceVulkan12Features* s = static_cast<VkPhysicalDeviceVulkan12Features*>(static_cast<void*>(p));
-                    s->descriptorBindingPartiallyBound = VK_TRUE;
-                    s->descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
-                    s->descriptorBindingVariableDescriptorCount = VK_TRUE;
-                    s->descriptorIndexing = VK_TRUE;
-                    s->runtimeDescriptorArray = VK_TRUE;
                     s->samplerMirrorClampToEdge = VK_TRUE;
                     s->scalarBlockLayout = VK_TRUE;
                 } break;
@@ -1375,17 +1665,11 @@ static const VpFeatureDesc featureDesc = {
             switch (p->sType) {
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR: {
                     VkPhysicalDeviceFeatures2KHR* prettify_VkPhysicalDeviceFeatures2KHR = static_cast<VkPhysicalDeviceFeatures2KHR*>(static_cast<void*>(p));
-                    ret = ret && (prettify_VkPhysicalDeviceFeatures2KHR->features.depthClamp == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceFeatures2KHR->features.depthClamp == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceFeatures2KHR::features.depthClamp == VK_TRUE");
                     ret = ret && (prettify_VkPhysicalDeviceFeatures2KHR->features.fullDrawIndexUint32 == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceFeatures2KHR->features.fullDrawIndexUint32 == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceFeatures2KHR::features.fullDrawIndexUint32 == VK_TRUE");
                     ret = ret && (prettify_VkPhysicalDeviceFeatures2KHR->features.shaderInt16 == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceFeatures2KHR->features.shaderInt16 == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceFeatures2KHR::features.shaderInt16 == VK_TRUE");
                 } break;
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
                     VkPhysicalDeviceVulkan12Features* prettify_VkPhysicalDeviceVulkan12Features = static_cast<VkPhysicalDeviceVulkan12Features*>(static_cast<void*>(p));
-                    ret = ret && (prettify_VkPhysicalDeviceVulkan12Features->descriptorBindingPartiallyBound == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceVulkan12Features->descriptorBindingPartiallyBound == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceVulkan12Features::descriptorBindingPartiallyBound == VK_TRUE");
-                    ret = ret && (prettify_VkPhysicalDeviceVulkan12Features->descriptorBindingUpdateUnusedWhilePending == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceVulkan12Features->descriptorBindingUpdateUnusedWhilePending == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceVulkan12Features::descriptorBindingUpdateUnusedWhilePending == VK_TRUE");
-                    ret = ret && (prettify_VkPhysicalDeviceVulkan12Features->descriptorBindingVariableDescriptorCount == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceVulkan12Features->descriptorBindingVariableDescriptorCount == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceVulkan12Features::descriptorBindingVariableDescriptorCount == VK_TRUE");
-                    ret = ret && (prettify_VkPhysicalDeviceVulkan12Features->descriptorIndexing == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceVulkan12Features->descriptorIndexing == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceVulkan12Features::descriptorIndexing == VK_TRUE");
-                    ret = ret && (prettify_VkPhysicalDeviceVulkan12Features->runtimeDescriptorArray == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceVulkan12Features->runtimeDescriptorArray == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceVulkan12Features::runtimeDescriptorArray == VK_TRUE");
                     ret = ret && (prettify_VkPhysicalDeviceVulkan12Features->samplerMirrorClampToEdge == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceVulkan12Features->samplerMirrorClampToEdge == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceVulkan12Features::samplerMirrorClampToEdge == VK_TRUE");
                     ret = ret && (prettify_VkPhysicalDeviceVulkan12Features->scalarBlockLayout == VK_TRUE); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceVulkan12Features->scalarBlockLayout == VK_TRUE), "Unsupported feature condition: VkPhysicalDeviceVulkan12Features::scalarBlockLayout == VK_TRUE");
                 } break;
@@ -1422,14 +1706,12 @@ static const VpPropertyDesc propertyDesc = {
                     VkPhysicalDeviceProperties2KHR* s = static_cast<VkPhysicalDeviceProperties2KHR*>(static_cast<void*>(p));
                     s->properties.limits.bufferImageGranularity = 4096;
                     s->properties.limits.lineWidthGranularity = 0.5f;
-                    s->properties.limits.maxBoundDescriptorSets = 7;
                     s->properties.limits.maxColorAttachments = 8;
                     s->properties.limits.maxComputeWorkGroupInvocations = 256;
                     s->properties.limits.maxComputeWorkGroupSize[0] = 256;
                     s->properties.limits.maxComputeWorkGroupSize[1] = 256;
                     s->properties.limits.maxComputeWorkGroupSize[2] = 64;
                     s->properties.limits.maxDescriptorSetStorageBuffers = 96;
-                    s->properties.limits.maxDescriptorSetStorageImages = 144;
                     s->properties.limits.maxDescriptorSetUniformBuffers = 90;
                     s->properties.limits.maxFragmentCombinedOutputResources = 16;
                     s->properties.limits.maxImageArrayLayers = 2048;
@@ -1438,10 +1720,9 @@ static const VpPropertyDesc propertyDesc = {
                     s->properties.limits.maxImageDimensionCube = 8192;
                     s->properties.limits.maxPerStageDescriptorUniformBuffers = 15;
                     s->properties.limits.maxPerStageResources = 200;
-                    s->properties.limits.maxPushConstantsSize = 256;
                     s->properties.limits.maxSamplerLodBias = 14;
                     s->properties.limits.maxUniformBufferRange = 65536;
-                    s->properties.limits.maxVertexOutputComponents = 128;
+                    s->properties.limits.maxVertexOutputComponents = 72;
                     s->properties.limits.mipmapPrecisionBits = 6;
                     s->properties.limits.pointSizeGranularity = 0.125f;
                     s->properties.limits.standardSampleLocations = VK_TRUE;
@@ -1455,7 +1736,7 @@ static const VpPropertyDesc propertyDesc = {
                 } break;
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
                     VkPhysicalDeviceVulkan11Properties* s = static_cast<VkPhysicalDeviceVulkan11Properties*>(static_cast<void*>(p));
-                    s->subgroupSupportedStages |= (VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+                    s->subgroupSupportedStages |= (VK_SHADER_STAGE_COMPUTE_BIT);
                 } break;
                 default: break;
             }
@@ -1469,14 +1750,12 @@ static const VpPropertyDesc propertyDesc = {
                     ret = ret && ((4096 % prettify_VkPhysicalDeviceProperties2KHR->properties.limits.bufferImageGranularity) == 0); VP_DEBUG_COND_MSG(!((4096 % prettify_VkPhysicalDeviceProperties2KHR->properties.limits.bufferImageGranularity) == 0), "Unsupported properties condition: (4096 % prettify_VkPhysicalDeviceProperties2KHR->properties.limits.bufferImageGranularity) == 0");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.lineWidthGranularity <= 0.5); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.lineWidthGranularity <= 0.5), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.lineWidthGranularity <= 0.5");
                     ret = ret && (isMultiple(0.5, prettify_VkPhysicalDeviceProperties2KHR->properties.limits.lineWidthGranularity)); VP_DEBUG_COND_MSG(!(isMultiple(0.5, prettify_VkPhysicalDeviceProperties2KHR->properties.limits.lineWidthGranularity)), "Unsupported properties condition: isMultiple(0.5, prettify_VkPhysicalDeviceProperties2KHR->properties.limits.lineWidthGranularity)");
-                    ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxBoundDescriptorSets >= 7); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxBoundDescriptorSets >= 7), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxBoundDescriptorSets >= 7");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxColorAttachments >= 8); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxColorAttachments >= 8), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxColorAttachments >= 8");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupInvocations >= 256); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupInvocations >= 256), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxComputeWorkGroupInvocations >= 256");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupSize[0] >= 256); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupSize[0] >= 256), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxComputeWorkGroupSize[0] >= 256");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupSize[1] >= 256); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupSize[1] >= 256), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxComputeWorkGroupSize[1] >= 256");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupSize[2] >= 64); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxComputeWorkGroupSize[2] >= 64), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxComputeWorkGroupSize[2] >= 64");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxDescriptorSetStorageBuffers >= 96); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxDescriptorSetStorageBuffers >= 96), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxDescriptorSetStorageBuffers >= 96");
-                    ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxDescriptorSetStorageImages >= 144); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxDescriptorSetStorageImages >= 144), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxDescriptorSetStorageImages >= 144");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxDescriptorSetUniformBuffers >= 90); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxDescriptorSetUniformBuffers >= 90), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxDescriptorSetUniformBuffers >= 90");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxFragmentCombinedOutputResources >= 16); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxFragmentCombinedOutputResources >= 16), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxFragmentCombinedOutputResources >= 16");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxImageArrayLayers >= 2048); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxImageArrayLayers >= 2048), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxImageArrayLayers >= 2048");
@@ -1485,10 +1764,9 @@ static const VpPropertyDesc propertyDesc = {
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxImageDimensionCube >= 8192); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxImageDimensionCube >= 8192), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxImageDimensionCube >= 8192");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxPerStageDescriptorUniformBuffers >= 15); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxPerStageDescriptorUniformBuffers >= 15), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxPerStageDescriptorUniformBuffers >= 15");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxPerStageResources >= 200); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxPerStageResources >= 200), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxPerStageResources >= 200");
-                    ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxPushConstantsSize >= 256); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxPushConstantsSize >= 256), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxPushConstantsSize >= 256");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxSamplerLodBias >= 14); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxSamplerLodBias >= 14), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxSamplerLodBias >= 14");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxUniformBufferRange >= 65536); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxUniformBufferRange >= 65536), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxUniformBufferRange >= 65536");
-                    ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxVertexOutputComponents >= 128); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxVertexOutputComponents >= 128), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxVertexOutputComponents >= 128");
+                    ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxVertexOutputComponents >= 72); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.maxVertexOutputComponents >= 72), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.maxVertexOutputComponents >= 72");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.mipmapPrecisionBits >= 6); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.mipmapPrecisionBits >= 6), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.mipmapPrecisionBits >= 6");
                     ret = ret && (prettify_VkPhysicalDeviceProperties2KHR->properties.limits.pointSizeGranularity <= 0.125); VP_DEBUG_COND_MSG(!(prettify_VkPhysicalDeviceProperties2KHR->properties.limits.pointSizeGranularity <= 0.125), "Unsupported properties condition: VkPhysicalDeviceProperties2KHR::properties.limits.pointSizeGranularity <= 0.125");
                     ret = ret && (isMultiple(0.125, prettify_VkPhysicalDeviceProperties2KHR->properties.limits.pointSizeGranularity)); VP_DEBUG_COND_MSG(!(isMultiple(0.125, prettify_VkPhysicalDeviceProperties2KHR->properties.limits.pointSizeGranularity)), "Unsupported properties condition: isMultiple(0.125, prettify_VkPhysicalDeviceProperties2KHR->properties.limits.pointSizeGranularity)");
@@ -1503,7 +1781,7 @@ static const VpPropertyDesc propertyDesc = {
                 } break;
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
                     VkPhysicalDeviceVulkan11Properties* prettify_VkPhysicalDeviceVulkan11Properties = static_cast<VkPhysicalDeviceVulkan11Properties*>(static_cast<void*>(p));
-                    ret = ret && (vpCheckFlags(prettify_VkPhysicalDeviceVulkan11Properties->subgroupSupportedStages, (VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT))); VP_DEBUG_COND_MSG(!(vpCheckFlags(prettify_VkPhysicalDeviceVulkan11Properties->subgroupSupportedStages, (VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT))), "Unsupported properties condition: VkPhysicalDeviceVulkan11Properties::subgroupSupportedStages contains (VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT)");
+                    ret = ret && (vpCheckFlags(prettify_VkPhysicalDeviceVulkan11Properties->subgroupSupportedStages, (VK_SHADER_STAGE_COMPUTE_BIT))); VP_DEBUG_COND_MSG(!(vpCheckFlags(prettify_VkPhysicalDeviceVulkan11Properties->subgroupSupportedStages, (VK_SHADER_STAGE_COMPUTE_BIT))), "Unsupported properties condition: VkPhysicalDeviceVulkan11Properties::subgroupSupportedStages contains (VK_SHADER_STAGE_COMPUTE_BIT)");
                 } break;
                 default: break;
             }
@@ -1528,15 +1806,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace MUST
+} // namespace MUST
 namespace multisampledToSingleSampled {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_EXT_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_EXTENSION_NAME, 1 },
 };
@@ -1576,15 +1855,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace multisampledToSingleSampled
+} // namespace multisampledToSingleSampled
 namespace shaderStencilExport {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME, 1 },
 };
@@ -1624,14 +1904,15 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan11Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace shaderStencilExport
+} // namespace shaderStencilExport
+} // namespace blocks
 } // namespace VP_ANDROID_16_MINIMUMS
 #endif // VP_ANDROID_16_minimums
 
@@ -1742,8 +2023,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(nullptr));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -1752,7 +2033,9 @@ static const VpStructChainerDesc chainerDesc = {
     },
 };
 
+namespace blocks {
 namespace baseline {
+
 static const VkExtensionProperties instanceExtensions[] = {
     VkExtensionProperties{ VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_ANDROID_SURFACE_EXTENSION_NAME, 1 },
@@ -4304,8 +4587,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(nullptr));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -4313,7 +4596,8 @@ static const VpStructChainerDesc chainerDesc = {
         pfnCb(p, pUser);
     },
 };
-} //namespace baseline
+} // namespace baseline
+} // namespace blocks
 } // namespace VP_ANDROID_BASELINE_2021
 #endif // VP_ANDROID_baseline_2021
 
@@ -4479,8 +4763,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceMultiviewProperties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -4489,7 +4773,9 @@ static const VpStructChainerDesc chainerDesc = {
     },
 };
 
+namespace blocks {
 namespace baseline {
+
 static const VkExtensionProperties instanceExtensions[] = {
     VkExtensionProperties{ VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_ANDROID_SURFACE_EXTENSION_NAME, 1 },
@@ -7105,8 +7391,8 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceMultiviewProperties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         VkFormatProperties3KHR formatProperties3KHR{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR, nullptr };
@@ -7114,7 +7400,8 @@ static const VpStructChainerDesc chainerDesc = {
         pfnCb(p, pUser);
     },
 };
-} //namespace baseline
+} // namespace baseline
+} // namespace blocks
 } // namespace VP_ANDROID_BASELINE_2022
 #endif // VP_ANDROID_baseline_2022
 
@@ -7324,15 +7611,17 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
 
+namespace blocks {
 namespace vulkan10requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -7380,15 +7669,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan10requirements
+} // namespace vulkan10requirements
 namespace vulkan10requirements_roadmap2022 {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -7531,15 +7821,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan10requirements_roadmap2022
+} // namespace vulkan10requirements_roadmap2022
 namespace vulkan11requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -7603,15 +7894,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan11requirements
+} // namespace vulkan11requirements
 namespace vulkan11requirements_roadmap2022 {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -7678,15 +7970,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan11requirements_roadmap2022
+} // namespace vulkan11requirements_roadmap2022
 namespace vulkan12requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -7760,15 +8053,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan12requirements
+} // namespace vulkan12requirements
 namespace vulkan12requirements_roadmap2022 {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -7900,15 +8194,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan12requirements_roadmap2022
+} // namespace vulkan12requirements_roadmap2022
 namespace vulkan13requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -8016,15 +8311,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan13requirements
+} // namespace vulkan13requirements
 namespace vulkan13requirements_roadmap2022 {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_KHR_GLOBAL_PRIORITY_EXTENSION_NAME, 1 },
 };
@@ -8076,14 +8372,15 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan13requirements_roadmap2022
+} // namespace vulkan13requirements_roadmap2022
+} // namespace blocks
 } // namespace VP_KHR_ROADMAP_2022
 #endif // VP_KHR_roadmap_2022
 
@@ -8321,15 +8618,17 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
 
+namespace blocks {
 namespace vulkan10requirements_roadmap2024 {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -8398,15 +8697,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan10requirements_roadmap2024
+} // namespace vulkan10requirements_roadmap2024
 namespace vulkan11requirements_roadmap2024 {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -8455,15 +8755,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan11requirements_roadmap2024
+} // namespace vulkan11requirements_roadmap2024
 namespace vulkan12requirements_roadmap2024 {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -8530,15 +8831,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan12requirements_roadmap2024
+} // namespace vulkan12requirements_roadmap2024
 namespace vulkan13requirements_roadmap2024 {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
     },
@@ -8571,15 +8873,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan13requirements_roadmap2024
+} // namespace vulkan13requirements_roadmap2024
 namespace vulkanextensionrequirements_roadmap2024 {
+
 static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_INDEX_TYPE_UINT8_EXTENSION_NAME, 1 },
@@ -8629,14 +8932,15 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkanextensionrequirements_roadmap2024
+} // namespace vulkanextensionrequirements_roadmap2024
+} // namespace blocks
 } // namespace VP_KHR_ROADMAP_2024
 #endif // VP_KHR_roadmap_2024
 
@@ -8692,15 +8996,17 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(nullptr));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
 
+namespace blocks {
 namespace vulkan10requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -8986,14 +9292,15 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(nullptr));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan10requirements
+} // namespace vulkan10requirements
+} // namespace blocks
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_0
 #endif // VP_LUNARG_minimum_requirements_1_0
 
@@ -9065,15 +9372,17 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceMaintenance3Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
 
+namespace blocks {
 namespace vulkan10requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -9363,15 +9672,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceMaintenance3Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan10requirements
+} // namespace vulkan10requirements
 namespace vulkan11requirements_split {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -9456,14 +9766,15 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceMaintenance3Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan11requirements_split
+} // namespace vulkan11requirements_split
+} // namespace blocks
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_1
 #endif // VP_LUNARG_minimum_requirements_1_1
 
@@ -9555,15 +9866,17 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan12Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
 
+namespace blocks {
 namespace vulkan10requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -9853,15 +10166,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan12Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan10requirements
+} // namespace vulkan10requirements
 namespace vulkan11requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -9934,15 +10248,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan12Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan11requirements
+} // namespace vulkan11requirements
 namespace vulkan12requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -10100,14 +10415,15 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan12Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan12requirements
+} // namespace vulkan12requirements
+} // namespace blocks
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_2
 #endif // VP_LUNARG_minimum_requirements_1_2
 
@@ -10239,15 +10555,17 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
 
+namespace blocks {
 namespace vulkan10requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -10539,15 +10857,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan10requirements
+} // namespace vulkan10requirements
 namespace vulkan11requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -10622,15 +10941,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan11requirements
+} // namespace vulkan11requirements
 namespace vulkan12requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -10790,15 +11110,16 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan12requirements
+} // namespace vulkan12requirements
 namespace vulkan13requirements {
+
 static const VpFeatureDesc featureDesc = {
     [](VkBaseOutStructure* p) { (void)p;
             switch (p->sType) {
@@ -10968,112 +11289,120 @@ static const VpStructChainerDesc chainerDesc = {
         p->pNext = static_cast<VkBaseOutStructure*>(static_cast<void*>(&physicalDeviceVulkan13Properties));
         pfnCb(p, pUser);
     },
-    [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
-        pfnCb(p, pUser);
+    [](uint32_t count, VkBaseOutStructure* p, void* pUser, PFN_vpStructArrayChainerCb pfnCb) {
+        pfnCb(count, p, pUser);
     },
     [](VkBaseOutStructure* p, void* pUser, PFN_vpStructChainerCb pfnCb) {
         pfnCb(p, pUser);
     },
 };
-} //namespace vulkan13requirements
+} // namespace vulkan13requirements
+} // namespace blocks
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_3
 #endif // VP_LUNARG_minimum_requirements_1_3
 
 
 #ifdef VP_ANDROID_15_minimums
 namespace VP_ANDROID_15_MINIMUMS {
-    namespace MUST {
-        static const VpVariantDesc variants[] = {
-            {
-                "MUST",
-                static_cast<uint32_t>(std::size(MUST::instanceExtensions)), MUST::instanceExtensions,
-                static_cast<uint32_t>(std::size(MUST::deviceExtensions)), MUST::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                MUST::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                MUST::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(formatStructTypes)), formatStructTypes,
-                static_cast<uint32_t>(std::size(MUST::formatDesc)), MUST::formatDesc,
-                MUST::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace MUST
+    namespace blocks {
+        namespace MUST {
+            static const VpVariantDesc variants[] = {
+                {
+                    "MUST",
+                    static_cast<uint32_t>(std::size(blocks::MUST::instanceExtensions)), blocks::MUST::instanceExtensions,
+                    static_cast<uint32_t>(std::size(blocks::MUST::deviceExtensions)), blocks::MUST::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::MUST::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::MUST::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(formatStructTypes)), formatStructTypes,
+                    static_cast<uint32_t>(std::size(blocks::MUST::formatDesc)), blocks::MUST::formatDesc,
+                    blocks::MUST::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace MUST
 
-    namespace primitivesGeneratedQuery_pipelineStatisticsQuery_ {
-        static const VpVariantDesc variants[] = {
-            {
-                "primitivesGeneratedQuery",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(primitivesGeneratedQuery::deviceExtensions)), primitivesGeneratedQuery::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                primitivesGeneratedQuery::featureDesc,
-                0, nullptr,
-                primitivesGeneratedQuery::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                primitivesGeneratedQuery::chainerDesc,
-            },
-            {
-                "pipelineStatisticsQuery",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                pipelineStatisticsQuery::featureDesc,
-                0, nullptr,
-                pipelineStatisticsQuery::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                pipelineStatisticsQuery::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace primitivesGeneratedQuery_pipelineStatisticsQuery_
+        namespace primitivesGeneratedQuery_pipelineStatisticsQuery_ {
+            static const VpVariantDesc variants[] = {
+                {
+                    "primitivesGeneratedQuery",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::primitivesGeneratedQuery::deviceExtensions)), blocks::primitivesGeneratedQuery::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::primitivesGeneratedQuery::featureDesc,
+                    0, nullptr,
+                    blocks::primitivesGeneratedQuery::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::primitivesGeneratedQuery::chainerDesc,
+                    0, nullptr,
+                },
+                {
+                    "pipelineStatisticsQuery",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::pipelineStatisticsQuery::featureDesc,
+                    0, nullptr,
+                    blocks::pipelineStatisticsQuery::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::pipelineStatisticsQuery::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace primitivesGeneratedQuery_pipelineStatisticsQuery_
 
-    namespace swBresenhamLines_hwBresenhamLines_ {
-        static const VpVariantDesc variants[] = {
-            {
-                "swBresenhamLines",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(swBresenhamLines::deviceExtensions)), swBresenhamLines::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                swBresenhamLines::featureDesc,
-                0, nullptr,
-                swBresenhamLines::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                swBresenhamLines::chainerDesc,
-            },
-            {
-                "hwBresenhamLines",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(hwBresenhamLines::deviceExtensions)), hwBresenhamLines::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                hwBresenhamLines::featureDesc,
-                0, nullptr,
-                hwBresenhamLines::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                hwBresenhamLines::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace swBresenhamLines_hwBresenhamLines_
+        namespace swBresenhamLines_hwBresenhamLines_ {
+            static const VpVariantDesc variants[] = {
+                {
+                    "swBresenhamLines",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::swBresenhamLines::deviceExtensions)), blocks::swBresenhamLines::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::swBresenhamLines::featureDesc,
+                    0, nullptr,
+                    blocks::swBresenhamLines::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::swBresenhamLines::chainerDesc,
+                    0, nullptr,
+                },
+                {
+                    "hwBresenhamLines",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::hwBresenhamLines::deviceExtensions)), blocks::hwBresenhamLines::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::hwBresenhamLines::featureDesc,
+                    0, nullptr,
+                    blocks::hwBresenhamLines::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::hwBresenhamLines::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace swBresenhamLines_hwBresenhamLines_
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { MUST::variantCount, MUST::variants },
-        { primitivesGeneratedQuery_pipelineStatisticsQuery_::variantCount, primitivesGeneratedQuery_pipelineStatisticsQuery_::variants },
-        { swBresenhamLines_hwBresenhamLines_::variantCount, swBresenhamLines_hwBresenhamLines_::variants },
+        { blocks::MUST::variantCount, blocks::MUST::variants },
+        { blocks::primitivesGeneratedQuery_pipelineStatisticsQuery_::variantCount, blocks::primitivesGeneratedQuery_pipelineStatisticsQuery_::variants },
+        { blocks::swBresenhamLines_hwBresenhamLines_::variantCount, blocks::swBresenhamLines_hwBresenhamLines_::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 
@@ -11086,63 +11415,68 @@ namespace VP_ANDROID_15_MINIMUMS {
 
 #ifdef VP_ANDROID_16_minimums
 namespace VP_ANDROID_16_MINIMUMS {
-    namespace MUST {
-        static const VpVariantDesc variants[] = {
-            {
-                "MUST",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(MUST::deviceExtensions)), MUST::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                MUST::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                MUST::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                MUST::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace MUST
+    namespace blocks {
+        namespace MUST {
+            static const VpVariantDesc variants[] = {
+                {
+                    "MUST",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::MUST::deviceExtensions)), blocks::MUST::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::MUST::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::MUST::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::MUST::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace MUST
 
-    namespace multisampledToSingleSampled_shaderStencilExport_ {
-        static const VpVariantDesc variants[] = {
-            {
-                "multisampledToSingleSampled",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(multisampledToSingleSampled::deviceExtensions)), multisampledToSingleSampled::deviceExtensions,
-                0, nullptr,
-                multisampledToSingleSampled::featureDesc,
-                0, nullptr,
-                multisampledToSingleSampled::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                multisampledToSingleSampled::chainerDesc,
-            },
-            {
-                "shaderStencilExport",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(shaderStencilExport::deviceExtensions)), shaderStencilExport::deviceExtensions,
-                0, nullptr,
-                shaderStencilExport::featureDesc,
-                0, nullptr,
-                shaderStencilExport::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                shaderStencilExport::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace multisampledToSingleSampled_shaderStencilExport_
+        namespace multisampledToSingleSampled_shaderStencilExport_ {
+            static const VpVariantDesc variants[] = {
+                {
+                    "multisampledToSingleSampled",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::multisampledToSingleSampled::deviceExtensions)), blocks::multisampledToSingleSampled::deviceExtensions,
+                    0, nullptr,
+                    blocks::multisampledToSingleSampled::featureDesc,
+                    0, nullptr,
+                    blocks::multisampledToSingleSampled::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::multisampledToSingleSampled::chainerDesc,
+                    0, nullptr,
+                },
+                {
+                    "shaderStencilExport",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::shaderStencilExport::deviceExtensions)), blocks::shaderStencilExport::deviceExtensions,
+                    0, nullptr,
+                    blocks::shaderStencilExport::featureDesc,
+                    0, nullptr,
+                    blocks::shaderStencilExport::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::shaderStencilExport::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace multisampledToSingleSampled_shaderStencilExport_
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { MUST::variantCount, MUST::variants },
-        { multisampledToSingleSampled_shaderStencilExport_::variantCount, multisampledToSingleSampled_shaderStencilExport_::variants },
+        { blocks::MUST::variantCount, blocks::MUST::variants },
+        { blocks::multisampledToSingleSampled_shaderStencilExport_::variantCount, blocks::multisampledToSingleSampled_shaderStencilExport_::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 
@@ -11170,31 +11504,35 @@ namespace VP_ANDROID_BASELINE_2021 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace baseline {
-        static const VpVariantDesc variants[] = {
-            {
-                "baseline",
-                static_cast<uint32_t>(std::size(baseline::instanceExtensions)), baseline::instanceExtensions,
-                static_cast<uint32_t>(std::size(baseline::deviceExtensions)), baseline::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                baseline::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                baseline::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(formatStructTypes)), formatStructTypes,
-                static_cast<uint32_t>(std::size(baseline::formatDesc)), baseline::formatDesc,
-                baseline::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace baseline
+    namespace blocks {
+        namespace baseline {
+            static const VpVariantDesc variants[] = {
+                {
+                    "baseline",
+                    static_cast<uint32_t>(std::size(blocks::baseline::instanceExtensions)), blocks::baseline::instanceExtensions,
+                    static_cast<uint32_t>(std::size(blocks::baseline::deviceExtensions)), blocks::baseline::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::baseline::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::baseline::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(formatStructTypes)), formatStructTypes,
+                    static_cast<uint32_t>(std::size(blocks::baseline::formatDesc)), blocks::baseline::formatDesc,
+                    blocks::baseline::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace baseline
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { baseline::variantCount, baseline::variants },
+        { blocks::baseline::variantCount, blocks::baseline::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 } // namespace VP_ANDROID_BASELINE_2021
@@ -11216,31 +11554,35 @@ namespace VP_ANDROID_BASELINE_2022 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace baseline {
-        static const VpVariantDesc variants[] = {
-            {
-                "baseline",
-                static_cast<uint32_t>(std::size(baseline::instanceExtensions)), baseline::instanceExtensions,
-                static_cast<uint32_t>(std::size(baseline::deviceExtensions)), baseline::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                baseline::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                baseline::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(formatStructTypes)), formatStructTypes,
-                static_cast<uint32_t>(std::size(baseline::formatDesc)), baseline::formatDesc,
-                baseline::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace baseline
+    namespace blocks {
+        namespace baseline {
+            static const VpVariantDesc variants[] = {
+                {
+                    "baseline",
+                    static_cast<uint32_t>(std::size(blocks::baseline::instanceExtensions)), blocks::baseline::instanceExtensions,
+                    static_cast<uint32_t>(std::size(blocks::baseline::deviceExtensions)), blocks::baseline::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::baseline::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::baseline::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(formatStructTypes)), formatStructTypes,
+                    static_cast<uint32_t>(std::size(blocks::baseline::formatDesc)), blocks::baseline::formatDesc,
+                    blocks::baseline::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace baseline
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { baseline::variantCount, baseline::variants },
+        { blocks::baseline::variantCount, blocks::baseline::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 } // namespace VP_ANDROID_BASELINE_2022
@@ -11262,178 +11604,189 @@ namespace VP_KHR_ROADMAP_2022 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace vulkan10requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan10requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan10requirements::featureDesc,
-                0, nullptr,
-                vulkan10requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan10requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan10requirements
+    namespace blocks {
+        namespace vulkan10requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan10requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan10requirements::featureDesc,
+                    0, nullptr,
+                    blocks::vulkan10requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan10requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan10requirements
 
-    namespace vulkan10requirements_roadmap2022 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan10requirements_roadmap2022",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan10requirements_roadmap2022::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan10requirements_roadmap2022::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan10requirements_roadmap2022::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan10requirements_roadmap2022
+        namespace vulkan10requirements_roadmap2022 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan10requirements_roadmap2022",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan10requirements_roadmap2022::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan10requirements_roadmap2022::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan10requirements_roadmap2022::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan10requirements_roadmap2022
 
-    namespace vulkan11requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan11requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan11requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan11requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan11requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan11requirements
+        namespace vulkan11requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan11requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan11requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan11requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan11requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan11requirements
 
-    namespace vulkan11requirements_roadmap2022 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan11requirements_roadmap2022",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan11requirements_roadmap2022::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan11requirements_roadmap2022::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan11requirements_roadmap2022::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan11requirements_roadmap2022
+        namespace vulkan11requirements_roadmap2022 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan11requirements_roadmap2022",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan11requirements_roadmap2022::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan11requirements_roadmap2022::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan11requirements_roadmap2022::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan11requirements_roadmap2022
 
-    namespace vulkan12requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan12requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan12requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan12requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan12requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan12requirements
+        namespace vulkan12requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan12requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan12requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan12requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan12requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan12requirements
 
-    namespace vulkan12requirements_roadmap2022 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan12requirements_roadmap2022",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan12requirements_roadmap2022::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan12requirements_roadmap2022::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan12requirements_roadmap2022::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan12requirements_roadmap2022
+        namespace vulkan12requirements_roadmap2022 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan12requirements_roadmap2022",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan12requirements_roadmap2022::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan12requirements_roadmap2022::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan12requirements_roadmap2022::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan12requirements_roadmap2022
 
-    namespace vulkan13requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan13requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan13requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan13requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan13requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan13requirements
+        namespace vulkan13requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan13requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan13requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan13requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan13requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan13requirements
 
-    namespace vulkan13requirements_roadmap2022 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan13requirements_roadmap2022",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(vulkan13requirements_roadmap2022::deviceExtensions)), vulkan13requirements_roadmap2022::deviceExtensions,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan13requirements_roadmap2022::featureDesc,
-                0, nullptr,
-                vulkan13requirements_roadmap2022::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan13requirements_roadmap2022::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan13requirements_roadmap2022
+        namespace vulkan13requirements_roadmap2022 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan13requirements_roadmap2022",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::vulkan13requirements_roadmap2022::deviceExtensions)), blocks::vulkan13requirements_roadmap2022::deviceExtensions,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan13requirements_roadmap2022::featureDesc,
+                    0, nullptr,
+                    blocks::vulkan13requirements_roadmap2022::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan13requirements_roadmap2022::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan13requirements_roadmap2022
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { vulkan10requirements::variantCount, vulkan10requirements::variants },
-        { vulkan10requirements_roadmap2022::variantCount, vulkan10requirements_roadmap2022::variants },
-        { vulkan11requirements::variantCount, vulkan11requirements::variants },
-        { vulkan11requirements_roadmap2022::variantCount, vulkan11requirements_roadmap2022::variants },
-        { vulkan12requirements::variantCount, vulkan12requirements::variants },
-        { vulkan12requirements_roadmap2022::variantCount, vulkan12requirements_roadmap2022::variants },
-        { vulkan13requirements::variantCount, vulkan13requirements::variants },
-        { vulkan13requirements_roadmap2022::variantCount, vulkan13requirements_roadmap2022::variants },
+        { blocks::vulkan10requirements::variantCount, blocks::vulkan10requirements::variants },
+        { blocks::vulkan10requirements_roadmap2022::variantCount, blocks::vulkan10requirements_roadmap2022::variants },
+        { blocks::vulkan11requirements::variantCount, blocks::vulkan11requirements::variants },
+        { blocks::vulkan11requirements_roadmap2022::variantCount, blocks::vulkan11requirements_roadmap2022::variants },
+        { blocks::vulkan12requirements::variantCount, blocks::vulkan12requirements::variants },
+        { blocks::vulkan12requirements_roadmap2022::variantCount, blocks::vulkan12requirements_roadmap2022::variants },
+        { blocks::vulkan13requirements::variantCount, blocks::vulkan13requirements::variants },
+        { blocks::vulkan13requirements_roadmap2022::variantCount, blocks::vulkan13requirements_roadmap2022::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 } // namespace VP_KHR_ROADMAP_2022
@@ -11455,115 +11808,123 @@ namespace VP_KHR_ROADMAP_2024 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace vulkan10requirements_roadmap2024 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan10requirements_roadmap2024",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan10requirements_roadmap2024::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan10requirements_roadmap2024::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan10requirements_roadmap2024::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan10requirements_roadmap2024
+    namespace blocks {
+        namespace vulkan10requirements_roadmap2024 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan10requirements_roadmap2024",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan10requirements_roadmap2024::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan10requirements_roadmap2024::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan10requirements_roadmap2024::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan10requirements_roadmap2024
 
-    namespace vulkan11requirements_roadmap2024 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan11requirements_roadmap2024",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan11requirements_roadmap2024::featureDesc,
-                0, nullptr,
-                vulkan11requirements_roadmap2024::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan11requirements_roadmap2024::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan11requirements_roadmap2024
+        namespace vulkan11requirements_roadmap2024 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan11requirements_roadmap2024",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan11requirements_roadmap2024::featureDesc,
+                    0, nullptr,
+                    blocks::vulkan11requirements_roadmap2024::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan11requirements_roadmap2024::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan11requirements_roadmap2024
 
-    namespace vulkan12requirements_roadmap2024 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan12requirements_roadmap2024",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan12requirements_roadmap2024::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan12requirements_roadmap2024::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan12requirements_roadmap2024::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan12requirements_roadmap2024
+        namespace vulkan12requirements_roadmap2024 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan12requirements_roadmap2024",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan12requirements_roadmap2024::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan12requirements_roadmap2024::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan12requirements_roadmap2024::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan12requirements_roadmap2024
 
-    namespace vulkan13requirements_roadmap2024 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan13requirements_roadmap2024",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan13requirements_roadmap2024::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan13requirements_roadmap2024::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan13requirements_roadmap2024::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan13requirements_roadmap2024
+        namespace vulkan13requirements_roadmap2024 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan13requirements_roadmap2024",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan13requirements_roadmap2024::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan13requirements_roadmap2024::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan13requirements_roadmap2024::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan13requirements_roadmap2024
 
-    namespace vulkanextensionrequirements_roadmap2024 {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkanextensionrequirements_roadmap2024",
-                0, nullptr,
-                static_cast<uint32_t>(std::size(vulkanextensionrequirements_roadmap2024::deviceExtensions)), vulkanextensionrequirements_roadmap2024::deviceExtensions,
-                0, nullptr,
-                vulkanextensionrequirements_roadmap2024::featureDesc,
-                0, nullptr,
-                vulkanextensionrequirements_roadmap2024::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkanextensionrequirements_roadmap2024::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkanextensionrequirements_roadmap2024
+        namespace vulkanextensionrequirements_roadmap2024 {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkanextensionrequirements_roadmap2024",
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(blocks::vulkanextensionrequirements_roadmap2024::deviceExtensions)), blocks::vulkanextensionrequirements_roadmap2024::deviceExtensions,
+                    0, nullptr,
+                    blocks::vulkanextensionrequirements_roadmap2024::featureDesc,
+                    0, nullptr,
+                    blocks::vulkanextensionrequirements_roadmap2024::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkanextensionrequirements_roadmap2024::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkanextensionrequirements_roadmap2024
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { vulkan10requirements_roadmap2024::variantCount, vulkan10requirements_roadmap2024::variants },
-        { vulkan11requirements_roadmap2024::variantCount, vulkan11requirements_roadmap2024::variants },
-        { vulkan12requirements_roadmap2024::variantCount, vulkan12requirements_roadmap2024::variants },
-        { vulkan13requirements_roadmap2024::variantCount, vulkan13requirements_roadmap2024::variants },
-        { vulkanextensionrequirements_roadmap2024::variantCount, vulkanextensionrequirements_roadmap2024::variants },
+        { blocks::vulkan10requirements_roadmap2024::variantCount, blocks::vulkan10requirements_roadmap2024::variants },
+        { blocks::vulkan11requirements_roadmap2024::variantCount, blocks::vulkan11requirements_roadmap2024::variants },
+        { blocks::vulkan12requirements_roadmap2024::variantCount, blocks::vulkan12requirements_roadmap2024::variants },
+        { blocks::vulkan13requirements_roadmap2024::variantCount, blocks::vulkan13requirements_roadmap2024::variants },
+        { blocks::vulkanextensionrequirements_roadmap2024::variantCount, blocks::vulkanextensionrequirements_roadmap2024::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 
@@ -11590,31 +11951,35 @@ namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_0 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace vulkan10requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan10requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan10requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan10requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan10requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan10requirements
+    namespace blocks {
+        namespace vulkan10requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan10requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan10requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan10requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan10requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan10requirements
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { vulkan10requirements::variantCount, vulkan10requirements::variants },
+        { blocks::vulkan10requirements::variantCount, blocks::vulkan10requirements::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_0
@@ -11636,52 +12001,57 @@ namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_1 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace vulkan10requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan10requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan10requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan10requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan10requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan10requirements
+    namespace blocks {
+        namespace vulkan10requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan10requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan10requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan10requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan10requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan10requirements
 
-    namespace vulkan11requirements_split {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan11requirements_split",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan11requirements_split::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan11requirements_split::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan11requirements_split::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan11requirements_split
+        namespace vulkan11requirements_split {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan11requirements_split",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan11requirements_split::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan11requirements_split::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan11requirements_split::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan11requirements_split
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { vulkan10requirements::variantCount, vulkan10requirements::variants },
-        { vulkan11requirements_split::variantCount, vulkan11requirements_split::variants },
+        { blocks::vulkan10requirements::variantCount, blocks::vulkan10requirements::variants },
+        { blocks::vulkan11requirements_split::variantCount, blocks::vulkan11requirements_split::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_1
@@ -11703,73 +12073,79 @@ namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_2 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace vulkan10requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan10requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan10requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan10requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan10requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan10requirements
+    namespace blocks {
+        namespace vulkan10requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan10requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan10requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan10requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan10requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan10requirements
 
-    namespace vulkan11requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan11requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan11requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan11requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan11requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan11requirements
+        namespace vulkan11requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan11requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan11requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan11requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan11requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan11requirements
 
-    namespace vulkan12requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan12requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan12requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan12requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan12requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan12requirements
+        namespace vulkan12requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan12requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan12requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan12requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan12requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan12requirements
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { vulkan10requirements::variantCount, vulkan10requirements::variants },
-        { vulkan11requirements::variantCount, vulkan11requirements::variants },
-        { vulkan12requirements::variantCount, vulkan12requirements::variants },
+        { blocks::vulkan10requirements::variantCount, blocks::vulkan10requirements::variants },
+        { blocks::vulkan11requirements::variantCount, blocks::vulkan11requirements::variants },
+        { blocks::vulkan12requirements::variantCount, blocks::vulkan12requirements::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_2
@@ -11791,94 +12167,101 @@ namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_3 {
         0, nullptr,
         0, nullptr,
         chainerDesc,
+        0, nullptr,
         },
     };
 
-    namespace vulkan10requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan10requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan10requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan10requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan10requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan10requirements
+    namespace blocks {
+        namespace vulkan10requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan10requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan10requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan10requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan10requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan10requirements
 
-    namespace vulkan11requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan11requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan11requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan11requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan11requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan11requirements
+        namespace vulkan11requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan11requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan11requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan11requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan11requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan11requirements
 
-    namespace vulkan12requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan12requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan12requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan12requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan12requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan12requirements
+        namespace vulkan12requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan12requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan12requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan12requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan12requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan12requirements
 
-    namespace vulkan13requirements {
-        static const VpVariantDesc variants[] = {
-            {
-                "vulkan13requirements",
-                0, nullptr,
-                0, nullptr,
-                static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
-                vulkan13requirements::featureDesc,
-                static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
-                vulkan13requirements::propertyDesc,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                0, nullptr,
-                vulkan13requirements::chainerDesc,
-            },
-        };
-        static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
-    } // namespace vulkan13requirements
+        namespace vulkan13requirements {
+            static const VpVariantDesc variants[] = {
+                {
+                    "vulkan13requirements",
+                    0, nullptr,
+                    0, nullptr,
+                    static_cast<uint32_t>(std::size(featureStructTypes)), featureStructTypes,
+                    blocks::vulkan13requirements::featureDesc,
+                    static_cast<uint32_t>(std::size(propertyStructTypes)), propertyStructTypes,
+                    blocks::vulkan13requirements::propertyDesc,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    0, nullptr,
+                    blocks::vulkan13requirements::chainerDesc,
+                    0, nullptr,
+                },
+            };
+            static const uint32_t variantCount = static_cast<uint32_t>(std::size(variants));
+        } // namespace vulkan13requirements
+    } // namespace blocks
 
     static const VpCapabilitiesDesc capabilities[] = {
-        { vulkan10requirements::variantCount, vulkan10requirements::variants },
-        { vulkan11requirements::variantCount, vulkan11requirements::variants },
-        { vulkan12requirements::variantCount, vulkan12requirements::variants },
-        { vulkan13requirements::variantCount, vulkan13requirements::variants },
+        { blocks::vulkan10requirements::variantCount, blocks::vulkan10requirements::variants },
+        { blocks::vulkan11requirements::variantCount, blocks::vulkan11requirements::variants },
+        { blocks::vulkan12requirements::variantCount, blocks::vulkan12requirements::variants },
+        { blocks::vulkan13requirements::variantCount, blocks::vulkan13requirements::variants },
     };
     static const uint32_t capabilityCount = static_cast<uint32_t>(std::size(capabilities));
 } // namespace VP_LUNARG_MINIMUM_REQUIREMENTS_1_3
@@ -12013,13 +12396,13 @@ struct FeaturesChain {
     VkPhysicalDeviceMultiDrawFeaturesEXT physicalDeviceMultiDrawFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT, nullptr };
     VkPhysicalDeviceInlineUniformBlockFeatures physicalDeviceInlineUniformBlockFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES, nullptr };
     VkPhysicalDeviceMaintenance4Features physicalDeviceMaintenance4Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES, nullptr };
-    VkPhysicalDeviceMaintenance5FeaturesKHR physicalDeviceMaintenance5FeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR, nullptr };
-    VkPhysicalDeviceMaintenance6FeaturesKHR physicalDeviceMaintenance6FeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceMaintenance5Features physicalDeviceMaintenance5Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES, nullptr };
+    VkPhysicalDeviceMaintenance6Features physicalDeviceMaintenance6Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES, nullptr };
     VkPhysicalDeviceMaintenance7FeaturesKHR physicalDeviceMaintenance7FeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR, nullptr };
     VkPhysicalDeviceShaderDrawParametersFeatures physicalDeviceShaderDrawParametersFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES, nullptr };
     VkPhysicalDeviceShaderFloat16Int8Features physicalDeviceShaderFloat16Int8Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES, nullptr };
     VkPhysicalDeviceHostQueryResetFeatures physicalDeviceHostQueryResetFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES, nullptr };
-    VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR physicalDeviceGlobalPriorityQueryFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceGlobalPriorityQueryFeatures physicalDeviceGlobalPriorityQueryFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES, nullptr };
     VkPhysicalDeviceDeviceMemoryReportFeaturesEXT physicalDeviceDeviceMemoryReportFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_MEMORY_REPORT_FEATURES_EXT, nullptr };
     VkPhysicalDeviceDescriptorIndexingFeatures physicalDeviceDescriptorIndexingFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES, nullptr };
     VkPhysicalDeviceTimelineSemaphoreFeatures physicalDeviceTimelineSemaphoreFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES, nullptr };
@@ -12029,7 +12412,7 @@ struct FeaturesChain {
     VkPhysicalDeviceShaderAtomicInt64Features physicalDeviceShaderAtomicInt64Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES, nullptr };
     VkPhysicalDeviceShaderAtomicFloatFeaturesEXT physicalDeviceShaderAtomicFloatFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT, nullptr };
     VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT physicalDeviceShaderAtomicFloat2FeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT, nullptr };
-    VkPhysicalDeviceVertexAttributeDivisorFeaturesKHR physicalDeviceVertexAttributeDivisorFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceVertexAttributeDivisorFeatures physicalDeviceVertexAttributeDivisorFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES, nullptr };
     VkPhysicalDeviceASTCDecodeFeaturesEXT physicalDeviceASTCDecodeFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT, nullptr };
     VkPhysicalDeviceTransformFeedbackFeaturesEXT physicalDeviceTransformFeedbackFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT, nullptr };
     VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV physicalDeviceRepresentativeFragmentTestFeaturesNV{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV, nullptr };
@@ -12067,7 +12450,7 @@ struct FeaturesChain {
     VkPhysicalDeviceCoverageReductionModeFeaturesNV physicalDeviceCoverageReductionModeFeaturesNV{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV, nullptr };
     VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL physicalDeviceShaderIntegerFunctions2FeaturesINTEL{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL, nullptr };
     VkPhysicalDeviceShaderClockFeaturesKHR physicalDeviceShaderClockFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR, nullptr };
-    VkPhysicalDeviceIndexTypeUint8FeaturesKHR physicalDeviceIndexTypeUint8FeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceIndexTypeUint8Features physicalDeviceIndexTypeUint8Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES, nullptr };
     VkPhysicalDeviceShaderSMBuiltinsFeaturesNV physicalDeviceShaderSMBuiltinsFeaturesNV{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV, nullptr };
     VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT physicalDeviceFragmentShaderInterlockFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT, nullptr };
     VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures physicalDeviceSeparateDepthStencilLayoutsFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES, nullptr };
@@ -12076,11 +12459,12 @@ struct FeaturesChain {
     VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures physicalDeviceShaderDemoteToHelperInvocationFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, nullptr };
     VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT physicalDeviceTexelBufferAlignmentFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, nullptr };
     VkPhysicalDeviceSubgroupSizeControlFeatures physicalDeviceSubgroupSizeControlFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES, nullptr };
-    VkPhysicalDeviceLineRasterizationFeaturesKHR physicalDeviceLineRasterizationFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceLineRasterizationFeatures physicalDeviceLineRasterizationFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES, nullptr };
     VkPhysicalDevicePipelineCreationCacheControlFeatures physicalDevicePipelineCreationCacheControlFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES, nullptr };
     VkPhysicalDeviceVulkan11Features physicalDeviceVulkan11Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES, nullptr };
     VkPhysicalDeviceVulkan12Features physicalDeviceVulkan12Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr };
     VkPhysicalDeviceVulkan13Features physicalDeviceVulkan13Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES, nullptr };
+    VkPhysicalDeviceVulkan14Features physicalDeviceVulkan14Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES, nullptr };
     VkPhysicalDeviceCoherentMemoryFeaturesAMD physicalDeviceCoherentMemoryFeaturesAMD{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD, nullptr };
     VkPhysicalDeviceCustomBorderColorFeaturesEXT physicalDeviceCustomBorderColorFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT, nullptr };
     VkPhysicalDeviceBorderColorSwizzleFeaturesEXT physicalDeviceBorderColorSwizzleFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT, nullptr };
@@ -12116,12 +12500,14 @@ struct FeaturesChain {
     VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR physicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR, nullptr };
     VkPhysicalDeviceColorWriteEnableFeaturesEXT physicalDeviceColorWriteEnableFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT, nullptr };
     VkPhysicalDeviceSynchronization2Features physicalDeviceSynchronization2Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES, nullptr };
-    VkPhysicalDeviceHostImageCopyFeaturesEXT physicalDeviceHostImageCopyFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT, nullptr };
+    VkPhysicalDeviceHostImageCopyFeatures physicalDeviceHostImageCopyFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES, nullptr };
     VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT physicalDevicePrimitivesGeneratedQueryFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT, nullptr };
     VkPhysicalDeviceLegacyDitheringFeaturesEXT physicalDeviceLegacyDitheringFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT, nullptr };
     VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT physicalDeviceMultisampledRenderToSingleSampledFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT, nullptr };
-    VkPhysicalDevicePipelineProtectedAccessFeaturesEXT physicalDevicePipelineProtectedAccessFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES_EXT, nullptr };
+    VkPhysicalDevicePipelineProtectedAccessFeatures physicalDevicePipelineProtectedAccessFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES, nullptr };
     VkPhysicalDeviceVideoMaintenance1FeaturesKHR physicalDeviceVideoMaintenance1FeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR physicalDeviceVideoEncodeQuantizationMapFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceVideoEncodeAV1FeaturesKHR physicalDeviceVideoEncodeAV1FeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR, nullptr };
     VkPhysicalDeviceInheritedViewportScissorFeaturesNV physicalDeviceInheritedViewportScissorFeaturesNV{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV, nullptr };
     VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT physicalDeviceYcbcr2Plane444FormatsFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, nullptr };
     VkPhysicalDeviceProvokingVertexFeaturesEXT physicalDeviceProvokingVertexFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT, nullptr };
@@ -12150,7 +12536,7 @@ struct FeaturesChain {
     VkPhysicalDevicePipelinePropertiesFeaturesEXT physicalDevicePipelinePropertiesFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROPERTIES_FEATURES_EXT, nullptr };
     VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD physicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EARLY_AND_LATE_FRAGMENT_TESTS_FEATURES_AMD, nullptr };
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT physicalDeviceNonSeamlessCubeMapFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT, nullptr };
-    VkPhysicalDevicePipelineRobustnessFeaturesEXT physicalDevicePipelineRobustnessFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT, nullptr };
+    VkPhysicalDevicePipelineRobustnessFeatures physicalDevicePipelineRobustnessFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES, nullptr };
     VkPhysicalDeviceImageProcessingFeaturesQCOM physicalDeviceImageProcessingFeaturesQCOM{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM, nullptr };
     VkPhysicalDeviceTilePropertiesFeaturesQCOM physicalDeviceTilePropertiesFeaturesQCOM{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_PROPERTIES_FEATURES_QCOM, nullptr };
     VkPhysicalDeviceAmigoProfilingFeaturesSEC physicalDeviceAmigoProfilingFeaturesSEC{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_AMIGO_PROFILING_FEATURES_SEC, nullptr };
@@ -12194,10 +12580,10 @@ struct FeaturesChain {
     VkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG physicalDeviceRelaxedLineRasterizationFeaturesIMG{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RELAXED_LINE_RASTERIZATION_FEATURES_IMG, nullptr };
     VkPhysicalDeviceRenderPassStripedFeaturesARM physicalDeviceRenderPassStripedFeaturesARM{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_FEATURES_ARM, nullptr };
     VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR physicalDeviceShaderMaximalReconvergenceFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR, nullptr };
-    VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR physicalDeviceShaderSubgroupRotateFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR, nullptr };
-    VkPhysicalDeviceShaderExpectAssumeFeaturesKHR physicalDeviceShaderExpectAssumeFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES_KHR, nullptr };
-    VkPhysicalDeviceShaderFloatControls2FeaturesKHR physicalDeviceShaderFloatControls2FeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES_KHR, nullptr };
-    VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR physicalDeviceDynamicRenderingLocalReadFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR, nullptr };
+    VkPhysicalDeviceShaderSubgroupRotateFeatures physicalDeviceShaderSubgroupRotateFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES, nullptr };
+    VkPhysicalDeviceShaderExpectAssumeFeatures physicalDeviceShaderExpectAssumeFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES, nullptr };
+    VkPhysicalDeviceShaderFloatControls2Features physicalDeviceShaderFloatControls2Features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES, nullptr };
+    VkPhysicalDeviceDynamicRenderingLocalReadFeatures physicalDeviceDynamicRenderingLocalReadFeatures{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES, nullptr };
     VkPhysicalDeviceShaderQuadControlFeaturesKHR physicalDeviceShaderQuadControlFeaturesKHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR, nullptr };
     VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV physicalDeviceShaderAtomicFloat16VectorFeaturesNV{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT16_VECTOR_FEATURES_NV, nullptr };
     VkPhysicalDeviceMapMemoryPlacedFeaturesEXT physicalDeviceMapMemoryPlacedFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT, nullptr };
@@ -12205,6 +12591,10 @@ struct FeaturesChain {
     VkPhysicalDeviceCommandBufferInheritanceFeaturesNV physicalDeviceCommandBufferInheritanceFeaturesNV{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMMAND_BUFFER_INHERITANCE_FEATURES_NV, nullptr };
     VkPhysicalDeviceImageAlignmentControlFeaturesMESA physicalDeviceImageAlignmentControlFeaturesMESA{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ALIGNMENT_CONTROL_FEATURES_MESA, nullptr };
     VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT physicalDeviceShaderReplicatedCompositesFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT, nullptr };
+    VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT physicalDevicePresentModeFifoLatestReadyFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT, nullptr };
+    VkPhysicalDeviceCooperativeMatrix2FeaturesNV physicalDeviceCooperativeMatrix2FeaturesNV{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV, nullptr };
+    VkPhysicalDeviceHdrVividFeaturesHUAWEI physicalDeviceHdrVividFeaturesHUAWEI{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI, nullptr };
+    VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT physicalDeviceVertexAttributeRobustnessFeaturesEXT{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_ROBUSTNESS_FEATURES_EXT, nullptr };
     VkPhysicalDeviceFeatures2KHR physicalDeviceFeatures2KHR{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR, nullptr };
 
     FeaturesChain() {
@@ -12224,13 +12614,13 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT, size<VkPhysicalDeviceMultiDrawFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES, size<VkPhysicalDeviceInlineUniformBlockFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES, size<VkPhysicalDeviceMaintenance4Features>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR, size<VkPhysicalDeviceMaintenance5FeaturesKHR>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR, size<VkPhysicalDeviceMaintenance6FeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES, size<VkPhysicalDeviceMaintenance5Features>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES, size<VkPhysicalDeviceMaintenance6Features>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR, size<VkPhysicalDeviceMaintenance7FeaturesKHR>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES, size<VkPhysicalDeviceShaderDrawParametersFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES, size<VkPhysicalDeviceShaderFloat16Int8Features>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES, size<VkPhysicalDeviceHostQueryResetFeatures>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR, size<VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES, size<VkPhysicalDeviceGlobalPriorityQueryFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_MEMORY_REPORT_FEATURES_EXT, size<VkPhysicalDeviceDeviceMemoryReportFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES, size<VkPhysicalDeviceDescriptorIndexingFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES, size<VkPhysicalDeviceTimelineSemaphoreFeatures>() });
@@ -12240,7 +12630,7 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES, size<VkPhysicalDeviceShaderAtomicInt64Features>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT, size<VkPhysicalDeviceShaderAtomicFloatFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT, size<VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_KHR, size<VkPhysicalDeviceVertexAttributeDivisorFeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES, size<VkPhysicalDeviceVertexAttributeDivisorFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT, size<VkPhysicalDeviceASTCDecodeFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT, size<VkPhysicalDeviceTransformFeedbackFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV, size<VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV>() });
@@ -12278,7 +12668,7 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV, size<VkPhysicalDeviceCoverageReductionModeFeaturesNV>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL, size<VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR, size<VkPhysicalDeviceShaderClockFeaturesKHR>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_KHR, size<VkPhysicalDeviceIndexTypeUint8FeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES, size<VkPhysicalDeviceIndexTypeUint8Features>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV, size<VkPhysicalDeviceShaderSMBuiltinsFeaturesNV>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT, size<VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES, size<VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures>() });
@@ -12287,11 +12677,12 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES, size<VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, size<VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES, size<VkPhysicalDeviceSubgroupSizeControlFeatures>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_KHR, size<VkPhysicalDeviceLineRasterizationFeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES, size<VkPhysicalDeviceLineRasterizationFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES, size<VkPhysicalDevicePipelineCreationCacheControlFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES, size<VkPhysicalDeviceVulkan11Features>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, size<VkPhysicalDeviceVulkan12Features>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES, size<VkPhysicalDeviceVulkan13Features>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES, size<VkPhysicalDeviceVulkan14Features>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD, size<VkPhysicalDeviceCoherentMemoryFeaturesAMD>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT, size<VkPhysicalDeviceCustomBorderColorFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT, size<VkPhysicalDeviceBorderColorSwizzleFeaturesEXT>() });
@@ -12327,12 +12718,14 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_RELAXED_EXTENDED_INSTRUCTION_FEATURES_KHR, size<VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT, size<VkPhysicalDeviceColorWriteEnableFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES, size<VkPhysicalDeviceSynchronization2Features>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT, size<VkPhysicalDeviceHostImageCopyFeaturesEXT>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES, size<VkPhysicalDeviceHostImageCopyFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT, size<VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LEGACY_DITHERING_FEATURES_EXT, size<VkPhysicalDeviceLegacyDitheringFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_FEATURES_EXT, size<VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES_EXT, size<VkPhysicalDevicePipelineProtectedAccessFeaturesEXT>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROTECTED_ACCESS_FEATURES, size<VkPhysicalDevicePipelineProtectedAccessFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_MAINTENANCE_1_FEATURES_KHR, size<VkPhysicalDeviceVideoMaintenance1FeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_QUANTIZATION_MAP_FEATURES_KHR, size<VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_ENCODE_AV1_FEATURES_KHR, size<VkPhysicalDeviceVideoEncodeAV1FeaturesKHR>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV, size<VkPhysicalDeviceInheritedViewportScissorFeaturesNV>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, size<VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT, size<VkPhysicalDeviceProvokingVertexFeaturesEXT>() });
@@ -12361,7 +12754,7 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_PROPERTIES_FEATURES_EXT, size<VkPhysicalDevicePipelinePropertiesFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EARLY_AND_LATE_FRAGMENT_TESTS_FEATURES_AMD, size<VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT, size<VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES_EXT, size<VkPhysicalDevicePipelineRobustnessFeaturesEXT>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_FEATURES, size<VkPhysicalDevicePipelineRobustnessFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_PROCESSING_FEATURES_QCOM, size<VkPhysicalDeviceImageProcessingFeaturesQCOM>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TILE_PROPERTIES_FEATURES_QCOM, size<VkPhysicalDeviceTilePropertiesFeaturesQCOM>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_AMIGO_PROFILING_FEATURES_SEC, size<VkPhysicalDeviceAmigoProfilingFeaturesSEC>() });
@@ -12405,10 +12798,10 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RELAXED_LINE_RASTERIZATION_FEATURES_IMG, size<VkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RENDER_PASS_STRIPED_FEATURES_ARM, size<VkPhysicalDeviceRenderPassStripedFeaturesARM>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MAXIMAL_RECONVERGENCE_FEATURES_KHR, size<VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES_KHR, size<VkPhysicalDeviceShaderSubgroupRotateFeaturesKHR>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES_KHR, size<VkPhysicalDeviceShaderExpectAssumeFeaturesKHR>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES_KHR, size<VkPhysicalDeviceShaderFloatControls2FeaturesKHR>() });
-        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR, size<VkPhysicalDeviceDynamicRenderingLocalReadFeaturesKHR>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_ROTATE_FEATURES, size<VkPhysicalDeviceShaderSubgroupRotateFeatures>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_EXPECT_ASSUME_FEATURES, size<VkPhysicalDeviceShaderExpectAssumeFeatures>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT_CONTROLS_2_FEATURES, size<VkPhysicalDeviceShaderFloatControls2Features>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES, size<VkPhysicalDeviceDynamicRenderingLocalReadFeatures>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_QUAD_CONTROL_FEATURES_KHR, size<VkPhysicalDeviceShaderQuadControlFeaturesKHR>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT16_VECTOR_FEATURES_NV, size<VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT, size<VkPhysicalDeviceMapMemoryPlacedFeaturesEXT>() });
@@ -12416,6 +12809,10 @@ struct FeaturesChain {
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMMAND_BUFFER_INHERITANCE_FEATURES_NV, size<VkPhysicalDeviceCommandBufferInheritanceFeaturesNV>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ALIGNMENT_CONTROL_FEATURES_MESA, size<VkPhysicalDeviceImageAlignmentControlFeaturesMESA>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_REPLICATED_COMPOSITES_FEATURES_EXT, size<VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_MODE_FIFO_LATEST_READY_FEATURES_EXT, size<VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_2_FEATURES_NV, size<VkPhysicalDeviceCooperativeMatrix2FeaturesNV>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HDR_VIVID_FEATURES_HUAWEI, size<VkPhysicalDeviceHdrVividFeaturesHUAWEI>() });
+        this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_ROBUSTNESS_FEATURES_EXT, size<VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT>() });
         this->structureSize.insert({ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR, size<VkPhysicalDeviceFeatures2KHR>() });
 
         //Initializing the full list of available structure features
@@ -12450,10 +12847,10 @@ struct FeaturesChain {
         pNext = &physicalDeviceInlineUniformBlockFeatures;
         physicalDeviceMaintenance4Features.pNext = pNext;
         pNext = &physicalDeviceMaintenance4Features;
-        physicalDeviceMaintenance5FeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceMaintenance5FeaturesKHR;
-        physicalDeviceMaintenance6FeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceMaintenance6FeaturesKHR;
+        physicalDeviceMaintenance5Features.pNext = pNext;
+        pNext = &physicalDeviceMaintenance5Features;
+        physicalDeviceMaintenance6Features.pNext = pNext;
+        pNext = &physicalDeviceMaintenance6Features;
         physicalDeviceMaintenance7FeaturesKHR.pNext = pNext;
         pNext = &physicalDeviceMaintenance7FeaturesKHR;
         physicalDeviceShaderDrawParametersFeatures.pNext = pNext;
@@ -12462,8 +12859,8 @@ struct FeaturesChain {
         pNext = &physicalDeviceShaderFloat16Int8Features;
         physicalDeviceHostQueryResetFeatures.pNext = pNext;
         pNext = &physicalDeviceHostQueryResetFeatures;
-        physicalDeviceGlobalPriorityQueryFeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceGlobalPriorityQueryFeaturesKHR;
+        physicalDeviceGlobalPriorityQueryFeatures.pNext = pNext;
+        pNext = &physicalDeviceGlobalPriorityQueryFeatures;
         physicalDeviceDeviceMemoryReportFeaturesEXT.pNext = pNext;
         pNext = &physicalDeviceDeviceMemoryReportFeaturesEXT;
         physicalDeviceDescriptorIndexingFeatures.pNext = pNext;
@@ -12482,8 +12879,8 @@ struct FeaturesChain {
         pNext = &physicalDeviceShaderAtomicFloatFeaturesEXT;
         physicalDeviceShaderAtomicFloat2FeaturesEXT.pNext = pNext;
         pNext = &physicalDeviceShaderAtomicFloat2FeaturesEXT;
-        physicalDeviceVertexAttributeDivisorFeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceVertexAttributeDivisorFeaturesKHR;
+        physicalDeviceVertexAttributeDivisorFeatures.pNext = pNext;
+        pNext = &physicalDeviceVertexAttributeDivisorFeatures;
         physicalDeviceASTCDecodeFeaturesEXT.pNext = pNext;
         pNext = &physicalDeviceASTCDecodeFeaturesEXT;
         physicalDeviceTransformFeedbackFeaturesEXT.pNext = pNext;
@@ -12558,8 +12955,8 @@ struct FeaturesChain {
         pNext = &physicalDeviceShaderIntegerFunctions2FeaturesINTEL;
         physicalDeviceShaderClockFeaturesKHR.pNext = pNext;
         pNext = &physicalDeviceShaderClockFeaturesKHR;
-        physicalDeviceIndexTypeUint8FeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceIndexTypeUint8FeaturesKHR;
+        physicalDeviceIndexTypeUint8Features.pNext = pNext;
+        pNext = &physicalDeviceIndexTypeUint8Features;
         physicalDeviceShaderSMBuiltinsFeaturesNV.pNext = pNext;
         pNext = &physicalDeviceShaderSMBuiltinsFeaturesNV;
         physicalDeviceFragmentShaderInterlockFeaturesEXT.pNext = pNext;
@@ -12576,8 +12973,8 @@ struct FeaturesChain {
         pNext = &physicalDeviceTexelBufferAlignmentFeaturesEXT;
         physicalDeviceSubgroupSizeControlFeatures.pNext = pNext;
         pNext = &physicalDeviceSubgroupSizeControlFeatures;
-        physicalDeviceLineRasterizationFeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceLineRasterizationFeaturesKHR;
+        physicalDeviceLineRasterizationFeatures.pNext = pNext;
+        pNext = &physicalDeviceLineRasterizationFeatures;
         physicalDevicePipelineCreationCacheControlFeatures.pNext = pNext;
         pNext = &physicalDevicePipelineCreationCacheControlFeatures;
         physicalDeviceVulkan11Features.pNext = pNext;
@@ -12586,6 +12983,8 @@ struct FeaturesChain {
         pNext = &physicalDeviceVulkan12Features;
         physicalDeviceVulkan13Features.pNext = pNext;
         pNext = &physicalDeviceVulkan13Features;
+        physicalDeviceVulkan14Features.pNext = pNext;
+        pNext = &physicalDeviceVulkan14Features;
         physicalDeviceCoherentMemoryFeaturesAMD.pNext = pNext;
         pNext = &physicalDeviceCoherentMemoryFeaturesAMD;
         physicalDeviceCustomBorderColorFeaturesEXT.pNext = pNext;
@@ -12654,18 +13053,22 @@ struct FeaturesChain {
         pNext = &physicalDeviceColorWriteEnableFeaturesEXT;
         physicalDeviceSynchronization2Features.pNext = pNext;
         pNext = &physicalDeviceSynchronization2Features;
-        physicalDeviceHostImageCopyFeaturesEXT.pNext = pNext;
-        pNext = &physicalDeviceHostImageCopyFeaturesEXT;
+        physicalDeviceHostImageCopyFeatures.pNext = pNext;
+        pNext = &physicalDeviceHostImageCopyFeatures;
         physicalDevicePrimitivesGeneratedQueryFeaturesEXT.pNext = pNext;
         pNext = &physicalDevicePrimitivesGeneratedQueryFeaturesEXT;
         physicalDeviceLegacyDitheringFeaturesEXT.pNext = pNext;
         pNext = &physicalDeviceLegacyDitheringFeaturesEXT;
         physicalDeviceMultisampledRenderToSingleSampledFeaturesEXT.pNext = pNext;
         pNext = &physicalDeviceMultisampledRenderToSingleSampledFeaturesEXT;
-        physicalDevicePipelineProtectedAccessFeaturesEXT.pNext = pNext;
-        pNext = &physicalDevicePipelineProtectedAccessFeaturesEXT;
+        physicalDevicePipelineProtectedAccessFeatures.pNext = pNext;
+        pNext = &physicalDevicePipelineProtectedAccessFeatures;
         physicalDeviceVideoMaintenance1FeaturesKHR.pNext = pNext;
         pNext = &physicalDeviceVideoMaintenance1FeaturesKHR;
+        physicalDeviceVideoEncodeQuantizationMapFeaturesKHR.pNext = pNext;
+        pNext = &physicalDeviceVideoEncodeQuantizationMapFeaturesKHR;
+        physicalDeviceVideoEncodeAV1FeaturesKHR.pNext = pNext;
+        pNext = &physicalDeviceVideoEncodeAV1FeaturesKHR;
         physicalDeviceInheritedViewportScissorFeaturesNV.pNext = pNext;
         pNext = &physicalDeviceInheritedViewportScissorFeaturesNV;
         physicalDeviceYcbcr2Plane444FormatsFeaturesEXT.pNext = pNext;
@@ -12720,8 +13123,8 @@ struct FeaturesChain {
         pNext = &physicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD;
         physicalDeviceNonSeamlessCubeMapFeaturesEXT.pNext = pNext;
         pNext = &physicalDeviceNonSeamlessCubeMapFeaturesEXT;
-        physicalDevicePipelineRobustnessFeaturesEXT.pNext = pNext;
-        pNext = &physicalDevicePipelineRobustnessFeaturesEXT;
+        physicalDevicePipelineRobustnessFeatures.pNext = pNext;
+        pNext = &physicalDevicePipelineRobustnessFeatures;
         physicalDeviceImageProcessingFeaturesQCOM.pNext = pNext;
         pNext = &physicalDeviceImageProcessingFeaturesQCOM;
         physicalDeviceTilePropertiesFeaturesQCOM.pNext = pNext;
@@ -12802,14 +13205,14 @@ struct FeaturesChain {
         pNext = &physicalDeviceRenderPassStripedFeaturesARM;
         physicalDeviceShaderMaximalReconvergenceFeaturesKHR.pNext = pNext;
         pNext = &physicalDeviceShaderMaximalReconvergenceFeaturesKHR;
-        physicalDeviceShaderSubgroupRotateFeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceShaderSubgroupRotateFeaturesKHR;
-        physicalDeviceShaderExpectAssumeFeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceShaderExpectAssumeFeaturesKHR;
-        physicalDeviceShaderFloatControls2FeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceShaderFloatControls2FeaturesKHR;
-        physicalDeviceDynamicRenderingLocalReadFeaturesKHR.pNext = pNext;
-        pNext = &physicalDeviceDynamicRenderingLocalReadFeaturesKHR;
+        physicalDeviceShaderSubgroupRotateFeatures.pNext = pNext;
+        pNext = &physicalDeviceShaderSubgroupRotateFeatures;
+        physicalDeviceShaderExpectAssumeFeatures.pNext = pNext;
+        pNext = &physicalDeviceShaderExpectAssumeFeatures;
+        physicalDeviceShaderFloatControls2Features.pNext = pNext;
+        pNext = &physicalDeviceShaderFloatControls2Features;
+        physicalDeviceDynamicRenderingLocalReadFeatures.pNext = pNext;
+        pNext = &physicalDeviceDynamicRenderingLocalReadFeatures;
         physicalDeviceShaderQuadControlFeaturesKHR.pNext = pNext;
         pNext = &physicalDeviceShaderQuadControlFeaturesKHR;
         physicalDeviceShaderAtomicFloat16VectorFeaturesNV.pNext = pNext;
@@ -12824,6 +13227,14 @@ struct FeaturesChain {
         pNext = &physicalDeviceImageAlignmentControlFeaturesMESA;
         physicalDeviceShaderReplicatedCompositesFeaturesEXT.pNext = pNext;
         pNext = &physicalDeviceShaderReplicatedCompositesFeaturesEXT;
+        physicalDevicePresentModeFifoLatestReadyFeaturesEXT.pNext = pNext;
+        pNext = &physicalDevicePresentModeFifoLatestReadyFeaturesEXT;
+        physicalDeviceCooperativeMatrix2FeaturesNV.pNext = pNext;
+        pNext = &physicalDeviceCooperativeMatrix2FeaturesNV;
+        physicalDeviceHdrVividFeaturesHUAWEI.pNext = pNext;
+        pNext = &physicalDeviceHdrVividFeaturesHUAWEI;
+        physicalDeviceVertexAttributeRobustnessFeaturesEXT.pNext = pNext;
+        pNext = &physicalDeviceVertexAttributeRobustnessFeaturesEXT;
         physicalDeviceFeatures2KHR.pNext = pNext;
 
     }
@@ -13081,6 +13492,7 @@ VPAPI_ATTR VkResult vpGetInstanceProfileSupportSingleProfile(
 enum structure_type {
     STRUCTURE_FEATURE = 0,
     STRUCTURE_PROPERTY,
+    STRUCTURE_QUEUE_FAMILY,
     STRUCTURE_FORMAT
 };
 
@@ -13131,6 +13543,10 @@ VPAPI_ATTR VkResult vpGetProfileStructureTypes(
                     case STRUCTURE_PROPERTY:
                         count = variant.propertyStructTypeCount;
                         data = variant.pPropertyStructTypes;
+                        break;
+                    case STRUCTURE_QUEUE_FAMILY:
+                        count = variant.queueFamilyStructTypeCount;
+                        data = variant.pQueueFamilyStructTypes;
                         break;
                     case STRUCTURE_FORMAT:
                         count = variant.formatStructTypeCount;
@@ -13249,6 +13665,47 @@ VPAPI_ATTR VkResult vpGetProfileExtensionProperties(
     }
 
     return result;
+}
+
+VPAPI_ATTR VkResult vpGetProfileVideoProfileDesc(
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    const detail::VpVideoProfileDesc**          ppVideoProfileDesc) {
+    VkResult result = pBlockName == nullptr ? VK_SUCCESS : VK_INCOMPLETE;
+
+    uint32_t curr_base_video_profile_index = 0;
+
+    const std::vector<VpProfileProperties>& gathered_profiles = detail::GatherProfiles(*pProfile);
+
+    for (std::size_t profile_index = 0, profile_count = gathered_profiles.size(); profile_index < profile_count; ++profile_index) {
+        const detail::VpProfileDesc* profile_desc = detail::vpGetProfileDesc(gathered_profiles[profile_index].profileName);
+        if (profile_desc == nullptr) return VK_ERROR_UNKNOWN;
+
+        for (uint32_t capability_index = 0; capability_index < profile_desc->requiredCapabilityCount; ++capability_index) {
+            const detail::VpCapabilitiesDesc& cap_desc = profile_desc->pRequiredCapabilities[capability_index];
+
+            for (uint32_t variant_index = 0; variant_index < cap_desc.variantCount; ++variant_index) {
+                const detail::VpVariantDesc& variant = cap_desc.pVariants[variant_index];
+                if (pBlockName != nullptr) {
+                    if (strcmp(variant.blockName, pBlockName) != 0) {
+                        continue;
+                    }
+                    result = VK_SUCCESS;
+                }
+
+                if (videoProfileIndex < curr_base_video_profile_index + variant.videoProfileCount) {
+                    *ppVideoProfileDesc = &variant.pVideoProfiles[videoProfileIndex - curr_base_video_profile_index];
+                    return result;
+                } else {
+                    curr_base_video_profile_index += variant.videoProfileCount;
+                }
+            }
+        }
+    }
+
+    *ppVideoProfileDesc = nullptr;
+    return VK_ERROR_UNKNOWN;
 }
 
 } // namespace detail
@@ -13860,6 +14317,18 @@ VPAPI_ATTR VkResult vpGetPhysicalDeviceProfileVariantsSupport(
         PFN_vkGetPhysicalDeviceQueueFamilyProperties2KHR    pfnGetPhysicalDeviceQueueFamilyProperties2;
     };
 
+#ifdef VK_KHR_video_queue
+    struct VideoInfo {
+        PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR         pfnGetPhysicalDeviceVideoCapabilitiesKHR;
+        PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR     pfnGetPhysicalDeviceVideoFormatPropertiesKHR;
+        const detail::VpVideoProfileDesc*                   pProfileDesc;
+        VkVideoProfileInfoKHR                               profileInfo;
+        VkPhysicalDeviceVideoFormatInfoKHR                  formatInfo;
+        bool                                                supportedProfile;
+        uint32_t                                            matchingProfiles;
+    };
+#endif  // VK_KHR_video_queue
+
     std::vector<VpBlockProperties> supported_blocks;
     std::vector<VpBlockProperties> unsupported_blocks;
 
@@ -13869,8 +14338,10 @@ VPAPI_ATTR VkResult vpGetPhysicalDeviceProfileVariantsSupport(
         std::vector<VpBlockProperties>& unsupported_blocks;
         const detail::VpVariantDesc* variant;
         GPDP2EntryPoints gpdp2;
+#ifdef VK_KHR_video_queue
+        VideoInfo video;
+#endif  // VK_KHR_video_queue
         uint32_t index;
-        uint32_t count;
         detail::PFN_vpStructChainerCb pfnCb;
         bool supported;
     } userData{physicalDevice, supported_blocks, unsupported_blocks};
@@ -13912,6 +14383,14 @@ VPAPI_ATTR VkResult vpGetPhysicalDeviceProfileVariantsSupport(
         userData.gpdp2.pfnGetPhysicalDeviceQueueFamilyProperties2 == nullptr) {
         return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
+
+#ifdef VK_KHR_video_queue
+    PFN_vkGetInstanceProcAddr gipa = vp.singleton ? vkGetInstanceProcAddr : vp.GetInstanceProcAddr;
+    userData.video.pfnGetPhysicalDeviceVideoCapabilitiesKHR =
+        (PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR)gipa(instance, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
+    userData.video.pfnGetPhysicalDeviceVideoFormatPropertiesKHR =
+        (PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR)gipa(instance, "vkGetPhysicalDeviceVideoFormatPropertiesKHR");
+#endif  // VK_KHR_video_queue
 
     bool supported = true;
 
@@ -14006,6 +14485,45 @@ VPAPI_ATTR VkResult vpGetPhysicalDeviceProfileVariantsSupport(
                     supported_variant = false;
                 }
 
+                if (userData.variant->queueFamilyCount > 0) {
+                    uint32_t queue_family_count = 0;
+                    userData.gpdp2.pfnGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, &queue_family_count, nullptr);
+                    std::vector<VkQueueFamilyProperties2KHR> queueFamilyProps(queue_family_count, { VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR });
+                    userData.variant->chainers.pfnQueueFamily(
+                        queue_family_count, static_cast<VkBaseOutStructure*>(static_cast<void*>(queueFamilyProps.data())), &userData,
+                        [](uint32_t queue_family_count, VkBaseOutStructure* pBaseArray, void* pUser) {
+                            UserData* pUserData = static_cast<UserData*>(pUser);
+                            VkQueueFamilyProperties2KHR* pArray = static_cast<VkQueueFamilyProperties2KHR*>(static_cast<void*>(pBaseArray));
+                            pUserData->gpdp2.pfnGetPhysicalDeviceQueueFamilyProperties2(pUserData->physicalDevice, &queue_family_count, pArray);
+                            pUserData->supported = true;
+                            for (uint32_t profile_qf_idx = 0; profile_qf_idx < pUserData->variant->queueFamilyCount; ++profile_qf_idx) {
+                                bool found_matching = false;
+                                for (uint32_t queue_family_index = 0; queue_family_index < queue_family_count; ++queue_family_index) {
+                                    bool this_matches = true;
+                                    VkBaseOutStructure* p = static_cast<VkBaseOutStructure*>(static_cast<void*>(&pArray[queue_family_index]));
+                                    while (p != nullptr) {
+                                        if (!pUserData->variant->pQueueFamilies[profile_qf_idx].pfnComparator(p)) {
+                                            this_matches = false;
+                                        }
+                                        p = p->pNext;
+                                    }
+                                    if (this_matches) {
+                                        found_matching = true;
+                                        break;
+                                    }
+                                }
+                                if (!found_matching) {
+                                    pUserData->supported = false;
+                                    break;
+                                }
+                            }
+                        }
+                    );
+                    if (!userData.supported) {
+                        supported_variant = false;
+                    }
+                }
+
                 for (uint32_t format_index = 0; format_index < userData.variant->formatCount && supported_variant; ++format_index) {
                     userData.index = format_index;
                     VkFormatProperties2KHR format_properties2{ VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR };
@@ -14030,6 +14548,113 @@ VPAPI_ATTR VkResult vpGetPhysicalDeviceProfileVariantsSupport(
                         supported_variant = false;
                     }
                 }
+
+#ifdef VK_KHR_video_queue
+                if (userData.variant->videoProfileCount > 0) {
+                    VkVideoProfileListInfoKHR profile_list{ VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR };
+                    profile_list.profileCount = 1;
+                    profile_list.pProfiles = &userData.video.profileInfo;
+                    userData.video.formatInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VIDEO_FORMAT_INFO_KHR;
+                    userData.video.formatInfo.pNext = &profile_list;
+
+                    if (userData.video.pfnGetPhysicalDeviceVideoCapabilitiesKHR != nullptr &&
+                        userData.video.pfnGetPhysicalDeviceVideoFormatPropertiesKHR != nullptr) {
+                        for (uint32_t video_profile_index = 0; video_profile_index < userData.variant->videoProfileCount; ++video_profile_index) {
+                            userData.video.profileInfo = VkVideoProfileInfoKHR{ VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR };
+                            userData.video.pProfileDesc = &userData.variant->pVideoProfiles[video_profile_index];
+                            userData.supported = true;
+                            userData.video.matchingProfiles = 0;
+
+                            detail::vpForEachMatchingVideoProfiles(&userData.video.profileInfo, &userData,
+                                [](VkBaseOutStructure* p, void* pUser) {
+                                    UserData* pUserData = static_cast<UserData*>(pUser);
+                                    while (p != nullptr) {
+                                        if (!pUserData->video.pProfileDesc->info.pfnComparator(p)) {
+                                            return;
+                                        }
+                                        p = p->pNext;
+                                    }
+
+                                    pUserData->video.supportedProfile = true;
+
+                                    VkVideoCapabilitiesKHR capabilities{ VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR };
+                                    pUserData->video.pProfileDesc->chainers.pfnCapability(
+                                        static_cast<VkBaseOutStructure*>(static_cast<void*>(&capabilities)), pUserData,
+                                        [](VkBaseOutStructure* p, void* pUser) {
+                                            UserData* pUserData = static_cast<UserData*>(pUser);
+                                            VkResult result = pUserData->video.pfnGetPhysicalDeviceVideoCapabilitiesKHR(
+                                                pUserData->physicalDevice,
+                                                &pUserData->video.profileInfo,
+                                                static_cast<VkVideoCapabilitiesKHR*>(static_cast<void*>(p)));
+                                            if (result != VK_SUCCESS) {
+                                                pUserData->video.supportedProfile = false;
+                                                return;
+                                            }
+                                            while (p != nullptr) {
+                                                if (!pUserData->video.pProfileDesc->capability.pfnComparator(p)) {
+                                                    pUserData->supported = false;
+                                                }
+                                                p = p->pNext;
+                                            }
+                                        }
+                                    );
+
+                                    if (pUserData->video.supportedProfile) {
+                                        pUserData->video.matchingProfiles++;
+                                    } else {
+                                        return;
+                                    }
+
+                                    std::vector<VkVideoFormatPropertiesKHR> format_props;
+                                    for (uint32_t format_index = 0; format_index < pUserData->video.pProfileDesc->formatCount; ++format_index) {
+                                        pUserData->index = format_index;
+                                        {
+                                            VkVideoFormatPropertiesKHR tmp_props{ VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR };
+                                            pUserData->video.pProfileDesc->pFormats[format_index].pfnFiller(static_cast<VkBaseOutStructure*>(static_cast<void*>(&tmp_props)));
+                                            pUserData->video.formatInfo.imageUsage = tmp_props.imageUsageFlags;
+                                        }
+
+                                        uint32_t format_count = 0;
+                                        pUserData->video.pfnGetPhysicalDeviceVideoFormatPropertiesKHR(pUserData->physicalDevice, &pUserData->video.formatInfo, &format_count, nullptr);
+                                        format_props.resize(format_count, { VK_STRUCTURE_TYPE_VIDEO_FORMAT_PROPERTIES_KHR });
+                                        pUserData->video.pProfileDesc->chainers.pfnFormat(
+                                            format_count, static_cast<VkBaseOutStructure*>(static_cast<void*>(format_props.data())), pUserData,
+                                            [](uint32_t format_count, VkBaseOutStructure* pBaseArray, void* pUser) {
+                                                UserData* pUserData = static_cast<UserData*>(pUser);
+                                                VkVideoFormatPropertiesKHR* pArray = static_cast<VkVideoFormatPropertiesKHR*>(static_cast<void*>(pBaseArray));
+                                                pUserData->video.pfnGetPhysicalDeviceVideoFormatPropertiesKHR(pUserData->physicalDevice, &pUserData->video.formatInfo, &format_count, pArray);
+                                                bool found_matching = false;
+                                                for (uint32_t i = 0; i < format_count; ++i) {
+                                                    bool this_matches = true;
+                                                    VkBaseOutStructure* p = static_cast<VkBaseOutStructure*>(static_cast<void*>(&pArray[i]));
+                                                    while (p != nullptr) {
+                                                        if (!pUserData->video.pProfileDesc->pFormats[pUserData->index].pfnComparator(p)) {
+                                                            this_matches = false;
+                                                        }
+                                                        p = p->pNext;
+                                                    }
+                                                    if (this_matches) {
+                                                        found_matching = true;
+                                                        break;
+                                                    }
+                                                }
+                                                if (!found_matching) {
+                                                    pUserData->supported = false;
+                                                }
+                                            }
+                                        );
+                                    }
+                                }
+                            );
+                            if (!userData.supported || userData.video.matchingProfiles == 0) {
+                                supported_variant = false;
+                            }
+                        }
+                    } else {
+                        supported_variant = false;
+                    }
+                }
+#endif  // VK_KHR_video_queue
 
                 memcpy(block.blockName, variant_desc.blockName, VP_MAX_PROFILE_NAME_SIZE * sizeof(char));
                 if (supported_variant) {
@@ -14323,6 +14948,71 @@ VPAPI_ATTR VkResult vpGetProfileProperties(
     return result;
 }
 
+VPAPI_ATTR VkResult vpGetProfileQueueFamilyProperties(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t*                                   pPropertyCount,
+    VkQueueFamilyProperties2KHR*                pProperties) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+
+    if (pPropertyCount == nullptr) return VK_ERROR_UNKNOWN;
+
+    VkResult result = pBlockName == nullptr ? VK_SUCCESS : VK_INCOMPLETE;
+
+    const std::vector<VpProfileProperties>& gathered_profiles = detail::GatherProfiles(*pProfile);
+
+    uint32_t total_queue_family_count = 0;
+
+    for (std::size_t profile_index = 0, profile_count = gathered_profiles.size(); profile_index < profile_count; ++profile_index) {
+        const detail::VpProfileDesc* profile_desc = detail::vpGetProfileDesc(gathered_profiles[profile_index].profileName);
+        if (profile_desc == nullptr) return VK_ERROR_UNKNOWN;
+
+        for (uint32_t capability_index = 0; capability_index < profile_desc->requiredCapabilityCount; ++capability_index) {
+            const detail::VpCapabilitiesDesc& cap_desc = profile_desc->pRequiredCapabilities[capability_index];
+
+            for (uint32_t variant_index = 0; variant_index < cap_desc.variantCount; ++variant_index) {
+                const detail::VpVariantDesc& variant = cap_desc.pVariants[variant_index];
+                if (pBlockName != nullptr) {
+                    if (strcmp(variant.blockName, pBlockName) != 0) {
+                        continue;
+                    }
+                    result = VK_SUCCESS;
+                }
+
+                if (pProperties != nullptr) {
+                    for (uint32_t i = 0; i < variant.queueFamilyCount; ++i) {
+                        if (total_queue_family_count < *pPropertyCount) {
+                            if (variant.pQueueFamilies[i].pfnFiller == nullptr) continue;
+
+                            VkBaseOutStructure* p = reinterpret_cast<VkBaseOutStructure*>(pProperties);
+                            while (p != nullptr) {
+                                variant.pQueueFamilies[i].pfnFiller(p);
+                                p = p->pNext;
+                            }
+
+                            total_queue_family_count++;
+                            pProperties++;
+                        } else {
+                            result = VK_INCOMPLETE;
+                            break;
+                        }
+                    }
+                } else {
+                    total_queue_family_count += variant.queueFamilyCount;
+                }
+            }
+        }
+    }
+
+    *pPropertyCount = total_queue_family_count;
+    return result;
+}
+
 VPAPI_ATTR VkResult vpGetProfileFormats(
 #ifdef VP_USE_OBJECT
     VpCapabilities                              capabilities,
@@ -14487,6 +15177,21 @@ VPAPI_ATTR VkResult vpGetProfilePropertyStructureTypes(
         pProfile, pBlockName, detail::STRUCTURE_PROPERTY, pStructureTypeCount, pStructureTypes);
 }
 
+VPAPI_ATTR VkResult vpGetProfileQueueFamilyStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes) {
+    return detail::vpGetProfileStructureTypes(
+#ifdef VP_USE_OBJECT
+        capabilities,
+#endif//VP_USE_OBJECT
+        pProfile, pBlockName, detail::STRUCTURE_QUEUE_FAMILY, pStructureTypeCount, pStructureTypes);
+}
+
 VPAPI_ATTR VkResult vpGetProfileFormatStructureTypes(
 #ifdef VP_USE_OBJECT
     VpCapabilities                              capabilities,
@@ -14501,3 +15206,257 @@ VPAPI_ATTR VkResult vpGetProfileFormatStructureTypes(
 #endif//VP_USE_OBJECT
         pProfile, pBlockName, detail::STRUCTURE_FORMAT, pStructureTypeCount, pStructureTypes);
 }
+
+#ifdef VK_KHR_video_queue
+// Query the list of video profiles specified by the profile
+VPAPI_ATTR VkResult vpGetProfileVideoProfiles(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t*                                   pVideoProfileCount,
+    VpVideoProfileProperties*                   pVideoProfiles) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+    if (pVideoProfileCount == nullptr) return VK_ERROR_UNKNOWN;
+
+    VkResult result = pBlockName == nullptr ? VK_SUCCESS : VK_INCOMPLETE;
+
+    uint32_t total_video_profile_count = 0;
+
+    const std::vector<VpProfileProperties>& gathered_profiles = detail::GatherProfiles(*pProfile);
+
+    for (std::size_t profile_index = 0, profile_count = gathered_profiles.size(); profile_index < profile_count; ++profile_index) {
+        const detail::VpProfileDesc* profile_desc = detail::vpGetProfileDesc(gathered_profiles[profile_index].profileName);
+        if (profile_desc == nullptr) return VK_ERROR_UNKNOWN;
+
+        for (uint32_t capability_index = 0; capability_index < profile_desc->requiredCapabilityCount; ++capability_index) {
+            const detail::VpCapabilitiesDesc& cap_desc = profile_desc->pRequiredCapabilities[capability_index];
+
+            for (uint32_t variant_index = 0; variant_index < cap_desc.variantCount; ++variant_index) {
+                const detail::VpVariantDesc& variant = cap_desc.pVariants[variant_index];
+                if (pBlockName != nullptr) {
+                    if (strcmp(variant.blockName, pBlockName) != 0) {
+                        continue;
+                    }
+                    result = VK_SUCCESS;
+                }
+
+                if (pVideoProfiles != nullptr) {
+                    for (uint32_t i = 0; i < variant.videoProfileCount; ++i) {
+                        if (total_video_profile_count < *pVideoProfileCount) {
+                            *pVideoProfiles = variant.pVideoProfiles[i].properties;
+                            total_video_profile_count++;
+                            pVideoProfiles++;
+                        } else {
+                            result = VK_INCOMPLETE;
+                            break;
+                        }
+                    }
+                } else {
+                    total_video_profile_count += variant.videoProfileCount;
+                }
+            }
+        }
+    }
+
+    *pVideoProfileCount = total_video_profile_count;
+    return result;
+}
+
+VPAPI_ATTR VkResult vpGetProfileVideoProfileInfo(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    VkVideoProfileInfoKHR*                      pVideoProfileInfo) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+
+    const detail::VpVideoProfileDesc* pVideoProfileDesc = nullptr;
+    VkResult result = detail::vpGetProfileVideoProfileDesc(pProfile, pBlockName, videoProfileIndex, &pVideoProfileDesc);
+
+    if (pVideoProfileDesc != nullptr) {
+        VkBaseOutStructure* p = reinterpret_cast<VkBaseOutStructure*>(pVideoProfileInfo);
+        while (p != nullptr) {
+            pVideoProfileDesc->info.pfnFiller(p);
+            p = p->pNext;
+        }
+    }
+
+    return result;
+}
+
+VPAPI_ATTR VkResult vpGetProfileVideoCapabilities(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    void*                                       pNext) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+
+    const detail::VpVideoProfileDesc* pVideoProfileDesc = nullptr;
+    VkResult result = detail::vpGetProfileVideoProfileDesc(pProfile, pBlockName, videoProfileIndex, &pVideoProfileDesc);
+
+    if (pVideoProfileDesc != nullptr) {
+        VkBaseOutStructure* p = reinterpret_cast<VkBaseOutStructure*>(pNext);
+        while (p != nullptr) {
+            pVideoProfileDesc->capability.pfnFiller(p);
+            p = p->pNext;
+        }
+    }
+
+    return result;
+}
+
+VPAPI_ATTR VkResult vpGetProfileVideoFormatProperties(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pPropertyCount,
+    VkVideoFormatPropertiesKHR*                 pProperties) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+
+    const detail::VpVideoProfileDesc* pVideoProfileDesc = nullptr;
+    VkResult result = detail::vpGetProfileVideoProfileDesc(pProfile, pBlockName, videoProfileIndex, &pVideoProfileDesc);
+
+    uint32_t property_count = 0;
+    if (pVideoProfileDesc != nullptr) {
+        if (pProperties != nullptr) {
+            for (; property_count < pVideoProfileDesc->formatCount; ++property_count) {
+                if (property_count < *pPropertyCount) {
+                    VkBaseOutStructure* p = reinterpret_cast<VkBaseOutStructure*>(&pProperties[property_count]);
+                    while (p != nullptr) {
+                        pVideoProfileDesc->pFormats[property_count].pfnFiller(p);
+                        p = p->pNext;
+                    }
+                } else {
+                    result = VK_INCOMPLETE;
+                    break;
+                }
+            }
+        } else {
+            property_count = pVideoProfileDesc->formatCount;
+        }
+    }
+
+    *pPropertyCount = property_count;
+    return result;
+}
+
+VPAPI_ATTR VkResult vpGetProfileVideoProfileInfoStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+
+    const detail::VpVideoProfileDesc* pVideoProfileDesc = nullptr;
+    VkResult result = detail::vpGetProfileVideoProfileDesc(pProfile, pBlockName, videoProfileIndex, &pVideoProfileDesc);
+
+    if (pVideoProfileDesc != nullptr) {
+        if (pStructureTypes != nullptr) {
+            if (*pStructureTypeCount < pVideoProfileDesc->infoStructTypeCount) {
+                result = VK_INCOMPLETE;
+            } else {
+                *pStructureTypeCount = pVideoProfileDesc->infoStructTypeCount;
+            }
+            if (*pStructureTypeCount > 0) {
+                memcpy(pStructureTypes, pVideoProfileDesc->pInfoStructTypes, *pStructureTypeCount * sizeof(VkStructureType));
+            }
+        } else {
+            *pStructureTypeCount = pVideoProfileDesc->infoStructTypeCount;
+        }
+    }
+
+    return result;
+}
+
+VPAPI_ATTR VkResult vpGetProfileVideoCapabilityStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+
+    const detail::VpVideoProfileDesc* pVideoProfileDesc = nullptr;
+    VkResult result = detail::vpGetProfileVideoProfileDesc(pProfile, pBlockName, videoProfileIndex, &pVideoProfileDesc);
+
+    if (pVideoProfileDesc != nullptr) {
+        if (pStructureTypes != nullptr) {
+            if (*pStructureTypeCount < pVideoProfileDesc->capabilityStructTypeCount) {
+                result = VK_INCOMPLETE;
+            } else {
+                *pStructureTypeCount = pVideoProfileDesc->capabilityStructTypeCount;
+            }
+            if (*pStructureTypeCount > 0) {
+                memcpy(pStructureTypes, pVideoProfileDesc->pCapabilityStructTypes, *pStructureTypeCount * sizeof(VkStructureType));
+            }
+        } else {
+            *pStructureTypeCount = pVideoProfileDesc->capabilityStructTypeCount;
+        }
+    }
+
+    return result;
+}
+
+VPAPI_ATTR VkResult vpGetProfileVideoFormatStructureTypes(
+#ifdef VP_USE_OBJECT
+    VpCapabilities                              capabilities,
+#endif//VP_USE_OBJECT
+    const VpProfileProperties*                  pProfile,
+    const char*                                 pBlockName,
+    uint32_t                                    videoProfileIndex,
+    uint32_t*                                   pStructureTypeCount,
+    VkStructureType*                            pStructureTypes) {
+#ifdef VP_USE_OBJECT
+    (void)capabilities;
+#endif//VP_USE_OBJECT
+
+    const detail::VpVideoProfileDesc* pVideoProfileDesc = nullptr;
+    VkResult result = detail::vpGetProfileVideoProfileDesc(pProfile, pBlockName, videoProfileIndex, &pVideoProfileDesc);
+
+    if (pVideoProfileDesc != nullptr) {
+        if (pStructureTypes != nullptr) {
+            if (*pStructureTypeCount < pVideoProfileDesc->formatStructTypeCount) {
+                result = VK_INCOMPLETE;
+            } else {
+                *pStructureTypeCount = pVideoProfileDesc->formatStructTypeCount;
+            }
+            if (*pStructureTypeCount > 0) {
+                memcpy(pStructureTypes, pVideoProfileDesc->pFormatStructTypes, *pStructureTypeCount * sizeof(VkStructureType));
+            }
+        } else {
+            *pStructureTypeCount = pVideoProfileDesc->formatStructTypeCount;
+        }
+    }
+
+    return result;
+}
+#endif  // VK_KHR_video_queue

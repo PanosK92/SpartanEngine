@@ -381,10 +381,10 @@ inline const struct VKU_FORMAT_INFO vkuGetFormatInfo(VkFormat format) {
         case VK_FORMAT_A1R5G5B5_UNORM_PACK16: {
             struct VKU_FORMAT_INFO out = {VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 4, {{VKU_FORMAT_COMPONENT_TYPE_A, 1}, {VKU_FORMAT_COMPONENT_TYPE_R, 5}, {VKU_FORMAT_COMPONENT_TYPE_G, 5}, {VKU_FORMAT_COMPONENT_TYPE_B, 5}}};
             return out; }
-        case VK_FORMAT_A1B5G5R5_UNORM_PACK16_KHR: {
+        case VK_FORMAT_A1B5G5R5_UNORM_PACK16: {
             struct VKU_FORMAT_INFO out = {VKU_FORMAT_COMPATIBILITY_CLASS_16BIT, 2, 1, {1, 1, 1}, 4, {{VKU_FORMAT_COMPONENT_TYPE_A, 1}, {VKU_FORMAT_COMPONENT_TYPE_B, 5}, {VKU_FORMAT_COMPONENT_TYPE_G, 5}, {VKU_FORMAT_COMPONENT_TYPE_R, 5}}};
             return out; }
-        case VK_FORMAT_A8_UNORM_KHR: {
+        case VK_FORMAT_A8_UNORM: {
             struct VKU_FORMAT_INFO out = {VKU_FORMAT_COMPATIBILITY_CLASS_8BIT_ALPHA, 1, 1, {1, 1, 1}, 1, {{VKU_FORMAT_COMPONENT_TYPE_A, 8}}};
             return out; }
         case VK_FORMAT_R8_UNORM: {
@@ -1426,8 +1426,8 @@ bool vkuFormatIsUNORM(VkFormat format) {
         case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
         case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
         case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
-        case VK_FORMAT_A1B5G5R5_UNORM_PACK16_KHR:
-        case VK_FORMAT_A8_UNORM_KHR:
+        case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
+        case VK_FORMAT_A8_UNORM:
         case VK_FORMAT_R8_UNORM:
         case VK_FORMAT_R8G8_UNORM:
         case VK_FORMAT_R8G8B8_UNORM:
@@ -1811,7 +1811,7 @@ bool vkuFormatIsPacked(VkFormat format) {
         case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
         case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
         case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
-        case VK_FORMAT_A1B5G5R5_UNORM_PACK16_KHR:
+        case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
         case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
         case VK_FORMAT_A8B8G8R8_SNORM_PACK32:
         case VK_FORMAT_A8B8G8R8_USCALED_PACK32:
@@ -2080,7 +2080,7 @@ inline double vkuFormatTexelSizeWithAspect(VkFormat format, VkImageAspectFlagBit
 
 inline bool vkuFormatIs8bit(VkFormat format) {
     switch (format) {
-        case VK_FORMAT_A8_UNORM_KHR:
+        case VK_FORMAT_A8_UNORM:
         case VK_FORMAT_R8_UNORM:
         case VK_FORMAT_R8_SNORM:
         case VK_FORMAT_R8_USCALED:
