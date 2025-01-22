@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ========
 #include <vector>
 #include <string>
-#include "Definitions.h"
 #include <functional>
-//======================
+//===================
 
 namespace spartan
 {
@@ -59,6 +58,7 @@ namespace spartan
         static bool IsEngineAudioFile(const std::string& path);
         static bool IsEngineShaderFile(const std::string& path);
         static bool IsEngineFile(const std::string& path);
+        static const std::vector<std::string>& GetSupportedImageFormats();
 
         // supported files in directory
         static std::vector<std::string> GetSupportedFilesInDirectory(const std::string& path);
@@ -88,8 +88,11 @@ namespace spartan
         static void OpenUrl(const std::string& url);
         static void Command(const std::string& command, std::function<void()> callback = nullptr, const bool blocking = false);
         static bool Delete(const std::string& path);
-        static bool CreateDirectory(const std::string& path);
+        static bool CreateDirectory_(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
+
+        // internet
+        static bool DownloadFile(const std::string& url, const std::string& destination);
     };
 
     static const char* EXTENSION_WORLD    = ".world";
@@ -101,122 +104,4 @@ namespace spartan
     static const char* EXTENSION_TEXTURE  = ".texture";
     static const char* EXTENSION_MESH     = ".mesh";
     static const char* EXTENSION_AUDIO    = ".audio";
-
-    static const std::vector<std::string> supported_formats_image
-    {
-            ".jpg",
-            ".png",
-            ".bmp",
-            ".tga",
-            ".dds",
-            ".exr",
-            ".raw",
-            ".gif",
-            ".hdr",
-            ".ico",
-            ".iff",
-            ".jng",
-            ".jpeg",
-            ".koala",
-            ".kodak",
-            ".mng",
-            ".pcx",
-            ".pbm",
-            ".pgm",
-            ".ppm",
-            ".pfm",
-            ".pict",
-            ".psd",
-            ".raw",
-            ".sgi",
-            ".targa",
-            ".tiff",
-            ".tif", // tiff can also be tif
-            ".wbmp",
-            ".webp",
-            ".xbm",
-            ".xpm"
-    };
-
-    static const std::vector<std::string> supported_formats_audio
-    {
-        ".aiff",
-        ".asf",
-        ".asx",
-        ".dls",
-        ".flac",
-        ".fsb",
-        ".it",
-        ".m3u",
-        ".midi",
-        ".mod",
-        ".mp2",
-        ".mp3",
-        ".ogg",
-        ".pls",
-        ".s3m",
-        ".vag", // PS2/PSP
-        ".wav",
-        ".wax",
-        ".wma",
-        ".xm",
-        ".xma" // XBOX 360
-    };
-
-    static const std::vector<std::string> supported_formats_model
-    {
-        ".3ds",
-        ".obj",
-        ".fbx",
-        ".blend",
-        ".dae",
-        ".gltf",
-        ".lwo",
-        ".c4d",
-        ".ase",
-        ".dxf",
-        ".hmp",
-        ".md2",
-        ".md3",
-        ".md5",
-        ".mdc",
-        ".mdl",
-        ".nff",
-        ".ply",
-        ".stl",
-        ".x",
-        ".smd",
-        ".lxo",
-        ".lws",
-        ".ter",
-        ".ac3d",
-        ".ms3d",
-        ".cob",
-        ".q3bsp",
-        ".xgl",
-        ".csm",
-        ".bvh",
-        ".b3d",
-        ".ndo"
-    };
-
-    static const std::vector<std::string> supported_formats_shader
-    {
-        ".hlsl"
-    };
-
-    static const std::vector<std::string> supported_formats_font
-    {
-        ".ttf",
-        ".ttc",
-        ".cff",
-        ".woff",
-        ".otf",
-        ".otc",
-        ".pfa",
-        ".pfb",
-        ".fnt",
-        ".bdf",
-        ".pfr"
-    };
 }

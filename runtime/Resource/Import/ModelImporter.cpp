@@ -159,7 +159,7 @@ namespace spartan
             const string file_path_no_ext = FileSystem::GetFilePathWithoutExtension(file_path);
 
             // Check if the file exists using all engine supported extensions
-            for (const auto& supported_format : supported_formats_image)
+            for (const auto& supported_format : FileSystem::GetSupportedImageFormats())
             {
                 string new_file_path = file_path_no_ext + supported_format;
                 string new_file_path_upper = file_path_no_ext + FileSystem::ConvertToUppercase(supported_format);

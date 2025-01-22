@@ -709,14 +709,15 @@ namespace spartan
                 light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
             }
 
-            float scale = 2.0f; // I actually walked in sponza, it's that big
+            Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
+            float scale      = 2.0f; // I actually walked in sponza, it's that big
 
             // 3d model - Sponza
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("sponza");
-                entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
+                entity->SetPosition(position);
                 entity->SetScale(scale);
 
                 // make the lamp frame not cast shadows
@@ -749,7 +750,7 @@ namespace spartan
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("sponza_curtains");
-                entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
+                entity->SetPosition(position);
                 entity->SetScale(scale);
 
                 // disable back face culling and enable wind
@@ -788,7 +789,7 @@ namespace spartan
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("sponza_ivy");
-                entity->SetPosition(Vector3(0.0f, 1.5f, 0.0f));
+                entity->SetPosition(position);
                 entity->SetScale(scale);
 
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())

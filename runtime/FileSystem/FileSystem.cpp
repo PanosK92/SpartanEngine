@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========
 #include "pch.h"
+#include "httplib.h"
 #include <SDL_misc.h>
 //===================
 
@@ -30,6 +31,189 @@ using namespace std;
 
 namespace spartan
 {
+    namespace
+    {
+        static const std::vector<std::string> supported_formats_image
+        {
+            ".jpg",
+            ".png",
+            ".bmp",
+            ".tga",
+            ".dds",
+            ".exr",
+            ".raw",
+            ".gif",
+            ".hdr",
+            ".ico",
+            ".iff",
+            ".jng",
+            ".jpeg",
+            ".koala",
+            ".kodak",
+            ".mng",
+            ".pcx",
+            ".pbm",
+            ".pgm",
+            ".ppm",
+            ".pfm",
+            ".pict",
+            ".psd",
+            ".raw",
+            ".sgi",
+            ".targa",
+            ".tiff",
+            ".tif", // tiff can also be tif
+            ".wbmp",
+            ".webp",
+            ".xbm",
+            ".xpm"
+        };
+
+        static const std::vector<std::string> supported_formats_audio
+        {
+            ".aiff",
+            ".asf",
+            ".asx",
+            ".dls",
+            ".flac",
+            ".fsb",
+            ".it",
+            ".m3u",
+            ".midi",
+            ".mod",
+            ".mp2",
+            ".mp3",
+            ".ogg",
+            ".pls",
+            ".s3m",
+            ".vag", // PS2/PSP
+            ".wav",
+            ".wax",
+            ".wma",
+            ".xm",
+            ".xma" // XBOX 360
+        };
+
+        static const std::vector<std::string> supported_formats_model
+        {
+            ".3ds",
+            ".obj",
+            ".fbx",
+            ".blend",
+            ".dae",
+            ".gltf",
+            ".lwo",
+            ".c4d",
+            ".ase",
+            ".dxf",
+            ".hmp",
+            ".md2",
+            ".md3",
+            ".md5",
+            ".mdc",
+            ".mdl",
+            ".nff",
+            ".ply",
+            ".stl",
+            ".x",
+            ".smd",
+            ".lxo",
+            ".lws",
+            ".ter",
+            ".ac3d",
+            ".ms3d",
+            ".cob",
+            ".q3bsp",
+            ".xgl",
+            ".csm",
+            ".bvh",
+            ".b3d",
+            ".ndo"
+        };
+
+        static const std::vector<std::string> supported_formats_shader
+        {
+            ".hlsl"
+        };
+
+        static const std::vector<std::string> supported_formats_font
+        {
+            ".ttf",
+            ".ttc",
+            ".cff",
+            ".woff",
+            ".otf",
+            ".otc",
+            ".pfa",
+            ".pfb",
+            ".fnt",
+            ".bdf",
+            ".pfr"
+        };
+
+        string compute_sha256(const string& input)
+        {
+        #ifdef _MSC_VER
+            #pragma comment(lib, "bcrypt.lib")
+
+            BCRYPT_ALG_HANDLE hAlg = NULL;
+            BCRYPT_HASH_HANDLE hHash = NULL;
+            DWORD hashObjSize = 0, hashSize = 0;
+            PBYTE hashObject = NULL, hashBuffer = NULL;
+        
+            // open an algorithm handle
+            if (BCRYPT_SUCCESS(BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_SHA256_ALGORITHM, NULL, 0)))
+            {
+                // get the size of the hash object and the hash
+                if (BCRYPT_SUCCESS(BCryptGetProperty(hAlg, BCRYPT_OBJECT_LENGTH, (PBYTE)&hashObjSize, sizeof(DWORD), NULL, 0)) && 
+                    BCRYPT_SUCCESS(BCryptGetProperty(hAlg, BCRYPT_HASH_LENGTH, (PBYTE)&hashSize, sizeof(DWORD), NULL, 0)))
+                {
+                    // allocate memory for hash object and hash buffer
+                    hashObject = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, hashObjSize);
+                    hashBuffer = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, hashSize);
+        
+                    if (hashObject && hashBuffer)
+                    {
+                        // create a hash
+                        if (BCRYPT_SUCCESS(BCryptCreateHash(hAlg, &hHash, hashObject, hashObjSize, NULL, 0, 0)))
+                        {
+                            // hash the data
+                            if (BCRYPT_SUCCESS(BCryptHashData(hHash, (PBYTE)input.c_str(), (ULONG)input.length(), 0)))
+                            {
+                                // finish the hash and get the result
+                                if (BCRYPT_SUCCESS(BCryptFinishHash(hHash, hashBuffer, hashSize, 0)))
+                                {
+                                    stringstream ss;
+                                    for (DWORD i = 0; i < hashSize; i++)
+                                    {
+                                        ss << hex << setw(2) << setfill('0') << (int)hashBuffer[i];
+                                    }
+
+                                    // clean up
+                                    BCryptDestroyHash(hHash);
+                                    BCryptCloseAlgorithmProvider(hAlg, 0);
+                                    HeapFree(GetProcessHeap(), 0, hashObject);
+                                    HeapFree(GetProcessHeap(), 0, hashBuffer);
+                                    return ss.str();
+                                }
+                            }
+                            BCryptDestroyHash(hHash);
+                        }
+                    }
+                }
+                BCryptCloseAlgorithmProvider(hAlg, 0);
+            }
+
+            // free resources in case of early exit
+            if (hashObject) HeapFree(GetProcessHeap(), 0, hashObject);
+            if (hashBuffer) HeapFree(GetProcessHeap(), 0, hashBuffer);
+        #else
+            SP_LOG_ERROR("SHA256 is not implemented for this platform.");
+        #endif
+            return "";
+        }
+    }
+
     bool FileSystem::IsEmptyOrWhitespace(const string& var)
     {
         // Check if it's empty
@@ -451,6 +635,11 @@ namespace spartan
                 IsEngineShaderFile(path);
     }
 
+    const vector<string>& FileSystem::GetSupportedImageFormats()
+    {
+        return supported_formats_image;
+    }
+
     vector<string> FileSystem::GetSupportedFilesInDirectory(const string& path)
     {
         const vector<string> filesInDirectory = GetFilesInDirectory(path);
@@ -645,7 +834,7 @@ namespace spartan
         return false;
     }
 
-    bool FileSystem::CreateDirectory(const string& path)
+    bool FileSystem::CreateDirectory_(const string& path)
     {
         try
         {
@@ -668,7 +857,7 @@ namespace spartan
         // In case the destination path doesn't exist, create it
         if (!Exists(GetDirectoryFromFilePath(destination)))
         {
-            CreateDirectory(GetDirectoryFromFilePath(destination));
+            CreateDirectory_(GetDirectoryFromFilePath(destination));
         }
 
         try
@@ -679,6 +868,60 @@ namespace spartan
         {
             SP_LOG_ERROR("%s", e.what());
             return true;
+        }
+    }
+
+    bool FileSystem::DownloadFile(const string& url, const string& destination)
+    {
+        namespace fs = filesystem;
+        httplib::Client cli(url.substr(0, url.find("/", 8))); // extract base URL
+
+        if (fs::exists(destination))
+        {
+            // read the existing file content
+            ifstream file(destination, ios::binary);
+            string file_content((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+            string existing_hash = compute_sha256(file_content);
+
+            // fetch the remote file to compute its hash
+            auto res = cli.Get(url.substr(url.find("/", 8)));
+            if (res && res->status == 200)
+            {
+                string remote_content = res->body;
+                string new_hash = compute_sha256(remote_content);
+
+                // hash mismatch, download new file
+                if (existing_hash != new_hash)
+                {
+                    ofstream new_file(destination, ios::binary);
+                    new_file.write(remote_content.data(), remote_content.length());
+
+                    return true;
+                }
+
+                return true; // hash matches, no download needed
+            }
+            else
+            {
+                SP_LOG_ERROR("Failed to fetch remote file for hash comparison.");
+                return false;
+            }
+        }
+        else
+        {
+            // file doesn't exist, download it
+            auto res = cli.Get(url.substr(url.find("/", 8)));
+            if (res && res->status == 200)
+            {
+                ofstream file(destination, ios::binary);
+                file.write(res->body.data(), res->body.length());
+                return true;
+            }
+            else
+            {
+                SP_LOG_ERROR("Failed to download file.");
+                return false;
+            }
         }
     }
 }

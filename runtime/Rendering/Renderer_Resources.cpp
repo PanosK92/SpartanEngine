@@ -580,7 +580,7 @@ namespace spartan
     void Renderer::CreateStandardMaterials()
     {
         const string data_dir = ResourceCache::GetDataDirectory() + "\\";
-        FileSystem::CreateDirectory(data_dir);
+        FileSystem::CreateDirectory_(data_dir);
 
         standard_material = make_shared<Material>();
         standard_material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // set resource file path so it can be used by the resource cache

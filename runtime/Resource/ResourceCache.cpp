@@ -192,7 +192,7 @@ namespace spartan
     {
         if (!FileSystem::Exists(directory))
         {
-            FileSystem::CreateDirectory(directory);
+            FileSystem::CreateDirectory_(directory);
         }
 
         m_project_directory = directory;
