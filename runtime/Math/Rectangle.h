@@ -86,10 +86,10 @@ namespace spartan
 
             void Merge(const Vector2& point)
             {
-                left   = math::helper::Min(left,   point.x);
-                top    = math::helper::Min(top,    point.y);
-                right  = math::helper::Max(right,  point.x);
-                bottom = math::helper::Max(bottom, point.y);
+                left   = std::min(left,   point.x);
+                top    = std::min(top,    point.y);
+                right  = std::max(right,  point.x);
+                bottom = std::max(bottom, point.y);
             }
 
             bool Intersects(const Rectangle& other) const

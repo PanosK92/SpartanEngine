@@ -660,16 +660,16 @@ namespace spartan
             // anisotropy
             if (option == Renderer_Option::Anisotropy)
             {
-                value = helper::Clamp(value, 0.0f, 16.0f);
+                value = Clamp(value, 0.0f, 16.0f);
             }
             // shadow resolution
             else if (option == Renderer_Option::ShadowResolution)
             {
-                value = helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
+                value = Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
             }
             else if (option == Renderer_Option::ResolutionScale)
             {
-                value = helper::Clamp(value, 0.5f, 1.0f);
+                value = Clamp(value, 0.5f, 1.0f);
             }
         }
 

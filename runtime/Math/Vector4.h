@@ -96,18 +96,15 @@ namespace spartan::math
             return Vector4(x / rhs, y / rhs, z / rhs, w / rhs);
         }
 
-        // Returns the length
-        [[nodiscard]] float Length()        const { return helper::Sqrt(x * x + y * y + z * z + w * w); }
-        // Returns the squared length
+        [[nodiscard]] float Length()        const { return sqrt(x * x + y * y + z * z + w * w); }
         [[nodiscard]] float LengthSquared() const { return x * x + y * y + z * z + w * w; }
 
-        // Normalize
         void Normalize()
         {
             const auto length_squared = LengthSquared();
-            if (!helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!EqualsWithError(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / helper::Sqrt(length_squared);
+                const auto length_inverted = 1.0f / sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -115,13 +112,12 @@ namespace spartan::math
             }
         };
 
-        // Return normalized vector
         [[nodiscard]] Vector4 Normalized() const
         {
             const auto length_squared = LengthSquared();
-            if (!helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!EqualsWithError(length_squared, 1.0f) && length_squared > 0.0f)
             {
-                const auto length_inverted = 1.0f / helper::Sqrt(length_squared);
+                const auto length_inverted = 1.0f / sqrt(length_squared);
                 return (*this) * length_inverted;
             }
             else

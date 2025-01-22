@@ -35,10 +35,7 @@ namespace spartan::math
         Inside,
         Intersects
     };
-}
 
-namespace spartan::math::helper
-{
     constexpr float SMALL_FLOAT = std::numeric_limits<float>::min();     // the smallest value that can be represented while maintaining the standard format of floating-point numbers
     constexpr float EPSILON     = std::numeric_limits<float>::epsilon(); // the smallest change detectable in calculations around the number 1.0
     constexpr float INFINITY_   = std::numeric_limits<float>::infinity();
@@ -66,28 +63,9 @@ namespace spartan::math::helper
     template <class T, class U>
     constexpr T Lerp(T lhs, T rhs, U t) { return lhs * (static_cast<U>(1) - t) + rhs * t; }
 
-    // Returns the absolute value
-    template <class T>
-    constexpr T Abs(T value) { return value >= static_cast<T>(0) ? value : -value; }
-
     // Check for equality but allow for a small error
     template <class T>
-    constexpr bool Equals(T lhs, T rhs, T error = std::numeric_limits<T>::epsilon()) { return lhs + error >= rhs && lhs - error <= rhs; }
-
-    template <class T>
-    constexpr T Max(T a, T b) { return a > b ? a : b; }
-
-    template <class T>
-    constexpr T Max3(T a, T b, T c) { return Max(a, Max(b, c)); }
-
-    template <class T>
-    constexpr T Min(T a, T b) { return a < b ? a : b; }
-
-    template <class T>
-    constexpr T Min3(T a, T b, T c) { return Min(a, Min(b, c)); }
-
-    template <class T>
-    constexpr T Sqrt(T x) { return sqrt(x); }
+    constexpr bool EqualsWithError(T lhs, T rhs, T error = std::numeric_limits<T>::epsilon()) { return lhs + error >= rhs && lhs - error <= rhs; }
 
     template <class T>
     constexpr T Floor(T x) { return floor(x); }
@@ -100,12 +78,6 @@ namespace spartan::math::helper
 
     template <class T>
     constexpr T Tan(T x) { return tan(x); }
-
-    template <class T>
-    constexpr T Cos(T x) { return cos(x); }
-
-    template <class T>
-    constexpr T Sin(T x) { return sin(x); }
 
     template <typename T>
     constexpr int Sign(T x) { return (static_cast<T>(0) < x) - (x < static_cast<T>(0)); }

@@ -148,7 +148,7 @@ namespace spartan
 
                 // choose the version which is supported by both the sdk and the driver
                 uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
-                app_info.apiVersion  = helper::Min(sdk_version, driver_version);
+                app_info.apiVersion  = min(sdk_version, driver_version);
 
                 // 1.3 the minimum required version as we are using extensions from 1.3
                 if (app_info.apiVersion < VK_API_VERSION_1_3)

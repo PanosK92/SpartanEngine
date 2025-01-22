@@ -168,28 +168,28 @@ namespace spartan::math
         static Quaternion RotationMatrixToQuaternion(const Matrix& mRot)
         {
             Quaternion quaternion;
-            float sqrt;
+            float sqrt_;
             float half;
             const float scale = mRot.m00 + mRot.m11 + mRot.m22;
 
             if (scale > 0.0f)
             {
-                sqrt = helper::Sqrt(scale + 1.0f);
-                quaternion.w = sqrt * 0.5f;
-                sqrt = 0.5f / sqrt;
+                sqrt_ = sqrt(scale + 1.0f);
+                quaternion.w = sqrt_ * 0.5f;
+                sqrt_ = 0.5f / sqrt_;
 
-                quaternion.x = (mRot.m12 - mRot.m21) * sqrt;
-                quaternion.y = (mRot.m20 - mRot.m02) * sqrt;
-                quaternion.z = (mRot.m01 - mRot.m10) * sqrt;
+                quaternion.x = (mRot.m12 - mRot.m21) * sqrt_;
+                quaternion.y = (mRot.m20 - mRot.m02) * sqrt_;
+                quaternion.z = (mRot.m01 - mRot.m10) * sqrt_;
 
                 return quaternion;
             }
             if ((mRot.m00 >= mRot.m11) && (mRot.m00 >= mRot.m22))
             {
-                sqrt = helper::Sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
-                half = 0.5f / sqrt;
+                sqrt_ = sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
+                half = 0.5f / sqrt_;
 
-                quaternion.x = 0.5f * sqrt;
+                quaternion.x = 0.5f * sqrt_;
                 quaternion.y = (mRot.m01 + mRot.m10) * half;
                 quaternion.z = (mRot.m02 + mRot.m20) * half;
                 quaternion.w = (mRot.m12 - mRot.m21) * half;
@@ -198,22 +198,22 @@ namespace spartan::math
             }
             if (mRot.m11 > mRot.m22)
             {
-                sqrt = helper::Sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
-                half = 0.5f / sqrt;
+                sqrt_ = sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
+                half = 0.5f / sqrt_;
 
                 quaternion.x = (mRot.m10 + mRot.m01) * half;
-                quaternion.y = 0.5f * sqrt;
+                quaternion.y = 0.5f * sqrt_;
                 quaternion.z = (mRot.m21 + mRot.m12) * half;
                 quaternion.w = (mRot.m20 - mRot.m02) * half;
 
                 return quaternion;
             }
-            sqrt = helper::Sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
-            half = 0.5f / sqrt;
+            sqrt_ = sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
+            half  = 0.5f / sqrt_;
 
             quaternion.x = (mRot.m20 + mRot.m02) * half;
             quaternion.y = (mRot.m21 + mRot.m12) * half;
-            quaternion.z = 0.5f * sqrt;
+            quaternion.z = 0.5f * sqrt_;
             quaternion.w = (mRot.m01 - mRot.m10) * half;
 
             return quaternion;
@@ -230,9 +230,9 @@ namespace spartan::math
             __m128 row2 = _mm_setr_ps(m20, m21, m22, 0.0f);
         
             // Calculate signs (using scalar math as it's only done once per row)
-            float xs = (helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
-            float ys = (helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
-            float zs = (helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
+            float xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
+            float ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
+            float zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
         
             // Square each component
             __m128 square0 = _mm_mul_ps(row0, row0);
@@ -251,18 +251,18 @@ namespace spartan::math
         
             // Extract results and apply signs
             return Vector3(
-                xs * helper::Sqrt(_mm_cvtss_f32(square0)),
-                ys * helper::Sqrt(_mm_cvtss_f32(square1)),
-                zs * helper::Sqrt(_mm_cvtss_f32(square2))
+                xs * sqrt(_mm_cvtss_f32(square0)),
+                ys * sqrt(_mm_cvtss_f32(square1)),
+                zs * sqrt(_mm_cvtss_f32(square2))
             );
         #else
-            const int xs = (helper::Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
-            const int ys = (helper::Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
-            const int zs = (helper::Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
+            const int xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
+            const int ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
+            const int zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
             return Vector3(
-                static_cast<float>(xs) * helper::Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
-                static_cast<float>(ys) * helper::Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
-                static_cast<float>(zs) * helper::Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
+                static_cast<float>(xs) * Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
+                static_cast<float>(ys) * Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
+                static_cast<float>(zs) * Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
             );
         #endif
         }
@@ -315,7 +315,7 @@ namespace spartan::math
 
         static Matrix CreatePerspectiveFieldOfViewLH(float fov_y_radians, float aspect_ratio, float near_plane, float far_plane)
         {
-            const float tan_half_fovy = helper::Tan(fov_y_radians / 2);
+            const float tan_half_fovy = Tan(fov_y_radians / 2);
             const float f             = 1.0f / tan_half_fovy;
             const float range_inv     = 1.0f / (far_plane - near_plane);
 
@@ -481,7 +481,6 @@ namespace spartan::math
 
         bool operator!=(const Matrix& rhs) const { return !(*this == rhs); }
 
-        // Test for equality with another matrix with epsilon.
         bool Equals(const Matrix& rhs)
         {
             const float* data_left  = Data();
@@ -489,7 +488,7 @@ namespace spartan::math
 
             for (unsigned i = 0; i < 16; ++i)
             {
-                if (!helper::Equals(data_left[i], data_right[i]))
+                if (!EqualsWithError(data_left[i], data_right[i]))
                     return false;
             }
 

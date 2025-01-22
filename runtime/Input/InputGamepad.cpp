@@ -104,8 +104,8 @@ namespace spartan
         if (!gamepad.is_connected)
             return false;
 
-        Uint16 low_frequency_rumble  = static_cast<uint16_t>(helper::Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);  // convert [0, 1] to [0, 65535]
-        Uint16 high_frequency_rumble = static_cast<uint16_t>(helper::Clamp(right_motor_speed, 0.0f, 1.0f) * 65535); // convert [0, 1] to [0, 65535]
+        Uint16 low_frequency_rumble  = static_cast<uint16_t>(Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);  // convert [0, 1] to [0, 65535]
+        Uint16 high_frequency_rumble = static_cast<uint16_t>(Clamp(right_motor_speed, 0.0f, 1.0f) * 65535); // convert [0, 1] to [0, 65535]
         Uint32 duration_ms           = 0xFFFFFFFF;
 
         if (SDL_GameControllerRumble(static_cast<SDL_GameController*>(gamepad.sdl_pointer), low_frequency_rumble, high_frequency_rumble, duration_ms) == -1)

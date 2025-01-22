@@ -1452,10 +1452,10 @@ namespace spartan
 
         uint64_t start    = queries::timestamp::data[index_timestamp];
         uint64_t end      = queries::timestamp::data[index_timestamp + 1];
-        uint64_t duration = math::helper::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
+        uint64_t duration = math::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
         float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
 
-        return math::helper::Clamp<float>(duration_ms, 0.0f, numeric_limits<float>::max());
+        return math::Clamp<float>(duration_ms, 0.0f, numeric_limits<float>::max());
     }
 
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)

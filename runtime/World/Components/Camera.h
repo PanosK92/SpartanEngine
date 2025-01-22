@@ -147,7 +147,7 @@ namespace spartan
         float m_aperture                             = 2.8f;         // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
         float m_shutter_speed                        = 1.0f / 60.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
         float m_iso                                  = 500.0f;       // sensitivity to light
-        float m_fov_horizontal_rad                   = math::helper::DegreesToRadians(90.0f);
+        float m_fov_horizontal_rad                   = math::DegreesToRadians(90.0f);
         float m_near_plane                           = 0.1f;
         float m_far_plane                            = 4000.0f;
         ProjectionType m_projection_type             = Projection_Perspective;

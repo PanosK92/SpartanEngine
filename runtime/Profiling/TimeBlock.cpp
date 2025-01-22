@@ -45,7 +45,7 @@ namespace spartan
         m_parent         = parent;
         m_tree_depth     = FindTreeDepth(this);
         m_type           = type;
-        m_max_tree_depth = math::helper::Max(m_max_tree_depth, m_tree_depth);
+        m_max_tree_depth = max(m_max_tree_depth, m_tree_depth);
 
         if (cmd_list)
         {

@@ -186,19 +186,19 @@ namespace spartan
 
             // cpu
             time_cpu_avg = (time_cpu_avg * weight_history) + time_cpu_last * weight_delta;
-            time_cpu_min = math::helper::Min(time_cpu_min, time_cpu_last);
-            time_cpu_max = math::helper::Max(time_cpu_max, time_cpu_last);
+            time_cpu_min = min(time_cpu_min, time_cpu_last);
+            time_cpu_max = max(time_cpu_max, time_cpu_last);
 
             // gpu
             time_gpu_avg = (time_gpu_avg * weight_history) + time_gpu_last * weight_delta;
-            time_gpu_min = math::helper::Min(time_gpu_min, time_gpu_last);
-            time_gpu_max = math::helper::Max(time_gpu_max, time_gpu_last);
+            time_gpu_min = min(time_gpu_min, time_gpu_last);
+            time_gpu_max = max(time_gpu_max, time_gpu_last);
 
             // frame
             time_frame_last = static_cast<float>(Timer::GetDeltaTimeMs());
             time_frame_avg  = (time_frame_avg * weight_history) + time_frame_last * weight_delta;
-            time_frame_min  = math::helper::Min(time_frame_min, time_frame_last);
-            time_frame_max  = math::helper::Max(time_frame_max, time_frame_last);
+            time_frame_min  = min(time_frame_min, time_frame_last);
+            time_frame_max  = max(time_frame_max, time_frame_last);
 
             // fps  
             m_fps = 1000.0f / time_frame_avg;

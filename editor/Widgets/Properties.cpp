@@ -252,7 +252,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         static vector<string> types = { "Directional", "Point", "Spot" };
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
-        float angle                 = light->GetAngle() * math::helper::RAD_TO_DEG * 2.0f;
+        float angle                 = light->GetAngle() * math::RAD_TO_DEG * 2.0f;
         bool shadows                = light->GetFlag(spartan::LightFlags::Shadows);
         bool shadows_transparent    = light->GetFlag(spartan::LightFlags::ShadowsTransparent);
         bool shadows_screen_space   = light->GetFlag(spartan::LightFlags::ShadowsScreenSpace);
@@ -362,7 +362,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
         //= MAP ===================================================================================================================
         if (intensity != light->GetIntensityLumens())                     light->SetIntensity(intensity);
-        if (angle != light->GetAngle() * math::helper::RAD_TO_DEG * 0.5f) light->SetAngle(angle * math::helper::DEG_TO_RAD * 0.5f);
+        if (angle != light->GetAngle() * math::RAD_TO_DEG * 0.5f) light->SetAngle(angle * math::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                   light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
         if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);

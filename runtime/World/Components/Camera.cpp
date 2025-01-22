@@ -99,7 +99,7 @@ namespace spartan
 
     void Camera::SetNearPlane(const float near_plane)
     {
-        float near_plane_limited = helper::Max(near_plane, 0.01f);
+        float near_plane_limited = max(near_plane, 0.01f);
 
         if (m_near_plane != near_plane_limited)
         {
@@ -122,7 +122,7 @@ namespace spartan
 
     float Camera::GetFovHorizontalDeg() const
     {
-        return helper::RadiansToDegrees(m_fov_horizontal_rad);
+        return RadiansToDegrees(m_fov_horizontal_rad);
     }
 
     float Camera::GetFovVerticalRad() const
@@ -132,7 +132,7 @@ namespace spartan
 
     void Camera::SetFovHorizontalDeg(const float fov)
     {
-        m_fov_horizontal_rad = helper::DegreesToRadians(fov);
+        m_fov_horizontal_rad = DegreesToRadians(fov);
         SetFlag(CameraFlags::IsDirty, true);
     }
 
@@ -192,7 +192,7 @@ namespace spartan
                 float distance = ray.HitDistance(aabb);
 
                 // Don't store hit data if there was no hit
-                if (distance == helper::INFINITY_)
+                if (distance == INFINITY_)
                     continue;
 
                 hits.emplace_back(
@@ -414,7 +414,7 @@ namespace spartan
                 const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
 
                 // lerp to it
-                m_mouse_smoothed = helper::Lerp(m_mouse_smoothed, mouse_delta, helper::Saturate(1.0f - m_mouse_smoothing));
+                m_mouse_smoothed = Lerp(m_mouse_smoothed, mouse_delta, Saturate(1.0f - m_mouse_smoothing));
 
                 // accumulate rotation
                 m_first_person_rotation += m_mouse_smoothed;
@@ -426,11 +426,11 @@ namespace spartan
             }
 
             // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock)
-            m_first_person_rotation.y = helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
+            m_first_person_rotation.y = Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
 
             // compute rotation
-            const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * helper::DEG_TO_RAD, Vector3::Up);
-            const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * helper::DEG_TO_RAD, Vector3::Right);
+            const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * DEG_TO_RAD, Vector3::Up);
+            const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * DEG_TO_RAD, Vector3::Right);
             const Quaternion rotation = xQuaternion * yQuaternion;
 
             // rotate
@@ -476,7 +476,7 @@ namespace spartan
             // Clamp
             float min = -movement_acceleration + 0.1f; // prevent it from negating or zeroing the acceleration, see translation calculation
             float max =  movement_acceleration * 2.0f; // an empirically chosen max
-            m_movement_scroll_accumulator = helper::Clamp(m_movement_scroll_accumulator, min, max);
+            m_movement_scroll_accumulator = Clamp(m_movement_scroll_accumulator, min, max);
         }
 
         // translation
@@ -539,7 +539,7 @@ namespace spartan
 
                                 // compute drag factor
                                 float drag_coefficient  = 0.34f;
-                                float frontal_area      = std::pow(helper::PI * m_physics_body_to_control->GetCapsuleRadius(), 2.0f);
+                                float frontal_area      = std::pow(PI * m_physics_body_to_control->GetCapsuleRadius(), 2.0f);
                                 float linear_velocity_y = water_density * m_physics_body_to_control->GetLinearVelocity().y;
                                 float drag_force_y      = 0.5f * water_density * linear_velocity_y * linear_velocity_y * drag_coefficient;
 
@@ -595,7 +595,7 @@ namespace spartan
             // lerp duration in seconds
             // 2.0 seconds + [0.0 - 2.0] seconds based on distance
             // Something is not right with the duration...
-            const float lerp_duration = 2.0f + helper::Clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
+            const float lerp_duration = 2.0f + Clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
 
             // alpha
             m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
@@ -610,7 +610,7 @@ namespace spartan
             // rotation
             if (m_lerp_to_target_r)
             {
-                const Quaternion interpolated_rotation = Quaternion::Lerp(GetEntity()->GetRotation(), m_lerp_to_target_rotation, helper::Clamp(m_lerp_to_target_alpha, 0.0f, 1.0f));
+                const Quaternion interpolated_rotation = Quaternion::Lerp(GetEntity()->GetRotation(), m_lerp_to_target_rotation, Clamp(m_lerp_to_target_alpha, 0.0f, 1.0f));
                 GetEntity()->SetRotation(interpolated_rotation);
             }
 
@@ -649,7 +649,7 @@ namespace spartan
             m_lerp_to_target_rotation = Quaternion::FromLookRotation(entity->GetPosition() - m_lerp_to_target_position).Normalized();
             m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, GetEntity()->GetPosition());
 
-            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), GetEntity()->GetRotation().Normalized())) * helper::RAD_TO_DEG;
+            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), GetEntity()->GetRotation().Normalized())) * RAD_TO_DEG;
 
             m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
             m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;

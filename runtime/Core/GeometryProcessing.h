@@ -164,8 +164,8 @@ namespace spartan::geometry_processing
         Vector3 tangent = Vector3(1, 0, 0);
         vertices->emplace_back(Vector3(0, radius, 0), Vector2::Zero, normal, tangent);
 
-        const float phiStep   = helper::PI / stacks;
-        const float thetaStep = 2.0f * helper::PI / slices;
+        const float phiStep   = PI / stacks;
+        const float thetaStep = 2.0f * PI / slices;
 
         for (int i = 1; i <= stacks - 1; i++)
         {
@@ -181,7 +181,7 @@ namespace spartan::geometry_processing
 
                 Vector3 t = Vector3(-radius * sin(phi) * sin(theta), 0, radius * sin(phi) * cos(theta)).Normalized();
                 Vector3 n = p.Normalized();
-                Vector2 uv = Vector2(theta / (helper::PI * 2), phi / helper::PI);
+                Vector2 uv = Vector2(theta / (PI * 2), phi / PI);
                 vertices->emplace_back(p, uv, n, t);
             }
         }
@@ -233,7 +233,7 @@ namespace spartan::geometry_processing
         {
             const float y = -0.5f * height + i * stackHeight;
             const float r = radiusBottom + i * radiusStep;
-            const float dTheta = 2.0f * helper::PI / slices;
+            const float dTheta = 2.0f * PI / slices;
             for (int j = 0; j <= slices; j++)
             {
                 const float c = cos(j * dTheta);
@@ -270,7 +270,7 @@ namespace spartan::geometry_processing
         // Build top cap
         int baseIndex = (int)vertices->size();
         float y = 0.5f * height;
-        const float dTheta = 2.0f * helper::PI / slices;
+        const float dTheta = 2.0f * PI / slices;
 
         Vector3 normal;
         Vector3 tangent;

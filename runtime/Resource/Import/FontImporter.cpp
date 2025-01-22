@@ -25,7 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Texture.h"
 #include "../../Rendering/Font/Font.h"
 SP_WARNINGS_OFF
-#include "freetype/ftstroke.h"
+#include <freetype/ftstroke.h>
+#include <freetype/freetype.h>
+#include <freetype/ftglyph.h>
 SP_WARNINGS_ON
 //====================================
 
@@ -222,9 +224,9 @@ namespace spartan
                 if (!load_glyph(face, char_code))
                     continue;
 
-                FT_Bitmap* bitmap   = &face->glyph->bitmap;
-                width               = helper::Max<uint32_t>(width,  bitmap->width);
-                height              = helper::Max<uint32_t>(height, bitmap->rows);
+                FT_Bitmap* bitmap = &face->glyph->bitmap;
+                width             = max(width,  bitmap->width);
+                height            = max(height, bitmap->rows);
             }
 
             *max_width  = width  + outline_size * 2;
@@ -239,7 +241,7 @@ namespace spartan
 
             const uint32_t glyph_count    = GLYPH_END - GLYPH_START;
             const uint32_t glyphs_per_row = ATLAS_WIDTH / max_width;
-            const uint32_t row_count      = static_cast<uint32_t>(helper::Ceil(float(glyph_count) / float(glyphs_per_row)));
+            const uint32_t row_count      = static_cast<uint32_t>(Ceil(float(glyph_count) / float(glyphs_per_row)));
 
             *atlas_width        = ATLAS_WIDTH;
             *atlas_height       = max_height * row_count;

@@ -68,7 +68,7 @@ namespace spartan::math
         void Normalize()
         {
             const auto length_squared = LengthSquared();
-            if (!helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
+            if (!EqualsWithError(length_squared, 1.0f) && length_squared > 0.0f)
             {
             #ifdef __AVX2__
                 // load x, y, z into an AVX vector (set w component to 0)
@@ -89,7 +89,7 @@ namespace spartan::math
                 z = _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2)));
             #else
                 // fallback to scalar path
-                const auto length_inverted = 1.0f / helper::Sqrt(length_squared);
+                const auto length_inverted = 1.0f / Sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -109,12 +109,12 @@ namespace spartan::math
         bool IsNormalized() const
         {
             static const float THRESH_VECTOR_NORMALIZED = 0.01f;
-            return (helper::Abs(1.f - LengthSquared()) < THRESH_VECTOR_NORMALIZED);
+            return (abs(1.0f - LengthSquared()) < THRESH_VECTOR_NORMALIZED);
         }
 
         float Max()
         {
-            return helper::Max3(x, y, z);
+            return std::max(std::max(x, y), z);
         }
 
         [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2) 
@@ -155,7 +155,7 @@ namespace spartan::math
             return _mm_cvtss_f32(length);
         #else
             // Fallback to scalar path
-            return helper::Sqrt(x * x + y * y + z * z);
+            return Sqrt(x * x + y * y + z * z);
         #endif
         }
         
@@ -183,7 +183,7 @@ namespace spartan::math
 
             if (sqrmag > max_length * max_length)
             {
-                const float mag = helper::Sqrt(sqrmag);
+                const float mag = sqrt(sqrmag);
 
                 // these intermediate variables force the intermediate result to be
                 // of float precision. without this, the intermediate result can be of higher
@@ -201,9 +201,9 @@ namespace spartan::math
 
         void FindBestAxisVectors(Vector3& Axis1, Vector3& Axis2) const
         {
-            const float NX = helper::Abs(x);
-            const float NY = helper::Abs(y);
-            const float NZ = helper::Abs(z);
+            const float NX = abs(x);
+            const float NY = abs(y);
+            const float NZ = abs(z);
 
             // find best basis vectors
             if (NZ > NX && NZ > NY)	Axis1 = Vector3(1, 0, 0);
@@ -236,7 +236,7 @@ namespace spartan::math
         }
 
         // return absolute vector
-        [[nodiscard]] Vector3 Abs() const { return Vector3(helper::Abs(x), helper::Abs(y), helper::Abs(z)); }
+        [[nodiscard]] Vector3 Abs() const { return Vector3(abs(x), abs(y), abs(z)); }
 
         // linear interpolation with another vector
         Vector3 Lerp(const Vector3& v, float t) const                          { return *this * (1.0f - t) + v * t; }

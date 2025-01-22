@@ -154,7 +154,7 @@ namespace spartan::math
                 return Intersection::Outside;
 
             // else if the distance is between +- radius, then we intersect
-            if (static_cast<float>(helper::Abs(distance)) < radius)
+            if (static_cast<float>(abs(distance)) < radius)
                 return Intersection::Intersects;
         }
 

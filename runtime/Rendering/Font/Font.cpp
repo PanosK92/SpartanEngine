@@ -74,8 +74,8 @@ namespace spartan
         // find max character height (todo, actually get spacing from FreeType)
         for (const auto& char_info : m_glyphs)
         {
-            m_char_max_width    = helper::Max<int>(char_info.second.width, m_char_max_width);
-            m_char_max_height   = helper::Max<int>(char_info.second.height, m_char_max_height);
+            m_char_max_width    = max(char_info.second.width, m_char_max_width);
+            m_char_max_height   = max(char_info.second.height, m_char_max_height);
         }
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
@@ -168,7 +168,7 @@ namespace spartan
 
     void Font::SetSize(const uint32_t size)
     {
-        m_font_size = helper::Clamp<uint32_t>(size, 8, 50);
+        m_font_size = Clamp<uint32_t>(size, 8, 50);
     }
 
     void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)

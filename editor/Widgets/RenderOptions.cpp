@@ -133,7 +133,7 @@ namespace
             ImGui::InputFloat("", &value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
-            value = math::helper::Clamp(value, min, max);
+            value = math::Clamp(value, min, max);
 
             // Only update if changed
             if (Renderer::GetOption<float>(render_option) != value)

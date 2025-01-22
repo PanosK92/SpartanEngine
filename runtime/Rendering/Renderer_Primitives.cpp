@@ -72,14 +72,14 @@ namespace spartan
             return;
 
         // Need at least 4 segments
-        segment_count = helper::Max<uint32_t>(segment_count, 4);
+        segment_count = max<uint32_t>(segment_count, static_cast<uint32_t>(4));
 
         vector<Vector3> points;
         points.reserve(segment_count + 1);
         points.resize(segment_count + 1);
 
         // Compute points on circle
-        float angle_step = math::helper::PI_2 / (float)segment_count;
+        float angle_step = math::PI_2 / (float)segment_count;
         for (uint32_t i = 0; i <= segment_count; i++)
         {
             float angle = (float)i * angle_step;
@@ -107,10 +107,10 @@ namespace spartan
     void Renderer::DrawSphere(const Vector3& center, float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/)
     {
         // Need at least 4 segments
-        segment_count = helper::Max<uint32_t>(segment_count, 4);
+        segment_count = max(segment_count, static_cast<uint32_t>(4));
 
         Vector3 Vertex1, Vertex2, Vertex3, Vertex4;
-        const float AngleInc = 2.f * helper::PI / float(segment_count);
+        const float AngleInc = 2.f * PI / float(segment_count);
         uint32_t NumSegmentsY = segment_count;
         float Latitude = AngleInc;
         uint32_t NumSegmentsX;
@@ -120,8 +120,8 @@ namespace spartan
 
         while (NumSegmentsY--)
         {
-            SinY2 = helper::Sin(Latitude);
-            CosY2 = helper::Cos(Latitude);
+            SinY2 = sin(Latitude);
+            CosY2 = cos(Latitude);
 
             Vertex1 = Vector3(SinY1, 0.0f, CosY1) * radius + center;
             Vertex3 = Vector3(SinY2, 0.0f, CosY2) * radius + center;
@@ -130,8 +130,8 @@ namespace spartan
             NumSegmentsX = segment_count;
             while (NumSegmentsX--)
             {
-                SinX = helper::Sin(Longitude);
-                CosX = helper::Cos(Longitude);
+                SinX = sin(Longitude);
+                CosX = cos(Longitude);
 
                 Vertex2 = Vector3((CosX * SinY1), (SinX * SinY1), CosY1) * radius + center;
                 Vertex4 = Vector3((CosX * SinY2), (SinX * SinY2), CosY2) * radius + center;
@@ -151,7 +151,7 @@ namespace spartan
 
     void Renderer::DrawDirectionalArrow(const Vector3& start, const Vector3& end, float arrow_size, const Color& color /*= DEBUG_COLOR*/)
     {
-        arrow_size = helper::Max<float>(0.1f, arrow_size);
+        arrow_size = max(0.1f, arrow_size);
 
         DrawLine(start, end, color, color);
 
@@ -170,7 +170,7 @@ namespace spartan
         TM.m20 = Up.x;    TM.m21 = Up.y;    TM.m22 = Up.z;
 
         // since dir is x direction, my arrow will be pointing +y, -x and -y, -x
-        float arrow_sqrt = helper::Sqrt(arrow_size);
+        float arrow_sqrt = sqrt(arrow_size);
         Vector3 arrow_pos;
         DrawLine(end, end + TM * Vector3(-arrow_sqrt, arrow_sqrt, 0), color, color);
         DrawLine(end, end + TM * Vector3(-arrow_sqrt, -arrow_sqrt, 0), color, color);
@@ -232,7 +232,7 @@ namespace spartan
                         {
                             // tan(angle) = opposite/adjacent
                             // opposite = adjacent * tan(angle)
-                            float opposite = light->GetRange() * math::helper::Tan(light->GetAngle());
+                            float opposite = light->GetRange() * math::Tan(light->GetAngle());
 
                             Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
                             Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp() * opposite;

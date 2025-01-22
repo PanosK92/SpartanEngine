@@ -391,7 +391,7 @@ namespace spartan
 
     void Light::SetRange(float range)
     {
-        range = helper::Clamp(range, 0.0f, numeric_limits<float>::max());
+        range = Clamp(range, 0.0f, numeric_limits<float>::max());
         if (range == m_range)
             return;
 
@@ -401,7 +401,7 @@ namespace spartan
 
     void Light::SetAngle(float angle)
     {
-        angle = helper::Clamp(angle, 0.0f, math::helper::PI_2);
+        angle = Clamp(angle, 0.0f, math::PI_2);
         if (angle == m_angle_rad)
             return;
 
