@@ -689,9 +689,9 @@ namespace spartan
             return;
 
         m_size   = bounding_box;
-        m_size.x = clamp(m_size.x, small_float, INFINITY);
-        m_size.y = clamp(m_size.y, small_float, INFINITY);
-        m_size.z = clamp(m_size.z, small_float, INFINITY);
+        m_size.x = clamp(m_size.x, std::numeric_limits<float>::min(), std::numeric_limits<float>::infinity());
+        m_size.y = clamp(m_size.y, std::numeric_limits<float>::min(), std::numeric_limits<float>::infinity());
+        m_size.z = clamp(m_size.z, std::numeric_limits<float>::min(), std::numeric_limits<float>::infinity());
     }
 
     void PhysicsBody::SetShapeType(PhysicsShape type, const bool replicate_hierarchy)

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan::math
 {
+    // boudning box, frustum and ray intersection
     enum class Intersection
     {
         Outside,
@@ -36,17 +37,14 @@ namespace spartan::math
         Intersects
     };
 
-    constexpr float small_float = std::numeric_limits<float>::min();     // the smallest value that can be represented while maintaining the standard format of floating-point numbers
-    constexpr float epsilon     = std::numeric_limits<float>::epsilon(); // the smallest change detectable in calculations around the number 1.0
-    constexpr float INFINITY_   = std::numeric_limits<float>::infinity();
-    constexpr float pi          = 3.14159265359f;
-    constexpr float pi_2        = 6.28318530718f;
-    constexpr float pi_4        = 12.5663706144f;
-    constexpr float pi_div_2    = 1.57079632679f;
-    constexpr float pi_div_4    = 0.78539816339f;
-    constexpr float pi_inv      = 0.31830988618f;
-    constexpr float deg_to_rad  = pi / 180.0f;
-    constexpr float rad_to_deg  = 180.0f / pi;
+    constexpr float pi         = 3.14159265359f;
+    constexpr float pi_2       = 6.28318530718f;
+    constexpr float pi_4       = 12.5663706144f;
+    constexpr float pi_div_2   = 1.57079632679f;
+    constexpr float pi_div_4   = 0.78539816339f;
+    constexpr float pi_inv     = 0.31830988618f;
+    constexpr float deg_to_rad = pi / 180.0f;
+    constexpr float rad_to_deg = 180.0f / pi;
 
     inline float cot(float x) { return cos(x) / sin(x); }
 
@@ -60,10 +58,10 @@ namespace spartan::math
     constexpr bool approximate_equals(T lhs, T rhs, T error = std::numeric_limits<T>::epsilon()) { return lhs + error >= rhs && lhs - error <= rhs; }
 
     template <typename T>
-    constexpr int Sign(T x) { return (static_cast<T>(0) < x) - (x < static_cast<T>(0)); }
+    constexpr int sign(T x) { return (static_cast<T>(0) < x) - (x < static_cast<T>(0)); }
 
     template <class T>
-    inline T Random(T from = static_cast<T>(0), T to = static_cast<T>(1))
+    inline T random(T from = static_cast<T>(0), T to = static_cast<T>(1))
     {
         std::random_device rd;                              // obtain a random number from hardware
         std::mt19937 eng(rd());                             // seed the generator
@@ -71,7 +69,7 @@ namespace spartan::math
         return distr(eng);
     }
 
-    constexpr uint32_t PreviousPowerOfTwo(uint32_t x)
+    constexpr uint32_t power_of_two_previous(uint32_t x)
     {
         x = x | (x >> 1);
         x = x | (x >> 2);
@@ -81,7 +79,7 @@ namespace spartan::math
         return x - (x >> 1);
     }
 
-    constexpr uint32_t NextPowerOfTwo(uint32_t x)
+    constexpr uint32_t power_of_two_next(uint32_t x)
     {
         if (x < 2)
             return 2;

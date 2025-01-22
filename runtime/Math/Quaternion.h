@@ -120,7 +120,7 @@ namespace spartan::math
             const Vector3 normEnd   = end.Normalized();
             const float d           = normStart.Dot(normEnd);
 
-            if (d > -1.0f + epsilon)
+            if (d > -1.0f + std::numeric_limits<float>::epsilon())
             {
                 const Vector3 c = normStart.Cross(normEnd);
                 const float s = sqrtf((1.0f + d) * 2.0f);
@@ -135,7 +135,7 @@ namespace spartan::math
             else
             {
                 Vector3 axis = Vector3::Right.Cross(normStart);
-                if (axis.Length() < epsilon)
+                if (axis.Length() < std::numeric_limits<float>::epsilon())
                 {
                     axis = Vector3::Up.Cross(normStart);
                 }
@@ -150,7 +150,7 @@ namespace spartan::math
             const Vector3 forward = direction.Normalized();
 
             Vector3 v = forward.Cross(up_direction);
-            if (v.LengthSquared() >= small_float)
+            if (v.LengthSquared() >= std::numeric_limits<float>::min())
             {
                 v.Normalize();
                 const Vector3 up    = v.Cross(forward);
@@ -244,7 +244,7 @@ namespace spartan::math
             {
                 return Conjugate();
             }
-            else if (length_squared >= small_float)
+            else if (length_squared >= std::numeric_limits<float>::min())
             {
                 return Conjugate() * (1.0f / length_squared);
             }

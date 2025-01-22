@@ -192,7 +192,7 @@ namespace spartan
                 float distance = ray.HitDistance(aabb);
 
                 // Don't store hit data if there was no hit
-                if (distance == INFINITY_)
+                if (distance == std::numeric_limits<float>::infinity())
                     continue;
 
                 hits.emplace_back(

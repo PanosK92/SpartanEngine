@@ -224,7 +224,7 @@ namespace spartan
                 numerator = abs(velocity_vehicle) - abs(velocity_wheel);
             }
 
-            float denominator      = max(abs(velocity_wheel), math::small_float);
+            float denominator      = max(abs(velocity_wheel), std::numeric_limits<float>::min());
             float slip_ratio       = numerator / denominator;
 
             return clamp(slip_ratio, -1.0f, 1.0f);
@@ -243,7 +243,7 @@ namespace spartan
 
             float v_z        = abs(vehicle_velocity.dot(wheel_forward));
             float v_x        = abs(vehicle_velocity.dot(wheel_side));
-            float slip_angle = atan2(v_x, v_z + math::small_float);
+            float slip_angle = atan2(v_x, v_z + std::numeric_limits<float>::min());
 
             return slip_angle;
         }
@@ -285,10 +285,10 @@ namespace spartan
             // compute the parameters for the Pacejka ’94 formula
             float Fz  = normal_load;
             float C   = b0;
-            float D   = Fz * (b1 * Fz + b2) + math::small_float;
+            float D   = Fz * (b1 * Fz + b2) + std::numeric_limits<float>::min();
             float BCD = (b3 * Fz * Fz + b4 * Fz) * exp(-b5 * Fz);
             float B   = BCD / (C * D);
-            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * math::Sign(slip + (b9 * Fz + b10)));
+            float E   = (b6 * Fz * Fz + b7 * Fz + b8) * (1 - b13 * math::sign(slip + (b9 * Fz + b10)));
             float H   = b9 * Fz + b10;
             float V   = b11 * Fz + b12;
             float Bx1 = B * (slip + H);

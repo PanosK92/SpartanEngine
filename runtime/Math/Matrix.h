@@ -230,9 +230,9 @@ namespace spartan::math
             __m128 row2 = _mm_setr_ps(m20, m21, m22, 0.0f);
         
             // Calculate signs (using scalar math as it's only done once per row)
-            float xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
-            float ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
-            float zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
+            float xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
+            float ys = (sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
+            float zs = (sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
         
             // Square each component
             __m128 square0 = _mm_mul_ps(row0, row0);
