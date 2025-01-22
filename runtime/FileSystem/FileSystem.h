@@ -92,7 +92,7 @@ namespace spartan
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 
         // internet
-        static bool DownloadFile(const std::string& url, const std::string& destination);
+        static bool DownloadFile(const std::string& url, const std::string& destination, std::function<void(float)> progress_callback);
     };
 
     static const char* EXTENSION_WORLD    = ".world";

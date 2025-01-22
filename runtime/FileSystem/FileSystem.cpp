@@ -871,57 +871,96 @@ namespace spartan
         }
     }
 
-    bool FileSystem::DownloadFile(const string& url, const string& destination)
+    bool FileSystem::DownloadFile(const string& url, const string& destination, function<void(float)> progress_callback)
     {
         namespace fs = filesystem;
         httplib::Client cli(url.substr(0, url.find("/", 8))); // extract base URL
-
+        bool success = false;
+    
         if (fs::exists(destination))
         {
             // read the existing file content
             ifstream file(destination, ios::binary);
-            string file_content((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
-            string existing_hash = compute_sha256(file_content);
-
-            // fetch the remote file to compute its hash
-            auto res = cli.Get(url.substr(url.find("/", 8)));
-            if (res && res->status == 200)
+            if (!file)
             {
-                string remote_content = res->body;
-                string new_hash = compute_sha256(remote_content);
-
-                // hash mismatch, download new file
-                if (existing_hash != new_hash)
-                {
-                    ofstream new_file(destination, ios::binary);
-                    new_file.write(remote_content.data(), remote_content.length());
-
-                    return true;
-                }
-
-                return true; // hash matches, no download needed
+                SP_LOG_ERROR("Failed to open existing file for reading.");
             }
             else
             {
-                SP_LOG_ERROR("Failed to fetch remote file for hash comparison.");
-                return false;
+                string file_content((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+                string existing_hash = compute_sha256(file_content);
+    
+                // fetch the remote file to compute its hash
+                auto res = cli.Get(url.substr(url.find("/", 8)));
+                if (!res || res->status != 200)
+                {
+                    SP_LOG_ERROR("Failed to fetch remote file for hash comparison.");
+                }
+                else
+                {
+                    string remote_content = res->body;
+                    string new_hash = compute_sha256(remote_content);
+    
+                    // hash mismatch, download new file
+                    if (existing_hash != new_hash)
+                    {
+                        ofstream new_file(destination, ios::binary);
+                        if (!new_file)
+                        {
+                            SP_LOG_ERROR("Failed to open file for writing new content.");
+                        }
+                        else
+                        {
+                            new_file.write(remote_content.data(), remote_content.length());
+                            success = true;
+                        }
+                    }
+                    else
+                    {
+                        success = true; // no need to download, hashes match
+                    }
+                }
             }
         }
         else
         {
             // file doesn't exist, download it
             auto res = cli.Get(url.substr(url.find("/", 8)));
-            if (res && res->status == 200)
+            if (!res || res->status != 200)
             {
-                ofstream file(destination, ios::binary);
-                file.write(res->body.data(), res->body.length());
-                return true;
+                SP_LOG_ERROR("Failed to download file.");
             }
             else
             {
-                SP_LOG_ERROR("Failed to download file.");
-                return false;
+                size_t total_size = stoll(res->get_header_value("Content-Length", "0"));
+                ofstream file(destination, ios::binary);
+                if (!file)
+                {
+                    SP_LOG_ERROR("Failed to open file for writing new download.");
+                }
+                else
+                {
+                    size_t downloaded_size   = 0;
+                    const size_t buffer_size = 1024 * 1024; // 1MB buffer
+                    char buffer[buffer_size];
+                    
+                    while (!res->body.empty())
+                    {
+                        size_t read_size = min(buffer_size, res->body.size());
+                        memcpy(buffer, res->body.data(), read_size);
+                        file.write(buffer, read_size);
+                        res->body.erase(0, read_size);
+                        
+                        downloaded_size += read_size;
+                        float progress = (total_size > 0) ? (float)downloaded_size / total_size : 0.0f;
+                        progress_callback(progress);
+                    }
+                    success = true;
+                }
             }
         }
+    
+        progress_callback(1.0f);
+        return success;
     }
 }
