@@ -394,7 +394,7 @@ namespace spartan
                 description_context.fpMessage              = &ffx_message_callback;
                 #endif
                 description_context.backendInterface       = ffx_interface;
-                
+
                 // context
                 SP_ASSERT(ffxFsr3UpscalerContextCreate(&context, &description_context) == FFX_OK);
                 context_created = true;

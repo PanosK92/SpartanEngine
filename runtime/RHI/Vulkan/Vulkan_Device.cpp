@@ -150,10 +150,10 @@ namespace spartan
                 uint32_t sdk_version = VK_HEADER_VERSION_COMPLETE;
                 app_info.apiVersion  = min(sdk_version, driver_version);
 
-                // 1.3 the minimum required version as we are using extensions from 1.3
-                if (app_info.apiVersion < VK_API_VERSION_1_3)
+                // the minimum required version is 1.4
+                if (app_info.apiVersion < VK_API_VERSION_1_4)
                 { 
-                    SP_ERROR_WINDOW("Your machine doesn't support Vulkan 1.3");
+                    SP_ERROR_WINDOW("Your machine doesn't support Vulkan 1.4");
                 }
 
                 // in case the SDK is not supported by the driver, prompt the user to update
@@ -231,15 +231,15 @@ namespace spartan
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",           // to obtain precise memory usage information from Vulkan Memory Allocator
-            "VK_KHR_fragment_shading_rate",
-            "VK_EXT_hdr_metadata",
-            "VK_EXT_robustness2",
+            "VK_KHR_fragment_shading_rate",   
+            "VK_EXT_hdr_metadata",            
+            "VK_EXT_robustness2",             
             "VK_KHR_external_memory",         // to share images with Intel Open Image Denoise
-            #if defined(_MSC_VER)
+            #if defined(_MSC_VER)             
             "VK_KHR_external_memory_win32",   // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
-            "VK_KHR_synchronization2",        // needed by AMD FidelityFX - Breadcrumbs
-            "VK_KHR_get_memory_requirements2" // needed by AMD FidelityFX - FSR 3
+            "VK_KHR_synchronization2",        // this is part of Vulkan 1.4 but AMD FidelityFX Breadcrumbs without it (they fetch device pointers from some table)
+            "VK_KHR_get_memory_requirements2" // this is part of Vulkan 1.4 but AMD FidelityFX FSR 3 crashes without it (they fetch device pointers from some table)
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -290,15 +290,6 @@ namespace spartan
                     SP_LOG_WARNING("Device extension \"%s\" is not supported", extension);
                 }
             }
-
-            // check and add VK_KHR_portability_subset if present
-            // this extension is needed for portability across different platforms and
-            // must be enabled if the physical device supports it
-            //const char* portability_extension = "VK_KHR_portability_subset";
-            //if (is_present_device(portability_extension, RHI_Context::device_physical))
-            //{
-            //    extensions_supported.emplace_back(portability_extension);
-            //}
 
             return extensions_supported;
         }
