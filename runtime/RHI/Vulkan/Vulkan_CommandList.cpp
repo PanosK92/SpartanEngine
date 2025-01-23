@@ -1635,11 +1635,6 @@ namespace spartan
         {
             void* mapped_data = static_cast<char*>(buffer->GetMappedData()) + offset;
             memcpy(mapped_data, data, size);
-
-            if (buffer->GetType() != RHI_Buffer_Type::Storage)
-            {
-                SP_LOG_WARNING("Updated a non-storage buffer with memcpy. Consider using vkCmdUpdateBuffer for synchronized updates.");
-            }
         }
     }
 

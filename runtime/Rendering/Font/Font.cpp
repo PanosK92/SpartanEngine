@@ -224,45 +224,13 @@ namespace spartan
         cmd_list->InsertBarrierBufferReadWrite(m_buffer_vertex.get());
         cmd_list->InsertBarrierBufferReadWrite(m_buffer_index.get());
 
-        // update vertex buffer in chunks
-        {
-            const size_t vertex_size = sizeof(m_vertices[0]);
-            size_t size              = m_vertices.size() * vertex_size;
-            size_t offset            = 0;
+        // update vertex buffer
+        memset(m_buffer_vertex->GetMappedData(), 0, m_buffer_vertex->GetObjectSize());
+        cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, m_buffer_vertex->GetObjectSize(), &m_vertices[0]);
 
-            // zero out
-            memset(m_buffer_vertex->GetMappedData(), 0, m_buffer_vertex->GetObjectSize());
-
-            // update
-            while (offset < size)
-            {
-                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), size - offset);
-
-                cmd_list->UpdateBuffer(m_buffer_vertex.get(), offset, current_chunk_size, &m_vertices[offset / vertex_size]);
-
-                offset += current_chunk_size;
-            }
-        }
-
-        // update index buffer in chunks
-        {
-            const size_t index_size = sizeof(m_indices[0]);
-            size_t size             = m_indices.size() * index_size;
-            size_t offset           = 0;
-
-            // zero out
-            memset(m_buffer_index->GetMappedData(), 0, m_buffer_index->GetObjectSize());
-
-            // update
-            while (offset < size)
-            {
-                size_t current_chunk_size = min(static_cast<size_t>(rhi_max_buffer_update_size), size - offset);
-
-                cmd_list->UpdateBuffer(m_buffer_index.get(), offset, current_chunk_size, &m_indices[offset / index_size]);
-
-                offset += current_chunk_size;
-            }
-        }
+        // update index buffer
+        memset(m_buffer_index->GetMappedData(), 0, m_buffer_index->GetObjectSize());
+        cmd_list->UpdateBuffer(m_buffer_index.get(), 0, m_buffer_index->GetObjectSize(), &m_indices[0]);
 
         m_font_data.clear();
     }

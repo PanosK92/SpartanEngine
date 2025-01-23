@@ -263,8 +263,8 @@ namespace spartan
                         {
                             // create material
                             shared_ptr<Material> material = make_shared<Material>();
-                            material->SetTexture(MaterialTextureType::Color, "project\\models\\wheel\\albedo.jpeg");
-                            material->SetTexture(MaterialTextureType::Normal, "project\\models\\wheel\\normal.png");
+                            material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
+                            material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
                             material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
                             material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
 
