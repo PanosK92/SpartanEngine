@@ -141,7 +141,7 @@ namespace spartan
         void EndTimeblock();
 
         // updates
-        void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
+        void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool zero_out);
 
         // memory barriers
         void InsertBarrierTexture(

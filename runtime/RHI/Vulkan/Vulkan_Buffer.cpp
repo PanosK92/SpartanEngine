@@ -138,6 +138,6 @@ namespace spartan
         }
 
         // vkCmdUpdateBuffer and vkCmdPipelineBarrier
-        cmd_list->UpdateBuffer(this, m_offset, size != 0 ? size : m_stride, data_cpu);
+        cmd_list->UpdateBuffer(this, m_offset, size != 0 ? size : m_stride, data_cpu, false);
     }
 }

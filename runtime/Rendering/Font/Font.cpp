@@ -224,13 +224,8 @@ namespace spartan
         cmd_list->InsertBarrierBufferReadWrite(m_buffer_vertex.get());
         cmd_list->InsertBarrierBufferReadWrite(m_buffer_index.get());
 
-        // update vertex buffer
-        memset(m_buffer_vertex->GetMappedData(), 0, m_buffer_vertex->GetObjectSize());
-        cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, m_buffer_vertex->GetObjectSize(), &m_vertices[0]);
-
-        // update index buffer
-        memset(m_buffer_index->GetMappedData(), 0, m_buffer_index->GetObjectSize());
-        cmd_list->UpdateBuffer(m_buffer_index.get(), 0, m_buffer_index->GetObjectSize(), &m_indices[0]);
+        cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, m_buffer_vertex->GetObjectSize(), m_vertices.data(), true);
+        cmd_list->UpdateBuffer(m_buffer_index.get(), 0, m_buffer_index->GetObjectSize(), m_indices.data(), true);
 
         m_font_data.clear();
     }

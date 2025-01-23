@@ -1564,12 +1564,17 @@ namespace spartan
         m_timeblock_active = nullptr;
     }
 
-    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
+    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool zero_out)
     {
         SP_ASSERT(buffer);
         SP_ASSERT(size);
         SP_ASSERT(data);
         SP_ASSERT(offset + size <= buffer->GetObjectSize());
+
+        if (zero_out)
+        { 
+            memset(buffer->GetMappedData(), 0, buffer->GetObjectSize());
+        }
 
         // check for vkCmdUpdateBuffer compliance to deduce if this is a small and synchronized update
         // non-compliant updates are done via a memcpy, and they are there for the big bindless arrays
