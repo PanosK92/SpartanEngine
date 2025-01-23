@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include <mutex>
-#include "Material.h"
 #include "../RHI/RHI_Vertex.h"
 #include "../Math/BoundingBox.h"
 #include "../Resource/IResource.h"
@@ -32,6 +31,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    class RHI_Buffer;
+
     enum class MeshFlags : uint32_t
     {
         ImportRemoveRedundantData = 1 << 0,

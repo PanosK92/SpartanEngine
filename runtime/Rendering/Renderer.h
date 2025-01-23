@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    //= FWD DECLARATIONS =
+    class Material;
     class Entity;
     class Camera;
     class Light;
@@ -44,7 +44,6 @@ namespace spartan
         class BoundingBox;
         class Frustum;
     }
-    //====================
 
     class Renderer
     {

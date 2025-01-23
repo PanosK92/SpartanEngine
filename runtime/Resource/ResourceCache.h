@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES =====================
 #include "IResource.h"
 #include "../Logging/Log.h"
 #include <mutex>
-//=========================
+#include "../Rendering/Material.h"
+//================================
 
 namespace spartan
 {

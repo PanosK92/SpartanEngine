@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Texture.h"
 #include "../../Rendering/Animation.h"
 #include "../../Rendering/Mesh.h"
+#include "../../Rendering/Material.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Light.h"

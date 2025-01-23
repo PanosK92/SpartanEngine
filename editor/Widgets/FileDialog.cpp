@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../ImGui/Source/imgui_stdlib.h"
-#include "Rendering/Mesh.h"
 #include "../Widgets/Viewport.h"
+#include "Rendering/Mesh.h"
+#include <Rendering/Material.h>
 //=========================================
 
 //= NAMESPACES ===============

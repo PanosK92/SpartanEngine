@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Font/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Mesh.h"
+#include "../Rendering/Material.h"
 //=================================
 
 //= NAMESPACES ==========

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Window.h"
 #include "Renderer.h"
+#include "Material.h"
 #include "../Core/GeometryProcessing.h"
 #include "../World/Components/Light.h"
 #include "../Resource/ResourceCache.h"

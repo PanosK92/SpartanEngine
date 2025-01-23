@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Renderer.h"
+#include "Material.h"
 #include "ThreadPool.h"
 #include "ProgressTracker.h"
 #include "../Profiling/RenderDoc.h"

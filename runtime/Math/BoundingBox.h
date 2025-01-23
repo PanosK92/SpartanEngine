@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======
 #include "Helper.h"
 #include "Vector3.h"
+#include <array>
 //==================
 
 namespace spartan

@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ProgressTracker.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Renderer.h"
+#include "../Rendering/Material.h"
 #include "../Resource/ResourceCache.h"
 #include "../Input/Input.h"
 //============================================

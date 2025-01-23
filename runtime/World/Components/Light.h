@@ -33,9 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    //= FWD DECLARATIONS =
     class Camera;
-    //====================
+    class RHI_Texture;
 
     enum class LightType
     {

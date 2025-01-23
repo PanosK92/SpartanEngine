@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
+#include "../../Rendering/Material.h"
 #include "../../Core/ThreadPool.h"
 #include "../../Core/ProgressTracker.h"
 #include "../../Core/GeometryProcessing.h"
