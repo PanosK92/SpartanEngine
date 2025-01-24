@@ -896,11 +896,11 @@ namespace spartan
         }
 
         // perform early resource transitions
-        tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_material->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_material->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->InsertPendingBarrierGroup();
 
         cmd_list->EndTimeblock();
@@ -948,7 +948,7 @@ namespace spartan
             RHI_FidelityFX::SSSR_Dispatch(
                 cmd_list,
                 GetOption<float>(Renderer_Option::ResolutionScale),
-                GetRenderTarget(Renderer_RenderTarget::frame_render), // reflect from the previous frame
+                GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
