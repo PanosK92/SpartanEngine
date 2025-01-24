@@ -1136,22 +1136,22 @@ namespace spartan
         sssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
 
         // set sssr specific parameters
-        sssr::description_dispatch.motionVectorScale.x                  = -0.5f; // expects [-0.5, 0.5] range
-        sssr::description_dispatch.motionVectorScale.y                  = -0.5f; // expects [-0.5, 0.5] range, +Y as top-down
+        sssr::description_dispatch.motionVectorScale.x                  = -0.5f;  // expects [-0.5, 0.5] range
+        sssr::description_dispatch.motionVectorScale.y                  = -0.5f;  // expects [-0.5, 0.5] range, +Y as top-down
         sssr::description_dispatch.normalUnPackMul                      = 1.0f;
         sssr::description_dispatch.normalUnPackAdd                      = 0.0f;
-        sssr::description_dispatch.depthBufferThickness                 = 0.08f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
-        sssr::description_dispatch.varianceThreshold                    = 0.02f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
-        sssr::description_dispatch.maxTraversalIntersections            = 20;    // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
-        sssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running
-        sssr::description_dispatch.mostDetailedMip                      = 0;
-        sssr::description_dispatch.temporalStabilityFactor              = 0.8f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
-        sssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
-        sssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
-        sssr::description_dispatch.iblFactor                            = 0.0f;
-        sssr::description_dispatch.roughnessChannel                     = 0;
-        sssr::description_dispatch.isRoughnessPerceptual                = true;
-        sssr::description_dispatch.roughnessThreshold                   = 1.0f;  // regions with a roughness value greater than this threshold won't spawn rays
+        sssr::description_dispatch.depthBufferThickness                 = 0.01f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
+        sssr::description_dispatch.varianceThreshold                    = 0.005f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
+        sssr::description_dispatch.maxTraversalIntersections            = 80;     // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
+        sssr::description_dispatch.minTraversalOccupancy                = 4;      // exit the core loop early if less than this number of threads are running
+        sssr::description_dispatch.mostDetailedMip                      = 0;      
+        sssr::description_dispatch.temporalStabilityFactor              = 0.8f;   // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        sssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;   // whether a ray should be spawned on pixels where a temporal variance is detected or not
+        sssr::description_dispatch.samplesPerQuad                       = 1;      // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
+        sssr::description_dispatch.iblFactor                            = 0.0f;   
+        sssr::description_dispatch.roughnessChannel                     = 0;      
+        sssr::description_dispatch.isRoughnessPerceptual                = true;   
+        sssr::description_dispatch.roughnessThreshold                   = 0.9f;   // regions with a roughness value greater than this threshold won't spawn rays
 
         // set camera matrices
         set_ffx_float16(sssr::description_dispatch.view,               view);
