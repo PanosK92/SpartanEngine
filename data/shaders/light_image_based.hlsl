@@ -50,7 +50,7 @@ float get_blend_weight(float value, float threshold, float smoothness)
 float3 combine_specular_sources(float4 specular_ssr, float3 specular_gi, float3 specular_sky)
 {
     const float threshold  = 0.01f;
-    const float smoothness = 0.2f; // aka blend region size
+    const float smoothness = 0.35f; // aka blend region size
     
     // get weights for each source
     float ssr_alpha  = saturate(specular_ssr.a / 0.3f); // it's not exactly an alpha
@@ -111,3 +111,4 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] += float4(ibl, 0.0f);
 }
+
