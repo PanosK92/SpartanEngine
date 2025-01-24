@@ -345,7 +345,7 @@ namespace spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
+    void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data, const bool zero_out)
     {
 
     }
