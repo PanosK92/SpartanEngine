@@ -394,7 +394,7 @@ namespace spartan
 
         // reset indices
         m_image_index = numeric_limits<uint32_t>::max();
-        m_sync_index  = numeric_limits<uint32_t>::max();
+        m_buffer_index  = numeric_limits<uint32_t>::max();
 
         Destroy();
         Create();
@@ -410,20 +410,18 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        if (m_sync_index != numeric_limits<uint32_t>::max())
+        // when we run out of buffers, wait
+        if (m_buffer_index != numeric_limits<uint32_t>::max())
         {
-            m_image_acquired_fence[m_sync_index]->Wait();
-            m_image_acquired_fence[m_sync_index]->Reset();
+            m_image_acquired_fence[m_buffer_index]->Wait();
+            m_image_acquired_fence[m_buffer_index]->Reset();
         }
 
         // get sync objects
-        m_sync_index                        = (m_sync_index + 1) % m_buffer_count;
-        RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_sync_index].get();
-        RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_sync_index].get();
+        m_buffer_index                      = (m_buffer_index + 1) % m_buffer_count;
+        RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
+        RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_buffer_index].get();
 
-        //SP_ASSERT(!signal_semaphore->IsSignaled());
-
-        // acquire next image
         SP_ASSERT_VK(vkAcquireNextImageKHR(
             RHI_Context::device,                                          // device
             static_cast<VkSwapchainKHR>(m_rhi_swapchain),                 // swapchain
@@ -432,8 +430,6 @@ namespace spartan
             static_cast<VkFence>(signal_fence->GetRhiResource()),         // signal fence
             &m_image_index                                                // pImageIndex
         ));
-
-        signal_semaphore->SetSignaled(true);
     }
 
     void RHI_SwapChain::Present()
@@ -443,18 +439,17 @@ namespace spartan
         m_wait_semaphores.clear();
         RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
-        // semaphores from command lists
+        // get semaphores from command lists
         RHI_CommandList* cmd_list       = queue->GetCommandList();
         bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
         if (presents_to_this_swapchain)
         {
             RHI_SyncPrimitive* semaphore = cmd_list->GetRenderingCompleteSemaphore();
-            semaphore->SetSignaled(false);
             m_wait_semaphores.emplace_back(semaphore);
         }
 
-        // semaphore from vkAcquireNextImageKHR
-        RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
+        // get semaphore from vkAcquireNextImageKHR
+        RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
         queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);

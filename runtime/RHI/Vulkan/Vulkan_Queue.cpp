@@ -179,7 +179,6 @@ namespace spartan
             }
 
             SP_ASSERT_VK(result);
-            semaphore->SetSignaled(true);
         }
     }
 

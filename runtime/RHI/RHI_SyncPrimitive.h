@@ -52,9 +52,6 @@ namespace spartan
 
         // signaling
         bool IsSignaled();
-        void SetSignaled(const bool signaled) { m_signaled = signaled; }
-
-        // misc
         void Reset();
 
         // rhi
@@ -63,7 +60,6 @@ namespace spartan
     private:
         RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
         uint64_t m_value_wait         = 0;
-        bool m_signaled               = false;
 
         // rhi
         void* m_rhi_resource = nullptr;

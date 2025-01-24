@@ -164,7 +164,7 @@ namespace spartan
 
     bool RHI_SyncPrimitive::IsSignaled()
     {
-        return m_type == RHI_SyncPrimitive_Type::Fence ? fence::is_signaled(m_rhi_resource) : m_signaled;
+        return m_type == RHI_SyncPrimitive_Type::Fence ? fence::is_signaled(m_rhi_resource) : false;
     }
 
     void RHI_SyncPrimitive::Reset()
