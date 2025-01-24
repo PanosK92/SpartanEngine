@@ -271,8 +271,10 @@ namespace ImGui::RHI
         // begin
         if (!is_main_window)
         {
+            swapchain->AcquireNextImage();
             cmd_list->Begin(queue);
         }
+
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
         bool gpu_timing  = is_main_window;
         cmd_list->BeginTimeblock(name, true, spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);

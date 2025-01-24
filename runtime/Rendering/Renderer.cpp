@@ -311,6 +311,8 @@ namespace spartan
 
         // rendering
         {
+            GetSwapChain()->AcquireNextImage();
+
             // get resources
             RHI_Queue* queue_graphics          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
             RHI_Queue* queue_compute           = RHI_Device::GetQueue(RHI_Queue_Type::Compute);

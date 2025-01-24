@@ -201,7 +201,6 @@ namespace spartan
         m_present_mode = present_mode;
 
         Create();
-        AcquireNextImage();
 
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
@@ -422,6 +421,8 @@ namespace spartan
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_sync_index].get();
         RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_sync_index].get();
 
+        //SP_ASSERT(!signal_semaphore->IsSignaled());
+
         // acquire next image
         SP_ASSERT_VK(vkAcquireNextImageKHR(
             RHI_Context::device,                                          // device
@@ -431,6 +432,8 @@ namespace spartan
             static_cast<VkFence>(signal_fence->GetRhiResource()),         // signal fence
             &m_image_index                                                // pImageIndex
         ));
+
+        signal_semaphore->SetSignaled(true);
     }
 
     void RHI_SwapChain::Present()
@@ -443,15 +446,10 @@ namespace spartan
         // semaphores from command lists
         RHI_CommandList* cmd_list       = queue->GetCommandList();
         bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
-        bool has_work_to_present        = cmd_list->GetState() == RHI_CommandListState::Submitted;
-        if (presents_to_this_swapchain && has_work_to_present)
+        if (presents_to_this_swapchain)
         {
             RHI_SyncPrimitive* semaphore = cmd_list->GetRenderingCompleteSemaphore();
-            if (semaphore->IsSignaled())
-            {
-                semaphore->SetSignaled(false);
-            }
-
+            semaphore->SetSignaled(false);
             m_wait_semaphores.emplace_back(semaphore);
         }
 
@@ -459,9 +457,7 @@ namespace spartan
         RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_sync_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
-        // present
         queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
-        AcquireNextImage();
     }
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)

@@ -58,6 +58,8 @@ namespace spartan
         void SetVsync(const bool enabled);
         bool GetVsync();
 
+        // loop
+        void AcquireNextImage();
         void Present();
 
         // properties
@@ -79,7 +81,6 @@ namespace spartan
     private:
         void Create();
         void Destroy();
-        void AcquireNextImage();
 
         // main
         bool m_windowed                 = false;
