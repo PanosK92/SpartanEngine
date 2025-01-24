@@ -1848,11 +1848,6 @@ namespace spartan
 
     void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data_initial, const char* name)
     {
-        // deduce properties
-        bool is_storage   = (flags_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)   != 0;
-        bool is_constant  = (flags_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)   != 0;
-        bool is_mappable  = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
-
         // buffer info
         VkBufferCreateInfo buffer_create_info = {};
         buffer_create_info.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1863,14 +1858,14 @@ namespace spartan
         // allocation info
         VmaAllocationCreateInfo allocation_create_info = {};
         allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
-        allocation_create_info.requiredFlags           = flags_memory;
-        allocation_create_info.flags                   = 0;
+        allocation_create_info.flags                   = 0;            // flags vma
+        allocation_create_info.requiredFlags           = flags_memory; // flags vulkan
 
+        bool is_mappable = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
         if (is_mappable)
         {
-            allocation_create_info.flags         |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-            allocation_create_info.flags         |= VMA_ALLOCATION_CREATE_MAPPED_BIT;     // mappable
-            allocation_create_info.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // flushless
+            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // mappable
         }
 
         // create the buffer
@@ -1886,7 +1881,7 @@ namespace spartan
         );
 
         // if a pointer to the buffer data has been passed, map the buffer and copy over the data
-        if (data_initial != nullptr)
+        if (data_initial)
         {
             SP_ASSERT_MSG(is_mappable, "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag");
 

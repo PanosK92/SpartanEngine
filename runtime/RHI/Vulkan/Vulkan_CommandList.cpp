@@ -1577,7 +1577,6 @@ namespace spartan
         }
 
         // check for vkCmdUpdateBuffer compliance to deduce if this is a small and synchronized update
-        // non-compliant updates are done via a memcpy, and they are there for the big bindless arrays
         bool synchronized_update  = true;
         synchronized_update      &= (offset % 4 == 0);                    // offset must be a multiple of 4
         synchronized_update      &= (size % 4 == 0);                      // size must be a multiple of 4

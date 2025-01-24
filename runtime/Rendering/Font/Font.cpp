@@ -220,10 +220,6 @@ namespace spartan
             }
         }
 
-        // wait until the buffers are not in use
-        cmd_list->InsertBarrierBufferReadWrite(m_buffer_vertex.get());
-        cmd_list->InsertBarrierBufferReadWrite(m_buffer_index.get());
-
         cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, m_buffer_vertex->GetObjectSize(), m_vertices.data(), true);
         cmd_list->UpdateBuffer(m_buffer_index.get(), 0, m_buffer_index->GetObjectSize(), m_indices.data(), true);
 
