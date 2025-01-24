@@ -201,12 +201,12 @@ namespace ImGui::RHI
         RHI_Buffer* index_buffer            = rhi_resources->index_buffers[buffer_index].get();
         RHI_Queue* queue                    = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
 
-        // get command list
+        // child windows need to be handled here
         if (!is_main_window)
         {
-            // for independent windows, we use another command list
-            // this is because it needs to begin, end and present independently
             queue->NextCommandList();
+            swapchain->AcquireNextImage();
+            queue->GetCommandList()->Begin(queue);
         }
 
         RHI_CommandList* cmd_list = queue->GetCommandList();
@@ -258,23 +258,17 @@ namespace ImGui::RHI
         }
 
         // set pipeline state
-        static RHI_PipelineState pso          = {};
-        pso.name                              = "imgui";
+        static RHI_PipelineState pso         = {};
+        pso.name                             = "imgui";
         pso.shaders[RHI_Shader_Type::Vertex] = g_shader_vertex.get();
         pso.shaders[RHI_Shader_Type::Pixel]  = g_shader_pixel.get();
-        pso.rasterizer_state                  = g_rasterizer_state.get();
-        pso.blend_state                       = g_blend_state.get();
-        pso.depth_stencil_state               = g_depth_stencil_state.get();
-        pso.render_target_swapchain           = swapchain;
-        pso.clear_color[0]                    = clear ? Color::standard_black : rhi_color_dont_care;
+        pso.rasterizer_state                 = g_rasterizer_state.get();
+        pso.blend_state                      = g_blend_state.get();
+        pso.depth_stencil_state              = g_depth_stencil_state.get();
+        pso.render_target_swapchain          = swapchain;
+        pso.clear_color[0]                   = clear ? Color::standard_black : rhi_color_dont_care;
 
-        // begin
-        if (!is_main_window)
-        {
-            swapchain->AcquireNextImage();
-            cmd_list->Begin(queue);
-        }
-
+        // start the pass
         const char* name = is_main_window ? "imgui_window_main" : "imgui_window_child";
         bool gpu_timing  = is_main_window;
         cmd_list->BeginTimeblock(name, true, spartan::Debugging::IsGpuTimingEnabled() && gpu_timing);

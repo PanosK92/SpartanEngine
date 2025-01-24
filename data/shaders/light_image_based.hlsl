@@ -42,20 +42,19 @@ float3 sample_environment(float2 uv, float mip_level, float mip_max)
     return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
-float get_blend_weight(float value, float threshold, float smoothness)
+float get_blend_weight(float value, float smoothness)
 {
-    return saturate((value - (threshold - smoothness)) / (smoothness * 2.0f));
+    return saturate((value + smoothness) / (smoothness * 2.0f));
 }
 
 float3 combine_specular_sources(float4 specular_ssr, float3 specular_gi, float3 specular_sky)
 {
-    const float threshold  = 0.01f;
-    const float smoothness = 0.35f; // aka blend region size
+    const float smoothness = 1.0f; // aka blend region size
     
     // get weights for each source
     float ssr_alpha  = saturate(specular_ssr.a / 0.3f); // it's not exactly an alpha
-    float ssr_weight = get_blend_weight(ssr_alpha, threshold, smoothness);
-    float gi_weight  = get_blend_weight(luminance(specular_gi), threshold, smoothness);
+    float ssr_weight = get_blend_weight(ssr_alpha, smoothness);
+    float gi_weight  = get_blend_weight(luminance(specular_gi), smoothness);
 
     // blend
     float3 result = specular_sky;                               // start with sky as base
@@ -111,4 +110,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] += float4(ibl, 0.0f);
 }
-
