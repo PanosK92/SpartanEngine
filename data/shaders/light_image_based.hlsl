@@ -53,7 +53,8 @@ float3 combine_specular_sources(float4 specular_ssr, float3 specular_gi, float3 
     const float smoothness = 0.2f; // aka blend region size
     
     // get weights for each source
-    float ssr_weight = get_blend_weight(specular_ssr.a, threshold, smoothness);
+    float ssr_alpha  = saturate(specular_ssr.a / 0.3f); // it's not exactly an alpha
+    float ssr_weight = get_blend_weight(ssr_alpha, threshold, smoothness);
     float gi_weight  = get_blend_weight(luminance(specular_gi), threshold, smoothness);
 
     // blend
