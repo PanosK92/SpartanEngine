@@ -27,20 +27,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Fresnel, visibility and normal distribution functions
 ------------------------------------------------------------------------------*/
 
-// Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
 float3 F_Schlick(const float3 f0, float f90, float v_dot_h)
 {
     return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
-// [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
-inline float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha)
+inline float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha2)
 {
-    float alpha2  = alpha * alpha;
     float lambdaV = n_dot_l * sqrt(n_dot_v * (n_dot_v - n_dot_v * alpha2) + alpha2);
     float lambdaL = n_dot_v * sqrt(n_dot_l * (n_dot_l - n_dot_l * alpha2) + alpha2);
 
-    return 0.5 / (lambdaV + lambdaL);
+    return 0.5 / max(lambdaV + lambdaL, 1e-5);
 }
 
 float V_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
@@ -159,7 +156,7 @@ float get_f90(Surface surface)
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
     float alpha_ggx     = D_GGX_Alpha(surface.roughness);
-    float  visibility   = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, surface.roughness_alpha);
+    float  visibility   = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, surface.alpha * surface.alpha);
     float  distribution = D_GGX(angular_info.n_dot_h, alpha_ggx * alpha_ggx);
     float3 fresnel      = F_Schlick(surface.F0, get_f90(surface), angular_info.v_dot_h);
 
@@ -235,3 +232,4 @@ float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
     // combine terms to get the sheen BRDF
     return D * V * F;
 }
+
