@@ -107,35 +107,23 @@ float D_Charlie(float roughness, float NoH)
     Diffuse
 ------------------------------------------------------------------------------*/
 
-float3 Diffuse_Lambert(float3 diffuse_color)
+float3 Diffuse_Disney(float3 diffuse_color, float roughness, float NoV, float NoL, float VoH)
 {
-    return diffuse_color * (1 / PI);
-}
-
-// [Burley 2012, "Physically-Based Shading at Disney"]
-float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
-{
-    float FD90 = 0.5 + 2 * VoH * VoH * Roughness;
-    float FdV = 1 + (FD90 - 1) * pow(1 - NoV, 5);
-    float FdL = 1 + (FD90 - 1) * pow(1 - NoL, 5);
-    return diffuse_color * ( (1 / PI) * FdV * FdL );
-}
-
-// Diffuse - [Gotanda 2012, "Beyond a Simple Physically Based Blinn-Phong Model in Real-Time"]
-float3 Diffuse_OrenNayar(Surface surface, AngularInfo angular_info)
-{
-    float s     = surface.roughness_alpha; // ( 1.29 + 0.5 * a );
-    float s2    = s * s;
-    float VoL   = 2 * angular_info.v_dot_h * angular_info.v_dot_h - 1;       // double angle identity
-    float Cosri = VoL - angular_info.n_dot_v * angular_info.n_dot_l;
-    float C1    = 1 - 0.5 * s2 / (s2 + 0.33);
-    float C2    = 0.45 * s2 / (s2 + 0.09) * Cosri * ( Cosri >= 0 ? rcp( max(angular_info.n_dot_l, angular_info.n_dot_v + 0.0001f ) ) : 1 );
-    return surface.albedo / PI * ( C1 + C2 ) * ( 1 + surface.roughness * 0.5 );
+    float FD90 = 0.5 + 2 * VoH * VoH * roughness;
+    float FdV  = 1 + (FD90 - 1) * pow(1 - NoV, 5);
+    float FdL  = 1 + (FD90 - 1) * pow(1 - NoL, 5);
+    return diffuse_color * ((1 / PI) * FdV * FdL);
 }
 
 float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
 {
-    return Diffuse_OrenNayar(surface, angular_info);
+    return Diffuse_Disney(
+        surface.albedo,       // diffuse_color
+        surface.roughness,    // roughness
+        angular_info.n_dot_v, // NoV
+        angular_info.n_dot_l, // NoL
+        angular_info.v_dot_h  // VoH
+    );
 }
 
 /*------------------------------------------------------------------------------
