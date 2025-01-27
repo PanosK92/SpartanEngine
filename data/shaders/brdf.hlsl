@@ -33,22 +33,14 @@ float3 F_Schlick(const float3 f0, float f90, float v_dot_h)
     return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
-// Smith term for GGX
-// [Smith 1967, "Geometrical shadowing of a random rough surface"]
-inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
-{
-    float Vis_SmithV = n_dot_v + sqrt(n_dot_v * (n_dot_v - n_dot_v * a2) + a2);
-    float Vis_SmithL = n_dot_l + sqrt(n_dot_l * (n_dot_l - n_dot_l * a2) + a2);
-    return rcp(Vis_SmithV * Vis_SmithL);
-}
-
-// Appoximation of joint Smith term for GGX
 // [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
-inline float V_SmithJointApprox(float a, float n_dot_v, float n_dot_l)
+inline float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha)
 {
-    float Vis_SmithV = n_dot_l * (n_dot_v * (1 - a) + a);
-    float Vis_SmithL = n_dot_v * (n_dot_l * (1 - a) + a);
-    return saturate_16(0.5 * rcp(Vis_SmithV + Vis_SmithL));
+    float alpha2  = alpha * alpha;
+    float lambdaV = n_dot_l * sqrt(n_dot_v * (n_dot_v - n_dot_v * alpha2) + alpha2);
+    float lambdaL = n_dot_v * sqrt(n_dot_l * (n_dot_l - n_dot_l * alpha2) + alpha2);
+
+    return 0.5 / (lambdaV + lambdaL);
 }
 
 float V_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
@@ -168,7 +160,7 @@ float get_f90(Surface surface)
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
     float alpha_ggx = D_GGX_Alpha(surface.roughness);
-    float  V        = V_SmithJointApprox(surface.roughness_alpha, angular_info.n_dot_v, angular_info.n_dot_l);
+    float  V        = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, surface.roughness_alpha);
     float  D        = D_GGX(angular_info.n_dot_h, alpha_ggx * alpha_ggx);
     float3 F        = F_Schlick(surface.F0, get_f90(surface), angular_info.v_dot_h);
 
@@ -226,16 +218,20 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
 
 float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
 {
-    // mix between white and using base color for sheen reflection
-    float3 tint = surface.sheen_tint * surface.sheen_tint;
-    float3 f0   = lerp(1.0f, surface.F0, tint);
-    
-    float D  = D_Charlie(surface.roughness, angular_info.n_dot_h);
-    float V  = V_Neubelt(angular_info.n_dot_v, angular_info.n_dot_l);
-    float3 F = f0 * surface.sheen;
+    // charlie distribution for sheen
+    float D = D_Charlie(surface.roughness, angular_info.n_dot_h);
 
+    // sheen visibility term (simplified, can be adjusted based on needs)
+    float V = V_Neubelt(angular_info.n_dot_v, angular_info.n_dot_l);
+
+    // sheen fresnel term (simple Schlick approximation)
+    float3 sheen_color = saturate(surface.albedo * 1.2f);
+    float3 F           = F_Schlick(sheen_color, 1.0, angular_info.v_dot_h);
+
+    // sheen energy conservation
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     surface.specular_energy *= F;
 
+    // combine terms to get the sheen BRDF
     return D * V * F;
 }

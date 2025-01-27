@@ -53,8 +53,6 @@ namespace spartan
         Anisotropic,          // controls the anisotropy level of specular reflections
         AnisotropicRotation,  // adjusts the anisotropy direction, with 1.0 being a full rotation
         Sheen,                // adds a soft, velvet-like reflection at edges
-        SheenTint,            // blends sheen reflection between white and the base color
-        ColorTint,            // modifies the surface color for diffuse or metallic materials
         ColorR,               // red component of the material color
         ColorG,               // green component of the material color
         ColorB,               // blue component of the material color

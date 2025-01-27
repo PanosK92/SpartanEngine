@@ -910,27 +910,26 @@ namespace spartan
             {
                 SP_ASSERT(index < rhi_max_array_size);
     
-                properties[index].world_space_height     = material->GetProperty(MaterialProperty::WorldSpaceHeight);
-                properties[index].color.x                = material->GetProperty(MaterialProperty::ColorR);
-                properties[index].color.y                = material->GetProperty(MaterialProperty::ColorG);
-                properties[index].color.z                = material->GetProperty(MaterialProperty::ColorB);
-                properties[index].color.w                = material->GetProperty(MaterialProperty::ColorA);
-                properties[index].tiling_uv.x            = material->GetProperty(MaterialProperty::TextureTilingX);
-                properties[index].tiling_uv.y            = material->GetProperty(MaterialProperty::TextureTilingY);
-                properties[index].offset_uv.x            = material->GetProperty(MaterialProperty::TextureOffsetX);
-                properties[index].offset_uv.y            = material->GetProperty(MaterialProperty::TextureOffsetY);
-                properties[index].roughness_mul          = material->GetProperty(MaterialProperty::Roughness);
-                properties[index].metallic_mul           = material->GetProperty(MaterialProperty::Metalness);
-                properties[index].normal_mul             = material->GetProperty(MaterialProperty::Normal);
-                properties[index].height_mul             = material->GetProperty(MaterialProperty::Height);
-                properties[index].anisotropic            = material->GetProperty(MaterialProperty::Anisotropic);
-                properties[index].anisotropic_rotation   = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                properties[index].clearcoat              = material->GetProperty(MaterialProperty::Clearcoat);
-                properties[index].clearcoat_roughness    = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                properties[index].sheen                  = material->GetProperty(MaterialProperty::Sheen);
-                properties[index].sheen_tint             = material->GetProperty(MaterialProperty::SheenTint);
-                properties[index].subsurface_scattering  = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                properties[index].ior                    = material->GetProperty(MaterialProperty::Ior);
+                properties[index].world_space_height    = material->GetProperty(MaterialProperty::WorldSpaceHeight);
+                properties[index].color.x               = material->GetProperty(MaterialProperty::ColorR);
+                properties[index].color.y               = material->GetProperty(MaterialProperty::ColorG);
+                properties[index].color.z               = material->GetProperty(MaterialProperty::ColorB);
+                properties[index].color.w               = material->GetProperty(MaterialProperty::ColorA);
+                properties[index].tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
+                properties[index].tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
+                properties[index].offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
+                properties[index].offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
+                properties[index].roughness_mul         = material->GetProperty(MaterialProperty::Roughness);
+                properties[index].metallic_mul          = material->GetProperty(MaterialProperty::Metalness);
+                properties[index].normal_mul            = material->GetProperty(MaterialProperty::Normal);
+                properties[index].height_mul            = material->GetProperty(MaterialProperty::Height);
+                properties[index].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                properties[index].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                properties[index].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                properties[index].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                properties[index].sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                properties[index].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                properties[index].ior                   = material->GetProperty(MaterialProperty::Ior);
               
                 // flags
                 properties[index].flags  = material->HasTextureOfType(MaterialTextureType::Height)       ? (1U << 0)  : 0;

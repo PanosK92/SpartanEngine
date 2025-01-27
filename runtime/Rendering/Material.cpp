@@ -52,8 +52,6 @@ namespace spartan
                 case MaterialProperty::Anisotropic:          return "anisotropic";
                 case MaterialProperty::AnisotropicRotation:  return "anisotropic_rotation";
                 case MaterialProperty::Sheen:                return "sheen";
-                case MaterialProperty::SheenTint:            return "sheen_tint";
-                case MaterialProperty::ColorTint:            return "color_tint";
                 case MaterialProperty::ColorR:               return "color_r";
                 case MaterialProperty::ColorG:               return "color_g";
                 case MaterialProperty::ColorB:               return "color_b";

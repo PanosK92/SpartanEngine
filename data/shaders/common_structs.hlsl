@@ -40,7 +40,6 @@ struct Surface
     float  anisotropic;
     float  anisotropic_rotation;
     float  sheen;
-    float3 sheen_tint;
     float  subsurface_scattering;
     float  ior;
     float  occlusion;
@@ -101,7 +100,6 @@ struct Surface
         clearcoat             = material.clearcoat;
         clearcoat_roughness   = material.clearcoat_roughness;
         sheen                 = material.sheen;
-        sheen_tint            = material.sheen_tint;
         subsurface_scattering = material.subsurface_scattering;
         ior                   = material.ior;
         specular_energy       = 1.0f;

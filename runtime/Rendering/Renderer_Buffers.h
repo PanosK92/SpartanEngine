@@ -177,7 +177,7 @@ namespace spartan
         float subsurface_scattering;
 
         float sheen;
-        math::Vector3 sheen_tint;
+        math::Vector3 padding;
 
         float anisotropic;
         float anisotropic_rotation;

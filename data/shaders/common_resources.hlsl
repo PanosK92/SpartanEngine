@@ -96,7 +96,7 @@ struct MaterialParameters
     float subsurface_scattering;
     
     float  sheen;
-    float3 sheen_tint;
+    float3 padding;
     
     float anisotropic;
     float anisotropic_rotation;

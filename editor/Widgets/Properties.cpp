@@ -771,12 +771,12 @@ void Properties::ShowMaterial(Material* material) const
                 // modifier/multiplier
                 if (show_modifier)
                 {
-                    if (mat_property == MaterialProperty::ColorTint)
+                    if (mat_property == MaterialProperty::ColorA)
                     {
                         m_material_color_picker->Update();
                     }
                     else
-                    {
+                    { 
                         float value = material->GetProperty(mat_property);
 
                         if (mat_property != MaterialProperty::Metalness)
@@ -808,7 +808,7 @@ void Properties::ShowMaterial(Material* material) const
             };
         
             // properties with textures
-            show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorTint);
+            show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorA);
             show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
             show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTextureType::Metalness, MaterialProperty::Metalness);
             show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTextureType::Normal,    MaterialProperty::Normal);
@@ -821,7 +821,6 @@ void Properties::ShowMaterial(Material* material) const
             show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTextureType::Max,       MaterialProperty::Anisotropic);
             show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
             show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
-            show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTextureType::Max,       MaterialProperty::SheenTint);
             show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
         }
         
