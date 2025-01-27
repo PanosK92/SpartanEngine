@@ -1576,7 +1576,7 @@ namespace spartan
             memset(buffer->GetMappedData(), 0, buffer->GetObjectSize());
         }
 
-        // check for vkCmdUpdateBuffer compliance to deduce if this is a small and synchronized update
+        // check for vkCmdUpdateBuffer compliance
         bool synchronized_update  = true;
         synchronized_update      &= (offset % 4 == 0);                    // offset must be a multiple of 4
         synchronized_update      &= (size % 4 == 0);                      // size must be a multiple of 4
@@ -1635,7 +1635,7 @@ namespace spartan
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
             Profiler::m_rhi_pipeline_barriers++;
         }
-        else // big bindless arrays (update rarely and don't require synchronization)
+        else // big bindless arrays
         {
             void* mapped_data = static_cast<char*>(buffer->GetMappedData()) + offset;
             memcpy(mapped_data, data, size);
