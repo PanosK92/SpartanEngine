@@ -27,22 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Fresnel, visibility and normal distribution functions
 ------------------------------------------------------------------------------*/
 
+// Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
 float3 F_Schlick(const float3 f0, float f90, float v_dot_h)
 {
-    // Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
     return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
-}
-
-float3 F_Schlick(const float3 f0, float v_dot_h)
-{
-    float f = pow(1.0 - v_dot_h, 5.0);
-    return f + f0 * (1.0 - f);
-}
-
-float3 F_Schlick_Roughness(float3 f0, float cosTheta, float roughness)
-{
-    float3 a = 1.0 - roughness;
-    return f0 + (max(a, f0) - f0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
 // Smith term for GGX
@@ -162,12 +150,27 @@ float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
     Specular
 ------------------------------------------------------------------------------*/
 
+float get_f90(Surface surface)
+{
+    // for metals, use the standard f90 calculation
+    if (surface.metallic > 0.0)
+    {
+        return saturate(dot(surface.F0, 50.0 * 0.33));
+    }
+    // for dielectrics, adjust f90 based on roughness
+    else
+    {
+        // ensure f90 approaches 1.0 at grazing angles for rough surfaces
+        return lerp(1.0, 0.5, surface.roughness);
+    }
+}
+
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
     float alpha_ggx = D_GGX_Alpha(surface.roughness);
     float  V        = V_SmithJointApprox(surface.roughness_alpha, angular_info.n_dot_v, angular_info.n_dot_l);
     float  D        = D_GGX(angular_info.n_dot_h, alpha_ggx * alpha_ggx);
-    float3 F        = F_Schlick(surface.F0, angular_info.v_dot_h);
+    float3 F        = F_Schlick(surface.F0, get_f90(surface), angular_info.v_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     surface.specular_energy *= F;
@@ -196,10 +199,9 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     float YdotH     = dot(b, angular_info.h);
     
     // specular anisotropic BRDF
-    float D   = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
-    float V   = V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH);
-    float f90 = saturate(dot(surface.F0, 50.0 * 0.33));
-    float3 F  = F_Schlick(surface.F0, f90, angular_info.l_dot_h);
+    float D  = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
+    float V  = V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH);
+    float3 F = F_Schlick(surface.F0, get_f90(surface), angular_info.l_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     surface.specular_energy *= F;
@@ -214,7 +216,7 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
     
     float D  = D_GGX(angular_info.n_dot_h, roughness_alpha_squared);
     float V  = V_Kelemen(angular_info.v_dot_h);
-    float3 F = F_Schlick(0.04, 1.0, angular_info.v_dot_h) * surface.clearcoat;
+    float3 F = F_Schlick(0.04, get_f90(surface), angular_info.v_dot_h) * surface.clearcoat;
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     surface.specular_energy *= F;

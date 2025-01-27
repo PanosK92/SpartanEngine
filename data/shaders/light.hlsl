@@ -42,7 +42,7 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     float3 sss_color   = surface.albedo * light_radiance * sss_strength;
 
     // fresnel effect using schlick's approximation to modulate final color
-    float3 F              = F_Schlick(surface.F0, angular_info.v_dot_h);
+    float3 F              = F_Schlick(surface.F0, get_f90(surface), angular_info.n_dot_v);
     float3 diffuse_energy = compute_diffuse_energy(F, surface.metallic);
     
     // combine SSS color with fresnel effect

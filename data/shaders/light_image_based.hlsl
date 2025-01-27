@@ -81,7 +81,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // diffuse and specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
-    const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
+    const float3 F               = F_Schlick(surface.F0, get_f90(surface), n_dot_v);
     const float2 envBRDF         = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
     const float3 diffuse_energy  = compute_diffuse_energy(specular_energy, surface.metallic);
