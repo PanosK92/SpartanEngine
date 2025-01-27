@@ -163,7 +163,6 @@ namespace spartan
             SetOption(Renderer_Option::GlobalIllumination,          0.5f);                                                 // 0.5 is the percentage of the internal resolution (options are 25%, 50%, 75% and 100%)
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::ShadowResolution,            4096.0f);
-            SetOption(Renderer_Option::Exposure,                    1.0f);
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                                 // becomes the upsampler's sharpness as well
             SetOption(Renderer_Option::Fog,                         1.0f);                                                 // controls the intensity of the volumetric fog as well
             SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                 // these is only a toggle for the volumetric fog
@@ -179,6 +178,8 @@ namespace spartan
             SetOption(Renderer_Option::Physics,                     0.0f);
             SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
             SetOption(Renderer_Option::OcclusionCulling,            0.0f);                                                 // disabled by default as it's a WIP (you can see the query delays)
+            SetOption(Renderer_Option::Exposure,                    1.0f);
+            SetOption(Renderer_Option::Gamma,                       2.4f); // HDR monitors are more likely to aim for the actual sRGB standard, which has a curve that for mid tones to high lights resembles a gamma of 2.4
 
             SetWind(Vector3(1.0f, 0.0f, 0.5f));
         }
@@ -493,6 +494,7 @@ namespace spartan
         m_cb_frame_cpu.hdr_enabled                 = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
         m_cb_frame_cpu.hdr_max_nits                = Display::GetLuminanceMax();
         m_cb_frame_cpu.hdr_white_point             = GetOption<float>(Renderer_Option::WhitePoint);
+        m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.directional_light_intensity = get_directional_light_intensity_lumens(m_renderables[Renderer_Entity::Light]);
 
         // these must match what common_buffer.hlsl is reading

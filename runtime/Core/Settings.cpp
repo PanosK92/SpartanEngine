@@ -70,13 +70,14 @@ namespace spartan
                 case Renderer_Option::ChromaticAberration:         return "ChromaticAberration";
                 case Renderer_Option::Anisotropy:                  return "Anisotropy";
                 case Renderer_Option::ShadowResolution:            return "ShadowResolution";
-                case Renderer_Option::Exposure:                    return "Exposure";
                 case Renderer_Option::WhitePoint:                  return "WhitePoint";
                 case Renderer_Option::Antialiasing:                return "Antialiasing";
                 case Renderer_Option::Tonemapping:                 return "Tonemapping";
                 case Renderer_Option::Upsampling:                  return "Upsampling";
                 case Renderer_Option::Sharpness:                   return "Sharpness";
                 case Renderer_Option::Hdr:                         return "Hdr";
+                case Renderer_Option::Exposure:                    return "Exposure";
+                case Renderer_Option::Gamma:                       return "Gamma";
                 case Renderer_Option::Vsync:                       return "Vsync";
                 case Renderer_Option::VariableRateShading:         return "VariableRateShading";
                 case Renderer_Option::ResolutionScale:             return "ResolutionScale";

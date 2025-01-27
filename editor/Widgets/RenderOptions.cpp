@@ -280,6 +280,7 @@ void RenderOptions::OnTickVisible()
 
         if (option("Output"))
         {
+            option_value("Gamma", Renderer_Option::Gamma, "Monitor's Gamma", 0.1f, 0.1f, 5.0f);
             option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
 
             bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);

@@ -75,7 +75,7 @@ namespace spartan
         math::Vector2 padding;
 
         math::Vector3 wind;
-        float padding2;
+        float gamma;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -111,6 +111,7 @@ namespace spartan
                 hdr_white_point             == rhs.hdr_white_point             &&
                 directional_light_intensity == rhs.directional_light_intensity &&
                 options                     == rhs.options                     &&
+                gamma                       == rhs.gamma                       &&
                 wind                        == rhs.wind;
         }
 

@@ -21,23 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // for details, read my blog post: https://panoskarabelas.com/blog/posts/hdr_in_under_10_minutes/
 
-static const float gamma_sdr = 2.2f; // SDR monitors are likely old, and aim for a simplistic gamma 2.2 curve
-static const float gamma_hdr = 2.4f; // HDR monitors are more likely to aim for the actual sRGB standard, which has a curve that for mid tones to high lights resembles a gamma of 2.4
-
 float3 srgb_to_linear(float3 color)
 {
-    float gamma        = lerp(gamma_sdr, gamma_hdr, buffer_frame.hdr_enabled);
     float3 linear_low  = color / 12.92;
-    float3 linear_high = pow((color + 0.055) / 1.055, gamma);
+    float3 linear_high = pow((color + 0.055) / 1.055, buffer_frame.gamma);
     float3 is_high     = step(0.0404482362771082, color);
     return lerp(linear_low, linear_high, is_high);
 }
 
 float3 linear_to_srgb(float3 color)
 {
-    float gamma      = lerp(gamma_sdr, gamma_hdr, buffer_frame.hdr_enabled);
     float3 srgb_low  = color * 12.92;
-    float3 srgb_high = 1.055 * pow(color, 1.0 / gamma) - 0.055;
+    float3 srgb_high = 1.055 * pow(color, 1.0 / buffer_frame.gamma) - 0.055;
     float3 is_high   = step(0.00313066844250063, color);
     return lerp(srgb_low, srgb_high, is_high);
 }
