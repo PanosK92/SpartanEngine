@@ -157,7 +157,7 @@ void Editor::Tick()
 
                 ImGui::End();
 
-                // various windows that don't belnog to a certain widget
+                // various windows that don't belong to a certain widget
                 GeneralWindows::Tick();
             }
         }
@@ -167,7 +167,7 @@ void Editor::Tick()
         {
             ImGui::Render();
 
-            if (spartan::Renderer::CanUseCmdList())
+            if (spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
             {
                 // main window
                 ImGui::RHI::render(ImGui::GetDrawData());

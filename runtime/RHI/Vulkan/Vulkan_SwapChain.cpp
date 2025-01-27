@@ -240,7 +240,7 @@ namespace spartan
         SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
         // clamp size between the supported min and max
-        m_width  = clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        m_width  = clamp(m_width,  capabilities.minImageExtent.width,  capabilities.maxImageExtent.width);
         m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
         // swap chain

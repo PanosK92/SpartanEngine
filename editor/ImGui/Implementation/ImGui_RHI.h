@@ -209,7 +209,10 @@ namespace ImGui::RHI
             queue->GetCommandList()->Begin(queue);
         }
 
+        // for the main window, if the renderer is not ready, return
         RHI_CommandList* cmd_list = queue->GetCommandList();
+        if (is_main_window && cmd_list->GetState() != RHI_CommandListState::Recording)
+            return;
 
         // update vertex and index buffers
         {

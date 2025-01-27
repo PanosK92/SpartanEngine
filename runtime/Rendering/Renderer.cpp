@@ -60,6 +60,7 @@ namespace spartan
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
 
     // misc
+    bool wants_to_present                                         = false;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_initialized_resources                = false;
     atomic<bool> Renderer::m_initialized_third_party              = false;
@@ -294,8 +295,11 @@ namespace spartan
     void Renderer::Tick()
     {
         // don't waste cpu/gpu time if nothing can be seen
+        wants_to_present = false;
         if (Window::IsMinimized() || !m_initialized_resources)
             return;
+
+        wants_to_present = true;
 
         // logic
         {
@@ -548,12 +552,6 @@ namespace spartan
         m_mutex_renderables.unlock();
         bindless_materials_dirty = true;
         bindless_lights_dirty    = true;
-    }
-
-    bool Renderer::CanUseCmdList()
-    {
-        RHI_CommandList* cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->GetCommandList();
-        return cmd_list->GetState() == RHI_CommandListState::Recording;
     }
 
     const Vector3& Renderer::GetWind()
@@ -832,6 +830,9 @@ namespace spartan
 
     void Renderer::SubmitAndPresent()
     {
+        if (!wants_to_present)
+            return;
+
         RHI_Queue* queue          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
         RHI_CommandList* cmd_list = queue->GetCommandList();
 
@@ -845,6 +846,8 @@ namespace spartan
             swap_chain->Present();
         }
         Profiler::TimeBlockEnd();
+
+        wants_to_present = false;
     }
 
     RHI_Api_Type Renderer::GetRhiApiType()

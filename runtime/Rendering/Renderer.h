@@ -81,7 +81,6 @@ namespace spartan
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
         static void SetEntities(std::unordered_map<uint64_t, std::shared_ptr<Entity>>& entities);
-        static bool CanUseCmdList();
 
         // wind
         static const math::Vector3& GetWind();
