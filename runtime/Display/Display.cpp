@@ -42,6 +42,7 @@ namespace spartan
     {
         vector<DisplayMode> display_modes;
         bool is_hdr_capable      = false;
+        float gamma              = 2.2f;
         float luminance_nits_max = 0;
         float luminance_nits_min = 0;
 
@@ -138,6 +139,74 @@ namespace spartan
                 SP_ASSERT_MSG(false, "HDR support detection not implemented");
             #endif
         }
+
+        float get_gamma()
+        {
+            float gamma = 2.2f;
+        
+        #ifdef _MSC_VER
+            HDC hdc = GetDC(nullptr); // Get the device context for the primary monitor
+            if (!hdc)
+            {
+                SP_LOG_ERROR("Failed to get device context");
+                return gamma;
+            }
+        
+            WORD gammaRamp[3][256];
+            if (GetDeviceGammaRamp(hdc, gammaRamp))
+            {
+                // Normalize the gamma ramp values and calculate the gamma value
+                float sum = 0.0f;
+                for (int i = 0; i < 256; ++i)
+                {
+                    // Normalize the red channel value to [0, 1]
+                    float normalizedValue = static_cast<float>(gammaRamp[0][i]) / 65535.0f;
+                    // Accumulate the normalized value
+                    sum += normalizedValue;
+                }
+                // Calculate the average normalized value
+                float averageValue = sum / 256.0f;
+                // Estimate gamma as the inverse of the average value
+                gamma = 1.0f / averageValue;
+            }
+            else
+            {
+                SP_LOG_ERROR("Failed to get gamma ramp");
+            }
+        
+            ReleaseDC(nullptr, hdc);
+        
+        #elif defined(__linux__)
+            // Linux implementation
+            Display* display = XOpenDisplay(nullptr);
+            if (!display) {
+                std::cerr << "Failed to open X display" << std::endl;
+                return gamma;
+            }
+        
+            XF86VidModeGamma gammaRamp;
+            if (XF86VidModeGetGamma(display, DefaultScreen(display), &gammaRamp)) {
+                // Normalize the gamma ramp values and calculate the gamma value
+                float sum = 0.0f;
+                for (int i = 0; i < 256; ++i) {
+                    // Normalize the red channel value to [0, 1]
+                    float normalizedValue = static_cast<float>(gammaRamp.red[i]) / 65535.0f;
+                    // Accumulate the normalized value
+                    sum += normalizedValue;
+                }
+                // Calculate the average normalized value
+                float averageValue = sum / 256.0f;
+                // Estimate gamma as the inverse of the average value
+                gamma = 1.0f / averageValue;
+            } else {
+                std::cerr << "Failed to get gamma ramp" << std::endl;
+            }
+        
+            XCloseDisplay(display);
+        #endif
+        
+            return gamma;
+        }
     }
 
     void Display::RegisterDisplayMode(const uint32_t width, const uint32_t height, uint32_t hz, uint8_t display_index)
@@ -201,6 +270,7 @@ namespace spartan
         }
 
         // detect hdr capabilities
+        gamma = get_gamma();
         get_hdr_capabilities(&is_hdr_capable, &luminance_nits_min, &luminance_nits_max);
         SP_LOG_INFO("HDR: %s, min luminance: %d nits, max luminance: %d nits", is_hdr_capable ? "true" : "false", luminance_nits_min, luminance_nits_max);
     }
@@ -253,6 +323,11 @@ namespace spartan
     float Display::GetLuminanceMax()
     {
         return luminance_nits_max;
+    }
+
+    float Display::GetGamma()
+    {
+        return gamma;
     }
 
     const char* Display::GetName()

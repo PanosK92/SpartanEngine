@@ -179,7 +179,7 @@ namespace spartan
             SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
             SetOption(Renderer_Option::OcclusionCulling,            0.0f);                                                 // disabled by default as it's a WIP (you can see the query delays)
             SetOption(Renderer_Option::Exposure,                    1.0f);
-            SetOption(Renderer_Option::Gamma,                       2.4f); // HDR monitors are more likely to aim for the actual sRGB standard, which has a curve that for mid tones to high lights resembles a gamma of 2.4
+            SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
 
             SetWind(Vector3(1.0f, 0.0f, 0.5f));
         }

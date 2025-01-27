@@ -42,6 +42,7 @@ namespace spartan
         static uint32_t GetIndex();
         static bool GetHdr();
         static float GetLuminanceMax();
+        static float GetGamma();
         static const char* GetName();
     };
 }
