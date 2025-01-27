@@ -157,8 +157,6 @@ namespace spartan
         {
             return transform == rhs.transform && m_value == rhs.m_value;
         }
-
-        bool operator!=(const Pcb_Pass& rhs) const { return !(*this == rhs); }
     };
 
     struct Sb_Material
@@ -203,18 +201,6 @@ namespace spartan
         uint32_t flags;
         math::Vector2 padding;
 
-        bool operator==(const Sb_Light& rhs)
-        {
-            return
-                view_projection[0] == rhs.view_projection[0] &&
-                view_projection[1] == rhs.view_projection[1] &&
-                intensity          == rhs.intensity          &&
-                range              == rhs.range              &&
-                angle              == rhs.angle              &&
-                color              == rhs.color              &&
-                position           == rhs.position           &&
-                direction          == rhs.direction          &&
-                flags              == rhs.flags;
-        }
+        bool operator==(const Sb_Light& rhs) const { return memcmp(this, &rhs, sizeof(Sb_Light)) == 0; }
     };
 }
