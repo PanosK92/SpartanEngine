@@ -280,7 +280,8 @@ void RenderOptions::OnTickVisible()
 
         if (option("Output"))
         {
-            option_value("Gamma", Renderer_Option::Gamma, "Monitor's Gamma", 0.1f, 0.1f, 5.0f);
+            option_value("Gamma", Renderer_Option::Gamma);
+            option_value("Exposure", Renderer_Option::Exposure);
             option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
 
             bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
@@ -405,8 +406,7 @@ void RenderOptions::OnTickVisible()
             option_int("Shadow resolution", resolution_shadow);
             Renderer::SetOption(Renderer_Option::ShadowResolution, static_cast<float>(resolution_shadow));
 
-            option_value("Fog",      Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
-            option_value("Exposure", Renderer_Option::Exposure);
+            option_value("Fog", Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
 
             // vsync
             option_check_box("VSync", Renderer_Option::Vsync, "Vertical Synchronization");
