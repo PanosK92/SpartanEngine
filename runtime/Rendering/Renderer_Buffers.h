@@ -82,39 +82,7 @@ namespace spartan
             options = set ? (options |= bit) : (options & ~bit);
         }
 
-        bool operator==(const Cb_Frame& rhs) const
-        {
-            return
-                view                        == rhs.view                        &&
-                projection                  == rhs.projection                  &&
-                view_projection             == rhs.view_projection             &&
-                view_projection_inv         == rhs.view_projection_inv         &&
-                view_projection_ortho       == rhs.view_projection_ortho       &&
-                view_projection_unjittered  == rhs.view_projection_unjittered  &&
-                view_projection_previous    == rhs.view_projection_previous    &&
-                time                        == rhs.time                        &&
-                delta_time                  == rhs.delta_time                  &&
-                frame                       == rhs.frame                       &&
-                camera_near                 == rhs.camera_near                 &&
-                camera_far                  == rhs.camera_far                  &&
-                camera_position             == rhs.camera_position             &&
-                camera_position_previous    == rhs.camera_position_previous    &&
-                camera_direction            == rhs.camera_direction            &&
-                camera_last_movement_time   == rhs.camera_last_movement_time   &&
-                resolution_output           == rhs.resolution_output           &&
-                resolution_render           == rhs.resolution_render           &&
-                taa_jitter_current          == rhs.taa_jitter_current          &&
-                taa_jitter_previous         == rhs.taa_jitter_previous         &&
-                resolution_scale            == rhs.resolution_scale            &&
-                hdr_enabled                 == rhs.hdr_enabled                 &&
-                hdr_max_nits                == rhs.hdr_max_nits                &&
-                hdr_white_point             == rhs.hdr_white_point             &&
-                directional_light_intensity == rhs.directional_light_intensity &&
-                options                     == rhs.options                     &&
-                gamma                       == rhs.gamma                       &&
-                wind                        == rhs.wind;
-        }
-
+        bool operator==(const Cb_Frame& rhs) const { return memcmp(this, &rhs, sizeof(Cb_Frame)) == 0; }
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
 
