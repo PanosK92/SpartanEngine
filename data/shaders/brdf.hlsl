@@ -130,6 +130,17 @@ float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
     Specular
 ------------------------------------------------------------------------------*/
 
+float3 compute_diffuse_energy(float3 F, float metallic)
+{
+    // used to tone down diffuse such that only non-metals have it
+    
+    float3 kS  = F;               // the energy of light that gets reflected - equal to fresnel
+    float3 kD  = 1.0f - kS;       // remaining energy, light that gets refracted
+    kD        *= 1.0f - metallic; // multiply kD by the inverse metalness such that only non-metals have diffuse lighting
+
+    return kD;
+}
+
 float get_f90(Surface surface)
 {
     // for metals, use the standard f90 calculation
@@ -147,15 +158,16 @@ float get_f90(Surface surface)
 
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
-    float alpha_ggx = D_GGX_Alpha(surface.roughness);
-    float  V        = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, surface.roughness_alpha);
-    float  D        = D_GGX(angular_info.n_dot_h, alpha_ggx * alpha_ggx);
-    float3 F        = F_Schlick(surface.F0, get_f90(surface), angular_info.v_dot_h);
+    float alpha_ggx     = D_GGX_Alpha(surface.roughness);
+    float  visibility   = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, surface.roughness_alpha);
+    float  distribution = D_GGX(angular_info.n_dot_h, alpha_ggx * alpha_ggx);
+    float3 fresnel      = F_Schlick(surface.F0, get_f90(surface), angular_info.v_dot_h);
 
-    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
-    surface.specular_energy *= F;
+    // energy conservation
+    surface.diffuse_energy  *= compute_diffuse_energy(fresnel, surface.metallic);
+    surface.specular_energy *= fresnel;
 
-    return D * V * F;
+    return visibility * distribution * fresnel;
 }
 
 float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info)

@@ -423,17 +423,6 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 ------------------------------------------------------------------------------*/
 bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) && (value.y >= 0.0f && value.y <= 1.0f); }
 
-float3 compute_diffuse_energy(float3 F, float metallic)
-{
-    // used to town down diffuse such as that only non metals have it
-    
-    float3 kS  = F;               // the energy of light that gets reflected - equal to fresnel
-    float3 kD  = 1.0f - kS;       // remaining energy, light that gets refracted
-    kD        *= 1.0f - metallic; // multiply kD by the inverse metalness such that only non-metals have diffuse lighting
-
-    return kD;
-}
-
 float screen_fade(float2 uv)
 {
     float2 fade = max(0.0f, 12.0f * abs(uv - 0.5f) - 5.0f);
