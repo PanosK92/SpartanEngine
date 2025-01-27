@@ -145,7 +145,7 @@ namespace spartan
             float gamma = 2.2f;
         
         #ifdef _MSC_VER
-            HDC hdc = GetDC(nullptr); // Get the device context for the primary monitor
+            HDC hdc = GetDC(nullptr); // get the device context for the primary monitor
             if (!hdc)
             {
                 SP_LOG_ERROR("Failed to get device context");
@@ -155,18 +155,19 @@ namespace spartan
             WORD gammaRamp[3][256];
             if (GetDeviceGammaRamp(hdc, gammaRamp))
             {
-                // Normalize the gamma ramp values and calculate the gamma value
+                // normalize the gamma ramp values and calculate the gamma value
                 float sum = 0.0f;
                 for (int i = 0; i < 256; ++i)
                 {
-                    // Normalize the red channel value to [0, 1]
+                    // normalize the red channel value to [0, 1]
                     float normalizedValue = static_cast<float>(gammaRamp[0][i]) / 65535.0f;
-                    // Accumulate the normalized value
+                    // accumulate the normalized value
                     sum += normalizedValue;
                 }
-                // Calculate the average normalized value
+
+                // calculate the average normalized value
                 float averageValue = sum / 256.0f;
-                // Estimate gamma as the inverse of the average value
+                // estimate gamma as the inverse of the average value
                 gamma = 1.0f / averageValue;
             }
             else
@@ -177,28 +178,32 @@ namespace spartan
             ReleaseDC(nullptr, hdc);
         
         #elif defined(__linux__)
-            // Linux implementation
             Display* display = XOpenDisplay(nullptr);
-            if (!display) {
+            if (!display)
+            {
                 std::cerr << "Failed to open X display" << std::endl;
                 return gamma;
             }
         
             XF86VidModeGamma gammaRamp;
-            if (XF86VidModeGetGamma(display, DefaultScreen(display), &gammaRamp)) {
-                // Normalize the gamma ramp values and calculate the gamma value
+            if (XF86VidModeGetGamma(display, DefaultScreen(display), &gammaRamp))
+            {
+                // normalize the gamma ramp values and calculate the gamma value
                 float sum = 0.0f;
-                for (int i = 0; i < 256; ++i) {
-                    // Normalize the red channel value to [0, 1]
+                for (int i = 0; i < 256; ++i)
+                {
+                    // normalize the red channel value to [0, 1]
                     float normalizedValue = static_cast<float>(gammaRamp.red[i]) / 65535.0f;
-                    // Accumulate the normalized value
+                    // accumulate the normalized value
                     sum += normalizedValue;
                 }
-                // Calculate the average normalized value
+                // calculate the average normalized value
                 float averageValue = sum / 256.0f;
-                // Estimate gamma as the inverse of the average value
+                // estimate gamma as the inverse of the average value
                 gamma = 1.0f / averageValue;
-            } else {
+            }
+            else
+            {
                 std::cerr << "Failed to get gamma ramp" << std::endl;
             }
         
