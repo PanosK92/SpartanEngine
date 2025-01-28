@@ -24,15 +24,52 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 /*------------------------------------------------------------------------------
-    Fresnel, visibility and normal distribution functions
+    Diffuse
 ------------------------------------------------------------------------------*/
 
-float3 F_Schlick(const float3 f0, float f90, float v_dot_h)
+float3 Diffuse_Disney(float3 diffuse_color, float roughness, float NoV, float NoL, float VoH)
+{
+    float FD90 = 0.5 + 2 * VoH * VoH * roughness;
+    float FdV  = 1 + (FD90 - 1) * pow(1 - NoV, 5);
+    float FdL  = 1 + (FD90 - 1) * pow(1 - NoL, 5);
+    return diffuse_color * ((1 / PI) * FdV * FdL);
+}
+
+float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
+{
+    return Diffuse_Disney(
+        surface.albedo,       // diffuse_color
+        surface.roughness,    // roughness
+        angular_info.n_dot_v, // NoV
+        angular_info.n_dot_l, // NoL
+        angular_info.v_dot_h  // VoH
+    );
+}
+
+/*------------------------------------------------------------------------------
+    Specular
+------------------------------------------------------------------------------*/
+
+float3 F_Schlick(const float3 f0, float3 f90, float v_dot_h)
 {
     return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
-inline float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha2)
+float3 get_f90(Surface surface)
+{
+    // for metals
+    if (surface.metallic > 0.0)
+    {
+        return surface.F0;
+    }
+    // for dielectrics (non-metals)
+    else
+    {
+        return surface.F0 + (1.0 - surface.F0) * pow(1.0 - surface.roughness, 5.0);
+    }
+}
+
+float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha2)
 {
     float lambdaV = n_dot_l * sqrt(n_dot_v * (n_dot_v - n_dot_v * alpha2) + alpha2);
     float lambdaL = n_dot_v * sqrt(n_dot_l * (n_dot_l - n_dot_l * alpha2) + alpha2);
@@ -100,33 +137,6 @@ float D_Charlie(float roughness, float NoH)
     return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * PI);
 }
 
-/*------------------------------------------------------------------------------
-    Diffuse
-------------------------------------------------------------------------------*/
-
-float3 Diffuse_Disney(float3 diffuse_color, float roughness, float NoV, float NoL, float VoH)
-{
-    float FD90 = 0.5 + 2 * VoH * VoH * roughness;
-    float FdV  = 1 + (FD90 - 1) * pow(1 - NoV, 5);
-    float FdL  = 1 + (FD90 - 1) * pow(1 - NoL, 5);
-    return diffuse_color * ((1 / PI) * FdV * FdL);
-}
-
-float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
-{
-    return Diffuse_Disney(
-        surface.albedo,       // diffuse_color
-        surface.roughness,    // roughness
-        angular_info.n_dot_v, // NoV
-        angular_info.n_dot_l, // NoL
-        angular_info.v_dot_h  // VoH
-    );
-}
-
-/*------------------------------------------------------------------------------
-    Specular
-------------------------------------------------------------------------------*/
-
 float3 compute_diffuse_energy(float3 F, float metallic)
 {
     // used to tone down diffuse such that only non-metals have it
@@ -136,21 +146,6 @@ float3 compute_diffuse_energy(float3 F, float metallic)
     kD        *= 1.0f - metallic; // multiply kD by the inverse metalness such that only non-metals have diffuse lighting
 
     return kD;
-}
-
-float get_f90(Surface surface)
-{
-    // for metals, use the standard f90 calculation
-    if (surface.metallic > 0.0)
-    {
-        return saturate(dot(surface.F0, 50.0 * 0.33));
-    }
-    // for dielectrics, adjust f90 based on roughness
-    else
-    {
-        // ensure f90 approaches 1.0 at grazing angles for rough surfaces
-        return lerp(1.0, 0.5, surface.roughness);
-    }
 }
 
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
@@ -232,4 +227,3 @@ float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
     // combine terms to get the sheen BRDF
     return D * V * F;
 }
-
