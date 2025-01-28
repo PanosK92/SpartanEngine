@@ -132,8 +132,12 @@ namespace spartan
         {
             const float car_scale   = 0.0180f;
             const float wheel_scale = 0.3f;
+
+            // load full detail model (no vertex/index optimisations)
+            uint32_t mesh_flags = Mesh::GetDefaultFlags();
+            mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize); 
             
-            if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
+            if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf", mesh_flags))
             {
                 shared_ptr<Entity> entity_car = mesh_car->GetRootEntity().lock();
                 entity_car->SetObjectName("geometry");
