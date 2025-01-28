@@ -81,9 +81,6 @@ namespace spartan
         {
             options = set ? (options |= bit) : (options & ~bit);
         }
-
-        bool operator==(const Cb_Frame& rhs) const { return memcmp(this, &rhs, sizeof(Cb_Frame)) == 0; }
-        bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
 
     // 128 byte push constant buffer - updates per pass/draw
@@ -152,11 +149,6 @@ namespace spartan
             m_value.m03 = static_cast<float>(material_index);
             m_value.m13 = is_transparent ? 1.0f : 0.0f;
         }
-
-        bool operator==(const Pcb_Pass& rhs) const
-        {
-            return transform == rhs.transform && m_value == rhs.m_value;
-        }
     };
 
     struct Sb_Material
@@ -200,7 +192,5 @@ namespace spartan
         float angle;
         uint32_t flags;
         math::Vector2 padding;
-
-        bool operator==(const Sb_Light& rhs) const { return memcmp(this, &rhs, sizeof(Sb_Light)) == 0; }
     };
 }
