@@ -21,17 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ========================
 #include <memory>
 #include <unordered_map>
 #include "Glyph.h"
 #include "../Color.h"
 #include "../../Resource/IResource.h"
-#include "../../RHI/RHI_Definitions.h"
-//====================================
+#include "../../RHI/RHI_Vertex.h"
+//===================================
 
 namespace spartan
 {
+    class RHI_Buffer;
+    class RHI_CommandList;
+    class RHI_Texture;
+
     namespace math
     {
         class Vector2;
@@ -101,21 +105,21 @@ namespace spartan
 
         // properties
         void SetSize(uint32_t size);
-        RHI_Buffer* GetIndexBuffer() const                          { return m_buffer_index.get(); }
-        RHI_Buffer* GetVertexBuffer() const                         { return m_buffer_vertex.get(); }
+        RHI_Buffer* GetIndexBuffer() const                          { return m_buffers_index[m_buffer_index].get(); }
+        RHI_Buffer* GetVertexBuffer() const                         { return m_buffers_vertex[m_buffer_index].get(); }
         uint32_t GetSize() const                                    { return m_font_size; }
         Font_Hinting_Type GetHinting() const                        { return m_hinting; }
         auto GetForceAutohint() const                               { return m_force_autohint; }
         void SetGlyph(const uint32_t char_code, const Glyph& glyph) { m_glyphs[char_code] = glyph; }
 
     private:
-        uint32_t m_font_size          = 14;
-        uint32_t m_outline_size       = 2;
-        bool m_force_autohint         = false;
-        Font_Hinting_Type m_hinting   = Font_Hinting_Normal;
-        Font_Outline_Type m_outline   = Font_Outline_Positive;
-        Color m_color                 = Color(1.0f, 1.0f, 1.0f, 1.0f);
-        Color m_color_outline         = Color(0.0f, 0.0f, 0.0f, 1.0f);
+        uint32_t m_font_size        = 14;
+        uint32_t m_outline_size     = 2;
+        bool m_force_autohint       = false;
+        Font_Hinting_Type m_hinting = Font_Hinting_Normal;
+        Font_Outline_Type m_outline = Font_Outline_Positive;
+        Color m_color               = Color(1.0f, 1.0f, 1.0f, 1.0f);
+        Color m_color_outline       = Color(0.0f, 0.0f, 0.0f, 1.0f);
         uint32_t m_char_max_width;
         uint32_t m_char_max_height;
         std::unordered_map<uint32_t, Glyph> m_glyphs;
@@ -124,7 +128,10 @@ namespace spartan
         std::shared_ptr<RHI_Texture> m_atlas_outline;
         std::vector<RHI_Vertex_PosTex> m_vertices;
         std::vector<uint32_t> m_indices;
-        std::shared_ptr<RHI_Buffer> m_buffer_index;
-        std::shared_ptr<RHI_Buffer> m_buffer_vertex;
+
+        static const uint32_t buffer_count = 8;
+        uint32_t m_buffer_index            = 0;
+        std::array<std::shared_ptr<RHI_Buffer>, buffer_count> m_buffers_index;
+        std::array<std::shared_ptr<RHI_Buffer>, buffer_count> m_buffers_vertex;
     };
 }

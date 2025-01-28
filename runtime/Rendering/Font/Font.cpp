@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/Import/FontImporter.h"
 #include "../../RHI/RHI_Buffer.h"
 #include "../../RHI/RHI_CommandList.h"
+#include "../../RHI/RHI_Device.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -45,8 +46,11 @@ namespace spartan
 
     Font::Font(const string& file_path, const uint32_t font_size, const Color& color) : IResource(ResourceType::Font)
     {
-        m_buffer_vertex   = make_shared<RHI_Buffer>();
-        m_buffer_index    = make_shared<RHI_Buffer>();
+        for (uint32_t i = 0; i < buffer_count; i++)
+        {
+            m_buffers_vertex[i] = make_shared<RHI_Buffer>();
+            m_buffers_index[i]  = make_shared<RHI_Buffer>();
+        }
         m_char_max_width  = 0;
         m_char_max_height = 0;
         m_color           = color;
@@ -117,14 +121,14 @@ namespace spartan
 
             if (character == ASCII_TAB)
             {
-                // Compute the width of a single space
+                // compute the width of a single space
                 const float space_offset = static_cast<float>(m_glyphs[ASCII_SPACE].horizontal_advance);
                 const float tab_spacing  = space_offset * 4.0f; // 4 spaces per tab
 
-                // Calculate the next tab stop
+                // calculate the next tab stop
                 float next_tab_stop = std::floor((cursor.x + tab_spacing) / tab_spacing) * tab_spacing;
 
-                // Advance the cursor to the next tab stop
+                // advance the cursor to the next tab stop
                 cursor.x = next_tab_stop;
             }
             else if (character == ASCII_NEW_LINE)
@@ -195,41 +199,43 @@ namespace spartan
             }
         }
 
+        m_buffer_index = (m_buffer_index + 1) % buffer_count;
+
         // grow buffers if needed
         {
-            if (m_vertices.size() > m_buffer_vertex->GetElementCount())
+            if (m_vertices.size() > m_buffers_vertex[m_buffer_index]->GetElementCount())
             {
-                m_buffer_vertex = make_shared<RHI_Buffer>(
+                m_buffers_vertex[m_buffer_index] = make_shared<RHI_Buffer>(
                     RHI_Buffer_Type::Vertex,                  // type
                     sizeof(m_vertices[0]),                    // stride
                     static_cast<uint32_t>(m_vertices.size()), // element count
-                    static_cast<void*>(&m_vertices[0]),       // data
+                    m_vertices.data(),                        // data
                     true,                                     // mappable
                     "font_vertex"
                 );
             }
     
-            if (m_indices.size() > m_buffer_index->GetElementCount())
+            if (m_indices.size() > m_buffers_index[m_buffer_index]->GetElementCount())
             {
-                m_buffer_index = make_shared<RHI_Buffer>(
+                m_buffers_index[m_buffer_index] = make_shared<RHI_Buffer>(
                     RHI_Buffer_Type::Index,                  // type
                     sizeof(m_indices[0]),                    // stride
                     static_cast<uint32_t>(m_indices.size()), // element count
-                    static_cast<void*>(&m_indices[0]),       // data
+                    m_indices.data(),                        // data
                     true,                                    // mappable
                     "font_index"
                 );
             }
         }
 
-        cmd_list->UpdateBuffer(m_buffer_vertex.get(), 0, m_buffer_vertex->GetObjectSize(), m_vertices.data(), true);
-        cmd_list->UpdateBuffer(m_buffer_index.get(), 0, m_buffer_index->GetObjectSize(), m_indices.data(), true);
+        cmd_list->UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, m_buffers_vertex[m_buffer_index]->GetObjectSize(), m_vertices.data(), true);
+        cmd_list->UpdateBuffer(m_buffers_index[m_buffer_index].get(),  0, m_buffers_index[m_buffer_index]->GetObjectSize(),  m_indices.data(),  true);
 
         m_font_data.clear();
     }
 
     uint32_t Font::GetIndexCount()
     {
-        return m_buffer_index->GetElementCount();
+        return m_buffers_index[m_buffer_index]->GetElementCount();
     }
 }

@@ -23,9 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RenderDoc.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../Core/Window.h"
 #include "../Core/Definitions.h"
-#include "../Rendering/Renderer.h"
 #include "../Logging/Log.h"
 #if defined(_MSC_VER) // windows
 #include "renderdoc/app/renderdoc_app.h"
