@@ -105,8 +105,7 @@ namespace spartan
         position.y -= m_char_max_height * 1.5f;
 
         // set the cursor to the starting position
-        Vector2 cursor       = position;
-        float starting_pos_x = cursor.x;
+        Vector2 cursor = position;
 
         m_vertices.clear();
         m_indices.clear();
@@ -118,17 +117,20 @@ namespace spartan
 
             if (character == ASCII_TAB)
             {
-                const uint32_t space_offset = m_glyphs[ASCII_SPACE].horizontal_advance;
-                const uint32_t tab_spacing  = space_offset * 4; // spaces in a typical editor
-                float offset_from_start     = cursor.x - starting_pos_x; // keep as float for precision
-                uint32_t next_column_index  = tab_spacing == 0 ? 4 : static_cast<uint32_t>((offset_from_start / tab_spacing) + 1);
-                float offset_to_column      = (next_column_index * tab_spacing) - offset_from_start;
-                cursor.x                    += offset_to_column; // apply offset to align to next tab stop
+                // Compute the width of a single space
+                const float space_offset = static_cast<float>(m_glyphs[ASCII_SPACE].horizontal_advance);
+                const float tab_spacing  = space_offset * 4.0f; // 4 spaces per tab
+
+                // Calculate the next tab stop
+                float next_tab_stop = std::floor((cursor.x + tab_spacing) / tab_spacing) * tab_spacing;
+
+                // Advance the cursor to the next tab stop
+                cursor.x = next_tab_stop;
             }
             else if (character == ASCII_NEW_LINE)
             {
+                cursor.x  = position.x;
                 cursor.y -= m_char_max_height;
-                cursor.x = starting_pos_x;
             }
             else if (character == ASCII_SPACE)
             {
