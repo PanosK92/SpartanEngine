@@ -279,46 +279,57 @@ namespace
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPaddingY() - 5.0f });
 
-               toolbar_button(
-                   IconType::Button_Play, "Play",
-                   []() { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);  },
-                   []() { return spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); },
-                   cursor_pos_x
-               );
-
-               ImGui::PopStyleVar(1);
+                toolbar_button(
+                    IconType::Button_Play, "Play",
+                    []() { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);  },
+                    []() { return spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); },
+                    cursor_pos_x
+                );
+                
+                ImGui::PopStyleVar(1);
             }
 
             // all the other buttons
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
             {
-                num_buttons  = 6.0f;
+                num_buttons  = 7.0f;
                 size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
                 cursor_pos_x = size_avail_x - (size_toolbar - 2.0f);
 
-                // render doc button
-                toolbar_button(
-                    IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
-                    []() { return false; },
-                    []()
-                    {
-                        if (spartan::Debugging::IsRenderdocEnabled())
+                // buttons from custom functionality
+                {
+                    // renderdoc button
+                    toolbar_button(IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
+                        []() { return false; },
+                        []()
                         {
-                            spartan::RenderDoc::FrameCapture();
-                        }
-                        else
-                        {
-                            SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
-                        }
-                    },
-                    cursor_pos_x
-                );
+                            if (spartan::Debugging::IsRenderdocEnabled())
+                            {
+                                spartan::RenderDoc::FrameCapture();
+                            }
+                            else
+                            {
+                                SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
+                            }
+                        },
+                        cursor_pos_x
+                    );
 
-                // all the other buttons
+                    // world selection
+                    toolbar_button(IconType::Component_Terrain, "World selection window",
+                        []() { return GeneralWindows::GetVisibilityWorlds(); },
+                        []()
+                        {
+                            GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds());
+                        }
+                    );
+                }
+
+                // buttons from widgets
                 for (auto& widget_it : widgets)
                 {
-                    Widget* widget = widget_it.second;
+                    Widget* widget            = widget_it.second;
                     const IconType widget_icon = widget_it.first;
 
                     toolbar_button(widget_icon, widget->GetTitle(),

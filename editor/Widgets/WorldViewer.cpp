@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldViewer.h"
 #include "Properties.h"
 #include "../MenuBar.h"
-#include "Viewport.h"
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
@@ -34,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
 #include "Input/Input.h"
-#include "FileSystem/FileSystem.h"
 #include "Core/Engine.h"
 #include "../ImGui/ImGui_Extension.h"
 SP_WARNINGS_OFF
@@ -50,9 +48,10 @@ namespace
 {
     weak_ptr <spartan::Entity> entity_clicked;
     weak_ptr <spartan::Entity> entity_hovered;
-    ImGuiSp::DragDropPayload g_payload;
+    ImGuiSp::DragDropPayload drag_drop_paylod;
     bool popup_rename_entity       = false;
     spartan::Entity* entity_copied = nullptr;
+    ImRect selected_entity_rect;
 }
 
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
@@ -65,10 +64,10 @@ void WorldViewer::OnTickVisible()
 {
     TreeShow();
 
-    // On left click, select entity but only on release
+    // on left click, select entity but only on release
     if (ImGui::IsMouseReleased(0))
     {
-        // Make sure that the mouse was released while on the same entity
+        // make sure that the mouse was released while on the same entity
         if (shared_ptr<spartan::Entity> entity_clicked_raw = entity_clicked.lock())
         {
             if (shared_ptr<spartan::Entity> entity_hovered_raw = entity_hovered.lock())
@@ -105,7 +104,7 @@ void WorldViewer::TreeShow()
         // so, we stop expanding and we bring it into view
         if (m_expand_to_selection && !m_expanded_to_selection)
         {
-            ImGui::ScrollToBringRectIntoView(m_window, m_selected_entity_rect);
+            ImGui::ScrollToBringRectIntoView(m_window, selected_entity_rect);
             m_expand_to_selection = false;
         }
     }
@@ -170,7 +169,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     // keep a copy of the selected item's rect so that we can scroll to bring it into view
     if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
     {
-        m_selected_entity_rect = ImGui::GetCurrentContext()->LastItemData.Rect;
+        selected_entity_rect = ImGui::GetCurrentContext()->LastItemData.Rect;
     }
 
     // manually detect some useful states
@@ -236,9 +235,9 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<spartan::Entity> entity_ptr) c
     // Drag
     if (ImGui::BeginDragDropSource())
     {
-        g_payload.data = entity_ptr->GetObjectId();
-        g_payload.type = ImGuiSp::DragPayloadType::Entity;
-        ImGuiSp::create_drag_drop_paylod(g_payload);
+        drag_drop_paylod.data = entity_ptr->GetObjectId();
+        drag_drop_paylod.type = ImGuiSp::DragPayloadType::Entity;
+        ImGuiSp::create_drag_drop_paylod(drag_drop_paylod);
         ImGui::EndDragDropSource();
     }
     // Drop

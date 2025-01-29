@@ -1222,6 +1222,8 @@ namespace spartan
 
     void Game::Load(DefaultWorld default_world)
     {
+        World::Clear();
+
         ThreadPool::AddTask([default_world]()
         {
             ProgressTracker::SetGlobalLoadingState(true);

@@ -80,7 +80,8 @@ namespace spartan
         const uint8_t swap_chain_buffer_count = 2;
 
         // bindless
-        static array<RHI_Texture*, rhi_max_array_size> bindless_textures;
+        array<RHI_Texture*, rhi_max_array_size> bindless_textures;
+        array<Sb_Light, rhi_max_array_size_lights> binldess_lights;
         bool bindless_materials_dirty = true;
         bool bindless_lights_dirty    = true;
 
@@ -569,6 +570,8 @@ namespace spartan
     void Renderer::OnClear()
     {
         m_renderables.clear();
+        bindless_textures.fill(nullptr);
+        binldess_lights.fill(Sb_Light());
     }
 
     void Renderer::OnFullScreenToggled()
@@ -1013,8 +1016,6 @@ namespace spartan
 
     void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
     {
-        static array<Sb_Light, rhi_max_array_size_lights> properties;
-
         if (ProgressTracker::IsLoading())
             return;
 
@@ -1024,7 +1025,7 @@ namespace spartan
         // cpu
         {
             // clear
-            properties.fill(Sb_Light{});
+            binldess_lights.fill(Sb_Light());
 
             // go through each light
             for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
@@ -1041,29 +1042,29 @@ namespace spartan
                             if (light->GetLightType() == LightType::Point)
                             {
                                 // we do paraboloid projection in the vertex shader so we only want the view here
-                                properties[index].view_projection[i] = light->GetViewMatrix(i);
+                                binldess_lights[index].view_projection[i] = light->GetViewMatrix(i);
                             }
                             else
                             { 
-                                properties[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                                binldess_lights[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
                             }
                         }
                     }
 
-                    properties[index].intensity  = light->GetIntensityWatt();
-                    properties[index].range      = light->GetRange();
-                    properties[index].angle      = light->GetAngle();
-                    properties[index].color      = light->GetColor();
-                    properties[index].position   = light->GetEntity()->GetPosition();
-                    properties[index].direction  = light->GetEntity()->GetForward();
-                    properties[index].flags      = 0;
-                    properties[index].flags     |= light->GetLightType() == LightType::Directional  ? (1 << 0) : 0;
-                    properties[index].flags     |= light->GetLightType() == LightType::Point        ? (1 << 1) : 0;
-                    properties[index].flags     |= light->GetLightType() == LightType::Spot         ? (1 << 2) : 0;
-                    properties[index].flags     |= light->GetFlag(LightFlags::Shadows)            ? (1 << 3) : 0;
-                    properties[index].flags     |= light->GetFlag(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
-                    properties[index].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    properties[index].flags     |= (light->GetFlag(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
+                    binldess_lights[index].intensity  = light->GetIntensityWatt();
+                    binldess_lights[index].range      = light->GetRange();
+                    binldess_lights[index].angle      = light->GetAngle();
+                    binldess_lights[index].color      = light->GetColor();
+                    binldess_lights[index].position   = light->GetEntity()->GetPosition();
+                    binldess_lights[index].direction  = light->GetEntity()->GetForward();
+                    binldess_lights[index].flags      = 0;
+                    binldess_lights[index].flags     |= light->GetLightType() == LightType::Directional  ? (1 << 0) : 0;
+                    binldess_lights[index].flags     |= light->GetLightType() == LightType::Point        ? (1 << 1) : 0;
+                    binldess_lights[index].flags     |= light->GetLightType() == LightType::Spot         ? (1 << 2) : 0;
+                    binldess_lights[index].flags     |= light->GetFlag(LightFlags::Shadows)            ? (1 << 3) : 0;
+                    binldess_lights[index].flags     |= light->GetFlag(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
+                    binldess_lights[index].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    binldess_lights[index].flags     |= (light->GetFlag(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
                     index++;
@@ -1075,7 +1076,7 @@ namespace spartan
         uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
         RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &properties[0], update_size);
+        buffer->Update(cmd_list, &binldess_lights[0], update_size);
     }
 
     void Renderer::Screenshot(const string& file_path)

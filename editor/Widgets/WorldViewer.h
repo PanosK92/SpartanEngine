@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES ======
 #include "Widget.h"
 #include <memory>
-#include "../ImGui/Source/imgui_internal.h"
-//=========================================
+//=================
 
 namespace spartan { class Entity; }
 
@@ -71,7 +70,6 @@ private:
     static void ActionEntityCreateAudioListener();
 
     std::shared_ptr<spartan::Entity> m_entity_empty;
-    bool m_expand_to_selection      = false;
-    bool m_expanded_to_selection    = false;
-    ImRect m_selected_entity_rect;
+    bool m_expand_to_selection   = false;
+    bool m_expanded_to_selection = false;
 };

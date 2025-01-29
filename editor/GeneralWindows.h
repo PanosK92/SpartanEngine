@@ -29,6 +29,9 @@ public:
     static void Initialize(Editor* editor);
     static void Tick();
 
+    static bool GetVisibilityWorlds();
+    static void SetVisibilityWorlds(const bool visibility);
+
     static bool* GetVisiblityWindowAbout();
     static bool* GetVisiblityWindowShortcuts();
 };

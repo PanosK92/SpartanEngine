@@ -103,7 +103,7 @@ namespace ImGuiSp
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         }
 
-        // Get texture from icon enum (if provided)
+        // get texture from icon enum (if provided)
         if (!texture && icon != IconType::Undefined)
         {
             texture = IconLoader::GetTextureByType(icon);
