@@ -57,16 +57,7 @@ float3 F_Schlick(const float3 f0, float3 f90, float v_dot_h)
 
 float3 get_f90(Surface surface)
 {
-    // for metals
-    if (surface.metallic > 0.0)
-    {
-        return surface.F0;
-    }
-    // for dielectrics (non-metals)
-    else
-    {
-        return surface.F0 + (1.0 - surface.F0) * pow(1.0 - surface.roughness, 5.0);
-    }
+    return lerp(1.0f, surface.F0, surface.metallic);
 }
 
 float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha2)
