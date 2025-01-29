@@ -1222,8 +1222,13 @@ namespace spartan
 
     void Game::Load(DefaultWorld default_world)
     {
+        // shutdown current world/logic
+        Game::Shutdown();
+
+        // clear all entities and their resources (and memory)
         World::Clear();
 
+        // load whatever needs to be loaded
         ThreadPool::AddTask([default_world]()
         {
             ProgressTracker::SetGlobalLoadingState(true);
