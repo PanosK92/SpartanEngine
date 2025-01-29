@@ -140,16 +140,16 @@ namespace spartan
             #endif
         }
 
-        float get_gamma()
+        void get_gamma(float* gamma)
         {
-            float gamma = 2.2f;
+            *gamma = 2.2f;
         
         #ifdef _MSC_VER
             HDC hdc = GetDC(nullptr); // get the device context for the primary monitor
             if (!hdc)
             {
                 SP_LOG_ERROR("Failed to get device context");
-                return gamma;
+                return;
             }
         
             WORD gammaRamp[3][256];
@@ -168,7 +168,7 @@ namespace spartan
                 // calculate the average normalized value
                 float averageValue = sum / 256.0f;
                 // estimate gamma as the inverse of the average value
-                gamma = 1.0f / averageValue;
+                *gamma = 1.0f / averageValue;
             }
             else
             {
@@ -181,7 +181,7 @@ namespace spartan
             Display* display = XOpenDisplay(nullptr);
             if (!display)
             {
-                std::cerr << "Failed to open X display" << std::endl;
+                SP_LOG_ERROR("Failed to open X display");
                 return gamma;
             }
         
@@ -200,17 +200,15 @@ namespace spartan
                 // calculate the average normalized value
                 float averageValue = sum / 256.0f;
                 // estimate gamma as the inverse of the average value
-                gamma = 1.0f / averageValue;
+                *gamma = 1.0f / averageValue;
             }
             else
             {
-                std::cerr << "Failed to get gamma ramp" << std::endl;
+                SP_LOG_ERROR("Failed to get gamma ramp");
             }
         
             XCloseDisplay(display);
         #endif
-        
-            return gamma;
         }
     }
 
@@ -275,9 +273,9 @@ namespace spartan
         }
 
         // detect hdr capabilities
-        gamma = get_gamma();
+        get_gamma(&gamma);
         get_hdr_capabilities(&is_hdr_capable, &luminance_nits_min, &luminance_nits_max);
-        SP_LOG_INFO("HDR: %s, min luminance: %d nits, max luminance: %d nits", is_hdr_capable ? "true" : "false", luminance_nits_min, luminance_nits_max);
+        SP_LOG_INFO("HDR: %s, min luminance: %.0f nits, max luminance: %.0f nits", is_hdr_capable ? "true" : "false", luminance_nits_min, luminance_nits_max);
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
