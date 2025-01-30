@@ -29,6 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <dxgi1_6.h>
 #include <wrl.h>
 #pragma comment(lib, "dxgi.lib")
+#elif defined(__linux__)
+#include <X11/Xlib.h>
+#include <X11/extensions/xf86vmode.h>
 #endif
 //==============================
 
@@ -178,7 +181,7 @@ namespace spartan
             ReleaseDC(nullptr, hdc);
         
         #elif defined(__linux__)
-            Display* display = XOpenDisplay(nullptr);
+            auto* display = XOpenDisplay(nullptr);
             if (!display)
             {
                 SP_LOG_ERROR("Failed to open X display");
