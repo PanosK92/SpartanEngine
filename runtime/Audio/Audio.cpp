@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../Profiling/Profiler.h"
 SP_WARNINGS_OFF
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 #include <fmod.hpp>
 #include <fmod_errors.h>
 #endif
@@ -35,7 +35,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES ======
 using namespace std;
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 using namespace FMOD;
 #endif
 //===================
@@ -44,7 +44,7 @@ namespace spartan
 {
     namespace
     { 
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         FMOD::System* fmod_system  = nullptr;
         uint32_t fmod_result       = 0;
         uint32_t fmod_max_channels = 32;
@@ -55,7 +55,7 @@ namespace spartan
 
     void Audio::Initialize()
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         // Create FMOD instance
         if (!HandleErrorFmod(System_Create(&fmod_system)))
             return;
@@ -96,7 +96,7 @@ namespace spartan
 
     void Audio::Shutdown()
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (!fmod_system)
             return;
 
@@ -107,7 +107,7 @@ namespace spartan
 
     void Audio::Tick()
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         // Don't play audio if the engine is not in game mode
         if (!Engine::IsFlagSet(EngineMode::Playing))
             return;
@@ -138,14 +138,14 @@ namespace spartan
 
     void Audio::SetListenerEntity(Entity* entity)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         m_listener = entity;
         #endif
     }
 
     bool Audio::HandleErrorFmod(int result)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (result != FMOD_OK)
         {
             SP_LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(result)));
@@ -158,7 +158,7 @@ namespace spartan
 
     bool Audio::CreateSound(const string& file_path, int sound_mode, void*& sound)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         return Audio::HandleErrorFmod(fmod_system->createSound(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));
         #else
         return true;
@@ -167,7 +167,7 @@ namespace spartan
 
     bool Audio::CreateStream(const string& file_path, int sound_mode, void*& sound)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         return Audio::HandleErrorFmod(fmod_system->createStream(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));
         #else
         return true;
@@ -178,7 +178,7 @@ namespace spartan
     {
         if (MUTE == 0)
         {
-            #if defined(_MSC_VER)
+            #if defined(_WIN32)
             return Audio::HandleErrorFmod(fmod_system->playSound(static_cast<FMOD::Sound*>(sound), nullptr, false, reinterpret_cast<FMOD::Channel**>(&channel)));
             #else
             return false;

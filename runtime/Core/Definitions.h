@@ -80,7 +80,7 @@ struct sp_info
 #define WIDE_STR_HELPER(x) L ## x
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
 
-#if defined(_MSC_VER)
+#if defined(_WIN32)
     #define SP_WARNING_WINDOW(text_message)                                                  \
     {                                                                                        \
         MessageBeep(MB_ICONWARNING);                                                         \
@@ -98,7 +98,7 @@ struct sp_info
 //================================================================================
 
 //= ERROR WINDOW =================================================================
-#if defined(_MSC_VER)
+#if defined(_WIN32)
     #define SP_ERROR_WINDOW(text_message)                                                \
     {                                                                                    \
         MessageBeep(MB_ICONERROR);                                                       \

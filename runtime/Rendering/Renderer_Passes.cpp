@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../Rendering/Material.h"
-#ifdef _MSC_VER
+#ifdef _WIN32
 #include "../RHI/RHI_FidelityFX.h"
 #endif
 #include "../RHI/RHI_RasterizerState.h"

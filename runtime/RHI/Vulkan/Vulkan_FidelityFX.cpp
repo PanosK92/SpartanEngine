@@ -40,7 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Debugging.h"
 #include "../Input/Input.h"
 SP_WARNINGS_OFF
-#ifdef _MSC_VER
+#ifdef _WIN32
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
 #include <FidelityFX/host/ffx_sssr.h>
@@ -58,7 +58,7 @@ using namespace std;
 
 namespace spartan
 {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
     namespace
     {
         // shared among all contexts
@@ -796,7 +796,7 @@ namespace spartan
 
     void RHI_FidelityFX::Initialize()
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         // register FidelityFX version
         {
             string ffx_version = to_string(FFX_SDK_VERSION_MAJOR) + "." +
@@ -903,7 +903,7 @@ namespace spartan
 
     void RHI_FidelityFX::Shutdown()
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         fsr3::context_destroy();
         brixelizer_gi::context_destroy();
         sssr::context_destroy();
@@ -948,7 +948,7 @@ namespace spartan
 
     void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         // matrices - ffx is right-handed
         {
             view_previous            = view;
@@ -993,7 +993,7 @@ namespace spartan
 
     void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         bool resolution_render_changed = resolution_render.x != resolution_render_width  || resolution_render.y != resolution_render_height;
         bool resolution_output_changed = resolution_output.x != resolution_output_width  || resolution_output.y != resolution_output_height;
 
@@ -1020,14 +1020,14 @@ namespace spartan
 
     void RHI_FidelityFX::FSR3_ResetHistory()
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         fsr3::description_dispatch.reset = true;
     #endif
     }
 
     void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         // get jitter phase count
         const uint32_t resolution_render_x = static_cast<uint32_t>(fsr3::description_context.maxRenderSize.width);
         const uint32_t resolution_render_y = static_cast<uint32_t>(fsr3::description_context.maxRenderSize.height);
@@ -1060,7 +1060,7 @@ namespace spartan
         RHI_Texture* tex_output
     )
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         SP_ASSERT(fsr3::context_created);
 
         // output is displayed in the viewport, so add a barrier to ensure any work is done before writting to it
@@ -1115,7 +1115,7 @@ namespace spartan
         RHI_Texture* tex_output
     )
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         SP_ASSERT(sssr::context_created);
 
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
@@ -1177,7 +1177,7 @@ namespace spartan
         RHI_Texture* tex_debug
     )
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         SP_ASSERT(brixelizer_gi::context_created);
 
         // instances
@@ -1359,7 +1359,7 @@ namespace spartan
         RHI_Texture* tex_debug
     )
     {
-    #ifdef _MSC_VER
+    #ifdef _WIN32
         SP_ASSERT(brixelizer_gi::context_created);
 
         bool debug_enabled  = brixelizer_gi::debug_mode != brixelizer_gi::DebugMode::Max;

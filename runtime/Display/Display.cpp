@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Display.h"
 #include <SDL.h>
 #include "Window.h"
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 #include <dxgi.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
@@ -52,7 +52,7 @@ namespace spartan
             *luminance_min  = 0.0f;
             *luminance_max  = 0.0f;
 
-            #if defined(_MSC_VER)
+            #if defined(_WIN32)
                 // create dxgi factory
                 Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
                 if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
@@ -144,7 +144,7 @@ namespace spartan
         {
             *gamma = 2.2f;
         
-        #ifdef _MSC_VER
+        #ifdef _WIN32
             HDC hdc = GetDC(nullptr); // get the device context for the primary monitor
             if (!hdc)
             {

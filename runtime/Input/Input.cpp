@@ -31,7 +31,7 @@ using namespace spartan::math;
 //============================
 
 // these need to be included on windows or sdl will throw a bunch of linking errors
-#ifdef _MSC_VER
+#ifdef _WIN32
 #pragma comment(lib, "winmm.lib")
 #pragma comment(lib, "version.lib")
 #endif

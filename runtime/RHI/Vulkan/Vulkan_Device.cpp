@@ -242,7 +242,7 @@ namespace spartan
             "VK_EXT_hdr_metadata",            
             "VK_EXT_robustness2",             
             "VK_KHR_external_memory",         // to share images with Intel Open Image Denoise
-            #if defined(_MSC_VER)             
+            #if defined(_WIN32)
             "VK_KHR_external_memory_win32",   // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
             "VK_KHR_synchronization2",        // this is part of Vulkan 1.4 but AMD FidelityFX Breadcrumbs without it (they fetch device pointers from some table)
@@ -675,7 +675,7 @@ namespace spartan
                 vector<VkExternalMemoryHandleTypeFlags> external_memory_handle_types;
                 VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
                 vkGetPhysicalDeviceMemoryProperties(RHI_Context::device_physical, &physical_device_memory_properties);
-                #if defined(_MSC_VER)
+                #if defined(_WIN32)
                 external_memory_handle_types.resize(physical_device_memory_properties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR);
                 #else
                 SP_LOG_ERROR("Not implemented, you need to use the Linux equivalent via VK_KHR_external_memory_fd");
@@ -1901,7 +1901,7 @@ namespace spartan
         // external memory (if needed)
         VkExternalMemoryImageCreateInfo external_memory_image_create_info = {};
         external_memory_image_create_info.sType       = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         external_memory_image_create_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
         #else
         external_memory_image_create_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
@@ -1990,7 +1990,7 @@ namespace spartan
         // get external memory handle
         if (texture->HasExternalMemory())
         {
-            #if defined(_MSC_VER)
+            #if defined(_WIN32)
             VkMemoryGetWin32HandleInfoKHR get_handle_info = {};
             get_handle_info.sType                         = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
             get_handle_info.memory                        = allocation_info.deviceMemory;
