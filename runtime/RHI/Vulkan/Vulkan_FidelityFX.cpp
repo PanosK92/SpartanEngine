@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_Device.h"
-#include "../RHI_Swapchain.h"
+#include "../RHI_SwapChain.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Shader.h"
 #include "../RHI_Pipeline.h"
