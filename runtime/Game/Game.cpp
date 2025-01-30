@@ -1177,7 +1177,7 @@ namespace spartan
                         inside_the_car = false;
                     }
 
-                    // enable/disabe car/camera control
+                    // enable/disable car/camera control
                     camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
                     m_default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
 
