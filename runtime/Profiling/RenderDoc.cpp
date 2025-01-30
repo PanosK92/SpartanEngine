@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../Core/Definitions.h"
 #include "../Logging/Log.h"
-#if defined(_MSC_VER) // windows
+#if defined(_WIN32) // windows
 #include "renderdoc/app/renderdoc_app.h"
 #include <windows.h>
 #else
@@ -42,7 +42,7 @@ namespace spartan
     static RENDERDOC_API_1_5_0* rdc_api = nullptr;
     static void* rdc_module             = nullptr;
 
-#if defined(_MSC_VER) // windows
+#if defined(_WIN32) // windows
     static vector<wstring> get_renderdoc_dll_paths()
     {
         vector<wstring> dll_paths;
@@ -155,7 +155,7 @@ namespace spartan
         if (rdc_api == nullptr)
         {
             pRENDERDOC_GetAPI rdc_get_api = nullptr;
-#if defined(_MSC_VER) // windows
+#if defined(_WIN32) // windows
             // if renderdoc is already injected into the engine, use the existing module
             rdc_module = ::GetModuleHandleA("renderdoc.dll");
 
@@ -194,7 +194,7 @@ namespace spartan
     {
         if (rdc_module != nullptr)
         {
-#if defined(_MSC_VER) // windows
+#if defined(_WIN32) // windows
             ::FreeLibrary(static_cast<HMODULE>(rdc_module));
 #else
             SP_ASSERT_MSG(false, "Not implemented");

@@ -43,7 +43,7 @@ namespace spartan
         static std::string callstack_str;
         std::stringstream callstack;
 
-#ifdef _MSC_VER
+#ifdef _WIN32
         HANDLE process = GetCurrentProcess();
         HANDLE thread = GetCurrentThread();
 

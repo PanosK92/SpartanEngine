@@ -33,7 +33,7 @@ SP_WARNINGS_ON
 //====================================
 
 //= LINKING ============================
-#ifdef _MSC_VER
+#ifdef _WIN32
 // Statically linking SDL2 requirements
 #pragma comment(lib, "Imm32.lib")
 #pragma comment(lib, "Setupapi.lib")
@@ -68,7 +68,7 @@ namespace spartan
     void Window::Initialize()
     {
         // set the process to be per monitor DPI aware
-        #ifdef _MSC_VER
+        #ifdef _WIN32
         // User32.lib + dll, Windows 10 v1607+ (Creators Update)
         if (HMODULE user32 = LoadLibrary(TEXT("user32.dll")))
         {
@@ -141,7 +141,7 @@ namespace spartan
         }
  
         // get the DPI scale - has to be done after window creation
-        #ifdef _MSC_VER
+        #ifdef _WIN32
         dpi_scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetHandleRaw()))) / 96.0f;
         #endif
 

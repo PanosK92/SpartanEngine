@@ -153,7 +153,7 @@ namespace spartan
 
         string compute_sha256(const string& input)
         {
-        #ifdef _MSC_VER
+        #ifdef _WIN32
             #pragma comment(lib, "bcrypt.lib")
 
             BCRYPT_ALG_HANDLE hAlg = NULL;

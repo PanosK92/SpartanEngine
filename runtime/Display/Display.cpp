@@ -24,11 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Display.h"
 #include <SDL.h>
 #include "Window.h"
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 #include <dxgi.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
 #pragma comment(lib, "dxgi.lib")
+#elif defined(__linux__)
+#include <X11/Xlib.h>
+#include <X11/extensions/xf86vmode.h>
 #endif
 //==============================
 
@@ -52,7 +55,7 @@ namespace spartan
             *luminance_min  = 0.0f;
             *luminance_max  = 0.0f;
 
-            #if defined(_MSC_VER)
+            #if defined(_WIN32)
                 // create dxgi factory
                 Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
                 if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
@@ -144,7 +147,7 @@ namespace spartan
         {
             *gamma = 2.2f;
         
-        #ifdef _MSC_VER
+        #ifdef _WIN32
             HDC hdc = GetDC(nullptr); // get the device context for the primary monitor
             if (!hdc)
             {
@@ -178,7 +181,7 @@ namespace spartan
             ReleaseDC(nullptr, hdc);
         
         #elif defined(__linux__)
-            Display* display = XOpenDisplay(nullptr);
+            auto* display = XOpenDisplay(nullptr);
             if (!display)
             {
                 SP_LOG_ERROR("Failed to open X display");

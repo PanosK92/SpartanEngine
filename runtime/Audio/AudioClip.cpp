@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Audio.h"
 #include "../IO/FileStream.h"
 #include "../World/Entity.h"
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 #include <fmod.hpp>
 #endif
 //===========================
@@ -37,7 +37,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-#if defined(_MSC_VER)
+#if defined(_WIN32)
     namespace
     {
         FMOD_RESULT F_CALLBACK channel_callback(FMOD_CHANNELCONTROL* channelcontrol, FMOD_CHANNELCONTROL_TYPE controlType, FMOD_CHANNELCONTROL_CALLBACK_TYPE callbackType, void* commandData1, void* commandData2)
@@ -84,20 +84,17 @@ namespace spartan
 
     AudioClip::~AudioClip()
     {
-        #if defined(_MSC_VER)
-
+        #if defined(_WIN32)
         if (FMOD::Sound* sound = static_cast<FMOD::Sound*>(m_fmod_sound))
         {
             Audio::HandleErrorFmod(sound->release());
         }
-
         #endif
     }
 
     void AudioClip::LoadFromFile(const string& file_path)
     {
-        #if defined(_MSC_VER)
-
+        #if defined(_WIN32)
         // native
         if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_AUDIO)
         {
@@ -118,14 +115,12 @@ namespace spartan
         // load
         (m_playMode == PlayMode::Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
         m_object_size = estimate_memory_usage(static_cast<FMOD::Sound*>(m_fmod_sound));
-
         #endif
     }
 
     void AudioClip::SaveToFile(const string& file_path)
     {
-        #if defined(_MSC_VER)
-
+        #if defined(_WIN32)
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
             return;
@@ -133,14 +128,12 @@ namespace spartan
         file->Write(GetResourceFilePath());
 
         file->Close();
-
         #endif
     }
 
     void AudioClip::Play(const bool loop, const bool is_3d)
     {
-        #if defined(_MSC_VER)
-
+        #if defined(_WIN32)
         if (IsPlaying())
             return;
  
@@ -155,14 +148,12 @@ namespace spartan
 
         SetLoop(loop);
         Set3d(is_3d);
-
         #endif
     }
 
     void AudioClip::Pause()
     {
-        #if defined(_MSC_VER)
-
+        #if defined(_WIN32)
         if (!IsPaused())
             return;
 
@@ -170,13 +161,12 @@ namespace spartan
         {
             Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPaused(true));
         }
-
         #endif
     }
 
     void AudioClip::Stop()
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (!IsPlaying())
             return;
 
@@ -189,7 +179,7 @@ namespace spartan
 
     bool AudioClip::GetLoop() const
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             FMOD_MODE current_mode;
@@ -204,7 +194,7 @@ namespace spartan
 
     void AudioClip::SetLoop(const bool loop)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             FMOD_MODE current_mode;
@@ -229,7 +219,7 @@ namespace spartan
 
     bool AudioClip::SetVolume(float volume)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setVolume(volume));
@@ -241,7 +231,7 @@ namespace spartan
 
     bool AudioClip::SetMute(const bool mute)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setMute(mute));
@@ -253,7 +243,7 @@ namespace spartan
 
     bool AudioClip::SetPriority(const int priority)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPriority(priority));
@@ -265,7 +255,7 @@ namespace spartan
 
     bool AudioClip::SetPitch(const float pitch)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPitch(pitch));
@@ -277,7 +267,7 @@ namespace spartan
 
     bool AudioClip::SetPan(const float pan)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             return Audio::HandleErrorFmod(channel->setPan(pan));
@@ -289,7 +279,7 @@ namespace spartan
 
     void AudioClip::Set3d(const bool enabled)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             channel->setMode(enabled ? FMOD_3D : FMOD_2D);
@@ -299,7 +289,7 @@ namespace spartan
 
     bool AudioClip::Get3d() const
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             FMOD_MODE current_mode;
@@ -316,7 +306,7 @@ namespace spartan
 
     bool AudioClip::Update()
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (!m_entity)
             return true;
 
@@ -335,7 +325,7 @@ namespace spartan
     {
         bool is_playing = false;
 
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             Audio::HandleErrorFmod(channel->isPlaying(&is_playing));
@@ -349,7 +339,7 @@ namespace spartan
     {
         bool is_paused = false;
 
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             Audio::HandleErrorFmod(channel->getPaused(&is_paused));
@@ -361,8 +351,7 @@ namespace spartan
 
     float AudioClip::GetProgress()
     {
-        #if defined(_MSC_VER)
-
+        #if defined(_WIN32)
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
             // Get total sound length
@@ -388,7 +377,7 @@ namespace spartan
 
     bool AudioClip::CreateSound(const string& file_path)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         // Create sound
         if (!Audio::CreateSound(file_path, GetSoundMode(), m_fmod_sound))
             return false;
@@ -403,7 +392,7 @@ namespace spartan
 
     bool AudioClip::CreateStream(const string& file_path)
     {
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         // Create sound
         if (!Audio::CreateStream(file_path, GetSoundMode(), m_fmod_sound))
             return false;
@@ -419,11 +408,10 @@ namespace spartan
     int AudioClip::GetSoundMode() const
     {
         unsigned int sound_mode  = 0;
-        #if defined(_MSC_VER)
+        #if defined(_WIN32)
         sound_mode              |= FMOD_2D;
         sound_mode              |= FMOD_3D_LINEARROLLOFF;
         sound_mode              |= FMOD_LOOP_OFF;
-
         #endif
         return sound_mode;
     }

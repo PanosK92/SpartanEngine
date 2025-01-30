@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "pch.h"
 #include "RHI_PhysicalDevice.h"
-#ifdef _MSC_VER
+#ifdef _WIN32
 #include <Windows.h>
 #endif
 //=============================
@@ -64,7 +64,7 @@ namespace spartan
 
         if (IsAmd())
         {
-            #ifdef _MSC_VER
+            #ifdef _WIN32
             HKEY hKey;
             const char* subkey     = "SOFTWARE\\AMD\\CN";
             const char* value_name = "OldReleaseVersion";
