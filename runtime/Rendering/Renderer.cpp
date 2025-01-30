@@ -179,7 +179,6 @@ namespace spartan
             SetOption(Renderer_Option::Physics,                     0.0f);
             SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
             SetOption(Renderer_Option::OcclusionCulling,            0.0f);                                                 // disabled by default as it's a WIP (you can see the query delays)
-            SetOption(Renderer_Option::Exposure,                    1.0f);
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
 
             SetWind(Vector3(1.0f, 0.0f, 0.5f));

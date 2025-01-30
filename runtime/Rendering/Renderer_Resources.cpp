@@ -574,7 +574,7 @@ namespace spartan
         // misc
         {
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
-            standard_texture(Renderer_StandardTexture::Foam) = make_shared<RHI_Texture>(dir_texture + "foam.jpg");
+            standard_texture(Renderer_StandardTexture::Foam)         = make_shared<RHI_Texture>(dir_texture + "foam.jpg");
         }
     }
 

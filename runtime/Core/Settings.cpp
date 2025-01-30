@@ -76,7 +76,6 @@ namespace spartan
                 case Renderer_Option::Upsampling:                  return "Upsampling";
                 case Renderer_Option::Sharpness:                   return "Sharpness";
                 case Renderer_Option::Hdr:                         return "Hdr";
-                case Renderer_Option::Exposure:                    return "Exposure";
                 case Renderer_Option::Gamma:                       return "Gamma";
                 case Renderer_Option::Vsync:                       return "Vsync";
                 case Renderer_Option::VariableRateShading:         return "VariableRateShading";

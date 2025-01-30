@@ -59,7 +59,6 @@ namespace spartan
         Upsampling,
         Sharpness,
         Hdr,
-        Exposure,
         WhitePoint,
         Gamma,
         Vsync,

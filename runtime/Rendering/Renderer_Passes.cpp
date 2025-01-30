@@ -1597,7 +1597,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(0.0f, GetOption<float>(Renderer_Option::Tonemapping), GetOption<float>(Renderer_Option::Exposure));
+        m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Tonemapping));
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1773,7 +1773,7 @@ namespace spartan
                 GetCamera().get(),
                 m_cb_frame_cpu.delta_time,
                 GetOption<float>(Renderer_Option::Sharpness),
-                GetOption<float>(Renderer_Option::Exposure),
+                1.0f,
                 GetOption<float>(Renderer_Option::ResolutionScale),
                 tex_in,
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),

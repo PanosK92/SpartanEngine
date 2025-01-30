@@ -107,7 +107,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // get cpu data
     float3 f3_value    = pass_get_f3_value();
-    float tone_mapping = f3_value.y;
+    float tone_mapping = f3_value.x;
     float4 color       = tex[thread_id.xy];
 
     if (buffer_frame.hdr_enabled == 0.0f) // SDR
@@ -131,11 +131,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 break;
         }
 
-        color.rgb = linear_to_srgb(color.rgb);
+        color.rgb  = linear_to_srgb(color.rgb);
     }
     else // HDR
     {
-        color.rgb = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
+        color.rgb  = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
     }
 
     // at this point there is not reason to store an alpha value
