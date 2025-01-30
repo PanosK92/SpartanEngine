@@ -148,14 +148,13 @@ Texture2DArray tex_light_color : register(t14);
 Texture2D tex_lut_ibl     : register(t15);
 Texture2D tex_environment : register(t16);
 Texture2D tex_ssao        : register(t17);
-Texture2D tex_ssr         : register(t18);
-Texture2D tex             : register(t19);
-Texture2D tex2            : register(t20);
+Texture2D tex             : register(t18);
+Texture2D tex2            : register(t19);
 
 // bindless arrays
-Texture2D material_textures[]                            : register(t21, space1);
-StructuredBuffer<MaterialParameters> material_parameters : register(t22, space2);
-StructuredBuffer<LightParameters> light_parameters       : register(t23, space3);
+Texture2D material_textures[]                            : register(t20, space1);
+StructuredBuffer<MaterialParameters> material_parameters : register(t21, space2);
+StructuredBuffer<LightParameters> light_parameters       : register(t22, space3);
 SamplerComparisonState samplers_comparison[]             : register(s0,  space4);
 SamplerState samplers[]                                  : register(s1,  space5);
 

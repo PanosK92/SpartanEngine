@@ -1299,7 +1299,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse_gi,  GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao));
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssr,               GetRenderTarget(Renderer_RenderTarget::ssr));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,              GetRenderTarget(Renderer_RenderTarget::ssr));
         cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,           GetRenderTarget(Renderer_RenderTarget::sss));
         cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
