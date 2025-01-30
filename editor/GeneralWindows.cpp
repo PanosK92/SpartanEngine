@@ -47,6 +47,10 @@ namespace
 
         void window()
         {
+            if (!visible)
+                return;
+
+            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowSize(ImVec2(width, width * 0.52f));
             if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDocking))
             {
@@ -73,6 +77,10 @@ namespace
 
         void window()
         {
+             if (!visible)
+                return;
+
+            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowSize(ImVec2(width, width * 0.36f));
             if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDocking))
             {
@@ -170,6 +178,9 @@ namespace
     
         void window()
         {
+             if (!visible)
+                return;
+
             static vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors);
         
             static const string window_title  = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
@@ -398,6 +409,9 @@ namespace
 
         void window()
         {
+            if (!visible)
+                return;
+
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowFocus();
             ImGui::Begin("Shortcuts & Input Reference", &visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
@@ -461,7 +475,7 @@ namespace
             if (visible_download_prompt)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                ImGui::SetNextWindowSize(ImVec2(300, 150), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(300, 150));
                 if (ImGui::Begin("Default worlds", &visible_download_prompt, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
                     ImGui::Text("No default worlds are present. Would you like to download them?");
@@ -554,27 +568,11 @@ void GeneralWindows::Tick()
 {
     // windows
     {
-        if (sponsor::visible)
-        { 
-            sponsor::window();
-        }
-
-        if (introduction::visible)
-        { 
-            introduction::window();
-        }
-
-        if (about::visible)
-        {
-            about::window();
-        }
-
-        if (shortcuts::visible)
-        {
-            shortcuts::window();
-        }
-
         worlds::window();
+        introduction::window();
+        sponsor::window();
+        about::window();
+        shortcuts::window();
     }
 
     // shortcuts
