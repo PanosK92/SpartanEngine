@@ -113,8 +113,8 @@ namespace spartan
         Font_Outline_Type m_outline = Font_Outline_Positive;
         Color m_color               = Color(1.0f, 1.0f, 1.0f, 1.0f);
         Color m_color_outline       = Color(0.0f, 0.0f, 0.0f, 1.0f);
-        uint32_t m_char_max_width;
-        uint32_t m_char_max_height;
+        uint32_t m_char_max_width   = 0;
+        uint32_t m_char_max_height  = 0;
         std::unordered_map<uint32_t, Glyph> m_glyphs;
         std::shared_ptr<RHI_Texture> m_atlas;
         std::shared_ptr<RHI_Texture> m_atlas_outline;

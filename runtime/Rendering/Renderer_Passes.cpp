@@ -1269,7 +1269,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::frame,            tex_refraction);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             tex_refraction);
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere);
 
@@ -2268,7 +2268,7 @@ namespace spartan
         {
             m_pcb_pass_cpu.set_f4_value(font->GetColorOutline());
             cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlasOutline().get());
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, font->GetAtlasOutline().get());
             cmd_list->DrawIndexed(font->GetIndexCount());
         }
 
@@ -2276,7 +2276,7 @@ namespace spartan
         {
             m_pcb_pass_cpu.set_f4_value(font->GetColor());
             cmd_list->PushConstants(m_pcb_pass_cpu);
-            cmd_list->SetTexture(Renderer_BindingsSrv::font_atlas, font->GetAtlas().get());
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, font->GetAtlas().get());
             cmd_list->DrawIndexed(font->GetIndexCount());
         }
 

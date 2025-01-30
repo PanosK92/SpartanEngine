@@ -134,15 +134,13 @@ namespace spartan
         environment = 16,
         ssao        = 17,
         ssr         = 18,
-        frame       = 19,
-        tex         = 20,
-        tex2        = 21,
-        font_atlas  = 22,
+        tex         = 19,
+        tex2        = 20,
 
         // bindless
-        material_textures   = 23,
-        material_parameters = 24,
-        light_parameters    = 25
+        material_textures   = 21,
+        material_parameters = 22,
+        light_parameters    = 23
     };
 
     enum class Renderer_BindingsUav

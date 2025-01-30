@@ -42,7 +42,7 @@ float4 main_ps(vertex input) : SV_TARGET
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
     
     // sample text from texture atlas
-    color.r = tex_font_atlas.Sample(samplers[sampler_bilinear_clamp], input.uv).r;
+    color.r = tex.Sample(samplers[sampler_bilinear_clamp], input.uv).r;
     color.g = color.r;
     color.b = color.r;
     color.a = color.r;

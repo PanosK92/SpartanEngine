@@ -50,9 +50,7 @@ namespace spartan
             m_buffers_vertex[i] = make_shared<RHI_Buffer>();
             m_buffers_index[i]  = make_shared<RHI_Buffer>();
         }
-        m_char_max_width  = 0;
-        m_char_max_height = 0;
-        m_color           = color;
+        m_color = color;
 
         SetSize(font_size);
         LoadFromFile(file_path);
@@ -141,13 +139,13 @@ namespace spartan
             else
             {
                 // first triangle in quad
-                m_vertices.push_back({cursor.x + glyph.offset_x, cursor.y + glyph.offset_y, 0.0f, glyph.uv_x_left, glyph.uv_y_top});
+                m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
-                m_vertices.push_back({cursor.x + glyph.offset_x, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left, glyph.uv_y_bottom});
+                m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom});
     
                 // second triangle in quad
-                m_vertices.push_back({cursor.x + glyph.offset_x, cursor.y + glyph.offset_y, 0.0f, glyph.uv_x_left, glyph.uv_y_top});
-                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y, 0.0f, glyph.uv_x_right, glyph.uv_y_top});
+                m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
+                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_right, glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
     
                 // add indices for the two triangles (6 indices for 2 triangles)
@@ -175,12 +173,11 @@ namespace spartan
 
     void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)
     {
-        if (!HasText())
-            return;
+        SP_ASSERT(HasText());
     
         m_buffer_index = (m_buffer_index + 1) % buffer_count;
 
-        // grow buffers if needed
+        // grow gpu buffers if needed
         {
             if (m_vertices.size() > m_buffers_vertex[m_buffer_index]->GetElementCount())
             {
@@ -207,6 +204,7 @@ namespace spartan
             }
         }
 
+        // map vertices and indices to gpu buffers
         cmd_list->UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, m_buffers_vertex[m_buffer_index]->GetObjectSize(), m_vertices.data(), true);
         cmd_list->UpdateBuffer(m_buffers_index[m_buffer_index].get(),  0, m_buffers_index[m_buffer_index]->GetObjectSize(),  m_indices.data(),  true);
 

@@ -1738,12 +1738,12 @@ namespace spartan
             dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
             dependency_info.imageMemoryBarrierCount = static_cast<uint32_t>(m_image_barriers.size());
             dependency_info.pImageMemoryBarriers    = vk_barriers.data();
-            m_image_barriers.clear();
 
             RenderPassEnd();
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
 
             Profiler::m_rhi_pipeline_barriers++;
+            m_image_barriers.clear();
         }
     }
 
