@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/Import/FontImporter.h"
 #include "../../RHI/RHI_Buffer.h"
 #include "../../RHI/RHI_CommandList.h"
-#include "../../RHI/RHI_Device.h"
 //=============================================
 
 //= NAMESPACES ===============
@@ -90,44 +89,43 @@ namespace spartan
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
         const float aspect_ratio    = viewport_width / viewport_height;
-
+    
         // adjust the screen percentage position to compensate for the aspect ratio
         Vector2 adjusted_position_percentage;
         adjusted_position_percentage.x = position_screen_percentage.x / aspect_ratio;
         adjusted_position_percentage.y = position_screen_percentage.y;
-
+    
         // convert the adjusted screen percentage position to actual screen coordinates
         Vector2 position;
         position.x = viewport_width  * adjusted_position_percentage.x;
         position.y = viewport_height * adjusted_position_percentage.y;
-
+    
         // make the origin be the top left corner
         position.x -= 0.5f * viewport_width;
         position.y += 0.5f * viewport_height;
-
+    
         // don't yet understand why this is needed, but it corrects a slight y offset
         position.y -= m_char_max_height * 1.5f;
-
+    
         // set the cursor to the starting position
         Vector2 cursor = position;
-
-        m_vertices.clear();
-        m_indices.clear();
-
+    
+        uint32_t vertex_offset = static_cast<uint32_t>(m_vertices.size());
+    
         // generate vertices - draw each latter onto a quad
         for (char character : text)
         {
             Glyph& glyph = m_glyphs[character];
-
+    
             if (character == ASCII_TAB)
             {
                 // compute the width of a single space
                 const float space_offset = static_cast<float>(m_glyphs[ASCII_SPACE].horizontal_advance);
                 const float tab_spacing  = space_offset * 4.0f; // 4 spaces per tab
-
+    
                 // calculate the next tab stop
                 float next_tab_stop = std::floor((cursor.x + tab_spacing) / tab_spacing) * tab_spacing;
-
+    
                 // advance the cursor to the next tab stop
                 cursor.x = next_tab_stop;
             }
@@ -143,33 +141,31 @@ namespace spartan
             else
             {
                 // first triangle in quad
-                m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
-                m_vertices.emplace_back(cursor.x + glyph.offset_x + glyph.width,  cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
-                m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom); // bottom left
-
+                m_vertices.push_back({cursor.x + glyph.offset_x, cursor.y + glyph.offset_y, 0.0f, glyph.uv_x_left, glyph.uv_y_top});
+                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
+                m_vertices.push_back({cursor.x + glyph.offset_x, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left, glyph.uv_y_bottom});
+    
                 // second triangle in quad
-                m_vertices.emplace_back(cursor.x + glyph.offset_x,                cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top);    // top left
-                m_vertices.emplace_back(cursor.x + glyph.offset_x  + glyph.width, cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_right, glyph.uv_y_top);    // top right
-                m_vertices.emplace_back(cursor.x + glyph.offset_x  + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom); // bottom right
-
-                // advance
-                cursor.x += glyph.horizontal_advance;
+                m_vertices.push_back({cursor.x + glyph.offset_x, cursor.y + glyph.offset_y, 0.0f, glyph.uv_x_left, glyph.uv_y_top});
+                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y, 0.0f, glyph.uv_x_right, glyph.uv_y_top});
+                m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
+    
+                // add indices for the two triangles (6 indices for 2 triangles)
+                for (uint32_t i = 0; i < 6; ++i)
+                {
+                    m_indices.push_back(vertex_offset + i);
+                }
+    
+                // advance the cursor and vertex offset
+                cursor.x      += glyph.horizontal_advance;
+                vertex_offset += 6;
             }
         }
-
-        // generate indices
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_vertices.size()); i++)
-        {
-            m_indices.emplace_back(i);
-        }
-
-        // store the generated data for this text
-        m_font_data.emplace_back(m_vertices, m_indices, position);
     }
 
     bool Font::HasText() const
     {
-        return !m_font_data.empty();
+        return !m_vertices.empty() && !m_indices.empty();
     }
 
     void Font::SetSize(const uint32_t size)
@@ -179,26 +175,9 @@ namespace spartan
 
     void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)
     {
-        if (m_font_data.empty())
+        if (!HasText())
             return;
     
-        // merge all vertices and indices
-        {
-            m_vertices.clear();
-            m_indices.clear();
-
-            uint32_t vertex_offset = 0;
-            for (const FontData& text_data : m_font_data)
-            {
-                m_vertices.insert(m_vertices.end(), text_data.vertices.begin(), text_data.vertices.end());
-                for (uint32_t index : text_data.indices)
-                {
-                    m_indices.push_back(index + vertex_offset);
-                }
-                vertex_offset += static_cast<uint32_t>(text_data.vertices.size());
-            }
-        }
-
         m_buffer_index = (m_buffer_index + 1) % buffer_count;
 
         // grow buffers if needed
@@ -231,7 +210,9 @@ namespace spartan
         cmd_list->UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, m_buffers_vertex[m_buffer_index]->GetObjectSize(), m_vertices.data(), true);
         cmd_list->UpdateBuffer(m_buffers_index[m_buffer_index].get(),  0, m_buffers_index[m_buffer_index]->GetObjectSize(),  m_indices.data(),  true);
 
-        m_font_data.clear();
+        // clear vertices and indices
+        m_vertices.clear();
+        m_indices.clear();
     }
 
     uint32_t Font::GetIndexCount()

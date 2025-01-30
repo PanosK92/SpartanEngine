@@ -56,13 +56,6 @@ namespace spartan
         Font_Outline_Negative
     };
 
-    struct FontData
-    {
-        std::vector<RHI_Vertex_PosTex> vertices;
-        std::vector<uint32_t> indices;
-        math::Vector2 position;
-    };
-
     class Font : public IResource
     {
     public:
@@ -123,7 +116,6 @@ namespace spartan
         uint32_t m_char_max_width;
         uint32_t m_char_max_height;
         std::unordered_map<uint32_t, Glyph> m_glyphs;
-        std::vector<FontData> m_font_data;
         std::shared_ptr<RHI_Texture> m_atlas;
         std::shared_ptr<RHI_Texture> m_atlas_outline;
         std::vector<RHI_Vertex_PosTex> m_vertices;
