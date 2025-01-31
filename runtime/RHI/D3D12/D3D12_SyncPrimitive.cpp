@@ -40,7 +40,7 @@ namespace spartan
 
     }
 
-    void RHI_SyncPrimitive::Wait(const uint64_t value, const uint64_t timeout)
+    void RHI_SyncPrimitive::Wait(const uint64_t timeout)
     {
 
     }

@@ -41,21 +41,15 @@ namespace spartan
         RHI_SyncPrimitive(const RHI_SyncPrimitive_Type type, const char* name = nullptr);
         ~RHI_SyncPrimitive();
 
-        // sync
-        void Wait(const uint64_t value = 0, const uint64_t timeout_nanoseconds = 5000000000 /* 5 seconds */);
+        void Wait(const uint64_t timeout_nanoseconds = 5000000000 /* 5 seconds */);
         void Signal(const uint64_t value);
-
-        // value
-        uint64_t GetValue();
-        uint64_t GetWaitValue() const           { return m_value_wait; }
-        void SetWaitValue(const uint64_t value) { m_value_wait = value; }
-
-        // signaling
         bool IsSignaled();
         void Reset();
 
-        // rhi
-        void* GetRhiResource() { return m_rhi_resource; }
+        uint64_t GetValue();
+        uint64_t GetWaitValue() const           { return m_value_wait; }
+        void SetWaitValue(const uint64_t value) { m_value_wait = value; }
+        void* GetRhiResource()                  { return m_rhi_resource; }
 
     private:
         RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;

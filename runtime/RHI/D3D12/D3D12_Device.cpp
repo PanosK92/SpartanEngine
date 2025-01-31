@@ -45,6 +45,74 @@ namespace spartan
         vector<shared_ptr<RHI_Queue>> queues;
     }
 
+    namespace device_physical
+    { 
+        void detect_all()
+        {
+            // Create DirectX graphics interface factory
+            IDXGIFactory1* factory;
+            const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
+            if (FAILED(result))
+            {
+                SP_LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d12_utility::error::dxgi_error_to_string(result));
+                SP_ASSERT(false);
+            }
+
+            const auto get_available_adapters = [](IDXGIFactory1* factory)
+            {
+                uint32_t i = 0;
+                IDXGIAdapter* adapter;
+                vector<IDXGIAdapter*> adapters;
+                while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
+                {
+                    adapters.emplace_back(adapter);
+                    ++i;
+                }
+
+                return adapters;
+            };
+
+            // Get all available adapters
+            vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
+            factory->Release();
+            factory = nullptr;
+            SP_ASSERT(adapters.size() > 0);
+
+            // Save all available adapters
+            DXGI_ADAPTER_DESC adapter_desc;
+            for (IDXGIAdapter* display_adapter : adapters)
+            {
+                if (FAILED(display_adapter->GetDesc(&adapter_desc)))
+                {
+                    SP_LOG_ERROR("Failed to get adapter description");
+                    continue;
+                }
+
+                // Of course it wouldn't be simple, lets convert the device name
+                char name[128];
+                auto def_char = ' ';
+                WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
+
+                RHI_Device::PhysicalDeviceRegister(PhysicalDevice
+                (
+                    11 << 22,                                                 // api version
+                    0,                                                        // driver version
+                    adapter_desc.VendorId,                                    // vendor id
+                    RHI_PhysicalDevice_Type::Max,                             // type
+                    &name[0],                                                 // name
+                    static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory), // memory
+                    static_cast<void*>(display_adapter))                      // data
+                );
+            }
+        }
+        
+        void select_primary()
+        {
+            // get the first available device
+            RHI_Device::PhysicalDeviceSetPrimary(0);
+        }
+    }
+
     void RHI_Device::Initialize()
     {
         SP_ERROR_WINDOW("The D3D12 backend is not finished, use it only if your goal is to work on it.");
@@ -57,8 +125,8 @@ namespace spartan
         m_max_texture_array_layers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
 
         // Find a physical device
-        PhysicalDeviceDetect();
-        PhysicalDeviceSelectPrimary();
+        device_physical::detect_all();
+        device_physical::select_primary();
 
         // Debug layer
         UINT dxgi_factory_flags = 0;
@@ -165,71 +233,6 @@ namespace spartan
 
        RHI_Context::device->Release();
        RHI_Context::device = nullptr;
-    }
-
-    void RHI_Device::PhysicalDeviceDetect()
-    {
-        // Create DirectX graphics interface factory
-        IDXGIFactory1* factory;
-        const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
-        if (FAILED(result))
-        {
-            SP_LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d12_utility::error::dxgi_error_to_string(result));
-            SP_ASSERT(false);
-        }
-
-        const auto get_available_adapters = [](IDXGIFactory1* factory)
-        {
-            uint32_t i = 0;
-            IDXGIAdapter* adapter;
-            vector<IDXGIAdapter*> adapters;
-            while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
-            {
-                adapters.emplace_back(adapter);
-                ++i;
-            }
-
-            return adapters;
-        };
-
-        // Get all available adapters
-        vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
-        factory->Release();
-        factory = nullptr;
-        SP_ASSERT(adapters.size() > 0);
-
-        // Save all available adapters
-        DXGI_ADAPTER_DESC adapter_desc;
-        for (IDXGIAdapter* display_adapter : adapters)
-        {
-            if (FAILED(display_adapter->GetDesc(&adapter_desc)))
-            {
-                SP_LOG_ERROR("Failed to get adapter description");
-                continue;
-            }
-
-            // Of course it wouldn't be simple, lets convert the device name
-            char name[128];
-            auto def_char = ' ';
-            WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
-
-            PhysicalDeviceRegister(PhysicalDevice
-            (
-                11 << 22,                                                 // api version
-                0,                                                        // driver version
-                adapter_desc.VendorId,                                    // vendor id
-                RHI_PhysicalDevice_Type::Max,                             // type
-                &name[0],                                                 // name
-                static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory), // memory
-                static_cast<void*>(display_adapter))                      // data
-            );
-        }
-    }
-
-    void RHI_Device::PhysicalDeviceSelectPrimary()
-    {
-        // Get the first available device
-        PhysicalDeviceSetPrimary(0);
     }
 
     void RHI_Device::QueueWaitAll()

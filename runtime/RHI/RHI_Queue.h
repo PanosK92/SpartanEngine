@@ -48,7 +48,7 @@ namespace spartan
     private:
         std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists = { nullptr, nullptr };
         void* m_rhi_resource                                        = nullptr;
-        uint32_t m_index                                            = 0;
+        std::atomic<uint32_t> m_index                               = 0;
         RHI_Queue_Type m_type                                       = RHI_Queue_Type::Max;
     };
 }

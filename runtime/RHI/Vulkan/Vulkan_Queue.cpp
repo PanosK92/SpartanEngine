@@ -38,7 +38,7 @@ namespace spartan
 {
     namespace
     {
-        uint64_t timeline_value = 0;
+        atomic<uint64_t> timeline_value = 0;
         array<mutex, 3> mutexes;
 
         mutex& get_mutex(RHI_Queue* queue)

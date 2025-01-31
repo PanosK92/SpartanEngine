@@ -49,9 +49,7 @@ namespace spartan
         }
 
         // wait
-        uint64_t value      = m_rendering_complete_semaphore_timeline->GetValue();
-        uint64_t wait_value = m_rendering_complete_semaphore_timeline->GetWaitValue();
-        m_rendering_complete_semaphore_timeline->Wait(wait_value);
+        m_rendering_complete_semaphore_timeline->Wait();
         m_state = RHI_CommandListState::Idle;
 
         if (log_wait_time)
