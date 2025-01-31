@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ========================
 #include "pch.h"
 #include "Display.h"
 #include <SDL.h>
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <X11/Xlib.h>
 #include <X11/extensions/xf86vmode.h>
 #endif
-//==============================
+//===================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -221,7 +221,7 @@ namespace spartan
         SP_ASSERT_MSG(height != 0,    "height can't be zero");
         SP_ASSERT_MSG(hz     != 0.0f, "hz can't be zero");
 
-        // Early exit if the display mode is already registered
+        // early exit if the display mode is already registered
         for (const DisplayMode& display_mode : display_modes)
         {
             if (display_mode.width         == width  &&
@@ -275,10 +275,12 @@ namespace spartan
             }
         }
 
-        // detect hdr capabilities
+        // detect capabilities
         get_gamma(&gamma);
         get_hdr_capabilities(&is_hdr_capable, &luminance_nits_min, &luminance_nits_max);
-        SP_LOG_INFO("HDR: %s, min luminance: %.0f nits, max luminance: %.0f nits", is_hdr_capable ? "true" : "false", luminance_nits_min, luminance_nits_max);
+
+        // log everything
+        SP_LOG_INFO("Name: %s, Hz: %d, Gamma: %.1f, HDR: %s, max luminance: %.0f nits", GetName(), GetRefreshRate(), gamma, is_hdr_capable ? "true" : "false", luminance_nits_max);
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
@@ -296,8 +298,6 @@ namespace spartan
 
     uint32_t Display::GetHeight()
     {
-        int display_index = SDL_GetWindowDisplayIndex(static_cast<SDL_Window*>(Window::GetHandleSDL()));
-
         SDL_DisplayMode display_mode;
         SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
 
