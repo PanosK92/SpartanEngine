@@ -445,6 +445,7 @@ namespace spartan
         if (presents_to_this_swapchain)
         {
             RHI_SyncPrimitive* semaphore = cmd_list->GetRenderingCompleteSemaphore();
+            semaphore->has_been_waited_for = true;
             m_wait_semaphores.emplace_back(semaphore);
         }
 

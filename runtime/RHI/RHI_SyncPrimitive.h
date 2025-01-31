@@ -51,6 +51,9 @@ namespace spartan
         void SetWaitValue(const uint64_t value) { m_value_wait = value; }
         void* GetRhiResource()                  { return m_rhi_resource; }
 
+        // swapchain present wait tracking
+        bool has_been_waited_for = true;
+
     private:
         RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
         uint64_t m_value_wait         = 0;

@@ -164,7 +164,12 @@ namespace spartan
 
     bool RHI_SyncPrimitive::IsSignaled()
     {
-        return m_type == RHI_SyncPrimitive_Type::Fence ? fence::is_signaled(m_rhi_resource) : false;
+        SP_ASSERT(m_type != RHI_SyncPrimitive_Type::Semaphore);
+
+        if (m_type == RHI_SyncPrimitive_Type::Fence)
+            return fence::is_signaled(m_rhi_resource);
+
+        return semaphore::get_value(m_rhi_resource) == m_value_wait;
     }
 
     void RHI_SyncPrimitive::Reset()
