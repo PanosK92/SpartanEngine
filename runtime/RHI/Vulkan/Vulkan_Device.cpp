@@ -50,9 +50,9 @@ namespace spartan
     {
         uint32_t used = 0;
 
-        string to_string()
+        string to_string(uint32_t version)
         {
-            return std::to_string(VK_VERSION_MAJOR(used)) + "." + std::to_string(VK_VERSION_MINOR(used)) + "." + std::to_string(VK_VERSION_PATCH(used));
+            return std::to_string(VK_VERSION_MAJOR(version)) + "." + std::to_string(VK_VERSION_MINOR(version)) + "." + std::to_string(VK_VERSION_PATCH(version));
         }
     }
 
@@ -152,17 +152,16 @@ namespace spartan
 
                 // save the api version we ended up using
                 version::used                = app_info.apiVersion;
-                RHI_Context::api_version_str = version::to_string();
+                RHI_Context::api_version_str = version::to_string(version::used);
 
                 // some checks
                 {
                     // if the driver hasn't been updated to the latest SDK, log a warning
                     if (sdk_version > driver_version)
                     {
-                        string version_driver = to_string(VK_API_VERSION_MAJOR(driver_version)) + "." + to_string(VK_API_VERSION_MINOR(driver_version)) + "." + to_string(VK_API_VERSION_PATCH(driver_version));
-                        string version_sdk    = to_string(VK_API_VERSION_MAJOR(sdk_version))    + "." + to_string(VK_API_VERSION_MINOR(sdk_version)) + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
+                        string version_driver = version::to_string(driver_version);
+                        string version_sdk    = version::to_string(sdk_version);
                         SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", version_driver.c_str(), version_sdk.c_str());
-
                     }
 
                     // ensure that the machine supports Vulkan 1.4 (as we are using extensions from it)
@@ -172,7 +171,7 @@ namespace spartan
                     uint32_t min_minor    = VK_API_VERSION_MINOR(VK_API_VERSION_1_4);
                     if (driver_major < min_major || (driver_major == min_major && driver_minor < min_minor))
                     { 
-                        SP_ERROR_WINDOW("Your machine doesn't support Vulkan 1.4");
+                        SP_ERROR_WINDOW("Your GPU doesn't support Vulkan 1.4");
                     }
                 }
             }
@@ -1223,6 +1222,82 @@ namespace spartan
         }
     }
 
+    namespace device_physical
+    {
+        void detect_all()
+        {
+            uint32_t device_count = 0;
+            if (vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, nullptr) != VK_SUCCESS)
+            {
+                SP_ERROR_WINDOW("Ensure you're not using incorrect or experimental drivers. Update your graphics drivers and uninstall Vulkan 'Compatibility Packs'.");
+            }
+
+            SP_ASSERT_MSG(device_count != 0, "There are no available physical devices");
+            
+            vector<VkPhysicalDevice> physical_devices(device_count);
+            SP_ASSERT_MSG(
+                vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, physical_devices.data()) == VK_SUCCESS,
+                "Failed to enumerate physical devices"
+            );
+            
+            // register all available physical devices
+            for (const VkPhysicalDevice& device_physical : physical_devices)
+            {
+                VkPhysicalDeviceProperties device_properties = {};
+                vkGetPhysicalDeviceProperties(device_physical, &device_properties);
+            
+                VkPhysicalDeviceMemoryProperties device_memory_properties = {};
+                vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
+            
+                RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
+                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
+                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
+                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
+                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
+
+                // find the local device memory heap size
+                uint64_t vram_size_bytes = 0;
+                for (uint32_t i = 0; i < device_memory_properties.memoryHeapCount; i++)
+                {
+                    if (device_memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+                    {
+                        vram_size_bytes = device_memory_properties.memoryHeaps[i].size;
+                        break;
+                    }
+                }
+                SP_ASSERT(vram_size_bytes > 0);
+
+                RHI_Device::PhysicalDeviceRegister(PhysicalDevice
+                (
+                    device_properties.apiVersion,          // api version
+                    device_properties.driverVersion,       // driver version
+                    device_properties.vendorID,            // vendor id
+                    type,                                  // type
+                    &device_properties.deviceName[0],      // name
+                    vram_size_bytes,                       // memory
+                    static_cast<void*>(device_physical)    // data
+                ));
+            }
+        }
+
+        void select_primary()
+        {
+            // go through all the devices (sorted from best to worst based on their properties)
+            for (uint32_t device_index = 0; device_index < RHI_Device::PhysicalDeviceGet().size(); device_index++)
+            {
+                VkPhysicalDevice device = static_cast<VkPhysicalDevice>(RHI_Device::PhysicalDeviceGet()[device_index].GetData());
+
+                // get the first device which supports graphics, compute and transfer queues
+                if (queues::get_queue_family_indices(device))
+                {
+                    RHI_Device::PhysicalDeviceSetPrimary(device_index);
+                    RHI_Context::device_physical = device;
+                    break;
+                }
+            }
+        }
+    }
+
     void RHI_Device::Initialize()
     {
         // instance
@@ -1260,11 +1335,11 @@ namespace spartan
 
         // device
         {
-            // detect physical devices amd select the primary one
-            PhysicalDeviceDetect();
-            PhysicalDeviceSelectPrimary();
+            // detect and select primary
+            device_physical::detect_all();
+            device_physical::select_primary();
 
-            // queue create info
+            // queues
             vector<VkDeviceQueueCreateInfo> queue_create_infos;
             {
                 queues::detect_queue_family_indices(RHI_Context::device_physical);
@@ -1288,7 +1363,7 @@ namespace spartan
                 }
             }
 
-            // detect device properties
+            // properties
             {
                 VkPhysicalDeviceFragmentShadingRatePropertiesKHR shading_rate_properties = {};
                 shading_rate_properties.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
@@ -1338,7 +1413,7 @@ namespace spartan
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
                 SP_ASSERT_VK(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device));
-                SP_LOG_INFO("Vulkan %s", version::to_string().c_str());
+                SP_LOG_INFO("Vulkan %s", version::to_string(version::used).c_str());
             }
         }
 
@@ -1428,81 +1503,6 @@ namespace spartan
         // device and instance
         vkDestroyDevice(RHI_Context::device, nullptr);
         vkDestroyInstance(RHI_Context::instance, nullptr);
-    }
-
-    // physical device
-
-    void RHI_Device::PhysicalDeviceDetect()
-    {
-        uint32_t device_count = 0;
-        if (vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, nullptr) != VK_SUCCESS)
-        {
-            SP_ERROR_WINDOW("Ensure you're not using incorrect or experimental drivers. Update your graphics drivers and uninstall Vulkan 'Compatibility Packs'.");
-        }
-
-        SP_ASSERT_MSG(device_count != 0, "There are no available physical devices");
-        
-        vector<VkPhysicalDevice> physical_devices(device_count);
-        SP_ASSERT_MSG(
-            vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, physical_devices.data()) == VK_SUCCESS,
-            "Failed to enumerate physical devices"
-        );
-        
-        // register all available physical devices
-        for (const VkPhysicalDevice& device_physical : physical_devices)
-        {
-            VkPhysicalDeviceProperties device_properties = {};
-            vkGetPhysicalDeviceProperties(device_physical, &device_properties);
-        
-            VkPhysicalDeviceMemoryProperties device_memory_properties = {};
-            vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
-        
-            RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
-            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
-            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
-            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
-            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
-
-            // find the local device memory heap size
-            uint64_t vram_size_bytes = 0;
-            for (uint32_t i = 0; i < device_memory_properties.memoryHeapCount; i++)
-            {
-                if (device_memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-                {
-                    vram_size_bytes = device_memory_properties.memoryHeaps[i].size;
-                    break;
-                }
-            }
-            SP_ASSERT(vram_size_bytes > 0);
-
-            PhysicalDeviceRegister(PhysicalDevice
-            (
-                device_properties.apiVersion,          // api version
-                device_properties.driverVersion,       // driver version
-                device_properties.vendorID,            // vendor id
-                type,                                  // type
-                &device_properties.deviceName[0],      // name
-                vram_size_bytes,                       // memory
-                static_cast<void*>(device_physical)    // data
-            ));
-        }
-    }
-
-    void RHI_Device::PhysicalDeviceSelectPrimary()
-    {
-        // go through all the devices (sorted from best to worst based on their properties)
-        for (uint32_t device_index = 0; device_index < PhysicalDeviceGet().size(); device_index++)
-        {
-            VkPhysicalDevice device = static_cast<VkPhysicalDevice>(PhysicalDeviceGet()[device_index].GetData());
-
-            // get the first device which supports graphics, compute and transfer queues
-            if (queues::get_queue_family_indices(device))
-            {
-                PhysicalDeviceSetPrimary(device_index);
-                RHI_Context::device_physical = device;
-                break;
-            }
-        }
     }
 
     // queues

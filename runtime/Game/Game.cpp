@@ -113,8 +113,8 @@ namespace spartan
             
             // add a physics body so that the camera can move through the environment in a physical manner
             PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
+            physics_body->SetBoundingBox(Vector3(0.45f, 1.8f, 0.25f)); // average european male
             physics_body->SetMass(82.0f);
-            physics_body->SetBoundingBox(Vector3(0.5f, 1.8f, 0.5f));
             physics_body->SetShapeType(PhysicsShape::Capsule);
             physics_body->SetRotationLock(true);
             

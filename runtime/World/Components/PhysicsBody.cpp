@@ -829,7 +829,7 @@ namespace spartan
             case PhysicsShape::Capsule:
             {
                 float radius          = max(size.x, size.z) * 0.5f;
-                float height          = size.y - 2.0f * radius;                       // exclude spherical caps from the cylindrical height
+                float height          = size.y - 2.0f * radius;               // exclude spherical caps from the cylindrical height
                 float sphere_volume   = (4.0f / 3.0f) * pi * powf(radius, 3); // spherical caps
                 float cylinder_volume = pi * powf(radius, 2) * height;        // cylindrical body
                 volume                = sphere_volume + cylinder_volume;
