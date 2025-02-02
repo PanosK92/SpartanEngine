@@ -171,7 +171,7 @@ namespace spartan
                     uint32_t min_minor    = VK_API_VERSION_MINOR(VK_API_VERSION_1_4);
                     if (driver_major < min_major || (driver_major == min_major && driver_minor < min_minor))
                     { 
-                        SP_ERROR_WINDOW("Your GPU doesn't support Vulkan 1.4");
+                        SP_ERROR_WINDOW("Your GPU doesn't support Vulkan 1.4. Ensure you have the latest drivers.");
                     }
                 }
             }
