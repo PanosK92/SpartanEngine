@@ -1096,12 +1096,19 @@ namespace spartan
             // check if certain features are supported and enable them
             {
                 // variable shading rate
-                *is_shading_rate_supported = support_vrs.attachmentFragmentShadingRate == VK_TRUE;
-                if (*is_shading_rate_supported)
-                {
-                    // Enable this feature conditionally (no assert) as older GPUs like NV 1080 and Radeon RX Vega do not support it.
-                    // Support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
-                    features_vrs.attachmentFragmentShadingRate = VK_TRUE;
+                if (is_shading_rate_supported)
+                { 
+                    *is_shading_rate_supported = support_vrs.attachmentFragmentShadingRate == VK_TRUE;
+                    if (*is_shading_rate_supported)
+                    {
+                        // enable this feature conditionally (no assert) as older GPUs like NV 1080 and Radeon RX Vega do not support it.
+                        // support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
+                        features_vrs.attachmentFragmentShadingRate = VK_TRUE;
+                    }
+                    else
+                    {
+                        features_robustness.pNext = nullptr; /// remove VRS from the chain
+                    }
                 }
 
                 // misc
