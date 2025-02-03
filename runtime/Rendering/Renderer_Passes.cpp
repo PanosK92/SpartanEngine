@@ -417,6 +417,7 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
 
                 // ssr and gi require the final lighting output right before them, so blit it here for them
+                // simply using the final frame will cause accumulation, which GI doesn't handle well, and SSR can produce artifacts on NV 1080 Ti (big values in the denoiser)
                 cmd_list_graphics->Blit(rt_render, GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process), false);
 
                 Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)

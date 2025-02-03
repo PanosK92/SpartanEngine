@@ -342,7 +342,7 @@ namespace spartan
 
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
-            string name                   = (string("swapchain_image_acquired_") + to_string(i));
+            string name                   = "swapchain_image_acquired";
             m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
             m_image_acquired_fence[i]     = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Fence, name.c_str());
         }
@@ -410,22 +410,22 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        // Reset any previous state if needed
+        // reset any previous state if needed
         if (m_buffer_index != numeric_limits<uint32_t>::max())
         {
             m_image_acquired_fence[m_buffer_index]->Wait();
             m_image_acquired_fence[m_buffer_index]->Reset();
         }
     
-        // Prepare for the acquisition
+        // prepare for the acquisition
         m_buffer_index                      = (m_buffer_index + 1) % m_buffer_count;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_buffer_index].get();
 
-        // i've had a case with a 1080 Ti where vkAcquireNextImageKHR would
-        // return VK_NOT_READY so we handle that by retrying a few times
+        // VK_NOT_READY can happen if the swapchain is not ready yet, possible during window events
+        // it can happen often on some GPUs/drivers and less and on others, regardless, it has to be handled
         uint32_t retry_count     = 0;
-        const uint32_t retry_max = 5;
+        const uint32_t retry_max = 10;
         while (retry_count < retry_max)
         {
             VkResult result = vkAcquireNextImageKHR(
@@ -439,6 +439,7 @@ namespace spartan
     
             if (result == VK_SUCCESS)
             {
+                m_image_acquired = true;
                 return;
             }
             else if (result == VK_NOT_READY)
@@ -452,7 +453,7 @@ namespace spartan
             }
         }
 
-        SP_ASSERT_MSG(false, "Failed to acquire next image after multiple retries");
+        m_image_acquired = false;
     }
 
     void RHI_SwapChain::Present()
@@ -468,7 +469,7 @@ namespace spartan
         if (presents_to_this_swapchain)
         {
             RHI_SyncPrimitive* semaphore = cmd_list->GetRenderingCompleteSemaphore();
-            semaphore->has_been_waited_for = true;
+            semaphore->has_been_waited_for = m_image_acquired ? true : false;
             m_wait_semaphores.emplace_back(semaphore);
         }
 
@@ -476,7 +477,15 @@ namespace spartan
         RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
-        queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
+        if (m_image_acquired)
+        { 
+            queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
+            m_image_acquired = false;
+        }
+        else
+        {
+            m_image_acquired_semaphore[m_buffer_index] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, "swapchain_image_acquired");
+        }
     }
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
@@ -513,7 +522,7 @@ namespace spartan
 
     void RHI_SwapChain::SetVsync(const bool enabled)
     {
-        // for v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+        // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
 
         if ((m_present_mode == RHI_Present_Mode::Fifo) != enabled)
         {
@@ -526,7 +535,7 @@ namespace spartan
 
     bool RHI_SwapChain::GetVsync()
     {
-        // for v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+        // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
         return m_present_mode == RHI_Present_Mode::Fifo;
     }
 
