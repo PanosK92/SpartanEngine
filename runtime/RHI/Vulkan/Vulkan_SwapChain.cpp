@@ -410,26 +410,49 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        // when we run out of buffers, wait
+        // Reset any previous state if needed
         if (m_buffer_index != numeric_limits<uint32_t>::max())
         {
             m_image_acquired_fence[m_buffer_index]->Wait();
             m_image_acquired_fence[m_buffer_index]->Reset();
         }
-
-        // get sync objects
+    
+        // Prepare for the acquisition
         m_buffer_index                      = (m_buffer_index + 1) % m_buffer_count;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_buffer_index].get();
 
-        SP_ASSERT_VK(vkAcquireNextImageKHR(
-            RHI_Context::device,                                          // device
-            static_cast<VkSwapchainKHR>(m_rhi_swapchain),                 // swapchain
-            numeric_limits<uint64_t>::max(),                              // timeout - wait/block
-            static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()), // signal semaphore
-            static_cast<VkFence>(signal_fence->GetRhiResource()),         // signal fence
-            &m_image_index                                                // pImageIndex
-        ));
+        // i've had a case with a 1080 Ti where vkAcquireNextImageKHR would
+        // return VK_NOT_READY so we handle that by retrying a few times
+        uint32_t retry_count     = 0;
+        const uint32_t retry_max = 5;
+        while (retry_count < retry_max)
+        {
+            VkResult result = vkAcquireNextImageKHR(
+                RHI_Context::device,
+                static_cast<VkSwapchainKHR>(m_rhi_swapchain),
+                numeric_limits<uint64_t>::max(),
+                static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()),
+                static_cast<VkFence>(signal_fence->GetRhiResource()),
+                &m_image_index
+            );
+    
+            if (result == VK_SUCCESS)
+            {
+                return;
+            }
+            else if (result == VK_NOT_READY)
+            {
+                this_thread::sleep_for(std::chrono::milliseconds(1));
+                retry_count++;
+            }
+            else
+            {
+                SP_ASSERT_VK(result);
+            }
+        }
+
+        SP_ASSERT_MSG(false, "Failed to acquire next image after multiple retries");
     }
 
     void RHI_SwapChain::Present()

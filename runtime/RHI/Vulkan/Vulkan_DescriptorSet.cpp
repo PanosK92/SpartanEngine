@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_Sampler.h"
 #include "../RHI_Buffer.h"
 #include "../Rendering/Renderer.h"
 //================================
@@ -59,11 +58,11 @@ namespace spartan
         for (const RHI_Descriptor& descriptor : descriptors)
         {
             // in case of a null texture (which is legal), don't skip it
-            // set a checkeboard texture instead, this way if it's sampled (which is wrong), we'll see it
+            // set a checkerboard texture instead, this way if it's sampled (which is wrong), we'll see it
             if (!descriptor.data && descriptor.type != RHI_Descriptor_Type::Texture)
                 continue;
 
-            // the binldess texture array has it's own descriptor
+            // the bindldess texture array has it's own descriptor
             bool binldess_array = descriptor.as_array && descriptor.array_length == rhi_max_array_size;
             if (binldess_array)
                 continue;

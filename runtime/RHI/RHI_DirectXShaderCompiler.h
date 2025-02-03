@@ -227,12 +227,12 @@ Warning Options:
 
     static bool error_check(IDxcResult* dxc_result)
     {
-        // Get error buffer
+        // get error buffer
         IDxcBlobEncoding* error_buffer = nullptr;
         HRESULT result = dxc_result->GetErrorBuffer(&error_buffer);
         if (SUCCEEDED(result))
         {
-            // Log info, warnings and errors
+            // log info, warnings and errors
             std::stringstream ss(std::string(static_cast<char*>(error_buffer->GetBufferPointer()), error_buffer->GetBufferSize()));
             std::string line;
             while (getline(ss, line, '\n'))
@@ -281,7 +281,7 @@ Warning Options:
                 DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));
                 DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils));
 
-                // Try to get the version information
+                // try to get the version information
                 IDxcVersionInfo* version_info = nullptr;
                 HRESULT hr = m_compiler->QueryInterface(&version_info);
                 if (SUCCEEDED(hr) && version_info)
@@ -302,7 +302,7 @@ Warning Options:
                 }
             }
 
-            // Get shader source
+            // get shader source
             DxcBuffer dxc_buffer = {};
             IDxcBlobEncoding* blob_encoding = nullptr;
             {
@@ -314,10 +314,10 @@ Warning Options:
 
                 dxc_buffer.Ptr      = blob_encoding->GetBufferPointer();
                 dxc_buffer.Size     = blob_encoding->GetBufferSize();
-                dxc_buffer.Encoding = DXC_CP_ACP; // Assume BOM says UTF8 or UTF16 or this is ANSI text.
+                dxc_buffer.Encoding = DXC_CP_ACP; // assume BOM says UTF8 or UTF16 or this is ANSI text
             }
 
-            // Convert arguments to wstring
+            // convert arguments to wstring
             std::vector<std::wstring> arguments_wstring;
             arguments_wstring.reserve(arguments.size());
             for (const std::string& str : arguments)
@@ -325,7 +325,7 @@ Warning Options:
                 arguments_wstring.emplace_back(FileSystem::StringToWstring(str));
             }
 
-            // Convert arguments to LPCWSTR
+            // convert arguments to LPCWSTR
             std::vector<LPCWSTR> arguments_lpcwstr;
             arguments_lpcwstr.reserve(arguments.size());
             for (const std::wstring& wstr : arguments_wstring)
@@ -333,18 +333,18 @@ Warning Options:
                 arguments_lpcwstr.emplace_back(wstr.c_str());
             }
 
-            // Compile
+            // compile
             IDxcResult* dxc_result = nullptr;
             m_compiler->Compile
             (
-                &dxc_buffer,                                     // Source text to compile
-                arguments_lpcwstr.data(),                        // Array of pointers to arguments
-                static_cast<uint32_t>(arguments_lpcwstr.size()), // Number of arguments
+                &dxc_buffer,                                     // source text to compile
+                arguments_lpcwstr.data(),                        // array of pointers to arguments
+                static_cast<uint32_t>(arguments_lpcwstr.size()), // number of arguments
                 nullptr,                                         // don't use an include handler
                 IID_PPV_ARGS(&dxc_result)                        // IDxcResult: status, buffer, and errors
             );
 
-            // Check for errors
+            // check for errors
             if (!error_check(dxc_result))
             {
                 if (dxc_result)
