@@ -946,8 +946,6 @@ namespace spartan
         { 
             cmd_list->BeginTimeblock("ssr");
 
-            cmd_list->RenderPassEnd();
-
             RHI_FidelityFX::SSSR_Dispatch(
                 cmd_list,
                 GetOption<float>(Renderer_Option::ResolutionScale),

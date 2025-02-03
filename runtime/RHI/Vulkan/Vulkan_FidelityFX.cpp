@@ -1120,6 +1120,9 @@ namespace spartan
 
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
+         // end the render pass (if there is one) as third-party code takes over here
+        cmd_list->RenderPassEnd();
+
         // set resources
         sssr::description_dispatch.commandList        = to_ffx_cmd_list(cmd_list);
         sssr::description_dispatch.color              = to_ffx_resource(tex_color,            L"sssr_color");
@@ -1367,6 +1370,9 @@ namespace spartan
         bool debug_update   = debug_enabled && !debug_dispatch;
         if (debug_update)
             return;
+
+        // end the render pass (if there is one) as third-party code takes over here
+        cmd_list->RenderPassEnd();
 
         // set camera matrices
         set_ffx_float16(brixelizer_gi::description_dispatch_gi.view,           view);

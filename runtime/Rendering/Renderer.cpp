@@ -160,7 +160,7 @@ namespace spartan
             SetOption(Renderer_Option::DepthOfField,                1.0f);
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
             SetOption(Renderer_Option::ScreenSpaceShadows,          static_cast<float>(Renderer_ScreenspaceShadow::Bend));
-            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
+            SetOption(Renderer_Option::ScreenSpaceReflections,      RHI_Device::GetPrimaryPhysicalDevice()->IsAmd() ? 1.0f : 0.0f); // temp workaround until I fix ssr for nvidia
             SetOption(Renderer_Option::GlobalIllumination,          0.5f);                                                 // 0.5 is the percentage of the internal resolution (options are 25%, 50%, 75% and 100%)
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::ShadowResolution,            4096.0f);
