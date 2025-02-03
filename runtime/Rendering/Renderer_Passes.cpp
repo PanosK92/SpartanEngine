@@ -415,9 +415,11 @@ namespace spartan
                 Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
-                Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
 
+                // ssr and gi require the final lighting output right before them, so blit it here for them
                 cmd_list_graphics->Blit(rt_render, GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process), false);
+
+                Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
             }
 
             // upscale to output resolution

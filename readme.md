@@ -48,7 +48,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 - Cutting edge Vulkan renderer.
 - 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
 - On the fly single dispatch GPU-based mip generation for render targets (FidelityFX SPD).
-- On the fly compression and mip generation for material textures (FidelityFX Compressonator).fantastic_dove_20095v
+- On the fly compression and mip generation for material textures (FidelityFX Compressonator).
 - Fully bindless design (materials, lights, even the samplers).
 - Fast dual paraboloid point lights.
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
