@@ -150,7 +150,10 @@ namespace spartan
                 {
                     dynamic_states.push_back(VK_DYNAMIC_STATE_SCISSOR);
                     dynamic_states.push_back(VK_DYNAMIC_STATE_CULL_MODE);
-                    dynamic_states.push_back(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
+                    if (RHI_Device::PropertyIsShadingRateSupported())
+                    { 
+                        dynamic_states.push_back(VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
+                    }
                 }
                 dynamic_state.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
                 dynamic_state.pDynamicStates    = dynamic_states.data();
