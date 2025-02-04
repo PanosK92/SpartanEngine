@@ -42,8 +42,7 @@ namespace
 
     namespace sponsor
     {
-        bool visible      = true;
-        const float width = 512.0f;
+        bool visible = true;
 
         void window()
         {
@@ -51,16 +50,15 @@ namespace
                 return;
 
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(ImVec2(width, width * 0.52f));
-            if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDocking))
+            if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
-                ImGui::SetNextItemWidth(width);
-                ImGui::TextWrapped(
-                    "I cover the costs for Dropbox hosting and a GitHub Pro subscription for benefits like assets and package bandwidth."
-                    ""
-                    "If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!"
-                );
+                ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
+                ImGui::Text("I cover the costs for Dropbox hosting and a GitHub Pro subscription for benefits like assets and package bandwidth.");
+                ImGui::Text("If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!");
+                ImGui::PopItemWidth();
+
                 ImGui::Separator();
+
                 if (ImGuiSp::button_centered_on_line("Sponsor"))
                 {
                     spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
@@ -72,8 +70,7 @@ namespace
 
     namespace introduction
     {
-        bool visible      = true;
-        const float width = 512.0f;
+        bool visible = true;
 
         void window()
         {
@@ -81,11 +78,14 @@ namespace
                 return;
 
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(ImVec2(width, width * 0.36f));
-            if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDocking))
+            if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
-                ImGui::TextWrapped("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans.");
+                ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
+                ImGui::Text("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans.");
+                ImGui::PopItemWidth();
+
                 ImGui::Separator();
+
                 if (ImGuiSp::button_centered_on_line("Ok"))
                 {
                     visible = false;
@@ -186,8 +186,7 @@ namespace
             static const string window_title  = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
             const ImGuiTableFlags table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
 
-            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowFocus();
+            ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
             ImGui::Begin(window_title.c_str(), &visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
             {
                 ImGui::BeginGroup();
@@ -475,7 +474,6 @@ namespace
             if (visible_download_prompt)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                ImGui::SetNextWindowSize(ImVec2(300, 150));
                 if (ImGui::Begin("Default worlds", &visible_download_prompt, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
                     ImGui::Text("No default worlds are present. Would you like to download them?");
