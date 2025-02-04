@@ -152,7 +152,7 @@ namespace spartan
 
         // options
         {
-            bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirments();
+            bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
 
             m_options.clear();
             SetOption(Renderer_Option::WhitePoint,                  350.0f);

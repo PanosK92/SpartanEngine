@@ -77,7 +77,7 @@ namespace spartan
                    name.find("qualcomm") != std::string::npos;
         }
 
-        bool IsBelowMinimumRequirments()
+        bool IsBelowMinimumRequirements()
         {
             // minimum requirements
             const uint32_t min_memory_mb           = 4096; // minimum memory in MB, 4GB in this case
