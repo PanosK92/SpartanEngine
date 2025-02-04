@@ -42,19 +42,59 @@ namespace spartan
             this->driver_version = decode_driver_version(driver_version);
         }
 
-        bool IsNvidia()   const { return vendor_id == 0x10DE ||                                               name.find("Nvidia")   != std::string::npos; }
-        bool IsAmd()      const { return vendor_id == 0x1002 || vendor_id == 0x1022 ||                        name.find("Amd")      != std::string::npos; }
-        bool IsIntel()    const { return vendor_id == 0x8086 || vendor_id == 0x163C || vendor_id == 0x8087 || name.find("Intel")    != std::string::npos;}
-        bool IsArm()      const { return vendor_id == 0x13B5 ||                                               name.find("Arm,")     != std::string::npos; }
-        bool IsQualcomm() const { return vendor_id == 0x5143 ||                                               name.find("Qualcomm") != std::string::npos; }
+        bool IsNvidia() const
+        {
+            return vendor_id == 0x10DE ||
+                   name.find("Nvidia") != std::string::npos ||
+                   name.find("nvidia") != std::string::npos;
+        }
+
+        bool IsAmd() const
+        {
+            return vendor_id == 0x1002 || vendor_id == 0x1022 ||
+                   name.find("AMD") != std::string::npos ||
+                   name.find("amd") != std::string::npos;
+        }
+
+        bool IsIntel() const
+        {
+            return vendor_id == 0x8086 || vendor_id == 0x163C || vendor_id == 0x8087 ||
+                   name.find("Intel") != std::string::npos ||
+                   name.find("intel") != std::string::npos;
+        }
+
+        bool IsArm() const
+        {
+            return vendor_id == 0x13B5 ||
+                   name.find("Arm") != std::string::npos ||
+                   name.find("arm") != std::string::npos;
+        }
+
+        bool IsQualcomm() const
+        {
+            return vendor_id == 0x5143 || 
+                   name.find("Qualcomm") != std::string::npos ||
+                   name.find("qualcomm") != std::string::npos;
+        }
 
         bool IsBelowMinimumRequirments()
         {
             // minimum requirements
             const uint32_t min_memory_mb           = 4096; // minimum memory in MB, 4GB in this case
             const RHI_PhysicalDevice_Type min_type = RHI_PhysicalDevice_Type::Discrete;
+            const bool is_old                      = 
+                                                     // NVIDIA GPUs older than or including 1000 series
+                                                     name.find("GeForce GTX 10") != std::string::npos ||
+                                                     name.find("GeForce GTX 9")  != std::string::npos ||
+                                                     name.find("GeForce GTX 7")  != std::string::npos ||
+                                                     name.find("GeForce GTX 6")  != std::string::npos ||
+                                                     // AMD GPUs older than or including R9, RX 400/500 series
+                                                     name.find("Radeon R9")      != std::string::npos ||
+                                                     name.find("Radeon RX 4")    != std::string::npos ||
+                                                     name.find("Radeon RX 5")    != std::string::npos ||
+                                                     name.find("Radeon HD")      != std::string::npos;
 
-            return memory < min_memory_mb || type != min_type;
+            return memory < min_memory_mb || type != min_type || is_old;
         }
 
         const std::string& GetName()          const { return name; }
