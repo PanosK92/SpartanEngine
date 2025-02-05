@@ -410,15 +410,7 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        // reset any previous state if needed
-        if (m_buffer_index != numeric_limits<uint32_t>::max())
-        {
-            m_image_acquired_fence[m_buffer_index]->Wait();
-            m_image_acquired_fence[m_buffer_index]->Reset();
-        }
-    
         // prepare for the acquisition
-        m_buffer_index                      = (m_buffer_index + 1) % m_buffer_count;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_buffer_index].get();
 
@@ -439,7 +431,6 @@ namespace spartan
     
             if (result == VK_SUCCESS)
             {
-                m_image_acquired = true;
                 return;
             }
             else if (result == VK_NOT_READY)
@@ -452,8 +443,6 @@ namespace spartan
                 SP_ASSERT_VK(result);
             }
         }
-
-        m_image_acquired = false;
     }
 
     void RHI_SwapChain::Present()
@@ -468,8 +457,8 @@ namespace spartan
         bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
         if (presents_to_this_swapchain)
         {
-            RHI_SyncPrimitive* semaphore = cmd_list->GetRenderingCompleteSemaphore();
-            semaphore->has_been_waited_for = m_image_acquired ? true : false;
+            RHI_SyncPrimitive* semaphore   = cmd_list->GetRenderingCompleteSemaphore();
+            semaphore->has_been_waited_for = true;
             m_wait_semaphores.emplace_back(semaphore);
         }
 
@@ -477,15 +466,8 @@ namespace spartan
         RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
-        if (m_image_acquired)
-        { 
-            queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
-            m_image_acquired = false;
-        }
-        else
-        {
-            m_image_acquired_semaphore[m_buffer_index] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, "swapchain_image_acquired");
-        }
+        queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
+        m_buffer_index = (m_buffer_index + 1) % m_buffer_count;
     }
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)

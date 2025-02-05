@@ -2153,9 +2153,9 @@ namespace spartan
 
     // misc
 
-    void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name)
+    void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const string name)
     {
-        if (Debugging::IsValidationLayerEnabled()) // function pointers are not initialized if validation disabled 
+        if (Debugging::IsValidationLayerEnabled()) // function pointers are not initialized if validation disabled
         {
             SP_ASSERT(resource != nullptr);
             SP_ASSERT(functions::set_object_name != nullptr);
