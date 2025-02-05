@@ -393,12 +393,11 @@ namespace spartan
         m_height = height;
 
         // reset indices
-        m_image_index = numeric_limits<uint32_t>::max();
-        m_buffer_index  = numeric_limits<uint32_t>::max();
+        m_image_index   = 0;
+        m_buffer_index  = 0;
 
         Destroy();
         Create();
-        AcquireNextImage();
 
         SP_LOG_INFO("Resolution has been set to %dx%d", width, height);
     }
