@@ -410,6 +410,13 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
+        if (m_presented)
+        {
+            m_image_acquired_fence[m_buffer_index_previous]->Wait();
+            m_image_acquired_fence[m_buffer_index_previous]->Reset();
+            m_presented = false;
+        }
+
         // prepare for the acquisition
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_buffer_index].get();
@@ -467,7 +474,10 @@ namespace spartan
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
         queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
-        m_buffer_index = (m_buffer_index + 1) % m_buffer_count;
+
+        m_presented             = true;
+        m_buffer_index_previous = m_buffer_index;
+        m_buffer_index          = (m_buffer_index + 1) % m_buffer_count;
     }
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
