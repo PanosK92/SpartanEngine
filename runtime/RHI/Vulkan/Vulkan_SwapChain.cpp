@@ -244,7 +244,7 @@ namespace spartan
         m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
         // swap chain
-        VkSwapchainKHR swap_chain;
+        VkSwapchainKHR swap_chain = nullptr;
         {
             VkSwapchainCreateInfoKHR create_info  = {};
             create_info.sType                     = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -350,51 +350,39 @@ namespace spartan
 
     void RHI_SwapChain::Destroy()
     {
-        for (void* image_view : m_rhi_rtv)
+        // there sdl/os asynchrony compared to the engine, so we need to flush here
+        // to ensure that resources are not used (especially the semaphores)
+        RHI_Device::QueueWaitAll();
+
+        for (void*& image_view : m_rhi_rtv)
         {
             if (image_view)
             {
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, image_view);
+                image_view = nullptr;
             }
         }
 
-        m_rhi_rtv.fill(nullptr);
-
-        for (auto& semaphore : m_image_acquired_semaphore)
-        {
-            if (semaphore)
-            { 
-                semaphore = unique_ptr<RHI_SyncPrimitive>(nullptr);
-            }
-        }
-
-        RHI_Device::QueueWaitAll();
+        m_image_acquired_semaphore.fill(nullptr);
 
         vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
         m_rhi_swapchain = nullptr;
 
         vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(m_rhi_surface), nullptr);
         m_rhi_surface = nullptr;
+
+        // reset indices
+        m_image_index  = 0;
+        m_buffer_index = 0;
     }
 
-    void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
+    void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
     {
         SP_ASSERT(RHI_Device::IsValidResolution(width, height));
-
-        // only resize if needed
-        if (!force)
-        {
-            if (m_width == width && m_height == height)
-                return;
-        }
 
         // save new dimensions
         m_width  = width;
         m_height = height;
-
-        // reset indices
-        m_image_index   = 0;
-        m_buffer_index  = 0;
 
         Destroy();
         Create();
@@ -411,8 +399,8 @@ namespace spartan
     {
         if (m_presented)
         {
-            m_image_acquired_fence[m_buffer_index_previous]->Wait();
-            m_image_acquired_fence[m_buffer_index_previous]->Reset();
+            //m_image_acquired_fence[m_buffer_index_previous]->Wait();
+            //m_image_acquired_fence[m_buffer_index_previous]->Reset();
             m_presented = false;
         }
 
@@ -507,7 +495,8 @@ namespace spartan
         if (new_format != m_format)
         {
             m_format = new_format;
-            Resize(m_width, m_height, true);
+            Destroy();
+            Create();
         }
     }
 
@@ -518,7 +507,8 @@ namespace spartan
         if ((m_present_mode == RHI_Present_Mode::Fifo) != enabled)
         {
             m_present_mode = enabled ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate;
-            Resize(m_width, m_height, true);
+            Destroy();
+            Create();
             Timer::OnVsyncToggled(enabled);
             SP_LOG_INFO("VSync has been %s", enabled ? "enabled" : "disabled");
         }
