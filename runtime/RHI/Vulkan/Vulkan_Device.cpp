@@ -757,6 +757,32 @@ namespace spartan
         unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
         unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
 
+        void create_pool()
+        {
+            static array<VkDescriptorPoolSize, 5> pool_sizes =
+            {
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count }
+            };
+
+            // describe
+            VkDescriptorPoolCreateInfo pool_create_info = {};
+            pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
+            pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
+            pool_create_info.pPoolSizes                 = pool_sizes.data();
+            pool_create_info.maxSets                    = rhi_max_descriptor_set_count;
+
+            // create
+            SP_ASSERT(descriptors::descriptor_pool == nullptr);
+            SP_ASSERT_VK(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool));
+
+            Profiler::m_descriptor_set_count = 0;
+        }
+
         void merge_descriptors(vector<RHI_Descriptor>& base_descriptors, const std::vector<RHI_Descriptor>& additional_descriptors)
         {
             for (const RHI_Descriptor& descriptor_additional : additional_descriptors)
@@ -1445,7 +1471,7 @@ namespace spartan
         }
 
         vulkan_memory_allocator::initialize();
-        CreateDescriptorPool();
+        descriptors::create_pool();
 
         // gpu dependent actions
         {
@@ -1579,7 +1605,7 @@ namespace spartan
     void RHI_Device::DeletionQueueParse()
     {
         lock_guard<mutex> guard(mutex_deletion_queue);
-       
+
         for (auto& it : deletion_queue)
         {
             RHI_Resource_Type resource_type = it.first;
@@ -1605,7 +1631,7 @@ namespace spartan
                 }
 
                 // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
-                if (resource_type == RHI_Resource_Type::TextureView || resource_type == RHI_Resource_Type::Buffer || resource_type == RHI_Resource_Type::Sampler)
+                if (resource_type == RHI_Resource_Type::TextureView || resource_type == RHI_Resource_Type::Buffer)
                 {
                     for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
                     {
@@ -1621,6 +1647,8 @@ namespace spartan
                         }
                     }
                 }
+
+                // samplers are bindless so they just update the set again
             }
         }
 
@@ -1665,32 +1693,6 @@ namespace spartan
     }
 
     // descriptors
-
-    void RHI_Device::CreateDescriptorPool()
-    {
-        static array<VkDescriptorPoolSize, 5> pool_sizes =
-        {
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_max_array_size * rhi_max_descriptor_set_count },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count }
-        };
-
-        // describe
-        VkDescriptorPoolCreateInfo pool_create_info = {};
-        pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
-        pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
-        pool_create_info.pPoolSizes                 = pool_sizes.data();
-        pool_create_info.maxSets                    = rhi_max_descriptor_set_count;
-
-        // create
-        SP_ASSERT(descriptors::descriptor_pool == nullptr);
-        SP_ASSERT_VK(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool));
-
-        Profiler::m_descriptor_set_count = 0;
-    }
 
     void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_Descriptor>& descriptors_)
     {
@@ -1748,7 +1750,7 @@ namespace spartan
         array<RHI_Texture*, rhi_max_array_size>* material_textures,
         RHI_Buffer* material_parameters,
         RHI_Buffer* light_parameters,
-        const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers
+        const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers
     )
     {
         if (samplers)

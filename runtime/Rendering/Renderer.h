@@ -109,6 +109,7 @@ namespace spartan
         static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
         static std::array<std::shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
+        static std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& GetSamplers();
 
         // get individual
         static RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);
@@ -116,7 +117,6 @@ namespace spartan
         static RHI_BlendState* GetBlendState(const Renderer_BlendState type);
         static RHI_Texture* GetRenderTarget(const Renderer_RenderTarget type);
         static RHI_Shader* GetShader(const Renderer_Shader type);
-        static RHI_Sampler* GetSampler(const Renderer_Sampler type);
         static RHI_Buffer* GetBuffer(const Renderer_Buffer type);
         static RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
@@ -193,6 +193,7 @@ namespace spartan
         // bindless
         static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);
         static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
+        static void BindlessUpdateSamplers();
 
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;

@@ -367,8 +367,6 @@ namespace spartan
             {
                 if (context_created)
                 {
-                    RHI_Device::QueueWaitAll();
-
                     SP_ASSERT(ffxFsr3UpscalerContextDestroy(&context) == FFX_OK);
                     context_created = false;
 
@@ -994,6 +992,8 @@ namespace spartan
     void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _WIN32
+        RHI_Device::QueueWaitAll();
+
         bool resolution_render_changed = resolution_render.x != resolution_render_width  || resolution_render.y != resolution_render_height;
         bool resolution_output_changed = resolution_output.x != resolution_output_width  || resolution_output.y != resolution_output_height;
 

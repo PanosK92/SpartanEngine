@@ -167,7 +167,7 @@ namespace spartan
             }
         }
 
-        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &samplers);
+        Renderer::BindlessUpdateSamplers();
     }
 
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
@@ -266,7 +266,6 @@ namespace spartan
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
         }
 
-        RHI_Device::QueueWaitAll();
         RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
     }
 
@@ -622,6 +621,11 @@ namespace spartan
         return buffers;
     }
 
+    array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& Renderer::GetSamplers()
+    {
+        return samplers;
+    }
+
     RHI_RasterizerState* Renderer::GetRasterizerState(const Renderer_RasterizerState type)
     {
         return rasterizer_states[static_cast<uint8_t>(type)].get();
@@ -645,11 +649,6 @@ namespace spartan
     RHI_Shader* Renderer::GetShader(const Renderer_Shader type)
     {
         return shaders[static_cast<uint8_t>(type)].get();
-    }
-
-    RHI_Sampler* Renderer::GetSampler(const Renderer_Sampler type)
-    {
-        return samplers[static_cast<uint8_t>(type)].get();
     }
 
     RHI_Buffer* Renderer::GetBuffer(const Renderer_Buffer type)
@@ -676,4 +675,6 @@ namespace spartan
     {
         return standard_material;
     }
+
+    
 }

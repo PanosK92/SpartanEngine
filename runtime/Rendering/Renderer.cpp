@@ -84,6 +84,7 @@ namespace spartan
         array<Sb_Light, rhi_max_array_size_lights> binldess_lights;
         bool bindless_materials_dirty = true;
         bool bindless_lights_dirty    = true;
+        bool bindless_samplers_dirty  = true;
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
@@ -627,6 +628,13 @@ namespace spartan
             }
         }
 
+        if (bindless_samplers_dirty)
+        {
+             RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers());
+
+             bindless_samplers_dirty = false;
+        }
+
         if (bindless_materials_dirty)
         {
             // update parameters buffer
@@ -1078,6 +1086,11 @@ namespace spartan
         RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
         buffer->Update(cmd_list, &binldess_lights[0], update_size);
+    }
+
+    void Renderer::BindlessUpdateSamplers()
+    {
+        bindless_samplers_dirty = true;
     }
 
     void Renderer::Screenshot(const string& file_path)
