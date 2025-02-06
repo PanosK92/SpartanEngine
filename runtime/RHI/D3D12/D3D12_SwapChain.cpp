@@ -129,7 +129,7 @@ namespace spartan
         d3d12_utility::release<IDXGISwapChain3>(m_rhi_swapchain);
     }
     
-    void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
+    void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
     {
 
     }
