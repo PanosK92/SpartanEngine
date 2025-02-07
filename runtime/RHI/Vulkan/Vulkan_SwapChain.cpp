@@ -342,9 +342,7 @@ namespace spartan
 
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
-            string name                   = "swapchain_image_acquired";
-            m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name.c_str());
-            m_image_acquired_fence[i]     = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Fence, name.c_str());
+            m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_" + to_string(i)).c_str());
         }
     }
 
@@ -397,16 +395,9 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        if (m_presented)
-        {
-            //m_image_acquired_fence[m_buffer_index_previous]->Wait();
-            //m_image_acquired_fence[m_buffer_index_previous]->Reset();
-            m_presented = false;
-        }
-
-        // prepare for the acquisition
+        // get next semaphore
+        m_buffer_index                      = (m_buffer_index + 1) % m_buffer_count;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
-        RHI_SyncPrimitive* signal_fence     = m_image_acquired_fence[m_buffer_index].get();
 
         // VK_NOT_READY can happen if the swapchain is not ready yet, possible during window events
         // it can happen often on some GPUs/drivers and less and on others, regardless, it has to be handled
@@ -419,7 +410,7 @@ namespace spartan
                 static_cast<VkSwapchainKHR>(m_rhi_swapchain),
                 numeric_limits<uint64_t>::max(),
                 static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()),
-                static_cast<VkFence>(signal_fence->GetRhiResource()),
+                nullptr,
                 &m_image_index
             );
     
@@ -455,16 +446,13 @@ namespace spartan
             semaphore->has_been_waited_for = true;
             m_wait_semaphores.emplace_back(semaphore);
         }
+        SP_ASSERT_MSG(m_wait_semaphores[0] != nullptr, "There is nothing to present");
 
         // get semaphore from vkAcquireNextImageKHR
         RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
 
         queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
-
-        m_presented             = true;
-        m_buffer_index_previous = m_buffer_index;
-        m_buffer_index          = (m_buffer_index + 1) % m_buffer_count;
     }
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
