@@ -1,0 +1,31 @@
+diff --git a/Makefile.gnu b/Makefile.gnu
+index 5f2c625..871ffd0 100644
+--- a/Makefile.gnu
++++ b/Makefile.gnu
+@@ -15,7 +15,7 @@ LIBRARIES = -lstdc++
+ 
+ MODULES = $(SRCS:.c=.o)
+ MODULES := $(MODULES:.cpp=.o)
+-CFLAGS ?= -O3 -fPIC -fexceptions -fvisibility=hidden
++CFLAGS ?= -O3 -fPIC -fexceptions -fvisibility=hidden -std=c++14 -Wno-error=all
+ # OpenJPEG
+ CFLAGS += -DOPJ_STATIC
+ # LibRaw
+@@ -23,7 +23,7 @@ CFLAGS += -DNO_LCMS
+ # LibJXR
+ CFLAGS += -DDISABLE_PERF_MEASUREMENT -D__ANSI__
+ CFLAGS += $(INCLUDE)
+-CXXFLAGS ?= -O3 -fPIC -fexceptions -fvisibility=hidden -Wno-ctor-dtor-privacy
++CXXFLAGS ?= -O3 -fPIC -fexceptions -fvisibility=hidden -Wno-ctor-dtor-privacy -std=c++14 -Wno-error=all -Wno-narrowing
+ # LibJXR
+ CXXFLAGS += -D__ANSI__
+ CXXFLAGS += $(INCLUDE)
+@@ -54,7 +54,7 @@ dist: FreeImage
+ dos2unix:
+ 	@$(DOS2UNIX) $(SRCS) $(INCLS)
+ 
+-FreeImage: $(STATICLIB) $(SHAREDLIB)
++FreeImage: $(SHAREDLIB)
+ 
+ .c.o:
+ 	$(CC) $(CFLAGS) -c $< -o $@
