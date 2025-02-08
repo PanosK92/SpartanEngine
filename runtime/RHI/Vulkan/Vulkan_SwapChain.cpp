@@ -215,7 +215,7 @@ namespace spartan
         SP_ASSERT(m_sdl_window != nullptr);
 
         // create surface
-        VkSurfaceKHR surface = nullptr;
+        VkSurfaceKHR surface = VK_NULL_HANDLE;
         {
             SP_ASSERT_MSG(
                 SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, &surface),
@@ -244,7 +244,7 @@ namespace spartan
         m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
         // swap chain
-        VkSwapchainKHR swap_chain = nullptr;
+        VkSwapchainKHR swap_chain = VK_NULL_HANDLE;
         {
             VkSwapchainCreateInfoKHR create_info  = {};
             create_info.sType                     = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
