@@ -19,21 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==============
 #include "pch.h"
 #include "Display.h"
-#include <SDL.h>
 #include "Window.h"
-#if defined(_WIN32)
-#include <dxgi.h>
-#include <dxgi1_6.h>
-#include <wrl.h>
-#pragma comment(lib, "dxgi.lib")
-#elif defined(__linux__)
-#include <X11/Xlib.h>
-#include <X11/extensions/xf86vmode.h>
-#endif
-//===================================
+SP_WARNINGS_OFF
+#include <SDL3/SDL_video.h>
+SP_WARNINGS_ON
+//=========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -44,178 +37,9 @@ namespace spartan
     namespace
     {
         vector<DisplayMode> display_modes;
-        bool is_hdr_capable      = false;
-        float gamma              = 2.2f;
-        float luminance_nits_max = 0;
-        float luminance_nits_min = 0;
-
-        void get_hdr_capabilities(bool* is_hdr_capable, float* luminance_min, float* luminance_max)
-        {
-            *is_hdr_capable = false;
-            *luminance_min  = 0.0f;
-            *luminance_max  = 0.0f;
-
-            #if defined(_WIN32)
-                // create dxgi factory
-                Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
-                if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
-                {
-                    SP_LOG_ERROR("Failed to create DXGI factory");
-                    return;
-                }
-
-                // enumerate and get the primary adapter (gpu)
-                Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
-                for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
-                {
-                    DXGI_ADAPTER_DESC1 desc;
-                    adapter->GetDesc1(&desc);
-                    if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
-                    {
-                        continue;
-                    }
-
-                    break;
-                }
-
-                if (!adapter)
-                {
-                    SP_LOG_ERROR("No DXGI adapter found");
-                    return;
-                }
-
-                // find primary display by detecting which display is being intersected the most by the engine window
-                Microsoft::WRL::ComPtr<IDXGIOutput> output_primary;
-                {
-                    UINT i = 0;
-                    Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
-                    float best_intersection_area = -1;
-                    RECT window_rect;
-                    GetWindowRect(static_cast<HWND>(Window::GetHandleRaw()), &window_rect);
-                    while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
-                    {
-                        // get the rectangle bounds of the app window
-                        int ax1 = window_rect.left;
-                        int ay1 = window_rect.top;
-                        int ax2 = window_rect.right;
-                        int ay2 = window_rect.bottom;
-
-                        // get the rectangle bounds of current output
-                        DXGI_OUTPUT_DESC desc;
-                        if (FAILED(output_current->GetDesc(&desc)))
-                        {
-                            SP_LOG_ERROR("Failed to get output description");
-                            return;
-                        }
-
-                        RECT r  = desc.DesktopCoordinates;
-                        int bx1 = r.left;
-                        int by1 = r.top;
-                        int bx2 = r.right;
-                        int by2 = r.bottom;
-
-                        // compute the intersection
-                        int intersectArea = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
-                        if (intersectArea > best_intersection_area)
-                        {
-                            output_primary = output_current;
-                            best_intersection_area = static_cast<float>(intersectArea);
-                        }
-
-                        i++;
-                    }
-                }
-
-                // get display capabilities
-                Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-                if (SUCCEEDED(output_primary.As(&output6)))
-                {
-                    DXGI_OUTPUT_DESC1 desc;
-                    if (SUCCEEDED(output6->GetDesc1(&desc)))
-                    {
-                        *is_hdr_capable = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                        *luminance_min  = desc.MinLuminance;
-                        *luminance_max  = desc.MaxLuminance;
-                    }
-                }
-            #else
-                SP_ASSERT_MSG(false, "HDR support detection not implemented");
-            #endif
-        }
-
-        void get_gamma(float* gamma)
-        {
-            *gamma = 2.2f;
-        
-        #ifdef _WIN32
-            HDC hdc = GetDC(nullptr); // get the device context for the primary monitor
-            if (!hdc)
-            {
-                SP_LOG_ERROR("Failed to get device context");
-                return;
-            }
-        
-            WORD gammaRamp[3][256];
-            if (GetDeviceGammaRamp(hdc, gammaRamp))
-            {
-                // normalize the gamma ramp values and calculate the gamma value
-                float sum = 0.0f;
-                for (int i = 0; i < 256; ++i)
-                {
-                    // normalize the red channel value to [0, 1]
-                    float normalizedValue = static_cast<float>(gammaRamp[0][i]) / 65535.0f;
-                    // accumulate the normalized value
-                    sum += normalizedValue;
-                }
-
-                // calculate the average normalized value
-                float averageValue = sum / 256.0f;
-                // estimate gamma as the inverse of the average value
-                *gamma = 1.0f / averageValue;
-            }
-            else
-            {
-                SP_LOG_ERROR("Failed to get gamma ramp");
-            }
-        
-            ReleaseDC(nullptr, hdc);
-        
-        #elif defined(__linux__)
-            auto* display = XOpenDisplay(nullptr);
-            if (!display)
-            {
-                SP_LOG_ERROR("Failed to open X display");
-                return gamma;
-            }
-        
-            XF86VidModeGamma gammaRamp;
-            if (XF86VidModeGetGamma(display, DefaultScreen(display), &gammaRamp))
-            {
-                // normalize the gamma ramp values and calculate the gamma value
-                float sum = 0.0f;
-                for (int i = 0; i < 256; ++i)
-                {
-                    // normalize the red channel value to [0, 1]
-                    float normalizedValue = static_cast<float>(gammaRamp.red[i]) / 65535.0f;
-                    // accumulate the normalized value
-                    sum += normalizedValue;
-                }
-                // calculate the average normalized value
-                float averageValue = sum / 256.0f;
-                // estimate gamma as the inverse of the average value
-                *gamma = 1.0f / averageValue;
-            }
-            else
-            {
-                SP_LOG_ERROR("Failed to get gamma ramp");
-            }
-        
-            XCloseDisplay(display);
-        #endif
-        }
     }
 
-    void Display::RegisterDisplayMode(const uint32_t width, const uint32_t height, uint32_t hz, uint8_t display_index)
+    void Display::RegisterDisplayMode(const uint32_t width, const uint32_t height, float hz, uint32_t display_index)
     {
         SP_ASSERT_MSG(width  != 0,    "width can't be zero");
         SP_ASSERT_MSG(height != 0,    "height can't be zero");
@@ -227,8 +51,9 @@ namespace spartan
             if (display_mode.width         == width  &&
                 display_mode.height        == height &&
                 display_mode.hz            == hz     &&
-                display_mode.display_index == display_index)
-                return;
+                display_mode.display_id == display_index)
+
+            return;
         }
 
         // add the new display mode
@@ -245,42 +70,34 @@ namespace spartan
     {
         display_modes.clear();
 
-        // get display index of the display that contains this window
-        int display_index = SDL_GetWindowDisplayIndex(static_cast<SDL_Window*>(Window::GetHandleSDL()));
-        if (display_index < 0)
-        {
-            SP_LOG_ERROR("Failed to window display index");
-            return;
-        }
+        uint32_t display_id = GetId();
 
         // get display mode count
-        int display_mode_count = SDL_GetNumDisplayModes(display_index);
-        if (display_mode_count <= 0)
+        int display_mode_count;
+        SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(display_id, &display_mode_count);
+        if (!modes || display_mode_count <= 0)
         {
-            SP_LOG_ERROR("Failed to get display mode count");
+            SP_LOG_ERROR("Failed to get display modes: %s", SDL_GetError());
             return;
         }
 
         // register display modes
-        for (int display_mode_index = 0; display_mode_index < display_mode_count; display_mode_index++)
+        for (int i = 0; i < display_mode_count; i++)
         {
-            SDL_DisplayMode display_mode;
-            if (SDL_GetDisplayMode(display_index, display_mode_index, &display_mode) == 0)
-            {
-                RegisterDisplayMode(display_mode.w, display_mode.h, display_mode.refresh_rate, display_index);
-            }
-            else
-            {
-                SP_LOG_ERROR("Failed to get display mode %d for display %d", display_mode_index, display_index);
-            }
+            const SDL_DisplayMode* mode = modes[i];
+            RegisterDisplayMode(
+                mode->w,
+                mode->h,
+                mode->refresh_rate,
+                display_id
+            );
         }
 
-        // detect capabilities
-        get_gamma(&gamma);
-        get_hdr_capabilities(&is_hdr_capable, &luminance_nits_min, &luminance_nits_max);
-
-        // log everything
-        SP_LOG_INFO("Name: %s, Hz: %d, Gamma: %.1f, HDR: %s, max luminance: %.0f nits", GetName(), GetRefreshRate(), gamma, is_hdr_capable ? "true" : "false", luminance_nits_max);
+        // free modes array when done
+        SDL_free(modes);
+   
+        // log display info
+        SP_LOG_INFO("Name: %s, Hz: %d, Gamma: %.1f, HDR: %s, max luminance: %.0f nits", GetName(), GetRefreshRate(), GetGamma(), GetHdr() ? "true" : "false", GetLuminanceMax());
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
@@ -290,31 +107,28 @@ namespace spartan
     
     uint32_t Display::GetWidth()
     {
-        SDL_DisplayMode display_mode;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
-
-        return display_mode.w;
+        const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(GetId());
+        SP_ASSERT_MSG(display_mode, "Failed to get display mode");
+        return display_mode->w;
     }
 
     uint32_t Display::GetHeight()
     {
-        SDL_DisplayMode display_mode;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
-
-        return display_mode.h;
+        const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(GetId());
+        SP_ASSERT_MSG(display_mode, "Failed to get display mode");
+        return display_mode->h;
     }
 
     uint32_t Display::GetRefreshRate()
     {
-        SDL_DisplayMode display_mode;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
-       
-        return display_mode.refresh_rate;
+        const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(GetId());
+        SP_ASSERT_MSG(display_mode, "Failed to get display mode");
+        return display_mode->refresh_rate;
     }
 
-    uint32_t Display::GetIndex()
+    uint32_t Display::GetId()
     {
-        int index = SDL_GetWindowDisplayIndex(static_cast<SDL_Window*>(Window::GetHandleSDL()));
+        uint32_t index = SDL_GetDisplayForWindow(static_cast<SDL_Window*>(Window::GetHandleSDL()));
 
         // during engine startup, the window doesn't exist yet, therefore it's not displayed by any monitor.
         // in this case the index can be -1, so we'll instead set the index to 0 (whatever the primary display is)
@@ -323,21 +137,28 @@ namespace spartan
 
     bool Display::GetHdr()
     {
-        return is_hdr_capable;
+        SDL_PropertiesID props = SDL_GetDisplayProperties(GetId());
+        return SDL_GetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, false);
     }
-
+    
     float Display::GetLuminanceMax()
     {
-        return luminance_nits_max;
-    }
+        float default_value = 350.0f; // a common value
 
+        SDL_PropertiesID props = SDL_GetDisplayProperties(GetId());
+        const char* property   = GetHdr() ? "SDL.display.HDR_white_level" : "SDL.display.SDR_white_level";
+        return SDL_GetFloatProperty(props, property, default_value);
+    }
+    
     float Display::GetGamma()
     {
-        return gamma;
+        // no good way to do that, so just return a default value
+        // this needs to be calibrate per display by the user
+        return 2.2f;
     }
 
     const char* Display::GetName()
     {
-        return SDL_GetDisplayName(GetIndex());
+        return SDL_GetDisplayName(GetId());
     }
 }

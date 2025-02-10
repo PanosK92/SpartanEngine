@@ -19,30 +19,26 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======
+//= INCLUDES ========
 #include "pch.h"
 #include "Input.h"
-#include <SDL.h>
-//==================
+SP_WARNINGS_OFF
+#include <SDL3/SDL.h>
+SP_WARNINGS_ON
+//===================
 
 //= NAMESPACES ===============
 using namespace std;
 using namespace spartan::math;
 //============================
 
-// these need to be included on windows or sdl will throw a bunch of linking errors
-#ifdef _WIN32
-#pragma comment(lib, "winmm.lib")
-#pragma comment(lib, "version.lib")
-#endif
-
 namespace spartan
 {
-    // Keys
+    // keys
     std::array<bool, 107> Input::m_keys;
     std::array<bool, 107> m_keys_previous_frame;
-    uint32_t Input::m_start_index_mouse      = 83;
-    uint32_t Input::m_start_index_controller = 86;
+    uint32_t Input::m_start_index_mouse   = 83;
+    uint32_t Input::m_start_index_gamepad = 86;
 
     void Input::Initialize()
     {
@@ -57,9 +53,9 @@ namespace spartan
         }
 
         // initialise controller subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_GAMECONTROLLER) != 1)
+        if (SDL_WasInit(SDL_INIT_GAMEPAD) != 1)
         {
-            if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0)
+            if (SDL_InitSubSystem(SDL_INIT_GAMEPAD) != 0)
             {
                 SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
                 return;
@@ -117,58 +113,73 @@ namespace spartan
         return m_start_index_mouse;
     }
 
-    uint32_t Input::GetKeyIndexController()
+    uint32_t Input::GetKeyIndexGamepad()
     {
-        return m_start_index_controller;
+        return m_start_index_gamepad;
     }
 
-    void Input::CheckControllerState(uint32_t event_type, Controller* controller, ControllerType type_to_detect)
+    void Input::CheckGamepadState(uint32_t event_type, Controller* controller, ControllerType type_to_detect)
     {
         // connected
-        if (!controller->is_connected && event_type == SDL_CONTROLLERDEVICEADDED)
+        if (!controller->is_connected && event_type == SDL_EVENT_GAMEPAD_ADDED)
         {
-            for (int i = 0; i < SDL_NumJoysticks(); i++)
+            int num_joysticks;
+            SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
+            if (joysticks)
             {
-                if (SDL_IsGameController(i))
+                for (int i = 0; i < num_joysticks; i++)
                 {
-                    SDL_GameController* controller_candidate = SDL_GameControllerOpen(i);
-                    if (SDL_GameControllerGetAttached(controller_candidate) == SDL_TRUE)
+                    SDL_JoystickID instance_id = joysticks[i];
+                    if (SDL_IsGamepad(instance_id))
                     {
-                        string name = SDL_GameControllerNameForIndex(i);
-                        transform(name.begin(), name.end(), name.begin(), ::tolower);
-
-                        bool is_wheel = name.find("wheel") != string::npos;
-                        if (type_to_detect == ControllerType::Gamepad && is_wheel)
-                            continue;
-
-                        if (type_to_detect == ControllerType::SteeringWheel && !is_wheel)
-                            continue;
-
-                        controller->sdl_pointer  = controller_candidate;
-                        controller->index        = i;
-                        controller->is_connected = true;
-                        controller->name         = SDL_GameControllerNameForIndex(i);
-
-                        SP_LOG_INFO("Controller connected \"%s\".", controller->name.c_str());
-                        break;
-                    }
-                    else
-                    {
-                        SP_LOG_ERROR("Failed to get controller: %s.", SDL_GetError());
+                        SDL_Gamepad* controller_candidate = SDL_OpenGamepad(instance_id);
+                        if (controller_candidate)
+                        {
+                            const char* name_ptr = SDL_GetGamepadName(controller_candidate);
+                            string name = name_ptr ? name_ptr : "";
+                            transform(name.begin(), name.end(), name.begin(), ::tolower);
+    
+                            bool is_wheel = name.find("wheel") != string::npos;
+                            
+                            // Check if the controller type matches what we're looking for
+                            if ((type_to_detect == ControllerType::Gamepad && is_wheel) ||
+                                (type_to_detect == ControllerType::SteeringWheel && !is_wheel))
+                            {
+                                SDL_CloseGamepad(controller_candidate);
+                                continue;
+                            }
+    
+                            controller->sdl_pointer  = controller_candidate;
+                            controller->instance_id  = instance_id;
+                            controller->is_connected = true;
+                            controller->name         = name;
+    
+                            SP_LOG_INFO("Controller connected \"%s\"", controller->name.c_str());
+                            break;
+                        }
+                        else
+                        {
+                            SP_LOG_ERROR("Failed to open gamepad: %s", SDL_GetError());
+                        }
                     }
                 }
+                SDL_free(joysticks);
             }
-
-            SDL_GameControllerEventState(SDL_ENABLE);
+            SDL_SetGamepadEventsEnabled(true);
         }
-
-        // disconnected
-        if (controller->is_connected && event_type == SDL_CONTROLLERDEVICEREMOVED)
+    
+        // Disconnected
+        if (controller->is_connected && event_type == SDL_EVENT_GAMEPAD_REMOVED)
         {
-            SP_LOG_INFO("Controller disconnected \"%s\".", controller->name.c_str());
-
+            SP_LOG_INFO("Controller disconnected \"%s\"", controller->name.c_str());
+            
+            if (controller->sdl_pointer)
+            {
+                SDL_CloseGamepad(static_cast<SDL_Gamepad*>(controller->sdl_pointer));
+            }
+            
             controller->sdl_pointer  = nullptr;
-            controller->index        = 0;
+            controller->instance_id  = 0;
             controller->is_connected = false;
             controller->name         = "";
         }
@@ -176,10 +187,10 @@ namespace spartan
 
     float Input::GetNormalizedAxisValue(void* controller, const uint32_t axis)
     {
-        int16_t value = SDL_GameControllerGetAxis(static_cast<SDL_GameController*>(controller), static_cast<SDL_GameControllerAxis>(axis));
+        int16_t value = SDL_GetGamepadAxis(static_cast<SDL_Gamepad*>(controller), static_cast<SDL_GamepadAxis>(axis));
 
         // account for deadzone
-        static const uint16_t deadzone = 8000; // a good default as per SDL_GameController.h
+        static const uint16_t deadzone = 8000; // a good default as per SDL_Gamepad.h
         if ((abs(value) - deadzone) < 0)
         {
             value = 0;

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../Display/Display.h"
 SP_WARNINGS_OFF
-#include <SDL_vulkan.h>
+#include <SDL3/SDL_vulkan.h>
 SP_WARNINGS_ON
 //================================
 
@@ -218,7 +218,7 @@ namespace spartan
         VkSurfaceKHR surface = nullptr;
         {
             SP_ASSERT_MSG(
-                SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, &surface),
+                SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, &surface),
                 "Failed to created window surface");
 
             VkBool32 present_support = false;

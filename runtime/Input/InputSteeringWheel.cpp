@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======
+//= INCLUDES ========
 #include "pch.h"
 #include "Input.h"
-#include <SDL.h>
-//==================
+SP_WARNINGS_OFF
+#include <SDL3/SDL.h>
+SP_WARNINGS_ON
+//===================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -45,9 +47,9 @@ namespace spartan
         if (!steering_wheel.sdl_pointer)
             return;
 
-        steering    = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_CONTROLLER_AXIS_LEFTX);
-        accelerator = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
-        brake       = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+        steering    = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_GAMEPAD_AXIS_LEFTX);
+        accelerator = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
+        brake       = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
 
         SP_LOG_INFO("Steering: %f, Accelerator: %f, Brake: %f", steering, accelerator, brake);
     }
@@ -56,7 +58,7 @@ namespace spartan
     {
         SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
         uint32_t event_type  = sdl_event->type;
-        CheckControllerState(event_type, &steering_wheel, ControllerType::SteeringWheel);
+        CheckGamepadState(event_type, &steering_wheel, ControllerType::SteeringWheel);
     }
 
     float Input::GetSteeringWheelSteering()

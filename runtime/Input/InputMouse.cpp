@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input.h"
 #include "../Core/Window.h"
 SP_WARNINGS_OFF
-#include <SDL.h>
+#include <SDL3/SDL.h>
 SP_WARNINGS_ON
 //=========================
 
@@ -50,9 +50,9 @@ namespace spartan
     void Input::PollMouse()
     {
         // get state
-        int x, y;
-        Uint32 keys_states = SDL_GetGlobalMouseState(&x, &y);
-        Vector2 position   = Vector2(static_cast<float>(x), static_cast<float>(y));
+        float x = 0.0f, y = 0.0f;
+        SDL_MouseButtonFlags keys_states = SDL_GetGlobalMouseState(&x, &y);
+        Vector2 position                 = Vector2(static_cast<float>(x), static_cast<float>(y));
 
         // get delta
         m_mouse_delta = position - m_mouse_position;
@@ -61,9 +61,9 @@ namespace spartan
         m_mouse_position = position;
 
         // get keys
-        GetKeys()[m_start_index_mouse]     = (keys_states & SDL_BUTTON(SDL_BUTTON_LEFT))   != 0; // Left button pressed
-        GetKeys()[m_start_index_mouse + 1] = (keys_states & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0; // Middle button pressed
-        GetKeys()[m_start_index_mouse + 2] = (keys_states & SDL_BUTTON(SDL_BUTTON_RIGHT))  != 0; // Right button pressed
+        GetKeys()[m_start_index_mouse]     = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_LEFT))   != 0; // left button pressed
+        GetKeys()[m_start_index_mouse + 1] = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) != 0; // middle button pressed
+        GetKeys()[m_start_index_mouse + 2] = (keys_states & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT))  != 0; // right button pressed
     }
 
     void Input::OnEventMouse(void* event)
@@ -71,7 +71,7 @@ namespace spartan
         SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
         uint32_t event_type  = sdl_event->type;
 
-        if (event_type == SDL_MOUSEWHEEL)
+        if (event_type == SDL_EVENT_MOUSE_WHEEL)
         {
             if (sdl_event->wheel.x > 0) m_mouse_wheel_delta.x += 1;
             if (sdl_event->wheel.x < 0) m_mouse_wheel_delta.x -= 1;
@@ -82,17 +82,18 @@ namespace spartan
 
     bool Input::GetMouseCursorVisible()
     {
-        return SDL_ShowCursor(SDL_QUERY) == 1;
+        return SDL_CursorVisible();
     }
 
     void Input::SetMouseCursorVisible(const bool visible)
     {
-        if (visible == GetMouseCursorVisible())
-            return;
-
-        if (SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE) < 0)
+        if (visible)
         {
-            SP_LOG_ERROR("Failed to change cursor visibility");
+            SDL_ShowCursor();
+        }
+        else
+        {
+            SDL_HideCursor();
         }
     }
 
@@ -126,7 +127,7 @@ namespace spartan
 
     void Input::SetMousePosition(const math::Vector2& position)
     {
-        if (SDL_WarpMouseGlobal(static_cast<int>(position.x), static_cast<int>(position.y)) != 0)
+        if (!SDL_WarpMouseGlobal(position.x, position.y))
         {
             SP_LOG_ERROR("Failed to set mouse position.");
             return;

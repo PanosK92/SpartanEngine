@@ -92,11 +92,11 @@ namespace spartan
 
     struct Controller
     {
-        void* sdl_pointer   = nullptr;
-        bool is_connected   = false;
-        std::string name    = "";
-        uint32_t index      = 0;
-        ControllerType type = ControllerType::Max;
+        void* sdl_pointer    = nullptr;
+        bool is_connected    = false;
+        std::string name     = "";
+        uint32_t instance_id = 0;
+        ControllerType type  = ControllerType::Max;
     };
 
     class Input
@@ -160,13 +160,13 @@ namespace spartan
     private:
         static std::array<bool, 107>& GetKeys();
         static uint32_t GetKeyIndexMouse();
-        static uint32_t GetKeyIndexController();
-        static void CheckControllerState(uint32_t event_type, Controller* controller, ControllerType type_to_detect);
+        static uint32_t GetKeyIndexGamepad();
+        static void CheckGamepadState(uint32_t event_type, Controller* controller, ControllerType type_to_detect);
         static float GetNormalizedAxisValue(void* controller, const uint32_t axis);
 
         // keys
         static std::array<bool, 107> m_keys;
         static uint32_t m_start_index_mouse;
-        static uint32_t m_start_index_controller;
+        static uint32_t m_start_index_gamepad;
     };
 }

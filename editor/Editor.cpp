@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Settings.h"
 #include "ImGui/ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
-#include "ImGui/Implementation/imgui_impl_sdl2.h"
+#include "ImGui/Implementation/imgui_impl_sdl3.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/Style.h"
@@ -54,7 +54,7 @@ namespace
     void process_event(spartan::sp_variant data)
     {
         SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
-        ImGui_ImplSDL2_ProcessEvent(event_sdl);
+        ImGui_ImplSDL3_ProcessEvent(event_sdl);
     }
 }
 
@@ -82,7 +82,7 @@ Editor::Editor(const vector<string>& args)
     io.FontGlobalScale     = font_scale;
 
     // initialise imgui backends
-    SP_ASSERT_MSG(ImGui_ImplSDL2_InitForVulkan(static_cast<SDL_Window*>(spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
+    SP_ASSERT_MSG(ImGui_ImplSDL3_InitForVulkan(static_cast<SDL_Window*>(spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
     // initialization of some helper static classes
@@ -118,7 +118,7 @@ Editor::~Editor()
     if (ImGui::GetCurrentContext())
     {
         ImGui::RHI::shutdown();
-        ImGui_ImplSDL2_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
     }
 
@@ -137,7 +137,7 @@ void Editor::Tick()
             // imgui
             if (render_editor)
             {
-                ImGui_ImplSDL2_NewFrame();
+                ImGui_ImplSDL3_NewFrame();
                 ImGui::NewFrame();
             }
 

@@ -41,7 +41,6 @@ public:
 private:
     bool m_is_visible          = false;
     bool m_hdr                 = false;
-    bool m_alpha_preview       = true;
     bool m_alpha_half_preview  = false;
     bool m_options_menu        = true;
     bool m_show_wheel          = false;

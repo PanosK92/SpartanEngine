@@ -89,7 +89,7 @@ def main():
     library_url           = 'https://www.dropbox.com/scl/fi/e9b8eiyvs69zoyarleift/libraries.7z?rlkey=5a3me7rc3os4naev2dyifjbsz&st=1amejgmw&dl=1'
     library_expected_hash = '89f3dc352d1ff47b059ef1bceed2d89f5ae7989eac60666624f195363a23d85d'
     library_destination   = Path("third_party") / "libraries" / "libraries.7z"
-    file_utilities.download_file(library_url, str(library_destination), library_expected_hash)
+    #file_utilities.download_file(library_url, str(library_destination), library_expected_hash)
     file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"))
     
     print("3. Copying required DLLs to the binary directory...")

@@ -32,14 +32,14 @@ namespace spartan
     public:
         // display modes
         static void Initialize();
-        static void RegisterDisplayMode(const uint32_t width, const uint32_t height, const uint32_t hz, const uint8_t display_index);
+        static void RegisterDisplayMode(const uint32_t width, const uint32_t height, const float hz, const uint32_t display_index);
         static const std::vector<DisplayMode>& GetDisplayModes();
 
         // properties
         static uint32_t GetWidth();
         static uint32_t GetHeight();
         static uint32_t GetRefreshRate();
-        static uint32_t GetIndex();
+        static uint32_t GetId();
         static bool GetHdr();
         static float GetLuminanceMax();
         static float GetGamma();

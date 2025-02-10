@@ -19,11 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======
+//= INCLUDES ========
 #include "pch.h"
 #include "Input.h"
-#include <SDL.h>
-//==================
+SP_WARNINGS_OFF
+#include <SDL3/SDL.h>
+SP_WARNINGS_ON
+//===================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -46,53 +48,53 @@ namespace spartan
         if (!gamepad.is_connected)
             return;
 
-        controller_trigger_left  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERLEFT);  // L2
-        controller_trigger_right = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT); // R2
-        controller_thumb_left.x  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTX);        // LEFT THUMBSTICK
-        controller_thumb_left.y  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTY);        // LEFT THUMBSTICK
-        controller_thumb_right.x = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX);       // RIGHT THUMBSTICK
-        controller_thumb_right.y = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY);       // RIGHT THUMBSTICK
+        controller_trigger_left  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER); // L2
+        controller_trigger_right = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER); // R2
+        controller_thumb_left.x  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX);        // LEFT THUMBSTICK
+        controller_thumb_left.y  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY);        // LEFT THUMBSTICK
+        controller_thumb_right.x = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTX);       // RIGHT THUMBSTICK
+        controller_thumb_right.y = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTY);       // RIGHT THUMBSTICK
     }
 
     void Input::OnEventGamepad(void* event)
     {
         SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
         uint32_t event_type  = sdl_event->type;
-        CheckControllerState(event_type, &gamepad, ControllerType::Gamepad);
+        CheckGamepadState(event_type, &gamepad, ControllerType::Gamepad);
 
         if (!gamepad.is_connected)
             return;
 
         // keys
-        if (event_type == SDL_CONTROLLERBUTTONDOWN)
+        if (event_type == SDL_EVENT_GAMEPAD_BUTTON_DOWN)
         {
-            Uint8 button = sdl_event->cbutton.button;
+            Uint8 button = sdl_event->button.button;
 
-            m_keys[GetKeyIndexController()]      = button == SDL_CONTROLLER_BUTTON_DPAD_UP;
-            m_keys[GetKeyIndexController() + 1]  = button == SDL_CONTROLLER_BUTTON_DPAD_DOWN;
-            m_keys[GetKeyIndexController() + 2]  = button == SDL_CONTROLLER_BUTTON_DPAD_LEFT;
-            m_keys[GetKeyIndexController() + 3]  = button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT;
-            m_keys[GetKeyIndexController() + 4]  = button == SDL_CONTROLLER_BUTTON_A;
-            m_keys[GetKeyIndexController() + 5]  = button == SDL_CONTROLLER_BUTTON_B;
-            m_keys[GetKeyIndexController() + 6]  = button == SDL_CONTROLLER_BUTTON_X;
-            m_keys[GetKeyIndexController() + 7]  = button == SDL_CONTROLLER_BUTTON_Y;
-            m_keys[GetKeyIndexController() + 8]  = button == SDL_CONTROLLER_BUTTON_BACK;
-            m_keys[GetKeyIndexController() + 9]  = button == SDL_CONTROLLER_BUTTON_GUIDE;
-            m_keys[GetKeyIndexController() + 10] = button == SDL_CONTROLLER_BUTTON_START;
-            m_keys[GetKeyIndexController() + 11] = button == SDL_CONTROLLER_BUTTON_LEFTSTICK;
-            m_keys[GetKeyIndexController() + 12] = button == SDL_CONTROLLER_BUTTON_RIGHTSTICK;
-            m_keys[GetKeyIndexController() + 13] = button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
-            m_keys[GetKeyIndexController() + 14] = button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
-            m_keys[GetKeyIndexController() + 15] = button == SDL_CONTROLLER_BUTTON_MISC1;
-            m_keys[GetKeyIndexController() + 16] = button == SDL_CONTROLLER_BUTTON_PADDLE1;
-            m_keys[GetKeyIndexController() + 17] = button == SDL_CONTROLLER_BUTTON_PADDLE2;
-            m_keys[GetKeyIndexController() + 18] = button == SDL_CONTROLLER_BUTTON_PADDLE3;
-            m_keys[GetKeyIndexController() + 19] = button == SDL_CONTROLLER_BUTTON_PADDLE4;
-            m_keys[GetKeyIndexController() + 20] = button == SDL_CONTROLLER_BUTTON_TOUCHPAD;
+            m_keys[GetKeyIndexGamepad()]      = button == SDL_GAMEPAD_BUTTON_DPAD_UP;
+            m_keys[GetKeyIndexGamepad() + 1]  = button == SDL_GAMEPAD_BUTTON_DPAD_DOWN;
+            m_keys[GetKeyIndexGamepad() + 2]  = button == SDL_GAMEPAD_BUTTON_DPAD_LEFT;
+            m_keys[GetKeyIndexGamepad() + 3]  = button == SDL_GAMEPAD_BUTTON_DPAD_RIGHT;
+            m_keys[GetKeyIndexGamepad() + 4]  = button == SDL_GAMEPAD_BUTTON_SOUTH;
+            m_keys[GetKeyIndexGamepad() + 5]  = button == SDL_GAMEPAD_BUTTON_EAST;
+            m_keys[GetKeyIndexGamepad() + 6]  = button == SDL_GAMEPAD_BUTTON_WEST;
+            m_keys[GetKeyIndexGamepad() + 7]  = button == SDL_GAMEPAD_BUTTON_NORTH;
+            m_keys[GetKeyIndexGamepad() + 8]  = button == SDL_GAMEPAD_BUTTON_BACK;
+            m_keys[GetKeyIndexGamepad() + 9]  = button == SDL_GAMEPAD_BUTTON_GUIDE;
+            m_keys[GetKeyIndexGamepad() + 10] = button == SDL_GAMEPAD_BUTTON_START;
+            m_keys[GetKeyIndexGamepad() + 11] = button == SDL_GAMEPAD_BUTTON_LEFT_STICK;
+            m_keys[GetKeyIndexGamepad() + 12] = button == SDL_GAMEPAD_BUTTON_RIGHT_STICK;
+            m_keys[GetKeyIndexGamepad() + 13] = button == SDL_GAMEPAD_BUTTON_LEFT_SHOULDER;
+            m_keys[GetKeyIndexGamepad() + 14] = button == SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER;
+            m_keys[GetKeyIndexGamepad() + 15] = button == SDL_GAMEPAD_BUTTON_MISC1;
+            m_keys[GetKeyIndexGamepad() + 16] = button == SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1;
+            m_keys[GetKeyIndexGamepad() + 17] = button == SDL_GAMEPAD_BUTTON_LEFT_PADDLE1;
+            m_keys[GetKeyIndexGamepad() + 18] = button == SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2;
+            m_keys[GetKeyIndexGamepad() + 19] = button == SDL_GAMEPAD_BUTTON_LEFT_PADDLE2;
+            m_keys[GetKeyIndexGamepad() + 20] = button == SDL_GAMEPAD_BUTTON_TOUCHPAD;
         }
         else
         {
-            for (auto i = GetKeyIndexController(); i <= GetKeyIndexController() + 11; i++)
+            for (auto i = GetKeyIndexGamepad(); i <= GetKeyIndexGamepad() + 11; i++)
             {
                 m_keys[i] = false;
             }
@@ -108,7 +110,7 @@ namespace spartan
         Uint16 high_frequency_rumble = static_cast<uint16_t>(clamp(right_motor_speed, 0.0f, 1.0f) * 65535); // convert [0, 1] to [0, 65535]
         Uint32 duration_ms           = 0xFFFFFFFF;
 
-        if (SDL_GameControllerRumble(static_cast<SDL_GameController*>(gamepad.sdl_pointer), low_frequency_rumble, high_frequency_rumble, duration_ms) == -1)
+        if (SDL_RumbleGamepad(static_cast<SDL_Gamepad*>(gamepad.sdl_pointer), low_frequency_rumble, high_frequency_rumble, duration_ms) == -1)
         {
             SP_LOG_ERROR("Failed to vibrate controller");
             return false;

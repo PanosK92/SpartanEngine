@@ -171,7 +171,6 @@ void ButtonColorPicker::Update()
         if (m_show_hex)           flags |= ImGuiColorEditFlags_DisplayHex;
         if (m_hdr)                flags |= ImGuiColorEditFlags_HDR;
         if (m_alpha_half_preview) flags |= ImGuiColorEditFlags_AlphaPreviewHalf;
-        if (m_alpha_preview)      flags |= ImGuiColorEditFlags_AlphaPreview;
         if (!m_options_menu)      flags |= ImGuiColorEditFlags_NoOptions;
 
         ImGui::ColorPicker4(m_color_picker_label.c_str(), (float*)&m_color, flags);

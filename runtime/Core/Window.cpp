@@ -27,24 +27,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Display/Display.h"
 #include "../RHI/RHI_Implementation.h"
 SP_WARNINGS_OFF
-#include <SDL.h>
-#include <SDL_syswm.h>
+#include <SDL3/SDL.h>
 SP_WARNINGS_ON
 //====================================
-
-//= LINKING ============================
-#ifdef _WIN32
-// Statically linking SDL2 requirements
-#pragma comment(lib, "Imm32.lib")
-#pragma comment(lib, "Setupapi.lib")
-// SetProcessDpiAwareness() requirements
-#pragma comment(lib, "Shcore.lib")
-#endif
-//======================================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
+
+#ifdef _WIN32
+// SDL3 requirements
+#pragma comment(lib, "winmm.lib")    // For timeBeginPeriod/timeEndPeriod
+#pragma comment(lib, "setupapi.lib") // For SetupDi* functions
+#pragma comment(lib, "cfgmgr32.lib") // For CM_* configuration manager functions
+#pragma comment(lib, "version.lib")  // For GetFileVersionInfo/VerQueryValue
+//Window::Initialize()
+#pragma comment(lib, "Shcore.lib")
+#endif
 
 namespace spartan
 {
@@ -67,9 +66,9 @@ namespace spartan
 
     void Window::Initialize()
     {
-        // set the process to be per monitor DPI aware
+        // set the process to be per monitor DPI aware - Windows 10 v1607+ (Creators Update)
         #ifdef _WIN32
-        // User32.lib + dll, Windows 10 v1607+ (Creators Update)
+        #pragma comment(lib, "Shcore.lib")
         if (HMODULE user32 = LoadLibrary(TEXT("user32.dll")))
         {
             typedef DPI_AWARENESS_CONTEXT(WINAPI* pfn)(DPI_AWARENESS_CONTEXT);
@@ -117,9 +116,7 @@ namespace spartan
         // create window
         m_title = string(sp_info::name) + " " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
         window  = SDL_CreateWindow(
-            m_title.c_str(), // window title
-            0,               // initial x position
-            0,               // initial y position
+            m_title.c_str(),
             width,
             height,
             flags
@@ -146,7 +143,7 @@ namespace spartan
         #endif
 
         // register library
-        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
+        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_MICRO_VERSION);
         Settings::RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
     }
 
@@ -162,68 +159,57 @@ namespace spartan
         SDL_Event sdl_event;
         while (SDL_PollEvent(&sdl_event))
         {
-            if (sdl_event.type == SDL_WINDOWEVENT)
+            if (sdl_event.window.windowID == SDL_GetWindowID(window))
             {
-                if (sdl_event.window.windowID == SDL_GetWindowID(window))
+                switch (sdl_event.type)
                 {
-                    switch (sdl_event.window.event)
-                    {
-                    case SDL_WINDOWEVENT_SHOWN:
-                        break;
-                    case SDL_WINDOWEVENT_HIDDEN:
-                        break;
-                    case SDL_WINDOWEVENT_EXPOSED:
-                        break;
-                    case SDL_WINDOWEVENT_MOVED:
-                        break;
-                    case SDL_WINDOWEVENT_RESIZED:
-                        width  = static_cast<uint32_t>(sdl_event.window.data1);
-                        height = static_cast<uint32_t>(sdl_event.window.data2);
-                        SP_FIRE_EVENT(EventType::WindowResized);
-                        break;
-                    case SDL_WINDOWEVENT_SIZE_CHANGED:
-                        width  = static_cast<uint32_t>(sdl_event.window.data1);
-                        height = static_cast<uint32_t>(sdl_event.window.data2);
-                        SP_FIRE_EVENT(EventType::WindowResized);
-                        break;
-                    case SDL_WINDOWEVENT_MINIMIZED:
-                        break;
-                    case SDL_WINDOWEVENT_MAXIMIZED:
-                        break;
-                    case SDL_WINDOWEVENT_RESTORED:
-                        break;
-                    case SDL_WINDOWEVENT_ENTER:
-                        // window has gained mouse focus
-                        break;
-                    case SDL_WINDOWEVENT_LEAVE:
-                        // window has lost mouse focus
-                        break;
-                    case SDL_WINDOWEVENT_FOCUS_GAINED:
-                        // window has gained keyboard focus
-                        break;
-                    case SDL_WINDOWEVENT_FOCUS_LOST:
-                        // window has lost keyboard focus
-                        break;
-                    case SDL_WINDOWEVENT_CLOSE:
-                        wants_to_close = true;
-                        break;
-                    case SDL_WINDOWEVENT_TAKE_FOCUS:
-                        // window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
-                        break;
-                    case SDL_WINDOWEVENT_HIT_TEST:
-                        // window had a hit test that wasn't SDL_HITTEST_NORMAL.
-                        break;
-                    case SDL_WINDOWEVENT_ICCPROF_CHANGED:
-                        SP_LOG_INFO("The ICC profile of the window's display has changed");
-                        break;
-                    case SDL_WINDOWEVENT_DISPLAY_CHANGED:
-                        SP_LOG_INFO("Display has been changed, detecting new display modes");
-                        Display::Initialize();
-                        break;
-                    default:
-                        SP_LOG_ERROR("Unhandled window event");
-                        break;
-                    }
+                case SDL_EVENT_WINDOW_SHOWN:
+                    break;
+                case SDL_EVENT_WINDOW_HIDDEN:
+                    break;
+                case SDL_EVENT_WINDOW_EXPOSED:
+                    break;
+                case SDL_EVENT_WINDOW_MOVED:
+                    break;
+                case SDL_EVENT_WINDOW_RESIZED:
+                    width  = static_cast<uint32_t>(sdl_event.window.data1);
+                    height = static_cast<uint32_t>(sdl_event.window.data2);
+                    SP_FIRE_EVENT(EventType::WindowResized);
+                    break;
+                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                    width  = static_cast<uint32_t>(sdl_event.window.data1);
+                    height = static_cast<uint32_t>(sdl_event.window.data2);
+                    SP_FIRE_EVENT(EventType::WindowResized);
+                    break;
+                case SDL_EVENT_WINDOW_MINIMIZED:
+                    break;
+                case SDL_EVENT_WINDOW_MAXIMIZED:
+                    break;
+                case SDL_EVENT_WINDOW_RESTORED:
+                    break;
+                case SDL_EVENT_WINDOW_MOUSE_ENTER:
+                    break;
+                case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+                    break;
+                case SDL_EVENT_WINDOW_FOCUS_GAINED:
+                    break;
+                case SDL_EVENT_WINDOW_FOCUS_LOST:
+                    break;
+                case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                    wants_to_close = true;
+                    break;
+                case SDL_EVENT_WINDOW_HIT_TEST:
+                    break;
+                case SDL_EVENT_WINDOW_ICCPROF_CHANGED:
+                    SP_LOG_INFO("The ICC profile of the window's display has changed");
+                    break;
+                case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+                    SP_LOG_INFO("Display has been changed, detecting new display modes");
+                    Display::Initialize();
+                    break;
+                default:
+                    SP_LOG_ERROR("Unhandled window event");
+                    break;
                 }
             }
 
@@ -311,7 +297,7 @@ namespace spartan
     {
         SP_ASSERT(window != nullptr);
 
-        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        SDL_SetWindowFullscreen(window, true);
     }
 
     void Window::Minimize()
@@ -323,10 +309,10 @@ namespace spartan
 
     void Window::Maximize()
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
-        Uint32 window_flags = SDL_GetWindowFlags(window);
-        if (window_flags & SDL_WINDOW_MAXIMIZED)
+        SDL_WindowFlags flags = SDL_GetWindowFlags(window);
+        if (flags & SDL_WINDOW_MAXIMIZED)
         {
             SDL_RestoreWindow(window);
         }
@@ -338,14 +324,14 @@ namespace spartan
 
     void Window::SetSize(const uint32_t width, const uint32_t height)
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
         SDL_SetWindowSize(window, static_cast<int>(width), static_cast<int>(height));
     }
 
     uint32_t Window::GetWidth()
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
         int width = 0;
         SDL_GetWindowSize(window, &width, nullptr);
@@ -374,19 +360,22 @@ namespace spartan
 
     void* Window::GetHandleRaw()
     {
-        SDL_SysWMinfo wmInfo;
-        SDL_VERSION(&wmInfo.version);
-        SDL_GetWindowWMInfo(window, &wmInfo);
-        if(SDL_FALSE == SDL_GetWindowWMInfo(window, &wmInfo))
-        {
-            printf("Error: %s", SDL_GetError());
-            return static_cast<void*>(nullptr);
-        }
-        #ifdef _WIN32
-        return static_cast<void*>(wmInfo.info.win.window);
-        #elif __linux__
-        return reinterpret_cast<void*>(wmInfo.info.x11.window);
-        #endif
+        SDL_PropertiesID props = SDL_GetWindowProperties(window);
+        
+        // windows
+        if (void* handle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr))
+            return handle;
+        
+        // wayland
+        if (void* handle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr))
+            return handle;
+        
+        // x11
+        if (Uint64 x11_window = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0))
+            return reinterpret_cast<void*>(x11_window);
+
+    
+        return nullptr;
     }
 
     void Window::Close()
@@ -423,23 +412,21 @@ namespace spartan
 
         // create splash screen
         m_splash_sceen_window = SDL_CreateWindow(
-            "splash_screen",                         // window title
-            pos_x,                                   // initial x position
-            pos_y,                                   // initial y position
-            width,                                   // width in pixels
-            height,                                  // height in pixels
-            SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS // flags
+            "splash_screen",
+            width,
+            height,
+            SDL_WINDOW_BORDERLESS
         );
 
         // create a renderer
-        m_splash_screen_renderer = SDL_CreateRenderer(m_splash_sceen_window, -1, 0);
+        m_splash_screen_renderer = SDL_CreateRenderer(m_splash_sceen_window, "splash_screen_renderer");
 
         // create texture (GPU) and free image (CPU)
         m_splash_screen_texture = SDL_CreateTextureFromSurface(m_splash_screen_renderer, image);
-        SDL_FreeSurface(image);
+        SDL_DestroySurface(image);
 
         // draw/copy and present
-        SDL_RenderCopy(m_splash_screen_renderer, m_splash_screen_texture, nullptr, nullptr);
+        SDL_RenderTexture(m_splash_screen_renderer, m_splash_screen_texture, nullptr, nullptr);
         SDL_RenderPresent(m_splash_screen_renderer);
     }
 
