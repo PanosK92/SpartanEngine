@@ -339,8 +339,7 @@ namespace spartan
 
     uint32_t Window::GetHeight()
     {
-        if (!window)
-            return 0;
+        SP_ASSERT(window);
 
         int height = 0;
         SDL_GetWindowSize(window, nullptr, &height);
@@ -373,7 +372,6 @@ namespace spartan
         if (Uint64 x11_window = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0))
             return reinterpret_cast<void*>(x11_window);
 
-    
         return nullptr;
     }
 
@@ -401,32 +399,44 @@ namespace spartan
     {
         // load splash screen image
         SDL_Surface* image = SDL_LoadBMP("data\\textures\\banner.bmp");
-        SP_ASSERT_MSG(image != nullptr, "Failed to load splash screen image");
+        if (!image)
+        {
+            SP_LOG_ERROR("Failed to load splash screen image: %s", SDL_GetError());
+        }
         
         // create splash screen window centered on screen
-        m_splash_screen_window = SDL_CreateWindow(
-            "splash_screen",
-            image->w,
-            image->h,
-            SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP
-        );
-        if (!m_splash_screen_window)
+        if (image)
         { 
-            SP_LOG_ERROR("Failed to create splash screen window: %s", SDL_GetError());
+            m_splash_screen_window = SDL_CreateWindow(
+                "splash_screen",
+                image->w,
+                image->h,
+                SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP
+            );
+            if (!m_splash_screen_window)
+            { 
+                SP_LOG_ERROR("Failed to create splash screen window: %s", SDL_GetError());
+            }
         }
 
         // create a renderer
-        m_splash_screen_renderer = SDL_CreateRenderer(m_splash_screen_window, "splash_screen_renderer");
-        if (!m_splash_screen_renderer)
+        if (m_splash_screen_window)
         { 
-            SP_LOG_ERROR("Failed to create renderer: %s", SDL_GetError());
+            m_splash_screen_renderer = SDL_CreateRenderer(m_splash_screen_window, "vulkan");
+            if (!m_splash_screen_renderer)
+            { 
+                SP_LOG_ERROR("Failed to create renderer: %s", SDL_GetError());
+            }
         }
 
         // create texture (GPU) and free image (CPU)
-        m_splash_screen_texture = SDL_CreateTextureFromSurface(m_splash_screen_renderer, image);
-        if (!m_splash_screen_texture)
+        if (m_splash_screen_renderer)
         { 
-            SP_LOG_ERROR("Failed to create texture from surface: %s", SDL_GetError());
+            m_splash_screen_texture = SDL_CreateTextureFromSurface(m_splash_screen_renderer, image);
+            if (!m_splash_screen_texture)
+            { 
+                SP_LOG_ERROR("Failed to create texture from surface: %s", SDL_GetError());
+            }
         }
         SDL_DestroySurface(image);
 
