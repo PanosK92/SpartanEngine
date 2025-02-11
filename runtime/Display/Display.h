@@ -38,7 +38,7 @@ namespace spartan
         // properties
         static uint32_t GetWidth();
         static uint32_t GetHeight();
-        static uint32_t GetRefreshRate();
+        static float GetRefreshRate();
         static uint32_t GetId();
         static bool GetHdr();
         static float GetLuminanceMax();

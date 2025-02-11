@@ -423,7 +423,7 @@ namespace spartan
         }
 
         // register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
-        Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), static_cast<uint32_t>(Timer::GetFpsLimit()), Display::GetId());
+        Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), Timer::GetFpsLimit(), Display::GetId());
 
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }

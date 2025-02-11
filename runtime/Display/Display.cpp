@@ -19,14 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ===============
 #include "pch.h"
 #include "Display.h"
 #include "Window.h"
 SP_WARNINGS_OFF
+#if defined(_WIN32)
+// used by GetLuminanceMax()
+#include <dxgi.h>
+#include <dxgi1_6.h>
+#include <wrl.h>
+#endif
 #include <SDL3/SDL_video.h>
 SP_WARNINGS_ON
-//=========================
+//==========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -119,7 +125,7 @@ namespace spartan
         return display_mode->h;
     }
 
-    uint32_t Display::GetRefreshRate()
+    float Display::GetRefreshRate()
     {
         const SDL_DisplayMode* display_mode = SDL_GetCurrentDisplayMode(GetId());
         SP_ASSERT_MSG(display_mode, "Failed to get display mode");
@@ -140,14 +146,95 @@ namespace spartan
         SDL_PropertiesID props = SDL_GetDisplayProperties(GetId());
         return SDL_GetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, false);
     }
-    
+  
     float Display::GetLuminanceMax()
     {
-        float default_value = 350.0f; // a common value
+        float value = 350.0f;
 
-        SDL_PropertiesID props = SDL_GetDisplayProperties(GetId());
-        const char* property   = GetHdr() ? "SDL.display.HDR_white_level" : "SDL.display.SDR_white_level";
-        return SDL_GetFloatProperty(props, property, default_value);
+        #if defined(_WIN32)
+        #pragma comment(lib, "dxgi.lib")
+
+        // create dxgi factory
+        Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+        if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
+        {
+            SP_LOG_ERROR("Failed to create DXGI factory");
+            return value;
+        }
+        
+        // enumerate and get the primary adapter (gpu)
+        Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+        for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
+        {
+            DXGI_ADAPTER_DESC1 desc;
+            adapter->GetDesc1(&desc);
+            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+                continue;
+        
+            break;
+        }
+        
+        if (!adapter)
+        {
+            SP_LOG_ERROR("No DXGI adapter found");
+            return value;
+        }
+        
+        // find primary display by detecting which display is being intersected the most by the engine window
+        Microsoft::WRL::ComPtr<IDXGIOutput> output_primary;
+        {
+            UINT i = 0;
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
+            float best_intersection_area = -1;
+            RECT window_rect;
+            GetWindowRect(static_cast<HWND>(Window::GetHandleRaw()), &window_rect);
+            while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
+            {
+                // get the rectangle bounds of the app window
+                int ax1 = window_rect.left;
+                int ay1 = window_rect.top;
+                int ax2 = window_rect.right;
+                int ay2 = window_rect.bottom;
+        
+                // get the rectangle bounds of current output
+                DXGI_OUTPUT_DESC desc;
+                if (FAILED(output_current->GetDesc(&desc)))
+                {
+                    SP_LOG_ERROR("Failed to get output description");
+                    return value;
+                }
+        
+                RECT r  = desc.DesktopCoordinates;
+                int bx1 = r.left;
+                int by1 = r.top;
+                int bx2 = r.right;
+                int by2 = r.bottom;
+        
+                // compute the intersection
+                int intersectArea = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
+                if (intersectArea > best_intersection_area)
+                {
+                    output_primary = output_current;
+                    best_intersection_area = static_cast<float>(intersectArea);
+                }
+        
+                i++;
+            }
+        }
+        
+        // get display capabilities
+        Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+        if (SUCCEEDED(output_primary.As(&output6)))
+        {
+            DXGI_OUTPUT_DESC1 desc;
+            if (SUCCEEDED(output6->GetDesc1(&desc)))
+            {
+                value = desc.MaxLuminance;
+            }
+        }
+        #endif
+
+        return value;
     }
     
     float Display::GetGamma()

@@ -447,7 +447,7 @@ namespace spartan
                 #endif
                 "\nDisplay\n"
                 "Name:\t\t\t%s\n"
-                "Hz:\t\t\t\t\t%u\n"
+                "Hz:\t\t\t\t\t%.1f\n"
                 "HDR:\t\t\t\t%s\n"
                 "Max nits:\t\t%u\n"
                 "Render:\t\t%u x %u - %.0f%%\n"
