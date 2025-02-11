@@ -425,7 +425,7 @@ namespace spartan
     
             snprintf(metrics_buffer, sizeof(metrics_buffer),
                 "FPS:\t\t%.1f\n"
-                "Time:\t%.2f ms\n"
+                "Time:\t\t%.2f ms\n"
                 "Frame:\t%llu\n\n"
                 "\t\t\t\tavg\t\t\tmin\t\t\tmax\t\tlast\n"
                 "Total:\t%05.2f\t\t%05.2f\t\t%05.2f\t\t%05.2f ms\n"
@@ -452,14 +452,14 @@ namespace spartan
                 "Max nits:\t\t%u\n"
                 "Render:\t\t%u x %u - %.0f%%\n"
                 "Output:\t\t%u x %u\n"
-                "Viewport:\t%u x %u\n\n"
+                "Viewport:\t\t%u x %u\n\n"
                 "Graphics API\n"
-                "Draw:\t\t\t\t\t\t\t\t\t\t%u\n"
+                "Draw:\t\t\t\t\t\t\t\t\t%u\n"
                 "Index buffer bindings:\t\t%u\n"
-                "Vertex buffer bindings:\t\t%u\n"
-                "Barriers:\t\t\t\t\t\t\t\t\t%u\n"
+                "Vertex buffer bindings:\t%u\n"
+                "Barriers:\t\t\t\t\t\t\t\t%u\n"
                 "Pipelines:\t\t\t\t\t\t\t\t%u\n"
-                "Descriptor set capacity:\t\t%u/%u",
+                "Descriptor set capacity:\t%u/%u",
 
                 m_fps,
                 time_frame_avg,

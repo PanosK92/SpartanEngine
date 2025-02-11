@@ -110,7 +110,7 @@ namespace spartan
         Uint16 high_frequency_rumble = static_cast<uint16_t>(clamp(right_motor_speed, 0.0f, 1.0f) * 65535); // convert [0, 1] to [0, 65535]
         Uint32 duration_ms           = 0xFFFFFFFF;
 
-        if (SDL_RumbleGamepad(static_cast<SDL_Gamepad*>(gamepad.sdl_pointer), low_frequency_rumble, high_frequency_rumble, duration_ms) == -1)
+        if (!SDL_RumbleGamepad(static_cast<SDL_Gamepad*>(gamepad.sdl_pointer), low_frequency_rumble, high_frequency_rumble, duration_ms))
         {
             SP_LOG_ERROR("Failed to vibrate controller");
             return false;
