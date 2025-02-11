@@ -194,6 +194,10 @@ namespace spartan
                     break;
                 case 533:
                     break;
+                case 768:
+                    break;
+                case 769:
+                    break;
                 case 1024:
                     break;
                 case 1027:

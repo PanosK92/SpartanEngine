@@ -480,7 +480,7 @@ namespace spartan
         const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "\\";
 
         // load a font
-        uint32_t size = static_cast<uint32_t>(16 * Window::GetDpiScale()); // maintain a consistent font size across different resolutions
+        uint32_t size = static_cast<uint32_t>(12 * Window::GetDpiScale());
         standard_font = make_shared<Font>(dir_font + "OpenSans/OpenSans-Medium.ttf", size, Color(0.9f, 0.9f, 0.9f, 1.0f));
     }
 

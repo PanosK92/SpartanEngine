@@ -103,7 +103,7 @@ namespace spartan
         SDL_free(modes);
    
         // log display info
-        SP_LOG_INFO("Name: %s, Hz: %d, Gamma: %.1f, HDR: %s, max luminance: %.0f nits", GetName(), GetRefreshRate(), GetGamma(), GetHdr() ? "true" : "false", GetLuminanceMax());
+        SP_LOG_INFO("name: %s, hz: %.1f, gamma: %.1f, hdr: %s, max luminance: %.0f nits", GetName(), GetRefreshRate(), GetGamma(), GetHdr() ? "true" : "false", GetLuminanceMax());
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
