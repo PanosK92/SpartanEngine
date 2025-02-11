@@ -52,7 +52,7 @@ namespace spartan
 
         // splash-screen
         bool m_show_splash_screen              = true;
-        SDL_Window* m_splash_sceen_window      = nullptr;
+        SDL_Window* m_splash_screen_window      = nullptr;
         SDL_Renderer* m_splash_screen_renderer = nullptr;
         SDL_Texture* m_splash_screen_texture   = nullptr;
     }
@@ -227,7 +227,7 @@ namespace spartan
 
     void Window::Show()
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
         SDL_ShowWindow(window);
     }
@@ -241,14 +241,14 @@ namespace spartan
 
     void Window::Focus()
     {
-        SP_ASSERT(window != nullptr);
+       SP_ASSERT(window);
 
         SDL_RaiseWindow(window);
     }
 
     void Window::FullScreen()
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
         bool was_windowed = !IsFullScreen();
 
@@ -265,7 +265,7 @@ namespace spartan
 
     void Window::Windowed()
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
         bool was_fullscreen = IsFullScreen();
 
@@ -294,14 +294,14 @@ namespace spartan
 
 	void Window::FullScreenBorderless()
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
         SDL_SetWindowFullscreen(window, true);
     }
 
     void Window::Minimize()
     {
-        SP_ASSERT(window != nullptr);
+        SP_ASSERT(window);
 
         SDL_MinimizeWindow(window);
     }
@@ -402,43 +402,36 @@ namespace spartan
         // load splash screen image
         SDL_Surface* image = SDL_LoadBMP("data\\textures\\banner.bmp");
         SP_ASSERT_MSG(image != nullptr, "Failed to load splash screen image");
-
-        // get display bounds
-        SDL_Rect display_bounds;
-        if (SDL_GetDisplayBounds(0, &display_bounds) != 0)
-        {
-            SP_LOG_ERROR("Failed to get display bounds: %s", SDL_GetError());
-            return;
+        
+        // create splash screen window centered on screen
+        m_splash_screen_window = SDL_CreateWindow(
+            "splash_screen",
+            image->w,
+            image->h,
+            SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP
+        );
+        if (!m_splash_screen_window)
+        { 
+            SP_LOG_ERROR("Failed to create splash screen window: %s", SDL_GetError());
         }
 
-        // compute window size
-        int width  = image->w;
-        int height = image->h;
-        
-        // create splash screen window (initially not positioned)
-        m_splash_sceen_window = SDL_CreateWindow(
-            "splash_screen",
-            width,
-            height,
-            SDL_WINDOW_BORDERLESS
-        );
-        SP_ASSERT_MSG(m_splash_sceen_window != nullptr, "Failed to create splash screen window");
-
-        // compute centered position
-        int pos_x = display_bounds.x + (display_bounds.w - width) / 2;
-        int pos_y = display_bounds.y + (display_bounds.h - height) / 2;
-        
-        // set window position (must be done separately in SDL 3)
-        SDL_SetWindowPosition(m_splash_sceen_window, pos_x, pos_y);
-
         // create a renderer
-        m_splash_screen_renderer = SDL_CreateRenderer(m_splash_sceen_window, "splash_screen_renderer");
+        m_splash_screen_renderer = SDL_CreateRenderer(m_splash_screen_window, "splash_screen_renderer");
+        if (!m_splash_screen_renderer)
+        { 
+            SP_LOG_ERROR("Failed to create renderer: %s", SDL_GetError());
+        }
 
         // create texture (GPU) and free image (CPU)
         m_splash_screen_texture = SDL_CreateTextureFromSurface(m_splash_screen_renderer, image);
+        if (!m_splash_screen_texture)
+        { 
+            SP_LOG_ERROR("Failed to create texture from surface: %s", SDL_GetError());
+        }
         SDL_DestroySurface(image);
 
-        // draw/copy and present
+        SDL_SetRenderDrawColor(m_splash_screen_renderer, 0, 0, 0, 255);
+        SDL_RenderClear(m_splash_screen_renderer);
         SDL_RenderTexture(m_splash_screen_renderer, m_splash_screen_texture, nullptr, nullptr);
         SDL_RenderPresent(m_splash_screen_renderer);
     }
@@ -451,6 +444,6 @@ namespace spartan
         // hide and destroy splash screen window
         SDL_DestroyTexture(m_splash_screen_texture);
         SDL_DestroyRenderer(m_splash_screen_renderer);
-        SDL_DestroyWindow(m_splash_sceen_window);
+        SDL_DestroyWindow(m_splash_screen_window);
     }
 }
