@@ -83,16 +83,6 @@ namespace spartan
             }
         }
 
-        // initialise events subsystem (if needed)
-        if (!SDL_WasInit(SDL_INIT_EVENTS))
-        {
-            if (!SDL_InitSubSystem(SDL_INIT_EVENTS))
-            {
-                SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
-                return;
-            }
-        }
-
         // show a splash screen
         if (m_show_splash_screen)
         {
@@ -199,6 +189,18 @@ namespace spartan
                 case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
                     SP_LOG_INFO("Display has been changed, detecting new display modes");
                     Display::Initialize();
+                    break;
+                case 532:
+                    break;
+                case 533:
+                    break;
+                case 1024:
+                    break;
+                case 1027:
+                    break;
+                case 1025:
+                    break;
+                case 1026:
                     break;
                 default:
                     SP_LOG_ERROR("Unhandled window event");
