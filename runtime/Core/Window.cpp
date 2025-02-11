@@ -28,22 +28,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL.h>
+#pragma comment(lib, "winmm.lib") 
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "version.lib")
 SP_WARNINGS_ON
 //====================================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
-
-#ifdef _WIN32
-// SDL3 requirements
-#pragma comment(lib, "winmm.lib")    // For timeBeginPeriod/timeEndPeriod
-#pragma comment(lib, "setupapi.lib") // For SetupDi* functions
-#pragma comment(lib, "cfgmgr32.lib") // For CM_* configuration manager functions
-#pragma comment(lib, "version.lib")  // For GetFileVersionInfo/VerQueryValue
-//Window::Initialize()
-#pragma comment(lib, "Shcore.lib")
-#endif
 
 namespace spartan
 {
@@ -81,9 +74,9 @@ namespace spartan
         #endif
 
         // initialise video subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
+        if (!SDL_WasInit(SDL_INIT_VIDEO))
         {
-            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+            if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
             {
                 SP_LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
                 return;
@@ -91,9 +84,9 @@ namespace spartan
         }
 
         // initialise events subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_EVENTS) != 1)
+        if (!SDL_WasInit(SDL_INIT_EVENTS))
         {
-            if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0)
+            if (!SDL_InitSubSystem(SDL_INIT_EVENTS))
             {
                 SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
                 return;
@@ -400,23 +393,37 @@ namespace spartan
 
     void Window::CreateAndShowSplashScreen()
     {
-        // lod splash screen image
+        // load splash screen image
         SDL_Surface* image = SDL_LoadBMP("data\\textures\\banner.bmp");
         SP_ASSERT_MSG(image != nullptr, "Failed to load splash screen image");
 
-        // compute window position
-        uint32_t width  = image->w;
-        uint32_t height = image->h;
-        uint32_t pos_x  = (Display::GetWidth() / 2)  - (width / 2);
-        uint32_t pos_y  = (Display::GetHeight() / 2) - (height / 2);
+        // get display bounds
+        SDL_Rect display_bounds;
+        if (SDL_GetDisplayBounds(0, &display_bounds) != 0)
+        {
+            SP_LOG_ERROR("Failed to get display bounds: %s", SDL_GetError());
+            return;
+        }
 
-        // create splash screen
+        // compute window size
+        int width  = image->w;
+        int height = image->h;
+        
+        // create splash screen window (initially not positioned)
         m_splash_sceen_window = SDL_CreateWindow(
             "splash_screen",
             width,
             height,
             SDL_WINDOW_BORDERLESS
         );
+        SP_ASSERT_MSG(m_splash_sceen_window != nullptr, "Failed to create splash screen window");
+
+        // compute centered position
+        int pos_x = display_bounds.x + (display_bounds.w - width) / 2;
+        int pos_y = display_bounds.y + (display_bounds.h - height) / 2;
+        
+        // set window position (must be done separately in SDL 3)
+        SDL_SetWindowPosition(m_splash_sceen_window, pos_x, pos_y);
 
         // create a renderer
         m_splash_screen_renderer = SDL_CreateRenderer(m_splash_sceen_window, "splash_screen_renderer");

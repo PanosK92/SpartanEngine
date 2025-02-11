@@ -36,9 +36,10 @@ namespace spartan
 {
     void Input::PollKeyboard()
     {
-        // get keyboard state
-        int* key_states;
-        SDL_GetKeyboardState(key_states);
+        // get state
+        int num_keys = 0;
+        const bool* key_states = SDL_GetKeyboardState(&num_keys);
+        SP_ASSERT_MSG(key_states != nullptr, "Failed to get keyboard state");
 
         // function
         GetKeys()[0]  = key_states[SDL_SCANCODE_F1];
