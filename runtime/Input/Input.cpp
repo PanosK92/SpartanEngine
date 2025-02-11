@@ -42,16 +42,6 @@ namespace spartan
 
     void Input::Initialize()
     {
-        // initialise events subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_EVENTS) != 1)
-        {
-            if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0)
-            {
-                SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
-                return;
-            }
-        }
-
         // initialise controller subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_GAMEPAD) != 1)
         {
