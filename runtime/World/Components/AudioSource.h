@@ -27,6 +27,7 @@ connection with the software or the use or other dealings in the software.
 //=====================
 
 struct SDL_AudioSpec;
+struct SDL_AudioStream;
 
 namespace spartan
 {
@@ -48,7 +49,7 @@ namespace spartan
         void SetAudioClip(const std::string& file_path);
         const std::string& GetAudioClipName() const { return m_name; };
 
-        bool IsPlaying() const;
+        bool IsPlaying() { return m_is_playing; }
         void Play();
         void Stop();
         float GetProgress() const;
@@ -80,9 +81,11 @@ namespace spartan
         float   m_volume            = 1.0f;
         float   m_pitch             = 1.0f;
         float   m_pan               = 0.0f;
+        bool m_is_playing           = false;
 
-        uint8_t* m_buffer = nullptr;
-        uint32_t m_length = 0;
+        uint8_t* m_buffer                     = nullptr;
+        uint32_t m_length                     = 0;
         std::shared_ptr<SDL_AudioSpec> m_spec = nullptr;
+        SDL_AudioStream* m_stream             = nullptr;
     };
 }

@@ -34,14 +34,24 @@ namespace spartan
 {
     AudioSource::AudioSource(Entity* entity) : Component(entity)
     {
-        
+
     }
 
     AudioSource::~AudioSource()
     {
         Stop();
 
-        // deallocate the sound here
+        if (m_stream)
+        {
+            SDL_DestroyAudioStream(m_stream);
+            m_stream = nullptr;
+        }
+
+        if (m_buffer)
+        {
+            SDL_free(m_buffer);
+            m_buffer = nullptr;
+        }
     }
 
     void AudioSource::OnInitialize()
@@ -69,7 +79,13 @@ namespace spartan
 
     void AudioSource::OnTick()
     {
-        // update if needed
+        if (m_loop)
+        {
+            if (SDL_GetAudioStreamAvailable(m_stream) < static_cast<int>(m_length))
+            {
+                SDL_PutAudioStreamData(m_stream, m_buffer, m_length);
+            }
+        }
     }
 
     void AudioSource::Serialize(FileStream* stream)
@@ -94,28 +110,50 @@ namespace spartan
 
     void AudioSource::SetAudioClip(const string& file_path)
     {
+        // store the filename from the provided path
         m_name = FileSystem::GetFileNameFromFilePath(file_path);
 
+        // allocate an audio spec and load the wav file into our buffer
         m_spec = make_shared<SDL_AudioSpec>();
-        if(!SDL_LoadWAV(file_path.c_str(), m_spec.get(), &m_buffer, &m_length))
+        if (!SDL_LoadWAV(file_path.c_str(), m_spec.get(), &m_buffer, &m_length))
         {
-            SP_LOG_ERROR("Failed to load \"%s\": %s", file_path.c_str(), SDL_GetError());
+            SP_LOG_ERROR("failed to load \"%s\": %s", file_path.c_str(), SDL_GetError());
+            return;
         }
-    }
 
-    bool AudioSource::IsPlaying() const
-    {
-        return false;
+        // open an audio stream with the wav file's spec, conversion to the hardware format is automatic
+        m_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, m_spec.get(), nullptr, nullptr);
+        if (!m_stream)
+        {
+            SP_LOG_ERROR("%s", SDL_GetError());
+            SDL_free(m_buffer);
+        }
     }
 
     void AudioSource::Play()
     {
+        SDL_ResumeAudioStreamDevice(m_stream);
 
+        // feed the entire wav data into the stream; for looping playback, you'll want to call this
+        // again when the stream's available data falls below a certain threshold (in an update loop)
+        if (!SDL_PutAudioStreamData(m_stream, m_buffer, m_length))
+        {
+            SP_LOG_ERROR("%s", SDL_GetError());
+            return;
+        }
+
+         m_is_playing = true;
     }
 
     void AudioSource::Stop()
     {
+        // pause the audio stream to halt playback
+        SDL_PauseAudioStreamDevice(m_stream);
 
+        // flush any queued audio data so that playback starts from the beginning next time
+        SDL_FlushAudioStream(m_stream);
+
+        m_is_playing = false;
     }
 
     float AudioSource::GetProgress() const
