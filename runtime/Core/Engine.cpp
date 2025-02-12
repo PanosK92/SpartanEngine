@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Window.h"
 #include "ThreadPool.h"
-#include "../Audio/Audio.h"
 #include "../Input/Input.h"
 #include "../World/World.h"
 #include "../Physics/Physics.h"
@@ -81,7 +80,6 @@ namespace spartan
             Input::Initialize();
             ThreadPool::Initialize();
             ResourceCache::Initialize();
-            Audio::Initialize();
             Profiler::Initialize();
             Physics::Initialize();
             Renderer::Initialize();
@@ -104,7 +102,6 @@ namespace spartan
         Renderer::Shutdown();
         Physics::Shutdown();
         Event::Shutdown();
-        Audio::Shutdown();
         Window::Shutdown();
         ImageImporter::Shutdown();
         FontImporter::Shutdown();
@@ -119,7 +116,6 @@ namespace spartan
         // tick
         Window::Tick();
         Input::Tick();
-        Audio::Tick();
         Physics::Tick();
         World::Tick();
         Renderer::Tick();

@@ -19,11 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+//= INCLUDES =============
 #include "pch.h"
 #include "AudioListener.h"
-#include "../../Audio/Audio.h"
-//============================
+//========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -38,6 +37,6 @@ namespace spartan
 
     void AudioListener::OnTick()
     {
-        Audio::SetListenerEntity(m_entity_ptr);
+        
     }
 }

@@ -56,7 +56,7 @@ namespace spartan
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
 
-        void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.mp3")
+        void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
         {
             if (!soundtrack_file_path)
                 return;
@@ -349,7 +349,7 @@ namespace spartan
                     sound->SetParent(m_default_car);
 
                     shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\car_start.mp3");
+                    audio_source->SetAudioClip("project\\music\\car_start.wav");
                     audio_source->SetLoop(false);
                     audio_source->SetPlayOnStart(false);
                 }
@@ -361,7 +361,7 @@ namespace spartan
                     sound->SetParent(m_default_car);
 
                     shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\car_idle.mp3");
+                    audio_source->SetAudioClip("project\\music\\car_idle.wav");
                     audio_source->SetLoop(true);
                     audio_source->SetPlayOnStart(false);
                 }
@@ -495,7 +495,7 @@ namespace spartan
                     sound->SetParent(entity);
 
                     shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\footsteps_grass.mp3");
+                    audio_source->SetAudioClip("project\\music\\footsteps_grass.wav");
                     audio_source->SetPlayOnStart(false);
                 }
 
@@ -506,7 +506,7 @@ namespace spartan
                     sound->SetParent(entity);
 
                     shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\forest_river.mp3");
+                    audio_source->SetAudioClip("project\\music\\forest_river.wav");
                     audio_source->SetLoop(true);
                 }
 
@@ -517,7 +517,7 @@ namespace spartan
                     sound->SetParent(entity);
 
                     shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\wind.mp3");
+                    audio_source->SetAudioClip("project\\music\\wind.wav");
                     audio_source->SetLoop(true);
                 }
 
@@ -528,7 +528,7 @@ namespace spartan
                     sound->SetParent(entity);
 
                     shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\underwater.mp3");
+                    audio_source->SetAudioClip("project\\music\\underwater.wav");
                     audio_source->SetPlayOnStart(false);
                 }
             }
@@ -696,7 +696,7 @@ namespace spartan
             // set the mood
             create_camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
             create_sun(LightIntensity::black_hole, false);
-            create_music("project\\music\\jake_chudnow_olive.mp3");
+            create_music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
             // point light
@@ -809,7 +809,7 @@ namespace spartan
         {
             create_camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
             create_sun(LightIntensity::sky_sunlight_noon, false);
-            create_music("project\\music\\doom_e1m1.mp3");
+            create_music("project\\music\\doom_e1m1.wav");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
             {

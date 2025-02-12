@@ -42,20 +42,10 @@ namespace spartan
 
     void Input::Initialize()
     {
-        // initialise controller subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_GAMEPAD) != 1)
-        {
-            if (SDL_InitSubSystem(SDL_INIT_GAMEPAD) != 0)
-            {
-                SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
-                return;
-            }
-        }
-
         m_keys.fill(false);
         m_keys_previous_frame.fill(false);
 
-        // get events from the main Window's event processing loop
+        // get events from the main window's event processing loop
         SP_SUBSCRIBE_TO_EVENT(EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(OnEvent));
     }
 

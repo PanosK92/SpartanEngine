@@ -197,7 +197,6 @@ function runtime_project_configuration()
             includedirs { "../third_party/sdl" }
             includedirs { "../third_party/assimp" }
             includedirs { "../third_party/bullet" }
-            includedirs { "../third_party/fmod" }
             includedirs { "../third_party/free_image" }
             includedirs { "../third_party/free_type" }
             includedirs { "../third_party/compressonator" }
@@ -226,7 +225,6 @@ function runtime_project_configuration()
             targetdir (TARGET_DIR)
             links { "dxcompiler" }
             links { "assimp" }
-            links { "fmod_vc" }
             links { "FreeImageLib" }
             links { "freetype" }
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
@@ -243,7 +241,6 @@ function runtime_project_configuration()
             if os.target() == "windows" then
                 links { "dxcompiler" }
                 links { "assimp_debug" }
-                links { "fmodL_vc" }
                 links { "FreeImageLib_debug" }
                 links { "freetype_debug" }
                 links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
@@ -255,7 +252,6 @@ function runtime_project_configuration()
             else
                 links { "dxcompiler" }
                 links { "assimp" }
-                links { "fmod_vc" }
                 links { "FreeImageLib" }
                 links { "freetype" }
                 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }

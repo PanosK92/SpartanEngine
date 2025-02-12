@@ -55,6 +55,34 @@ namespace spartan
         SDL_Window* m_splash_screen_window      = nullptr;
         SDL_Renderer* m_splash_screen_renderer = nullptr;
         SDL_Texture* m_splash_screen_texture   = nullptr;
+
+
+        void sdl_initialize_subystems()
+        {
+            if (!SDL_WasInit(SDL_INIT_AUDIO))
+            {
+                if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
+                {
+                    SP_LOG_ERROR("Failed to initialise SDL audio subsystem: %s.", SDL_GetError());
+                }
+            }
+
+            if (!SDL_WasInit(SDL_INIT_VIDEO))
+            {
+                if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
+                {
+                    SP_LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+                }
+            }
+
+            if (!SDL_WasInit(SDL_INIT_GAMEPAD))
+            {
+                if (SDL_InitSubSystem(SDL_INIT_GAMEPAD))
+                {
+                    SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
+                }
+            }
+        }
     }
 
     void Window::Initialize()
@@ -73,15 +101,7 @@ namespace spartan
         }
         #endif
 
-        // initialise video subsystem (if needed)
-        if (!SDL_WasInit(SDL_INIT_VIDEO))
-        {
-            if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
-            {
-                SP_LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
-                return;
-            }
-        }
+        sdl_initialize_subystems();
 
         // show a splash screen
         if (m_show_splash_screen)

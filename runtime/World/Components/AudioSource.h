@@ -1,43 +1,42 @@
 /*
-Copyright(c) 2016-2025 Panos Karabelas
+copyright(c) 2016-2025 panos karabelas
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-copies of the Software, and to permit persons to whom the Software is furnished
+permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "software"), to deal
+in the software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the software, and to permit persons to whom the software is furnished
 to do so, subject to the following conditions :
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+the above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+the software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability, fitness
+for a particular purpose and noninfringement. in no event shall the authors or
+copyright holders be liable for any claim, damages or other liability, whether
+in an action of contract, tort or otherwise, arising from, out of or in
+connection with the software or the use or other dealings in the software.
 */
 
 #pragma once
 
-//= INCLUDES =========
+//= includes =========
 #include "Component.h"
-#include <memory>
 #include <string>
-//====================
+//=====================
+
+struct SDL_AudioSpec;
 
 namespace spartan
 {
-    class AudioClip;
-
     class AudioSource : public Component
     {
     public:
         AudioSource(Entity* entity);
         ~AudioSource();
 
-        // IComponent
+        // component interface
         void OnInitialize() override;
         void OnStart() override;
         void OnStop() override;
@@ -46,13 +45,12 @@ namespace spartan
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
-        //= PROPERTIES ===================================================================
         void SetAudioClip(const std::string& file_path);
-        std::string GetAudioClipName() const;
+        const std::string& GetAudioClipName() const { return m_name; };
 
         bool IsPlaying() const;
-        void Play() const;
-        void Stop() const;
+        void Play();
+        void Stop();
         float GetProgress() const;
 
         bool GetMute() const { return m_mute; }
@@ -64,9 +62,6 @@ namespace spartan
         bool GetLoop() const { return m_loop; }
         void SetLoop(const bool loop);
 
-        int GetPriority() const { return m_priority; }
-        void SetPriority(int priority);
-
         float GetVolume() const { return m_volume; }
         void SetVolume(float volume);
 
@@ -76,20 +71,18 @@ namespace spartan
         float GetPan() const { return m_pan; }
         void SetPan(float pan);
 
-        bool Get3d() const { return m_3d; }
-        void Set3d(const bool enabled);
-        //================================================================================
-
     private:
-        bool m_mute              = false;
-        bool m_loop              = true;
-        bool m_3d                = false;
-        bool m_audio_clip_loaded = false;
-        bool m_play_on_start     = true;
-        int m_priority           = 128;
-        float m_volume           = 1.0f;
-        float m_pitch            = 1.0f;
-        float m_pan              = 0.0f;
-        std::shared_ptr<AudioClip> m_audio_clip;
+        std::string m_name          = "N/A";
+        bool    m_mute              = false;
+        bool    m_loop              = true;
+        bool    m_audio_clip_loaded = false;
+        bool    m_play_on_start     = true;
+        float   m_volume            = 1.0f;
+        float   m_pitch             = 1.0f;
+        float   m_pan               = 0.0f;
+
+        uint8_t* m_buffer = nullptr;
+        uint32_t m_length = 0;
+        std::shared_ptr<SDL_AudioSpec> m_spec = nullptr;
     };
 }
