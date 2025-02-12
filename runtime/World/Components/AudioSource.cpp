@@ -24,11 +24,16 @@ connection with the software or the use or other dealings in the software.
 #include "AudioSource.h"
 #include "../../IO/FileStream.h"
 #include <SDL3/SDL_audio.h>
-#include <SDL3/SDL_oldnames.h>
 //==============================
 
 using namespace std;
 using namespace spartan::math;
+
+#define CHECK_SDL_ERROR(call)               \
+    if (!(call)) {                          \
+        SP_LOG_ERROR("%s", SDL_GetError()); \
+        return;                             \
+    }
 
 namespace spartan
 {
@@ -115,11 +120,7 @@ namespace spartan
 
         // allocate an audio spec and load the wav file into our buffer
         m_spec = make_shared<SDL_AudioSpec>();
-        if (!SDL_LoadWAV(file_path.c_str(), m_spec.get(), &m_buffer, &m_length))
-        {
-            SP_LOG_ERROR("failed to load \"%s\": %s", file_path.c_str(), SDL_GetError());
-            return;
-        }
+        CHECK_SDL_ERROR(SDL_LoadWAV(file_path.c_str(), m_spec.get(), &m_buffer, &m_length));
 
         // open an audio stream with the wav file's spec, conversion to the hardware format is automatic
         m_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, m_spec.get(), nullptr, nullptr);
@@ -132,26 +133,26 @@ namespace spartan
 
     void AudioSource::Play()
     {
-        SDL_ResumeAudioStreamDevice(m_stream);
+        if (m_is_playing)
+            return;
 
+        CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
         // feed the entire wav data into the stream; for looping playback, you'll want to call this
         // again when the stream's available data falls below a certain threshold (in an update loop)
-        if (!SDL_PutAudioStreamData(m_stream, m_buffer, m_length))
-        {
-            SP_LOG_ERROR("%s", SDL_GetError());
-            return;
-        }
+        CHECK_SDL_ERROR(SDL_PutAudioStreamData(m_stream, m_buffer, m_length));
 
-         m_is_playing = true;
+        m_is_playing = true;
     }
 
     void AudioSource::Stop()
     {
-        // pause the audio stream to halt playback
-        SDL_PauseAudioStreamDevice(m_stream);
+        if (!m_is_playing)
+            return;
 
+        // pause the audio stream to halt playback
+        CHECK_SDL_ERROR(!SDL_PauseAudioStreamDevice(m_stream));
         // flush any queued audio data so that playback starts from the beginning next time
-        SDL_FlushAudioStream(m_stream);
+        CHECK_SDL_ERROR(SDL_FlushAudioStream(m_stream));
 
         m_is_playing = false;
     }
