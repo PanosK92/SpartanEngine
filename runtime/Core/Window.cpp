@@ -180,9 +180,6 @@ namespace spartan
                     SP_FIRE_EVENT(EventType::WindowResized);
                     break;
                 case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-                    width  = static_cast<uint32_t>(sdl_event.window.data1);
-                    height = static_cast<uint32_t>(sdl_event.window.data2);
-                    SP_FIRE_EVENT(EventType::WindowResized);
                     break;
                 case SDL_EVENT_WINDOW_MINIMIZED:
                     break;
