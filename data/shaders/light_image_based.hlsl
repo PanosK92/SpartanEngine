@@ -104,6 +104,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float shadow_mask                  = tex[thread_id.xy].r;
 
     // combine the diffuse light
+    shadow_mask        = max(0.15f, shadow_mask); // GI is not as good, so never go full dark
     float3 diffuse_ibl = diffuse_skysphere * shadow_mask + diffuse_gi;
 
     // combine all the specular light, fallback order: ssr -> gi -> skysphere
