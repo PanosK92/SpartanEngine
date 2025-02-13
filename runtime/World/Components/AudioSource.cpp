@@ -40,38 +40,38 @@ if (!(call)) {                          \
     return;                             \
 }
 
-namespace
+namespace audio_device
 {
     mutex device_mutex;
-    uint32_t shared_device_id   = 0;
-    uint32_t shared_device_refs = 0;
     SDL_AudioSpec spec;
+    uint32_t id         = 0;
+    uint32_t references = 0;
 
-    // acquire the shared audio device; open it if it's not already open
-    void acquire_shared_device()
+    // acquire the shared audio device, open it if it's not already open
+    void acquire()
     {
         lock_guard<mutex> lock(device_mutex);
-        if (shared_device_refs == 0)
+        if (references == 0)
         {
-            shared_device_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
-            if (shared_device_id == 0)
+            id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
+            if (id == 0)
             {
                 SP_LOG_ERROR("%s", SDL_GetError());
             }
         }
 
-        ++shared_device_refs;
+        ++references;
     }
 
-    // release the shared audio device; close it when no one is using it
-    void release_shared_device()
+    // release the shared audio device, close it when no one is using it
+    void release()
     {
         lock_guard<mutex> lock(device_mutex);
-        --shared_device_refs;
-        if (shared_device_refs == 0 && shared_device_id != 0)
+        --references;
+        if (references == 0 && id != 0)
         {
-            SDL_CloseAudioDevice(shared_device_id);
-            shared_device_id = 0;
+            SDL_CloseAudioDevice(id);
+            id = 0;
         }
     }
 }
@@ -80,7 +80,7 @@ namespace spartan
 {
     AudioSource::AudioSource(Entity* entity) : Component(entity)
     {
-        acquire_shared_device();
+        audio_device::acquire();
     }
 
     AudioSource::~AudioSource()
@@ -99,7 +99,7 @@ namespace spartan
             m_buffer = nullptr;
         }
 
-        release_shared_device();
+        audio_device::release();
     }
 
     void AudioSource::OnInitialize()
@@ -148,7 +148,7 @@ namespace spartan
                     // panning
                     {
                         Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
-                        float camera_dot_sound  = Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound);
+                        float camera_dot_sound  = abs(Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound));
 
                         // todo
                         // Mix_SetPanning() is probably the key function
@@ -159,10 +159,10 @@ namespace spartan
                         // inverse square law with a rolloff factor
                         float distance_squared     = Vector3::DistanceSquared(camera_position, sound_position);
                         const float rolloff_factor = 20.0f;
-                        float volume               = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
-                        volume                     = max(0.0f, min(volume, 1.0f));
+                        m_attenuation              = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
+                        m_attenuation              = max(0.0f, min(m_attenuation, 1.0f));
 
-                        SetVolume(volume);
+                        SetVolume(m_volume);
                     }
                 }
             }
@@ -195,7 +195,7 @@ namespace spartan
         m_name = FileSystem::GetFileNameFromFilePath(file_path);
 
         // allocate an audio spec and load the wav file into our buffer
-        CHECK_SDL_ERROR(SDL_LoadWAV(file_path.c_str(), &spec, &m_buffer, &m_length));
+        CHECK_SDL_ERROR(SDL_LoadWAV(file_path.c_str(), &audio_device::spec, &m_buffer, &m_length));
     }
 
     void AudioSource::Play()
@@ -204,8 +204,8 @@ namespace spartan
             return;
 
         // create an audio stream for conversion (assuming source and device specs are the same)
-        m_stream = SDL_CreateAudioStream(&spec, &spec);
-        CHECK_SDL_ERROR(SDL_BindAudioStream(shared_device_id, m_stream));
+        m_stream = SDL_CreateAudioStream(&audio_device::spec, &audio_device::spec);
+        CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
         CHECK_SDL_ERROR(SDL_PutAudioStreamData(m_stream, m_buffer, m_length));
 
@@ -221,7 +221,7 @@ namespace spartan
 
         // re-create the stream so that playback can start from the beginning again
         SDL_DestroyAudioStream(m_stream);
-        m_stream = SDL_CreateAudioStream(&spec, &spec);
+        m_stream = SDL_CreateAudioStream(&audio_device::spec, &audio_device::spec);
 
         m_is_playing = false;
     }
@@ -248,7 +248,7 @@ namespace spartan
 
         if (m_is_playing)
         { 
-            CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(shared_device_id, m_volume));
+            CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(audio_device::id, m_volume * m_attenuation));
         }
     }
 

@@ -81,6 +81,7 @@ namespace spartan
         bool    m_loop            = true;
         bool    m_play_on_start   = true;
         float   m_volume          = 1.0f;
+        float   m_attenuation    = 1.0f;
         float   m_pitch           = 1.0f;
         float   m_pan             = 0.0f;
         bool m_is_playing         = false;
