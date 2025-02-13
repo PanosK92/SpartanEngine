@@ -203,7 +203,14 @@ namespace spartan
 
     float AudioSource::GetProgress() const
     {
-        return 0.0f;
+        if (!m_stream || m_length == 0)
+            return 0.0f;
+
+        // get how much audio data is left in the stream
+        int remaining = SDL_GetAudioStreamAvailable(m_stream);
+
+        // calculate progress (1.0 when at the start, 0.0 when finished)
+        return 1.0f - (static_cast<float>(remaining) / static_cast<float>(m_length));
     }
 
     void AudioSource::SetMute(bool mute)
