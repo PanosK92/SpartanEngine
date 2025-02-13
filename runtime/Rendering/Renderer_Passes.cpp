@@ -1371,40 +1371,40 @@ namespace spartan
             return;
 
         cmd_list->BeginTimeblock("light_integration_environment_filter");
+        {
+            uint32_t mip_count = tex_environment->GetMipCount();
+            uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
+            SP_ASSERT(mip_level != 0);
 
-        uint32_t mip_count = tex_environment->GetMipCount();
-        uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
-        SP_ASSERT(mip_level != 0);
+            // generate mips as light_integration.hlsl expects them
+            if (mip_level == 0)
+            { 
+                Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+            }
 
-        // generate mips as light_integration.hlsl expects them
-        if (mip_level == 0)
-        { 
-            Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.name             = "light_integration_environment_filter";
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+            const uint32_t thread_group_count = 8;
+            const uint32_t resolution_x       = tex_environment->GetWidth()  >> mip_level;
+            const uint32_t resolution_y       = tex_environment->GetHeight() >> mip_level;
+            cmd_list->Dispatch(
+                static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count)),
+                static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count))
+            );
+
+            m_environment_mips_to_filter_count--;
         }
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.name             = "light_integration_environment_filter";
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
-
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment, tex_environment);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-
-        // set pass constants
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
-        const uint32_t thread_group_count = 8;
-        const uint32_t resolution_x       = tex_environment->GetWidth()  >> mip_level;
-        const uint32_t resolution_y       = tex_environment->GetHeight() >> mip_level;
-        cmd_list->Dispatch(
-            static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count)),
-            static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count))
-        );
-
-        m_environment_mips_to_filter_count--;
-
         cmd_list->EndTimeblock();
     }
 
