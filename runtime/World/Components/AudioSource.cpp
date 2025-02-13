@@ -29,11 +29,11 @@ connection with the software or the use or other dealings in the software.
 using namespace std;
 using namespace spartan::math;
 
-#define CHECK_SDL_ERROR(call)               \
-    if (!(call)) {                          \
-        SP_LOG_ERROR("%s", SDL_GetError()); \
-        return;                             \
-    }
+#define CHECK_SDL_ERROR(call)           \
+if (!(call)) {                          \
+    SP_LOG_ERROR("%s", SDL_GetError()); \
+    return;                             \
+}
 
 namespace spartan
 {

@@ -19,14 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ============================
 #include "WorldViewer.h"
 #include "Properties.h"
 #include "../MenuBar.h"
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
-#include "World/Components/AudioListener.h"
 #include "World/Components/PhysicsBody.h"
 #include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
@@ -38,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #include "../ImGui/Source/imgui_stdlib.h"
 SP_WARNINGS_ON
-//=========================================
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -397,10 +396,6 @@ void WorldViewer::PopupContextMenu() const
         {
             ActionEntityCreateAudioSource();
         }
-        else if (ImGui::MenuItem("Audio Listener"))
-        {
-            ActionEntityCreateAudioListener();
-        }
 
         ImGui::EndMenu();
     }
@@ -627,11 +622,4 @@ void WorldViewer::ActionEntityCreateAudioSource()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<spartan::AudioSource>();
     entity->SetObjectName("AudioSource");
-}
-
-void WorldViewer::ActionEntityCreateAudioListener()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<spartan::AudioListener>();
-    entity->SetObjectName("AudioListener");
 }

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES ===============================
 #include "pch.h"
 #include "Game.h"
 #include "../Game/Car.h"
@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/PhysicsBody.h"
-#include "../World/Components/AudioListener.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/Terrain.h"
 #include "../Core/ThreadPool.h"
@@ -38,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Material.h"
 #include "../Resource/ResourceCache.h"
 #include "../Input/Input.h"
-//============================================
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -122,7 +121,6 @@ namespace spartan
             shared_ptr<Entity> camera = World::CreateEntity();
             camera->SetObjectName("component_camera");
             camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
-            camera->AddComponent<AudioListener>();
             camera->SetParent(m_default_physics_body_camera);
             camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
             camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));

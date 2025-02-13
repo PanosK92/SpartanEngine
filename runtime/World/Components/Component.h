@@ -35,7 +35,6 @@ namespace spartan
 
     enum class ComponentType : uint32_t
     {
-        AudioListener,
         AudioSource,
         Camera,
         Constraint,
@@ -43,7 +42,6 @@ namespace spartan
         PhysicsBody,
         Renderable,
         Terrain,
-        ReflectionProbe,
         Max
     };
     // after re-ordering the above, ensure .world save/load works

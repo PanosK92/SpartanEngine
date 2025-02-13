@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES ===========
 #include "pch.h"
 #include "Component.h"
 #include "Light.h"
@@ -27,9 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Constraint.h"
 #include "Camera.h"
 #include "AudioSource.h"
-#include "AudioListener.h"
 #include "Terrain.h"
-//========================
+//======================
 
 //= NAMESPACES =====
 using namespace std;
@@ -53,13 +52,12 @@ namespace spartan
     #define REGISTER_COMPONENT(T, enumT) template<>  ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
 
     // to add a new component to the engine, simply register it here
-    REGISTER_COMPONENT(AudioListener,   ComponentType::AudioListener)
-    REGISTER_COMPONENT(AudioSource,     ComponentType::AudioSource)
-    REGISTER_COMPONENT(Camera,          ComponentType::Camera)
-    REGISTER_COMPONENT(Constraint,      ComponentType::Constraint)
-    REGISTER_COMPONENT(Light,           ComponentType::Light)
-    REGISTER_COMPONENT(Renderable,      ComponentType::Renderable)
-    REGISTER_COMPONENT(PhysicsBody,     ComponentType::PhysicsBody)
-    REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
+    REGISTER_COMPONENT(AudioSource, ComponentType::AudioSource)
+    REGISTER_COMPONENT(Camera,      ComponentType::Camera)
+    REGISTER_COMPONENT(Constraint,  ComponentType::Constraint)
+    REGISTER_COMPONENT(Light,       ComponentType::Light)
+    REGISTER_COMPONENT(Renderable,  ComponentType::Renderable)
+    REGISTER_COMPONENT(PhysicsBody, ComponentType::PhysicsBody)
+    REGISTER_COMPONENT(Terrain,     ComponentType::Terrain)
  
 }

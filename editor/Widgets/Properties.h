@@ -39,7 +39,6 @@ namespace spartan
     class Material;
     class Camera;
     class AudioSource;
-    class AudioListener;
     class Script;
     class Terrain;
     class ReflectionProbe;
@@ -70,7 +69,6 @@ private:
     void ShowCamera(std::shared_ptr<spartan::Camera> camera) const;
     void ShowTerrain(std::shared_ptr<spartan::Terrain> terrain) const;
     void ShowAudioSource(std::shared_ptr<spartan::AudioSource> audio_source) const;
-    void ShowAudioListener(std::shared_ptr<spartan::AudioListener> audio_listener) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

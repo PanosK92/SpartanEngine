@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ============================
 #include "Properties.h"
 #include "Window.h"
 #include "../ImGui/ImGui_Extension.h"
@@ -33,11 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Constraint.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
-#include "World/Components/AudioListener.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
-#include "Rendering/Mesh.h"
-//=========================================
+//=======================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -167,7 +165,6 @@ void Properties::OnTickVisible()
                 ShowCamera(entity_ptr->GetComponent<Camera>());
                 ShowTerrain(entity_ptr->GetComponent<Terrain>());
                 ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
-                ShowAudioListener(entity_ptr->GetComponent<AudioListener>());
                 ShowRenderable(renderable);
                 ShowMaterial(material);
                 ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
@@ -1100,18 +1097,6 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
     component_end();
 }
 
-void Properties::ShowAudioListener(shared_ptr<AudioListener> audio_listener) const
-{
-    if (!audio_listener)
-        return;
-
-    if (component_begin("Audio Listener", IconType::Component_AudioListener, audio_listener))
-    {
-
-    }
-    component_end();
-}
-
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1181,10 +1166,6 @@ void Properties::ComponentContextMenu_Add() const
                 if (ImGui::MenuItem("Audio Source"))
                 {
                     entity->AddComponent<AudioSource>();
-                }
-                else if (ImGui::MenuItem("Audio Listener"))
-                {
-                    entity->AddComponent<AudioListener>();
                 }
 
                 ImGui::EndMenu();
