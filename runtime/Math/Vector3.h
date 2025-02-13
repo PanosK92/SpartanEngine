@@ -89,7 +89,7 @@ namespace spartan::math
                 z = _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2)));
             #else
                 // fallback to scalar path
-                const auto length_inverted = 1.0f / Sqrt(length_squared);
+                const auto length_inverted = 1.0f / sqrt(length_squared);
                 x *= length_inverted;
                 y *= length_inverted;
                 z *= length_inverted;
@@ -155,7 +155,7 @@ namespace spartan::math
             return _mm_cvtss_f32(length);
         #else
             // Fallback to scalar path
-            return Sqrt(x * x + y * y + z * z);
+            return sqrt(x * x + y * y + z * z);
         #endif
         }
         

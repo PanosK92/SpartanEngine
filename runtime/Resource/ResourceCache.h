@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include <mutex>
 #include "../Rendering/Material.h"
+#include <algorithm>
 //================================
 
 namespace spartan

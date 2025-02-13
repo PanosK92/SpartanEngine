@@ -266,7 +266,9 @@ namespace spartan
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
         }
 
+#ifdef _MSC_VER
         RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
+#endif
     }
 
     void Renderer::CreateShaders()

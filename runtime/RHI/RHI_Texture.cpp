@@ -562,7 +562,7 @@ namespace spartan
                     // move the target mip to the top
                     if (target_mip > 0)
                     {
-                        m_slices[0].mips[0] = move(m_slices[0].mips[target_mip]);
+                        m_slices[0].mips[0] = std::move(m_slices[0].mips[target_mip]);
                         m_width             = max(1u, m_width >> target_mip);
                         m_height            = max(1u, m_height >> target_mip);
                     }

@@ -256,13 +256,13 @@ namespace spartan::math
                 zs * sqrt(_mm_cvtss_f32(square2))
             );
         #else
-            const int xs = (Sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
-            const int ys = (Sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
-            const int zs = (Sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
+            const int xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
+            const int ys = (sign(m10 * m11 * m12 * m13) < 0) ? -1 : 1;
+            const int zs = (sign(m20 * m21 * m22 * m23) < 0) ? -1 : 1;
             return Vector3(
-                static_cast<float>(xs) * Sqrt(m00 * m00 + m01 * m01 + m02 * m02),
-                static_cast<float>(ys) * Sqrt(m10 * m10 + m11 * m11 + m12 * m12),
-                static_cast<float>(zs) * Sqrt(m20 * m20 + m21 * m21 + m22 * m22)
+                static_cast<float>(xs) * sqrt(m00 * m00 + m01 * m01 + m02 * m02),
+                static_cast<float>(ys) * sqrt(m10 * m10 + m11 * m11 + m12 * m12),
+                static_cast<float>(zs) * sqrt(m20 * m20 + m21 * m21 + m22 * m22)
             );
         #endif
         }

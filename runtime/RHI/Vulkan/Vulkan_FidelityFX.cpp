@@ -930,6 +930,7 @@ namespace spartan
 
     void RHI_FidelityFX::Shutdown(const FidelityFX fx)
     {
+        #ifdef _MSC_VER
         if (fx == FidelityFX::Sssr)
         {
             sssr::context_destroy();
@@ -942,6 +943,7 @@ namespace spartan
         {
             fsr3::context_destroy();
         }
+        #endif
     }
 
     void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
@@ -1464,6 +1466,7 @@ namespace spartan
 
     void RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
     {
+        #ifdef _MSC_VER
         if (resolution_percentage == 0.25f)
         {
             brixelizer_gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_25_PERCENT;
@@ -1486,10 +1489,12 @@ namespace spartan
         }
 
         brixelizer_gi::context_create();
+        #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
+        #ifdef _MSC_VER
         // note: command lists need to register per frame
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
     
@@ -1501,10 +1506,12 @@ namespace spartan
         description.submissionIndex                      = 0;
     
         SP_ASSERT(ffxBreadcrumbsRegisterCommandList(&breadcrumbs::context, &description) == FFX_OK);
+        #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
     {
+        #ifdef _MSC_VER
         // note: pipelines need to register only once
 
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
@@ -1541,31 +1548,39 @@ namespace spartan
         }
 
         SP_ASSERT(ffxBreadcrumbsRegisterPipeline(&breadcrumbs::context, &description) == FFX_OK);
+        #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
     {
+        #ifdef _MSC_VER
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), to_ffx_pipeline(pipeline)) == FFX_OK);
+        #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
     {
+        #ifdef _MSC_VER
         lock_guard<mutex> lock(breadcrumbs::mutex_marker_start); // without a mutex, after loading a world, a gpu crash can occur
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         const FfxBreadcrumbsNameTag name_tag = { name, true };
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_PASS, &name_tag) == FFX_OK);
+        #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
+        #ifdef _MSC_VER
         lock_guard<mutex> lock(breadcrumbs::mutex_marker_end); // without a mutex, after loading a world, a gpu crash can occur
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
+        #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved()
     {
+        #ifdef _MSC_VER
         FfxBreadcrumbsMarkersStatus marker_status = {};
         SP_ASSERT(ffxBreadcrumbsPrintStatus(&breadcrumbs::context, &marker_status) == FFX_OK);
 
@@ -1579,5 +1594,6 @@ namespace spartan
         }
 
         FFX_SAFE_FREE(marker_status.pBuffer, free);
+        #endif
     }
 }

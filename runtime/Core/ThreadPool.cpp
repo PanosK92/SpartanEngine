@@ -123,7 +123,7 @@ namespace spartan
     future<void> ThreadPool::AddTask(Task&& task)
     {
         // create a packaged task that will give us a future
-        auto packaged_task = make_shared<std::packaged_task<void()>>(forward<Task>(task));
+        auto packaged_task = make_shared<std::packaged_task<void()>>(std::forward<Task>(task));
         
         // get the future before we move the packaged_task into the lambda
         future<void> future = packaged_task->get_future();
