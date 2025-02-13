@@ -1061,27 +1061,27 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
             audio_source->SetAudioClip(std::get<const char*>(payload->data));
         }
 
-        // Play on start
+        // play on start
         ImGui::Text("Play on Start");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourcePlayOnStart", &play_on_start);
 
-        // Mute
+        // mute
         ImGui::Text("Mute");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceMute", &mute);
 
-        // Loop
+        // loop
         ImGui::Text("Loop");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceLoop", &loop);
 
-        // Volume
+        // volume
         ImGui::Text("Volume");
         ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
 
-        // Pitch
+        // pitch
         ImGui::Text("Pitch");
         ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
 
-        // Pan
+        // pan
         ImGui::Text("Pan");
         ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
 

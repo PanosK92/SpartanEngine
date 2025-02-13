@@ -126,7 +126,8 @@ namespace spartan
         {
             if (SDL_GetAudioStreamAvailable(m_stream) == 0) // buffer empty, restart
             {
-                Play();
+                Stop(); // destroy stream
+                Play(); // create stream
             }
         }
     }
@@ -158,20 +159,6 @@ namespace spartan
 
         // allocate an audio spec and load the wav file into our buffer
         CHECK_SDL_ERROR(SDL_LoadWAV(file_path.c_str(), &spec, &m_buffer, &m_length));
-
-        // create an audio stream for conversion (assuming source and device specs are the same)
-        m_stream = SDL_CreateAudioStream(&spec, &spec);
-        if (!m_stream)
-        {
-            SP_LOG_ERROR("%s", SDL_GetError());
-            SDL_CloseAudioDevice(shared_device_id);
-            SDL_free(m_buffer);
-            return;
-        }
-
-        // bind stream and pause (as it starts playing automatically)
-        CHECK_SDL_ERROR(SDL_BindAudioStream(shared_device_id, m_stream));
-        CHECK_SDL_ERROR(SDL_PauseAudioStreamDevice(m_stream));
     }
 
     void AudioSource::Play()
@@ -179,6 +166,9 @@ namespace spartan
         if (m_is_playing)
             return;
 
+        // create an audio stream for conversion (assuming source and device specs are the same)
+        m_stream = SDL_CreateAudioStream(&spec, &spec);
+        CHECK_SDL_ERROR(SDL_BindAudioStream(shared_device_id, m_stream));
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
         CHECK_SDL_ERROR(SDL_PutAudioStreamData(m_stream, m_buffer, m_length));
 
@@ -192,25 +182,17 @@ namespace spartan
 
         // re-create the stream so that playback can start from the beginning again
         SDL_DestroyAudioStream(m_stream);
-        CHECK_SDL_ERROR(SDL_CreateAudioStream(&spec, &spec));
-
-        // bind the new stream to the shared device and pause it, ready for playing
-        CHECK_SDL_ERROR(SDL_BindAudioStream(shared_device_id, m_stream));
-        CHECK_SDL_ERROR(SDL_PauseAudioStreamDevice(m_stream));
+        m_stream = SDL_CreateAudioStream(&spec, &spec);
 
         m_is_playing = false;
     }
 
     float AudioSource::GetProgress() const
     {
-        if (!m_stream || m_length == 0)
+        if (!m_is_playing)
             return 0.0f;
 
-        // get how much audio data is left in the stream
-        int remaining = SDL_GetAudioStreamAvailable(m_stream);
-
-        // calculate progress (1.0 when at the start, 0.0 when finished)
-        return 1.0f - (static_cast<float>(remaining) / static_cast<float>(m_length));
+        return 1.0f; // todo: track bytes
     }
 
     void AudioSource::SetMute(bool mute)
@@ -225,10 +207,7 @@ namespace spartan
     {
         m_volume = clamp(volume, 0.0f, 1.0f);
 
-        if (!SDL_SetAudioDeviceGain(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, m_volume))
-        {
-            SP_LOG_ERROR("%s", SDL_GetError());
-        }
+        CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, m_volume));
     }
 
     void AudioSource::SetPitch(float pitch)
