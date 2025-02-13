@@ -148,8 +148,11 @@ namespace spartan
                    Vector3 camera_position = camera->GetEntity()->GetPosition();
                    Vector3 sound_position  = GetEntity()->GetPosition();
                    float distance_squared  = Vector3::DistanceSquared(camera_position, sound_position);
-                   float volume            = 1.0f / (1.0f + distance_squared); // inverse square law
-                   volume                  = max(0.0f, min(volume, 1.0f));
+
+                   // inverse square law with a rolloff factor
+                   const float rolloff_factor = 20.0f;
+                   float volume               = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
+                   volume                     = max(0.0f, min(volume, 1.0f));
                    SP_LOG_INFO("%f", volume);
                    SetVolume(volume);
                 }
