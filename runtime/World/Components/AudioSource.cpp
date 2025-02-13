@@ -208,6 +208,7 @@ namespace spartan
         m_is_playing = true;
 
         SetVolume(m_volume);
+        SetPitch(m_pitch);
     }
 
     void AudioSource::Stop()
@@ -247,6 +248,16 @@ namespace spartan
         {
             float mute = m_mute ? 0.0f : 1.0f;
             CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(audio_device::id, m_volume * m_attenuation * mute));
+        }
+    }
+
+    void AudioSource::SetPitch(const float pitch)
+    {
+        m_pitch = clamp(pitch, 0.0f, 3.0f);
+
+        if (m_is_playing)
+        {
+            CHECK_SDL_ERROR(SDL_SetAudioStreamFrequencyRatio(m_stream, m_pitch));
         }
     }
 }

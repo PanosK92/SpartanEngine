@@ -68,14 +68,18 @@ namespace spartan
         float GetVolume() const { return m_volume; }
         void SetVolume(float volume);
 
+        float GetPitch() const { return m_pitch; }
+        void SetPitch(const float pitch);
+
     private:
         std::string m_name        = "N/A";
-        bool    m_is_3d           = false;
-        bool    m_mute            = false;
-        bool    m_loop            = true;
-        bool    m_play_on_start   = true;
-        float   m_volume          = 1.0f;
-        float   m_attenuation     = 1.0f;
+        bool m_is_3d              = false;
+        bool m_mute               = false;
+        bool m_loop               = true;
+        bool m_play_on_start      = true;
+        float m_volume            = 1.0f;
+        float m_pitch             = 1.0f;
+        float m_attenuation       = 1.0f;
         bool m_is_playing         = false;
         uint8_t* m_buffer         = nullptr;
         uint32_t m_length         = 0;

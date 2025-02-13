@@ -1049,6 +1049,7 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
         bool loop              = audio_source->GetLoop();
         bool is_3d             = audio_source->GetIs3d();
         float volume           = audio_source->GetVolume();
+        float pitch            = audio_source->GetPitch();
         //========================================================
 
         // Audio clip
@@ -1072,6 +1073,10 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
         ImGui::Text("Loop");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceLoop", &loop);
 
+        // Pitch
+        ImGui::Text("Pitch");
+        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
+
         // loop
         ImGui::Text("3D");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceIs3D", &is_3d);
@@ -1086,6 +1091,7 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
         if (loop != audio_source->GetLoop())                 audio_source->SetLoop(loop);
         if (is_3d != audio_source->GetIs3d())                audio_source->SetIs3d(is_3d);
         if (volume != audio_source->GetVolume())             audio_source->SetVolume(volume);
+        if (pitch != audio_source->GetPitch())               audio_source->SetPitch(pitch);
         //===============================================================================================
     }
     component_end();
