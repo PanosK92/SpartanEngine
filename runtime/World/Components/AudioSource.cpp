@@ -140,21 +140,30 @@ namespace spartan
 
             if (m_is_3d)
             {
-                // todo: implement panning to stick a dot product in there
-
-                // attenuation
                 if (Camera* camera = Renderer::GetCamera().get())
                 {
-                   Vector3 camera_position = camera->GetEntity()->GetPosition();
-                   Vector3 sound_position  = GetEntity()->GetPosition();
-                   float distance_squared  = Vector3::DistanceSquared(camera_position, sound_position);
+                    Vector3 camera_position = camera->GetEntity()->GetPosition();
+                    Vector3 sound_position  = GetEntity()->GetPosition();
 
-                   // inverse square law with a rolloff factor
-                   const float rolloff_factor = 20.0f;
-                   float volume               = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
-                   volume                     = max(0.0f, min(volume, 1.0f));
-                   SP_LOG_INFO("%f", volume);
-                   SetVolume(volume);
+                    // panning
+                    {
+                        Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
+                        float camera_dot_sound  = Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound);
+
+                        // todo
+                        // Mix_SetPanning() is probably the key function
+                    }
+
+                    // attenuation
+                    {
+                        // inverse square law with a rolloff factor
+                        float distance_squared     = Vector3::DistanceSquared(camera_position, sound_position);
+                        const float rolloff_factor = 20.0f;
+                        float volume               = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
+                        volume                     = max(0.0f, min(volume, 1.0f));
+
+                        SetVolume(volume);
+                    }
                 }
             }
         }
