@@ -151,8 +151,9 @@ namespace spartan
                         float camera_dot_sound  = abs(Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound));
 
                         // todo
-                        // Using something SDL_SetAudioStreamPutCallback or similar to have a callback
-                        // in which we can modualte the bytes of each channel to do panning
+                        // use like something SDL_SetAudioStreamPutCallback or similar to have a callback
+                        // in which we can modulate the bytes of each channel to do panning
+                        // or maybe use the audio_device::spec somehow
                     }
 
                     // attenuation
@@ -200,13 +201,17 @@ namespace spartan
         if (m_is_playing)
             return;
 
+        // create a stream a bind it to the audio device
         m_stream = SDL_CreateAudioStream(&audio_device::spec, &audio_device::spec);
         CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
+
+        // start playing
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
         CHECK_SDL_ERROR(SDL_PutAudioStreamData(m_stream, m_buffer, m_length));
 
         m_is_playing = true;
 
+        // set user volume and pitch
         SetVolume(m_volume);
         SetPitch(m_pitch);
     }

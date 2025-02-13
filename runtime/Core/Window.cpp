@@ -210,21 +210,31 @@ namespace spartan
                     SP_LOG_INFO("Display has been changed, detecting new display modes");
                     Display::Initialize();
                     break;
-                case 532:
+                case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
                     break;
-                case 533:
+                case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
                     break;
-                case 768:
+                case SDL_EVENT_WINDOW_OCCLUDED:
                     break;
-                case 769:
+                case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
                     break;
-                case 1024:
+                case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
                     break;
-                case 1027:
+                case SDL_EVENT_KEY_DOWN:
                     break;
-                case 1025:
+                case SDL_EVENT_KEY_UP:
                     break;
-                case 1026:
+                case SDL_EVENT_TEXT_EDITING:
+                    break;
+                case SDL_EVENT_TEXT_INPUT:
+                    break;
+                case SDL_EVENT_MOUSE_MOTION:
+                    break;
+                case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                    break;
+                case SDL_EVENT_MOUSE_BUTTON_UP:
+                    break;
+                case SDL_EVENT_MOUSE_WHEEL:
                     break;
                 default:
                     SP_LOG_ERROR("Unhandled window event");
