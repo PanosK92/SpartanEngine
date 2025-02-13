@@ -946,7 +946,6 @@ namespace spartan
         { 
             cmd_list->BeginTimeblock("ssr");
 
-            #ifdef _MSC_VER
             RHI_FidelityFX::SSSR_Dispatch(
                 cmd_list,
                 GetOption<float>(Renderer_Option::ResolutionScale),
@@ -958,7 +957,7 @@ namespace spartan
                 GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut),
                 GetRenderTarget(Renderer_RenderTarget::ssr)
             );
-            #endif
+
             cleared = false;
 
             cmd_list->EndTimeblock();
@@ -1180,7 +1179,7 @@ namespace spartan
         if (GetOption<float>(Renderer_Option::GlobalIllumination) != 0.0f && m_initialized_third_party)
         { 
             cmd_list->BeginTimeblock("light_global_illumination");
-            #ifdef _MSC_VER
+
             // update
             {
                 vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Mesh];
@@ -1197,7 +1196,7 @@ namespace spartan
                     GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi) // use as debug output (if needed)
                 );
             }
-            #endif
+
             // dispatch
             {
                 static array<RHI_Texture*, 8> noise_textures =
@@ -1211,7 +1210,7 @@ namespace spartan
                     GetStandardTexture(Renderer_StandardTexture::Noise_blue_6),
                     GetStandardTexture(Renderer_StandardTexture::Noise_blue_7)
                 };
-                #ifdef _MSC_VER
+
                 RHI_FidelityFX::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
@@ -1225,7 +1224,6 @@ namespace spartan
                     GetRenderTarget(Renderer_RenderTarget::light_specular_gi),
                     GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi) // use as debug output (if needed)
                 );
-                #endif
             }
 
             cleared = false;
@@ -1771,7 +1769,6 @@ namespace spartan
 
         if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3 && m_initialized_third_party)
         {
-            #ifdef _MSC_VER
             RHI_FidelityFX::FSR3_Dispatch(
                 cmd_list,
                 GetCamera().get(),
@@ -1784,7 +1781,6 @@ namespace spartan
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                 tex_out
             );
-            #endif
         }
         else // no upscale or linear upscale
         {
