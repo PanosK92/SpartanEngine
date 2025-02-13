@@ -62,6 +62,9 @@ namespace spartan
         bool GetLoop() const          { return m_loop; }
         void SetLoop(const bool loop) { m_loop = loop; }
 
+        bool GetIs3d() const           { return m_is_3d; }
+        void SetIs3d(const bool is_3d) { m_is_3d = is_3d; }
+
         float GetVolume() const { return m_volume; }
         void SetVolume(float volume);
 
@@ -72,16 +75,15 @@ namespace spartan
         void SetPan(float pan);
 
     private:
-        std::string m_name          = "N/A";
-        bool    m_mute              = false;
-        bool    m_loop              = true;
-        bool    m_audio_clip_loaded = false;
-        bool    m_play_on_start     = true;
-        float   m_volume            = 1.0f;
-        float   m_pitch             = 1.0f;
-        float   m_pan               = 0.0f;
-        bool m_is_playing           = false;
-
+        std::string m_name        = "N/A";
+        bool    m_is_3d           = false;
+        bool    m_mute            = false;
+        bool    m_loop            = true;
+        bool    m_play_on_start   = true;
+        float   m_volume          = 1.0f;
+        float   m_pitch           = 1.0f;
+        float   m_pan             = 0.0f;
+        bool m_is_playing         = false;
         uint8_t* m_buffer         = nullptr;
         uint32_t m_length         = 0;
         SDL_AudioStream* m_stream = nullptr;

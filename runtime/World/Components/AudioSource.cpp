@@ -19,12 +19,17 @@ in an action of contract, tort or otherwise, arising from, out of or in
 connection with the software or the use or other dealings in the software.
 */
 
-//= includes ===================
+//= includes ========================
 #include "pch.h"
 #include "AudioSource.h"
-#include "../../IO/FileStream.h"
+SP_WARNINGS_OFF
 #include <SDL3/SDL_audio.h>
-//==============================
+SP_WARNINGS_ON
+#include "../../IO/FileStream.h"
+#include "../../Rendering/Renderer.h"
+#include "Camera.h"
+#include "../Entity.h"
+//===================================
 
 using namespace std;
 using namespace spartan::math;
@@ -122,12 +127,32 @@ namespace spartan
 
     void AudioSource::OnTick()
     {
-        if (m_loop && m_is_playing)
-        {
-            if (SDL_GetAudioStreamAvailable(m_stream) == 0) // buffer empty, restart
+        if (m_is_playing)
+        { 
+            if (m_loop)
             {
-                Stop(); // destroy stream
-                Play(); // create stream
+                if (SDL_GetAudioStreamAvailable(m_stream) == 0) // buffer empty, restart
+                {
+                    Stop(); // destroy stream
+                    Play(); // create stream
+                }
+            }
+
+            if (m_is_3d)
+            {
+                // todo: implement panning to stick a dot product in there
+
+                // attenuation
+                if (Camera* camera = Renderer::GetCamera().get())
+                {
+                   Vector3 camera_position = camera->GetEntity()->GetPosition();
+                   Vector3 sound_position  = GetEntity()->GetPosition();
+                   float distance_squared  = Vector3::DistanceSquared(camera_position, sound_position);
+                   float volume            = 1.0f / (1.0f + distance_squared); // inverse square law
+                   volume                  = max(0.0f, min(volume, 1.0f));
+                   SP_LOG_INFO("%f", volume);
+                   SetVolume(volume);
+                }
             }
         }
     }
