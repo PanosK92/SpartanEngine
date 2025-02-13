@@ -173,6 +173,8 @@ namespace spartan
         CHECK_SDL_ERROR(SDL_PutAudioStreamData(m_stream, m_buffer, m_length));
 
         m_is_playing = true;
+
+        SetVolume(m_volume);
     }
 
     void AudioSource::Stop()
@@ -207,7 +209,10 @@ namespace spartan
     {
         m_volume = clamp(volume, 0.0f, 1.0f);
 
-        CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, m_volume));
+        if (m_is_playing)
+        { 
+            CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(shared_device_id, m_volume));
+        }
     }
 
     void AudioSource::SetPitch(float pitch)
