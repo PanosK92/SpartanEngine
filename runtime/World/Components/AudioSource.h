@@ -59,8 +59,8 @@ namespace spartan
         bool GetPlayOnStart() const                   { return m_play_on_start; }
         void SetPlayOnStart(const bool play_on_start) { m_play_on_start = play_on_start; }
 
-        bool GetLoop() const { return m_loop; }
-        void SetLoop(const bool loop);
+        bool GetLoop() const          { return m_loop; }
+        void SetLoop(const bool loop) { m_loop = loop; }
 
         float GetVolume() const { return m_volume; }
         void SetVolume(float volume);

@@ -104,10 +104,10 @@ namespace spartan
 
     void AudioSource::OnStart()
     {
-        if (!m_play_on_start)
-            return;
-
-        Play();
+        if (m_play_on_start)
+        { 
+            Play();
+        }
     }
 
     void AudioSource::OnStop()
@@ -122,11 +122,11 @@ namespace spartan
 
     void AudioSource::OnTick()
     {
-        if (m_loop)
+        if (m_loop && m_is_playing)
         {
-            if (SDL_GetAudioStreamAvailable(m_stream) < static_cast<int>(m_length))
+            if (SDL_GetAudioStreamAvailable(m_stream) == 0) // buffer empty, restart
             {
-                SDL_PutAudioStreamData(m_stream, m_buffer, m_length);
+                Play();
             }
         }
     }
@@ -212,11 +212,6 @@ namespace spartan
             return;
 
         m_mute = mute;
-    }
-
-    void AudioSource::SetLoop(const bool loop)
-    {
-        m_loop = loop;
     }
 
     void AudioSource::SetVolume(float volume)
