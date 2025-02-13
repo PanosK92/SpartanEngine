@@ -151,14 +151,15 @@ namespace spartan
                         float camera_dot_sound  = abs(Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound));
 
                         // todo
-                        // Mix_SetPanning() is probably the key function
+                        // Using something SDL_SetAudioStreamPutCallback or similar to have a callback
+                        // in which we can modualte the bytes of each channel to do panning
                     }
 
                     // attenuation
                     {
                         // inverse square law with a rolloff factor
                         float distance_squared     = Vector3::DistanceSquared(camera_position, sound_position);
-                        const float rolloff_factor = 20.0f;
+                        const float rolloff_factor = 15.0f;
                         m_attenuation              = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
                         m_attenuation              = max(0.0f, min(m_attenuation, 1.0f));
 
@@ -175,8 +176,6 @@ namespace spartan
         stream->Write(m_loop);
         stream->Write(m_play_on_start);
         stream->Write(m_volume);
-        stream->Write(m_pitch);
-        stream->Write(m_pan);
     }
 
     void AudioSource::Deserialize(FileStream* stream)
@@ -185,8 +184,6 @@ namespace spartan
         stream->Read(&m_loop);
         stream->Read(&m_play_on_start);
         stream->Read(&m_volume);
-        stream->Read(&m_pitch);
-        stream->Read(&m_pan);
     }
 
     void AudioSource::SetAudioClip(const string& file_path)
@@ -203,7 +200,6 @@ namespace spartan
         if (m_is_playing)
             return;
 
-        // create an audio stream for conversion (assuming source and device specs are the same)
         m_stream = SDL_CreateAudioStream(&audio_device::spec, &audio_device::spec);
         CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
@@ -240,6 +236,7 @@ namespace spartan
             return;
 
         m_mute = mute;
+        SetVolume(m_volume);
     }
 
     void AudioSource::SetVolume(float volume)
@@ -247,18 +244,9 @@ namespace spartan
         m_volume = clamp(volume, 0.0f, 1.0f);
 
         if (m_is_playing)
-        { 
-            CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(audio_device::id, m_volume * m_attenuation));
+        {
+            float mute = m_mute ? 0.0f : 1.0f;
+            CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(audio_device::id, m_volume * m_attenuation * mute));
         }
-    }
-
-    void AudioSource::SetPitch(float pitch)
-    {
-        m_pitch = clamp(pitch, 0.0f, 3.0f);
-    }
-
-    void AudioSource::SetPan(float pan)
-    {
-        m_pan = clamp(pan, -1.0f, 1.0f);
     }
 }
