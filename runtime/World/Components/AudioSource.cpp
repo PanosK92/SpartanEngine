@@ -35,11 +35,47 @@ if (!(call)) {                          \
     return;                             \
 }
 
+namespace
+{
+    mutex device_mutex;
+    uint32_t shared_device_id   = 0;
+    uint32_t shared_device_refs = 0;
+    SDL_AudioSpec spec;
+
+    // acquire the shared audio device; open it if it's not already open
+    void acquire_shared_device()
+    {
+        lock_guard<mutex> lock(device_mutex);
+        if (shared_device_refs == 0)
+        {
+            shared_device_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
+            if (shared_device_id == 0)
+            {
+                SP_LOG_ERROR("%s", SDL_GetError());
+            }
+        }
+
+        ++shared_device_refs;
+    }
+
+    // release the shared audio device; close it when no one is using it
+    void release_shared_device()
+    {
+        lock_guard<mutex> lock(device_mutex);
+        --shared_device_refs;
+        if (shared_device_refs == 0 && shared_device_id != 0)
+        {
+            SDL_CloseAudioDevice(shared_device_id);
+            shared_device_id = 0;
+        }
+    }
+}
+
 namespace spartan
 {
     AudioSource::AudioSource(Entity* entity) : Component(entity)
     {
-
+        acquire_shared_device();
     }
 
     AudioSource::~AudioSource()
@@ -57,6 +93,8 @@ namespace spartan
             SDL_free(m_buffer);
             m_buffer = nullptr;
         }
+
+        release_shared_device();
     }
 
     void AudioSource::OnInitialize()
@@ -119,16 +157,21 @@ namespace spartan
         m_name = FileSystem::GetFileNameFromFilePath(file_path);
 
         // allocate an audio spec and load the wav file into our buffer
-        m_spec = make_shared<SDL_AudioSpec>();
-        CHECK_SDL_ERROR(SDL_LoadWAV(file_path.c_str(), m_spec.get(), &m_buffer, &m_length));
+        CHECK_SDL_ERROR(SDL_LoadWAV(file_path.c_str(), &spec, &m_buffer, &m_length));
 
-        // open an audio stream with the wav file's spec, conversion to the hardware format is automatic
-        m_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, m_spec.get(), nullptr, nullptr);
+        // create an audio stream for conversion (assuming source and device specs are the same)
+        m_stream = SDL_CreateAudioStream(&spec, &spec);
         if (!m_stream)
         {
             SP_LOG_ERROR("%s", SDL_GetError());
+            SDL_CloseAudioDevice(shared_device_id);
             SDL_free(m_buffer);
+            return;
         }
+
+        // bind stream and pause (as it starts playing automatically)
+        CHECK_SDL_ERROR(SDL_BindAudioStream(shared_device_id, m_stream));
+        CHECK_SDL_ERROR(SDL_PauseAudioStreamDevice(m_stream));
     }
 
     void AudioSource::Play()
@@ -137,8 +180,6 @@ namespace spartan
             return;
 
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
-        // feed the entire wav data into the stream; for looping playback, you'll want to call this
-        // again when the stream's available data falls below a certain threshold (in an update loop)
         CHECK_SDL_ERROR(SDL_PutAudioStreamData(m_stream, m_buffer, m_length));
 
         m_is_playing = true;
@@ -149,10 +190,13 @@ namespace spartan
         if (!m_is_playing)
             return;
 
-        // pause the audio stream to halt playback
-        CHECK_SDL_ERROR(!SDL_PauseAudioStreamDevice(m_stream));
-        // flush any queued audio data so that playback starts from the beginning next time
-        CHECK_SDL_ERROR(SDL_FlushAudioStream(m_stream));
+        // re-create the stream so that playback can start from the beginning again
+        SDL_DestroyAudioStream(m_stream);
+        CHECK_SDL_ERROR(SDL_CreateAudioStream(&spec, &spec));
+
+        // bind the new stream to the shared device and pause it, ready for playing
+        CHECK_SDL_ERROR(SDL_BindAudioStream(shared_device_id, m_stream));
+        CHECK_SDL_ERROR(SDL_PauseAudioStreamDevice(m_stream));
 
         m_is_playing = false;
     }
@@ -178,6 +222,11 @@ namespace spartan
     void AudioSource::SetVolume(float volume)
     {
         m_volume = clamp(volume, 0.0f, 1.0f);
+
+        if (!SDL_SetAudioDeviceGain(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, m_volume))
+        {
+            SP_LOG_ERROR("%s", SDL_GetError());
+        }
     }
 
     void AudioSource::SetPitch(float pitch)
