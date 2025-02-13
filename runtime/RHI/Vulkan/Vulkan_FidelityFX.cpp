@@ -739,11 +739,7 @@ namespace spartan
 
             bool                  context_created = false;
             FfxBreadcrumbsContext context         = {};
-
-            // FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION doesn't seem to work
-            // that why these two exist
-            mutex mutex_marker_start;
-            mutex mutex_marker_end;
+            uint32_t gpu_queue_indices[2]         = { 0, 0 };
 
             void context_destroy()
             {
@@ -762,11 +758,8 @@ namespace spartan
 
                 if (!context_created && Debugging::IsBreadcrumbsEnabled())
                 {
-                    uint32_t gpu_queue_indices[2] =
-                    {
-                        RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
-                        RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute)
-                    };
+                     gpu_queue_indices[0] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics);
+                     gpu_queue_indices[1] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute);
 
                      FfxBreadcrumbsContextDescription context_description = {};
                      context_description.backendInterface                 = ffx_interface;
@@ -1548,39 +1541,45 @@ namespace spartan
         }
 
         SP_ASSERT(ffxBreadcrumbsRegisterPipeline(&breadcrumbs::context, &description) == FFX_OK);
+
         #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
     {
         #ifdef _MSC_VER
+
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), to_ffx_pipeline(pipeline)) == FFX_OK);
+
         #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
     {
         #ifdef _MSC_VER
-        lock_guard<mutex> lock(breadcrumbs::mutex_marker_start); // without a mutex, after loading a world, a gpu crash can occur
+
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         const FfxBreadcrumbsNameTag name_tag = { name, true };
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_PASS, &name_tag) == FFX_OK);
+
         #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
         #ifdef _MSC_VER
-        lock_guard<mutex> lock(breadcrumbs::mutex_marker_end); // without a mutex, after loading a world, a gpu crash can occur
+
         SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
+
         #endif
     }
 
     void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved()
     {
         #ifdef _MSC_VER
+
         FfxBreadcrumbsMarkersStatus marker_status = {};
         SP_ASSERT(ffxBreadcrumbsPrintStatus(&breadcrumbs::context, &marker_status) == FFX_OK);
 
@@ -1594,6 +1593,7 @@ namespace spartan
         }
 
         FFX_SAFE_FREE(marker_status.pBuffer, free);
+
         #endif
     }
 }

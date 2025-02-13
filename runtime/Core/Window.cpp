@@ -77,9 +77,9 @@ namespace spartan
 
             if (!SDL_WasInit(SDL_INIT_GAMEPAD))
             {
-                if (SDL_InitSubSystem(SDL_INIT_GAMEPAD))
+                if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
                 {
-                    SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
+                    SP_LOG_ERROR("Failed to initialise SDL gamepad subsystem: %s.", SDL_GetError());
                 }
             }
         }
