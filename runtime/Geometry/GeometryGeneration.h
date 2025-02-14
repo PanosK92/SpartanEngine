@@ -333,5 +333,93 @@ namespace spartan::geometry_generation
     static void generate_grass_patch(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
         using namespace math;
+    
+        // constants
+        const int grass_segments = 6;    // number of segments along the blade
+        const float grass_width  = 0.1f; // overall blade width
+        const float grass_height = 1.5f; // overall blade height
+    
+        // number of vertices for one side (front face)
+        int vertices_per_face = (grass_segments + 1) * 2;
+
+        // total vertices = front face + back face
+        int total_vertices = vertices_per_face * 2;
+        vertices->reserve(total_vertices);
+    
+        // generate vertices for front face (normal facing +z)
+        for (int i = 0; i <= grass_segments; i++)
+        {
+            float t = float(i) / float(grass_segments);
+            float y = t * grass_height;
+
+            // left vertex
+            Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
+            Vector2 tex_left(0.0f, t);
+            Vector3 normal_front(0.0f, 0.0f, 1.0f);
+            Vector3 tangent_front(1.0f, 0.0f, 0.0f);
+            vertices->emplace_back(pos_left, tex_left, normal_front, tangent_front);
+    
+            // right vertex
+            Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
+            Vector2 tex_right(1.0f, t);
+            vertices->emplace_back(pos_right, tex_right, normal_front, tangent_front);
+        }
+    
+        // generate vertices for back face (normal facing -z)
+        for (int i = 0; i <= grass_segments; i++)
+        {
+            float t = float(i) / float(grass_segments);
+            float y = t * grass_height;
+
+            // left vertex
+            Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
+            Vector2 tex_left(0.0f, t);
+            Vector3 normal_back(0.0f, 0.0f, -1.0f);
+
+            // flip tangent for back face to keep orientation consistent
+            Vector3 tangent_back(-1.0f, 0.0f, 0.0f);
+            vertices->emplace_back(pos_left, tex_left, normal_back, tangent_back);
+    
+            // right vertex
+            Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
+            Vector2 tex_right(1.0f, t);
+            vertices->emplace_back(pos_right, tex_right, normal_back, tangent_back);
+        }
+    
+        // generate indices for the front face
+        // each segment generates two triangles (6 indices)
+        for (int i = 0; i < grass_segments; i++)
+        {
+            int vi = i * 2; // index in front face vertices
+
+            // triangle 1: (vi, vi+1, vi+2)
+            indices->push_back(vi);
+            indices->push_back(vi + 1);
+            indices->push_back(vi + 2);
+
+            // triangle 2: (vi+2, vi+1, vi+3)
+            indices->push_back(vi + 2);
+            indices->push_back(vi + 1);
+            indices->push_back(vi + 3);
+        }
+    
+        // generate indices for the back face
+        // offset for back face vertices is vertices_per_face
+        int offset = vertices_per_face;
+        for (int i = 0; i < grass_segments; i++)
+        {
+            int vi = offset + i * 2;
+
+            // reverse winding order for back face to ensure proper culling
+            // triangle 1: (vi+2, vi+1, vi)
+            indices->push_back(vi + 2);
+            indices->push_back(vi + 1);
+            indices->push_back(vi);
+
+            // triangle 2: (vi+3, vi+1, vi+2)
+            indices->push_back(vi + 3);
+            indices->push_back(vi + 1);
+            indices->push_back(vi + 2);
+        }
     }
 }
