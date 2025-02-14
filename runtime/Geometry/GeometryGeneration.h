@@ -330,7 +330,7 @@ namespace spartan::geometry_generation
         generate_cylinder(vertices, indices, 0.0f, radius, height);
     }
 
-    static void generate_grass_patch(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
+    static void generate_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
         using namespace math;
     

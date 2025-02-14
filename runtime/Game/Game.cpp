@@ -696,11 +696,11 @@ namespace spartan
                         entity->SetObjectName("grass");
                         entity->SetParent(m_default_terrain);
 
-                        // create a mesh with a single grass patch
+                        // create a mesh with a grass blade
                         m_default_grass_patch = make_shared<Mesh>(); // make non static
                         vector<RHI_Vertex_PosTexNorTan> vertices;
                         vector<uint32_t> indices;
-                        geometry_generation::generate_grass_patch(&vertices, &indices);                                                       // generate a single grass patch
+                        geometry_generation::generate_grass_blade(&vertices, &indices);                                                       // generate grass blade
                         m_default_grass_patch->AddGeometry(vertices, indices);
                         m_default_grass_patch->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);                         // geometry is made to spec, don't optimize
                         m_default_grass_patch->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_cube" + EXTENSION_MODEL); // silly, need to remove that
@@ -708,7 +708,7 @@ namespace spartan
 
                         // generate instances
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 20000, TerrainProp::Plant);
+                        terrain->GenerateTransforms(&instances, 1000000, TerrainProp::Plant);
 
                         // add renderable component
                         Renderable* renderable = entity->AddComponent<Renderable>().get();
@@ -1104,6 +1104,7 @@ namespace spartan
         m_default_light_directional   = nullptr;
         m_default_terrain             = nullptr;
         m_default_car                 = nullptr;
+        m_default_grass_patch         = nullptr;
     }
 
     void Game::Tick()
