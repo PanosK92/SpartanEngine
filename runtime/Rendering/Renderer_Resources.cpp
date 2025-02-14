@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "Renderer.h"
 #include "Material.h"
-#include "../Core/GeometryProcessing.h"
+#include "../Geometry/GeometryGeneration.h"
 #include "../World/Components/Light.h"
 #include "../Resource/ResourceCache.h"
 #include "../Display/Display.h"
@@ -497,33 +497,33 @@ namespace spartan
 
             if (type == MeshType::Cube)
             {
-                geometry_processing::generate_cube(&vertices, &indices);
+                geometry_generation::generate_cube(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cube" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Quad)
             {
-                geometry_processing::generate_quad(&vertices, &indices);
+                geometry_generation::generate_quad(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Grid)
             {
                 uint32_t resolution = 40;
-                geometry_processing::generate_grid(&vertices, &indices, resolution);
+                geometry_generation::generate_grid(&vertices, &indices, resolution);
                 mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Sphere)
             {
-                geometry_processing::generate_sphere(&vertices, &indices);
+                geometry_generation::generate_sphere(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_sphere" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Cylinder)
             {
-                geometry_processing::generate_cylinder(&vertices, &indices);
+                geometry_generation::generate_cylinder(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cylinder" + EXTENSION_MODEL);
             }
             else if (type == MeshType::Cone)
             {
-                geometry_processing::generate_cone(&vertices, &indices);
+                geometry_generation::generate_cone(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MODEL);
             }
 

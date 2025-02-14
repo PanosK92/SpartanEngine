@@ -19,17 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ==================
 #include "pch.h"
 #include "FontImporter.h"
-#include "../../RHI/RHI_Texture.h"
-#include "../../Rendering/Font/Font.h"
+#include "../RHI/RHI_Texture.h"
+#include "../Font/Font.h"
 SP_WARNINGS_OFF
 #include <freetype/ftstroke.h>
 #include <freetype/freetype.h>
 #include <freetype/ftglyph.h>
 SP_WARNINGS_ON
-//====================================
+//=============================
 
 //= NAMESPACES ===============
 using namespace std;

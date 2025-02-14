@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =====================
 #include <memory>
 #include <unordered_map>
 #include "Glyph.h"
-#include "../Color.h"
-#include "../../Resource/IResource.h"
-#include "../../RHI/RHI_Vertex.h"
-//===================================
+#include "../Rendering/Color.h"
+#include "../Resource/IResource.h"
+#include "../RHI/RHI_Vertex.h"
+//================================
 
 namespace spartan
 {

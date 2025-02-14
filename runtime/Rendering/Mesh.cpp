@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../IO/FileStream.h"
 #include "../Resource/Import/ModelImporter.h"
-#include "../Core/GeometryProcessing.h"
+#include "../Geometry/GeometryProcessing.h"
 //===========================================
 
 //= NAMESPACES ================

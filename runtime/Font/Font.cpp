@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================================
 #include "pch.h"
 #include "Font.h"
-#include "../Renderer.h"
+#include "../Rendering/Renderer.h"
 #include "../../Core/Stopwatch.h"
 #include "../../Resource/Import/FontImporter.h"
 #include "../../RHI/RHI_Buffer.h"

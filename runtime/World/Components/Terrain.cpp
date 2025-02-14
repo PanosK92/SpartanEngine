@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES =================================
 #include "pch.h"
 #include "Terrain.h"
 #include "Renderable.h"
@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
 #include "../../Rendering/Material.h"
+#include "../../Geometry/GeometryProcessing.h"
 #include "../../Core/ThreadPool.h"
 #include "../../Core/ProgressTracker.h"
-#include "../../Core/GeometryProcessing.h"
-//========================================
+//============================================
 
 //= NAMESPACES ===============
 using namespace std;

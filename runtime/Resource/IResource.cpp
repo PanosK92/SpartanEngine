@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "IResource.h"
 #include "../RHI/RHI_Texture.h"
-#include "../Rendering/Font/Font.h"
+#include "../Font/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Mesh.h"
 #include "../Rendering/Material.h"

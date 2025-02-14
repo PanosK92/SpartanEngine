@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Core/ProgressTracker.h"
-#include "../../Core/GeometryProcessing.h"
+#include "../../Geometry/GeometryProcessing.h"
 SP_WARNINGS_OFF
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
