@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Material.h"
 #include "../Resource/ResourceCache.h"
 #include "../Input/Input.h"
+#include "../Geometry/GeometryGeneration.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -54,6 +55,7 @@ namespace spartan
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
+        shared_ptr<Mesh>   m_default_grass_patch         = nullptr;
 
         void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
         {
@@ -684,6 +686,37 @@ namespace spartan
                             terrain->GenerateTransforms(&instances, 20000, TerrainProp::Plant);
                             renderable->SetInstances(instances);
                         }
+                    }
+
+                    // grass
+                    if (false) // WIP
+                    {
+                        // create entity
+                        shared_ptr<Entity> entity = World::CreateEntity();
+                        entity->SetObjectName("grass");
+                        entity->SetParent(m_default_terrain);
+
+                        // create a mesh with a single grass patch
+                        m_default_grass_patch = make_shared<Mesh>(); // make non static
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_grass_patch(&vertices, &indices);                                                       // generate a single grass patch
+                        m_default_grass_patch->AddGeometry(vertices, indices);
+                        m_default_grass_patch->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);                         // geometry is made to spec, don't optimize
+                        m_default_grass_patch->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_cube" + EXTENSION_MODEL); // silly, need to remove that
+                        m_default_grass_patch->PostProcess();                                                                                 // aabb, gpu buffers, etc.
+
+                        // generate instances
+                        vector<Matrix> instances;
+                        terrain->GenerateTransforms(&instances, 20000, TerrainProp::Plant);
+
+                        // add renderable component
+                        Renderable* renderable = entity->AddComponent<Renderable>().get();
+                        renderable->SetGeometry(m_default_grass_patch.get());
+                        renderable->SetFlag(RenderableFlags::CastsShadows, false); // cheaper and screen space shadows are enough
+                        renderable->SetInstances(instances);
+                        renderable->SetDefaultMaterial(); // use a checkerboard material for now
+
                     }
                 }
             }
