@@ -39,7 +39,6 @@ namespace spartan
     enum class TerrainProp
     {
         Tree,
-        Plant,
         Grass
     };
 

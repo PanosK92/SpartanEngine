@@ -658,38 +658,8 @@ namespace spartan
                         }
                     }
 
-                    // vegetation_plant_1
-                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_plant_1\\ormbunke.obj"))
-                    {
-                        shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                        entity->SetObjectName("plant_1");
-                        entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-                        entity->SetParent(m_default_terrain);
-
-                        if (Entity* child = entity->GetDescendantByName("Plane.010"))
-                        {
-                            Renderable* renderable = child->GetComponent<Renderable>().get();
-                            renderable->SetFlag(RenderableFlags::CastsShadows, false); // cheaper and screen space shadows are enough
-
-                            // create material as the model doesn't do it
-                            shared_ptr<Material> material = make_shared<Material>();
-                            material->SetResourceFilePath("project\\terrain\\vegetation_plant_1\\ormbunke" + string(EXTENSION_MATERIAL));
-                            material->SetColor(Color::standard_white);
-                            material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\vegetation_plant_1\\ormbunke.png");
-                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                            material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
-                            material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                            renderable->SetMaterial(material);
-
-                            // generate instances
-                            vector<Matrix> instances;
-                            terrain->GenerateTransforms(&instances, 20000, TerrainProp::Plant);
-                            renderable->SetInstances(instances);
-                        }
-                    }
-
                     // grass
-                    if (false) // WIP
+                    if (true) // WIP
                     {
                         // create entity
                         shared_ptr<Entity> entity = World::CreateEntity();
@@ -697,7 +667,7 @@ namespace spartan
                         entity->SetParent(m_default_terrain);
 
                         // create a mesh with a grass blade
-                        m_default_grass_patch = make_shared<Mesh>(); // make non static
+                        m_default_grass_patch = make_shared<Mesh>();
                         vector<RHI_Vertex_PosTexNorTan> vertices;
                         vector<uint32_t> indices;
                         geometry_generation::generate_grass_blade(&vertices, &indices);                                                       // generate grass blade
@@ -708,15 +678,20 @@ namespace spartan
 
                         // generate instances
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 1000000, TerrainProp::Plant);
+                        terrain->GenerateTransforms(&instances, 1000000, TerrainProp::Grass);
 
                         // add renderable component
                         Renderable* renderable = entity->AddComponent<Renderable>().get();
                         renderable->SetGeometry(m_default_grass_patch.get());
-                        renderable->SetFlag(RenderableFlags::CastsShadows, false); // cheaper and screen space shadows are enough
+                        renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
                         renderable->SetInstances(instances);
-                        renderable->SetDefaultMaterial(); // use a checkerboard material for now
 
+                        // create a material
+                        shared_ptr<Material> material = make_shared<Material>();
+                        material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
+                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
+                        material->SetColor(Color::standard_green);
+                        renderable->SetMaterial(material);
                     }
                 }
             }
