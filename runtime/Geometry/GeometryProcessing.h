@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
 SP_WARNINGS_OFF
-#include "meshoptimizer/meshoptimizer.h"
+#include "meshoptimizer.h"
 SP_WARNINGS_ON
 //======================================
 
