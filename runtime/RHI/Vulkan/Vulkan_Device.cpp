@@ -749,7 +749,7 @@ namespace spartan
     {
         mutex descriptor_pipeline_mutex;
         uint32_t allocated_descriptor_sets = 0;
-        VkDescriptorPool descriptor_pool   = nullptr;
+        VkDescriptorPool descriptor_pool   = VK_NULL_HANDLE;
 
         // cache
         unordered_map<uint64_t, RHI_DescriptorSet> sets;
@@ -777,7 +777,7 @@ namespace spartan
             pool_create_info.maxSets                    = rhi_max_descriptor_set_count;
 
             // create
-            SP_ASSERT(descriptors::descriptor_pool == nullptr);
+            SP_ASSERT(descriptors::descriptor_pool == VK_NULL_HANDLE);
             SP_ASSERT_VK(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool));
 
             Profiler::m_descriptor_set_count = 0;
@@ -1515,7 +1515,7 @@ namespace spartan
 
         // descriptor pool
         vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
-        descriptors::descriptor_pool = nullptr;
+        descriptors::descriptor_pool = VK_NULL_HANDLE;
 
         // debug messenger
         if (Debugging::IsValidationLayerEnabled())
