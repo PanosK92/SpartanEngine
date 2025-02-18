@@ -677,7 +677,7 @@ namespace spartan
 
                         // generate instances
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 1000000, TerrainProp::Grass);
+                        terrain->GenerateTransforms(&instances, 4000000, TerrainProp::Grass);
 
                         // add renderable component
                         Renderable* renderable = entity->AddComponent<Renderable>().get();
@@ -689,7 +689,7 @@ namespace spartan
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
-                        material->SetProperty(MaterialProperty::AnimationFoliageGravity, 1.0f);
+                        material->SetProperty(MaterialProperty::GrassBlade, 1.0f);
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
                     }

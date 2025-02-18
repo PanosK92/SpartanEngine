@@ -155,22 +155,6 @@ struct vertex_processing
 
             return position_vertex;
         }
-        
-        static float3 apply_bend_from_gravity(float3 position_vertex, uint instance_id, float height_percent)
-        {
-            // generate a random direction for bending based on instance_id
-            float3 random_direction = float3(
-                frac(sin(dot(float2(instance_id, 0), float2(12.9898, 78.233))) * 43758.5453),
-                frac(sin(dot(float2(instance_id, 1), float2(12.9898, 78.233))) * 43758.5453),
-                frac(sin(dot(float2(instance_id, 2), float2(12.9898, 78.233))) * 43758.5453)
-            );
-            
-            // normalize this direction to ensure consistent bending magnitude
-            random_direction = normalize(random_direction);
-
-            // apply the bend
-            return position_vertex += random_direction * height_percent;
-        }
     };
     
     struct water
@@ -283,7 +267,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float height_percent      = (input.position.xyz.y - position_transform.x) / GetMaterial().local_height;
 
     // hacky way to detect grass blade and enchance it with certain modifications in local space
-    if (surface.vertex_animate_gravity())
+    if (surface.is_grass_blade())
     {
         // give it a nice color gradient
         float3 color_base = float3(0.05f, 0.2f, 0.01f); // darker green
@@ -296,11 +280,12 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         float3 rotated_normal_right = rotate_y(-rotation, input.normal);
         input.normal                = normalize(lerp(rotated_normal_left, rotated_normal_right, width_percent));
 
-        // bend the top due to gravity
-       //input.position.xyz = vertex_processing::vegetation::apply_bend_from_gravity(input.position.xyz, instance_id, height_percent);
+        // bend the grass blade due to gravity
+        float random_lean  = perlin_noise(instance_id * 0.1f) * 0.5f;
+        float curve_amount = random_lean * height_percent;
+        input.position.xyz = rotate_x(curve_amount,  input.position.xyz);
     }
-;
-    
+
     // compute the final world transform
     bool is_instanced         = instance_id != 0; // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
     matrix transform_instance = is_instanced ? input.instance_transform : matrix_identity;
