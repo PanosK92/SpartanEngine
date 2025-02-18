@@ -46,7 +46,7 @@ namespace spartan
         static void Maximize();
 
         // size
-        static void SetSize(const uint32_t width, const uint32_t height);
+        static void SetSize(const uint32_t width_new, const uint32_t height_new);
         static uint32_t GetWidth();
         static uint32_t GetHeight();
         static float GetDpiScale();
