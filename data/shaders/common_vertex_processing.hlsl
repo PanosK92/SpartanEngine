@@ -53,29 +53,55 @@ struct gbuffer_vertex
     matrix transform_previous     : TRANSFORM_PREVIOUS;
 };
 
+static float hash(float n)
+{
+    return frac(sin(n) * 43758.5453f);
+}
+
+static float perlin_noise(float x)
+{
+    float i = floor(x);
+    float f = frac(x);
+    f = f * f * (3.0 - 2.0 * f);
+
+    return lerp(hash(i), hash(i + 1.0), f);
+}
+
 static float3 extract_position(matrix transform)
 {
     return float3(transform._31, transform._32, transform._33);
+}
+
+static float3 rotate_x(float angle, float3 v)
+{
+    float c = cos(angle);
+    float s = sin(angle);
+
+    // standard x-axis rotation
+    return float3(
+        v.x,
+        c * v.y - s * v.z,
+        s * v.y + c * v.z
+    );
+}
+
+static float3 rotate_y(float angle, float3 v)
+{
+    float c = cos(angle);
+    float s = sin(angle);
+
+    // apply standard y-axis rotation
+    return float3(
+        c * v.x + s * v.z,
+        v.y,
+        -s * v.x + c * v.z
+    );
 }
 
 struct vertex_processing
 {
     struct vegetation
     {
-        static float hash(float n)
-        {
-            return frac(sin(n) * 43758.5453f);
-        }
-
-        static float perlin_noise(float x)
-        {
-            float i = floor(x);
-            float f = frac(x);
-            f = f * f * (3.0 - 2.0 * f);
-
-            return lerp(hash(i), hash(i + 1.0), f);
-        }
-
         static float3 apply_wind(uint instance_id, float3 position_vertex, float height_percent, float3 wind, float time)
         {
             const float sway_extent       = 0.2f;   // maximum sway amplitude
@@ -130,7 +156,7 @@ struct vertex_processing
             return position_vertex;
         }
         
-        static float3 apply_bend_from_gravity(float3 position_vertex, uint instance_id)
+        static float3 apply_bend_from_gravity(float3 position_vertex, uint instance_id, float height_percent)
         {
             // generate a random direction for bending based on instance_id
             float3 random_direction = float3(
@@ -143,42 +169,7 @@ struct vertex_processing
             random_direction = normalize(random_direction);
 
             // apply the bend
-            float3 height_percent  = position_vertex.y / GetMaterial().world_space_height;
-            position_vertex       += random_direction * 0.1 * height_percent;
-        
-            return position_vertex;
-        }
-
-        static float3 generate_curved_grass_blade_normals(float3 normal, float3 position)
-        {
-            const float rotationAngle = 0.3;
-            
-            // Generate two rotated normals
-            float c1 = cos(PI * rotationAngle);
-            float s1 = sin(PI * rotationAngle);
-            float3 rotatedNormal1 = float3(
-                c1 * normal.x + s1 * normal.z,
-                normal.y,
-                -s1 * normal.x + c1 * normal.z
-            );
-    
-            float c2 = cos(PI * -rotationAngle);
-            float s2 = sin(PI * -rotationAngle);
-            float3 rotatedNormal2 = float3(
-                c2 * normal.x + s2 * normal.z,
-                normal.y,
-                -s2 * normal.x + c2 * normal.z
-            );
-    
-            // Assuming 'widthPercent' can be calculated or passed as a parameter here
-            // For demonstration, let's use y position as a proxy for width
-            float widthPercent = saturate(position.y); // Example: using y position as a proxy for width
-            
-            // Mix the rotated normals
-            float3 curvedNormal = lerp(rotatedNormal1, rotatedNormal2, widthPercent);
-            
-            // Normalize the result
-            return normalize(curvedNormal);
+            return position_vertex += random_direction * height_percent;
         }
     };
     
@@ -277,31 +268,38 @@ struct vertex_processing
 
 gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
 {
-    gbuffer_vertex vertex;
-
     MaterialParameters material = GetMaterial();
     Surface surface;
     surface.flags = material.flags;
 
-    // compute uv
+    // start building the vertex
+    gbuffer_vertex vertex;
     vertex.uv    = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
     vertex.color = 1.0f;
 
-    // compute height percent, this means the height of the vertex in relation to the mesh's height
-    float3 position_transform = extract_position(transform); // world space
-    float3 animation_pivot    = position_transform; // bottom of the mesh by default
-    float height_percent      = (input.position.xyz.y - animation_pivot.y) / GetMaterial().world_space_height;
+    // compute width and height percent, they represent the position of the vertex relative to the grass blade
+    float3 position_transform = extract_position(transform); // bottom-left of the grass blade
+    float width_percent       = (input.position.xyz.x) / GetMaterial().local_width;
+    float height_percent      = (input.position.xyz.y - position_transform.x) / GetMaterial().local_height;
 
-    // generate blade normals for grass
+    // hacky way to detect grass blade and enchance it with certain modifications in local space
     if (surface.vertex_animate_gravity())
     {
+        // give it a nice color gradient
         float3 color_base = float3(0.05f, 0.2f, 0.01f); // darker green
         float3 color_tip  = float3(0.5f, 0.5f, 0.1f);   // yellowish
         vertex.color      = lerp(color_base, color_tip, smoothstep(0, 1, height_percent * 0.5f));
-        
-        //input.position.xyz = vertex_processing::vegetation::generate_curved_grass_blade_normals(input.normal, input.position.xyz);
-        //input.position.xyz = vertex_processing::vegetation::apply_bend_from_gravity(input.position.xyz, instance_id);
+
+        // replace flat normals with curved ones
+        const float rotation        = 60.0f * DEG_TO_RAD;
+        float3 rotated_normal_left  = rotate_y(rotation, input.normal);
+        float3 rotated_normal_right = rotate_y(-rotation, input.normal);
+        input.normal                = normalize(lerp(rotated_normal_left, rotated_normal_right, width_percent));
+
+        // bend the top due to gravity
+       //input.position.xyz = vertex_processing::vegetation::apply_bend_from_gravity(input.position.xyz, instance_id, height_percent);
     }
+;
     
     // compute the final world transform
     bool is_instanced         = instance_id != 0; // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability

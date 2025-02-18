@@ -30,10 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_Queue.h"
-#include "../RHI_Shader.h"
 #include "../RHI_Pipeline.h"
+#include "../RHI_Shader.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../Rendering/Renderer.h"
+#include "../Rendering/Material.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
 #include "../World/Entity.h"
@@ -1187,7 +1188,12 @@ namespace spartan
             // process entities
             for (int64_t i = index_start; i < index_end; i++)
             {
-                auto& entity                         = entities[i];
+                shared_ptr<Entity>& entity = entities[i];
+
+                // skip grass blades, it's going to bring it to a crawl
+                if (entity->GetComponent<Renderable>()->GetMaterial()->GetProperty(MaterialProperty::AnimationFoliageGravity))
+                    continue;
+
                 uint64_t entity_id                   = entity->GetObjectId();
                 brixelizer_gi::entity_map[entity_id] = entity;
                 bool is_dynamic                      = entity->IsMoving();

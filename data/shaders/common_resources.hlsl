@@ -91,12 +91,13 @@ struct MaterialParameters
     float height;
 
     uint flags;
-    float world_space_height;
+    float local_width;
     float ior;
     float subsurface_scattering;
     
     float  sheen;
-    float3 padding;
+    float local_height;
+    float2 padding;
     
     float anisotropic;
     float anisotropic_rotation;

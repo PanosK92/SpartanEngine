@@ -163,13 +163,14 @@ namespace spartan
         float normal_mul    = 0.0f;
         float height_mul    = 0.0f;
 
-        uint32_t flags           = 0;
-        float world_space_height = 0.0f;
-        float ior                = 1.0f;
+        uint32_t flags    = 0;
+        float local_width = 0.0f;
+        float ior         = 1.0f;
         float subsurface_scattering;
 
         float sheen;
-        math::Vector3 padding;
+        float local_height = 0.0f;
+        math::Vector2 padding;
 
         float anisotropic;
         float anisotropic_rotation;
