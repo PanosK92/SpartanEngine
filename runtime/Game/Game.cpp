@@ -659,7 +659,6 @@ namespace spartan
                     }
 
                     // grass
-                    if (false) // WIP
                     {
                         // create entity
                         shared_ptr<Entity> entity = World::CreateEntity();
@@ -691,7 +690,7 @@ namespace spartan
                         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                         material->SetProperty(MaterialProperty::AnimationFoliageGravity, 1.0f);
-                        material->SetColor(Color::standard_green);
+                        material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
                     }
                 }

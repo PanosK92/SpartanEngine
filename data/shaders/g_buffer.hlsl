@@ -74,16 +74,18 @@ gbuffer main_ps(gbuffer_vertex vertex)
     }
 
     // albedo
-    float4 albedo_sample = 1.0f;
-    if (surface.has_texture_albedo())
     {
-        albedo_sample      = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
-        albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
-        albedo            *= albedo_sample;
+        float4 albedo_sample = 1.0f;
+        if (surface.has_texture_albedo())
+        {
+            albedo_sample      = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
+            albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
+            albedo            *= albedo_sample;
+        }
+        albedo.rgb *= vertex.color;
+        // alpha testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
+        albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
     }
-
-    // alpah testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
-    albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
 
     // emission
     if (surface.has_texture_emissive())
