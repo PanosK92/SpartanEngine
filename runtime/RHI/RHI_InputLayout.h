@@ -56,7 +56,7 @@ namespace spartan
         RHI_InputLayout() = default;
         ~RHI_InputLayout();
 
-        void Create(const RHI_Vertex_Type vertex_type, void* vertex_shader_blob = nullptr)
+        void Create(const RHI_Vertex_Type vertex_type)
         {
             const uint32_t binding = 0;
 
@@ -132,7 +132,7 @@ namespace spartan
     private:
         RHI_Vertex_Type m_vertex_type;
         uint32_t m_vertex_size;
-        bool _CreateResource(void* vertex_shader_blob);
+        bool _CreateResource();
         std::vector<VertexAttribute> m_vertex_attributes;
 
         // RHI Resource
