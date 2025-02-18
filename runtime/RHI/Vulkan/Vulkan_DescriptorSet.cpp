@@ -68,7 +68,7 @@ namespace spartan
                 continue;
 
             uint32_t descriptor_index_start = 0;
-            uint32_t descriptor_count       = 1;
+            uint32_t descriptor_cnt       = 1;
 
             if (descriptor.type == RHI_Descriptor_Type::Texture || descriptor.type == RHI_Descriptor_Type::TextureStorage)
             {
@@ -78,9 +78,9 @@ namespace spartan
 
                 // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
                 void* srv_fallback = nullptr;
-                if (RHI_Texture* texture = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard))
+                if (RHI_Texture* texture_it = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard))
                 { 
-                    void* srv_fallback = texture->GetRhiSrv();
+                    void* srv_fallback = texture_it->GetRhiSrv();
                 }
 
                 if (!descriptor.as_array)
@@ -127,7 +127,7 @@ namespace spartan
                         }
                     }
 
-                    descriptor_count = descriptor.mip_range != 0 ? descriptor.mip_range : descriptor_count;
+                    descriptor_cnt = descriptor.mip_range != 0 ? descriptor.mip_range : descriptor_cnt;
                 }
             }
             else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer || descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
@@ -149,7 +149,7 @@ namespace spartan
             descriptor_sets[index].dstSet           = static_cast<VkDescriptorSet>(m_resource);
             descriptor_sets[index].dstBinding       = descriptor.slot;
             descriptor_sets[index].dstArrayElement  = 0; // starting element in that array
-            descriptor_sets[index].descriptorCount  = descriptor_count;
+            descriptor_sets[index].descriptorCount  = descriptor_cnt;
             descriptor_sets[index].descriptorType   = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(descriptor));
             descriptor_sets[index].pImageInfo       = &info_images[descriptor_index_start];
             descriptor_sets[index].pBufferInfo      = &info_buffers[descriptor_index_start];
