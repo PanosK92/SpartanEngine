@@ -27,11 +27,11 @@ RUNTIME_DIR          = "../" .. RUNTIME_PROJECT_NAME
 LIBRARY_DIR          = "../third_party/libraries"
 OBJ_DIR              = "../binaries/obj"
 TARGET_DIR           = "../binaries"
-API_CPP_DEFINE		 = ""
+API_CPP_DEFINE       = ""
 ARG_API_GRAPHICS     = _ARGS[1]
 
 API_INCLUDES = {
-    vulkan_windows = {
+	  vulkan_windows = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
         "../third_party/fidelityfx"
@@ -185,7 +185,7 @@ function runtime_project_configuration()
 
         -- Source to ignore
         removefiles(API_EXCLUDES[ARG_API_GRAPHICS])
-        
+
         -- Precompiled header
         pchheader "pch.h"
         pchsource "../runtime/Core/pch.cpp"
@@ -231,7 +231,7 @@ function runtime_project_configuration()
             links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
             links { "meshoptimizer" }
             links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
-            
+
         -- "Debug"
         filter "configurations:debug"
             debugdir (TARGET_DIR)
