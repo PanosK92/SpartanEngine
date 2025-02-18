@@ -214,8 +214,8 @@ namespace spartan::math
         }
 
         // distance
-        inline float Distance(const Vector3& x)                          { return ((*this) - x).Length(); }
-        inline float DistanceSquared(const Vector3& x)                   { return ((*this) - x).LengthSquared(); }
+        inline float Distance(const Vector3& x_from)                          { return ((*this) - x_from).Length(); }
+        inline float DistanceSquared(const Vector3& x_from)                   { return ((*this) - x_from).LengthSquared(); }
         static float Distance(const Vector3& a, const Vector3& b)        { return (b - a).Length(); }
         static float DistanceSquared(const Vector3& a, const Vector3& b) { return (b - a).LengthSquared(); }
 
