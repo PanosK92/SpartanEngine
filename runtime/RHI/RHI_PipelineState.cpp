@@ -46,7 +46,7 @@ namespace spartan
             bool has_shader_pixel    = pso.shaders[RHI_Shader_Type::Pixel]   ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()   : false;
 
             bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
-            bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
+            //bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
             SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There is no shader set, ensure that it compiled successfully and that it has been set");
             if (is_graphics)
