@@ -17,9 +17,6 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import os
-import shutil
-import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -50,7 +47,10 @@ def generate_project_files():
     is_windows = sys.argv[1].startswith("vs")  # Assuming 'vs' prefix for Visual Studio
 
     # construct the command, stripping any surrounding quotes from arguments
-    premake_exe = Path.cwd() / "build_scripts" / ("premake5.exe" if is_windows else "premake5")
+    if is_windows:
+        premake_exe = Path.cwd() / "build_scripts" / "premake5.exe"
+    else:
+        premake_exe = "premake5"
     premake_lua = Path("build_scripts") / "premake.lua"
 
     # remove quotes if they exist around sys.argv[1] and sys.argv[2]
@@ -75,13 +75,15 @@ def generate_project_files():
 
 def main():
     is_ci = "ci" in sys.argv
+    is_windows = sys.argv[1].startswith("vs")  # Assuming 'vs' prefix for Visual Studio
     
     print("\n1. Create binaries folder with the required data files...\n")
     file_utilities.copy("data", paths["binaries"]["data"])
     file_utilities.copy(Path("build_scripts") / "download_assets.py", "binaries")
     file_utilities.copy(Path("build_scripts") / "file_utilities.py", "binaries")
-    file_utilities.copy(Path("build_scripts") / "7z.exe", "binaries")
-    file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
+    if is_windows:
+        file_utilities.copy(Path("build_scripts") / "7z.exe", "binaries")
+        file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
 
     print("\n2. Download and extract libraries...")
     library_url           = 'https://www.dropbox.com/scl/fi/3ximky5nfxouk8fjip3uz/libraries.7z?rlkey=56n38ybeel93bbv09rdtef6oq&st=qilvw8bb&dl=1'
@@ -91,8 +93,9 @@ def main():
     file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"))
     
     print("3. Copying required DLLs to the binary directory...")
-    for lib in paths["third_party_libs"].values():
-        file_utilities.copy(lib, Path("binaries"))
+    if is_windows:
+        for lib in paths["third_party_libs"].values():
+            file_utilities.copy(lib, Path("binaries"))
 
     print("\n4. Generate project files...\n")
     generate_project_files()
