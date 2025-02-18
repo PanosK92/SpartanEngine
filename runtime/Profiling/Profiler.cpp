@@ -113,18 +113,18 @@ namespace spartan
 
             // windows: use __cpuid to get CPU name
             int cpu_info[4]   = { -1 };
-            char cpu_name[49] = { 0 };
+            char cpu_id_name[49] = { 0 };
             
             __cpuid(cpu_info, 0x80000002);
-            memcpy(cpu_name, cpu_info, sizeof(cpu_info));
+            memcpy(cpu_id_name, cpu_info, sizeof(cpu_info));
 
             __cpuid(cpu_info, 0x80000003);
-            memcpy(cpu_name + 16, cpu_info, sizeof(cpu_info));
+            memcpy(cpu_id_name + 16, cpu_info, sizeof(cpu_info));
 
             __cpuid(cpu_info, 0x80000004);
-            memcpy(cpu_name + 32, cpu_info, sizeof(cpu_info));
+            memcpy(cpu_id_name + 32, cpu_info, sizeof(cpu_info));
 
-            return string(cpu_name);
+            return string(cpu_id_name);
 
             #elif __linux__
 
