@@ -335,91 +335,121 @@ namespace spartan::geometry_generation
         using namespace math;
     
         // constants
-        const int grass_segments = 6;    // number of segments along the blade
-        const float grass_width  = 0.1f; // overall blade width
-        const float grass_height = 1.5f; // overall blade height
+        const int blade_segment_count = 6;    // segments that make up the blade
+        const float grass_width       = 0.1f; // blade width
+        const float grass_height      = 1.0f; // blade height
     
         // number of vertices for one side (front face)
-        int vertices_per_face = (grass_segments + 1) * 2;
-
+        int vertices_per_face  = (blade_segment_count + 1) * 2;
+        vertices_per_face     -= 1; // reduce by one since the top is a single triangle
+    
         // total vertices = front face + back face
         int total_vertices = vertices_per_face * 2;
         vertices->reserve(total_vertices);
     
         // generate vertices for front face (normal facing +z)
-        for (int i = 0; i <= grass_segments; i++)
+        for (int i = 0; i <= blade_segment_count; i++)
         {
-            float t = float(i) / float(grass_segments);
+            float t = float(i) / float(blade_segment_count);
             float y = t * grass_height;
 
-            // left vertex
-            Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
-            Vector2 tex_left(0.0f, t);
             Vector3 normal_front(0.0f, 0.0f, 1.0f);
             Vector3 tangent_front(1.0f, 0.0f, 0.0f);
-            vertices->emplace_back(pos_left, tex_left, normal_front, tangent_front);
+
+            if (i < blade_segment_count) // regular segments
+            {
+                // left vertex
+                Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
+                Vector2 tex_left(0.0f, t);
+
+                vertices->emplace_back(pos_left, tex_left, normal_front, tangent_front);
     
-            // right vertex
-            Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
-            Vector2 tex_right(1.0f, t);
-            vertices->emplace_back(pos_right, tex_right, normal_front, tangent_front);
+                // right vertex
+                Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
+                Vector2 tex_right(1.0f, t);
+                vertices->emplace_back(pos_right, tex_right, normal_front, tangent_front);
+            }
+            else  // top segment, single point
+            {
+                Vector3 pos_top(0.0f, y, 0.0f); // center top point
+                Vector2 tex_top(0.5f, t);       // average texture coordinate
+                vertices->emplace_back(pos_top, tex_top, normal_front, tangent_front);
+            }
         }
-    
-        // generate vertices for back face (normal facing -z)
-        for (int i = 0; i <= grass_segments; i++)
+
+        // generate vertices for front face (normal facing -z)
+        for (int i = 0; i <= blade_segment_count; i++)
         {
-            float t = float(i) / float(grass_segments);
+            float t = float(i) / float(blade_segment_count);
             float y = t * grass_height;
 
-            // left vertex
-            Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
-            Vector2 tex_left(0.0f, t);
-            Vector3 normal_back(0.0f, 0.0f, -1.0f);
+             Vector3 normal_back(0.0f, 0.0f, -1.0f);
+             Vector3 tangent_back(-1.0f, 0.0f, 0.0f);
 
-            // flip tangent for back face to keep orientation consistent
-            Vector3 tangent_back(-1.0f, 0.0f, 0.0f);
-            vertices->emplace_back(pos_left, tex_left, normal_back, tangent_back);
+            if (i < blade_segment_count) // regular segments
+            {
+                Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
+                Vector2 tex_left(0.0f, t);
+               
+                vertices->emplace_back(pos_left, tex_left, normal_back, tangent_back);
     
-            // right vertex
-            Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
-            Vector2 tex_right(1.0f, t);
-            vertices->emplace_back(pos_right, tex_right, normal_back, tangent_back);
+                Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
+                Vector2 tex_right(1.0f, t);
+                vertices->emplace_back(pos_right, tex_right, normal_back, tangent_back);
+            }
+            else  // top segment, single point
+            {
+                Vector3 pos_top(0.0f, y, 0.0f);
+                Vector2 tex_top(0.5f, t);
+                vertices->emplace_back(pos_top, tex_top, normal_back, tangent_back);
+            }
         }
     
         // generate indices for the front face
-        // each segment generates two triangles (6 indices)
-        for (int i = 0; i < grass_segments; i++)
+        int vi = 0;
+        for (int i = 0; i < blade_segment_count; i++)
         {
-            int vi = i * 2; // index in front face vertices
-
-            // triangle 1: (vi, vi+1, vi+2)
-            indices->push_back(vi);
-            indices->push_back(vi + 1);
-            indices->push_back(vi + 2);
-
-            // triangle 2: (vi+2, vi+1, vi+3)
-            indices->push_back(vi + 2);
-            indices->push_back(vi + 1);
-            indices->push_back(vi + 3);
+            if (i < blade_segment_count - 1) // regular segments
+            {
+                indices->push_back(vi);
+                indices->push_back(vi + 1);
+                indices->push_back(vi + 2);
+    
+                indices->push_back(vi + 2);
+                indices->push_back(vi + 1);
+                indices->push_back(vi + 3);
+                vi += 2;
+            }
+            else // top segment, single point
+            {
+                indices->push_back(vi);     // left of last segment
+                indices->push_back(vi + 1); // right of last segment
+                indices->push_back(vi + 2); // top point
+            }
         }
     
         // generate indices for the back face
-        // offset for back face vertices is vertices_per_face
         int offset = vertices_per_face;
-        for (int i = 0; i < grass_segments; i++)
+        vi = 0;
+        for (int i = 0; i < blade_segment_count; i++)
         {
-            int vi = offset + i * 2;
-
-            // reverse winding order for back face to ensure proper culling
-            // triangle 1: (vi+2, vi+1, vi)
-            indices->push_back(vi + 2);
-            indices->push_back(vi + 1);
-            indices->push_back(vi);
-
-            // triangle 2: (vi+3, vi+1, vi+2)
-            indices->push_back(vi + 3);
-            indices->push_back(vi + 1);
-            indices->push_back(vi + 2);
+            if (i < blade_segment_count - 1) // regular segments
+            {
+                indices->push_back(offset + vi + 2);
+                indices->push_back(offset + vi + 1);
+                indices->push_back(offset + vi);
+    
+                indices->push_back(offset + vi + 3);
+                indices->push_back(offset + vi + 1);
+                indices->push_back(offset + vi + 2);
+                vi += 2;
+            }
+            else // last segment uses the center top point
+            {
+                indices->push_back(offset + vi + 2); // top point
+                indices->push_back(offset + vi + 1); // right of last segment
+                indices->push_back(offset + vi);     // left of last segment
+            }
         }
     }
 }

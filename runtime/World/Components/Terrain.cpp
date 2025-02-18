@@ -354,10 +354,7 @@ namespace spartan
                             v = 1.0f - v;
                         }
 
-                        // scale is a random value between 0.5 and 1.5
-                        Vector3 scale = Vector3(get_random_float(0.5f, 1.5f));
-
-                        // position is the barycentric coordinates multiplied by the vertices of the triangle, plus a terrain_offset to avoid floating object
+                        // position is the barycentric coordinates multiplied by the vertices of the triangle, plus a user defined terrain offset
                         Vector3 position = v0 + (u * (v1 - v0) + terrain_offset) + v * (v2 - v0);
 
                         // rotation is a random rotation around the Y axis, and then rotated to match the normal of the triangle
@@ -365,7 +362,7 @@ namespace spartan
                         Quaternion rotation         = rotate_to_normal * Quaternion::FromEulerAngles(0.0f, get_random_float(0.0f, 360.0f), 0.0f);
 
                         lock_guard<mutex> lock(mtx);
-                        transforms.emplace_back(position, rotation, scale);
+                        transforms.emplace_back(position, rotation, 1.0f);
                     }
                     else
                     {
@@ -568,7 +565,7 @@ namespace spartan
         {
             max_slope                   = 40.0f * math::deg_to_rad;
             rotate_match_surface_normal = true; // small plants tend to grow towards the sun but they can have some wonky angles due to low mass
-            terrain_offset              = -0.5f;
+            terrain_offset              = 0.0f;
         }
     
         *transforms = generate_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset);

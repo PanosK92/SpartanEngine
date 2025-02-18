@@ -46,33 +46,34 @@ namespace spartan
 
     enum class MaterialProperty
     {
-        Optimized,            // indicates if the material has been optimized (textures packed and compressed)
-        WorldSpaceHeight,     // height of the mesh to which the material is applied
-        Clearcoat,            // additional specular layer on top of the base specular
-        Clearcoat_Roughness,  // roughness level of the clearcoat layer
-        Anisotropic,          // controls the anisotropy level of specular reflections
-        AnisotropicRotation,  // adjusts the anisotropy direction, with 1.0 being a full rotation
-        Sheen,                // adds a soft, velvet-like reflection at edges
-        ColorR,               // red component of the material color
-        ColorG,               // green component of the material color
-        ColorB,               // blue component of the material color
-        ColorA,               // alpha (transparency) component of the material color
-        Roughness,            // controls the roughness aspect of the surface reflection
-        Metalness,            // defines the surface as dielectric or metallic
-        Normal,               // normal map texture for simulating surface details
-        Height,               // height map texture for surface tessellation
-        Ior,                  // index of refraction for the material
-        SubsurfaceScattering, // simulates light passing through translucent materials
-        TextureTilingX,       // tiling factor of the texture along the X-axis
-        TextureTilingY,       // tiling factor of the texture along the Y-axis
-        TextureOffsetX,       // offset of the texture along the X-axis
-        TextureOffsetY,       // offset of the texture along the Y-axis
-        TextureSlopeBased,    // applies texture mapping based on the mesh slope
-        AnimationFoliageWind, // applies vertex-based animation to simulate wind
-        AnimationWaterFlow,   // applies vertex-based animation to simulate water flow
-        CullMode,             // sets the culling mode based on RHI_CullMode enum values
-        Gltf,                 // indicates if the material was imported from a glTF file
-        Max                   // total number of properties, used to size arrays
+        Optimized,               // indicates if the material has been optimized (textures packed and compressed)
+        WorldSpaceHeight,        // height of the mesh to which the material is applied
+        Clearcoat,               // additional specular layer on top of the base specular
+        Clearcoat_Roughness,     // roughness level of the clearcoat layer
+        Anisotropic,             // controls the anisotropy level of specular reflections
+        AnisotropicRotation,     // adjusts the anisotropy direction, with 1.0 being a full rotation
+        Sheen,                   // adds a soft, velvet-like reflection at edges
+        ColorR,                  // red component of the material color
+        ColorG,                  // green component of the material color
+        ColorB,                  // blue component of the material color
+        ColorA,                  // alpha (transparency) component of the material color
+        Roughness,               // controls the roughness aspect of the surface reflection
+        Metalness,               // defines the surface as dielectric or metallic
+        Normal,                  // normal map texture for simulating surface details
+        Height,                  // height map texture for surface tessellation
+        Ior,                     // index of refraction for the material
+        SubsurfaceScattering,    // simulates light passing through translucent materials
+        TextureTilingX,          // tiling factor of the texture along the X-axis
+        TextureTilingY,          // tiling factor of the texture along the Y-axis
+        TextureOffsetX,          // offset of the texture along the X-axis
+        TextureOffsetY,          // offset of the texture along the Y-axis
+        TextureSlopeBased,       // applies texture mapping based on the mesh slope
+        AnimationFoliageWind,    // applies vertex-based animation to simulate wind
+        AnimationFoliageGravity, // applies vertex-based animation to simulate the top of the grass blade bending towards the ground
+        AnimationWaterFlow,      // applies vertex-based animation to simulate water flow
+        CullMode,                // sets the culling mode based on RHI_CullMode enum values
+        Gltf,                    // indicates if the material was imported from a glTF file
+        Max                      // total number of properties, used to size arrays
     };
 
     enum class MaterialIor

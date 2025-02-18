@@ -56,7 +56,6 @@ namespace spartan
         ~Renderable();
 
         // icomponent
-        void OnStart() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 

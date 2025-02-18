@@ -75,19 +75,16 @@ struct vertex_processing
             return lerp(hash(i), hash(i + 1.0), f);
         }
 
-        static float3 apply_wind(uint instance_id, float3 position_vertex, float3 animation_pivot, float3 wind, float time)
+        static float3 apply_wind(uint instance_id, float3 position_vertex, float height_percent, float3 wind, float time)
         {
-            const float sway_extent       = 0.3f;  // maximum sway amplitude
-            const float sway_speed        = 2.0f;  // sway frequency
-            const float noise_scale       = 0.1f;  // scale of low-frequency noise
-            const float flutter_intensity = 0.05f; // intensity of fluttering
+            const float sway_extent       = 0.2f;   // maximum sway amplitude
+            const float sway_speed        = 1.0f;   // sway frequency
+            const float noise_scale       = 0.1f;   // scale of low-frequency noise
+            const float flutter_intensity = 0.025f; // intensity of fluttering
         
             // normalize wind direction and calculate magnitude
             float3 wind_direction = normalize(wind);
             float wind_magnitude  = length(wind);
-        
-            // height-based sway factor (stronger sway at higher points)
-            float sway_factor = saturate((position_vertex.y - animation_pivot.y) / GetMaterial().world_space_height);
         
             // base sinusoidal sway
             float phase_offset = float(instance_id) * 0.25f * PI; // unique phase per instance
@@ -103,7 +100,7 @@ struct vertex_processing
         
             // combine all factors for sway
             float combined_wave = base_wave + flutter;
-            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * sway_factor * wind_magnitude;
+            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * height_percent * wind_magnitude;
         
             // apply the calculated sway to the vertex
             position_vertex += sway_offset;
@@ -111,7 +108,7 @@ struct vertex_processing
             return position_vertex;
         }
         
-        static float3 apply_player_bend(float3 position_vertex, float3 animation_pivot)
+        static float3 apply_player_bend(float3 position_vertex, float height_percent)
         {
             // calculate horizontal distance to player
             float distance = length(float2(position_vertex.x - buffer_frame.camera_position.x, position_vertex.z - buffer_frame.camera_position.z));
@@ -122,19 +119,30 @@ struct vertex_processing
             // direction away from player
             float2 direction_away_from_player = normalize(position_vertex.xz - buffer_frame.camera_position.xz);
         
-            // calculate height factor (more bending at the top)
-            float height_factor = (position_vertex.y - animation_pivot.y) / GetMaterial().world_space_height;
-            height_factor = saturate(height_factor);
-        
             // apply rotational bending
-            float3 bending_offset = float3(direction_away_from_player * bending_strength * height_factor, bending_strength * height_factor * 0.5f);
+            float3 bending_offset = float3(direction_away_from_player * bending_strength * height_percent, bending_strength * height_percent * 0.5f);
         
             // adjust position
             position_vertex.xz += bending_offset.xz * 0.5f; // horizontal effect
             float proposed_y_position = position_vertex.y + bending_offset.y * 1.0f; // vertical effect
+
+            return position_vertex;
+        }
         
-            // ensure vegetation doesn't bend below the ground
-            position_vertex.y = max(proposed_y_position, animation_pivot.y);
+        static float3 apply_bend_from_gravity(float3 position_vertex, float height_percent, uint instance_id)
+        {
+            // generate a random direction for bending based on instance_id
+            float3 random_direction = float3(
+                frac(sin(dot(float2(instance_id, 0), float2(12.9898, 78.233))) * 43758.5453),
+                frac(sin(dot(float2(instance_id, 1), float2(12.9898, 78.233))) * 43758.5453),
+                frac(sin(dot(float2(instance_id, 2), float2(12.9898, 78.233))) * 43758.5453)
+            );
+            
+            // normalize this direction to ensure consistent bending magnitude
+            random_direction = normalize(random_direction);
+
+            // apply the bend
+            position_vertex += random_direction * height_percent;
         
             return position_vertex;
         }
@@ -214,13 +222,19 @@ struct vertex_processing
 
     static float3 ambient_animation(Surface surface, float3 position_vertex, float4x4 transform, uint instance_id, float3 wind, float time)
     {
-        float3 position        = extract_position(transform);
-        float3 animation_pivot = position - float3(0.0f, GetMaterial().world_space_height * 0.5f, 0.0f);
+        float3 position_transform = extract_position(transform); // world space
+        float3 animation_pivot    = position_transform; // bottom of the mesh by default
+        float height_percent      = (position_vertex.y - animation_pivot.y) / GetMaterial().world_space_height;
+
+        if (surface.vertex_animate_gravity())
+        {
+            //position_vertex = vegetation::apply_bend_from_gravity(position_vertex, height_percent, instance_id);
+        }
         
         if (surface.vertex_animate_wind())
         {
-            position_vertex = vegetation::apply_wind(instance_id, position_vertex, animation_pivot, wind, time);
-            position_vertex = vegetation::apply_player_bend(position_vertex, animation_pivot);
+            position_vertex = vegetation::apply_wind(instance_id, position_vertex, height_percent, wind, time);
+            position_vertex = vegetation::apply_player_bend(position_vertex, height_percent);
         }
     
         if (surface.vertex_animate_water())

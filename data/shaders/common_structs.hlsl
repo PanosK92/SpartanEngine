@@ -66,8 +66,9 @@ struct Surface
     bool has_texture_occlusion()  { return flags & uint(1U << 7);  }
     bool texture_slope_based()    { return flags & uint(1U << 8);  }
     bool vertex_animate_wind()    { return flags & uint(1U << 9); }
-    bool vertex_animate_water()   { return flags & uint(1U << 10); }
-    bool is_tessellated()         { return flags & uint(1U << 11); }
+    bool vertex_animate_gravity() { return flags & uint(1U << 10); }
+    bool vertex_animate_water()   { return flags & uint(1U << 11); }
+    bool is_tessellated()         { return flags & uint(1U << 12); }
     bool is_water()               { return ior == 1.33f; }
     bool is_glass()               { return ior == 1.52f; }
     bool is_sky()                 { return alpha == 0.0f; }
