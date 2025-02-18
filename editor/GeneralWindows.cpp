@@ -254,11 +254,6 @@ namespace
                     string& button_text = comma_seperated_contributors[index++];
                     string& button_url  = comma_seperated_contributors[index++];
             
-                    // calculate center position for the button
-                    float cell_width    = ImGui::GetColumnWidth();
-                    float button_width  = ImGui::CalcTextSize(button_text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-                    float button_offset = (cell_width - button_width) * 0.5f;
-            
                     // set cursor position to center the button
                     ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
                     if (ImGui::Button(button_text.c_str()))
