@@ -95,6 +95,39 @@ def main():
     if is_windows:
         for lib in paths["third_party_libs"].values():
             file_utilities.copy(lib, Path("binaries"))
+    else:
+        try:
+            result = subprocess.run(
+                ["docker", "buildx", "build", "-f", "build_scripts/Dockerfile-arch", "-t", "spartan-deps-img:latest", "."],
+                check=True,
+                text=True,
+                capture_output=True
+            )
+            print("Build output:", result.stdout)
+            result = subprocess.run(
+                ["docker", "run",  "--rm", "-d", "--name", "spartan-deps", "-t", "spartan-deps-img:latest"],
+                check=True,
+                text=True,
+                capture_output=True
+            )
+            print("Starting container output:", result.stdout)
+            result = subprocess.run(
+                ["docker", "cp", "spartan-deps:/spartan-deps/.", "./third_party/linux"],
+                check=True,
+                text=True,
+                capture_output=True
+            )
+            print("Copying dependencies output:", result.stdout)
+            result = subprocess.run(
+                ["docker", "stop", "spartan-deps"],
+                check=True,
+                text=True,
+                capture_output=True
+            )
+            print("Stopped container output:", result.stdout)
+        except subprocess.CalledProcessError as e:
+            print("Error:", e.stderr)
+
 
     print("\n4. Generate project files...\n")
     generate_project_files()
