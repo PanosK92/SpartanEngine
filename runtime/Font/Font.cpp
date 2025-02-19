@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================================
+//= INCLUDES ===============================
 #include "pch.h"
 #include "Font.h"
 #include "../Rendering/Renderer.h"
-#include "../../Resource/Import/FontImporter.h"
-#include "../../RHI/RHI_Buffer.h"
-#include "../../RHI/RHI_CommandList.h"
-//=============================================
+#include "../Resource/Import/FontImporter.h"
+#include "../RHI/RHI_Buffer.h"
+#include "../RHI/RHI_CommandList.h"
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;
