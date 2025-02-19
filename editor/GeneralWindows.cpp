@@ -139,7 +139,7 @@ namespace
             //"Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                            N/A"
         };
 
-        vector<string> comma_seperate_contributors(const vector<string>& contributors)
+        vector<string> comma_seperate_contributors()
         {
             vector<string> result;
         
@@ -212,7 +212,7 @@ namespace
 
         void contributors_table()
         {
-            static vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors);
+            static vector<string> comma_seperated_contributors = comma_seperate_contributors();
 
             ImGui::Text("Contributors");
             if (ImGui::BeginTable("##contributors_table", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
