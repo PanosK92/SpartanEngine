@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES =================
 #include <vector>
-#include "../../RHI/RHI_Vertex.h"
-//===============================
+#include "../RHI/RHI_Vertex.h"
+//============================
 
 namespace spartan::geometry_generation
 {
