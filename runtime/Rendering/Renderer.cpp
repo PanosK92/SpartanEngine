@@ -482,7 +482,8 @@ namespace spartan
             m_cb_frame_cpu.camera_far                          = camera->GetFarPlane();
             m_cb_frame_cpu.camera_position_previous            = m_cb_frame_cpu.camera_position;
             m_cb_frame_cpu.camera_position                     = camera->GetEntity()->GetPosition();
-            m_cb_frame_cpu.camera_direction                    = camera->GetEntity()->GetForward();
+            m_cb_frame_cpu.camera_forward                      = camera->GetEntity()->GetForward();
+            m_cb_frame_cpu.camera_right                        = camera->GetEntity()->GetRight();
             m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                 ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
         }

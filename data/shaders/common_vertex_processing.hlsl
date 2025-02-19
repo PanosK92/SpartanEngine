@@ -229,24 +229,57 @@ struct vertex_processing
         }
     };
 
-    static float3 ambient_animation(Surface surface, float3 position_vertex, float4x4 transform, float height_percent, uint instance_id, float time_offset = 0.0f)
+    static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, float width_percent, float height_percent, uint instance_id)
+    {
+        if (surface.is_grass_blade())
+        {
+            // give it a nice color gradient
+            float3 color_base = float3(0.05f, 0.2f, 0.01f); // darker green
+            float3 color_tip  = float3(0.5f, 0.5f, 0.1f);   // yellowish
+            vertex.color      = lerp(color_base, color_tip, smoothstep(0, 1, height_percent * 0.5f));
+
+            // replace flat normals with curved ones
+            const float rotation        = 60.0f * DEG_TO_RAD;
+            float3 rotated_normal_left  = rotate_y(rotation, input.normal);
+            float3 rotated_normal_right = rotate_y(-rotation, input.normal);
+            input.normal                = normalize(lerp(rotated_normal_left, rotated_normal_right, width_percent));
+
+            // bend the grass blade due to gravity
+            float random_lean  = perlin_noise(instance_id * 0.1f) * 0.5f;
+            float curve_amount = random_lean * height_percent;
+            input.position.xyz = rotate_x(curve_amount,  input.position.xyz);
+        }
+    }
+    
+    static void process_world_space(Surface surface, inout float3 position_world, float3 position_local, float4x4 transform, float height_percent, uint instance_id, float time_offset = 0.0f)
     {
         float time  = (float)buffer_frame.time + time_offset;
         float3 wind = buffer_frame.wind;
-        
-        if (surface.vertex_animate_wind()) // don't apply wind to grass until we fix it
+
+        // the blade is super thin, so thicken it when viewed from the side
+        if (surface.is_grass_blade())
         {
-            position_vertex = vegetation::apply_wind(instance_id, position_vertex, height_percent, wind, time);
-            position_vertex = vegetation::apply_player_bend(position_vertex, height_percent);
+            float3 view_direction         = get_view_direction(position_world);
+            float3 grass_face_normal      = normalize(mul(float3(0, 0, 1), (float3x3)transform));
+            float v_dot_n                 = saturate(dot(grass_face_normal.xz, view_direction.xz));
+            float viewSpaceThickenFactor  = pow(1.0 - v_dot_n, 4.0); // ease out
+            viewSpaceThickenFactor       *= smoothstep(0.0, 0.2, v_dot_n);
+            float grass_width             = GetMaterial().local_width;
+            float xDirection              = (position_local.x - (extract_position(transform).x + grass_width / 2)) / (grass_width / 2); 
+            position_world               += viewSpaceThickenFactor * xDirection * grass_width * buffer_frame.camera_right;
+        }
+        
+        if (surface.vertex_animate_wind())
+        {
+            position_world = vegetation::apply_wind(instance_id, position_world, height_percent, wind, time);
+            position_world = vegetation::apply_player_bend(position_world, height_percent);
         }
     
         if (surface.vertex_animate_water())
         {
-            position_vertex = water::apply_wave(position_vertex, time);
-            position_vertex = water::apply_ripple(position_vertex, time);
+            position_world = water::apply_wave(position_world, time);
+            position_world = water::apply_ripple(position_world, time);
         }
-    
-        return position_vertex;
     }
 };
 
@@ -266,25 +299,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float width_percent       = (input.position.xyz.x) / GetMaterial().local_width;
     float height_percent      = (input.position.xyz.y - position_transform.x) / GetMaterial().local_height;
 
-    // hacky way to detect grass blade and enchance it with certain modifications in local space
-    if (surface.is_grass_blade())
-    {
-        // give it a nice color gradient
-        float3 color_base = float3(0.05f, 0.2f, 0.01f); // darker green
-        float3 color_tip  = float3(0.5f, 0.5f, 0.1f);   // yellowish
-        vertex.color      = lerp(color_base, color_tip, smoothstep(0, 1, height_percent * 0.5f));
-
-        // replace flat normals with curved ones
-        const float rotation        = 60.0f * DEG_TO_RAD;
-        float3 rotated_normal_left  = rotate_y(rotation, input.normal);
-        float3 rotated_normal_right = rotate_y(-rotation, input.normal);
-        input.normal                = normalize(lerp(rotated_normal_left, rotated_normal_right, width_percent));
-
-        // bend the grass blade due to gravity
-        float random_lean  = perlin_noise(instance_id * 0.1f) * 0.5f;
-        float curve_amount = random_lean * height_percent;
-        input.position.xyz = rotate_x(curve_amount,  input.position.xyz);
-    }
+    // vertex processing - local space
+    vertex_processing::process_local_space(surface, input, vertex, width_percent, height_percent, instance_id);
 
     // compute the final world transform
     bool is_instanced         = instance_id != 0; // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
@@ -313,10 +329,10 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.transform          = transform;
     vertex.transform_previous = transform_previous;
 
-    // vertex processing
-    vertex.position          = vertex_processing::ambient_animation(surface, vertex.position, transform, height_percent, instance_id);
-    vertex.position_previous = vertex_processing::ambient_animation(surface, vertex.position_previous, transform_previous, height_percent, instance_id, -buffer_frame.delta_time);
-
+    // vertex processing - world space
+    vertex_processing::process_world_space(surface, vertex.position, input.position.xyz, transform, height_percent, instance_id);
+    vertex_processing::process_world_space(surface, vertex.position_previous, input.position.xyz, transform_previous, height_percent, instance_id, -buffer_frame.delta_time);
+    
     return vertex;
 }
 

@@ -52,7 +52,7 @@ struct FrameBufferData
     float3 camera_position;
     float camera_near;
     
-    float3 camera_direction;
+    float3 camera_forward;
     float camera_far;
 
     float camera_last_movement_time;
@@ -68,6 +68,9 @@ struct FrameBufferData
 
     float3 wind;
     float gamma;
+
+    float3 camera_right;
+    float padding2;
 };
 
 // 128 byte push constant buffer used by every pass

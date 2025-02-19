@@ -60,7 +60,7 @@ namespace spartan
         math::Vector3 camera_position;
         float camera_near;
 
-        math::Vector3 camera_direction;
+        math::Vector3 camera_forward;
         float camera_far;
 
         float camera_last_movement_time;
@@ -76,6 +76,9 @@ namespace spartan
 
         math::Vector3 wind;
         float gamma;
+
+        math::Vector3 camera_right;
+        float padding2;
 
         void set_bit(const bool set, const uint32_t bit)
         {
