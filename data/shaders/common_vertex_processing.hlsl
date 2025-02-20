@@ -251,7 +251,7 @@ struct vertex_processing
         }
     }
     
-    static void process_world_space(Surface surface, inout float3 position_world, float3 position_local, float4x4 transform, float height_percent, uint instance_id, float time_offset = 0.0f)
+    static void process_world_space(Surface surface, inout float3 position_world, float3 normal_world, float3 position_local, float4x4 transform, float height_percent, uint instance_id, float time_offset = 0.0f)
     {
         float time  = (float)buffer_frame.time + time_offset;
         float3 wind = buffer_frame.wind;
@@ -259,17 +259,16 @@ struct vertex_processing
         // the blade is super thin, so thicken it when viewed from the side
         if (surface.is_grass_blade())
         {
-            float3 view_direction         = get_view_direction(position_world);
-            float3 grass_face_normal      = normalize(mul(float3(0, 0, 1), (float3x3)transform));
-            float v_dot_n                 = saturate(dot(grass_face_normal.xz, view_direction.xz));
-            float viewSpaceThickenFactor  = pow(1.0 - v_dot_n, 4.0); // ease out
-            viewSpaceThickenFactor       *= smoothstep(0.0, 0.2, v_dot_n);
-            float grass_width             = GetMaterial().local_width;
-            float xDirection              = (position_local.x - (extract_position(transform).x + grass_width / 2)) / (grass_width / 2); 
-            position_world               += viewSpaceThickenFactor * xDirection * grass_width * buffer_frame.camera_right;
+            float3 view_direction        = get_view_direction(position_world);
+            float v_dot_n                = saturate(dot(normal_world.xz, view_direction.xz));
+            const float blade_thickness  = 0.1f;
+            float thickness_offset       = pow(1.0 - v_dot_n, 4.0) ;
+            thickness_offset            *= smoothstep(0.0, 0.2, v_dot_n);
+            float3 blade_x_direction     = normalize(cross(float3(0.0f, 1.0f, 0.0f), normal_world));
+            //position_world              += thickness_offset * blade_x_direction * sign(position_local.x - GetMaterial().local_width * 0.5f);
         }
         
-        if (surface.vertex_animate_wind())
+        if (surface.vertex_animate_wind() && !surface.is_grass_blade())
         {
             position_world = vegetation::apply_wind(instance_id, position_world, height_percent, wind, time);
             position_world = vegetation::apply_player_bend(position_world, height_percent);
@@ -330,8 +329,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.transform_previous = transform_previous;
 
     // vertex processing - world space
-    vertex_processing::process_world_space(surface, vertex.position, input.position.xyz, transform, height_percent, instance_id);
-    vertex_processing::process_world_space(surface, vertex.position_previous, input.position.xyz, transform_previous, height_percent, instance_id, -buffer_frame.delta_time);
+    vertex_processing::process_world_space(surface, vertex.position, vertex.normal, input.position.xyz, transform, height_percent, instance_id);
+    vertex_processing::process_world_space(surface, vertex.position_previous, vertex.normal, input.position.xyz, transform_previous, height_percent, instance_id, -buffer_frame.delta_time);
     
     return vertex;
 }

@@ -690,6 +690,8 @@ namespace spartan
                         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
                         material->SetProperty(MaterialProperty::GrassBlade, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::Roughness, 0.6f);
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
                     }
