@@ -58,6 +58,14 @@ static float hash(float n)
     return frac(sin(n) * 43758.5453f);
 }
 
+float hash_uint(uint seed)
+{
+    seed ^= seed >> 17;
+    seed *= 0x5bd1e995u;
+    seed ^= seed >> 13;
+    return float(seed) / float(0xffffffffu);
+}
+
 static float perlin_noise(float x)
 {
     float i = floor(x);
@@ -65,6 +73,12 @@ static float perlin_noise(float x)
     f = f * f * (3.0 - 2.0 * f);
 
     return lerp(hash(i), hash(i + 1.0), f);
+}
+
+// Helper function to remap a value from one range to another
+float remap(float value, float inMin, float inMax, float outMin, float outMax)
+{
+    return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
 }
 
 static float3 extract_position(matrix transform)
@@ -239,15 +253,20 @@ struct vertex_processing
             vertex.color      = lerp(color_base, color_tip, smoothstep(0, 1, height_percent * 0.5f));
 
             // replace flat normals with curved ones
-            const float rotation        = 60.0f * DEG_TO_RAD;
-            float3 rotated_normal_left  = rotate_y(rotation, input.normal);
-            float3 rotated_normal_right = rotate_y(-rotation, input.normal);
+            float blade_x_direction     = width_percent < 0.5f ? -1.0f : 1.0f;
+            const float rotation        = 60.0f * DEG_TO_RAD * blade_x_direction;
+            float3 rotated_normal_left  = rotate_y(-rotation, input.normal);
+            float3 rotated_normal_right = rotate_y(rotation, input.normal);
             input.normal                = normalize(lerp(rotated_normal_left, rotated_normal_right, width_percent));
 
-            // bend the grass blade due to gravity
-            float random_lean  = perlin_noise(instance_id * 0.1f) * 0.5f;
+            // bend due to gravity
+            float random_lean  = hash_uint(instance_id) * 1.0f;
             float curve_amount = random_lean * height_percent;
             input.position.xyz = rotate_x(curve_amount,  input.position.xyz);
+
+            // bend due to wind
+            curve_amount       = perlin_noise((float)buffer_frame.time * 1.0f) * 0.2f;
+            input.position.xyz = rotate_x(curve_amount, input.position.xyz);
         }
     }
     
@@ -259,12 +278,24 @@ struct vertex_processing
         // the blade is super thin, so thicken it when viewed from the side
         if (surface.is_grass_blade())
         {
-            float3 view_direction        = get_view_direction(position_world);
-            float v_dot_n                = abs(dot(normal_world.xz, view_direction.xz));
-            float thickness_offset       = 2.0f - v_dot_n;
-            float3 blade_x_direction     = width_percent < 0.5f ? -1.0f : 1.0f;
-            float3 offset                = thickness_offset * blade_x_direction * 0.2f;
-            position_world.x            += offset.x;
+            //float3 view_direction        = get_view_direction(position_world);
+            //float v_dot_n                = abs(dot(normal_world.xz, view_direction.xz));
+            //float thickness_offset       = 1.0f - v_dot_n;
+            //float blade_x_direction      = width_percent < 0.5f ? -1.0f : 1.0f;
+            //float3 offset                = thickness_offset * blade_x_direction * 0.2f;
+            //position_world.x            += offset.x;
+
+            // large scale wind
+            float windDir = perlin_noise(dot(position_world.xz, float2(0.05, 0.05)) + 0.05 * time);
+            windDir       = remap(windDir, -1.0, 1.0, 0.0, 2.0 * 3.14159); // remap to [0, 2π]
+            // sample noise for wind strength (large-scale movement)
+            float windNoiseSample = perlin_noise(dot(position_world.xz, float2(0.25, 0.25)) + time * 2.0f) * 2.0f;
+            // remap noise to control lean angle
+            float windLeanAngle = remap(windNoiseSample, -1.0, 1.0, 0.25, 1.0);
+            windLeanAngle       = (windLeanAngle * windLeanAngle * windLeanAngle) * 1.0; // easeIn(t) = t * t * t
+            // apply wind to the grass blade position
+            float2 windOffset  = float2(cos(windDir), sin(windDir)) * windLeanAngle;
+            position_world.xz += windOffset * height_percent;
         }
         
         if (surface.vertex_animate_wind() && !surface.is_grass_blade())
