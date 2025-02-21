@@ -676,7 +676,7 @@ namespace spartan
 
                         // generate instances
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 4000000, TerrainProp::Grass);
+                        terrain->GenerateTransforms(&instances, 10000000, TerrainProp::Grass);
 
                         // add renderable component
                         Renderable* renderable = entity->AddComponent<Renderable>().get();
