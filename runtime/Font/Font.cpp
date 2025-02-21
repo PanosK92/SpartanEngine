@@ -114,17 +114,14 @@ namespace spartan
         {
             Glyph& glyph = m_glyphs[character];
     
-            if (character == ASCII_TAB)
+           if (character == ASCII_TAB)
             {
-                // compute the width of a single space
                 const float space_offset = static_cast<float>(m_glyphs[ASCII_SPACE].horizontal_advance);
-                const float tab_spacing  = space_offset * 4.0f; // 4 spaces per tab
-    
-                // calculate the next tab stop
-                float next_tab_stop = std::floor((cursor.x + tab_spacing) / tab_spacing) * tab_spacing;
-    
-                // advance the cursor to the next tab stop
-                cursor.x = next_tab_stop;
+                const float tab_spacing  = space_offset * 4.0f;
+                float relative_x         = cursor.x - position.x;                                // distance from the starting position
+                float k                  = std::floor((relative_x + tab_spacing) / tab_spacing); // number of tab stops from position.x
+                float next_tab_stop      = position.x + k * tab_spacing;                         // next tab stop relative to position.x
+                cursor.x                 = next_tab_stop;
             }
             else if (character == ASCII_NEW_LINE)
             {
