@@ -134,6 +134,15 @@ namespace spartan::math
         m_max.z = std::max(m_max.z, box.m_max.z);
     }
 
+    Vector3 BoundingBox::GetClosestPoint(const Vector3& point) const
+    {
+        return Vector3(
+            std::max(m_min.x, std::min(point.x, m_max.x)),
+            std::max(m_min.y, std::min(point.y, m_max.y)),
+            std::max(m_min.z, std::min(point.z, m_max.z))
+        );
+    }
+
     bool BoundingBox::Contains(const Vector3& point) const
     {
         return (point.x >= m_min.x && point.x <= m_max.x) &&

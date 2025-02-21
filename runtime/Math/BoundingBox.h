@@ -84,9 +84,12 @@ namespace spartan
                 return size.x * size.y * size.z;
             }
 
-            std::array<Vector3, 8> GetCorners() const
+            Vector3 GetClosestPoint(const Vector3& point) const;
+
+            void GetCorners(std::array<Vector3, 8>* corners) const
             {
-                std::array<Vector3, 8> corners = {
+                *corners =
+                {
                     m_min,
                     Vector3(m_max.x, m_min.y, m_min.z),
                     Vector3(m_min.x, m_max.y, m_min.z),
@@ -96,7 +99,6 @@ namespace spartan
                     Vector3(m_max.x, m_max.y, m_min.z),
                     m_max
                 };
-                return corners;
             }
 
             bool operator==(const BoundingBox& other) const

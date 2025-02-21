@@ -282,18 +282,18 @@ namespace spartan
         {
             uint32_t instance_start_index = 0;
             bool draw_instanced           = pso.instancing && renderable->HasInstancing();
+            Vector3 camera_position       = camera->GetEntity()->GetPosition();
 
             if (draw_instanced)
             {
                 for (uint32_t group_index = 0; group_index < renderable->GetInstancePartitionCount(); group_index++)
                 {
-                    uint32_t group_end_index = renderable->GetBoundingBoxGroupEndIndices()[group_index];
-                    uint32_t instance_count  = group_end_index - instance_start_index;
+                    uint32_t group_end_index              = renderable->GetBoundingBoxGroupEndIndices()[group_index];
+                    uint32_t instance_count               = group_end_index - instance_start_index;
+                    const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
 
                     // skip instance groups outside of the view frustum
                     {
-                        const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-
                         if (light)
                         {
                             if (!light->IsInViewFrustum(renderable, array_index))
@@ -315,13 +315,19 @@ namespace spartan
 
                     if (instance_count > 0)
                     {
-                        cmd_list->DrawIndexed(
-                            renderable->GetIndexCount(),
-                            renderable->GetIndexOffset(),
-                            renderable->GetVertexOffset(),
-                            instance_start_index,
-                            instance_count
-                        );
+                        float distance_squared = Vector3::DistanceSquared(camera_position, bounding_box_group.GetClosestPoint(camera_position));
+                        bool draw              = distance_squared <= renderable->GetMaxRenderDistance() * renderable->GetMaxRenderDistance();
+
+                        if (draw)
+                        { 
+                            cmd_list->DrawIndexed(
+                                renderable->GetIndexCount(),
+                                renderable->GetIndexOffset(),
+                                renderable->GetVertexOffset(),
+                                instance_start_index,
+                                instance_count
+                            );
+                        }
                     }
 
                     instance_start_index = group_end_index;
@@ -329,11 +335,17 @@ namespace spartan
             }
             else 
             {
-                cmd_list->DrawIndexed(
-                    renderable->GetIndexCount(),
-                    renderable->GetIndexOffset(),
-                    renderable->GetVertexOffset()
-                );
+                float distance_squared = visibility::distances_squared[renderable->GetEntity()->GetObjectId()];
+                bool draw              = distance_squared <= renderable->GetMaxRenderDistance() * renderable->GetMaxRenderDistance();
+
+                if (draw)
+                { 
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(),
+                        renderable->GetIndexOffset(),
+                        renderable->GetVertexOffset()
+                    );
+                }
             }
 
             cmd_list->SetIgnoreClearValues(true);

@@ -501,8 +501,9 @@ namespace spartan
 
         // paraboloid point light
         {
-            float sign                = (index == 0) ? 1.0f : -1.0f;
-            array<Vector3, 8> corners = bounding_box.GetCorners();
+            float sign = (index == 0) ? 1.0f : -1.0f;
+            array<Vector3, 8> corners;
+            bounding_box.GetCorners(&corners);
             for (const Vector3& corner : corners)
             {
                 Vector3 to_corner = corner - m_entity_ptr->GetPosition();

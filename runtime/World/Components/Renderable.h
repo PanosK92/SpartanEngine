@@ -99,6 +99,10 @@ namespace spartan
         uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<math::Matrix>& instances);
 
+        // render distance
+        void SetMaxRenderDistance(const float max_render_distance) { m_max_render_distance = max_render_distance; }
+        float GetMaxRenderDistance() const                         { return m_max_render_distance; }
+
         // misc
         uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
         uint32_t GetIndexCount() const   { return m_geometry_index_count; }
@@ -136,5 +140,8 @@ namespace spartan
         // misc
         math::Matrix m_transform_previous = math::Matrix::Identity;
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
+
+        // rendering
+        float m_max_render_distance = FLT_MAX;
     };
 }
