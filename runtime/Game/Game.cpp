@@ -695,7 +695,7 @@ namespace spartan
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
 
-                        renderable->SetMaxRenderDistance(256.0f);
+                        renderable->SetMaxRenderDistance(150.0f);
                     }
                 }
             }
