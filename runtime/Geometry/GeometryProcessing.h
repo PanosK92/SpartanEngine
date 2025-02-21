@@ -33,7 +33,7 @@ namespace spartan::geometry_processing
 {
     static void register_meshoptimizer()
     {
-        static bool registered = false;
+        static std::atomic<bool> registered = false;
         if (registered)
             return;
 
