@@ -348,29 +348,29 @@ namespace spartan
         }
     }
 
-    void Window::SetSize(const uint32_t width, const uint32_t height)
+    void Window::SetSize(const uint32_t width_new, const uint32_t height_new)
     {
         SP_ASSERT(window);
 
-        SDL_SetWindowSize(window, static_cast<int>(width), static_cast<int>(height));
+        SDL_SetWindowSize(window, static_cast<int>(width_new), static_cast<int>(height_new));
     }
 
     uint32_t Window::GetWidth()
     {
         SP_ASSERT(window);
 
-        int width = 0;
-        SDL_GetWindowSize(window, &width, nullptr);
-        return static_cast<uint32_t>(width);
+        int width_size = 0;
+        SDL_GetWindowSize(window, &width_size, nullptr);
+        return static_cast<uint32_t>(width_size);
     }
 
     uint32_t Window::GetHeight()
     {
         SP_ASSERT(window);
 
-        int height = 0;
-        SDL_GetWindowSize(window, nullptr, &height);
-        return static_cast<uint32_t>(height);
+        int height_size = 0;
+        SDL_GetWindowSize(window, nullptr, &height_size);
+        return static_cast<uint32_t>(height_size);
     }
 
     float Window::GetDpiScale()

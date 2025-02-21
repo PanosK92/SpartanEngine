@@ -464,14 +464,12 @@ namespace spartan
                 // handle gear shifting based on engine RPM
                 if (parameters.engine_rpm > tuning::gearbox_rpm_upshift && parameters.gear < (sizeof(tuning::gearbox_ratios) / sizeof(tuning::gearbox_ratios[0])))
                 {
-                    int32_t old_gear = parameters.gear;
                     parameters.gear++;
                     parameters.last_shift_time += delta_time_seconds;
                     parameters.is_shifting      = true;
                 }
                 else if (parameters.engine_rpm < tuning::gearbox_rpm_downshift && parameters.gear > 1)
                 {
-                    int32_t old_gear = parameters.gear;
                     parameters.gear--;
                     parameters.last_shift_time += delta_time_seconds;
                     parameters.is_shifting      = true;
