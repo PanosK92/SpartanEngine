@@ -75,7 +75,7 @@ static float perlin_noise(float x)
     return lerp(hash(i), hash(i + 1.0), f);
 }
 
-// Helper function to remap a value from one range to another
+// remap a value from one range to another
 float remap(float value, float inMin, float inMax, float outMin, float outMax)
 {
     return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
@@ -161,12 +161,13 @@ struct vertex_processing
             float2 direction_away_from_player = normalize(position_vertex.xz - buffer_frame.camera_position.xz);
         
             // apply rotational bending
-            float3 bending_offset = float3(direction_away_from_player * bending_strength * height_percent, bending_strength * height_percent * 0.5f);
+            float3 bending_offset = float3(direction_away_from_player * bending_strength * height_percent, 
+                                           bending_strength * height_percent * 0.5f);
         
-            // adjust position
+            // adjust position: apply both horizontal and vertical bending
             position_vertex.xz += bending_offset.xz * 0.5f; // horizontal effect
-            float proposed_y_position = position_vertex.y + bending_offset.y * 1.0f; // vertical effect
-
+            position_vertex.y  += bending_offset.y;         // vertical effect
+        
             return position_vertex;
         }
     };
@@ -275,9 +276,9 @@ struct vertex_processing
         float time  = (float)buffer_frame.time + time_offset;
         float3 wind = buffer_frame.wind;
 
-        // the blade is super thin, so thicken it when viewed from the side
         if (surface.is_grass_blade())
         {
+            // the blade is super thin, so thicken it when viewed from the side
             //float3 view_direction        = get_view_direction(position_world);
             //float v_dot_n                = abs(dot(normal_world.xz, view_direction.xz));
             //float thickness_offset       = 1.0f - v_dot_n;
@@ -285,22 +286,33 @@ struct vertex_processing
             //float3 offset                = thickness_offset * blade_x_direction * 0.2f;
             //position_world.x            += offset.x;
 
-            // large scale wind
-            float windDir = perlin_noise(dot(position_world.xz, float2(0.05, 0.05)) + 0.05 * time);
-            windDir       = remap(windDir, -1.0, 1.0, 0.0, 2.0 * 3.14159); // remap to [0, 2π]
-            // sample noise for wind strength (large-scale movement)
-            float windNoiseSample = perlin_noise(dot(position_world.xz, float2(0.25, 0.25)) + time * 2.0f) * 2.0f;
-            // remap noise to control lean angle
-            float windLeanAngle = remap(windNoiseSample, -1.0, 1.0, 0.25, 1.0);
-            windLeanAngle       = (windLeanAngle * windLeanAngle * windLeanAngle) * 1.0; // easeIn(t) = t * t * t
-            // apply wind to the grass blade position
-            float2 windOffset  = float2(cos(windDir), sin(windDir)) * windLeanAngle;
-            position_world.xz += windOffset * height_percent;
+            // wind simulation
+            {
+                const float wind_direction_scale      = 0.05f; // scale for large-scale wind direction noise
+                const float wind_direction_time_scale = 0.05f; // time-based animation speed for wind direction
+                const float wind_strength_scale       = 0.25f; // scale for wind strength noise
+                const float wind_strength_time_scale  = 2.0f;  // faster time-based animation for wind strength
+                const float wind_strength_amplitude   = 2.0f;  // amplifies wind strength noise output
+                const float min_wind_lean             = 0.25f; // minimum lean angle for grass blades
+                const float max_wind_lean             = 1.0f;  // maximum lean angle for grass blades
+            
+                float wind_direction       = perlin_noise(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
+                wind_direction             = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
+                float wind_strength_noise  = perlin_noise(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
+                float wind_lean_angle      = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
+                wind_lean_angle            = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
+                float2 wind_offset         = float2(cos(wind_direction), sin(wind_direction)) * wind_lean_angle;
+                position_world.xz         += wind_offset * height_percent;
+            }
         }
         
         if (surface.vertex_animate_wind() && !surface.is_grass_blade())
         {
             position_world = vegetation::apply_wind(instance_id, position_world, height_percent, wind, time);
+        }
+
+        if (surface.vertex_animate_wind() || surface.is_grass_blade())
+        {
             position_world = vegetation::apply_player_bend(position_world, height_percent);
         }
     
