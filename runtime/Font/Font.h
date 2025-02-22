@@ -121,8 +121,9 @@ namespace spartan
         std::vector<RHI_Vertex_PosTex> m_vertices;
         std::vector<uint32_t> m_indices;
 
-        static const uint32_t buffer_count = 8;
-        uint32_t m_buffer_index            = 0;
+        static const uint32_t buffer_count               = 8;
+        uint32_t m_buffer_index                          = 0;
+        std::array<uint32_t, buffer_count> m_index_count = { 0 };
         std::array<std::shared_ptr<RHI_Buffer>, buffer_count> m_buffers_index;
         std::array<std::shared_ptr<RHI_Buffer>, buffer_count> m_buffers_vertex;
     };

@@ -170,9 +170,9 @@ namespace spartan
     void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(HasText());
-    
+        
         m_buffer_index = (m_buffer_index + 1) % buffer_count;
-
+    
         // grow gpu buffers if needed
         {
             if (m_vertices.size() > m_buffers_vertex[m_buffer_index]->GetElementCount())
@@ -186,7 +186,7 @@ namespace spartan
                     "font_vertex"
                 );
             }
-    
+        
             if (m_indices.size() > m_buffers_index[m_buffer_index]->GetElementCount())
             {
                 m_buffers_index[m_buffer_index] = make_shared<RHI_Buffer>(
@@ -199,11 +199,17 @@ namespace spartan
                 );
             }
         }
-
+    
         // map vertices and indices to gpu buffers
-        cmd_list->UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, m_buffers_vertex[m_buffer_index]->GetObjectSize(), m_vertices.data(), true);
-        cmd_list->UpdateBuffer(m_buffers_index[m_buffer_index].get(),  0, m_buffers_index[m_buffer_index]->GetObjectSize(),  m_indices.data(),  true);
-
+        uint64_t vertex_data_size = static_cast<uint64_t>(m_vertices.size()) * sizeof(m_vertices[0]);
+        cmd_list->UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, vertex_data_size, m_vertices.data());
+        
+        uint64_t index_data_size = static_cast<uint64_t>(m_indices.size()) * sizeof(m_indices[0]);
+        cmd_list->UpdateBuffer(m_buffers_index[m_buffer_index].get(), 0, index_data_size, m_indices.data());
+    
+        // store the used index count
+        m_index_count[m_buffer_index] = static_cast<uint32_t>(m_indices.size());
+    
         // clear vertices and indices
         m_vertices.clear();
         m_indices.clear();
@@ -211,6 +217,6 @@ namespace spartan
 
     uint32_t Font::GetIndexCount()
     {
-        return m_buffers_index[m_buffer_index]->GetElementCount();
+        return m_index_count[m_buffer_index];
     }
 }

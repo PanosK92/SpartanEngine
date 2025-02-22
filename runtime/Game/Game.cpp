@@ -470,7 +470,7 @@ namespace spartan
         void create_forest_car()
         {
             create_sun(LightIntensity::sky_overcast_day);
-            create_camera(Vector3(-458.0084f, 8.0f, 371.9392), Vector3(0.0f, 0.0f, 0.0f));
+            create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
             create_car(Vector3(-449.0260f, 6.0696f, 359.2632f));
 
             // mood adjustment
