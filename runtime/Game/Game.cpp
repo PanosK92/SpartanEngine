@@ -388,7 +388,6 @@ namespace spartan
             create_sun(LightIntensity::sky_sunlight_morning_evening);
             create_music();
             create_floor();
-            create_car(Vector3(0.0f, 5.0f, 10.0f));
 
             // we have long screen space shadows so they don't look good with small objects here
             m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
@@ -474,7 +473,7 @@ namespace spartan
         {
             create_sun(LightIntensity::sky_overcast_day);
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
-            create_car(Vector3(-449.0260f, 6.0696f, 359.2632f));
+            create_car(Vector3(-449.0260f, 6.5f, 359.2632f));
 
             // mood adjustment
             m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);

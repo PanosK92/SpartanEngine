@@ -150,7 +150,7 @@ namespace spartan
                         Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
                         float camera_dot_sound  = abs(Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound));
 
-                        // todo: use SDL_SetAudioStreamPutCallback to modulat the channels
+                        // todo: use SDL_SetAudioStreamPutCallback to modulate the channels
                     }
 
                     // attenuation
