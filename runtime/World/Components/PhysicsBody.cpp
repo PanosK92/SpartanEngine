@@ -856,15 +856,15 @@ namespace spartan
                 }
 
                 btHeightfieldTerrainShape* shape_local = new btHeightfieldTerrainShape(
-                    terrain->GetHeightMap()->GetWidth(),  // width
-                    terrain->GetHeightMap()->GetHeight(), // length
-                    terrain->GetHeightData(),             // data - row major
-                    1.0f,                                 // height scale
-                    terrain->GetMinY(),                   // min height
-                    terrain->GetMaxY(),                   // max height
-                    1,                                    // up axis (0=x, 1=y, 2=z)
-                    PHY_FLOAT,                            // data type
-                    false                                 // flip quad edges or not
+                    terrain->GetWidth(),      // width
+                    terrain->GetHeight(),     // length
+                    terrain->GetHeightData(), // data - row major
+                    1.0f,                     // height scale
+                    terrain->GetMinY(),       // min height
+                    terrain->GetMaxY(),       // max height
+                    1,                        // up axis (0=x, 1=y, 2=z)
+                    PHY_FLOAT,                // data type
+                    false                     // flip quad edges or not
                 );
                 
                 shape_local->setLocalScaling(vector_to_bt(size));

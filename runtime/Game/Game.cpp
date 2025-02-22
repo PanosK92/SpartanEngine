@@ -580,7 +580,7 @@ namespace spartan
                         shared_ptr<Entity> water = World::CreateEntity();
                         water->SetObjectName("water");
                         water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                        water->SetScale(Vector3(1024.0f, 1.0f, 1024.0f));
+                        water->SetScale(Vector3(4096.0f, 1.0f, 4096.0f));
 
                         Renderable* renderable = water->AddComponent<Renderable>().get();
                         renderable->SetGeometry(MeshType::Grid);
@@ -595,8 +595,8 @@ namespace spartan
                             material->SetProperty(MaterialProperty::Ior,                Material::EnumToIor(MaterialIor::Water));
                             material->SetProperty(MaterialProperty::Roughness,          0.0f);
                             material->SetProperty(MaterialProperty::Normal,             0.1f);
-                            material->SetProperty(MaterialProperty::TextureTilingX,     200.0f);
-                            material->SetProperty(MaterialProperty::TextureTilingY,     200.0f);
+                            material->SetProperty(MaterialProperty::TextureTilingX,     800.0f);
+                            material->SetProperty(MaterialProperty::TextureTilingY,     800.0f);
                             material->SetProperty(MaterialProperty::AnimationWaterFlow, 1.0f);
                             material->SetProperty(MaterialProperty::CullMode,           static_cast<float>(RHI_CullMode::None));
 
@@ -608,7 +608,7 @@ namespace spartan
                         }
                     }
 
-                    // vegetation_tree_2
+                    // tree
                     if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\vegetation_tree_2\\tree.fbx"))
                     {
                         shared_ptr<Entity> entity = mesh->GetRootEntity().lock();

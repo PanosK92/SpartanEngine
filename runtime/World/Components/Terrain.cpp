@@ -130,13 +130,51 @@ namespace spartan
             return lerp(x1, x2, v);
         }
     }
+
     namespace
     {
         const float sea_level               = 0.0f; // the height at which the sea level is= 0.0f; // this is an axiom of the engine
         const uint32_t smoothing_iterations = 1;    // the number of height map neighboring pixel averaging
         const uint32_t tile_count           = 8;    // the number of tiles in each dimension to split the terrain into
 
-        bool generate_height_points_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, float min_y, float max_y)
+        float compute_terrain_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices)
+        {
+            if (vertices.empty())
+                return 0.0f;
+        
+            // Initialize min and max values for x and z coordinates
+            float min_x = numeric_limits<float>::max();
+            float max_x = numeric_limits<float>::lowest();
+            float min_z = numeric_limits<float>::max();
+            float max_z = numeric_limits<float>::lowest();
+        
+            // iterate through all vertices to find the bounding box
+            for (const auto& vertex : vertices)
+            {
+                float x = vertex.pos[0]; // x-coordinate
+                float z = vertex.pos[2]; // z-coordinate
+        
+                // Update min and max values
+                if (x < min_x) min_x = x;
+                if (x > max_x) max_x = x;
+                if (z < min_z) min_z = z;
+                if (z > max_z) max_z = z;
+            }
+        
+            // calculate width (x extent) and depth (z extent) in meters
+            float width = max_x - min_x;
+            float depth = max_z - min_z;
+        
+            // compute area in square meters
+            float area_m2 = width * depth;
+        
+            // convert to square kilometers (1 km² = 1,000,000 m²)
+            float area_km2 = area_m2 / 1000000.0f;
+        
+            return area_km2;
+        }
+
+        bool get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, float min_y, float max_y)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
             SP_ASSERT(height_data.size() > 0);
@@ -205,7 +243,7 @@ namespace spartan
             return true;
         }
 
-        void add_noise_to_height_data(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
+        void add_perlin_noise(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
         {
             for (uint32_t j = 0; j < height; ++j)
             {
@@ -222,7 +260,7 @@ namespace spartan
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
-
+        
             mutex mtx;
             positions.resize(width * height);
             auto generate_position_range = [&mtx, &positions, &height_map, width, height](uint32_t start_index, uint32_t end_index)
@@ -232,14 +270,14 @@ namespace spartan
                     // convert flat index to x,y coordinates
                     uint32_t x = index % width;
                     uint32_t y = index / width;
-                    
+        
                     // center on the X and Z axis
                     float centered_x = static_cast<float>(x) - width * 0.5f;
                     float centered_z = static_cast<float>(y) - height * 0.5f;
-                    
+        
                     // get height from height_map
                     float height_value = height_map[index];
-                    
+        
                     // assign position
                     lock_guard<mutex> lock(mtx);
                     positions[index] = Vector3(centered_x, height_value, centered_z);
@@ -663,6 +701,16 @@ namespace spartan
         SP_LOG_WARNING("Not implemented");
     }
 
+    uint32_t Terrain::GetWidth() const
+    {
+        return m_height_texture->GetWidth();
+    }
+
+    uint32_t Terrain::GetHeight() const
+    {
+        return m_height_texture->GetHeight();
+    }
+
     void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
     {
         bool rotate_match_surface_normal = false;
@@ -673,7 +721,7 @@ namespace spartan
         {
             max_slope                   = 30.0f * math::deg_to_rad;
             rotate_match_surface_normal = false; // trees tend to grow upwards, towards the sun
-            terrain_offset              = -1.5f;
+            terrain_offset              = -2.0f;
         }
     
         if (terrain_prop == TerrainProp::Grass)
@@ -694,29 +742,29 @@ namespace spartan
             SP_LOG_WARNING("Terrain is already being generated, please wait...");
             return;
         }
-
+    
         if (!m_height_texture)
         {
             SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain");
             Clear();
             return;
         }
-
+    
         m_is_generating = true;
-
-        // star progress tracking
+    
+        // start progress tracking
         uint32_t job_count = 8;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
-
+    
         uint32_t width  = 0;
         uint32_t height = 0;
         vector<Vector3> positions;
-
+    
         // 1. process height map
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
 
-            if (!generate_height_points_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y))
+            if (!get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y))
             {
                 m_is_generating = false;
                 return;
@@ -737,65 +785,62 @@ namespace spartan
 
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
-        // 2. add perlin noise
+    
+        // 2. add perlin noise - todo: needs to operate at a vertex level
         {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding perlin noise...");
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding Perlin noise...");
             const float frequency = 0.1f;
             const float amplitude = 1.0f;
-            add_noise_to_height_data(m_height_data, width, height, frequency, amplitude);
+            //add_perlin_noise(m_height_data, width, height, frequency, amplitude);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
-        // 3. compute positions
+    
+        // 3. compute positions 
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
             generate_positions(positions, m_height_data, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
+    
         // 4. compute vertices and indices
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
             generate_vertices_and_indices(m_vertices, m_indices, positions, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
+    
         // 5. compute normals and tangents
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
             generate_normals(m_indices, m_vertices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
-        // 6. optimize geometry
+    
+        // 6. Optimize geometry (optional)
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
-            //spartan::geometry_processing::optimize(m_vertices, m_indices);
+            spartan::geometry_processing::optimize(m_vertices, m_indices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
-        // 7. split into tiles
+    
+        // 7. Split into tiles
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
             split_terrain_into_tiles(m_vertices, m_indices, m_tile_vertices, m_tile_indices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
-        // 8. create a mesh for each tile
+    
+        // 8. Create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating tile meshes");
-
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {
                 UpdateMesh(tile_index);
             }
-
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // todo: we don't free vertices and indices, we should
-
+        m_area_km2      = compute_terrain_area_km2(m_vertices);
         m_is_generating = false;
     }
     

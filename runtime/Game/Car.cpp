@@ -636,7 +636,7 @@ namespace spartan
         ApplyForces();
         UpdateTransforms();
 
-        if (debug::enabled)
+        if (debug::enabled && m_parameters.under_control)
         {
             debug::draw_info_wheel(m_parameters);
         }
@@ -795,7 +795,7 @@ namespace spartan
 
         }
 
-        if (debug::enabled)
+        if (debug::enabled && m_parameters.under_control)
         {
             debug::draw_info_general(m_parameters, GetSpeedKilometersPerHour());
         }
