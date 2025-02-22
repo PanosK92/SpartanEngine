@@ -133,9 +133,10 @@ namespace spartan
 
     namespace
     {
-        const float sea_level               = 0.0f; // the height at which the sea level is= 0.0f; // this is an axiom of the engine
-        const uint32_t smoothing_iterations = 1;    // the number of height map neighboring pixel averaging
-        const uint32_t tile_count           = 8;    // the number of tiles in each dimension to split the terrain into
+        const float sea_level               = 0.0f;      // the height at which the sea level is= 0.0f; // this is an axiom of the engine
+        const uint32_t smoothing_iterations = 1;         // the number of height map neighboring pixel averaging
+        const uint32_t scale                = 2;         // the scale factor to upscale the height map by
+        const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
 
         float compute_terrain_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices)
         {
@@ -174,25 +175,87 @@ namespace spartan
             return area_km2;
         }
 
-        bool get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, float min_y, float max_y)
+        bool get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y, const uint32_t scale)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
             SP_ASSERT(height_data.size() > 0);
 
-            // read from the red channel and save a normalized height value
+            // first pass: map the red channel values to heights in the range [min_y, max_y]
             {
                 uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
-
-                // normalize and scale height data
+            
+                // normalized mapping: red channel [0,255] -> [min_y, max_y]
                 height_data_out.resize(height_data.size() / bytes_per_pixel);
                 for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
                 {
                     // assuming the height is stored in the red channel (first channel)
-                    height_data_out[i / bytes_per_pixel] = min_y + (static_cast<float>(height_data[i]) / 255.0f) * (max_y - min_y);
+                    float normalized_value = static_cast<float>(height_data[i]) / 255.0f;
+                    height_data_out[i / bytes_per_pixel] = min_y + normalized_value * (max_y - min_y);
                 }
             }
+            
+            // second pass: upscale the height map by bilinearly interpolating the height values
+            if (scale > 1)
+            {
+                // Get the dimensions of the original texture
+                uint32_t width  = height_texture->GetWidth();
+                uint32_t height = height_texture->GetHeight();
+            
+                // Create a new vector for the upscaled height map
+                std::vector<float> upscaled_height_data(scale * width * scale * height);
+            
+                // Helper function to safely access height values with clamping
+                auto get_height = [&](uint32_t i, uint32_t j) {
+                    i = std::min(i, width - 1);
+                    j = std::min(j, height - 1);
+                    return height_data_out[j * width + i];
+                };
+            
+                // Iterate over each pixel in the upscaled height map
+                for (uint32_t y = 0; y < scale * height; ++y)
+                {
+                    for (uint32_t x = 0; x < scale * width; ++x)
+                    {
+                        // Compute texture coordinates (u, v) in the range [0, 1]
+                        float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(scale * width);
+                        float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(scale * height);
+            
+                        // Map to original texture pixel coordinates
+                        float i_float = u * static_cast<float>(width);
+                        float j_float = v * static_cast<float>(height);
+            
+                        // Determine the four surrounding pixel indices
+                        uint32_t i0 = static_cast<uint32_t>(std::floor(i_float));
+                        uint32_t i1 = std::min(i0 + 1, width - 1);
+                        uint32_t j0 = static_cast<uint32_t>(std::floor(j_float));
+                        uint32_t j1 = std::min(j0 + 1, height - 1);
+            
+                        // Compute interpolation weights
+                        float frac_i = i_float - static_cast<float>(i0);
+                        float frac_j = j_float - static_cast<float>(j0);
+            
+                        // Get the four height values
+                        float val00 = get_height(i0, j0); // Top-left
+                        float val10 = get_height(i1, j0); // Top-right
+                        float val01 = get_height(i0, j1); // Bottom-left
+                        float val11 = get_height(i1, j1); // Bottom-right
+            
+                        // Perform bilinear interpolation
+                        float interpolated = (1.0f - frac_i) * (1.0f - frac_j) * val00 +
+                                             frac_i * (1.0f - frac_j) * val10 +
+                                             (1.0f - frac_i) * frac_j * val01 +
+                                             frac_i * frac_j * val11;
+            
+                        // Store the interpolated value in the upscaled height map
+                        upscaled_height_data[y * (scale * width) + x] = interpolated;
+                    }
+                }
+            
+                // Replace the original height data with the upscaled data
+                height_data_out = std::move(upscaled_height_data);
+            }
 
-            // smooth out the height map values, this will reduce hard terrain edges
+            // third pass: smooth out the height map values, this will reduce hard terrain edges
             {
                 const uint32_t width  = height_texture->GetWidth();
                 const uint32_t height = height_texture->GetHeight();
@@ -693,12 +756,12 @@ namespace spartan
 
     uint32_t Terrain::GetWidth() const
     {
-        return m_height_texture->GetWidth();
+        return m_height_texture->GetWidth() * scale;
     }
 
     uint32_t Terrain::GetHeight() const
     {
-        return m_height_texture->GetHeight();
+        return m_height_texture->GetHeight() * scale;
     }
 
     void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
@@ -758,15 +821,15 @@ namespace spartan
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
 
-            if (!get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y))
+            if (!get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y, scale))
             {
                 m_is_generating = false;
                 return;
             }
 
             // deduce some stuff
-            width            = m_height_texture->GetWidth();
-            height           = m_height_texture->GetHeight();
+            width            = GetWidth();
+            height           = GetHeight();
             m_height_samples = width * height;
             m_vertex_count   = m_height_samples;
             m_index_count    = m_vertex_count * 6;
@@ -810,21 +873,21 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
-        // 6. Optimize geometry (optional)
+        // 6. optimize geometry 
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
             spartan::geometry_processing::optimize(m_vertices, m_indices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
-        // 7. Split into tiles
+        // 7. split into tiles
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
             split_terrain_into_tiles(m_vertices, m_indices, m_tile_vertices, m_tile_indices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
-        // 8. Create a mesh for each tile
+        // 8. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating tile meshes");
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)

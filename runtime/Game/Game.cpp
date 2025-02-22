@@ -470,8 +470,8 @@ namespace spartan
         void create_forest_car()
         {
             create_sun(LightIntensity::sky_overcast_day);
-            create_camera(Vector3(-219.7978f, 6.0f, 19.8168f), Vector3(4.0106f, -138.3613f, 0.0f));
-            create_car(Vector3(-226.4939f, 3.4f, 9.9775f));
+            create_camera(Vector3(-458.0084f, 8.0f, 371.9392), Vector3(0.0f, 0.0f, 0.0f));
+            create_car(Vector3(-449.0260f, 6.0696f, 359.2632f));
 
             // mood adjustment
             m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
@@ -606,6 +606,8 @@ namespace spartan
 
                             renderable->SetMaterial(material);
                         }
+
+                        water->SetActive(false); // disable for now as it looks bad
                     }
 
                     // tree
@@ -676,7 +678,7 @@ namespace spartan
 
                         // generate instances
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 10000000, TerrainProp::Grass);
+                        terrain->GenerateTransforms(&instances, 20000000, TerrainProp::Grass);
 
                         // add renderable component
                         Renderable* renderable = entity->AddComponent<Renderable>().get();
@@ -695,7 +697,7 @@ namespace spartan
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
 
-                        renderable->SetMaxRenderDistance(150.0f);
+                        renderable->SetMaxRenderDistance(250.0f);
                     }
                 }
             }

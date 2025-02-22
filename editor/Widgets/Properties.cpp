@@ -1021,10 +1021,10 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
         // Stats
         ImGui::BeginGroup();
         {
-            ImGui::Text("Area km^2: %.1f",    terrain->GetArea());
+            ImGui::Text("Area: %.1f km^2",    terrain->GetArea());
             ImGui::Text("Height samples: %d", terrain->GetHeightSampleCount());
             ImGui::Text("Vertices: %d",       terrain->GetVertexCount());
-            ImGui::Text("Indices:%d ",        terrain->GetIndexCount());
+            ImGui::Text("Indices: %d ",       terrain->GetIndexCount());
         }
         ImGui::EndGroup();
 
