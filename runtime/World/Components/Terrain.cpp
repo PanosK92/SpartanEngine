@@ -42,11 +42,99 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace perlin
+    {
+        // Permutation table (256 values, typically used in Perlin noise for randomness)
+        static unsigned char p[512] = {
+            151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+            8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
+            35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,
+            134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,
+            55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,
+            18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,
+            226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,
+            17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,
+            155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,
+            218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,
+            249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,
+            127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,
+            61,156,180,
+            // Duplicate the array for wrapping (common practice in Perlin noise)
+            151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+            8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
+            35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,
+            134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,
+            55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,
+            18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,
+            226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,
+            17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,
+            155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,
+            218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,
+            249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,
+            127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,
+            61,156,180
+        };
+    
+        // Fade function for smooth interpolation (6t^5 - 15t^4 + 10t^3)
+        inline float fade(float t)
+        {
+            return t * t * t * (t * (t * 6 - 15) + 10);
+        }
+    
+        // Linear interpolation
+        inline float lerp(float a, float b, float t)
+        {
+            return a + t * (b - a);
+        }
+    
+        // Gradient function: computes dot product between gradient vector and distance vector
+        inline float grad(int hash, float x, float y)
+        {
+            int h = hash & 15;           // Take lower 4 bits of hash
+            float u = h < 8 ? x : y;     // If h < 8, use x, else use y
+            float v = h < 4 ? y : (h == 12 || h == 14 ? x : 0); // Select v based on hash
+            return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v); // Dot product
+        }
+    
+        // 2D Perlin noise function
+        float noise(float x, float y)
+        {
+            // Find unit grid cell containing point
+            int X = static_cast<int>(floor(x)) & 255;
+            int Y = static_cast<int>(floor(y)) & 255;
+    
+            // Get relative coordinates within the cell
+            x -= floor(x);
+            y -= floor(y);
+    
+            // Compute fade curves for smooth interpolation
+            float u = fade(x);
+            float v = fade(y);
+    
+            // Hash coordinates of the 4 corners of the grid cell
+            int aa = p[p[X] + Y];       // Bottom-left
+            int ab = p[p[X] + Y + 1];   // Top-left
+            int ba = p[p[X + 1] + Y];   // Bottom-right
+            int bb = p[p[X + 1] + Y + 1]; // Top-right
+    
+            // Compute gradients and interpolate
+            float g1 = grad(aa, x, y);           // Bottom-left gradient
+            float g2 = grad(ba, x - 1, y);       // Bottom-right gradient
+            float x1 = lerp(g1, g2, u);          // Interpolate along x (bottom edge)
+            
+            float g3 = grad(ab, x, y - 1);       // Top-left gradient
+            float g4 = grad(bb, x - 1, y - 1);   // Top-right gradient
+            float x2 = lerp(g3, g4, u);          // Interpolate along x (top edge)
+    
+            // Interpolate along y and return noise value in range [-1, 1]
+            return lerp(x1, x2, v);
+        }
+    }
     namespace
     {
         const float sea_level               = 0.0f; // the height at which the sea level is= 0.0f; // this is an axiom of the engine
-        const uint32_t smoothing_iterations = 1; // the number of height map neighboring pixel averaging
-        const uint32_t tile_count           = 8; // the number of tiles in each dimension to split the terrain into
+        const uint32_t smoothing_iterations = 1;    // the number of height map neighboring pixel averaging
+        const uint32_t tile_count           = 8;    // the number of tiles in each dimension to split the terrain into
 
         bool generate_height_points_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, float min_y, float max_y)
         {
@@ -117,26 +205,50 @@ namespace spartan
             return true;
         }
 
+        void add_noise_to_height_data(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
+        {
+            for (uint32_t j = 0; j < height; ++j)
+            {
+                for (uint32_t i = 0; i < width; ++i)
+                {
+                    float x                     = static_cast<float>(i) - width * 0.5f;
+                    float z                     = static_cast<float>(j) - height * 0.5f;
+                    float noise_value           = perlin::noise(x * frequency, z * frequency);
+                    height_data[j * width + i] += noise_value * amplitude;
+                }
+            }
+        }
+
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
 
-            for (uint32_t y = 0; y < height; y++)
+            mutex mtx;
+            positions.resize(width * height);
+            auto generate_position_range = [&mtx, &positions, &height_map, width, height](uint32_t start_index, uint32_t end_index)
             {
-                for (uint32_t x = 0; x < width; x++)
+                for (uint32_t index = start_index; index < end_index; index++)
                 {
-                    uint32_t index = y * width + x;
-
+                    // convert flat index to x,y coordinates
+                    uint32_t x = index % width;
+                    uint32_t y = index / width;
+                    
                     // center on the X and Z axis
                     float centered_x = static_cast<float>(x) - width * 0.5f;
                     float centered_z = static_cast<float>(y) - height * 0.5f;
-
+                    
                     // get height from height_map
-                    float height_value = height_map[index]; 
-
+                    float height_value = height_map[index];
+                    
+                    // assign position
+                    lock_guard<mutex> lock(mtx);
                     positions[index] = Vector3(centered_x, height_value, centered_z);
                 }
-            }
+            };
+        
+            // calculate total number of positions and run parallel loop
+            uint32_t total_positions = width * height;
+            ThreadPool::ParallelLoop(generate_position_range, total_positions);
         }
 
         void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, vector<uint32_t>& terrain_indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
@@ -291,13 +403,10 @@ namespace spartan
             ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
         }
 
-        float get_random_float(float x, float y)
+        float get_random_float(mt19937& gen, float x, float y)
         {
-            random_device rd;                        // obtain a random number from hardware
-            mt19937 gen(rd());                       // seed the generator
-            uniform_real_distribution<> distr(x, y); // define the distribution
-
-            return static_cast<float>(distr(gen));
+            uniform_real_distribution<float> distr(x, y); // define the distribution
+            return distr(gen);
         }
 
         vector<Matrix> generate_transforms(
@@ -327,6 +436,12 @@ namespace spartan
                 &rotate_to_match_surface_normal
             ](uint32_t start_index, uint32_t end_index)
             {
+                // each thread gets its own generator
+                random_device rd; 
+                mt19937 generator(rd());
+                uniform_int_distribution<> distribution(0, static_cast<int>(terrain_indices.size() / 3 - 1));
+                uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
+
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
                     // randomly select a triangle from the mesh
@@ -346,8 +461,8 @@ namespace spartan
                     if (is_acceptable_slope && is_acceptable_height)
                     {
                         // generate barycentric coordinates
-                        float u = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-                        float v = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                        float u = barycentric_dist(generator);
+                        float v = barycentric_dist(generator);
                         if (u + v > 1.0f)
                         {
                             u = 1.0f - u;
@@ -359,7 +474,7 @@ namespace spartan
 
                         // rotation is a random rotation around the Y axis, and then rotated to match the normal of the triangle
                         Quaternion rotate_to_normal = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
-                        Quaternion rotation         = rotate_to_normal * Quaternion::FromEulerAngles(0.0f, get_random_float(0.0f, 360.0f), 0.0f);
+                        Quaternion rotation         = rotate_to_normal * Quaternion::FromEulerAngles(0.0f, get_random_float(generator, 0.0f, 360.0f), 0.0f);
 
                         lock_guard<mutex> lock(mtx);
                         transforms.emplace_back(position, rotation, 1.0f);
@@ -590,7 +705,7 @@ namespace spartan
         m_is_generating = true;
 
         // star progress tracking
-        uint32_t job_count = 7;
+        uint32_t job_count = 8;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
 
         uint32_t width  = 0;
@@ -623,42 +738,51 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 2. compute positions
+        // 2. add perlin noise
+        {
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding perlin noise...");
+            const float frequency = 0.1f;
+            const float amplitude = 1.0f;
+            add_noise_to_height_data(m_height_data, width, height, frequency, amplitude);
+            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+        }
+
+        // 3. compute positions
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
             generate_positions(positions, m_height_data, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 3. compute vertices and indices
+        // 4. compute vertices and indices
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
             generate_vertices_and_indices(m_vertices, m_indices, positions, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 4. compute normals and tangents
+        // 5. compute normals and tangents
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
             generate_normals(m_indices, m_vertices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 5. optimize geometry
+        // 6. optimize geometry
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
-            spartan::geometry_processing::optimize(m_vertices, m_indices);
+            //spartan::geometry_processing::optimize(m_vertices, m_indices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 6. split into tiles
+        // 7. split into tiles
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
             split_terrain_into_tiles(m_vertices, m_indices, m_tile_vertices, m_tile_indices);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
-        // 7. create a mesh for each tile
+        // 8. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating tile meshes");
 

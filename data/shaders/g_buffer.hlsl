@@ -55,7 +55,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     float metalness                = material.metallness;
     float emission                 = 0.0f;
     float2 velocity                = 0.0f;
-    float occlusion                = 1.0f;  
+    float occlusion                = 1.0f;
     Surface surface;
     surface.flags = material.flags;
 
@@ -78,7 +78,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float4 albedo_sample = 1.0f;
         if (surface.has_texture_albedo())
         {
-            albedo_sample      = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
+            albedo_sample      = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface.is_water(), surface.texture_slope_based());
             albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
             albedo            *= albedo_sample;
         }
@@ -99,7 +99,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_normal())
     {
         // get tangent space normal and apply the user defined intensity, then transform it to world space
-        float3 normal_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_normal, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind()).xyz;
+        float3 normal_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_normal, surface.is_water(), surface.texture_slope_based()).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a BC5 two channel normal map
@@ -113,7 +113,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     // occlusion, roughness, metalness, height sample
     {
-        float4 packed_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based(), surface.vertex_animate_wind());
+        float4 packed_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based());
         occlusion             = packed_sample.r;
         roughness            *= packed_sample.g;
         metalness            *= packed_sample.b;

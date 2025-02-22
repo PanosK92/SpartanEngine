@@ -85,7 +85,7 @@ struct sampling
         return snow_level + sine_value * amplitude;
     }
 
-    static float4 smart(float3 position, float3 normal, float2 uv, uint texture_index, bool is_water, bool is_terrain, bool is_vegetation)
+    static float4 smart(float3 position, float3 normal, float2 uv, uint texture_index, bool is_water, bool is_terrain)
     {
         // parameters
         const float sea_level        = 0.0f; 
