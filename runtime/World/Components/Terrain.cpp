@@ -453,7 +453,8 @@ namespace spartan
             uint32_t transform_count,
             float max_slope_radians,
             bool rotate_to_match_surface_normal,
-            float terrain_offset
+            float terrain_offset,
+            float min_height
         )
         {
             vector<Matrix> transforms;
@@ -462,17 +463,7 @@ namespace spartan
             uniform_int_distribution<> distribution(0, static_cast<int>(terrain_indices.size() / 3 - 1));
             mutex mtx;
 
-            auto place_mesh = [
-                &mtx,
-                &transforms,
-                &terrain_vertices,
-                &terrain_indices,
-                &distribution,
-                &max_slope_radians,
-                &generator,
-                &terrain_offset,
-                &rotate_to_match_surface_normal
-            ](uint32_t start_index, uint32_t end_index)
+            auto place_mesh = [&mtx, &transforms, &terrain_vertices, &terrain_indices, &distribution, &max_slope_radians, &generator, &terrain_offset, &rotate_to_match_surface_normal, min_height](uint32_t start_index, uint32_t end_index)
             {
                 // each thread gets its own generator
                 random_device rd; 
@@ -494,7 +485,7 @@ namespace spartan
                     Vector3 normal            = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
                     float slope_radians       = acos(Vector3::Dot(normal, Vector3::Up));
                     bool is_acceptable_slope  = slope_radians <= max_slope_radians;
-                    bool is_acceptable_height = v0.y >= sea_level && v1.y >= sea_level && v2.y >= sea_level;
+                    bool is_acceptable_height = v0.y >= min_height && v1.y >= min_height && v2.y >= min_height;
 
                     if (is_acceptable_slope && is_acceptable_height)
                     {
@@ -507,7 +498,7 @@ namespace spartan
                             v = 1.0f - v;
                         }
 
-                        // position is the barycentric coordinates multiplied by the vertices of the triangle, plus a user defined terrain offset
+                        // position is the barycentric coordinates multiplied by the vertices of the triangle, plus a user defined terrain offset (to avoid floating meshes)
                         Vector3 position = v0 + (u * (v1 - v0) + terrain_offset) + v * (v2 - v0);
 
                         // rotation is a random rotation around the Y axis, and then rotated to match the normal of the triangle
@@ -713,25 +704,26 @@ namespace spartan
 
     void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
     {
-        bool rotate_match_surface_normal = false;
-        float max_slope                  = 0.0f; // allow no slope
-        float terrain_offset             = 0.0f; // spawn at sea level
+        bool rotate_match_surface_normal = false; // don't rotate to match the surface normal
+        float max_slope                  = 0.0f;  // don't allow slope
+        float terrain_offset             = 0.0f;  // place exactly on the terrain
+        float min_height                 = 0.0f;  // spawn at sea level= 0.0f; // spawn at sea level
     
         if (terrain_prop == TerrainProp::Tree)
         {
             max_slope                   = 30.0f * math::deg_to_rad;
-            rotate_match_surface_normal = false; // trees tend to grow upwards, towards the sun
-            terrain_offset              = -2.0f;
+            terrain_offset              = -2.0f; // push the tree slightly into the ground
+            min_height                  = 4.0f;
         }
     
         if (terrain_prop == TerrainProp::Grass)
         {
             max_slope                   = 40.0f * math::deg_to_rad;
-            rotate_match_surface_normal = true; // small plants tend to grow towards the sun but they can have some wonky angles due to low mass
-            terrain_offset              = 0.0f;
+            rotate_match_surface_normal = true; // small plants tend to grow towards the sun but they can have some wonky angles
+            min_height                  = 0.5f;
         }
     
-        *transforms = generate_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset);
+        *transforms = generate_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
     }
 
     void Terrain::Generate()
