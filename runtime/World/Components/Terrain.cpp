@@ -181,7 +181,6 @@ namespace spartan
 
             // read from the red channel and save a normalized height value
             {
-                // bytes per pixel
                 uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
 
                 // normalize and scale height data
@@ -713,7 +712,7 @@ namespace spartan
         {
             max_slope                   = 30.0f * math::deg_to_rad;
             terrain_offset              = -2.0f; // push the tree slightly into the ground
-            min_height                  = 4.0f;
+            min_height                  = 6.0f;
         }
     
         if (terrain_prop == TerrainProp::Grass)
@@ -751,7 +750,10 @@ namespace spartan
         uint32_t width  = 0;
         uint32_t height = 0;
         vector<Vector3> positions;
-    
+
+        // note: the physics body reads the height map values, so any changes that need
+        // to reflect on the collision shape, need to happen at the height value level
+
         // 1. process height map
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
@@ -778,12 +780,12 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
-        // 2. add perlin noise - todo: needs to operate at a vertex level
+        // 2. add perlin noise
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding Perlin noise...");
             const float frequency = 0.1f;
             const float amplitude = 1.0f;
-            //add_perlin_noise(m_height_data, width, height, frequency, amplitude);
+            add_perlin_noise(m_height_data, width, height, frequency, amplitude);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
