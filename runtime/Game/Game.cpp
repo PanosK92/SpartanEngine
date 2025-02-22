@@ -148,7 +148,6 @@ namespace spartan
                 // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
                 m_default_car = World::CreateEntity();
                 m_default_car->SetObjectName("toyota_ae86_sprinter_trueno");
-                m_default_car->SetPosition(position);
                 entity_car->SetParent(m_default_car);
             
                 // body
@@ -338,6 +337,9 @@ namespace spartan
                     // disable glass until I resolve the motion vector issue
                     entity_car->GetDescendantByName("CarBody_Windows_0")->SetActive(false);
                 }
+
+                // set the position last so that transforms all the way down to the new wheels are updated
+                m_default_car->SetPosition(position);
             }
 
             // sounds
@@ -386,6 +388,7 @@ namespace spartan
             create_sun(LightIntensity::sky_sunlight_morning_evening);
             create_music();
             create_floor();
+            create_car(Vector3(0.0f, 5.0f, 10.0f));
 
             // we have long screen space shadows so they don't look good with small objects here
             m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
