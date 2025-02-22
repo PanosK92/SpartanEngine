@@ -251,7 +251,7 @@ namespace spartan
         if (m_is_playing)
         {
             float mute = m_mute ? 0.0f : 1.0f;
-            CHECK_SDL_ERROR(SDL_SetAudioDeviceGain(audio_device::id, m_volume * m_attenuation * mute));
+            CHECK_SDL_ERROR(SDL_SetAudioStreamGain(m_stream, m_volume * m_attenuation * mute));
         }
     }
 

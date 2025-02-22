@@ -119,10 +119,6 @@ namespace spartan
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsTransparent);
         SetFlag(LightFlags::ShadowsScreenSpace);
-        if (m_light_type != LightType::Point)
-        {
-            SetFlag(LightFlags::Volumetric);
-        }
 
         m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
     }
