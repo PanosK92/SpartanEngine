@@ -150,10 +150,7 @@ namespace spartan
                         Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
                         float camera_dot_sound  = abs(Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound));
 
-                        // todo
-                        // use something like SDL_SetAudioStreamPutCallback to have a callback
-                        // in which we can modulate the bytes of each channel to do panning
-                        // or maybe use the audio_device::spec somehow
+                        // todo: use SDL_SetAudioStreamPutCallback to modulat the channels
                     }
 
                     // attenuation
