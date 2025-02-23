@@ -428,10 +428,6 @@ namespace spartan
                 Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
 
-                // ssr and gi require the final lighting output right before them, so blit it here for them
-                // simply using the final frame will cause accumulation, which GI doesn't handle well, and SSR can produce artifacts on NV 1080 Ti (big values in the denoiser)
-                cmd_list_graphics->Blit(rt_render, GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process), false);
-
                 Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
             }
 
@@ -961,7 +957,7 @@ namespace spartan
             RHI_FidelityFX::SSSR_Dispatch(
                 cmd_list,
                 GetOption<float>(Renderer_Option::ResolutionScale),
-                GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process),
+                GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -1226,7 +1222,7 @@ namespace spartan
                 RHI_FidelityFX::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
-                    GetRenderTarget(Renderer_RenderTarget::frame_render_pre_post_process),
+                    GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -1453,6 +1449,9 @@ namespace spartan
             swap_output = !swap_output;
             Pass_Bloom(cmd_list, get_output_in, get_output_out);
         }
+
+        // previous output for ssr and brixelizer gi
+        cmd_list->Blit(get_output_out, GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma), false);
         
         // tone-mapping & gamma correction
         {

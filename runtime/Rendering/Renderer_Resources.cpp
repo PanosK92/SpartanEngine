@@ -207,8 +207,8 @@ namespace spartan
         if (create_render)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "frame_render");
-            render_target(Renderer_RenderTarget::frame_render_pre_post_process) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "frame_render_pre_post_process");
+            render_target(Renderer_RenderTarget::frame_render)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "frame_render");
+            render_target(Renderer_RenderTarget::frame_output_pre_gamma) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "frame_output_pre_gamma");
 
             // g-buffer
             {
@@ -247,8 +247,8 @@ namespace spartan
         if (create_output)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, format_standard, flags_rt | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
-            render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         format_standard, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
+            render_target(Renderer_RenderTarget::frame_output)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, format_standard, flags_rt | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
+            render_target(Renderer_RenderTarget::frame_output_2)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         format_standard, flags_rt | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
             render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, format_standard,            flags | RHI_Texture_PerMipViews, "bloom");
