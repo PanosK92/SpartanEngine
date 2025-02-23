@@ -37,8 +37,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= resolution_out))
-        return;
     
     const float2 uv = (thread_id.xy + 0.5f) / resolution_out;
     float4 color    = tex[thread_id.xy];
@@ -52,7 +50,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // iso noise
     float camera_iso = pass_get_f3_value().x;
-    float iso_noise  = get_random(frac(uv.x * uv.y * buffer_frame.frame)) * camera_iso * 0.000002f;
+    float iso_noise  = get_noise_random(frac(uv.x * uv.y * buffer_frame.frame)) * camera_iso * 0.000002f;
     
     // additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;

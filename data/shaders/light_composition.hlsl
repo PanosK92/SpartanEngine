@@ -75,28 +75,6 @@ struct translucency
             return color;
         }
     };
-    
-    struct water
-    {
-        static float3 get_color(Surface surface, inout float alpha)
-        {
-            const float MAX_DEPTH            = 100.0f;
-            const float ALPHA_FACTOR         = 0.2f;
-            const float FOAM_DEPTH_THRESHOLD = 2.0f;
-            const float3 light_absorption    = float3(0.3f, 0.2f, 0.1f); // color spectrum light absorption
-
-            // compute water depth
-            float water_level       = get_position(surface.uv).y;
-            float water_floor_level = get_position(get_depth_opaque(surface.uv), surface.uv).y;
-            float water_depth       = clamp(water_level - water_floor_level, 0.0f, MAX_DEPTH);
-
-            // compute color and alpha at that depth with slight adjustments
-            float3 color = float3(exp(-light_absorption.x * water_depth), exp(-light_absorption.y * water_depth), exp(-light_absorption.z * water_depth));
-            alpha        = 1.0f - exp(-water_depth * ALPHA_FACTOR);
-            
-            return color;
-        }
-    };
 };
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -136,16 +114,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // transparent
         if (surface.is_transparent())
         {
-            // refraction
             light_refraction = translucency::refraction::get_color(surface);
-
-            // water
-            if (surface.is_water())
-            {
-                light_refraction *= translucency::water::get_color(surface, alpha);
-                // override g-buffer albedo alpha, for the IBL pass, right after
-                tex_uav2[thread_id.xy]  = float4(surface.albedo, alpha);
-            }
         }
     }
 

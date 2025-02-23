@@ -150,15 +150,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         volumetric_fog   = compute_volumetric_fog(surface, light, thread_id.xy) * sky_color;
     }
 
-    // transparents don't use TAA, so specular flickering can be an issue
-    // in which case we detect movement and clamp extreme specular values
-    if (surface.is_transparent())
-    {
-        float2 velocity    = tex_velocity[thread_id.xy].xy;
-        float max_specular = 1.0f / (length(velocity) * 10000.0f);
-        light_specular     = clamp(light_specular, 0.0f, max_specular);
-    }
-
     // to avoid clearing the buffers with API calls (and introducing memory barriers), we clear them via not accumulating on the first light
     float accumulate       = light.index != 0;
     float shadow_value     = lerp(tex_uav3[thread_id.xy].r, 1.0f, 1.0f - accumulate);

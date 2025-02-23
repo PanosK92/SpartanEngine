@@ -53,28 +53,6 @@ struct gbuffer_vertex
     matrix transform_previous     : TRANSFORM_PREVIOUS;
 };
 
-static float hash(float n)
-{
-    return frac(sin(n) * 43758.5453f);
-}
-
-float hash_uint(uint seed)
-{
-    seed ^= seed >> 17;
-    seed *= 0x5bd1e995u;
-    seed ^= seed >> 13;
-    return float(seed) / float(0xffffffffu);
-}
-
-static float perlin_noise(float x)
-{
-    float i = floor(x);
-    float f = frac(x);
-    f = f * f * (3.0 - 2.0 * f);
-
-    return lerp(hash(i), hash(i + 1.0), f);
-}
-
 // remap a value from one range to another
 float remap(float value, float inMin, float inMax, float outMin, float outMax)
 {
@@ -133,7 +111,7 @@ struct vertex_processing
             float base_wave    = sin(time * sway_speed + phase_offset);
         
             // add low-frequency perlin noise for smooth directional variation
-            float low_freq_noise           = perlin_noise(time * noise_scale + instance_id * 0.1f);
+            float low_freq_noise           = get_noise_perlin(time * noise_scale + instance_id * 0.1f);
             float directional_variation    = lerp(-0.5f, 0.5f, low_freq_noise); // smooth variation
             float3 adjusted_wind_direction = wind_direction + directional_variation;
         
@@ -266,14 +244,14 @@ struct vertex_processing
             input.tangent               = rotate_around_axis(up, curve_angle, input.tangent);
 
             // bend due to gravity
-            float random_lean  = hash_uint(instance_id) * 1.0f;
+            float random_lean  = get_hash(instance_id) * 1.0f;
             curve_angle        = random_lean * height_percent;
             input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
             input.normal       = rotate_around_axis(right, curve_angle, input.normal);
             input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
     
             // bend due to wind
-            curve_angle        = perlin_noise((float)buffer_frame.time * 1.0f) * 0.2f;
+            curve_angle        = get_noise_perlin((float)buffer_frame.time * 1.0f) * 0.2f;
             input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
             input.normal       = rotate_around_axis(right, curve_angle, input.normal);
             input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
@@ -297,9 +275,9 @@ struct vertex_processing
                 const float min_wind_lean             = 0.25f; // minimum lean angle for grass blades
                 const float max_wind_lean             = 1.0f;  // maximum lean angle for grass blades
             
-                float wind_direction       = perlin_noise(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
+                float wind_direction       = get_noise_perlin(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
                 wind_direction             = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
-                float wind_strength_noise  = perlin_noise(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
+                float wind_strength_noise  = get_noise_perlin(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
                 float wind_lean_angle      = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
                 wind_lean_angle            = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
                 float2 wind_offset         = float2(cos(wind_direction), sin(wind_direction)) * wind_lean_angle;

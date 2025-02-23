@@ -195,7 +195,7 @@ float Technique_Poisson(Light light, Surface surface, float3 uv, float compare)
 
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        uint index     = uint(g_shadow_samples * get_random(uv.xy * i)) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
+        uint index     = uint(g_shadow_samples * get_noise_random(uv.xy * i)) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
         float2 offset  = (poisson_disk[index] + temporal_offset) * light.texel_size * g_shadow_filter_size;
         shadow        += light.compare_depth(uv + float3(offset, 0.0f), compare);
     }   

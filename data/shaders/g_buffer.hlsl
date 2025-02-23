@@ -29,6 +29,64 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
+static float4 sample_texture(float3 position, float3 normal, float2 uv, uint texture_index, bool is_water, bool is_terrain)
+{
+    // parameters
+    const float sand_offset  = 0.75f;
+    const float2 direction_1 = float2(1.0, 0.5);
+    const float2 direction_2 = float2(-0.5, 1.0);
+    const float speed_1      = 0.2;
+    const float speed_2      = 0.15;
+
+    // things which are shared among branches
+    float snow_blend_factor = get_snow_blend_factor(position);
+    float4 base_color       = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+
+    float4 color = 0.0f;
+    if (is_water)
+    {
+        // sample with different UVs
+        float2 uv_interleaved_1 = uv + (float)buffer_frame.time * speed_1 * direction_1;
+        float2 uv_interleaved_2 = uv + (float)buffer_frame.time * speed_2 * direction_2;
+        float3 sample_1         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_1).rgb;
+        float3 sample_2         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_2).rgb;
+        color                   = float4(normalize(sample_1 + sample_2), 0.0f);
+    }
+    else if (is_terrain)
+    {
+        float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+        float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+
+        // compute slope and blend factors
+        float slope                = saturate(pow(saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
+        float sand_blend_factor    = saturate(position.y / sand_offset);
+        float sand_blend_threshold = sea_level + sand_offset;
+        float sand_factor          = saturate((position.y - sea_level) / (sand_blend_threshold - sea_level));
+        sand_blend_factor          = 1.0f - sand_factor;
+
+        // compute the color
+        float4 terrain    = lerp(tex_rock, base_color, slope);
+        color             = lerp(terrain, tex_sand, sand_blend_factor);
+        float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
+        color             = lerp(color, snow_color, snow_blend_factor);
+        
+        // apply perlin noise color variation
+        const float noise_scale         = 2.0f;
+        const float variation_strength  = 0.25f;
+        float2 noise_uv                 = position.xz * noise_scale;
+        float noise_value               = get_noise_perlin(noise_uv);
+        color.rgb                      *= (1.0f + noise_value * variation_strength);
+    }
+    else // default
+    {
+        color             = base_color;
+        float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
+        color             = lerp(color, snow_color, snow_blend_factor);
+    }
+
+    return color;
+}
+
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
@@ -78,7 +136,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float4 albedo_sample = 1.0f;
         if (surface.has_texture_albedo())
         {
-            albedo_sample      = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface.is_water(), surface.texture_slope_based());
+            albedo_sample      = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface.is_water(), surface.texture_slope_based());
             albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
             albedo            *= albedo_sample;
         }
@@ -91,7 +149,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_emissive())
     {
         float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
-        albedo.rgb            += emissive_color; // overwrite the albedo color
+        albedo.rgb            += emissive_color;            // overwrite the albedo color
         emission               = luminance(emissive_color); // use the luminance later to boost it (no need to carry a float3 around)
     }
     
@@ -99,7 +157,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_normal())
     {
         // get tangent space normal and apply the user defined intensity, then transform it to world space
-        float3 normal_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_normal, surface.is_water(), surface.texture_slope_based()).xyz;
+        float3 normal_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_normal, surface.is_water(), surface.texture_slope_based()).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a BC5 two channel normal map
@@ -113,7 +171,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     // occlusion, roughness, metalness, height sample
     {
-        float4 packed_sample  = sampling::smart(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based());
+        float4 packed_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based());
         occlusion             = packed_sample.r;
         roughness            *= packed_sample.g;
         metalness            *= packed_sample.b;
@@ -141,3 +199,4 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     return g_buffer;
 }
+

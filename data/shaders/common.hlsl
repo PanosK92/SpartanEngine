@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common_terrain.hlsl"
 #include "common_resources.hlsl"
 #include "common_colorspace.hlsl"
-#include "common_sampling.hlsl"
 //===============================
 
 /*-----------------------------------------------------------------------------
@@ -380,14 +379,27 @@ float luminance(float4 color)
 }
 
 /*------------------------------------------------------------------------------
-    NOISE/RANDOM
+    HASHES & NOISE
 ------------------------------------------------------------------------------*/
-float get_random(float2 uv)
+float get_hash(float n)
+{
+    return frac(sin(n) * 43758.5453f);
+}
+
+float get_hash(uint seed)
+{
+    seed ^= seed >> 17;
+    seed *= 0x5bd1e995u;
+    seed ^= seed >> 13;
+    return float(seed) / float(0xffffffffu);
+}
+
+float get_noise_random(float2 uv)
 {
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-// an expansion on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
+// Spartan Engine take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
 float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool animate_even_with_taa_off)
 {
     // temporal factor
@@ -399,6 +411,37 @@ float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool anima
 
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
+}
+
+float get_noise_perlin(float x)
+{
+    float i = floor(x);
+    float f = frac(x);
+    f = f * f * (3.0 - 2.0 * f);
+
+    return lerp(get_hash(i), get_hash(i + 1.0), f);
+}
+
+float get_noise_perlin(float2 p)
+{
+    float2 i = floor(p);         // integer part (grid cell corners)
+    float2 f = frac(p);          // fractional part (position within cell)
+    
+    // smooth interpolation factor (same as your 1D version)
+    f = f * f * (3.0 - 2.0 * f);
+    
+    // compute hash values at the four corners
+    float n00 = get_hash(i.x + get_hash(i.y));             // bottom-left
+    float n10 = get_hash(i.x + 1.0 + get_hash(i.y));       // bottom-right
+    float n01 = get_hash(i.x + get_hash(i.y + 1.0));       // top-left
+    float n11 = get_hash(i.x + 1.0 + get_hash(i.y + 1.0)); // top-right
+    
+    // interpolate along x-axis
+    float nx0 = lerp(n00, n10, f.x);
+    float nx1 = lerp(n01, n11, f.x);
+    
+    // interpolate along y-axis
+    return lerp(nx0, nx1, f.y);
 }
 
 /*------------------------------------------------------------------------------
@@ -435,7 +478,7 @@ void find_best_axis_vectors(float3 In, out float3 Axis1, out float3 Axis2)
 {
     const float3 N = abs(In);
 
-    // Find best basis vectors.
+    // find best basis vector
     if (N.z > N.x && N.z > N.y)
     {
         Axis1 = float3(1, 0, 0);

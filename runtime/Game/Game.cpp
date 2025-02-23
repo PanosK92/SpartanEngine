@@ -584,7 +584,7 @@ namespace spartan
                         shared_ptr<Entity> water = World::CreateEntity();
                         water->SetObjectName("water");
                         water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                        water->SetScale(Vector3(4096.0f, 1.0f, 4096.0f));
+                        water->SetScale(Vector3(2500.0f, 1.0f, 2500.0f));
 
                         Renderable* renderable = water->AddComponent<Renderable>().get();
                         renderable->SetGeometry(MeshType::Grid);
