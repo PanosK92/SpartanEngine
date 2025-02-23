@@ -163,8 +163,8 @@ gbuffer main_ps(gbuffer_vertex vertex)
         // reconstruct z-component as this can be a BC5 two channel normal map
         tangent_normal.z = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
     
-        float normal_intensity     = max(0.012f, GetMaterial().normal);
-        tangent_normal.xy         *= saturate(normal_intensity);
+        float normal_intensity     = saturate(max(0.012f, GetMaterial().normal));
+        tangent_normal.xy         *= normal_intensity;
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
     }
