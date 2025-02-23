@@ -254,20 +254,25 @@ struct vertex_processing
             vertex.color      = lerp(color_base, color_tip, smoothstep(0, 1, height_percent * 0.5f));
 
             // replace flat normals with curved ones
-            float blade_x_direction     = width_percent < 0.5f ? -1.0f : 1.0f;
-            const float rotation        = 60.0f * DEG_TO_RAD * blade_x_direction;
-            float3 rotated_normal_left  = rotate_y(-rotation, input.normal);
-            float3 rotated_normal_right = rotate_y(rotation, input.normal);
-            input.normal                = normalize(lerp(rotated_normal_left, rotated_normal_right, width_percent));
+            const float total_curvature = 60.0f * DEG_TO_RAD;            // total angle from left to right
+            float t                     = (width_percent - 0.5f) * 2.0f; // map [0, 1] to [-1, 1]
+            float harsh_factor          = t * t * t;                     // cubic function for sharper transition
+            float curve_angle           = harsh_factor * (total_curvature / 2.0f);
+            input.normal                = rotate_y(curve_angle, input.normal);
+            input.tangent               = rotate_y(curve_angle, input.tangent);
 
             // bend due to gravity
-            float random_lean  = hash_uint(instance_id) * 1.0f;
-            float curve_amount = random_lean * height_percent;
-            input.position.xyz = rotate_x(curve_amount,  input.position.xyz);
-
+            float random_lean          = hash_uint(instance_id) * 1.0f;
+            float curve_amount_gravity = random_lean * height_percent;
+            input.position.xyz         = rotate_x(curve_amount_gravity, input.position.xyz);
+            input.normal               = rotate_x(curve_amount_gravity, input.normal);
+            input.tangent              = rotate_x(curve_amount_gravity, input.tangent);
+    
             // bend due to wind
-            curve_amount       = perlin_noise((float)buffer_frame.time * 1.0f) * 0.2f;
-            input.position.xyz = rotate_x(curve_amount, input.position.xyz);
+            float curve_amount_wind    = perlin_noise((float)buffer_frame.time * 1.0f) * 0.2f;
+            input.position.xyz         = rotate_x(curve_amount_wind, input.position.xyz);
+            input.normal               = rotate_x(curve_amount_wind, input.normal);
+            input.tangent              = rotate_x(curve_amount_wind, input.tangent);
         }
     }
     

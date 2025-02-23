@@ -477,6 +477,7 @@ namespace spartan
 
             // mood adjustment
             m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
+            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(0.0f, 15.0f, 0.0f));
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
             Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs the same
 
@@ -693,9 +694,9 @@ namespace spartan
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::GrassBlade, 1.0f);
-                        material->SetProperty(MaterialProperty::Roughness, 0.6f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.5f);
                         material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.7f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.8f);
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
 
