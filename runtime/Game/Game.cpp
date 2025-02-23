@@ -696,7 +696,6 @@ namespace spartan
                         material->SetProperty(MaterialProperty::Roughness, 0.6f);
                         material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.7f);
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
 

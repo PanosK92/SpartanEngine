@@ -333,110 +333,83 @@ namespace spartan::geometry_generation
     static void generate_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
         using namespace math;
-    
+
         // constants
-        const int blade_segment_count = 6;    // segments that make up the blade
-        const float grass_width       = 0.2f; // blade width at the base
-        const float grass_height      = 1.0f; // blade height
-        const float thinning_start    = 0.4f; // the point at which thinning begins (0 is base, 1 is top)
-        const float thinning_power    = 1.0f; // thinning sharpness after thinning_start
+        const int blade_segment_count = 6;     // segments per blade
+        const float grass_width       = 0.2f;  // base width
+        const float grass_height      = 1.0f;  // blade height
+        const float thinning_start    = 0.4f;  // thinning start (0=base, 1=top)
+        const float thinning_power    = 1.0f;  // thinning sharpness
     
-        // number of vertices for one side (front face)
-        int vertices_per_face = (blade_segment_count + 1) * 2 - 1; // total vertices per face, accounting for single top point
-    
-        // total vertices = front face + back face
-        int total_vertices = vertices_per_face * 2;
+        int vertices_per_face = (blade_segment_count + 1) * 2 - 1;
+        int total_vertices    = vertices_per_face * 2;
         vertices->reserve(total_vertices);
+
+        // helper to compute width factor
+        auto compute_width_factor = [=](float t) -> float
+        {
+            return (t <= thinning_start) ? 1.0f : std::pow(1.0f - ((t - thinning_start) / (1.0f - thinning_start)), thinning_power);
+        };
     
-        // generate vertices for front face (normal facing +z)
+        // helper to push vertex
+        auto push_vertex = [&](const Vector3 &pos, const Vector2 &tex, const Vector3 &tan)
+        {
+            RHI_Vertex_PosTexNorTan v;
+            v.pos[0] = pos.x; v.pos[1] = pos.y; v.pos[2] = pos.z;
+            v.tex[0] = tex.x; v.tex[1] = tex.y;
+            v.nor[0] = 0.0f;  v.nor[1] = 0.0f;  v.nor[2] = 0.0f;
+            v.tan[0] = tan.x; v.tan[1] = tan.y; v.tan[2] = tan.z;
+
+            vertices->push_back(v);
+        };
+    
+        // build front face (basic normals)
         for (int i = 0; i <= blade_segment_count; i++)
         {
-            float t = float(i) / float(blade_segment_count);
-            float y = t * grass_height;
-    
-            // custom thinning: thick until thinning_start, then thins out
-            float width_factor;
-            if (t <= thinning_start)
+            float t            = float(i) / blade_segment_count;
+            float y            = t * grass_height;
+            float width_factor = compute_width_factor(t);
+
+            if (i < blade_segment_count)
             {
-                width_factor = 1.0f; // keep full width up to thinning_start
+                // left vertex
+                push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t), Vector3(1.0f, 0.0f, 0.0f));
+                // right vertex
+                push_vertex(Vector3(grass_width * 0.5f * width_factor, y, 0.0f), Vector2(1.0f, t), Vector3(1.0f, 0.0f, 0.0f));
             }
             else
             {
-                // remap t from [taper_start, 1] to [0, 1] and apply power function
-                float t_upper = (t - thinning_start) / (1.0f - thinning_start); // mormalize from thinning_start to top
-                width_factor  = std::pow(1.0f - t_upper, thinning_power);       // thin from 1 to 0
-            }
-    
-            Vector3 normal_front(0.0f, 0.0f, 1.0f);
-            Vector3 tangent_front(1.0f, 0.0f, 0.0f);
-    
-            if (i < blade_segment_count) // regular segments
-            {
-                // left vertex
-                Vector3 pos_left(-grass_width * 0.5f * width_factor, y, 0.0f);
-                Vector2 tex_left(0.0f, t);
-                vertices->emplace_back(pos_left, tex_left, normal_front, tangent_front);
-    
-                // right vertex
-                Vector3 pos_right(grass_width * 0.5f * width_factor, y, 0.0f);
-                Vector2 tex_right(1.0f, t);
-                vertices->emplace_back(pos_right, tex_right, normal_front, tangent_front);
-            }
-            else // top segment, single point
-            {
-                Vector3 pos_top(0.0f, y, 0.0f); // center top point
-                Vector2 tex_top(0.5f, t);
-                vertices->emplace_back(pos_top, tex_top, normal_front, tangent_front);
+                // top vertex
+                push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t), Vector3(1.0f, 0.0f, 0.0f));
             }
         }
     
-        // generate vertices for back face (normal facing -z)
+        // build back face (basic normals)
         for (int i = 0; i <= blade_segment_count; i++)
         {
-            float t = float(i) / float(blade_segment_count);
-            float y = t * grass_height;
-    
-            // custom thinning: thick until thinning_start, then thins out
-            float width_factor;
-            if (t <= thinning_start)
+            float t            = float(i) / blade_segment_count;
+            float y            = t * grass_height;
+            float width_factor = compute_width_factor(t);
+
+            if (i < blade_segment_count)
             {
-                width_factor = 1.0f; // keep full width up to thinning_start
+                // left vertex
+                push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t), Vector3(-1.0f, 0.0f, 0.0f));
+                // right vertex
+                push_vertex(Vector3(grass_width * 0.5f * width_factor, y, 0.0f), Vector2(1.0f, t), Vector3(-1.0f, 0.0f, 0.0f));
             }
             else
             {
-                // remap t from [thinning_start, 1] to [0, 1] and apply power function
-                float t_upper = (t - thinning_start) / (1.0f - thinning_start); // mormalize from thinning_start to top
-                width_factor  = std::pow(1.0f - t_upper, thinning_power);       // thin from 1 to 0
-            }
-    
-            Vector3 normal_back(0.0f, 0.0f, -1.0f);
-            Vector3 tangent_back(-1.0f, 0.0f, 0.0f);
-    
-            if (i < blade_segment_count) // regular segments
-            {
-                // left vertex
-                Vector3 pos_left(-grass_width * 0.5f * width_factor, y, 0.0f);
-                Vector2 tex_left(0.0f, t);
-                vertices->emplace_back(pos_left, tex_left, normal_back, tangent_back);
-    
-                // right vertex
-                Vector3 pos_right(grass_width * 0.5f * width_factor, y, 0.0f);
-                Vector2 tex_right(1.0f, t);
-                vertices->emplace_back(pos_right, tex_right, normal_back, tangent_back);
-            }
-            else // top segment, single point
-            {
-                Vector3 pos_top(0.0f, y, 0.0f);
-                Vector2 tex_top(0.5f, t);
-                vertices->emplace_back(pos_top, tex_top, normal_back, tangent_back);
+                // top vertex
+                push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t), Vector3(-1.0f, 0.0f, 0.0f));
             }
         }
     
-        // generate indices for the front face
+        // generate front face indices
         int vi = 0;
         for (int i = 0; i < blade_segment_count; i++)
         {
-            if (i < blade_segment_count - 1) // regular segments
+            if (i < blade_segment_count - 1)
             {
                 indices->push_back(vi);
                 indices->push_back(vi + 1);
@@ -447,20 +420,20 @@ namespace spartan::geometry_generation
                 indices->push_back(vi + 3);
                 vi += 2;
             }
-            else // top segment, single point
+            else
             {
-                indices->push_back(vi);     // left of last segment
-                indices->push_back(vi + 1); // right of last segment
-                indices->push_back(vi + 2); // top point
+                indices->push_back(vi);
+                indices->push_back(vi + 1);
+                indices->push_back(vi + 2);
             }
         }
     
-        // generate indices for the back face
+        // generate back face indices
         int offset = vertices_per_face;
         vi = 0;
         for (int i = 0; i < blade_segment_count; i++)
         {
-            if (i < blade_segment_count - 1) // regular segments
+            if (i < blade_segment_count - 1)
             {
                 indices->push_back(offset + vi + 2);
                 indices->push_back(offset + vi + 1);
@@ -471,12 +444,60 @@ namespace spartan::geometry_generation
                 indices->push_back(offset + vi + 2);
                 vi += 2;
             }
-            else // last segment uses the center top point
+            else
             {
-                indices->push_back(offset + vi + 2); // top point
-                indices->push_back(offset + vi + 1); // right of last segment
-                indices->push_back(offset + vi);     // left of last segment
+                indices->push_back(offset + vi + 2);
+                indices->push_back(offset + vi + 1);
+                indices->push_back(offset + vi);
+            }
+        }
+    
+        // re-calculate normals (necessary if any curvature is present)
+        {
+            // zero out
+            for (size_t i = 0; i < vertices->size(); i++)
+            {
+                (*vertices)[i].nor[0] = 0.0f;
+                (*vertices)[i].nor[1] = 0.0f;
+                (*vertices)[i].nor[2] = 0.0f;
+            }
+
+            // triangle normals
+            for (size_t i = 0; i < indices->size(); i += 3)
+            {
+                uint32_t i0 = (*indices)[i];
+                uint32_t i1 = (*indices)[i + 1];
+                uint32_t i2 = (*indices)[i + 2];
+    
+                Vector3 p0((*vertices)[i0].pos[0], (*vertices)[i0].pos[1], (*vertices)[i0].pos[2]);
+                Vector3 p1((*vertices)[i1].pos[0], (*vertices)[i1].pos[1], (*vertices)[i1].pos[2]);
+                Vector3 p2((*vertices)[i2].pos[0], (*vertices)[i2].pos[1], (*vertices)[i2].pos[2]);
+    
+                Vector3 edge1       = p1 - p0;
+                Vector3 edge2       = p2 - p0;
+                Vector3 face_normal = Vector3::Normalize(Vector3::Cross(edge1, edge2));
+    
+                (*vertices)[i0].nor[0] += face_normal.x;
+                (*vertices)[i0].nor[1] += face_normal.y;
+                (*vertices)[i0].nor[2] += face_normal.z;
+                (*vertices)[i1].nor[0] += face_normal.x;
+                (*vertices)[i1].nor[1] += face_normal.y;
+                (*vertices)[i1].nor[2] += face_normal.z;
+                (*vertices)[i2].nor[0] += face_normal.x;
+                (*vertices)[i2].nor[1] += face_normal.y;
+                (*vertices)[i2].nor[2] += face_normal.z;
+            }
+
+            // normalize
+            for (size_t i = 0; i < vertices->size(); i++)
+            {
+                Vector3 norm((*vertices)[i].nor[0], (*vertices)[i].nor[1], (*vertices)[i].nor[2]);
+                norm = Vector3::Normalize(norm);
+                (*vertices)[i].nor[0] = norm.x;
+                (*vertices)[i].nor[1] = norm.y;
+                (*vertices)[i].nor[2] = norm.z;
             }
         }
     }
+
 }
