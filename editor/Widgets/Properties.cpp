@@ -341,7 +341,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             }
         }
 
-        // Range
+        // range
         if (light->GetLightType() != LightType::Directional)
         {
             ImGui::Text("Range");
@@ -349,7 +349,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             ImGuiSp::draw_float_wrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f);
         }
 
-        // Angle
+        // angle
         if (light->GetLightType() == LightType::Spot)
         {
             ImGui::Text("Angle");

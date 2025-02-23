@@ -76,7 +76,7 @@ namespace spartan
             b = 255;
         }
 
-        // Clamp RGB values to [0, 1]
+        // clamp rgb values to [0, 1]
         r = clamp(r / 255.0f, 0.0f, 1.0f);
         g = clamp(g / 255.0f, 0.0f, 1.0f);
         b = clamp(b / 255.0f, 0.0f, 1.0f);
@@ -90,9 +90,10 @@ namespace spartan
         this->a = a;
     }
 
-    Color::Color(const float temperature_kelvin)
+    Color::Color(const float temperature_kelvin, const float a /*= 1.0f*/)
     {
         temperature_to_color(temperature_kelvin, r, g, b);
+        this->a = a;
     }
 
     // standard
@@ -106,14 +107,14 @@ namespace spartan
     const Color Color::standard_renderer_lines  = Color(0.41f, 0.86f, 1.0f, 1.0f);
 
     // materials
-    const Color Color::material_aluminum        = Color(0.912f, 0.914f, 0.920f); // Metallic: 1.0
+    const Color Color::material_aluminum        = Color(0.912f, 0.914f, 0.920f); // metallic: 1.0
     const Color Color::material_blood           = Color(0.644f, 0.003f, 0.005f);
     const Color Color::material_bone            = Color(0.793f, 0.793f, 0.664f);
     const Color Color::material_brass           = Color(0.887f, 0.789f, 0.434f);
     const Color Color::material_brick           = Color(0.262f, 0.095f, 0.061f);
     const Color Color::material_charcoal        = Color(0.020f, 0.020f, 0.020f);
     const Color Color::material_chocolate       = Color(0.162f, 0.091f, 0.060f);
-    const Color Color::material_chromium        = Color(0.550f, 0.556f, 0.554f); // Metallic: 1.0
+    const Color Color::material_chromium        = Color(0.550f, 0.556f, 0.554f); // metallic: 1.0
     const Color Color::material_cobalt          = Color(0.662f, 0.655f, 0.634f);
     const Color Color::material_concrete        = Color(0.510f, 0.510f, 0.510f);
     const Color Color::material_cooking_oil     = Color(0.738f, 0.687f, 0.091f);

@@ -150,59 +150,61 @@ ButtonColorPicker::ButtonColorPicker(const string& window_title)
 
 void ButtonColorPicker::Update()
 {
-    // button
-    if (ImGui::ColorButton("##color_button", ImVec4(m_color.r, m_color.g, m_color.b, m_color.a)))
+    // convert m_color to imvec4 for the button (assuming m_color is a struct with r, g, b, a)
+    ImVec4 color_vec = ImVec4(m_color.r, m_color.g, m_color.b, m_color.a);
+
+    // button showing the current color
+    if (ImGui::ColorButton("##color_button", color_vec))
     {
         m_is_visible = true;
     }
 
-    // picker
+    // picker window
     if (m_is_visible)
     {
         ImGui::SetNextWindowFocus();
         ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
         ImGui::Begin(m_window_title.c_str(), &m_is_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 
-        ImGuiColorEditFlags       flags = ImGuiColorEditFlags_AlphaBar;
-                                  flags |= m_show_wheel ? ImGuiColorEditFlags_PickerHueWheel : ImGuiColorEditFlags_PickerHueBar;
+        // base flags for the picker
+        ImGuiColorEditFlags flags = ImGuiColorEditFlags_AlphaBar;
+
+        // picker style
+        flags |= m_show_wheel ? ImGuiColorEditFlags_PickerHueWheel : ImGuiColorEditFlags_PickerHueBar;
         if (!m_show_preview)      flags |= ImGuiColorEditFlags_NoSidePreview;
+        
+        // display options (ensure hsv is visible if checked)
         if (m_show_rgb)           flags |= ImGuiColorEditFlags_DisplayRGB;
-        if (m_show_hsv)           flags |= ImGuiColorEditFlags_DisplayHSV;
+        if (m_show_hsv)           flags |= ImGuiColorEditFlags_DisplayHSV; // this ensures hsv is shown in the picker
         if (m_show_hex)           flags |= ImGuiColorEditFlags_DisplayHex;
         if (m_hdr)                flags |= ImGuiColorEditFlags_HDR;
         if (m_alpha_half_preview) flags |= ImGuiColorEditFlags_AlphaPreviewHalf;
         if (!m_options_menu)      flags |= ImGuiColorEditFlags_NoOptions;
 
+        // use colorpicker4 to edit the color
         ImGui::ColorPicker4(m_color_picker_label.c_str(), (float*)&m_color, flags);
 
         ImGui::Separator();
 
-        // Note: Using hardcoded labels so the settings remain the same for all color pickers
-
-        // WHEEL
+        // settings ui
         ImGui::Text("Wheel");
         ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerWheel", &m_show_wheel);
 
-        // RGB
         ImGui::SameLine(); ImGui::Text("RGB");
         ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerRGB", &m_show_rgb);
 
-        // HSV
         ImGui::SameLine(); ImGui::Text("HSV");
         ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerHSV", &m_show_hsv);
 
-        // HEX
         ImGui::SameLine(); ImGui::Text("HEX");
         ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerHEX", &m_show_hex);
 
-        // Default colors combo box
+        // physically based colors combo box
+        ImGui::Text("Physically based colors");
+        ImGui::SameLine();
+        if (ImGuiSp::combo_box("##physically_based_colors", color_names, &m_combo_box_index))
         {
-            ImGui::Text("Physically based colors");
-            ImGui::SameLine();
-            if (ImGuiSp::combo_box("##physically_based_colors", color_names, &m_combo_box_index))
-            {
-                m_color = color_values[m_combo_box_index];
-            }
+            m_color = color_values[m_combo_box_index];
         }
 
         ImGui::End();
