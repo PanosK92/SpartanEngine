@@ -336,12 +336,13 @@ namespace spartan::geometry_generation
     
         // constants
         const int blade_segment_count = 6;    // segments that make up the blade
-        const float grass_width       = 0.1f; // blade width
+        const float grass_width       = 0.1f; // blade width at the base
         const float grass_height      = 1.0f; // blade height
+        const float thinning_start    = 0.5f; // point (0 to 1) where thinning begins (0.5 = midpoint)
+        const float thinning_power    = 1.0f; // controls sharpness of thinning after taper_start (higher = sharper)
     
         // number of vertices for one side (front face)
-        int vertices_per_face  = (blade_segment_count + 1) * 2;
-        vertices_per_face     -= 1; // reduce by one since the top is a single triangle
+        int vertices_per_face = (blade_segment_count + 1) * 2 - 1; // total vertices per face, accounting for single top point
     
         // total vertices = front face + back face
         int total_vertices = vertices_per_face * 2;
@@ -352,52 +353,78 @@ namespace spartan::geometry_generation
         {
             float t = float(i) / float(blade_segment_count);
             float y = t * grass_height;
-
+    
+            // custom thinning: thick until thinning_start, then thins out
+            float width_factor;
+            if (t <= thinning_start)
+            {
+                width_factor = 1.0f; // keep full width up to thinning_start
+            }
+            else
+            {
+                // remap t from [taper_start, 1] to [0, 1] and apply power function
+                float t_upper = (t - thinning_start) / (1.0f - thinning_start); // mormalize from thinning_start to top
+                width_factor  = std::pow(1.0f - t_upper, thinning_power);       // thin from 1 to 0
+            }
+    
             Vector3 normal_front(0.0f, 0.0f, 1.0f);
             Vector3 tangent_front(1.0f, 0.0f, 0.0f);
-
+    
             if (i < blade_segment_count) // regular segments
             {
                 // left vertex
-                Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
+                Vector3 pos_left(-grass_width * 0.5f * width_factor, y, 0.0f);
                 Vector2 tex_left(0.0f, t);
-
                 vertices->emplace_back(pos_left, tex_left, normal_front, tangent_front);
     
                 // right vertex
-                Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
+                Vector3 pos_right(grass_width * 0.5f * width_factor, y, 0.0f);
                 Vector2 tex_right(1.0f, t);
                 vertices->emplace_back(pos_right, tex_right, normal_front, tangent_front);
             }
-            else  // top segment, single point
+            else // top segment, single point
             {
                 Vector3 pos_top(0.0f, y, 0.0f); // center top point
-                Vector2 tex_top(0.5f, t);       // average texture coordinate
+                Vector2 tex_top(0.5f, t);
                 vertices->emplace_back(pos_top, tex_top, normal_front, tangent_front);
             }
         }
-
-        // generate vertices for front face (normal facing -z)
+    
+        // generate vertices for back face (normal facing -z)
         for (int i = 0; i <= blade_segment_count; i++)
         {
             float t = float(i) / float(blade_segment_count);
             float y = t * grass_height;
-
-             Vector3 normal_back(0.0f, 0.0f, -1.0f);
-             Vector3 tangent_back(-1.0f, 0.0f, 0.0f);
-
+    
+            // custom thinning: thick until thinning_start, then thins out
+            float width_factor;
+            if (t <= thinning_start)
+            {
+                width_factor = 1.0f; // keep full width up to thinning_start
+            }
+            else
+            {
+                // remap t from [thinning_start, 1] to [0, 1] and apply power function
+                float t_upper = (t - thinning_start) / (1.0f - thinning_start); // mormalize from thinning_start to top
+                width_factor  = std::pow(1.0f - t_upper, thinning_power);       // thin from 1 to 0
+            }
+    
+            Vector3 normal_back(0.0f, 0.0f, -1.0f);
+            Vector3 tangent_back(-1.0f, 0.0f, 0.0f);
+    
             if (i < blade_segment_count) // regular segments
             {
-                Vector3 pos_left(-grass_width * 0.5f, y, 0.0f);
+                // left vertex
+                Vector3 pos_left(-grass_width * 0.5f * width_factor, y, 0.0f);
                 Vector2 tex_left(0.0f, t);
-               
                 vertices->emplace_back(pos_left, tex_left, normal_back, tangent_back);
     
-                Vector3 pos_right(grass_width * 0.5f, y, 0.0f);
+                // right vertex
+                Vector3 pos_right(grass_width * 0.5f * width_factor, y, 0.0f);
                 Vector2 tex_right(1.0f, t);
                 vertices->emplace_back(pos_right, tex_right, normal_back, tangent_back);
             }
-            else  // top segment, single point
+            else // top segment, single point
             {
                 Vector3 pos_top(0.0f, y, 0.0f);
                 Vector2 tex_top(0.5f, t);
