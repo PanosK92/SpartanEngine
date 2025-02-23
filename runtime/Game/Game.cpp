@@ -477,7 +477,7 @@ namespace spartan
 
             // mood adjustment
             m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
-            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(0.0f, 15.0f, 0.0f));
+            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(15.0f, 5.0f, 0.0f));
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
             Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs the same
 

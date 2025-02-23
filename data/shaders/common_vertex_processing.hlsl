@@ -86,30 +86,31 @@ static float3 extract_position(matrix transform)
     return float3(transform._31, transform._32, transform._33);
 }
 
-static float3 rotate_x(float angle, float3 v)
+static float3 rotate_around_axis(float3 axis, float angle, float3 v)
 {
     float c = cos(angle);
     float s = sin(angle);
+    float t = 1.0f - c;
 
-    // standard x-axis rotation
-    return float3(
-        v.x,
-        c * v.y - s * v.z,
-        s * v.y + c * v.z
+    // normalize the axis to ensure proper rotation
+    axis = normalize(axis);
+
+    // rodrigues' rotation formula
+    float3x3 rotation = float3x3(
+        t * axis.x * axis.x + c,
+        t * axis.x * axis.y - s * axis.z,
+        t * axis.x * axis.z + s * axis.y,
+        
+        t * axis.x * axis.y + s * axis.z,
+        t * axis.y * axis.y + c,
+        t * axis.y * axis.z - s * axis.x,
+        
+        t * axis.x * axis.z - s * axis.y,
+        t * axis.y * axis.z + s * axis.x,
+        t * axis.z * axis.z + c
     );
-}
 
-static float3 rotate_y(float angle, float3 v)
-{
-    float c = cos(angle);
-    float s = sin(angle);
-
-    // apply standard y-axis rotation
-    return float3(
-        c * v.x + s * v.z,
-        v.y,
-        -s * v.x + c * v.z
-    );
+    return mul(rotation, v);
 }
 
 struct vertex_processing
@@ -248,6 +249,9 @@ struct vertex_processing
     {
         if (surface.is_grass_blade())
         {
+            const float3 up    = float3(0, 1, 0);
+            const float3 right = float3(1, 0, 0);
+            
             // give it a nice color gradient
             float3 color_base = float3(0.05f, 0.2f, 0.01f); // darker green
             float3 color_tip  = float3(0.5f, 0.5f, 0.1f);   // yellowish
@@ -258,21 +262,21 @@ struct vertex_processing
             float t                     = (width_percent - 0.5f) * 2.0f; // map [0, 1] to [-1, 1]
             float harsh_factor          = t * t * t;                     // cubic function for sharper transition
             float curve_angle           = harsh_factor * (total_curvature / 2.0f);
-            input.normal                = rotate_y(curve_angle, input.normal);
-            input.tangent               = rotate_y(curve_angle, input.tangent);
+            input.normal                = rotate_around_axis(up, curve_angle, input.normal);
+            input.tangent               = rotate_around_axis(up, curve_angle, input.tangent);
 
             // bend due to gravity
-            float random_lean          = hash_uint(instance_id) * 1.0f;
-            float curve_amount_gravity = random_lean * height_percent;
-            input.position.xyz         = rotate_x(curve_amount_gravity, input.position.xyz);
-            input.normal               = rotate_x(curve_amount_gravity, input.normal);
-            input.tangent              = rotate_x(curve_amount_gravity, input.tangent);
+            float random_lean  = hash_uint(instance_id) * 1.0f;
+            curve_angle        = random_lean * height_percent;
+            input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
+            input.normal       = rotate_around_axis(right, curve_angle, input.normal);
+            input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
     
             // bend due to wind
-            float curve_amount_wind    = perlin_noise((float)buffer_frame.time * 1.0f) * 0.2f;
-            input.position.xyz         = rotate_x(curve_amount_wind, input.position.xyz);
-            input.normal               = rotate_x(curve_amount_wind, input.normal);
-            input.tangent              = rotate_x(curve_amount_wind, input.tangent);
+            curve_angle        = perlin_noise((float)buffer_frame.time * 1.0f) * 0.2f;
+            input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
+            input.normal       = rotate_around_axis(right, curve_angle, input.normal);
+            input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
         }
     }
     
