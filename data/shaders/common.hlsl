@@ -415,19 +415,21 @@ float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool anima
 
 float get_noise_perlin(float x)
 {
-    float i = floor(x);
-    float f = frac(x);
+    float i = floor(x); // integer part (grid cell corners)
+    float f = frac(x);  // fractional part (position within cell)
+
+    // smooth interpolation factor
     f = f * f * (3.0 - 2.0 * f);
 
     return lerp(get_hash(i), get_hash(i + 1.0), f);
 }
 
-float get_noise_perlin(float2 p)
+float get_noise_perlin(float2 x)
 {
-    float2 i = floor(p);         // integer part (grid cell corners)
-    float2 f = frac(p);          // fractional part (position within cell)
+    float2 i = floor(x); // integer part (grid cell corners)
+    float2 f = frac(x);  // fractional part (position within cell)
     
-    // smooth interpolation factor (same as your 1D version)
+    // smooth interpolation factor
     f = f * f * (3.0 - 2.0 * f);
     
     // compute hash values at the four corners

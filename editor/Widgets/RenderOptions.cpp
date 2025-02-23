@@ -115,7 +115,7 @@ namespace
         return result;
     }
 
-    void option_value(const char* label, Renderer_Option render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
+    bool option_value(const char* label, Renderer_Option render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
         option_first_column();
         ImGui::Text(label);
@@ -124,13 +124,14 @@ namespace
             ImGuiSp::tooltip(tooltip);
         }
 
+        bool changed = false;
         option_second_column();
         {
             float value = Renderer::GetOption<float>(render_option);
 
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
             ImGui::PushItemWidth(width_input_numeric);
-            ImGui::InputFloat("", &value, step, 0.0f, format);
+            changed = ImGui::InputFloat("", &value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
             value = clamp(value, min, max);
@@ -141,6 +142,8 @@ namespace
                 Renderer::SetOption(render_option, value);
             }
         }
+
+        return changed;
     }
 
     void option_float(const char* label, float& option, float step = 0.1f, const char* format = "%.3f")
@@ -398,14 +401,37 @@ void RenderOptions::OnTickVisible()
             option_check_box("Film grain", Renderer_Option::FilmGrain);
         }
 
+        if (option("World"))
+        {
+            option_value("Fog", Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
+
+            // wind
+            {
+                Vector3 wind         = Renderer::GetWind();
+                float wind_strength  = wind.Length();
+                float wind_direction = atan2f(wind.x, wind.z) * (180.0f / 3.14159f);
+
+                bool changed  = false;
+                changed      |= ImGui::SliderFloat("Wind Strength", &wind_strength, 0.1f, 10.0f, "%.1f");
+                changed      |= ImGui::SliderFloat("Wind Direction", &wind_direction, 0.0f, 180.0f, "%.1f");
+
+                if (changed)
+                {
+                    float radians = wind_direction * (3.14159f / 180.0f);
+                    wind.x        = sinf(radians) * wind_strength;
+                    wind.z        = cosf(radians) * wind_strength;
+                    
+                    Renderer::SetWind(wind);
+                }
+            }
+        }
+
         if (option("Misc"))
         {
             // shadow resolution
             int resolution_shadow = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
             option_int("Shadow resolution", resolution_shadow);
             Renderer::SetOption(Renderer_Option::ShadowResolution, static_cast<float>(resolution_shadow));
-
-            option_value("Fog", Renderer_Option::Fog, "Controls the density of the fog", 0.1f);
 
             // vsync
             option_check_box("VSync", Renderer_Option::Vsync, "Vertical Synchronization");

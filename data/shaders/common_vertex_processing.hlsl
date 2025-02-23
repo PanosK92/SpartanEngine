@@ -229,7 +229,7 @@ struct vertex_processing
         {
             const float3 up    = float3(0, 1, 0);
             const float3 right = float3(1, 0, 0);
-            
+
             // give it a nice color gradient
             float3 color_base = float3(0.05f, 0.2f, 0.01f); // darker green
             float3 color_tip  = float3(0.5f, 0.5f, 0.1f);   // yellowish
@@ -249,7 +249,7 @@ struct vertex_processing
             input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
             input.normal       = rotate_around_axis(right, curve_angle, input.normal);
             input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
-    
+
             // bend due to wind
             curve_angle        = get_noise_perlin((float)buffer_frame.time * 1.0f) * 0.2f;
             input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
@@ -257,7 +257,7 @@ struct vertex_processing
             input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
         }
     }
-    
+
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, float width_percent, float height_percent, uint instance_id, float time_offset = 0.0f)
     {
         float time  = (float)buffer_frame.time + time_offset;
