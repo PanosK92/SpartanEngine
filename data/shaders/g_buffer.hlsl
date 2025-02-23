@@ -48,14 +48,14 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 gbuffer main_ps(gbuffer_vertex vertex)
 {
     // setup
-    MaterialParameters material    = GetMaterial();
-    float4 albedo                  = material.color;
-    float3 normal                  = vertex.normal.xyz;
-    float roughness                = material.roughness;
-    float metalness                = material.metallness;
-    float emission                 = 0.0f;
-    float2 velocity                = 0.0f;
-    float occlusion                = 1.0f;
+    MaterialParameters material = GetMaterial();
+    float4 albedo               = material.color;
+    float3 normal               = vertex.normal.xyz;
+    float roughness             = material.roughness;
+    float metalness             = material.metallness;
+    float emission              = 0.0f;
+    float2 velocity             = 0.0f;
+    float occlusion             = 1.0f;
     Surface surface;
     surface.flags = material.flags;
 

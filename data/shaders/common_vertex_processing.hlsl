@@ -47,7 +47,7 @@ struct gbuffer_vertex
     float3 normal                 : NORMAL_WORLD;
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
-    float3 color                  : COLOR_;
+    float3 color                  : COLOR;
     uint instance_id              : INSTANCE_ID;
     matrix transform              : TRANSFORM;
     matrix transform_previous     : TRANSFORM_PREVIOUS;
@@ -271,21 +271,13 @@ struct vertex_processing
         }
     }
     
-    static void process_world_space(Surface surface, inout float3 position_world, float3 normal_world, float3 position_local, float4x4 transform, float width_percent, float height_percent, uint instance_id, float time_offset = 0.0f)
+    static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, float width_percent, float height_percent, uint instance_id, float time_offset = 0.0f)
     {
         float time  = (float)buffer_frame.time + time_offset;
         float3 wind = buffer_frame.wind;
 
         if (surface.is_grass_blade())
         {
-            // the blade is super thin, so thicken it when viewed from the side
-            //float3 view_direction        = get_view_direction(position_world);
-            //float v_dot_n                = abs(dot(normal_world.xz, view_direction.xz));
-            //float thickness_offset       = 1.0f - v_dot_n;
-            //float blade_x_direction      = width_percent < 0.5f ? -1.0f : 1.0f;
-            //float3 offset                = thickness_offset * blade_x_direction * 0.2f;
-            //position_world.x            += offset.x;
-
             // wind simulation
             {
                 const float wind_direction_scale      = 0.05f; // scale for large-scale wind direction noise
@@ -303,6 +295,12 @@ struct vertex_processing
                 wind_lean_angle            = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
                 float2 wind_offset         = float2(cos(wind_direction), sin(wind_direction)) * wind_lean_angle;
                 position_world.xz         += wind_offset * height_percent;
+            }
+
+            // color adjustment
+            {
+                float snow_blend_factor = get_snow_blend_factor(position_world);
+                vertex.color            = lerp(vertex.color, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
             }
         }
         
@@ -371,8 +369,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.transform_previous = transform_previous;
 
     // vertex processing - world space
-    vertex_processing::process_world_space(surface, vertex.position, vertex.normal, input.position.xyz, transform, width_percent, height_percent, instance_id);
-    vertex_processing::process_world_space(surface, vertex.position_previous, vertex.normal, input.position.xyz, transform_previous, width_percent, height_percent, instance_id, -buffer_frame.delta_time);
+    vertex_processing::process_world_space(surface, vertex.position, vertex, input.position.xyz, transform, width_percent, height_percent, instance_id);
+    vertex_processing::process_world_space(surface, vertex.position_previous, vertex, input.position.xyz, transform_previous, width_percent, height_percent, instance_id, -buffer_frame.delta_time);
     
     return vertex;
 }

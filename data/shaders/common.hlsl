@@ -23,12 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_COMMON
 
 //= INCLUDES ====================
+#include "common_terrain.hlsl"
 #include "common_resources.hlsl"
 #include "common_colorspace.hlsl"
 #include "common_sampling.hlsl"
 //===============================
 
-/*------------------------------------------------------------------------------
+/*-----------------------------------------------------------------------------
     CONSTANTS
 ------------------------------------------------------------------------------*/
 static const float PI                   = 3.14159265f;

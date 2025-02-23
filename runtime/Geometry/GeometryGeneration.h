@@ -336,10 +336,10 @@ namespace spartan::geometry_generation
     
         // constants
         const int blade_segment_count = 6;    // segments that make up the blade
-        const float grass_width       = 0.1f; // blade width at the base
+        const float grass_width       = 0.2f; // blade width at the base
         const float grass_height      = 1.0f; // blade height
-        const float thinning_start    = 0.5f; // point (0 to 1) where thinning begins (0.5 = midpoint)
-        const float thinning_power    = 1.0f; // controls sharpness of thinning after taper_start (higher = sharper)
+        const float thinning_start    = 0.4f; // the point at which thinning begins (0 is base, 1 is top)
+        const float thinning_power    = 1.0f; // thinning sharpness after thinning_start
     
         // number of vertices for one side (front face)
         int vertices_per_face = (blade_segment_count + 1) * 2 - 1; // total vertices per face, accounting for single top point
