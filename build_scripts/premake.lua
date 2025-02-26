@@ -31,22 +31,21 @@ API_CPP_DEFINE		 = ""
 ARG_API_GRAPHICS     = _ARGS[1]
 
 API_INCLUDES = {
-	vulkan_windows = {
+    vulkan_windows = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
         "../third_party/fidelityfx"
     }
 }
 
-API_EXCLUDES = 
-{
+API_EXCLUDES = {
     d3d12  = { RUNTIME_DIR .. "/RHI/Vulkan/**" },
     vulkan_linux = { RUNTIME_DIR .. "/RHI/D3D12/**" },
     vulkan_windows = { RUNTIME_DIR .. "/RHI/D3D12/**" },
 }
 
 API_LIBRARIES = {
-	d3d12 = {
+    d3d12 = {
         release = {
             -- No specific D3D12 release libraries
         },
@@ -62,15 +61,15 @@ API_LIBRARIES = {
             "spirv-cross-glsl",
             "spirv-cross-hlsl",
             "ffx_backend_vk_x64",
-			"ffx_frameinterpolation_x64",
-			"ffx_fsr3_x64",
-			"ffx_fsr3upscaler_x64",
-			"ffx_opticalflow_x64",
-			"ffx_denoiser_x64",
-			"ffx_sssr_x64",
-			"ffx_brixelizer_x64",
-			"ffx_brixelizergi_x64",
-			"ffx_breadcrumbs_x64"
+            "ffx_frameinterpolation_x64",
+            "ffx_fsr3_x64",
+            "ffx_fsr3upscaler_x64",
+            "ffx_opticalflow_x64",
+            "ffx_denoiser_x64",
+            "ffx_sssr_x64",
+            "ffx_brixelizer_x64",
+            "ffx_brixelizergi_x64",
+            "ffx_breadcrumbs_x64"
         },
         debug = {
             "spirv-cross-c_debug",
@@ -79,15 +78,15 @@ API_LIBRARIES = {
             "spirv-cross-glsl_debug",
             "spirv-cross-hlsl_debug",
             "ffx_backend_vk_x64d",
-			"ffx_frameinterpolation_x64d",
-			"ffx_fsr3_x64d",
-			"ffx_fsr3upscaler_x64d",
-			"ffx_opticalflow_x64d",
-			"ffx_denoiser_x64d",
-			"ffx_sssr_x64d",
-			"ffx_brixelizer_x64d",
-			"ffx_brixelizergi_x64d",
-			"ffx_breadcrumbs_x64d"
+            "ffx_frameinterpolation_x64d",
+            "ffx_fsr3_x64d",
+            "ffx_fsr3upscaler_x64d",
+            "ffx_opticalflow_x64d",
+            "ffx_denoiser_x64d",
+            "ffx_sssr_x64d",
+            "ffx_brixelizer_x64d",
+            "ffx_brixelizergi_x64d",
+            "ffx_breadcrumbs_x64d"
         }
     },
     vulkan_linux = {
@@ -137,12 +136,12 @@ function solution_configuration()
             filter { "platforms:Windows" }
                 system "windows"
                 architecture "x64"
-				buildoptions { "/arch:AVX2" }
-		elseif os.target() == "linux" then
+                buildoptions { "/arch:AVX2" }
+        elseif os.target() == "linux" then
             filter { "platforms:Linux" }
                 system "linux"
                 architecture "x86_64"
-				buildoptions { "-mavx2" }
+                buildoptions { "-mavx2" }
         end
 
         -- "Debug"
@@ -171,14 +170,13 @@ function runtime_project_configuration()
             kind "SharedLib"
         end
         staticruntime "On"
-        defines{ API_CPP_DEFINE  }
+        defines { API_CPP_DEFINE  }
         if os.target() == "windows" then
             conformancemode "On"
         end
 
         -- Source
-        files
-        {
+        files {
             RUNTIME_DIR .. "/**.h",
             RUNTIME_DIR .. "/**.cpp",
             RUNTIME_DIR .. "/**.hpp",
@@ -186,8 +184,8 @@ function runtime_project_configuration()
         }
 
         -- Source to ignore
-		removefiles(API_EXCLUDES[ARG_API_GRAPHICS])
-		
+        removefiles(API_EXCLUDES[ARG_API_GRAPHICS])
+        
         -- Precompiled header
         pchheader "pch.h"
         pchsource "../runtime/Core/pch.cpp"
@@ -202,9 +200,9 @@ function runtime_project_configuration()
             includedirs { "../third_party/compressonator" }
             includedirs { "../third_party/renderdoc" }
             includedirs { "../third_party/pugixml" }
-			includedirs { "../third_party/open_image_denoise" }
-			includedirs { "../third_party/meshoptimizer" }
-			includedirs { "../third_party/dxc" }
+            includedirs { "../third_party/open_image_denoise" }
+            includedirs { "../third_party/meshoptimizer" }
+            includedirs { "../third_party/dxc" }
             includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
         else
             includedirs { "/usr/include/SDL3" }
@@ -214,7 +212,7 @@ function runtime_project_configuration()
             includedirs { "/usr/include/renderdoc" }
         end
 
-  includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
+        includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
 
         -- Libraries
         libdirs (LIBRARY_DIR)
@@ -230,10 +228,10 @@ function runtime_project_configuration()
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
             links { "SDL3" }
             links { "Compressonator_MT" }
-			links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
-			links { "meshoptimizer" }
-			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
-			
+            links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
+            links { "meshoptimizer" }
+            links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
+            
         -- "Debug"
         filter "configurations:debug"
             debugdir (TARGET_DIR)
@@ -246,8 +244,8 @@ function runtime_project_configuration()
                 links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
                 links { "SDL3_debug" }
                 links { "Compressonator_MT_debug" }
-				links { "OpenImageDenoise_debug" , "OpenImageDenoise_core_debug", "OpenImageDenoise_utils_debug" }
-				links { "meshoptimizer_debug" }
+                links { "OpenImageDenoise_debug" , "OpenImageDenoise_core_debug", "OpenImageDenoise_utils_debug" }
+                links { "meshoptimizer_debug" }
                 links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
             else
                 links { "dxcompiler" }
@@ -257,7 +255,7 @@ function runtime_project_configuration()
                 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
                 links { "SDL3" }
                 links { "Compressonator_MT" }
-				links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
+                links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
             end
 end
 
