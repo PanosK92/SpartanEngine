@@ -755,11 +755,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -860,11 +860,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->IsActive() && entity->GetComponent<Renderable>())
+                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>())
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -898,11 +898,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -1043,11 +1043,11 @@ namespace spartan
                // enable physics for all meshes
                vector<Entity*> entities;
                entity->GetDescendants(&entities);
-               for (Entity* entity : entities)
+               for (Entity* entity_it : entities)
                {
-                   if (entity->GetComponent<Renderable>() != nullptr)
+                   if (entity_it->GetComponent<Renderable>() != nullptr)
                    {
-                       PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                       PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                        physics_body->SetShapeType(PhysicsShape::Mesh);
                    }
                }
@@ -1067,11 +1067,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -1166,13 +1166,13 @@ namespace spartan
                 // enter/exit
                 if (Input::GetKeyDown(KeyCode::E))
                 {
-                    Entity* camera = nullptr;
+                    Entity* camera_it = nullptr;
                     if (!inside_the_car)
                     {
-                        camera = m_default_physics_body_camera->GetChildByName("component_camera");
-                        camera->SetParent(m_default_car);
-                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
-                        camera->SetRotationLocal(Quaternion::Identity);
+                        camera_it = m_default_physics_body_camera->GetChildByName("component_camera");
+                        camera_it->SetParent(m_default_car);
+                        camera_it->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                        camera_it->SetRotationLocal(Quaternion::Identity);
 
                         audio_source_start->Play();
 
@@ -1180,10 +1180,10 @@ namespace spartan
                     }
                     else
                     {
-                        camera = m_default_car->GetChildByName("component_camera");
-                        camera->SetParent(m_default_physics_body_camera);
-                        camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
-                        camera->SetRotationLocal(Quaternion::Identity);
+                        camera_it = m_default_car->GetChildByName("component_camera");
+                        camera_it->SetParent(m_default_physics_body_camera);
+                        camera_it->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
+                        camera_it->SetRotationLocal(Quaternion::Identity);
 
                         // place the camera on the left of the driver's door
                         m_default_physics_body_camera->GetComponent<PhysicsBody>()->SetPosition(m_default_car->GetPosition() + m_default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
@@ -1194,7 +1194,7 @@ namespace spartan
                     }
 
                     // enable/disable car/camera control
-                    camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
+                    camera_it->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
                     m_default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
 
                     // play exit/enter sound
@@ -1206,10 +1206,10 @@ namespace spartan
                 {
                     if (inside_the_car)
                     {
-                        if (Entity* camera = m_default_car->GetChildByName("component_camera"))
+                        if (Entity* camera_it = m_default_car->GetChildByName("component_camera"))
                         {
                             current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
-                            camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                            camera_it->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         }
                     }
                 }
