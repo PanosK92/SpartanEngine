@@ -30,15 +30,18 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     Light light;
     light.Build();
 
-    gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
-    vertex.position_clip  = mul(float4(vertex.position, 1.0f), light.transform[index_array]);
-
+    gbuffer_vertex vertex         = transform_to_world_space(input, instance_id, buffer_pass.transform);
+    vertex.position_clip          = mul(float4(vertex.position, 1.0f), light.transform[index_array]);
+    vertex.position_clip_current  = 0.0f; // this and the previous position to be given a value other wise you get validation errors
+    vertex.position_clip_previous = 0.0f; // ideally, we just call transform_to_clip_space() like the gbuffer but it works for the light as well
+    
     // for point lights, output.position is in view space this because we do the paraboloid projection here
     if (light.is_point())
     {
         float3 ndc           = project_onto_paraboloid(vertex.position_clip.xyz, light.near, light.far);
         vertex.position_clip = float4(ndc, 1.0f);
     }
+    
 
     return vertex;
 }

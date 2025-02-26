@@ -260,32 +260,32 @@ struct vertex_processing
 
         if (surface.is_grass_blade())
         {
- // wind simulation
- {
-     const float wind_direction_scale      = 0.05f; // scale for large-scale wind direction noise
-     const float wind_direction_time_scale = 0.05f; // time-based animation speed for wind direction
-     const float wind_strength_scale       = 0.25f; // scale for wind strength noise
-     const float wind_strength_time_scale  = 2.0f;  // faster time-based animation for wind strength
-     const float wind_strength_amplitude   = 2.0f;  // amplifies wind strength noise output
-     const float min_wind_lean             = 0.25f; // minimum lean angle for grass blades
-     const float max_wind_lean             = 1.0f;  // maximum lean angle for grass blades
- 
-     float wind_direction       = get_noise_perlin(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
-     wind_direction             = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
-     float wind_strength_noise  = get_noise_perlin(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
-     float wind_lean_angle      = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
-     wind_lean_angle            = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
-     float3 wind_dir            = float3(cos(wind_direction), 0, sin(wind_direction));
-     float3 rotation_axis       = normalize(cross(float3(0, 1, 0), wind_dir));
-     float total_height         = 1.0f; // Define based on your grass blade model’s height in world space
-     float curve_angle          = (wind_lean_angle / total_height) * height_percent;
-     float3 base_position       = position_world - position_local; // Base is where position_local = (0, 0, 0)
-     float3 local_pos           = position_world - base_position;
-     local_pos                  = rotate_around_axis(rotation_axis, curve_angle, local_pos);
-     position_world             = base_position + local_pos;
-     vertex.normal        = rotate_around_axis(rotation_axis, curve_angle, vertex.normal);
-     vertex.tangent       = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
- }
+            // wind simulation
+            {
+                const float wind_direction_scale      = 0.05f; // scale for large-scale wind direction noise
+                const float wind_direction_time_scale = 0.05f; // time-based animation speed for wind direction
+                const float wind_strength_scale       = 0.25f; // scale for wind strength noise
+                const float wind_strength_time_scale  = 2.0f;  // faster time-based animation for wind strength
+                const float wind_strength_amplitude   = 2.0f;  // amplifies wind strength noise output
+                const float min_wind_lean             = 0.25f; // minimum lean angle for grass blades
+                const float max_wind_lean             = 1.0f;  // maximum lean angle for grass blades
+            
+                float wind_direction       = get_noise_perlin(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
+                wind_direction             = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
+                float wind_strength_noise  = get_noise_perlin(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
+                float wind_lean_angle      = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
+                wind_lean_angle            = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
+                float3 wind_dir            = float3(cos(wind_direction), 0, sin(wind_direction));
+                float3 rotation_axis       = normalize(cross(float3(0, 1, 0), wind_dir));
+                float total_height         = 1.0f; // define based on your grass blade model’s height in world space
+                float curve_angle          = (wind_lean_angle / total_height) * height_percent;
+                float3 base_position       = position_world - position_local; // base is where position_local = (0, 0, 0)
+                float3 local_pos           = position_world - base_position;
+                local_pos                  = rotate_around_axis(rotation_axis, curve_angle, local_pos);
+                position_world             = base_position + local_pos;
+                vertex.normal              = rotate_around_axis(rotation_axis, curve_angle, vertex.normal);
+                vertex.tangent             = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
+            }
 
             // color
             {
