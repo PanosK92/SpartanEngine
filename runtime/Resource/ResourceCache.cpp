@@ -154,7 +154,11 @@ namespace spartan
     {
         uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
         m_resources.clear();
-        SP_LOG_INFO("%d resources have been cleared", resource_count);
+
+        if (resource_count != 0)
+        { 
+            SP_LOG_INFO("%d resources have been cleared", resource_count);
+        }
     }
 
     uint32_t ResourceCache::GetResourceCount(const ResourceType type)

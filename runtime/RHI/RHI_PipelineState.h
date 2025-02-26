@@ -44,19 +44,16 @@ namespace spartan
         bool HasTessellation();
 
         //= STATE =========================================================================
-        std::array<RHI_Shader*, static_cast<uint32_t>(RHI_Shader_Type::Max)> shaders;
         RHI_RasterizerState* rasterizer_state      = nullptr;
         RHI_BlendState* blend_state                = nullptr;
         RHI_DepthStencilState* depth_stencil_state = nullptr;
         RHI_SwapChain* render_target_swapchain     = nullptr;
         RHI_PrimitiveTopology primitive_toplogy    = RHI_PrimitiveTopology::TriangleList;
-        bool instancing                            = false;
-
-        // rt
+        RHI_Texture* render_target_depth_texture   = nullptr;
+        RHI_Texture* vrs_input_texture             = nullptr;
+        uint32_t render_target_array_index         = 0;
+        std::array<RHI_Shader*, static_cast<uint32_t>(RHI_Shader_Type::Max)> shaders;
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
-        RHI_Texture* render_target_depth_texture = nullptr;
-        RHI_Texture* vrs_input_texture           = nullptr;
-        uint32_t render_target_array_index       = 0;
         //=================================================================================
 
         // dynamic properties, changing these will not create a new PSO

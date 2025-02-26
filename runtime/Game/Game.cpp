@@ -729,8 +729,8 @@ namespace spartan
                 light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
             }
 
-            Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
-            float scale      = 2.0f; // I actually walked in sponza, it's that big
+            const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
+            const float scale      = 2.0f; // I actually walked in sponza, it's that big
 
             // 3d model - Sponza
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
@@ -747,7 +747,7 @@ namespace spartan
                 }
 
                 // disable dirt decals since they look bad
-                // they are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them
+                // they are hovering over the surfaces, they have z-fighting, and they also cast shadows underneath them
                 entity->GetDescendantByName("decals_1st_floor")->SetActive(false);
                 entity->GetDescendantByName("decals_2nd_floor")->SetActive(false);
                 entity->GetDescendantByName("decals_3rd_floor")->SetActive(false);

@@ -204,15 +204,12 @@ namespace spartan
                 VK_VERTEX_INPUT_RATE_VERTEX
             });
 
-            if (m_state.instancing)
-            {
-                vertex_input_binding_descs.push_back
-                ({
-                    1,                            // binding
-                    sizeof(math::Matrix),         // stride
-                    VK_VERTEX_INPUT_RATE_INSTANCE // inputRate
-                });
-            }
+            vertex_input_binding_descs.push_back
+            ({
+                1,                            // binding
+                sizeof(math::Matrix),         // stride
+                VK_VERTEX_INPUT_RATE_INSTANCE // inputRate
+            });
 
             if (RHI_InputLayout* input_layout = shader_vertex->GetInputLayout().get())
             {
@@ -229,7 +226,7 @@ namespace spartan
                 }
             }
 
-            if (m_state.instancing)
+            // instance buffer (it's always included in order to avoid permuations for pipelines and shaders)
             {
                 // update the attribute descriptions to pass the entire matrix
                 // each row of the matrix is treated as a separate attribute
@@ -240,7 +237,7 @@ namespace spartan
                         static_cast<uint32_t>(vertex_attribute_descs.size()), // location, assuming the next available location
                         1,                                                    // binding
                         VK_FORMAT_R32G32B32A32_SFLOAT,                        // format, assuming 32-bit float components
-                        static_cast<uint32_t>(i * sizeof(math::Vector4))                             // offset, assuming math::Vector4 is the type of each row
+                        static_cast<uint32_t>(i * sizeof(math::Vector4))      // offset, assuming math::Vector4 is the type of each row
                     });
                 }
             }

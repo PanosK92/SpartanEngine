@@ -1196,9 +1196,11 @@ namespace spartan
     void RHI_CommandList::SetBufferVertex(const RHI_Buffer* buffer, const uint32_t binding /*= 0*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(buffer != nullptr);
-        SP_ASSERT(buffer->GetRhiResource() != nullptr);
 
+        if (!buffer)
+            return;
+
+        SP_ASSERT(buffer->GetRhiResource() != nullptr);
         if (m_buffer_id_vertex == buffer->GetObjectId())
             return;
 

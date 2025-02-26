@@ -281,7 +281,7 @@ namespace spartan
         void draw_renderable(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0)
         {
             uint32_t instance_start_index = 0;
-            bool draw_instanced           = pso.instancing && renderable->HasInstancing();
+            bool draw_instanced           = renderable->HasInstancing();
             Vector3 camera_position       = camera->GetEntity()->GetPosition();
 
             if (draw_instanced)
@@ -581,19 +581,13 @@ namespace spartan
                         bool needs_pixel_shader             = renderable->GetMaterial()->IsAlphaTested() || is_transparent_pass;
                         pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_alpha_color_p : nullptr;
 
-                        pso.instancing = renderable->HasInstancing();
-
                         cmd_list->SetPipelineState(pso);
                     }
 
                     // set vertex, index and instance buffers
                     {
                         cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                        if (pso.instancing)
-                        {
-                            cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
-                        }
-
+                        cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
                     }
 
@@ -655,6 +649,7 @@ namespace spartan
 
         auto pass = [cmd_list, shader_h, shader_d, shader_p](RHI_PipelineState& pso, bool is_transparent_pass, bool is_back_face_pass)
         {
+            bool instancing     = false;
             bool set_pipeline   = true;
             int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
             int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, false);
@@ -672,11 +667,12 @@ namespace spartan
                 // toggles
                 {
                     // instancing
-                    if (pso.instancing != renderable->HasInstancing())
+
+                    if (instancing != renderable->HasInstancing())
                     {
-                        pso.instancing   = renderable->HasInstancing();
-                        pso.shaders[RHI_Shader_Type::Pixel] = pso.instancing ? shader_p : nullptr; // vegetation is instanced and uses alpha testing (not ideal way to handle this)
-                        set_pipeline     = true;
+                        instancing                          = renderable->HasInstancing();
+                        pso.shaders[RHI_Shader_Type::Pixel] = instancing ? shader_p : nullptr; // vegetation is instanced and uses alpha testing (not ideal way to handle this)
+                        set_pipeline                        = true;
                     }
 
                     // tessellation & culling
@@ -709,11 +705,7 @@ namespace spartan
                 // set vertex, index and instance buffers
                 {
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                    if (pso.instancing)
-                    {
-                        cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
-                    }
-
+                    cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
                 }
 
@@ -851,16 +843,8 @@ namespace spartan
 
             // toggles
             {
-                bool toggled = false;
-
-                // instancing
-                if (pso.instancing != renderable->HasInstancing())
-                {
-                    pso.instancing = renderable->HasInstancing();
-                    toggled        = true;
-                }
-
                 // tessellation & culling
+                bool toggled = false;
                 if (Material* material = renderable->GetMaterial())
                 {
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
@@ -885,11 +869,7 @@ namespace spartan
             // set vertex, index and instance buffers
             {
                 cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                if (pso.instancing)
-                {
-                    cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
-                }
-
+                cmd_list->SetBufferVertex(renderable->GetInstanceBuffer(), 1);
                 cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
             }
 
