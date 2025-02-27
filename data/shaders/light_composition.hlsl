@@ -24,57 +24,54 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-struct translucency
+struct refraction
 {
-    struct refraction
+    static float compute_fade_factor(float2 uv)
     {
-        static float compute_fade_factor(float2 uv)
-        {
-            float edge_threshold = 0.05f; // how close to the edge to start fading
-            float2 edge_distance = min(uv, 1.0f - uv);
-            return saturate(min(edge_distance.x, edge_distance.y) / edge_threshold);
-        }
+        float edge_threshold = 0.05f; // how close to the edge to start fading
+        float2 edge_distance = min(uv, 1.0f - uv);
+        return saturate(min(edge_distance.x, edge_distance.y) / edge_threshold);
+    }
+    
+    static float3 refract_vector(float3 i, float3 n, float eta)
+    {
+        // snell's Law
+        float cosi  = dot(-i, n);
+        float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
+        return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
+    }
+    
+    static float3 get_color(Surface surface)
+    {
+        const float strength = 1.0f;
         
-        static float3 refract_vector(float3 i, float3 n, float eta)
-        {
-            // snell's Law
-            float cosi  = dot(-i, n);
-            float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
-            return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
-        }
+        // compute refraction vector
+        float3 normal_vector        = world_to_view(surface.normal, false);
+        float3 incident_vector      = world_to_view(surface.camera_to_pixel, false);
+        float3 refraction_direction = refract_vector(incident_vector, normal_vector, 1.0f / surface.ior);
         
-        static float3 get_color(Surface surface)
-        {
-            const float scale = 0.05f;
-            
-            // compute refraction vector
-            float3 normal_vector        = world_to_view(surface.normal, false);
-            float3 incident_vector      = world_to_view(surface.camera_to_pixel, false);
-            float3 refraction_direction = refract_vector(incident_vector, normal_vector, 1.0f / surface.ior);
-            
-            // compute refracted uv
-            float2 refraction_uv_offset = refraction_direction.xy * (scale / surface.camera_to_pixel_length);
-            float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
+        // compute refracted uv
+        float2 refraction_uv_offset = refraction_direction.xy * (strength / surface.camera_to_pixel_length);
+        float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
 
-            // don't refract what's behind the surface
-            float depth_surface    = get_linear_depth(surface.depth); // depth transparent
-            float depth_refraction = get_linear_depth(get_depth_opaque(refracted_uv)); // depth opaque
-            float is_behind        = depth_surface < depth_refraction;
-            refracted_uv           = lerp(refracted_uv, refracted_uv, is_behind);
+        // don't refract what's behind the surface
+        float depth_surface    = get_linear_depth(surface.depth); // depth transparent
+        float depth_refraction = get_linear_depth(get_depth_opaque(refracted_uv)); // depth opaque
+        float is_behind        = depth_surface < depth_refraction;
+        refracted_uv           = lerp(refracted_uv, refracted_uv, is_behind);
+
+        // get base color
+        float frame_mip_count   = pass_get_f3_value().x;
+        float mip_level         = lerp(0, frame_mip_count, surface.roughness_alpha);
+        float3 color            = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, mip_level).rgb;
+        float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, mip_level).rgb;
     
-            // get base color
-            float frame_mip_count   = pass_get_f3_value().x;
-            float mip_level         = lerp(0, frame_mip_count, surface.roughness_alpha);
-            float3 color            = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, mip_level).rgb;
-            float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, mip_level).rgb;
-        
-            // screen fade
-            float fade_factor = compute_fade_factor(refracted_uv);
-            color             = lerp(color, color_refraction, fade_factor);
-    
-            return color;
-        }
-    };
+        // screen fade
+        float fade_factor = compute_fade_factor(refracted_uv);
+        color             = lerp(color, color_refraction, fade_factor);
+
+        return color;
+    }
 };
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -114,7 +111,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // transparent
         if (surface.is_transparent())
         {
-            light_refraction = translucency::refraction::get_color(surface);
+            light_refraction = refraction::get_color(surface);
+
+            // this should happen only for water - fade refraction into material color based on depth
+            if (surface.vertex_animate_water())
+            {
+                float depth_factor = saturate(distance_from_camera * 0.005f);
+                light_refraction   = lerp(light_refraction, surface.albedo, depth_factor);
+            }
         }
     }
 

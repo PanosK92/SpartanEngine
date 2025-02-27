@@ -592,14 +592,15 @@ namespace spartan
                         // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 90.0f / 255.0f, 110.0f / 255.0f, 230.0f / 255.0f));
+                        material->SetColor(Color(0.0f, 44.0f / 255.0f, 54.0f / 255.0f, 230.0f / 255.0f));
                         material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
+                        material->SetProperty(MaterialProperty::Roughness,           0.2f);
                         material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
-                        material->SetProperty(MaterialProperty::Normal,              0.1f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      800.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      800.0f);
+                        material->SetProperty(MaterialProperty::Normal,              0.3f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      400.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      400.0f);
                         material->SetProperty(MaterialProperty::AnimationWaterFlow,  1.0f);
                         material->SetProperty(MaterialProperty::CullMode,            static_cast<float>(RHI_CullMode::None));
 
@@ -609,8 +610,6 @@ namespace spartan
 
                         renderable->SetMaterial(material);
                     }
-
-                    water->SetActive(false);
                 }
 
                 // tree (it has a gazillion so bake everything together using MeshFlags::ImportCombineMeshes)
@@ -621,7 +620,7 @@ namespace spartan
                     entity->SetObjectName("tree");
                     entity->SetScale(1.0f);
                 
-                    const float max_render_distance = 400.0;
+                    const float max_render_distance = 600.0;
                 
                     // generate instances
                     {

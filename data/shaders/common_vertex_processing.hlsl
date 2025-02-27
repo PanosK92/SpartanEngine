@@ -327,7 +327,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // start building the vertex
     gbuffer_vertex vertex;
     vertex.uv    = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
-    vertex.color = 1.0f;
+    vertex.color = float3(1.0f, 1.0f, 1.0f);
 
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
     float3 position_transform = extract_position(transform); // bottom-left of the grass blade

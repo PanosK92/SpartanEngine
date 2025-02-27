@@ -140,7 +140,10 @@ gbuffer main_ps(gbuffer_vertex vertex)
             albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
             albedo            *= albedo_sample;
         }
-        albedo.rgb *= vertex.color;
+
+        // for some reason, if I just multiply I get random colors for non-grass blade pixels
+        albedo.rgb *= lerp(1.0, vertex.color, surface.is_grass_blade());
+        
         // alpha testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
         albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());
     }
