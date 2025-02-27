@@ -67,7 +67,7 @@ namespace spartan
                 case MaterialProperty::TextureOffsetX:       return "texture_offset_x";
                 case MaterialProperty::TextureOffsetY:       return "texture_offset_y";
                 case MaterialProperty::TextureSlopeBased:    return "texture_slope_based";
-                case MaterialProperty::AnimationFoliageWind: return "vertex_animate_wind";
+                case MaterialProperty::AnimationWindTree: return "vertex_animate_wind";
                 case MaterialProperty::AnimationWaterFlow:   return "vertex_animate_water";
                 case MaterialProperty::CullMode:             return "cull_mode";
                 case MaterialProperty::Max:                  return "max";

@@ -635,8 +635,11 @@ namespace spartan
                         
                         if (Entity* leaf = entity->GetDescendantByName("Plane.550_leaf_0"))
                         {
-                            leaf->GetComponent<Renderable>()->SetInstances(instances);
-                            leaf->GetComponent<Renderable>()->SetMaxRenderDistance(max_render_distance);
+                            Renderable* renderable = leaf->GetComponent<Renderable>().get();
+
+                            renderable->SetInstances(instances);
+                            renderable->SetMaxRenderDistance(max_render_distance);
+                            renderable->GetMaterial()->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
                         }
                         
                         if (Entity* leaf = entity->GetDescendantByName("tree_bark for small bottom branch (circle)_0"))
@@ -759,28 +762,28 @@ namespace spartan
                     // these are the ropes and the metal rings that hold them
                     if (Material* material = entity->GetDescendantByName("curtain_03_1")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
+                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
                     }
 
                     // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
+                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
+                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
+                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
                     }
                 }
             }
@@ -796,7 +799,7 @@ namespace spartan
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                    material->SetProperty(MaterialProperty::AnimationFoliageWind, 1.0f);
+                    material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
                 }
             }
         }

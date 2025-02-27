@@ -97,10 +97,10 @@ struct vertex_processing
     {
         static float3 apply_wind(uint instance_id, float3 position_vertex, float height_percent, float3 wind, float time)
         {
-            const float sway_extent       = 0.2f;   // maximum sway amplitude
-            const float sway_speed        = 1.0f;   // sway frequency
-            const float noise_scale       = 0.1f;   // scale of low-frequency noise
-            const float flutter_intensity = 0.025f; // intensity of fluttering
+            const float sway_extent       = 0.2f; // maximum sway amplitude
+            const float sway_speed        = 2.0f; // sway frequency
+            const float noise_scale       = 0.1f; // scale of low-frequency noise
+            const float flutter_intensity = 0.1f; // intensity of fluttering
         
             // normalize wind direction and calculate magnitude
             float3 wind_direction = normalize(wind);

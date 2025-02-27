@@ -69,7 +69,7 @@ namespace spartan
         TextureOffsetX,          // offset of the texture along the X-axis
         TextureOffsetY,          // offset of the texture along the Y-axis
         TextureSlopeBased,       // applies texture mapping based on the mesh slope
-        AnimationFoliageWind,    // applies vertex-based animation to simulate wind
+        AnimationWindTree,       // applies vertex-based animation to simulate wind
         GrassBlade,              // applies grass blade specific enchantments
         AnimationWaterFlow,      // applies vertex-based animation to simulate water flow
         CullMode,                // sets the culling mode based on RHI_CullMode enum values
