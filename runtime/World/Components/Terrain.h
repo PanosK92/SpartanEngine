@@ -80,7 +80,7 @@ namespace spartan
         void UpdateMesh(const uint32_t tile_index);
         void Clear();
 
-        float m_min_y                     = -30.0f; // sea level is 0.0
+        float m_min_y                     = -35.0f; // sea level is 0.0
         float m_max_y                     = 120.0f;
         float m_area_km2                  = 0.0f;
         std::atomic<bool> m_is_generating = false;

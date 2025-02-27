@@ -507,7 +507,7 @@ namespace spartan
             }
             else if (type == MeshType::Grid)
             {
-                uint32_t resolution = 40;
+                uint32_t resolution = 512;
                 geometry_generation::generate_grid(&vertices, &indices, resolution);
                 mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
             }

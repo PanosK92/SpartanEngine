@@ -29,7 +29,7 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
-static float4 sample_texture(float3 position, float3 normal, float2 uv, uint texture_index, bool is_water, bool is_terrain)
+static float4 sample_texture(float3 position, float3 normal, float2 uv, uint texture_index, Surface surface)
 {
     // parameters
     const float sand_offset  = 0.75f;
@@ -43,16 +43,16 @@ static float4 sample_texture(float3 position, float3 normal, float2 uv, uint tex
     float4 base_color       = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
 
     float4 color = 0.0f;
-    if (is_water)
+    if (surface.vertex_animate_water())
     {
-        // sample with different UVs
+        // interleave normals
         float2 uv_interleaved_1 = uv + (float)buffer_frame.time * speed_1 * direction_1;
         float2 uv_interleaved_2 = uv + (float)buffer_frame.time * speed_2 * direction_2;
         float3 sample_1         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_1).rgb;
         float3 sample_2         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_2).rgb;
         color                   = float4(normalize(sample_1 + sample_2), 0.0f);
     }
-    else if (is_terrain)
+    else if (surface.texture_slope_based())
     {
         float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
         float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
@@ -136,7 +136,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float4 albedo_sample = 1.0f;
         if (surface.has_texture_albedo())
         {
-            albedo_sample      = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface.is_water(), surface.texture_slope_based());
+            albedo_sample      = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface);
             albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
             albedo            *= albedo_sample;
         }
@@ -157,7 +157,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_normal())
     {
         // get tangent space normal and apply the user defined intensity, then transform it to world space
-        float3 normal_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_normal, surface.is_water(), surface.texture_slope_based()).xyz;
+        float3 normal_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_normal, surface).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a BC5 two channel normal map
@@ -171,7 +171,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     // occlusion, roughness, metalness, height sample
     {
-        float4 packed_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface.is_water(), surface.texture_slope_based());
+        float4 packed_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface);
         occlusion             = packed_sample.r;
         roughness            *= packed_sample.g;
         metalness            *= packed_sample.b;

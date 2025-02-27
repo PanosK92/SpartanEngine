@@ -592,15 +592,16 @@ namespace spartan
                         // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 60.0f / 255.0f, 120.0f / 255.0f, 250.0f / 255.0f));
-                        material->SetTexture(MaterialTextureType::Normal,           "project\\terrain\\water_normal.jpeg");
-                        material->SetProperty(MaterialProperty::Ior,                Material::EnumToIor(MaterialIor::Water));
-                        material->SetProperty(MaterialProperty::Roughness,          0.0f);
-                        material->SetProperty(MaterialProperty::Normal,             0.1f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,     800.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,     800.0f);
-                        material->SetProperty(MaterialProperty::AnimationWaterFlow, 1.0f);
-                        material->SetProperty(MaterialProperty::CullMode,           static_cast<float>(RHI_CullMode::None));
+                        material->SetColor(Color(0.0f, 90.0f / 255.0f, 110.0f / 255.0f, 230.0f / 255.0f));
+                        material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
+                        material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
+                        material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
+                        material->SetProperty(MaterialProperty::Normal,              0.1f);
+                        material->SetProperty(MaterialProperty::TextureTilingX,      800.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY,      800.0f);
+                        material->SetProperty(MaterialProperty::AnimationWaterFlow,  1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,            static_cast<float>(RHI_CullMode::None));
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -609,7 +610,7 @@ namespace spartan
                         renderable->SetMaterial(material);
                     }
 
-                    water->SetActive(false); // disable for now as it looks bad
+                    water->SetActive(false);
                 }
 
                 // tree (it has a gazillion so bake everything together using MeshFlags::ImportCombineMeshes)
