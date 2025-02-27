@@ -117,7 +117,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             if (surface.vertex_animate_water())
             {
                 float depth_factor = saturate(distance_from_camera * 0.005f);
-                light_refraction   = lerp(light_refraction, surface.albedo, depth_factor);
+                light_refraction   = lerp(light_refraction, surface.albedo * light_diffuse, depth_factor);
             }
         }
     }

@@ -476,7 +476,6 @@ namespace spartan
             create_car(Vector3(-449.0260f, 6.5f, 359.2632f));
 
             // mood adjustment
-            m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
             m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(20.0f, 5.0f, 0.0f));
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
             Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs the same
@@ -592,7 +591,7 @@ namespace spartan
                         // set material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 44.0f / 255.0f, 54.0f / 255.0f, 230.0f / 255.0f));
+                        material->SetColor(Color(0.0f, 148.0f / 255.0f, 103.0f / 255.0f, 230.0f / 255.0f));
                         material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
                         material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
                         material->SetProperty(MaterialProperty::Roughness,           0.2f);
