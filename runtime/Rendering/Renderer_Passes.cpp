@@ -427,7 +427,7 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.
             }
 
-            // keep opaque output for refraction
+            // create sampling source for refraction
             cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
 
             // transparents
@@ -441,7 +441,7 @@ namespace spartan
 
             Pass_Light_ImageBased(cmd_list_graphics); // apply skysphere, ssr and global illumination
 
-            // keep previous lit output for ssr and brixelizer gi
+            // create sampling source for ssr and brixelizer gi
             cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_ssr_gi), false);
 
             // render -> output resolution
