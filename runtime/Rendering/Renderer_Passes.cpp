@@ -427,8 +427,8 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.
             }
 
-            // previous lit output for refraction, ssr and brixelizer gi
-            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma), false);  
+            // keep opaque output for refraction
+            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
 
             // transparents
             if (mesh_index_transparent != -1)
@@ -440,6 +440,9 @@ namespace spartan
             }
 
             Pass_Light_ImageBased(cmd_list_graphics); // apply skysphere, ssr and global illumination
+
+            // keep previous lit output for ssr and brixelizer gi
+            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_ssr_gi), false);
 
             // render -> output resolution
             Pass_Upscale(cmd_list_graphics);
@@ -930,7 +933,7 @@ namespace spartan
             RHI_FidelityFX::SSSR_Dispatch(
                 cmd_list,
                 GetOption<float>(Renderer_Option::ResolutionScale),
-                GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma),
+                GetRenderTarget(Renderer_RenderTarget::source_ssr_gi),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -1195,7 +1198,7 @@ namespace spartan
                 RHI_FidelityFX::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
-                    GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma),
+                    GetRenderTarget(Renderer_RenderTarget::source_ssr_gi),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -1222,10 +1225,9 @@ namespace spartan
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_composition_c);
-        RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma);
-        RHI_Texture* tex_out        = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_skysphere  = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Shader* shader_c       = GetShader(Renderer_Shader::light_composition_c);
+        RHI_Texture* tex_out       = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
         if (!shader_c->IsCompiled())
             return;
 
@@ -1251,7 +1253,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             tex_refraction);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere);
 

@@ -207,8 +207,13 @@ namespace spartan
         if (create_render)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_render)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "frame_render");
-            render_target(Renderer_RenderTarget::frame_output_pre_gamma) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "frame_output_pre_gamma");
+            render_target(Renderer_RenderTarget::frame_render)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "frame_render");
+
+            // sources
+            {
+                render_target(Renderer_RenderTarget::source_ssr_gi)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "source_ssr_gi");
+                render_target(Renderer_RenderTarget::source_refraction) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "source_refraction");
+            }
 
             // g-buffer
             {
