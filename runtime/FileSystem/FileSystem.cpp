@@ -468,23 +468,23 @@ namespace spartan
             if (!filesystem::is_directory(it->status()))
                 continue;
 
-            string path;
+            string path_it;
 
             // A system_error is possible if the characters are
             // something that can't be converted, like Russian.
             try
             {
-                path = it->path().string();
+                path_it = it->path().string();
             }
             catch (system_error& e)
             {
                 SP_LOG_WARNING("Failed to read a directory path. %s", e.what());
             }
 
-            if (!path.empty())
+            if (!path_it.empty())
             {
                 // finally, save
-                directories.emplace_back(path);
+                directories.emplace_back(path_it);
             }
         }
 
@@ -803,7 +803,7 @@ namespace spartan
     {
         auto execute_command = [command, callback]()
         {
-            int result = system(command.c_str());
+            (void) system(command.c_str());
             
             if (callback)
             {
