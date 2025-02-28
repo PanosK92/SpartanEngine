@@ -28,10 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
-    // compute surface thickness
-    const float depth_face_front  = linearize_depth(surface.depth);
-    const float depth_face_back   = linearize_depth(tex_depth_backface[surface.pos].r);
-    const float surface_thickness = max(1.0f - saturate(depth_face_back - depth_face_front), 0.01f);
+    const float surface_thickness = 0.01f;
 
     // compute backface lighting
     float n_dot_l_backface = saturate(dot(surface.normal, light.to_pixel));

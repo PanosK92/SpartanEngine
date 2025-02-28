@@ -129,7 +129,7 @@ namespace spartan
                 arguments.emplace_back("-fvk-use-dx-layout");     // use DirectX memory layout for Vulkan resources
                 arguments.emplace_back("-fvk-use-dx-position-w"); // reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
-                // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
+                // negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
                 if (m_shader_type == RHI_Shader_Type::Vertex || m_shader_type == RHI_Shader_Type::Domain)
                 {
                     arguments.emplace_back("-fvk-invert-y");

@@ -113,32 +113,31 @@ namespace spartan
         gbuffer_material       = 2,
         gbuffer_velocity       = 3,
         gbuffer_depth          = 4,
-        gbuffer_depth_backface = 5,
-        gbuffer_depth_opaque   = 6,
+        gbuffer_depth_opaque   = 5,
 
         // lighting
-        light_diffuse     = 7,
-        light_diffuse_gi  = 8,
-        light_specular    = 9,
-        light_specular_gi = 10,
-        light_shadow      = 11,
-        light_volumetric  = 12,
+        light_diffuse     = 6,
+        light_diffuse_gi  = 7,
+        light_specular    = 8,
+        light_specular_gi = 9,
+        light_shadow      = 10,
+        light_volumetric  = 11,
     
         // light depth/color maps
-        light_depth = 13,
-        light_color = 14,
+        light_depth = 12,
+        light_color = 13,
     
         // misc
-        lutIbl      = 15,
-        environment = 16,
-        ssao        = 17,
-        tex         = 18,
-        tex2        = 19,
+        lutIbl      = 14,
+        environment = 15,
+        ssao        = 16,
+        tex         = 17,
+        tex2        = 18,
 
         // bindless
-        material_textures   = 20,
-        material_parameters = 21,
-        light_parameters    = 22
+        material_textures   = 19,
+        material_parameters = 20,
+        light_parameters    = 21
     };
 
     enum class Renderer_BindingsUav
@@ -197,7 +196,6 @@ namespace spartan
         ffx_cas_c,
         ffx_spd_average_c,
         ffx_spd_max_c,
-        additive_transparent_c,
         max
     };
     
@@ -209,7 +207,6 @@ namespace spartan
         gbuffer_velocity,
         gbuffer_depth,
         gbuffer_depth_opaque,
-        gbuffer_depth_backface,
         gbuffer_depth_output,
         brdf_specular_lut,
         light_diffuse,

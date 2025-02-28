@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ======
 #include "Widget.h"
 #include <vector>
-#include "../Widgets/TextEditor.h"
-//================================
+//=================
 
 namespace spartan
 {
@@ -46,10 +45,11 @@ private:
     void ShowControls();
     void GetShaderInstances();
 
-    spartan::RHI_Shader* m_shader = nullptr;
-    std::string m_shader_name     = "N/A";
-    int32_t m_index_displayed     = -1;
-    bool m_first_run              = true;
-    std::unique_ptr<TextEditor> m_text_editor;
+    spartan::RHI_Shader* m_shader   = nullptr;
+    std::string m_shader_name       = "N/A";
+    int32_t m_index_displayed       = -1;
+    bool m_first_run                = true;
+    static const size_t kBufferSize = 1024 * 64; // 64 KB
+    char m_buffer[kBufferSize]      = {0};       // Fixed-size buffer
     std::vector<spartan::RHI_Shader*> m_shaders;
 };

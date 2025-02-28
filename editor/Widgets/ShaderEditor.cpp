@@ -39,12 +39,12 @@ namespace
 
 ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
 {
-    m_title         = "Shader Editor";
-    m_flags        |= ImGuiWindowFlags_NoScrollbar;
-    m_visible       = false;
-    m_size_initial  = ImVec2(1366, 1000);
-    m_text_editor   = make_unique<TextEditor>();
-    m_alpha         = 1.0f;
+    m_title            = "Shader Editor";
+    m_flags           |= ImGuiWindowFlags_NoScrollbar;
+    m_visible          = false;
+    m_size_initial     = ImVec2(1366, 1000);
+    m_alpha            = 1.0f;
+    m_index_displayed  = -1;
 }
 
 void ShaderEditor::OnTickVisible()
@@ -62,38 +62,54 @@ void ShaderEditor::ShowShaderSource()
 
     if (ImGui::BeginChild("##shader_editor_source", size, true, ImGuiWindowFlags_NoScrollbar))
     {
+        // record starting cursor position
+        float start_y = ImGui::GetCursorPosY();
+
         // title
         ImGui::Text(m_shader ? m_shader_name.c_str() : "Select a shader");
 
         // content
         if (m_shader)
         {
-            // shader source
+            // shader source tabs
             if (ImGui::BeginTabBar("##shader_editor_tab_bar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))
             {
                 const std::vector<std::string>& names   = m_shader->GetNames();
                 const std::vector<std::string>& sources = m_shader->GetSources();
-            
+
                 for (uint32_t i = 0; i < static_cast<uint32_t>(names.size()); i++)
                 {
                     if (ImGui::BeginTabItem(names[i].c_str()))
                     {
-                        // set text
+                        // update buffer if switching tabs
                         if (m_index_displayed != i)
                         {
-                            m_text_editor->SetText(sources[i]);
+                            memset(m_buffer, 0, kBufferSize);
+                            const std::string& source = sources[i];
+                            strncpy_s(m_buffer, kBufferSize, source.c_str(), source.size() < kBufferSize ? source.size() : kBufferSize - 1);
                             m_index_displayed = i;
                         }
-            
-                        // render
-                        m_text_editor->Render("##shader_text_editor", ImVec2(0.0f, 0.0f), true);
-            
-                        // update shader
-                        if (m_text_editor->IsTextChanged())
+
+                        // calculate available space
+                        float used_y = ImGui::GetCursorPosY() - start_y; // Height used by title and tab bar
+                        float available_height = size.y - used_y - ImGui::GetStyle().ItemSpacing.y; // Remaining height minus spacing
+                        float available_width = ImGui::GetContentRegionAvail().x; // Full available width
+
+                        // render multi-line text input with explicit size
+                        ImGui::InputTextMultiline(
+                            "##shader_source",
+                            m_buffer,
+                            kBufferSize,
+                            ImVec2(available_width, available_height),
+                            ImGuiInputTextFlags_AllowTabInput
+                        );
+
+                        // update shader source if text was edited
+                        if (ImGui::IsItemEdited())
                         {
-                            m_shader->SetSource(i, m_text_editor->GetText());
+                            m_shader->SetSource(i, string(m_buffer));
                         }
-            
+
                         ImGui::EndTabItem();
                     }
                 }
@@ -123,19 +139,19 @@ void ShaderEditor::ShowShaderList()
             // append stage
             if (shader->GetShaderStage() == RHI_Shader_Type::Vertex)
             {
-                name += "_Vertex";
+                name += "_vertex";
             }
             else if (shader->GetShaderStage() == RHI_Shader_Type::Pixel)
             {
-                name += "_Pixel";
+                name += "_pixel";
             }
             else if (shader->GetShaderStage() == RHI_Shader_Type::Compute)
             {
-                name += "_Compute";
+                name += "_compute";
             }
             else
             {
-                name += "_Unknown";
+                name += "_unknown";
             }
     
             // append defines

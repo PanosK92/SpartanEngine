@@ -404,11 +404,12 @@ namespace spartan
         {
             Pass_Visibility(cmd_list_graphics);
 
-            // render at render resolution (only opaques)
+            Pass_Depth_Prepass(cmd_list_graphics); // produces opaque and opaque & transparent depth buffers
+            Pass_Ssr(cmd_list_graphics);           // operates on the opaque & transparent depth buffer
+
+            // opaques
             {
                 bool is_transparent = false;
-
-                Pass_Depth_Prepass(cmd_list_graphics);
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
 
                 // shadow maps
@@ -420,35 +421,35 @@ namespace spartan
 
                 Pass_Skysphere(cmd_list_graphics);
                 Pass_Sss(cmd_list_graphics);
-                Pass_Ssr(cmd_list_graphics);
                 Pass_Ssao(cmd_list_graphics);
                 Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
-                Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.)
-
-                Pass_Light_ImageBased(cmd_list_graphics, is_transparent);  // apply IBL (skysphere, ssr, global illumination etc.)
+                Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.
             }
 
-            // upscale to output resolution
+            // previous lit output for ssr and brixelizer gi
+            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma), false);  
+
+            // transparents
+            if (mesh_index_transparent != -1)
+            {
+                bool is_transparent = true;
+                Pass_GBuffer(cmd_list_graphics, is_transparent);
+                Pass_Light(cmd_list_graphics, is_transparent);
+                Pass_Light_Composition(cmd_list_graphics, is_transparent);
+            }
+
+            Pass_Light_ImageBased(cmd_list_graphics); // apply skysphere, ssr and global illumination
+
+            // render -> output resolution
             Pass_Upscale(cmd_list_graphics);
 
-            // render at output resolution
+            // post-process
             {
-                // transparent
-                if (mesh_index_transparent != -1)
-                {
-                    // note: transparents sampler the render resolution texture to emulate refraction as on
-                    // so when TAA/FSR is active, pre-upscale, everything jitters, therefore we need to render here
-
-                    bool is_transparent = true;
-                    Pass_GBuffer(cmd_list_graphics, is_transparent);
-                    Pass_Light(cmd_list_graphics, is_transparent);
-                    Pass_Light_Composition(cmd_list_graphics, is_transparent);
-                    Pass_Light_ImageBased(cmd_list_graphics, is_transparent);
-                    Pass_AdditiveTransaparent(cmd_list_graphics, rt_render, rt_output);
-                }
-
+                // game
                 Pass_PostProcess(cmd_list_graphics);
+
+                // editor
                 Pass_Grid(cmd_list_graphics, rt_output);
                 Pass_Lines(cmd_list_graphics, rt_output);
                 Pass_Outline(cmd_list_graphics, rt_output);
@@ -462,7 +463,7 @@ namespace spartan
 
         Pass_Text(cmd_list_graphics, rt_output);
 
-        // perform early transitions (for next frame)
+        // perform early transitions (so they layouts are set with and the next frame doesn't have to wait)
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
@@ -470,7 +471,6 @@ namespace spartan
         GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque)->SetLayout(RHI_Image_Layout::Transfer_Destination, cmd_list_graphics);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface)->SetLayout(RHI_Image_Layout::Transfer_Destination, cmd_list_graphics);
     }
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
@@ -634,19 +634,20 @@ namespace spartan
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
     {
         // acquire resources
-        RHI_Shader* shader_v            = GetShader(Renderer_Shader::depth_prepass_v);
-        RHI_Shader* shader_h            = GetShader(Renderer_Shader::tessellation_h);
-        RHI_Shader* shader_d            = GetShader(Renderer_Shader::tessellation_d);
-        RHI_Shader* shader_p            = GetShader(Renderer_Shader::depth_prepass_alpha_test_p);
-        RHI_Texture* tex_depth          = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        RHI_Texture* tex_depth_opaque   = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque);
-        RHI_Texture* tex_depth_backface = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_backface);
-        RHI_Texture* tex_depth_output   = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
+        RHI_Shader* shader_v          = GetShader(Renderer_Shader::depth_prepass_v);
+        RHI_Shader* shader_h          = GetShader(Renderer_Shader::tessellation_h);
+        RHI_Shader* shader_d          = GetShader(Renderer_Shader::tessellation_d);
+        RHI_Shader* shader_p          = GetShader(Renderer_Shader::depth_prepass_alpha_test_p);
+        RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        RHI_Texture* tex_depth_opaque = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque);
+        RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
         if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         auto pass = [cmd_list, shader_h, shader_d, shader_p](RHI_PipelineState& pso, bool is_transparent_pass, bool is_back_face_pass)
         {
+            pso.clear_depth  = is_transparent_pass ? rhi_depth_load : 0.0f;
+
             bool instancing     = false;
             bool set_pipeline   = true;
             int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
@@ -753,7 +754,6 @@ namespace spartan
         pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
         pso.render_target_depth_texture      = tex_depth;
         pso.resolution_scale                 = true;
-        pso.clear_depth                      = 0.0f;
 
         lock_guard lock(m_mutex_renderables);
 
@@ -762,11 +762,6 @@ namespace spartan
         pass(pso, false, false);
         visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
         cmd_list->Blit(tex_depth, tex_depth_opaque, false);
-
-        // back face (only for materials with subsurface scattering)
-        pso.render_target_depth_texture = tex_depth_backface;
-        cmd_list->SetIgnoreClearValues(false);
-        pass(pso, false, true);
 
         // blit to output resolution
         float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
@@ -818,10 +813,10 @@ namespace spartan
         pso.render_target_color_textures[2]  = tex_material;
         pso.render_target_color_textures[3]  = tex_velocity;
         pso.render_target_depth_texture      = tex_depth;
-        pso.clear_color[0]                   = Color::standard_transparent;
-        pso.clear_color[1]                   = Color::standard_transparent;
-        pso.clear_color[2]                   = Color::standard_transparent;
-        pso.clear_color[3]                   = Color::standard_transparent;
+        pso.clear_color[0]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[1]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
+        pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         cmd_list->SetIgnoreClearValues(false);
         cmd_list->SetPipelineState(pso);
 
@@ -1265,7 +1260,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, const bool is_transparent_pass)
+    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list)
     {
         // acquire resources
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
@@ -1273,7 +1268,7 @@ namespace spartan
         if (!shader->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
+        cmd_list->BeginTimeblock("light_image_based");
 
         // set pipeline state
         static RHI_PipelineState pso;
@@ -1294,9 +1289,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsUav::tex,               tex_out);
 
         // set pass constants
-        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-        uint32_t mip_count_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount();
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_count_skysphere));
+        m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // render
@@ -1428,9 +1421,6 @@ namespace spartan
             Pass_Bloom(cmd_list, get_output_in, get_output_out);
         }
 
-        // previous output for ssr and brixelizer gi
-        cmd_list->Blit(get_output_out, GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma), false);
-        
         // tone-mapping & gamma correction
         {
             swap_output = !swap_output;
@@ -1868,31 +1858,6 @@ namespace spartan
             
             // render
             cmd_list->Dispatch(tex_out);
-        }
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_AdditiveTransaparent(RHI_CommandList* cmd_list, RHI_Texture* tex_source, RHI_Texture* tex_destination)
-    {
-        // acquire resources
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::additive_transparent_c);
-        if (!shader_c->IsCompiled())
-            return;
-        
-        cmd_list->BeginTimeblock("additive_transparent");
-        {
-            // set pipeline state
-            static RHI_PipelineState pso;
-            pso.name             = "additive_transparent";
-            pso.shaders[Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
-           
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_destination);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_source);
-            
-            // render
-            cmd_list->Dispatch(tex_destination);
         }
         cmd_list->EndTimeblock();
     }

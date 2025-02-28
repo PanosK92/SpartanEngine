@@ -212,13 +212,12 @@ namespace spartan
 
             // g-buffer
             {
-                render_target(Renderer_RenderTarget::gbuffer_color)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
-                render_target(Renderer_RenderTarget::gbuffer_normal)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
-                render_target(Renderer_RenderTarget::gbuffer_material)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
-                render_target(Renderer_RenderTarget::gbuffer_velocity)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
-                render_target(Renderer_RenderTarget::gbuffer_depth)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
-                render_target(Renderer_RenderTarget::gbuffer_depth_opaque)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
-                render_target(Renderer_RenderTarget::gbuffer_depth_backface) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_backface");
+                render_target(Renderer_RenderTarget::gbuffer_color)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_color");
+                render_target(Renderer_RenderTarget::gbuffer_normal)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags_rt_clearable, "gbuffer_normal");
+                render_target(Renderer_RenderTarget::gbuffer_material)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags_rt_clearable, "gbuffer_material");
+                render_target(Renderer_RenderTarget::gbuffer_velocity)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16_Float,       flags_rt_clearable, "gbuffer_velocity");
+                render_target(Renderer_RenderTarget::gbuffer_depth)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth");
+                render_target(Renderer_RenderTarget::gbuffer_depth_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags_rt_depth,     "gbuffer_depth_opaque");
             }
 
             // light
@@ -470,10 +469,6 @@ namespace spartan
         // variable rate shading
         shader(Renderer_Shader::variable_rate_shading_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::variable_rate_shading_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "variable_rate_shading.hlsl", async);
-
-        // additive transparent
-        shader(Renderer_Shader::additive_transparent_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::additive_transparent_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "additive_transparent.hlsl", async);
     }
 
     void Renderer::CreateFonts()

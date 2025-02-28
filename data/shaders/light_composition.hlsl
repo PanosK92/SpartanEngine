@@ -132,6 +132,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // volumetric
         light_atmospheric += tex_light_volumetric[thread_id.xy].rgb; // already uses sky color
     }
-    
-    tex_uav[thread_id.xy] = float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_refraction + light_atmospheric, alpha);
+
+    float4 final_color    = float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_refraction + light_atmospheric, alpha);
+    tex_uav[thread_id.xy] = pass_is_opaque() ? final_color : (tex_uav[thread_id.xy] + final_color);
 }

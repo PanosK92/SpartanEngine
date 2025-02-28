@@ -78,10 +78,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
 
-    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // if this is an opaque pass, ignore all transparent pixels
-    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // if this is an transparent pass, ignore all opaque pixels
-    bool early_exit_3 = surface.is_sky();                             // we don't want to do ibl on the sky itself
-    if (early_exit_1 || early_exit_2 || early_exit_3)
+    if (surface.is_sky())  // we don't want to do ibl on the sky itself
         return;
 
     // diffuse and specular energy
@@ -98,9 +95,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment, mip_count_environment);
-    float4 specular_ssr                = tex2[thread_id.xy].rgba * (float)surface.is_opaque(); // only compute for opaques
-    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * 3.0f;       // only computed for opaques but also used for transparents
-    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * 3.0f;       // only computed for opaques but also used for transparents
+    float4 specular_ssr                = tex2[thread_id.xy].rgba;
+    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * 3.0f;
+    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * 3.0f;
     float shadow_mask                  = tex[thread_id.xy].r;
 
     // combine the diffuse light
@@ -111,11 +108,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere * shadow_mask);
     
     // combine the diffuse and specular light
-    float3 ibl  = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + (specular_ibl * specular_energy);
-    ibl        *= surface.occlusion;
+    float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + (specular_ibl * specular_energy);
 
-    // modulate ibl by transparency 
-    ibl *= surface.alpha;
+    // tone down for occluded and transparent surfaces
+    ibl        *= surface.occlusion;
+    ibl        *= surface.alpha;
 
     tex_uav[thread_id.xy] += float4(ibl, 0.0f);
 }
