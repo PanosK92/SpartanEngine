@@ -55,7 +55,7 @@ struct refraction
         float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
 
         // don't refract what's behind the surface
-        float depth_surface    = get_linear_depth(surface.depth); // depth transparent
+        float depth_surface    = get_linear_depth(surface.depth);                  // depth transparent
         float depth_refraction = get_linear_depth(get_depth_opaque(refracted_uv)); // depth opaque
         float is_behind        = depth_surface < depth_refraction;
         refracted_uv           = lerp(refracted_uv, refracted_uv, is_behind);
@@ -93,7 +93,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float distance_from_camera = 0.0f;
 
     // during the compute pass, fill in the sky pixels
-    if (surface.is_sky() && pass_is_opaque())
+    if (surface.is_sky())
     {
         light_emissive       = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         alpha                = 0.0f;
@@ -113,7 +113,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         {
             light_refraction = refraction::get_color(surface);
 
-            // this should happen only for water - fade refraction into material color based on depth
+            // fade refraction into material color based on depth
             if (surface.vertex_animate_water())
             {
                 float depth_factor = saturate(distance_from_camera * 0.005f);
@@ -133,6 +133,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         light_atmospheric += tex_light_volumetric[thread_id.xy].rgb; // already uses sky color
     }
 
-    float4 final_color    = float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_refraction + light_atmospheric, alpha);
-    tex_uav[thread_id.xy] = pass_is_opaque() ? final_color : (tex_uav[thread_id.xy] + final_color);
+    tex_uav[thread_id.xy] = float4(light_diffuse * surface.albedo + light_specular + light_refraction + light_emissive + light_atmospheric, alpha);
 }

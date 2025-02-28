@@ -312,8 +312,8 @@ struct vertex_processing
     
         if (surface.vertex_animate_water())
         {
-            position_world = water::apply_wave(position_world, time);
-            position_world = water::apply_ripple(position_world, time);
+            //position_world = water::apply_wave(position_world, time);
+            //position_world = water::apply_ripple(position_world, time);
         }
     }
 };

@@ -427,7 +427,7 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.
             }
 
-            // previous lit output for ssr and brixelizer gi
+            // previous lit output for refraction, ssr and brixelizer gi
             cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma), false);  
 
             // transparents
@@ -1223,7 +1223,7 @@ namespace spartan
     {
         // acquire resources
         RHI_Shader* shader_c        = GetShader(Renderer_Shader::light_composition_c);
-        RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        RHI_Texture* tex_refraction = GetRenderTarget(Renderer_RenderTarget::frame_output_pre_gamma);
         RHI_Texture* tex_out        = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_skysphere  = GetRenderTarget(Renderer_RenderTarget::skysphere);
         if (!shader_c->IsCompiled())
