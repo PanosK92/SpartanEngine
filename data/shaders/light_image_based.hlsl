@@ -111,7 +111,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + (specular_ibl * specular_energy);
 
     // tone down for occluded and transparent surfaces
-    ibl *= surface.occlusion;
+    ibl *= lerp(1.0, surface.occlusion, surface.alpha);
     ibl *= surface.alpha;
 
     tex_uav[thread_id.xy] += float4(ibl, 0.0f);

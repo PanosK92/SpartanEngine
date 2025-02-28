@@ -148,7 +148,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // to avoid clearing the buffers with API calls (and introducing memory barriers), we clear them via not accumulating on the first light
-    float accumulate       = light.index != 0;
+    // transparent light accumulates but overwrites opaque
+    float accumulate       = light.index != 0 && !surface.is_transparent();
     float shadow_value     = lerp(tex_uav3[thread_id.xy].r, 1.0f, 1.0f - accumulate);
     tex_uav[thread_id.xy]  = tex_uav[thread_id.xy]  * accumulate + float4(light_diffuse  * light.radiance + light_subsurface, 0.0f) * surface.alpha; /* diffuse    - clears to zero*/
     tex_uav2[thread_id.xy] = tex_uav2[thread_id.xy] * accumulate + float4(light_specular * light.radiance, 0.0f) * surface.alpha;                    /* specular   - clears to zero*/
