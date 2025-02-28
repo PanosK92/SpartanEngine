@@ -211,8 +211,8 @@ namespace spartan
 
             // sources
             {
-                render_target(Renderer_RenderTarget::source_ssr_gi)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "source_ssr_gi");
-                render_target(Renderer_RenderTarget::source_refraction) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "source_refraction");
+                render_target(Renderer_RenderTarget::source_gi)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, flags_rt_clearable, "source_gi");
+                render_target(Renderer_RenderTarget::source_refraction_ssr) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, mip_count, format_standard, flags_rt_clearable | RHI_Texture_PerMipViews, "source_refraction_ssr");
             }
 
             // g-buffer

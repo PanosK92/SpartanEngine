@@ -943,7 +943,7 @@ namespace spartan
                 properties[index].sheen                 = material->GetProperty(MaterialProperty::Sheen);
                 properties[index].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties[index].ior                   = material->GetProperty(MaterialProperty::Ior);
-              
+
                 // flags
                 properties[index].flags  = material->HasTextureOfType(MaterialTextureType::Height)     ? (1U << 0)  : 0;
                 properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Normal)     ? (1U << 1)  : 0;

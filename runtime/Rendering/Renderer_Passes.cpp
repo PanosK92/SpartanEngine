@@ -428,7 +428,8 @@ namespace spartan
             }
 
             // create sampling source for refraction
-            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
+            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), false);
+            Pass_Downscale(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
 
             // transparents
             if (mesh_index_transparent != -1)
@@ -441,8 +442,8 @@ namespace spartan
 
             Pass_Light_ImageBased(cmd_list_graphics); // apply skysphere, ssr and global illumination
 
-            // create sampling source for ssr and brixelizer gi
-            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_ssr_gi), false);
+            // create sampling source for gi
+            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_gi), false);
 
             // render -> output resolution
             Pass_Upscale(cmd_list_graphics);
@@ -933,7 +934,7 @@ namespace spartan
             RHI_FidelityFX::SSSR_Dispatch(
                 cmd_list,
                 GetOption<float>(Renderer_Option::ResolutionScale),
-                GetRenderTarget(Renderer_RenderTarget::source_ssr_gi),
+                GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                 GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -1198,7 +1199,7 @@ namespace spartan
                 RHI_FidelityFX::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
-                    GetRenderTarget(Renderer_RenderTarget::source_ssr_gi),
+                    GetRenderTarget(Renderer_RenderTarget::source_gi),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -1247,15 +1248,13 @@ namespace spartan
         // set textures
         SetGbufferTextures(cmd_list);
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex2,             GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsUav::tex3,             GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
         cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere);
+        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere); // for the sky
 
         // render
         cmd_list->Dispatch(tex_out);

@@ -52,6 +52,7 @@ namespace spartan
         // resources
         shared_ptr<Entity> m_default_terrain             = nullptr;
         shared_ptr<Entity> m_default_car                 = nullptr;
+        Entity* m_default_car_window                     = nullptr;
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
@@ -334,8 +335,9 @@ namespace spartan
                         entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
                     }
 
-                    // disable glass until I resolve the motion vector issue
-                    entity_car->GetDescendantByName("CarBody_Windows_0")->SetActive(false);
+                    // super hacky way to disable refraction
+                    m_default_car_window = entity_car->GetDescendantByName("CarBody_Windows_0");
+                    m_default_car_window->GetComponent<Renderable>()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.4f);
                 }
 
                 // set the position last so that transforms all the way down to the new wheels are updated
@@ -1076,6 +1078,104 @@ namespace spartan
 
     void Game::Tick()
     {
+        if (ProgressTracker::IsLoading())
+            return;
+
+        // car
+        if (m_default_car)
+        {
+            // car views
+            enum class CarView { Dashboard, Hood, Chase };
+            static CarView current_view = CarView::Dashboard;
+            
+            // camera positions for different views
+            static const Vector3 car_view_positions[] =
+            {
+                Vector3(0.5f, 1.8f, -0.6f),  // dashboard
+                Vector3(0.0f, 2.0f, 1.0f),   // hood
+                Vector3(0.0f, 3.0f, -10.0f)  // chase
+            };
+        
+            // get some commonly used things
+            bool inside_the_car             = m_default_physics_body_camera->GetChildrenCount() == 0;
+            AudioSource* audio_source_door  = m_default_car->GetChildByName("sound_door")->GetComponent<AudioSource>().get();
+            AudioSource* audio_source_start = m_default_car->GetChildByName("sound_start")->GetComponent<AudioSource>().get();
+            AudioSource* audio_source_idle  = m_default_car->GetChildByName("sound_idle")->GetComponent<AudioSource>().get();
+        
+            // enter/exit
+            if (Input::GetKeyDown(KeyCode::E))
+            {
+                Entity* camera = nullptr;
+                if (!inside_the_car)
+                {
+                    camera = m_default_physics_body_camera->GetChildByName("component_camera");
+                    camera->SetParent(m_default_car);
+                    camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                    camera->SetRotationLocal(Quaternion::Identity);
+        
+                    audio_source_start->Play();
+        
+                    inside_the_car = true;
+                }
+                else
+                {
+                    camera = m_default_car->GetChildByName("component_camera");
+                    camera->SetParent(m_default_physics_body_camera);
+                    camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
+                    camera->SetRotationLocal(Quaternion::Identity);
+        
+                    // place the camera on the left of the driver's door
+                    m_default_physics_body_camera->GetComponent<PhysicsBody>()->SetPosition(m_default_car->GetPosition() + m_default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
+        
+                    audio_source_idle->Stop();
+        
+                    inside_the_car = false;
+                }
+        
+                // enable/disable car/camera control
+                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
+                m_default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
+        
+                // play exit/enter sound
+                audio_source_door->Play();
+        
+                // disable/enable windshield
+                m_default_car_window->SetActive(!inside_the_car);
+            }
+        
+            // change car view
+            if (Input::GetKeyDown(KeyCode::V))
+            {
+                if (inside_the_car)
+                {
+                    if (Entity* camera = m_default_car->GetChildByName("component_camera"))
+                    {
+                        current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
+                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                    }
+                }
+            }
+        
+            // engine sound (need to find a loopable one)
+            //if (inside_the_car)
+            //{
+            //    // todo: fix the loop function and remove this hack
+            //    if (!audio_source_idle->IsPlaying())
+            //    { 
+            //        audio_source_idle->Play();
+            //    }
+            //
+            //    float engine_rpm = m_default_car->AddComponent<PhysicsBody>()->GetCar()->GetEngineRpm();
+            //    float pitch      = engine_rpm / 1000.0f;
+            //    audio_source_idle->SetPitch(pitch);
+            //}
+
+            // osd
+            {
+                Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, -0.96f));
+            }
+        }
+        
         // forest logic
         if (m_default_terrain)
         {
@@ -1126,96 +1226,7 @@ namespace spartan
                 }
             }
 
-            // car
-            {
-                // car views
-                enum class CarView { Dashboard, Hood, Chase };
-                static CarView current_view = CarView::Dashboard;
-                
-                // camera positions for different views
-                static const Vector3 car_view_positions[] =
-                {
-                    Vector3(0.5f, 1.8f, -0.6f),  // dashboard
-                    Vector3(0.0f, 2.0f, 1.0f),   // hood
-                    Vector3(0.0f, 3.0f, -10.0f)  // chase
-                };
-
-                // get some commonly used things
-                bool inside_the_car             = m_default_physics_body_camera->GetChildrenCount() == 0;
-                AudioSource* audio_source_door  = m_default_car->GetChildByName("sound_door")->GetComponent<AudioSource>().get();
-                AudioSource* audio_source_start = m_default_car->GetChildByName("sound_start")->GetComponent<AudioSource>().get();
-                AudioSource* audio_source_idle  = m_default_car->GetChildByName("sound_idle")->GetComponent<AudioSource>().get();
-
-                // enter/exit
-                if (Input::GetKeyDown(KeyCode::E))
-                {
-                    Entity* camera = nullptr;
-                    if (!inside_the_car)
-                    {
-                        camera = m_default_physics_body_camera->GetChildByName("component_camera");
-                        camera->SetParent(m_default_car);
-                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
-                        camera->SetRotationLocal(Quaternion::Identity);
-
-                        audio_source_start->Play();
-
-                        inside_the_car = true;
-                    }
-                    else
-                    {
-                        camera = m_default_car->GetChildByName("component_camera");
-                        camera->SetParent(m_default_physics_body_camera);
-                        camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
-                        camera->SetRotationLocal(Quaternion::Identity);
-
-                        // place the camera on the left of the driver's door
-                        m_default_physics_body_camera->GetComponent<PhysicsBody>()->SetPosition(m_default_car->GetPosition() + m_default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
-
-                        audio_source_idle->Stop();
-
-                        inside_the_car = false;
-                    }
-
-                    // enable/disable car/camera control
-                    camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
-                    m_default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
-
-                    // play exit/enter sound
-                    audio_source_door->Play();
-                }
-            
-                // change car view
-                if (Input::GetKeyDown(KeyCode::V))
-                {
-                    if (inside_the_car)
-                    {
-                        if (Entity* camera = m_default_car->GetChildByName("component_camera"))
-                        {
-                            current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
-                            camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
-                        }
-                    }
-                }
-
-                // engine sound (need to find a loopable one)
-                //if (inside_the_car)
-                //{
-                //    // todo: fix the loop function and remove this hack
-                //    if (!audio_source_idle->IsPlaying())
-                //    { 
-                //        audio_source_idle->Play();
-                //    }
-                //
-                //    float engine_rpm = m_default_car->AddComponent<PhysicsBody>()->GetCar()->GetEngineRpm();
-                //    float pitch      = engine_rpm / 1000.0f;
-                //    audio_source_idle->SetPitch(pitch);
-                //}
-            }
-
-            // osd
-            {
-                Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, -0.96f));
-            }
+           
         }
     }
 

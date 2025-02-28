@@ -43,7 +43,8 @@ struct refraction
     
     static float3 get_color(Surface surface)
     {
-        const float strength = 1.0f;
+        // super hacky way to disable refraction
+        const float strength = surface.alpha > 0.5f ? 1.0f : 0.0f;
         
         // compute refraction vector
         float3 normal_vector        = world_to_view(surface.normal, false);
@@ -93,7 +94,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float distance_from_camera = 0.0f;
 
     // during the compute pass, fill in the sky pixels
-    if (surface.is_sky())
+    if (surface.is_sky() && pass_is_opaque())
     {
         light_emissive       = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         alpha                = 0.0f;
@@ -116,7 +117,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             // fade refraction into material color based on depth
             if (surface.vertex_animate_water())
             {
-                float depth_factor = saturate(distance_from_camera * 0.005f);
+                float depth_factor = saturate(distance_from_camera * 0.01f);
                 light_refraction   = lerp(light_refraction, surface.albedo * light_diffuse, depth_factor);
             }
         }
@@ -133,5 +134,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         light_atmospheric += tex_light_volumetric[thread_id.xy].rgb; // already uses sky color
     }
 
-    tex_uav[thread_id.xy] = float4(light_diffuse * surface.albedo + light_specular + light_refraction + light_emissive + light_atmospheric, alpha) + tex_uav[thread_id.xy] * pass_is_transparent();
+    float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
+    tex_uav[thread_id.xy] = float4(light_diffuse * surface.albedo + light_specular + light_refraction + light_emissive + light_atmospheric, alpha) + tex_uav[thread_id.xy] * accumulate;
 }
