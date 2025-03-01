@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FXAA_HLSL_5 1
 #define FXAA_QUALITY__PRESET 39
 #define FXAA_GREEN_AS_LUMA 1
-#include "Fxaa3_11.h"
+#include "fxaa3_11.h"
 //=============================
 
 static const float g_fxaa_subPix           = 0.75f;   // the amount of sub-pixel aliasing removal. This can effect sharpness.

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/SpartanObject.h"
 #include "RHI_Vertex.h"
 #include "RHI_Descriptor.h"
+#include <set>
 //================================
 
 namespace spartan
@@ -76,7 +77,7 @@ namespace spartan
         void* GetRhiResource()                                   const { return m_rhi_resource; }
 
     private:
-        void PreprocessIncludeDirectives(const std::string& file_path);
+        void PreprocessIncludeDirectives(const std::string& file_path, std::set<std::string>& processed_files);
         void* RHI_Compile();
         void Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 

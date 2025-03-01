@@ -30,6 +30,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
+namespace
+{
+    string to_lower(const string& input)
+    {
+        string result = input;
+        transform(result.begin(), result.end(), result.begin(), [](unsigned char c) { return tolower(c); });
+        return result;
+    }
+}
+
 namespace spartan
 {
     RHI_Shader::RHI_Shader() : SpartanObject()
@@ -107,57 +117,92 @@ namespace spartan
         }
     }
 
-    void RHI_Shader::PreprocessIncludeDirectives(const string& file_path)
+    void RHI_Shader::PreprocessIncludeDirectives(const string& file_path, set<string>& processed_files)
     {
-        static string include_directive_prefix = "#include \"";
-
-        // Skip already parsed include directives (avoid recursive include directives)
-        if (find(m_file_paths_multiple.begin(), m_file_paths_multiple.end(), file_path) == m_file_paths_multiple.end())
+        const string include_prefix = "#include \"";
+    
+        // nrmalize file path to lowercase for case-insensitive tracking
+        string file_path_lower = to_lower(file_path);
+    
+        // skip if already processed (prevents circular includes)
+        if (processed_files.count(file_path_lower) > 0)
         {
-            m_file_paths_multiple.emplace_back(file_path);
-        }
-        else
-        {
+            //SP_LOG_WARNING("Circular or duplicate include detected: %s", file_path.c_str());
             return;
         }
-
-        // load source
-        ifstream in(file_path);
-        stringstream buffer;
-        buffer << in.rdbuf();
-        string source = buffer.str();
-        
-        // go through every line
-        istringstream stream(source);
-        string source_line;
-        while (getline(stream, source_line))
+        processed_files.insert(file_path_lower);
+    
+        // try opening the file with the exact path
+        ifstream file_stream(file_path);
+        string resolved_path = file_path;
+    
+        // if exact path fails, attempt case-insensitive lookup
+        if (!file_stream.is_open())
         {
-            // add the line to the preprocessed source
-            bool is_include_directive = source_line.find(include_directive_prefix) != string::npos;
-            if (!is_include_directive)
-            {
-                m_preprocessed_source += source_line + "\n";
-            }
-            // if the line is an include directive, process it recursively
-            else
-            {
-                // construct include file
-                string file_name         = FileSystem::GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
-                string include_file_path = FileSystem::GetDirectoryFromFilePath(file_path) + file_name;
+            string directory         = FileSystem::GetDirectoryFromFilePath(file_path);
+            string filename          = FileSystem::GetFileNameFromFilePath(file_path);
+            string filename_lower    = to_lower(filename);
+            vector<string> dir_files = FileSystem::GetFilesInDirectory(directory);
 
-                // process
-                PreprocessIncludeDirectives(include_file_path);
+            for (const string& candidate : dir_files)
+            {
+                if (to_lower(candidate) == filename_lower)
+                {
+                    resolved_path = directory + candidate;
+                    file_stream.open(resolved_path);
+                    if (file_stream.is_open())
+                        break;
+                }
+            }
+    
+            if (!file_stream.is_open())
+            {
+                SP_LOG_ERROR("Failed to locate include file: %s", file_path.c_str());
+                return;
             }
         }
-
-        // save name
-        m_names.emplace_back(FileSystem::GetFileNameFromFilePath(file_path));
-
-        // save file path
-        m_file_paths.emplace_back(file_path);
-
-        // save source
-        m_sources.emplace_back(source);
+    
+        // read the entire file into a string
+        stringstream file_content;
+        file_content << file_stream.rdbuf();
+        string source = file_content.str();
+        file_stream.close();
+    
+        // process the file line by line
+        istringstream line_stream(source);
+        string line;
+        while (getline(line_stream, line))
+        {
+            // check for #include directive
+            size_t include_start = line.find(include_prefix);
+            if (include_start != string::npos)
+            {
+                size_t quote_start = include_start + include_prefix.length();
+                size_t quote_end = line.find("\"", quote_start);
+                if (quote_end != string::npos)
+                {
+                    string include_name = line.substr(quote_start, quote_end - quote_start);
+                    string include_path = FileSystem::GetDirectoryFromFilePath(resolved_path) + include_name;
+    
+                    // recursively process the included file
+                    PreprocessIncludeDirectives(include_path, processed_files);
+                }
+                else
+                {
+                    SP_LOG_ERROR("Malformed #include in %s: %s", resolved_path.c_str(), line.c_str());
+                }
+            }
+            else
+            {
+                // append non-include lines to the preprocessed source
+                m_preprocessed_source += line + "\n";
+            }
+        }
+    
+        // store metadata for debugging or inspection
+        m_names.push_back(FileSystem::GetFileNameFromFilePath(resolved_path));
+        m_file_paths.push_back(resolved_path);
+        m_sources.push_back(source);
     }
 
     void RHI_Shader::LoadFromDrive(const string& file_path)
@@ -172,7 +217,8 @@ namespace spartan
         m_file_paths_multiple.clear();
 
         // construct the source by recursively processing all include directives, starting from the actual file path.
-        PreprocessIncludeDirectives(file_path);
+        set<string> processed_files;
+        PreprocessIncludeDirectives(file_path, processed_files);
 
         // update hash
         {
