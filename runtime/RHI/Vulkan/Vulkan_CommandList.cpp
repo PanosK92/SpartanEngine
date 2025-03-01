@@ -92,188 +92,148 @@ namespace spartan
 
             return aspect_mask;
         }
+    }
 
-        namespace image_barrier
-        {
-            tuple<VkPipelineStageFlags2, VkAccessFlags2> get_layout_sync_info(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth, const RHI_PipelineState& pso)
-            {   
-                switch (layout)
+    namespace image_barrier
+    {
+        tuple<VkPipelineStageFlags2, VkAccessFlags2> get_layout_sync_info(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth, const RHI_PipelineState& pso)
+        {   
+            switch (layout)
+            {
+            case VK_IMAGE_LAYOUT_UNDEFINED:
+                if (!is_destination_mask)
                 {
-                case VK_IMAGE_LAYOUT_UNDEFINED:
-                    if (!is_destination_mask)
-                    {
-                        return make_tuple(
-                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                            VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT
-                        );
-                    }
-                    else
-                    {
-                        SP_ASSERT_MSG(false, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
-                        return make_tuple(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_NONE);
-                    }
-
-                case VK_IMAGE_LAYOUT_PREINITIALIZED:
-                    SP_ASSERT_MSG(!is_destination_mask, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
                     return make_tuple(
-                        VK_PIPELINE_STAGE_2_HOST_BIT,
-                        VK_ACCESS_2_HOST_WRITE_BIT
-                    );
-
-                case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        VK_ACCESS_2_NONE
-                    );
-
-                case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT
-                    );
-
-                case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_TRANSFER_WRITE_BIT
-                    );
-
-                case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-                   {
-                        VkPipelineStageFlags2 used_stages = 0;
-                        used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
-                        used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
-                        used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
-                        used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
-                        used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
-
-                        // a call to ClearTexture() will enter this path without shaders, so go wide
-                        if (used_stages == 0)
-                        {
-                            used_stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-                        }
-
-                        return make_tuple(
-                            used_stages,
-                            VK_ACCESS_2_SHADER_READ_BIT
-                        );
-                    }
-
-                case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-                    if (is_depth)
-                    {
-                        return make_tuple(
-                            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-                            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR |
-                            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR
-                        );
-                    }
-                    else
-                    {
-                        return make_tuple(
-                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
-                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-                        );
-                    }
-
-                case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-                        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT
-                    );
-
-                case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
-                        VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR
-                    );
-
-                case VK_IMAGE_LAYOUT_GENERAL:
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT |
-                        VK_ACCESS_2_SHADER_WRITE_BIT
-                    );
-
-                case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL:
-                    if (is_depth)
-                    {
-                        return make_tuple(
-                            VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | 
-                            VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR | 
-                            VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR
-                        );
-                    }
-                    else
-                    {
-                        return make_tuple(
-                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | 
-                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
-                        );
-                    }
-
-                default:
-                    SP_ASSERT_MSG(false, "Unhandled layout transition");
-                    return make_tuple(
-                        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
                         VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT
                     );
                 }
+                else
+                {
+                    SP_ASSERT_MSG(false, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED");
+                    return make_tuple(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_NONE);
+                }
+        
+            case VK_IMAGE_LAYOUT_PREINITIALIZED:
+                SP_ASSERT_MSG(!is_destination_mask, "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED");
+                return make_tuple(
+                    VK_PIPELINE_STAGE_2_HOST_BIT,
+                    VK_ACCESS_2_HOST_WRITE_BIT
+                );
+        
+            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+                return make_tuple(
+                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_ACCESS_2_NONE
+                );
+        
+            case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+                return make_tuple(
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    VK_ACCESS_2_TRANSFER_READ_BIT
+                );
+        
+            case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+                return make_tuple(
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT
+                );
+        
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+                {
+                    VkPipelineStageFlags2 used_stages = 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
+                    used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
+        
+                    // a call to ClearTexture() will enter this path without shaders, so go wide
+                    if (used_stages == 0)
+                    {
+                        used_stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                    }
+        
+                    return make_tuple(
+                        used_stages,
+                        VK_ACCESS_2_SHADER_READ_BIT
+                    );
+                }
+        
+            case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL:
+                if (is_depth)
+                {
+                    return make_tuple(
+                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT_KHR | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR
+                    );
+                }
+                else
+                {
+                    return make_tuple(
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                    );
+                }
+        
+            case VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR:
+                return make_tuple(
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+                    VK_ACCESS_2_FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR
+                );
+        
+            case VK_IMAGE_LAYOUT_GENERAL:
+                return make_tuple(
+                    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT
+                );
+
+            default:
+                SP_ASSERT_MSG(false, "unhandled layout transition");
+                return make_tuple(
+                    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                    VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT
+                );
             }
+        }
+    
+        VkImageMemoryBarrier2 create(
+            const RHI_Image_Layout layout_old,
+            const RHI_Image_Layout layout_new,
+            void* image,
+            uint32_t aspect_mask,
+            uint32_t mip_index,
+            uint32_t mip_range,
+            uint32_t array_length,
+            bool is_depth,
+            RHI_PipelineState& pso
+        )
+        {
+            SP_ASSERT(image != nullptr);
+        
+            VkImageMemoryBarrier2 barrier           = {};
+            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
+            barrier.pNext                           = nullptr;
+            barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout_old)];
+            barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout_new)];
+            barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image                           = static_cast<VkImage>(image);
+            barrier.subresourceRange.aspectMask     = aspect_mask;
+            barrier.subresourceRange.baseMipLevel   = mip_index;
+            barrier.subresourceRange.levelCount     = mip_range;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount     = array_length;
 
-            VkImageMemoryBarrier2 create(
-                const RHI_Image_Layout layout_old,
-                const RHI_Image_Layout layout_new,
-                void* image,
-                uint32_t aspect_mask,
-                uint32_t mip_index,
-                uint32_t mip_range,
-                uint32_t array_length,
-                bool is_depth,
-                RHI_PipelineState& pso
-            )
-            {
-                SP_ASSERT(image != nullptr);
+            auto [src_stages, src_access] = get_layout_sync_info(barrier.oldLayout, false, is_depth, pso);
+            auto [dst_stages, dst_access] = get_layout_sync_info(barrier.newLayout, true, is_depth, pso);
 
-                VkImageMemoryBarrier2 barrier           = {};
-                barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
-                barrier.pNext                           = nullptr;
-                barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
-                barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
-                barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-                barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-                barrier.image                           = static_cast<VkImage>(image);
-                barrier.subresourceRange.aspectMask     = aspect_mask;
-                barrier.subresourceRange.baseMipLevel   = mip_index;
-                barrier.subresourceRange.levelCount     = mip_range;
-                barrier.subresourceRange.baseArrayLayer = 0;
-                barrier.subresourceRange.layerCount     = array_length;
-
-                auto [src_stages, src_access] = get_layout_sync_info(barrier.oldLayout, false, is_depth, pso);
-                auto [dst_stages, dst_access] = get_layout_sync_info(barrier.newLayout, true,  is_depth, pso);
-
-                // todo: fix swapchain error
-                //if (barrier.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-                //{
-                //    src_stages  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                //    dst_stages  = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-                //    src_access  = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                //    dst_access  = VK_ACCESS_NONE;
-                //}
-
-                barrier.srcAccessMask = src_access; // retrieve source synchronization info
-                barrier.srcStageMask  = src_stages; // retrieve source synchronization info
-                barrier.dstAccessMask = dst_access; // retrieve destination synchronization info
-                barrier.dstStageMask  = dst_stages; // retrieve destination synchronization info
-
-                return barrier;
-            }
+            barrier.srcStageMask  = src_stages;
+            barrier.srcAccessMask = src_access;
+            barrier.dstStageMask  = dst_stages;
+            barrier.dstAccessMask = dst_access;
+        
+            return barrier;
         }
     }
 

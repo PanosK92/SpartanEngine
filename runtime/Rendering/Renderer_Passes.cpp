@@ -428,8 +428,12 @@ namespace spartan
             }
 
             // create sampling source for refraction
-            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), false);
-            Pass_Downscale(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
+            cmd_list_graphics->BeginTimeblock("create_refraction_ssr_source");
+            {
+                cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), false);
+                Pass_Downscale(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
+            }
+            cmd_list_graphics->EndTimeblock();
 
             // transparents
             if (mesh_index_transparent != -1)
@@ -444,7 +448,9 @@ namespace spartan
             Pass_Light_ImageBased(cmd_list_graphics); 
 
             // create sampling source for gi
+            cmd_list_graphics->BeginTimeblock("create_gi_source");
             cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_gi), false);
+            cmd_list_graphics->EndTimeblock();
 
             // render -> output resolution
             Pass_Upscale(cmd_list_graphics);
@@ -1267,31 +1273,32 @@ namespace spartan
             return;
 
         cmd_list->BeginTimeblock("light_image_based");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.name             = "light_image_based";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
 
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.name             = "light_image_based";
-        pso.shaders[Compute] = shader;
-        cmd_list->SetPipelineState(pso);
+            // set textures
+            SetGbufferTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse_gi,  GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
+            cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,              GetRenderTarget(Renderer_RenderTarget::ssr));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,           GetRenderTarget(Renderer_RenderTarget::sss));
+            cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,               GetRenderTarget(Renderer_RenderTarget::light_shadow));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,               tex_out);
 
-        // set textures
-        SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse_gi,  GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,              GetRenderTarget(Renderer_RenderTarget::ssr));
-        cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,           GetRenderTarget(Renderer_RenderTarget::sss));
-        cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex,               GetRenderTarget(Renderer_RenderTarget::light_shadow));
-        cmd_list->SetTexture(Renderer_BindingsUav::tex,               tex_out);
+            // set pass constants
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
-        // set pass constants
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
-        cmd_list->PushConstants(m_pcb_pass_cpu);
-
-        // render
-        cmd_list->Dispatch(tex_out);
+            // render
+            cmd_list->Dispatch(tex_out);
+        }
         cmd_list->EndTimeblock();
     }
 
@@ -1964,7 +1971,7 @@ namespace spartan
                     // use the distance from the camera to scale the icon, this will
                     // cancel out perspective scaling, hence keeping the icon scale constant
                     const float distance = (pos_world_camera - pos_world).Length();
-                    const float scale = distance * 0.04f;
+                    const float scale    = distance * 0.04f;
 
                     // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing
                     Quaternion rotation_reorient_quad = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
