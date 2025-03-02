@@ -403,12 +403,13 @@ namespace spartan
         // it can happen often on some GPUs/drivers and less and on others, regardless, it has to be handled
         uint32_t retry_count     = 0;
         const uint32_t retry_max = 10;
+
         while (retry_count < retry_max)
         {
             VkResult result = vkAcquireNextImageKHR(
                 RHI_Context::device,
                 static_cast<VkSwapchainKHR>(m_rhi_swapchain),
-                numeric_limits<uint64_t>::max(),
+                16000000, // 16ms
                 static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()),
                 nullptr,
                 &m_image_index
@@ -420,7 +421,7 @@ namespace spartan
             }
             else if (result == VK_NOT_READY)
             {
-                this_thread::sleep_for(std::chrono::milliseconds(1));
+                this_thread::sleep_for(std::chrono::milliseconds(16));
                 retry_count++;
             }
             else
@@ -446,7 +447,6 @@ namespace spartan
             semaphore->has_been_waited_for = true;
             m_wait_semaphores.emplace_back(semaphore);
         }
-        SP_ASSERT_MSG(m_wait_semaphores[0] != nullptr, "There is nothing to present");
 
         // get semaphore from vkAcquireNextImageKHR
         RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
