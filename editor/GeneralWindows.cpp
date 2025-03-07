@@ -54,7 +54,7 @@ namespace
             {
                 ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
                 ImGui::Text("I cover the costs for Dropbox hosting and a GitHub Pro subscription for benefits like assets and package bandwidth.");
-                ImGui::Text("If you enjoy the simplicity of running a single script and have everything just work, please consider sponsoring to help keep everything running smoothly!");
+                ImGui::Text("If you enjoy the simplicity of running a single script and have everything download and just work, please consider sponsoring to help keep everything running smoothly!");
                 ImGui::PopItemWidth();
 
                 ImGui::Separator();

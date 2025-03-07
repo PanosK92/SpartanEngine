@@ -35,15 +35,6 @@ using namespace std;
 
 namespace spartan
 {
-    RHI_Shader::~RHI_Shader()
-    {
-        if (m_rhi_resource)
-        {
-            RHI_Device::QueueWaitAll();
-            d3d12_utility::release<IDxcResult>(m_rhi_resource);
-        }
-    }
-
     void* RHI_Shader::RHI_Compile()
     {
         // arguments (and defines)

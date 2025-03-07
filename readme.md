@@ -96,6 +96,10 @@ While the engine is designed primarily for experienced game developers to experi
 
 To get started, take a look at [game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/runtime/Game/Game.cpp). This file contains all the logic for loading and setting up the default worlds within the engine, and it's a great place to understand the core structure of the engine.
 
+# Support
+
+I personally cover the costs for Dropbox hosting and a GitHub Pro subscription to ensure assets and package bandwidth are available. If you enjoy the ease of running a single script and having everything download and work seamlessly, please consider [sponsoring](https://github.com/sponsors/PanosK92) to help keep it that way. Sponsoring directly is much more helpful than boosting the Discord server since boosts only benefit Discord, not the project. Your support goes directly into maintaining and improving everything.
+
 # Interesting facts and use cases
 
 - This engine started as a way to learn and enrich my portfolio while I was a university student, circa 2014, represeting over a decade of non-stop development.
@@ -104,4 +108,4 @@ To get started, take a look at [game.cpp](https://github.com/PanosK92/SpartanEng
 - **Stalker Anomaly** has an addon which enchances rendering based on Spartan's source, more [here](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders)
 - Jesse Guerrero, a contributor, wrote a [book](https://www.amazon.com/dp/B0CXG1CMNK?ref_=cm_sw_r_cp_ud_dp_A14WVAH86VH407JE95MG_1) on beginning programming, showcasing Spartan's code, Discord community and the leadership within it.
 
-Are you utilizing any components from the Spartan Engine, or has it inspired aspects of your work? If yes, reach out to me, I'd love to showcase your project.
+Are you utilizing any code from Spartan Engine, or has it inspired aspects of your work? If yes, reach out to me, I'd love to showcase your project.
