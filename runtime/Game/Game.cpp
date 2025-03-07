@@ -1287,6 +1287,8 @@ namespace spartan
                 default: SP_ASSERT_MSG(false, "Unhandled default world"); break;
             }
 
+            // TODO-CRASH: when loading a world, the renderer can sometimes read the hierarchy before the entities are fully loaded and cause a GPU crash
+            // it's possible that an an entity/mesh has finished loaded but textures or other resources are still being loaded in other threads
             ProgressTracker::SetGlobalLoadingState(false);
         });
     }
