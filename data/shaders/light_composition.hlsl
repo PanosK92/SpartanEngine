@@ -43,7 +43,7 @@ struct refraction
     
     static float3 get_color(Surface surface)
     {
-        // super hacky way to disable refraction
+        // super hacky way to disable refraction for the car windshield
         const float strength = surface.alpha > 0.5f ? 1.0f : 0.0f;
         
         // compute refraction vector
@@ -55,23 +55,20 @@ struct refraction
         float2 refraction_uv_offset = refraction_direction.xy * (strength / surface.camera_to_pixel_length);
         float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
 
-        // don't refract what's behind the surface
-        float depth_surface    = get_linear_depth(surface.depth);                  // depth transparent
-        float depth_refraction = get_linear_depth(get_depth_opaque(refracted_uv)); // depth opaque
-        float is_behind        = depth_surface < depth_refraction;
-        refracted_uv           = lerp(refracted_uv, refracted_uv, is_behind);
-
-        // get base color
+        // get base and refraction color
         float frame_mip_count   = pass_get_f3_value().x;
         float mip_level         = lerp(0, frame_mip_count, surface.roughness_alpha);
         float3 color            = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, mip_level).rgb;
         float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, mip_level).rgb;
-    
-        // screen fade
-        float fade_factor = compute_fade_factor(refracted_uv);
-        color             = lerp(color, color_refraction, fade_factor);
 
-        return color;
+        // don't refract what's behind the surface
+        float depth_surface    = get_linear_depth(surface.depth);
+        float depth_refraction = get_linear_depth_opaque(refracted_uv);
+        float is_in_front      = depth_surface > depth_refraction;
+        // don't refract what's outside the screen
+        float screen_fade      = compute_fade_factor(refracted_uv);
+
+        return lerp(color, color_refraction, is_in_front * screen_fade);
     }
 };
 
@@ -115,7 +112,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             light_refraction = refraction::get_color(surface);
 
             // fade refraction into material color based on depth
-            if (surface.vertex_animate_water())
+            if (surface.is_water())
             {
                 float depth_factor = saturate(distance_from_camera * 0.01f);
                 light_refraction   = lerp(light_refraction, surface.albedo * light_diffuse, depth_factor);

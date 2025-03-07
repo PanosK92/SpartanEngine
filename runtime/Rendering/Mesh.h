@@ -46,7 +46,6 @@ namespace spartan
     {
         Cube,
         Quad,
-        Grid,
         Sphere,
         Cylinder,
         Cone,

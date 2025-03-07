@@ -149,6 +149,14 @@ void ShaderEditor::ShowShaderList()
             {
                 name += "_compute";
             }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Domain)
+            {
+                name += "_domain";
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::Hull)
+            {
+                name += "_hull";
+            }
             else
             {
                 name += "_unknown";

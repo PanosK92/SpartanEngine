@@ -110,45 +110,45 @@ namespace spartan::geometry_generation
         indices->emplace_back(1);
     }
 
-    static void generate_grid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
+    static void generate_grid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t grid_points_per_dimension, float extent)
     {
         using namespace math;
-
-        const float spacing = 1.0f / static_cast<float>(resolution - 1); // Ensures the last vertex lands on 1.0
-        const Vector3 normal(0, 1, 0);
-        const Vector3 tangent(1, 0, 0);
-
-        // vertices
-        for (uint32_t i = 0; i < resolution; ++i)
+    
+        const float spacing = extent / static_cast<float>(grid_points_per_dimension - 1); // scale spacing based on extent
+        const Vector3 normal(0, 1, 0);  // upward-facing normal (Y-axis)
+        const Vector3 tangent(1, 0, 0); // tangent along X-axis
+    
+        // Generate vertices
+        for (uint32_t i = 0; i < grid_points_per_dimension; ++i)
         {
-            for (uint32_t j = 0; j < resolution; ++j)
+            for (uint32_t j = 0; j < grid_points_per_dimension; ++j)
             {
-                const float x = static_cast<float>(i) * spacing - 0.5f; // Offset by -0.5 to center the grid
-                const float z = static_cast<float>(j) * spacing - 0.5f; // Offset by -0.5 to center the grid
-                const Vector2 texCoord(static_cast<float>(i) * spacing, static_cast<float>(j) * spacing);
+                const float x = static_cast<float>(i) * spacing - (extent / 2.0f); // center the grid around origin
+                const float z = static_cast<float>(j) * spacing - (extent / 2.0f); // center the grid around origin
+                const Vector2 texCoord(static_cast<float>(i) / (grid_points_per_dimension - 1), static_cast<float>(j) / (grid_points_per_dimension - 1)); // normalized UVs [0,1]
                 vertices->emplace_back(Vector3(x, 0.0f, z), texCoord, normal, tangent);
             }
         }
-
-        // indices
-        for (uint32_t i = 0; i < resolution - 1; ++i)
+    
+        // generate indices (clockwise winding order for DirectX with back-face culling)
+        for (uint32_t i = 0; i < grid_points_per_dimension - 1; ++i)
         {
-            for (uint32_t j = 0; j < resolution - 1; ++j)
+            for (uint32_t j = 0; j < grid_points_per_dimension - 1; ++j)
             {
-                int topLeft     = i * resolution + j;
-                int topRight    = i * resolution + j + 1;
-                int bottomLeft  = (i + 1) * resolution + j;
-                int bottomRight = (i + 1) * resolution + j + 1;
-
-                // triangle 1 (top-left, bottom-left, bottom-right)
+                int topLeft     = i * grid_points_per_dimension + j;
+                int topRight    = i * grid_points_per_dimension + j + 1;
+                int bottomLeft  = (i + 1) * grid_points_per_dimension + j;
+                int bottomRight = (i + 1) * grid_points_per_dimension + j + 1;
+    
+                // triangle 1 (top-left, bottom-right, bottom-left) - clockwise when viewed from above
                 indices->emplace_back(topLeft);
+                indices->emplace_back(bottomRight);
                 indices->emplace_back(bottomLeft);
-                indices->emplace_back(bottomRight);
-
-                // triangle 2 (top-left, bottom-right, top-right)
+    
+                // triangle 2 (top-left, top-right, bottom-right) - clockwise when viewed from above
                 indices->emplace_back(topLeft);
-                indices->emplace_back(bottomRight);
                 indices->emplace_back(topRight);
+                indices->emplace_back(bottomRight);
             }
         }
     }

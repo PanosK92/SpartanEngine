@@ -1191,7 +1191,7 @@ namespace spartan
                 shared_ptr<Entity>& entity = entities[i];
 
                 // skip grass blades, it's going to bring it to a crawl
-                if (entity->GetComponent<Renderable>()->GetMaterial()->GetProperty(MaterialProperty::GrassBlade))
+                if (entity->GetComponent<Renderable>()->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlasde))
                     continue;
 
                 uint64_t entity_id                   = entity->GetObjectId();

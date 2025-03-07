@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
+#include "RHI_Device.h"
 #include "../Core/ThreadPool.h"
 //=============================
 
@@ -47,23 +48,32 @@ namespace spartan
 
     }
 
+    RHI_Shader::~RHI_Shader()
+    {
+        if (m_rhi_resource)
+        {
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
+            m_rhi_resource = nullptr;
+        }
+    }
+
     void RHI_Shader::Compile(const RHI_Shader_Type shader_type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
     {
-        // clear in case of re-compilation
-        m_descriptors.clear();
+        if (!FileSystem::IsFile(file_path))
+        {
+            SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
+            return;
+        }
+
+        // clear
         m_input_layout = nullptr;
+        m_descriptors.clear();
 
         m_shader_type = shader_type;
         m_vertex_type = vertex_type;
         if (m_shader_type == RHI_Shader_Type::Vertex)
         {
             m_input_layout = make_shared<RHI_InputLayout>();
-        }
-
-        if (!FileSystem::IsFile(file_path))
-        {
-            SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
-            return;
         }
 
         // load
@@ -80,7 +90,9 @@ namespace spartan
 
                 // compile
                 m_compilation_state = RHI_ShaderCompilationState::Compiling;
-                m_rhi_resource      = RHI_Compile();
+                void* resource      = RHI_Compile();
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
+                m_rhi_resource      = resource;
                 m_compilation_state = m_rhi_resource ? RHI_ShaderCompilationState::Succeeded : RHI_ShaderCompilationState::Failed;
 
                 // log failure

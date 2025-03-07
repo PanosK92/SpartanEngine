@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../Input/Input.h"
 #include "../Geometry/GeometryGeneration.h"
+#include "../Geometry/GeometryProcessing.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -56,7 +57,7 @@ namespace spartan
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
-        shared_ptr<Mesh>   m_default_grass_patch         = nullptr;
+        vector<shared_ptr<Mesh>> meshes;
 
         void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
         {
@@ -412,6 +413,7 @@ namespace spartan
                 material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
                 material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
                 material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
+                material->SetProperty(MaterialProperty::Tessellation, 1.0f);
 
                 // create a file path for this material (required for the material to be able to be cached by the resource cache)
                 const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
@@ -556,17 +558,18 @@ namespace spartan
                     material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\grass\\normal.png",    0);
                     material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\grass\\roughness.png", 0);
                     material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\grass\\occlusion.png", 0);
-                    //material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\grass\\height.png");
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",    1);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",    1);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png", 1);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png", 1);
-                    //material->SetTexture(MaterialTextureType::Height2,    "project\\terrain\\rock\\height.png");
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",    2);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",    2);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png", 2);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png", 2);
-                    //material->SetTexture(MaterialTextureType::Height3,    "project\\terrain\\sand\\height.png");
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",     1);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",     1);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png",  1);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png",  1);
+                    material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\rock\\height.png",     1);
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",     2);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",     2);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",  2);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png",  2);
+                    // we are not using the height maps of the sand and grass because their high frequency detail can be matched with vertices
+                    // however we'll enable tessellation for the material, if no height map is present, perlin noise will be used instead
+                    material->SetProperty(MaterialProperty::Tessellation, 1.0f);
                 }
                 
                 // generate a height field
@@ -580,40 +583,82 @@ namespace spartan
 
                 // water
                 {
+                    // create root entity
                     shared_ptr<Entity> water = World::CreateEntity();
                     water->SetObjectName("water");
                     water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                    water->SetScale(Vector3(2500.0f, 1.0f, 2500.0f));
+                    water->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
-                    Renderable* renderable = water->AddComponent<Renderable>().get();
-                    renderable->SetGeometry(MeshType::Grid);
-
-                    // material
+                    // create material
+                    shared_ptr<Material> material = make_shared<Material>();
                     {
-                        // set material
-                        shared_ptr<Material> material = make_shared<Material>();
                         material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 148.0f / 255.0f, 103.0f / 255.0f, 230.0f / 255.0f));
-                        material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
+                        material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
                         material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
-                        material->SetProperty(MaterialProperty::Roughness,           0.2f);
                         material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
-                        material->SetProperty(MaterialProperty::Normal,              0.3f);
                         material->SetProperty(MaterialProperty::TextureTilingX,      400.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY,      400.0f);
-                        material->SetProperty(MaterialProperty::AnimationWaterFlow,  1.0f);
-                        material->SetProperty(MaterialProperty::CullMode,            static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::IsWater,             1.0f);
+                        material->SetProperty(MaterialProperty::Tessellation,        1.0f); // close up water needs tessellation so you can see fine ripples
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
                         material->SetResourceFilePath(file_path);
+                    }
 
-                        renderable->SetMaterial(material);
+                    // geometry
+                    {
+                        // generate grid
+                        const float extend                       = 2000.0f;
+                        const uint32_t grid_points_per_dimension = 64;
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, extend);
+
+                        // split into tiles
+                        const uint32_t tile_count = 10; // 10x10 tiles
+                        vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
+                        vector<vector<uint32_t>> tiled_indices;
+                        spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices);
+
+                        for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
+                        {
+                            string name = "tile_" + to_string(tile_index);
+
+                            // create mesh if it doesn't exist
+                            shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                            mesh->SetObjectName(name);
+                            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                            mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index]);
+                            mesh->PostProcess();
+
+                            // create a child entity, add a renderable, and this mesh tile to it
+                            {
+                                shared_ptr<Entity> entity = World::CreateEntity();
+                                entity->SetObjectName(name);
+                                entity->SetParent(water);
+
+                                if (shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>())
+                                {
+                                    renderable->SetGeometry(
+                                        mesh.get(),
+                                        mesh->GetAabb(),
+                                        0,                     // index offset
+                                        mesh->GetIndexCount(), // index count
+                                        0,                     // vertex offset
+                                        mesh->GetVertexCount() // vertex count
+                                    );
+
+                                    renderable->SetMaterial(material);
+                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                }
+                            }
+                        }
                     }
                 }
 
-                // tree (it has a gazillion so bake everything together using MeshFlags::ImportCombineMeshes)
+                // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\tree_elm\\scene.gltf", flags))
                 {
@@ -637,10 +682,10 @@ namespace spartan
                         if (Entity* leaf = entity->GetDescendantByName("Plane.550_leaf_0"))
                         {
                             Renderable* renderable = leaf->GetComponent<Renderable>().get();
-
+                
                             renderable->SetInstances(instances);
                             renderable->SetMaxRenderDistance(max_render_distance);
-                            renderable->GetMaterial()->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
+                            renderable->GetMaterial()->SetProperty(MaterialProperty::IsTree, 1.0f);
                         }
                         
                         if (Entity* leaf = entity->GetDescendantByName("tree_bark for small bottom branch (circle)_0"))
@@ -657,14 +702,14 @@ namespace spartan
                     entity->SetObjectName("grass");
                 
                     // create a mesh with a grass blade
-                    m_default_grass_patch = make_shared<Mesh>();
+                    shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
                     vector<RHI_Vertex_PosTexNorTan> vertices;
                     vector<uint32_t> indices;
-                    geometry_generation::generate_grass_blade(&vertices, &indices);                                                       // generate grass blade
-                    m_default_grass_patch->AddGeometry(vertices, indices);
-                    m_default_grass_patch->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);                         // geometry is made to spec, don't optimize
-                    m_default_grass_patch->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_cube" + EXTENSION_MODEL); // silly, need to remove that
-                    m_default_grass_patch->PostProcess();                                                                                 // aabb, gpu buffers, etc.
+                    geometry_generation::generate_grass_blade(&vertices, &indices);                                       // generate grass blade
+                    mesh->AddGeometry(vertices, indices);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);                          // geometry is made to spec, don't optimize
+                    mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
+                    mesh->PostProcess();                                                                                  // aabb, gpu buffers, etc.
                 
                     // generate instances
                     vector<Matrix> instances;
@@ -672,16 +717,16 @@ namespace spartan
                 
                     // add renderable component
                     Renderable* renderable = entity->AddComponent<Renderable>().get();
-                    renderable->SetGeometry(m_default_grass_patch.get());
+                    renderable->SetGeometry(mesh.get());
                     renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
                     renderable->SetInstances(instances);
                 
                     // create a material
                     shared_ptr<Material> material = make_shared<Material>();
                     material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
-                    material->SetProperty(MaterialProperty::GrassBlade, 1.0f);
-                    material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                    material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                    material->SetProperty(MaterialProperty::IsGrassBlasde,       1.0f);
+                    material->SetProperty(MaterialProperty::Roughness,           0.5f);
+                    material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.8f);
                     material->SetColor(Color::standard_white);
                     renderable->SetMaterial(material);
@@ -763,28 +808,28 @@ namespace spartan
                     // these are the ropes and the metal rings that hold them
                     if (Material* material = entity->GetDescendantByName("curtain_03_1")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
+                        material->SetProperty(MaterialProperty::IsTree, 1.0f);
                     }
 
                     // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::IsTree,   1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::IsTree,   1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
+                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::IsTree,  1.0f);
                     }
                 }
             }
@@ -799,8 +844,8 @@ namespace spartan
 
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
                 {
-                    material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
-                    material->SetProperty(MaterialProperty::AnimationWindTree, 1.0f);
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::IsTree,   1.0f);
                 }
             }
         }
@@ -1073,7 +1118,7 @@ namespace spartan
         m_default_light_directional   = nullptr;
         m_default_terrain             = nullptr;
         m_default_car                 = nullptr;
-        m_default_grass_patch         = nullptr;
+        meshes.clear();
     }
 
     void Game::Tick()

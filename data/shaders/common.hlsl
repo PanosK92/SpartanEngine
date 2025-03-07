@@ -197,7 +197,7 @@ float3 get_normal(uint2 pos)
 
 float3 get_normal(float2 uv)
 {
-    return tex_normal.SampleLevel(samplers[sampler_point_clamp_edge], uv, 0).xyz;
+    return tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0).xyz;
 }
 
 float3 get_normal_view_space(uint2 pos)

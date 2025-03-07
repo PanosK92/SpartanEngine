@@ -505,12 +505,6 @@ namespace spartan
                 geometry_generation::generate_quad(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MODEL);
             }
-            else if (type == MeshType::Grid)
-            {
-                uint32_t resolution = 512;
-                geometry_generation::generate_grid(&vertices, &indices, resolution);
-                mesh->SetResourceFilePath(project_directory + "standard_grid" + EXTENSION_MODEL);
-            }
             else if (type == MeshType::Sphere)
             {
                 geometry_generation::generate_sphere(&vertices, &indices);
@@ -542,7 +536,6 @@ namespace spartan
         create_mesh(MeshType::Sphere);
         create_mesh(MeshType::Cylinder);
         create_mesh(MeshType::Cone);
-        create_mesh(MeshType::Grid);
 
         // this buffers holds all debug primitives that can be drawn
         m_lines_vertex_buffer = make_shared<RHI_Buffer>();

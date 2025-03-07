@@ -204,7 +204,7 @@ static const uint material_texture_index_mask      = 7 * material_texture_slots_
 static const uint material_texture_index_packed    = 8 * material_texture_slots_per_type;
 
 static const uint sampler_compare_depth         = 0;
-static const uint sampler_point_clamp_edge      = 0;
+static const uint sampler_point_clamp           = 0;
 static const uint sampler_point_clamp_border    = 1;
 static const uint sampler_point_wrap            = 2;
 static const uint sampler_bilinear_clamp        = 3;

@@ -90,15 +90,6 @@ namespace spartan
         atomic<bool> spriv_cross_registered = false;
     }
 
-    RHI_Shader::~RHI_Shader()
-    {
-        if (m_rhi_resource)
-        {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Shader, m_rhi_resource);
-            m_rhi_resource = nullptr;
-        }
-    }
-
     void* RHI_Shader::RHI_Compile()
     {
         vector<string> arguments;

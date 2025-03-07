@@ -708,7 +708,7 @@ namespace spartan
                         cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                         cmd_list->SetCullMode(cull_mode);
 
-                        bool is_tessellated = material->IsTessellated();
+                        bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                         if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
                         {
                             pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? shader_h : nullptr;
@@ -733,7 +733,7 @@ namespace spartan
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
-                        bool is_tesselated     = material->IsTessellated();
+                        bool is_tesselated     = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                         bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
                         m_pcb_pass_cpu.set_f3_value(is_tesselated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f);
                         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
@@ -851,7 +851,7 @@ namespace spartan
                     cull_mode              = is_wireframe ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
 
-                    bool is_tessellated = material->IsTessellated();
+                    bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                     if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
                     {
                         pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? shader_h : nullptr;

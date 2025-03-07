@@ -40,19 +40,10 @@ static float4 sample_texture(float3 position, float3 normal, float2 uv, uint tex
 
     // things which are shared among branches
     float snow_blend_factor = get_snow_blend_factor(position);
-    float4 base_color       = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+    float4 base_color       = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv); // grass for the terrain
 
     float4 color = 0.0f;
-    if (surface.vertex_animate_water())
-    {
-        // interleave normals
-        float2 uv_interleaved_1 = uv + (float)buffer_frame.time * speed_1 * direction_1;
-        float2 uv_interleaved_2 = uv + (float)buffer_frame.time * speed_2 * direction_2;
-        float3 sample_1         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_1).rgb;
-        float3 sample_2         = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv_interleaved_2).rgb;
-        color                   = float4(normalize(sample_1 + sample_2), 0.0f);
-    }
-    else if (surface.texture_slope_based())
+    if (surface.is_terrain())
     {
         float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
         float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);

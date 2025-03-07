@@ -153,73 +153,59 @@ struct vertex_processing
     
     struct water
     {
-        static float3 apply_wave(float3 position_vertex, float time)
+        static void compute_wave_offset(inout float3 position_vertex, inout float3 dp_dx, inout float3 dp_dz, float time, float amplitude, float wavelength, float frequency, float fade_factor)
         {
-            static const float base_wave_height    = 0.2f;
-            static const float base_wave_frequency = 20.0f;
-            static const float base_wave_speed     = 0.3f;
+            const float2 direction = normalize(buffer_frame.wind.xz);
+            
+            // gerstner wave parameters
+            float k = PI2 / wavelength; // wave number (2π / wavelength)
+            float w = PI2 * frequency;  // angular frequency (2π * frequency in hz)
+            
+            // phase calculation
+            float phase = dot(direction, position_vertex.xz) * k + time * w;
+            float c     = cos(phase);
+            float s     = sin(phase);
 
-            // interleave 4 waves to have a more complex wave pattern
-            float3 offset = 0.0f;
-            for (int i = 0; i < 4; i++)
+            // position offset
+            position_vertex.x += amplitude * direction.x * c * fade_factor;
+            position_vertex.z += amplitude * direction.y * c * fade_factor;
+            position_vertex.y += amplitude * s * fade_factor;
+            
+            // accumulate wave direction
             {
-                // modulate base wave parameters based on index
-                float wave_height    = base_wave_height * (0.75f + i * 0.1f);
-                float wave_frequency = base_wave_frequency * (0.9f + i * 0.05f);
-                float wave_speed     = base_wave_speed * (0.9f + i * 0.05f);
-    
-                // dynamically calculate wave direction based on index
-                float angle           = 2.0f * 3.14159f * i / 4.0f;
-                float2 wave_direction = float2(cos(angle), sin(angle));
-    
-                // gerstner wave equation
-                float k = 2 * 3.14159 / wave_frequency;
-                float w = sqrt(9.8f / k) * wave_speed;
-    
-                // phase and amplitude
-                float phase = dot(wave_direction, position_vertex.xz) * k + time * w;
-                float c     = cos(phase);
-                float s     = sin(phase);
-    
-                // calculate new position for this wave and add to the offset
-                offset.x += wave_height * wave_direction.x * c;
-                offset.z += wave_height * wave_direction.y * c;
-                offset.y += wave_height * s;
+                float kx = k * direction.x;
+                float kz = k * direction.y;
+                float A  = amplitude;
+
+                // tangent
+                dp_dx += float3(-A * direction.x * kx * s,  // dx/dx
+                                 A * kx * c,                // dy/dx
+                                -A * direction.y * kx * s); // dz/dx
+            
+                // bitangent
+                dp_dz += float3(-A * direction.x * kz * s,  // dx/dz
+                                 A * kz * c,                // dy/dz
+                                -A * direction.y * kz * s); // dz/dz
             }
-    
-            position_vertex.xz += offset.xz;
-            position_vertex.y += offset.y;
-    
-            return position_vertex;
         }
-
-        static float3 apply_ripple(float3 position_vertex, float time)
+        
+        static void apply_wave(inout float3 position, inout float3 normal, inout float3 tangent, float time, float fade_factor)
         {
-            static const float ripple_speed                = 0.25f;
-            static const float ripple_max_height           = 0.2f;
-            static const float ripple_frequency            = 5.0f;
-            static const float ripple_decay_rate           = 0.1f;
-            static const float ripple_decay_after_movement = 2.0f; // time for ripples to decay after movement stops
-
-            // calculate time since the player last moved
-            float time_since_last_movement = time - buffer_frame.camera_last_movement_time;
-
-            // check if the camera (player) is near the sea level (0.0f)
-            if (abs(buffer_frame.camera_position.y) < 4.0f)
-            {
-                float distance = length(position_vertex.xz - buffer_frame.camera_position.xz);
-                
-                // the ripple phase should consider the distance from the player
-                float ripple_phase = ripple_frequency * (time * ripple_speed - distance);
-
-                // adjust the ripple height based on time since last movement
-                float decay_factor  = max(1.0f - (time_since_last_movement / ripple_decay_after_movement), 0.0f);
-                float ripple_height = ripple_max_height * sin(ripple_phase) * exp(-ripple_decay_rate * distance) * decay_factor;
-
-                position_vertex.y += ripple_height;
-            }
-
-            return position_vertex;
+            // small waves: high-frequency small ripples (SI units)
+            const float amplitude  = 0.1f;
+            const float wavelength = 1.0f;
+            const float frequency  = 1.0f; 
+            
+            float3 dp_dx = tangent;
+            float3 dp_dz = normalize(cross(normal, tangent)); // bitangent
+        
+            // update position
+            compute_wave_offset(position, dp_dx, dp_dz, time, amplitude, wavelength, frequency, fade_factor);
+        
+            // update normal
+            tangent          = normalize(dp_dx);
+            float3 bitangent = normalize(dp_dz);
+            normal           = normalize(cross(bitangent, tangent));
         }
     };
 
@@ -270,21 +256,21 @@ struct vertex_processing
                 const float min_wind_lean             = 0.25f; // minimum lean angle for grass blades
                 const float max_wind_lean             = 1.0f;  // maximum lean angle for grass blades
             
-                float wind_direction       = get_noise_perlin(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
-                wind_direction             = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
-                float wind_strength_noise  = get_noise_perlin(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
-                float wind_lean_angle      = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
-                wind_lean_angle            = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
-                float3 wind_dir            = float3(cos(wind_direction), 0, sin(wind_direction));
-                float3 rotation_axis       = normalize(cross(float3(0, 1, 0), wind_dir));
-                float total_height         = 1.0f; // define based on your grass blade model’s height in world space
-                float curve_angle          = (wind_lean_angle / total_height) * height_percent;
-                float3 base_position       = position_world - position_local; // base is where position_local = (0, 0, 0)
-                float3 local_pos           = position_world - base_position;
-                local_pos                  = rotate_around_axis(rotation_axis, curve_angle, local_pos);
-                position_world             = base_position + local_pos;
-                vertex.normal              = rotate_around_axis(rotation_axis, curve_angle, vertex.normal);
-                vertex.tangent             = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
+                float wind_direction      = get_noise_perlin(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
+                wind_direction            = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
+                float wind_strength_noise = get_noise_perlin(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
+                float wind_lean_angle     = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
+                wind_lean_angle           = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
+                float3 wind_dir           = float3(cos(wind_direction), 0, sin(wind_direction));
+                float3 rotation_axis      = normalize(cross(float3(0, 1, 0), wind_dir));
+                float total_height        = 1.0f; // this could be passed as a parameter but currently it's not needed
+                float curve_angle         = (wind_lean_angle / total_height) * height_percent;
+                float3 base_position      = position_world - position_local; // base is where position_local = (0, 0, 0)
+                float3 local_pos          = position_world - base_position;
+                local_pos                 = rotate_around_axis(rotation_axis, curve_angle, local_pos);
+                position_world            = base_position + local_pos;
+                vertex.normal             = rotate_around_axis(rotation_axis, curve_angle, vertex.normal);
+                vertex.tangent            = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
             }
 
             // color
@@ -300,20 +286,14 @@ struct vertex_processing
             }
         }
         
-        if (surface.vertex_animate_wind() && !surface.is_grass_blade())
+        if (surface.is_tree() && !surface.is_grass_blade())
         {
             position_world = vegetation::apply_wind(instance_id, position_world, height_percent, wind, time);
         }
 
-        if (surface.vertex_animate_wind() || surface.is_grass_blade())
+        if (surface.is_tree() || surface.is_grass_blade())
         {
             position_world = vegetation::apply_player_bend(position_world, height_percent);
-        }
-    
-        if (surface.vertex_animate_water())
-        {
-            position_world = water::apply_wave(position_world, time);
-            position_world = water::apply_ripple(position_world, time);
         }
     }
 };
@@ -373,9 +353,9 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
 gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 {
-    vertex.position_clip          = mul(float4(vertex.position, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_unjittered : buffer_frame.view_projection);
+    vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
     vertex.position_clip_current  = vertex.position_clip;
-    vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), pass_is_transparent() ? buffer_frame.view_projection_previous_unjittered : buffer_frame.view_projection_previous);
+    vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
 
     return vertex;
 }
@@ -383,98 +363,102 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 // tessellation
 
 #define MAX_POINTS 3
-#define MAX_TESS_FACTOR 64
-#define TESS_END_DISTANCE 50.0f
+#define TESS_FACTOR 64
+#define TESS_DISTANCE 32.0f
+#define TESS_DISTANCE_SQUARED (TESS_DISTANCE * TESS_DISTANCE)
 
+// hull shader constant data
 struct HsConstantDataOutput
 {
-    float edges[3] : SV_TessFactor;
-    float inside   : SV_InsideTessFactor;
+    float edges[3] : SV_TessFactor;       // edge tessellation factors
+    float inside   : SV_InsideTessFactor; // inside tessellation factor
 };
 
-HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch)
-{
-    HsConstantDataOutput output;
-    float subdivisions = 1.0f;
-
-    // calculate camera to the patch center vector
-    float3 patch_center    = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
-    float3 camera_to_patch = patch_center - buffer_frame.camera_position;
-
-    // determine face visibility
-    float visibility = 0.0f;
-    {
-        // calculate the normal of the patch
-        float3 tangent1    = input_patch[1].position - input_patch[0].position;
-        float3 tangent2    = input_patch[2].position - input_patch[0].position;
-        float3 face_normal = cross(tangent1, tangent2);
-
-        // check if the patch is back-facing
-        visibility = dot(normalize(face_normal), normalize(camera_to_patch));
-    }
-
-    if (visibility > 0) // no tessellation
-    {
-        subdivisions = 1.0f;
-    }
-    else // distance based tessellation
-    {
-        float distance_squared    = dot(camera_to_patch, camera_to_patch);
-        float normalized_distance = min(distance_squared / (TESS_END_DISTANCE * TESS_END_DISTANCE), 1.0f);
-        float drop_off_factor     = pow(2, -normalized_distance * 10);
-        subdivisions              = MAX_TESS_FACTOR * drop_off_factor;
-        subdivisions              = max(subdivisions, 1.0f);
-    }
-
-    // set uniform tessellation across all edges and inside
-    output.edges[0] = subdivisions;
-    output.edges[1] = subdivisions;
-    output.edges[2] = subdivisions;
-    output.inside   = subdivisions;
-
-    return output;
-}
-
+// hull shader (control point phase) - pass-through
 [domain("tri")]
 [partitioning("fractional_odd")]
 [outputtopology("triangle_cw")]
 [patchconstantfunc("patch_constant_function")]
 [outputcontrolpoints(MAX_POINTS)]
-[maxtessfactor(MAX_TESS_FACTOR)]
+[maxtessfactor(TESS_FACTOR)]
 gbuffer_vertex main_hs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint cp_id : SV_OutputControlPointID)
 {
-    return input_patch[cp_id];
+    return input_patch[cp_id]; // pass through unchanged
 }
 
+// hull shader (patch constant function) - dynamic tessellation
+HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint patch_id : SV_PrimitiveID)
+{
+    HsConstantDataOutput output;
+    
+    // calculate distance from camera to triangle center
+    float3 avg_pos         = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
+    float3 to_camera       = avg_pos - buffer_frame.camera_position;
+    float distance_squared = dot(to_camera, to_camera);
+    float tess_factor      = (distance_squared <= TESS_DISTANCE_SQUARED) ? TESS_FACTOR : 1.0f;
+
+    // set tessellation factors
+    output.edges[0] = tess_factor;
+    output.edges[1] = tess_factor;
+    output.edges[2] = tess_factor;
+    output.inside   = tess_factor;
+
+    return output;
+}
+
+// domain shader
 [domain("tri")]
 gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
 {
     gbuffer_vertex vertex;
 
-    // interpolate
-    {
-        vertex.position          = patch[0].position          * bary_coords.x + patch[1].position          * bary_coords.y + patch[2].position          * bary_coords.z;
-        vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
-        
-        vertex.normal            = normalize(patch[0].normal  * bary_coords.x + patch[1].normal  * bary_coords.y + patch[2].normal * bary_coords.z);
-        vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent * bary_coords.y + patch[2].tangent  * bary_coords.z);
-        
-        vertex.uv                = patch[0].uv * bary_coords.x + patch[1].uv * bary_coords.y + patch[2].uv * bary_coords.z;
-    }
+    // interpolate vertex attributes
+    vertex.position          = patch[0].position          * bary_coords.x + patch[1].position          * bary_coords.y + patch[2].position          * bary_coords.z;
+    vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
+    vertex.normal            = normalize(patch[0].normal  * bary_coords.x + patch[1].normal            * bary_coords.y + patch[2].normal            * bary_coords.z);
+    vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent           * bary_coords.y + patch[2].tangent           * bary_coords.z);
+    vertex.uv                = patch[0].uv                * bary_coords.x + patch[1].uv                * bary_coords.y + patch[2].uv                * bary_coords.z;
+
+    // calculate fade factor based on actual distance from camera
+    float3 vec_to_vertex      = vertex.position.xyz - buffer_frame.camera_position;
+    float distance_from_cam   = length(vec_to_vertex);
+    const float fade_distance = 4.0f; // distance from the end at which tessellation starts to fade to 0
+    float fade_factor         = saturate((TESS_DISTANCE - distance_from_cam) / fade_distance);
 
     // displace
     MaterialParameters material = GetMaterial(); Surface surface; surface.flags = material.flags;
-    bool tessellated  = input.edges[0] > 1.0f || input.edges[1] > 1.0f || input.edges[2] > 1.0f || input.inside > 1.0f;
-    if (surface.has_texture_height() && tessellated)
+    bool tessellated            = input.edges[0] > 1.0f || input.edges[1] > 1.0f || input.edges[2] > 1.0f || input.inside > 1.0f;
+    if (tessellated)
     {
-        float height              = 1.0f - GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv, 0.0f).a;
-        float strength            = material.height * 0.1f;
-        float3 tangent_1          = patch[1].position - patch[0].position;
-        float3 tangent_2          = patch[2].position - patch[0].position;
-        float3 normal_stable      = cross(tangent_1, tangent_2);
-        float3 displacement       = -normal_stable * strength * height;
-        vertex.position          += displacement;
-        vertex.position_previous += displacement;
+
+        if (surface.has_texture_height())
+        {
+            float height              = GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv, 0.0f).a * 0.04f;
+            float3 displacement       = vertex.normal * height * material.height * fade_factor;
+            vertex.position          += displacement;
+            vertex.position_previous += displacement;
+        }
+
+        // for the terrain, add some perlin noise to make it look less flat
+        if (surface.is_terrain())
+        {
+            float height_big          = get_noise_perlin(vertex.position.xz * 1.0f) * 0.3f;
+            float height_small        = get_noise_perlin(vertex.position.xz * 8.0f) * 0.1f;
+            float3 displacement       = vertex.normal * (height_big + height_small) * fade_factor;
+            vertex.position          += displacement;
+            vertex.position_previous += displacement;
+        }
+    }
+
+    // for the water, apply some wave patterns
+    if (surface.is_water())
+    {
+        float time          = (float)buffer_frame.time;
+        float time_previous = time - (float)buffer_frame.delta_time;
+        
+        float3 normal, tangent;
+        vertex_processing::water::apply_wave(vertex.position_previous, normal,        tangent,        time_previous, fade_factor);
+        vertex_processing::water::apply_wave(vertex.position,          vertex.normal, vertex.tangent, time,          fade_factor);
     }
 
     return transform_to_clip_space(vertex);
