@@ -41,19 +41,19 @@ namespace spartan
     {
         // create a device
         OIDNDeviceType device_type = RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia() ? OIDN_DEVICE_TYPE_CUDA : OIDN_DEVICE_TYPE_HIP;
-        OIDNDevice device          = oidnNewDevice(device_type);
-        oidnCommitDevice(device);
+        OIDNDevice oid_device          = oidnNewDevice(device_type);
+        oidnCommitDevice(oid_device);
 
         // check if the device supports OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32
         uint32_t external_memory_types = 0;
-        external_memory_types = oidnGetDeviceUInt(device, "externalMemoryTypes");
+        external_memory_types = oidnGetDeviceUInt(oid_device, "externalMemoryTypes");
         if ((external_memory_types & OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32) == 0)
         {
             //SP_LOG_ERROR("The selected device does not support OIDN_EXTERNAL_MEMORY_TYPE_FLAG_OPAQUE_WIN32 external memory type.");
         }
 
         // create a generic ray tracing filter
-        filter = oidnNewFilter(device, "RT");
+        filter = oidnNewFilter(oid_device, "RT");
 
         // set denoiser parameters
         oidnSetFilterBool(filter, "hdr", true);

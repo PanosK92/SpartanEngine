@@ -36,7 +36,7 @@ namespace spartan
 
     }
 
-    bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)
+    bool RHI_InputLayout::_CreateResource()
     {
         return true;
     }
