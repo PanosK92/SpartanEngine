@@ -55,36 +55,13 @@ namespace spartan
 
         namespace visibility
         {
-            unordered_map<uint64_t, float> distances_squared;
             unordered_map<uint64_t, Rectangle> rectangles;
             unordered_map<uint64_t, BoundingBox> boxes;
 
             void clear()
             {
-                distances_squared.clear();
                 rectangles.clear();
                 boxes.clear();
-            }
-
-            float get_squared_distance(const shared_ptr<Entity>& entity)
-            {
-                Vector3 camera_position = Renderer::GetCamera()->GetEntity()->GetPosition();
-                uint64_t entity_id      = entity->GetObjectId();
-
-                auto it = distances_squared.find(entity_id);
-                if (it != distances_squared.end())
-                {
-                    return it->second;
-                }
-                else
-                {
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    Vector3 position                  = renderable->GetBoundingBox(BoundingBoxType::Transformed).GetCenter();
-                    float distance_squared            = (position - camera_position).LengthSquared();
-                    distances_squared[entity_id]      = distance_squared;
-
-                    return distance_squared;
-                }
             }
 
             void frustum_culling(vector<shared_ptr<Entity>>& renderables)
@@ -107,7 +84,7 @@ namespace spartan
                         return false;
                     
                     // front-to-back for opaque (todo, handle inverse sorting for transparents)
-                    return get_squared_distance(a) < get_squared_distance(b);
+                    return a->GetComponent<Renderable>()->GetDistanceSquared() < b->GetComponent<Renderable>()->GetDistanceSquared();
                 });
 
                 // 2. sort by instancing, instanced objects go to the front
@@ -333,7 +310,7 @@ namespace spartan
             }
             else 
             {
-                float distance_squared = visibility::distances_squared[renderable->GetEntity()->GetObjectId()];
+                float distance_squared = renderable->GetDistanceSquared();
                 bool draw              = distance_squared <= renderable->GetMaxRenderDistance() * renderable->GetMaxRenderDistance();
 
                 if (draw)

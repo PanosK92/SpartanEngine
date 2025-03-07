@@ -58,6 +58,7 @@ namespace spartan
         // icomponent
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
+        void OnTick() override;
 
         // geometry
         void SetGeometry(
@@ -99,7 +100,10 @@ namespace spartan
         uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<math::Matrix>& instances);
 
-        // render distance
+        // distance squared
+        float GetDistanceSquared() const                      { return m_distance_squared; }
+
+        // max render distance
         void SetMaxRenderDistance(const float max_render_distance) { m_max_render_distance = max_render_distance; }
         float GetMaxRenderDistance() const                         { return m_max_render_distance; }
 
@@ -142,6 +146,7 @@ namespace spartan
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
         // rendering
+        float m_distance_squared    = 0.0f;
         float m_max_render_distance = FLT_MAX;
     };
 }

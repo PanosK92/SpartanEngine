@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "Renderable.h"
+#include "Camera.h"
+#include "../../Rendering/Renderer.h"
 #include "../Entity.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../../IO/FileStream.h"
@@ -115,6 +117,20 @@ namespace spartan
         }
     }
 
+    void Renderable::OnTick()
+    {
+        if (Camera* camera = Renderer::GetCamera().get())
+        { 
+            Vector3 position        = GetBoundingBox(BoundingBoxType::Transformed).GetCenter();
+            Vector3 camera_position = camera->GetEntity()->GetPosition();
+            m_distance_squared      = (position - camera_position).LengthSquared();
+        }
+        else
+        {
+            m_distance_squared = 0.0f;
+        }
+    }
+
     void Renderable::SetGeometry(
         Mesh* mesh,
         const math::BoundingBox aabb /*= math::BoundingBox::Undefined*/,
@@ -123,7 +139,7 @@ namespace spartan
     )
     {
         m_mesh                       = mesh;
-        m_bounding_box = aabb;
+        m_bounding_box               = aabb;
         m_geometry_index_offset      = index_offset;
         m_geometry_index_count       = index_count;
         m_geometry_vertex_offset     = vertex_offset;

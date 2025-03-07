@@ -493,6 +493,7 @@ namespace spartan
             compute_gear_and_gear_ratio(parameters);
 
             // compute engine rpm
+            if (parameters.vehicle)
             {
                 btWheelInfo* wheel_info       = &parameters.vehicle->getWheelInfo(0);
                 float wheel_angular_velocity  = wheel_info->m_deltaRotation / static_cast<float>(Timer::GetDeltaTimeSec());
