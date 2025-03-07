@@ -43,10 +43,8 @@ namespace spartan
 
     enum RenderableFlags : uint32_t
     {
-        OccludedCpu  = 1U << 0, // frustum culling
-        OccludedGpu  = 1U << 1, // occlusion culling (depth culling)
-        Occluder     = 1U << 2,
-        CastsShadows = 1U << 3
+        Occluded     = 1U << 0,
+        CastsShadows = 1U << 1
     };
 
     class Renderable : public Component
@@ -72,7 +70,7 @@ namespace spartan
 
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
-        uint32_t GetInstancePartitionCount() const                         { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
+        uint32_t GetInstanceGroupCount() const                             { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
         const math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t index = 0);
 
         //= MATERIAL ====================================================================
@@ -100,10 +98,10 @@ namespace spartan
         uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<math::Matrix>& instances);
 
-        // distance
-        float GetDistanceSquared() const                                     { return m_distance_squared; }
-        void SetMaxRenderDistance(const float max_render_distance)           { m_max_render_distance = max_render_distance; }
-        bool IsWithinRenderDistance(const uint32_t instance_group_index = 0) { return m_is_within_render_distance[instance_group_index]; }
+        // distance & visibility
+        float GetDistanceSquared() const                              { return m_distance_squared; }
+        void SetMaxRenderDistance(const float max_render_distance)    { m_max_render_distance = max_render_distance; }
+        bool IsVisible(const uint32_t instance_group_index = 0) const { return m_is_visible[instance_group_index] && !HasFlag(RenderableFlags::Occluded); }
 
         // misc
         uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
@@ -113,9 +111,8 @@ namespace spartan
         bool HasMesh() const             { return m_mesh != nullptr; }
 
         // flags
-        bool HasFlag(const RenderableFlags flag) { return m_flags & flag; }
+        bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }
         void SetFlag(const RenderableFlags flag, const bool enable = true);
-        bool IsVisible() const { return !(m_flags & RenderableFlags::OccludedCpu) && !(m_flags & RenderableFlags::OccludedGpu); }
 
     private:
         // geometry/mesh
@@ -144,8 +141,8 @@ namespace spartan
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
         // distance
-        float m_distance_squared         = 0.0f;
-        float m_max_render_distance      = FLT_MAX;
-        std::array<bool, 2048> m_is_within_render_distance { false };
+        float m_distance_squared            = 0.0f;
+        float m_max_render_distance         = FLT_MAX;
+        std::array<bool, 2048> m_is_visible = { false };
     };
 }

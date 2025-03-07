@@ -1657,7 +1657,7 @@ namespace spartan
 
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
-        const  uint32_t frames_selflife            = 10;
+        const  uint32_t frames_selflife            = 1000;
         static uint32_t frames_equilibrium         = 0;
         static uint32_t objects_to_delete_previous = 0;
     

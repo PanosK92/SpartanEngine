@@ -58,19 +58,17 @@ namespace spartan
             unordered_map<uint64_t, Rectangle> rectangles;
             unordered_map<uint64_t, BoundingBox> boxes;
 
-            void clear()
+            void clear(vector<shared_ptr<Entity>>& renderables)
             {
                 rectangles.clear();
                 boxes.clear();
-            }
 
-            void frustum_culling(vector<shared_ptr<Entity>>& renderables)
-            {
                 for (shared_ptr<Entity>& entity : renderables)
                 {
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    renderable->SetFlag(RenderableFlags::OccludedCpu, !Renderer::GetCamera()->IsInViewFrustum(renderable));
-                    renderable->SetFlag(RenderableFlags::Occluder, false);
+                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    {
+                        renderable->SetFlag(RenderableFlags::Occluded, false);
+                    }
                 }
             }
 
@@ -80,7 +78,7 @@ namespace spartan
                 sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
                 {
                     // skip entities which are outside of the view frustum
-                    if (a->GetComponent<Renderable>()->HasFlag(OccludedCpu) || b->GetComponent<Renderable>()->HasFlag(OccludedCpu))
+                    if (!a->GetComponent<Renderable>()->IsVisible() || !b->GetComponent<Renderable>()->IsVisible())
                         return false;
                     
                     // front-to-back for opaque (todo, handle inverse sorting for transparents)
@@ -102,12 +100,6 @@ namespace spartan
                     // non-transparent objects should come first, so invert the condition
                     return !a_transparent && b_transparent;
                 });
-            }
-
-            void frustum_cull_and_sort(vector<shared_ptr<Entity>>& renderables)
-            {
-                frustum_culling(renderables);
-                sort(renderables);
 
                 // find transparent index
                 auto transparent_start = find_if(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& entity)
@@ -153,74 +145,6 @@ namespace spartan
                 }
             }
 
-            void determine_occluders(vector<shared_ptr<Entity>>& renderables)
-            {
-                uint32_t occluder_count = 0;
-                for (shared_ptr<Entity>& entity : renderables)
-                {
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    if (!renderable || renderable->HasFlag(RenderableFlags::OccludedCpu))
-                        continue;
-
-                    // compute screen space rectangle
-                    BoundingBox box                   = renderable->GetBoundingBox(BoundingBoxType::Transformed);
-                    Rectangle rectangle               = Renderer::GetCamera()->WorldToScreenCoordinates(box);
-                    boxes[entity->GetObjectId()]      = box;
-                    rectangles[entity->GetObjectId()] = rectangle;
-
-                    bool factor_screen_size = rectangle.Area() >= 65536.0f;
-                    bool factor_inside      = box.Contains(Renderer::GetCamera()->GetEntity()->GetPosition()); // say we are in a building
-                    bool factor_count       = occluder_count < 32;
-                    if (factor_count && factor_screen_size && !factor_inside)
-                    {
-                        renderable->SetFlag(RenderableFlags::Occluder, true);
-                        occluder_count++;
-                    }
-                }
-            }
-
-            void remove_false_gpu_occlusion(shared_ptr<Entity>& entity_occludee, vector<shared_ptr<Entity>>& entities)
-            {
-                // if this entity is outside of the view frustum, don't bother
-                shared_ptr<Renderable> renderable_occludee = entity_occludee->GetComponent<Renderable>();
-                if (!renderable_occludee || renderable_occludee->HasFlag(OccludedCpu))
-                    return;
-
-                bool is_visible         = true;
-                uint32_t occluder_count = 0;
-                for (shared_ptr<Entity>& entity_occluder : entities)
-                {
-                    shared_ptr<Renderable> renderable_occluder = entity_occluder->GetComponent<Renderable>();
-                    if (!renderable_occluder || entity_occludee->GetObjectId() == entity_occluder->GetObjectId())
-                        continue;
-
-                    if (renderable_occluder->HasFlag(Occluder))
-                    {
-                        // project world space axis-aligned bounding boxes into screen space
-                        Rectangle& rectangle_occludee = rectangles[entity_occludee->GetObjectId()];
-                        Rectangle& rectangle_occluder = rectangles[entity_occluder->GetObjectId()];
-
-                        // if it's contained by at least one occluder, it's not visible
-                        if (rectangle_occluder.Contains(rectangle_occludee))
-                        {
-                            is_visible = false;
-                            break;
-                        }
-
-                        occluder_count++;
-                    }
-
-                    // use the 4 first (and front most) occluders
-                    if (occluder_count > 4)
-                        break;
-                }
-
-                if (is_visible)
-                {
-                    renderable_occludee->SetFlag(RenderableFlags::OccludedGpu, false);
-                }
-            }
-
             void get_gpu_occlusion_query_results(RHI_CommandList* cmd_list, unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
             {
                 cmd_list->UpdateOcclusionQueries();
@@ -241,13 +165,7 @@ namespace spartan
                             continue;
 
                         bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
-                        renderable->SetFlag(RenderableFlags::OccludedGpu, occluded);
-
-                        // counter occlusion query latency by removing false gpu occlusions
-                        if (occluded)
-                        {
-                            remove_false_gpu_occlusion(entity, entities);
-                        }
+                        renderable->SetFlag(RenderableFlags::Occluded, occluded);
                     }
                 }
             }
@@ -261,7 +179,7 @@ namespace spartan
 
             if (draw_instanced)
             {
-                for (uint32_t group_index = 0; group_index < renderable->GetInstancePartitionCount(); group_index++)
+                for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                 {
                     uint32_t group_end_index              = renderable->GetBoundingBoxGroupEndIndices()[group_index];
                     uint32_t instance_count               = group_end_index - instance_start_index;
@@ -277,11 +195,6 @@ namespace spartan
                                 continue;
                             }
                         }
-                        else if (!camera->IsInViewFrustum(bounding_box_group))
-                        {
-                            instance_start_index = group_end_index;
-                            continue;
-                        }
                     }
 
                     // skip this iteration if we've reached the total number of instances
@@ -290,7 +203,7 @@ namespace spartan
 
                     if (instance_count > 0)
                     {
-                        if (renderable->IsWithinRenderDistance(group_index))
+                        if (renderable->IsVisible(group_index))
                         { 
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(),
@@ -307,7 +220,7 @@ namespace spartan
             }
             else 
             {
-                if (renderable->IsWithinRenderDistance())
+                if (renderable->IsVisible())
                 { 
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(),
@@ -598,17 +511,11 @@ namespace spartan
     void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
     {
         // cpu pass
-        // forest time: 0.05 ms
 
         cmd_list->BeginTimeblock("visibility", false, false);
 
-        visibility::clear();
-        visibility::frustum_cull_and_sort(m_renderables[Renderer_Entity::Mesh]);
-
-        if (GetOption<bool>(Renderer_Option::OcclusionCulling))
-        {
-            visibility::determine_occluders(m_renderables[Renderer_Entity::Mesh]);
-        }
+        visibility::clear(m_renderables[Renderer_Entity::Mesh]);
+        visibility::sort(m_renderables[Renderer_Entity::Mesh]);
 
         cmd_list->EndTimeblock();
     }
@@ -658,8 +565,6 @@ namespace spartan
 
                 shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                if (!renderable || renderable->HasFlag(RenderableFlags::OccludedCpu))
-                    continue;
 
                 // toggles
                 {
@@ -735,7 +640,10 @@ namespace spartan
         // depth for opaques
         cmd_list->SetIgnoreClearValues(false); // this is a hack, needs to go asap
         pass(false);
-        visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
+        if (GetOption<bool>(Renderer_Option::OcclusionCulling))
+        {
+            visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
+        }        
         cmd_list->Blit(tex_depth, tex_depth_opaque, false);
 
         // depth for transparents
@@ -809,8 +717,6 @@ namespace spartan
 
             shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
             shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-            if (!renderable || !renderable->IsVisible())
-                continue;
 
             // toggles
             {

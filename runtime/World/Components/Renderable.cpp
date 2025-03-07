@@ -121,27 +121,47 @@ namespace spartan
         if (Camera* camera = Renderer::GetCamera().get())
         {
             Vector3 camera_position = camera->GetEntity()->GetPosition();
-            
+    
             if (HasInstancing())
             {
-                for (uint32_t group_index = 0; group_index < GetInstancePartitionCount(); group_index++)
+                for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
                 {
-                    const BoundingBox& bounding_box          = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-                    float distance_squared                   = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                    m_is_within_render_distance[group_index] =  distance_squared <= m_max_render_distance * m_max_render_distance;
+                    const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                    // first, check if the bounding box is in the frustum
+                    if (camera->IsInViewFrustum(bounding_box))
+                    {
+                        // only if in frustum, calculate distance
+                        float distance_squared    = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                        m_is_visible[group_index] = distance_squared <= m_max_render_distance * m_max_render_distance;
+                    }
+                    else
+                    {
+                        // outside frustum, no need for distance check
+                        m_is_visible[group_index] = false;
+                    }
                 }
             }
             else
             {
                 const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::Transformed);
-                m_distance_squared              = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                m_is_within_render_distance[0]  = m_distance_squared <= m_max_render_distance * m_max_render_distance;
+                // first, check if the bounding box is in the frustum
+                if (camera->IsInViewFrustum(bounding_box))
+                {
+                    // only if in frustum, calculate distance
+                    m_distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                    m_is_visible[0]    = m_distance_squared <= m_max_render_distance * m_max_render_distance;
+                }
+                else
+                {
+                    // outside frustum, no need for distance check
+                    m_is_visible[0] = false;
+                }
             }
         }
         else
         {
             m_distance_squared = 0.0f;
-            m_is_within_render_distance.fill(true);
+            m_is_visible.fill(true);
         }
     }
 

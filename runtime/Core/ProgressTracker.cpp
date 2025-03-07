@@ -34,12 +34,11 @@ namespace spartan
     namespace
     { 
         array<Progress, 4> progresses;
-        mutex mutex_progress_access;
-        mutex mutex_jobs;
-        atomic<uint32_t> anonymous_jobs = 0;
+        recursive_mutex mutex_jobs;
+        uint32_t anonymous_jobs = 0;
     }
 
-    void Progress::Start(const uint32_t job_count, const std::string& text)
+    void Progress::Start(const uint32_t job_count, const string& text)
     {
         SP_ASSERT_MSG(GetFraction() == 1.0f, "The previous progress tracking hasn't finished");
 
@@ -85,16 +84,17 @@ namespace spartan
 
     Progress& ProgressTracker::GetProgress(const ProgressType progress_type)
     {
-        lock_guard lock(mutex_progress_access);
+        lock_guard lock(mutex_jobs);
+
         return progresses[static_cast<uint32_t>(progress_type)];
     }
 
     bool ProgressTracker::IsLoading()
     {
+        lock_guard lock(mutex_jobs);
+
         if (anonymous_jobs > 0)
             return true;
-
-        lock_guard lock(mutex_progress_access);
 
         for (const Progress& progress : progresses)
         {
@@ -102,18 +102,20 @@ namespace spartan
                 return true;
         }
 
-        return false;
+        return false; 
     }
 
-    void ProgressTracker::SetGlobalLoadingState(const bool is_loading)
+    void ProgressTracker::SetGlobalLoadingState(bool is_loading)
     {
+        lock_guard lock(mutex_jobs);
+
         if (is_loading)
         {
-            anonymous_jobs.fetch_add(1, std::memory_order_relaxed); // increment atomically
+            anonymous_jobs++;
         }
         else
         {
-            anonymous_jobs.fetch_sub(1, std::memory_order_relaxed); // decrement atomically
+            anonymous_jobs--;
         }
     }
 }

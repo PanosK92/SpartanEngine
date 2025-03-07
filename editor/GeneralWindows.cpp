@@ -429,7 +429,7 @@ namespace
             "7. Bistro Exterior & Interior (demanding)",
             "8. Forest Car (demanding)",
         };
-        int world_index = 0;
+        int world_index = 7;
 
         bool downloaded_and_extracted = false;
         bool visible_download_prompt  = false;

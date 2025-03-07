@@ -379,15 +379,15 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT ======================================================================
-        string name_mesh             = renderable->GetMeshName();
-        Material* material           = renderable->GetMaterial();
-        uint32_t instance_count      = renderable->GetInstanceCount();
-        uint32_t instance_partitions = renderable->GetInstancePartitionCount();
-        string name_material         = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows            = renderable->HasFlag(RenderableFlags::CastsShadows);
-        bool is_visible              = renderable->IsVisible();
-        //================================================================================
+        //= REFLECT =======================================================================
+        string name_mesh              = renderable->GetMeshName();
+        Material* material            = renderable->GetMaterial();
+        uint32_t instance_count       = renderable->GetInstanceCount();
+        uint32_t instance_group_count = renderable->GetInstanceGroupCount();
+        string name_material          = material ? material->GetObjectName() : "N/A";
+        bool cast_shadows             = renderable->HasFlag(RenderableFlags::CastsShadows);
+        bool is_visible               = renderable->IsVisible();
+        //=================================================================================
 
         // mesh
         ImGui::Text("Mesh");
@@ -401,9 +401,9 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
             ImGui::SameLine(column_pos_x);
             ImGui::LabelText("##renderable_mesh", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
-            ImGui::Text("Partitions");
+            ImGui::Text("Instance Groups");
             ImGui::SameLine(column_pos_x);
-            ImGui::LabelText("##renderable_mesh", to_string(instance_partitions).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+            ImGui::LabelText("##renderable_mesh", to_string(instance_group_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         }
 
         // material
