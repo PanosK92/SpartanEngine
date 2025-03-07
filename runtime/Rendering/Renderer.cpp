@@ -317,35 +317,31 @@ namespace spartan
             dynamic_resolution();
         }
 
-        // rendering
+        GetSwapChain()->AcquireNextImage();
+
+         // begin command lists
+        RHI_Queue* queue_graphics          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+        RHI_Queue* queue_compute           = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
+        RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
+        RHI_CommandList* cmd_list_compute  = queue_compute->GetCommandList();
+        cmd_list_graphics->Begin(queue_graphics);
+        //cmd_list_compute->Begin(queue_compute);
+
+        // produce frame
+        OnUpdateBuffers(cmd_list_graphics);
+        ProduceFrame(cmd_list_graphics, cmd_list_compute);
+
+        // blit to back buffer when not in editor mode
+        bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
+        if (is_standalone)
         {
-            GetSwapChain()->AcquireNextImage();
+            BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output));
+        }
 
-            // get resources
-            RHI_Queue* queue_graphics          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-            RHI_Queue* queue_compute           = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
-            RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
-            RHI_CommandList* cmd_list_compute  = queue_compute->GetCommandList();
-
-            // begin command lists
-            cmd_list_graphics->Begin(queue_graphics);
-            //cmd_list_compute->Begin(queue_compute);
-
-            OnUpdateBuffers(cmd_list_graphics);
-            ProduceFrame(cmd_list_graphics, cmd_list_compute);
-
-            // blit to back buffer when not in editor mode
-            bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
-            if (is_standalone)
-            {
-                BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output));
-            }
-
-            // present
-            if (is_standalone)
-            {
-                SubmitAndPresent();
-            }
+        // present
+        if (is_standalone)
+        {
+            SubmitAndPresent();
         }
 
         frame_num++;
