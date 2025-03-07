@@ -461,5 +461,11 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
         vertex_processing::water::apply_wave(vertex.position,          vertex.normal, vertex.tangent, time,          fade_factor);
     }
 
+    // pass through unused fields (use patch[0] since they’re per-instance)
+    vertex.color              = patch[0].color;
+    vertex.instance_id        = patch[0].instance_id;
+    vertex.transform          = patch[0].transform;
+    vertex.transform_previous = patch[0].transform_previous;
+
     return transform_to_clip_space(vertex);
 }
