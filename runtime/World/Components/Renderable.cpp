@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderable.h"
 #include "Camera.h"
-#include "../../Rendering/Renderer.h"
 #include "../Entity.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../../IO/FileStream.h"
@@ -120,14 +119,29 @@ namespace spartan
     void Renderable::OnTick()
     {
         if (Camera* camera = Renderer::GetCamera().get())
-        { 
-            Vector3 position        = GetBoundingBox(BoundingBoxType::Transformed).GetCenter();
+        {
             Vector3 camera_position = camera->GetEntity()->GetPosition();
-            m_distance_squared      = (position - camera_position).LengthSquared();
+            
+            if (HasInstancing())
+            {
+                for (uint32_t group_index = 0; group_index < GetInstancePartitionCount(); group_index++)
+                {
+                    const BoundingBox& bounding_box          = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                    float distance_squared                   = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                    m_is_within_render_distance[group_index] =  distance_squared <= m_max_render_distance * m_max_render_distance;
+                }
+            }
+            else
+            {
+                const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::Transformed);
+                m_distance_squared              = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                m_is_within_render_distance[0]  = m_distance_squared <= m_max_render_distance * m_max_render_distance;
+            }
         }
         else
         {
             m_distance_squared = 0.0f;
+            m_is_within_render_distance.fill(true);
         }
     }
 

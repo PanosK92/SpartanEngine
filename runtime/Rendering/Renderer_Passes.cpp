@@ -290,10 +290,7 @@ namespace spartan
 
                     if (instance_count > 0)
                     {
-                        float distance_squared = Vector3::DistanceSquared(camera_position, bounding_box_group.GetClosestPoint(camera_position));
-                        bool draw              = distance_squared <= renderable->GetMaxRenderDistance() * renderable->GetMaxRenderDistance();
-
-                        if (draw)
+                        if (renderable->IsWithinRenderDistance(group_index))
                         { 
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(),
@@ -310,10 +307,7 @@ namespace spartan
             }
             else 
             {
-                float distance_squared = renderable->GetDistanceSquared();
-                bool draw              = distance_squared <= renderable->GetMaxRenderDistance() * renderable->GetMaxRenderDistance();
-
-                if (draw)
+                if (renderable->IsWithinRenderDistance())
                 { 
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(),
