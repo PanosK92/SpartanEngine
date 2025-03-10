@@ -68,7 +68,7 @@ namespace spartan
         d3d12_utility::release<ID3D12CommandQueue>(m_rhi_resource);
     }
 
-    void RHI_CommandList::Begin(const RHI_Queue* queue, const bool immediate)
+    void RHI_CommandList::Begin(const RHI_Queue* queue)
     {
         // if the command list is in use, wait for it
         if (m_state == RHI_CommandListState::Submitted)
