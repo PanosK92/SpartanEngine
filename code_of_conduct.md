@@ -1,9 +1,3 @@
-# Code of Conduct  
-
-Welcome to the **Spartan Engine Community**, a space dedicated to growth, collaboration, and innovation. This Code of Conduct is designed to create an atmosphere where everyone feels encouraged to contribute, learn, and thrive while maintaining the values that define this community.  
-
----
-
 ## **Core Principles**  
 
 ### **Free Speech and Respect**  
@@ -52,12 +46,4 @@ We prioritize dialogue and open communication before taking action. If someone�
 
 If you encounter behavior that violates this Code of Conduct:  
 
-- Contact Panos, publicly or privately, via any medium.  
-
----
-
-## **Final Note**  
-
-The Spartan Engine Community is built on the idea that we can all grow together. By adhering to this Code of Conduct, you’re contributing to an environment where ideas can flourish, connections can deepen, and individuals can evolve.  
-
-Let’shave fun and build great things!
+- Contact Panos, publicly or privately, via any medium.
