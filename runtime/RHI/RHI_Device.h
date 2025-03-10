@@ -22,9 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =================================
-#include "../Display/DisplayMode.h"
 #include "RHI_PhysicalDevice.h"
 #include <memory>
+#include <map>
+#include <vector>
 #include "RHI_Descriptor.h"
 #include "../Rendering/Renderer_Definitions.h"
 //============================================
@@ -83,8 +84,8 @@ namespace spartan
 
         // properties (actual silicon properties)
         static float PropertyGetTimestampPeriod()                     { return m_timestamp_period; }
-        static uint64_t PropertyGetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
-        static uint64_t PropertyGetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
+        static uint64_t PropertyGetMinUniformBufferOffsetAlignment()  { return m_min_uniform_buffer_offset_alignment; }
+        static uint64_t PropertyGetMinStorageBufferOffsetAlignment()  { return m_min_storage_buffer_offset_alignment; }
         static uint32_t PropertyGetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
         static uint32_t PropertyGetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
         static uint32_t PropertyGetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }

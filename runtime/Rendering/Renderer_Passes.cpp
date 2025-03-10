@@ -1041,7 +1041,7 @@ namespace spartan
     {
         static bool cleared = true;
 
-        if (GetOption<float>(Renderer_Option::GlobalIllumination) != 0.0f && m_initialized_third_party)
+        if (GetOption<float>(Renderer_Option::GlobalIllumination) != 0.0f)
         { 
             cmd_list->BeginTimeblock("light_global_illumination");
 
@@ -1628,7 +1628,7 @@ namespace spartan
 
         cmd_list->BeginTimeblock("upscale");
 
-        if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3 && m_initialized_third_party)
+        if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3)
         {
             RHI_FidelityFX::FSR3_Dispatch(
                 cmd_list,
@@ -1719,7 +1719,7 @@ namespace spartan
     {
         // acquire resources
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c);
-        if (!shader_c->IsCompiled() || !m_initialized_third_party)
+        if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("sharpening");

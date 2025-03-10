@@ -244,8 +244,11 @@ namespace spartan
             #if defined(_WIN32)
             "VK_KHR_external_memory_win32",   // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
-            "VK_KHR_synchronization2",        // this is part of Vulkan 1.4 but AMD FidelityFX Breadcrumbs without it (they fetch device pointers from some table)
-            "VK_KHR_get_memory_requirements2" // this is part of Vulkan 1.4 but AMD FidelityFX FSR 3 crashes without it (they fetch device pointers from some table)
+            // AMD FidelityFX relies on "VK_KHR_get_memory_requirements2" because it explicitly calls the extension function
+            // vkGetBufferMemoryRequirements2KHR instead of the core Vulkan 1.1+ function vkGetBufferMemoryRequirements2,
+            // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
+            "VK_KHR_synchronization2", 
+            "VK_KHR_get_memory_requirements2"
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -1460,7 +1463,7 @@ namespace spartan
 
             vkGetDeviceQueue(RHI_Context::device, queues::index_copy, 0, reinterpret_cast<VkQueue*>(&queues::copy));
             SetResourceName(queues::copy, RHI_Resource_Type::Queue, "copy");
-
+ 
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
@@ -2117,7 +2120,7 @@ namespace spartan
         // get command pool
         queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
         queues::queue->NextCommandList();
-        queues::queue->GetCommandList()->Begin(queues::queue, true);
+        queues::queue->GetCommandList()->Begin(queues::queue);
 
         return queues::queue->GetCommandList();
     }
@@ -2182,18 +2185,18 @@ namespace spartan
         VkExtent2D fragment_size = { 1, 1 };
         VkFragmentShadingRateCombinerOpKHR combiner_operatins[2];
 
-        // The combiners determine how the different shading rate values for the pipeline, primitives and attachment are combined
+        // the combiners determine how the different shading rate values for the pipeline, primitives and attachment are combined
         if (enabled)
         {
-            // If shading rate from attachment is enabled, we set the combiner, so that the values from the attachment are used
-            // Combiner for pipeline (A) and primitive (B) - Not used in this sample
+            // if shading rate from attachment is enabled, we set the combiner, so that the values from the attachment are used
+            // combiner for pipeline (a) and primitive (b) - Not used in this sample
             combiner_operatins[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
-            // Combiner for pipeline (A) and attachment (B), replace the pipeline default value (fragment_size) with the fragment sizes stored in the attachment
+            // combiner for pipeline (a) and attachment (b), replace the pipeline default value (fragment_size) with the fragment sizes stored in the attachment
             combiner_operatins[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR;
         }
         else
         {
-            // If shading rate from attachment is disabled, we keep the value set via the dynamic state
+            // if shading rate from attachment is disabled, we keep the value set via the dynamic state
             combiner_operatins[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
             combiner_operatins[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
         }

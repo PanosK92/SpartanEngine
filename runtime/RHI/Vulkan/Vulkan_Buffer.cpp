@@ -83,7 +83,7 @@ namespace spartan
         else if (m_type == RHI_Buffer_Type::Storage)
         {
             // calculate required alignment based on minimum device offset alignment
-            size_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAllignment();
+            size_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAlignment();
             if (min_alignment > 0 && min_alignment != m_stride)
             {
                 m_stride      = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
@@ -102,7 +102,7 @@ namespace spartan
         else if (m_type == RHI_Buffer_Type::Constant)
         {
             // calculate required alignment based on minimum device offset alignment
-            size_t min_alignment = RHI_Device::PropertyGetMinUniformBufferOffsetAllignment();
+            size_t min_alignment = RHI_Device::PropertyGetMinUniformBufferOffsetAlignment();
             if (min_alignment > 0 && min_alignment != m_stride)
             {
                 m_stride      = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));

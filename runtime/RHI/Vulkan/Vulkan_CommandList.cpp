@@ -424,7 +424,7 @@ namespace spartan
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
 
-    void RHI_CommandList::Begin(const RHI_Queue* queue, const bool immediate)
+    void RHI_CommandList::Begin(const RHI_Queue* queue)
     {
         if (m_state == RHI_CommandListState::Recording)
         {
@@ -437,15 +437,15 @@ namespace spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // enable breadcrumbs for this command list
-        if (Debugging::IsBreadcrumbsEnabled() && (queue->GetType() != RHI_Queue_Type::Copy) && !immediate)
+        if (Debugging::IsBreadcrumbsEnabled())
         {
             RHI_FidelityFX::Breadcrumbs_RegisterCommandList(this, queue, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
         }
 
         // set states
-        m_state        = RHI_CommandListState::Recording;
-        m_pso          = RHI_PipelineState();
-        m_cull_mode    = RHI_CullMode::Max;
+        m_state     = RHI_CommandListState::Recording;
+        m_pso       = RHI_PipelineState();
+        m_cull_mode = RHI_CullMode::Max;
 
         // set dynamic states
         if (queue->GetType() == RHI_Queue_Type::Graphics)

@@ -58,7 +58,7 @@ namespace spartan
         RHI_CommandList(void* cmd_pool, const char* name);
         ~RHI_CommandList();
 
-        void Begin(const RHI_Queue* queue, const bool immediate = false);
+        void Begin(const RHI_Queue* queue);
         void Submit(RHI_Queue* queue, const uint64_t swapchain_id);
         void WaitForExecution();
         void SetPipelineState(RHI_PipelineState& pso);

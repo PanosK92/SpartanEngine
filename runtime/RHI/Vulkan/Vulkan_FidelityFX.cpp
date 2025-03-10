@@ -28,12 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_Buffer.h"
 #include "../RHI_Device.h"
-#include "../RHI_SwapChain.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Shader.h"
 #include "../Rendering/Renderer_Buffers.h"
-#include "../Rendering/Renderer.h"
 #include "../Rendering/Material.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
@@ -495,8 +493,8 @@ namespace spartan
             FfxBrixelizerGIInternalResolution internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
             const float    voxel_size               = 0.2f;
             const float    cascade_size_ratio       = 2.0f;
-            const uint32_t cascade_count            = 8;         // max is 24
-            const uint32_t cascade_offset           = 16;        // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
+            const uint32_t cascade_count            = 8;               // max is 24
+            const uint32_t cascade_offset           = 16;              // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
             const uint32_t cascade_index_start      = cascade_offset + 0;
             const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
             const bool     sdf_center_around_camera = true;
@@ -736,11 +734,11 @@ namespace spartan
 
         namespace breadcrumbs
         {
-            // requires: VK_KHR_synchronization2 because of vkCmdWriteBufferMarkerAMD and vkCmdWriteBufferMarker2AMD
-
             bool                  context_created = false;
             FfxBreadcrumbsContext context         = {};
-            uint32_t gpu_queue_indices[2]         = { 0, 0 };
+            array<uint32_t, 3> gpu_queue_indices  = {};
+            unordered_map<RHI_CommandList*, bool> registered_cmd_lists;
+            mutex breadcrumbs_mutex;
 
             void context_destroy()
             {
@@ -761,22 +759,23 @@ namespace spartan
                 {
                      gpu_queue_indices[0] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics);
                      gpu_queue_indices[1] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute);
+                     gpu_queue_indices[2] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Copy);
 
                      FfxBreadcrumbsContextDescription context_description = {};
                      context_description.backendInterface                 = ffx_interface;
                      context_description.maxMarkersPerMemoryBlock         = 3;
-                     context_description.usedGpuQueuesCount               = 2;
-                     context_description.pUsedGpuQueues                   = &gpu_queue_indices[0];
+                     context_description.usedGpuQueuesCount               = static_cast<uint32_t>(gpu_queue_indices.size());
+                     context_description.pUsedGpuQueues                   = gpu_queue_indices.data();
                      context_description.allocCallbacks.fpAlloc           = malloc;
                      context_description.allocCallbacks.fpRealloc         = realloc;
                      context_description.allocCallbacks.fpFree            = free;
-                     context_description.frameHistoryLength               = Renderer::GetSwapChain()->GetBufferCount() * 2; // double the swapchain's backbuffer count
+                     context_description.frameHistoryLength               = 64; // should be more than enough 
                      context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
                                                                             FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
                                                                             FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
                                                                             FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES |
                                                                             FFX_BREADCRUMBS_PRINT_EXTENDED_DEVICE_INFO |
-                                                                            FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION; // probably doesn't work, as the markers require mutexes
+                                                                            FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION;
 
                      SP_ASSERT(ffxBreadcrumbsContextCreate(&context, &context_description) == FFX_OK);
                      context_created = true;
@@ -980,6 +979,7 @@ namespace spartan
         // breadcrumbs
         if (breadcrumbs::context_created)
         {
+            breadcrumbs::registered_cmd_lists.clear();
             SP_ASSERT(ffxBreadcrumbsStartFrame(&breadcrumbs::context) == FFX_OK);
         }
     #endif
@@ -1494,8 +1494,14 @@ namespace spartan
     void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
         #ifdef _MSC_VER
-        // note: command lists need to register per frame
-        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
+
+        SP_ASSERT(breadcrumbs::context_created);
+        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
+    
+        // note #1: command lists need to register per frame
+        // note #2: the map check is here in case because the same command lists can be re-used before frames start to be produced (e.g. during initialization)
+        if (breadcrumbs::registered_cmd_lists.find(cmd_list) != breadcrumbs::registered_cmd_lists.end())
+            return;
     
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
@@ -1505,6 +1511,8 @@ namespace spartan
         description.submissionIndex                      = 0;
     
         SP_ASSERT(ffxBreadcrumbsRegisterCommandList(&breadcrumbs::context, &description) == FFX_OK);
+        breadcrumbs::registered_cmd_lists[cmd_list] = true;
+
         #endif
     }
 
@@ -1512,8 +1520,8 @@ namespace spartan
     {
         #ifdef _MSC_VER
         // note: pipelines need to register only once
-
-        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
+        SP_ASSERT(breadcrumbs::context_created);
+        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
         FfxBreadcrumbsPipelineStateDescription description = {};
         description.pipeline                               = to_ffx_pipeline(pipeline);
@@ -1554,8 +1562,9 @@ namespace spartan
     void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
     {
         #ifdef _MSC_VER
+        SP_ASSERT(breadcrumbs::context_created);
+        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
-        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), to_ffx_pipeline(pipeline)) == FFX_OK);
 
         #endif
@@ -1564,8 +1573,9 @@ namespace spartan
     void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
     {
         #ifdef _MSC_VER
+        SP_ASSERT(breadcrumbs::context_created);
+        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
-        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         const FfxBreadcrumbsNameTag name_tag = { name, true };
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_PASS, &name_tag) == FFX_OK);
 
@@ -1575,8 +1585,9 @@ namespace spartan
     void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
         #ifdef _MSC_VER
+        SP_ASSERT(breadcrumbs::context_created);
+        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
-        SP_ASSERT(Debugging::IsBreadcrumbsEnabled());
         SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
 
         #endif
@@ -1585,6 +1596,8 @@ namespace spartan
     void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved()
     {
         #ifdef _MSC_VER
+        SP_ASSERT(breadcrumbs::context_created);
+        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
         FfxBreadcrumbsMarkersStatus marker_status = {};
         SP_ASSERT(ffxBreadcrumbsPrintStatus(&breadcrumbs::context, &marker_status) == FFX_OK);

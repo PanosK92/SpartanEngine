@@ -63,7 +63,6 @@ namespace spartan
     bool wants_to_present                                         = false;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_initialized_resources                = false;
-    atomic<bool> Renderer::m_initialized_third_party              = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     mutex Renderer::m_mutex_renderables;
@@ -206,6 +205,11 @@ namespace spartan
             SetViewport(static_cast<float>(width), static_cast<float>(height));
         }
 
+        // in case of breadcrumb support, anything that uses a command list can use RHI_FidelityFX
+        // so we need to initialize even before the swapchain which can use a copy queue etc.
+        RHI_FidelityFX::Initialize();
+        RHI_OpenImageDenoise::Initialize();
+
         // swap chain
         {
             swap_chain = make_shared<RHI_SwapChain>
@@ -229,17 +233,6 @@ namespace spartan
         {
             SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::NautilusACES));
         }
-
-        // third party tool initialization
-        ThreadPool::AddTask([]()
-        {
-            m_initialized_third_party = false;
-
-            RHI_FidelityFX::Initialize();
-            RHI_OpenImageDenoise::Initialize();
-
-            m_initialized_third_party = true;
-        });
 
         // load/create resources
         {
@@ -280,7 +273,7 @@ namespace spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // manually invoke the deconstructors so that ParseDeletionQueue()
+        // manually invoke the deconstructor so that ParseDeletionQueue()
         // releases their rhi resources before device destruction
         {
             DestroyResources();
@@ -298,14 +291,7 @@ namespace spartan
 
     void Renderer::Tick()
     {
-        // don't waste cpu/gpu time if nothing can be seen
-        wants_to_present = false;
-        if (Window::IsMinimized() || !m_initialized_resources)
-            return;
-
-        wants_to_present = true;
-
-        // logic
+                // logic
         {
             if (frame_num == 1)
             {
@@ -315,7 +301,16 @@ namespace spartan
             RHI_Device::Tick(frame_num);
             RHI_FidelityFX::Tick(&m_cb_frame_cpu);
             dynamic_resolution();
+
         }
+        // don't waste cpu/gpu time if nothing can be seen
+        wants_to_present = false;
+        if (Window::IsMinimized() || !m_initialized_resources)
+            return;
+
+        wants_to_present = true;
+
+
 
         GetSwapChain()->AcquireNextImage();
 

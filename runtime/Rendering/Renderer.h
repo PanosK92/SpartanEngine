@@ -202,7 +202,6 @@ namespace spartan
         static std::vector<RHI_Vertex_PosCol> m_lines_vertices;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_initialized_resources;
-        static std::atomic<bool> m_initialized_third_party;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;
         static std::mutex m_mutex_renderables;
     };
