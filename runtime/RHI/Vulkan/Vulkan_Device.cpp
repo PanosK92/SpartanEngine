@@ -287,6 +287,11 @@ namespace spartan
 
         vector<const char*> get_extensions_device()
         {
+            if (Debugging::IsBreadcrumbsEnabled())
+            {
+                extensions_device.emplace_back("VK_AMD_buffer_marker");
+            }
+
             vector<const char*> extensions_supported;
             for (const auto& extension : extensions_device)
             {

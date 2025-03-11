@@ -737,7 +737,7 @@ namespace spartan
             bool                  context_created = false;
             FfxBreadcrumbsContext context         = {};
             array<uint32_t, 3> gpu_queue_indices  = {};
-            unordered_map<RHI_CommandList*, bool> registered_cmd_lists;
+            unordered_map<uint64_t, bool> registered_cmd_lists;
             mutex breadcrumbs_mutex;
 
             void context_destroy()
@@ -1500,7 +1500,7 @@ namespace spartan
     
         // note #1: command lists need to register per frame
         // note #2: the map check is here in case because the same command lists can be re-used before frames start to be produced (e.g. during initialization)
-        if (breadcrumbs::registered_cmd_lists.find(cmd_list) != breadcrumbs::registered_cmd_lists.end())
+        if (breadcrumbs::registered_cmd_lists.find(cmd_list->GetObjectId()) != breadcrumbs::registered_cmd_lists.end())
             return;
     
         FfxBreadcrumbsCommandListDescription description = {};
@@ -1511,7 +1511,7 @@ namespace spartan
         description.submissionIndex                      = 0;
     
         SP_ASSERT(ffxBreadcrumbsRegisterCommandList(&breadcrumbs::context, &description) == FFX_OK);
-        breadcrumbs::registered_cmd_lists[cmd_list] = true;
+        breadcrumbs::registered_cmd_lists[cmd_list->GetObjectId()] = true;
 
         #endif
     }

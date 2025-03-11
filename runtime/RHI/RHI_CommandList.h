@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
 #include "../Rendering/Renderer_Definitions.h"
+#include <SpartanObject.h>
 //============================================
 
 namespace spartan
@@ -52,7 +53,7 @@ namespace spartan
         bool is_depth               = false;
     };
 
-    class RHI_CommandList
+    class RHI_CommandList : public SpartanObject
     {
     public:
         RHI_CommandList(void* cmd_pool, const char* name);
