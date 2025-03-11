@@ -1117,6 +1117,8 @@ namespace spartan
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
          // end the render pass (if there is one) as third-party code takes over here
+        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list); // working around bug: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/issues/137
+        cmd_list->InsertPendingBarrierGroup();
         cmd_list->RenderPassEnd();
 
         // set resources
