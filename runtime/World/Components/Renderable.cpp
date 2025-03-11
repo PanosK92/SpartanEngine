@@ -67,7 +67,7 @@ namespace spartan
         stream->Write(m_bounding_box);
         MeshType mesh_type = m_mesh ? m_mesh->GetType() : MeshType::Max;
         stream->Write(static_cast<uint32_t>(mesh_type));
-        if (mesh_type == MeshType::Custom)
+        if (mesh_type == MeshType::Max)
         { 
             stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
         }
@@ -90,7 +90,7 @@ namespace spartan
         m_geometry_vertex_count  = stream->ReadAs<uint32_t>();
         stream->Read(&m_bounding_box);
         MeshType mesh_type = static_cast<MeshType>(stream->ReadAs<uint32_t>());
-        if (mesh_type == MeshType::Custom)
+        if (mesh_type == MeshType::Max)
         {
             string model_name;
             stream->Read(&model_name);

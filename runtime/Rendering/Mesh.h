@@ -49,7 +49,6 @@ namespace spartan
         Sphere,
         Cylinder,
         Cone,
-        Custom,
         Max
     };
 
@@ -121,6 +120,6 @@ namespace spartan
         // misc
         std::mutex m_mutex;
         std::weak_ptr<Entity> m_root_entity;
-        MeshType m_type = MeshType::Custom;
+        MeshType m_type = MeshType::Max;
     };
 }

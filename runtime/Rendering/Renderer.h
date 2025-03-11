@@ -127,7 +127,7 @@ namespace spartan
     private:
         static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
 
-        // resource creation
+        // resources
         static void CreateBuffers();
         static void CreateDepthStencilStates();
         static void CreateRasterizerStates();
@@ -139,6 +139,7 @@ namespace spartan
         static void CreateStandardMeshes();
         static void CreateStandardTextures();
         static void CreateStandardMaterials();
+        static void WaitForValidResources();
 
         // passes - core
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute);

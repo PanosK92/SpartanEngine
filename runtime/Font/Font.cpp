@@ -169,8 +169,6 @@ namespace spartan
 
     void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)
     {
-        SP_ASSERT(HasText());
-        
         m_buffer_index = (m_buffer_index + 1) % buffer_count;
     
         // grow gpu buffers if needed

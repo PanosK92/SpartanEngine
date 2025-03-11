@@ -176,7 +176,7 @@ namespace spartan
             uint32_t instance_start_index = 0;
             bool draw_instanced           = renderable->HasInstancing();
             Vector3 camera_position       = camera->GetEntity()->GetPosition();
-
+        
             if (draw_instanced)
             {
                 for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
@@ -184,37 +184,32 @@ namespace spartan
                     uint32_t group_end_index              = renderable->GetBoundingBoxGroupEndIndices()[group_index];
                     uint32_t instance_count               = group_end_index - instance_start_index;
                     const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-
-                    // skip instance groups outside of the view frustum
+        
+                    // skip instance groups outside of the view frustum when a light is provided
+                    if (light)
                     {
-                        if (light)
+                        if (!light->IsInViewFrustum(renderable, array_index))
                         {
-                            if (!light->IsInViewFrustum(renderable, array_index))
-                            {
-                                instance_start_index = group_end_index;
-                                continue;
-                            }
+                            instance_start_index = group_end_index;
+                            continue;
                         }
                     }
-
-                    // skip this iteration if we've reached the total number of instances
-                    if (instance_start_index + instance_count >= renderable->GetInstanceCount())
-                        continue;
-
-                    if (instance_count > 0)
+        
+                    // clamp instance_count to prevent exceeding total instance count
+                    instance_count = std::min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+        
+                    // draw only if there are instances and the group is visible
+                    if (instance_count > 0 && renderable->IsVisible(group_index))
                     {
-                        if (renderable->IsVisible(group_index))
-                        { 
-                            cmd_list->DrawIndexed(
-                                renderable->GetIndexCount(),
-                                renderable->GetIndexOffset(),
-                                renderable->GetVertexOffset(),
-                                instance_start_index,
-                                instance_count
-                            );
-                        }
+                        cmd_list->DrawIndexed(
+                            renderable->GetIndexCount(),
+                            renderable->GetIndexOffset(),
+                            renderable->GetVertexOffset(),
+                            instance_start_index,
+                            instance_count
+                        );
                     }
-
+        
                     instance_start_index = group_end_index;
                 }
             }
@@ -229,7 +224,7 @@ namespace spartan
                     );
                 }
             }
-
+        
             cmd_list->SetIgnoreClearValues(true);
         }
 
@@ -377,8 +372,6 @@ namespace spartan
         RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c);
         RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate);
-        if (!shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("variable_rate_shading");
 
@@ -403,8 +396,6 @@ namespace spartan
         RHI_Shader* shader_v             = GetShader(Renderer_Shader::depth_light_v);
         RHI_Shader* shader_alpha_color_p = GetShader(Renderer_Shader::depth_light_alpha_color_p);
         auto& lights                     = m_renderables[Renderer_Entity::Light];
-        if (!shader_v->IsCompiled() || !shader_alpha_color_p->IsCompiled())
-            return;
 
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
@@ -530,8 +521,6 @@ namespace spartan
         RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         RHI_Texture* tex_depth_opaque = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque);
         RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
-        if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
-            return;
 
         // deduce rasterizer state
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
@@ -673,9 +662,7 @@ namespace spartan
         RHI_Texture* tex_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
         RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
         RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
-        RHI_Texture* tex_depth    = !is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque) : GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        if (!shader_v->IsCompiled() || !shader_h->IsCompiled() || !shader_d->IsCompiled() || !shader_p->IsCompiled())
-            return;
+        RHI_Texture* tex_depth    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::gbuffer_depth) : GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
@@ -782,8 +769,6 @@ namespace spartan
         // get resources
         RHI_Texture* tex_ssao   = GetRenderTarget(Renderer_RenderTarget::ssao);
         RHI_Shader* shader_ssao = GetShader(Renderer_Shader::ssao_c);
-        if (!shader_ssao->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("ssao");
 
@@ -843,8 +828,6 @@ namespace spartan
         RHI_Shader* shader_c                       = GetShader(Renderer_Shader::sss_c_bend);
         RHI_Texture* tex_sss                       = GetRenderTarget(Renderer_RenderTarget::sss);
         const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
-        if (!shader_c->IsCompiled() || entities.empty())
-            return;
 
         cmd_list->BeginTimeblock("sss");
         {
@@ -925,8 +908,6 @@ namespace spartan
         // acquire resources
         RHI_Shader* shader_skysphere = GetShader(Renderer_Shader::skysphere_c);
         RHI_Texture* tex_skysphere   = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        if (!shader_skysphere->IsCompiled())
-            return;
 
         // get directional light
         shared_ptr<Light> light = nullptr;
@@ -975,8 +956,6 @@ namespace spartan
         RHI_Texture* tex_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
         RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
         auto& entities              = m_renderables[Renderer_Entity::Light];
-        if (!shader_c->IsCompiled())
-            return;
 
         uint32_t light_count = static_cast<uint32_t>(entities.size());
         if (light_count == 0)
@@ -1109,8 +1088,6 @@ namespace spartan
         RHI_Shader* shader_c       = GetShader(Renderer_Shader::light_composition_c);
         RHI_Texture* tex_out       = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        if (!shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
 
@@ -1146,8 +1123,6 @@ namespace spartan
         // acquire resources
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        if (!shader->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("light_image_based");
         {
@@ -1184,8 +1159,6 @@ namespace spartan
         // acquire resources
         RHI_Shader* shader_c               = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
         RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut);
-        if (!shader_c || !shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
         {
@@ -1228,8 +1201,6 @@ namespace spartan
         // acquire resources
         RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Shader* shader_c         = GetShader(Renderer_Shader::light_integration_environment_filter_c);
-        if (!shader_c || !shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("light_integration_environment_filter");
         {
@@ -1355,8 +1326,6 @@ namespace spartan
         RHI_Shader* shader_upsample_blend_mip = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
         RHI_Shader* shader_blend_frame        = GetShader(Renderer_Shader::bloom_blend_frame_c);
         RHI_Texture* tex_bloom                = GetRenderTarget(Renderer_RenderTarget::bloom);
-        if (!shader_luminance->IsCompiled() || !shader_upsample_blend_mip->IsCompiled() || !shader_blend_frame->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("bloom");
 
@@ -1447,9 +1416,7 @@ namespace spartan
     {
         // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::output_c);
-        if (!shader_c->IsCompiled())
-            return;
-
+ 
         cmd_list->BeginTimeblock("output");
 
         // set pipeline state
@@ -1476,8 +1443,6 @@ namespace spartan
     {
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::fxaa_c);
-        if (!shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("fxaa");
 
@@ -1501,8 +1466,6 @@ namespace spartan
     {
         // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::chromatic_aberration_c);
-        if (!shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("chromatic_aberration");
 
@@ -1532,8 +1495,6 @@ namespace spartan
     {
         // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::motion_blur_c);
-        if (!shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("motion_blur");
 
@@ -1564,9 +1525,7 @@ namespace spartan
     {
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::depth_of_field_c);
-        if (!shader_c->IsCompiled())
-            return;
-
+    
         cmd_list->BeginTimeblock("depth_of_field");
 
         // set pipeline state
@@ -1595,8 +1554,6 @@ namespace spartan
     {
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::film_grain_c);
-        if (!shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("film_grain");
 
@@ -1675,13 +1632,7 @@ namespace spartan
         SP_ASSERT(mip_start < output_mip_count);
 
         // acquire shader
-        RHI_Shader* shader_c = nullptr;
-        {
-            Renderer_Shader shader = (filter == Renderer_DownsampleFilter::Average) ? Renderer_Shader::ffx_spd_average_c : Renderer_Shader::ffx_spd_max_c;
-            shader_c = GetShader(shader);
-            if (!shader_c->IsCompiled())
-                return;
-        }
+        RHI_Shader* shader_c = GetShader((filter == Renderer_DownsampleFilter::Average) ? Renderer_Shader::ffx_spd_average_c : Renderer_Shader::ffx_spd_max_c);
 
         // only needs to be set once, then after each use SPD resets it itself
         static bool initialized = false;
@@ -1719,8 +1670,6 @@ namespace spartan
     {
         // acquire resources
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c);
-        if (!shader_c->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("sharpening");
         {
@@ -1748,8 +1697,6 @@ namespace spartan
     {
         // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::blur_gaussian_c);
-        if (!shader_c->IsCompiled())
-            return;
 
         // compute thread group count
         const bool mip_requested            = mip != rhi_all_mips;
@@ -1812,8 +1759,6 @@ namespace spartan
         // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v);
         RHI_Shader* shader_p = GetShader(Renderer_Shader::quad_p);
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
 
         // acquire entities
         auto& lights        = m_renderables[Renderer_Entity::Light];
@@ -1904,8 +1849,6 @@ namespace spartan
         // acquire resources
         RHI_Shader* shader_v = GetShader(Renderer_Shader::grid_v);
         RHI_Shader* shader_p = GetShader(Renderer_Shader::grid_p);
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
 
         cmd_list->BeginTimeblock("grid");
 
@@ -1949,7 +1892,7 @@ namespace spartan
         RHI_Shader* shader_p  = GetShader(Renderer_Shader::line_p);
         uint32_t vertex_count = static_cast<uint32_t>(m_lines_vertices.size());
 
-        if (shader_v->IsCompiled() && shader_p->IsCompiled() && vertex_count != 0)
+        if (vertex_count != 0)
         {
             cmd_list->BeginTimeblock("lines");
 
@@ -1997,8 +1940,6 @@ namespace spartan
         RHI_Shader* shader_v = GetShader(Renderer_Shader::outline_v);
         RHI_Shader* shader_p = GetShader(Renderer_Shader::outline_p);
         RHI_Shader* shader_c = GetShader(Renderer_Shader::outline_c);
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled() || !shader_c->IsCompiled())
-            return;
 
         if (shared_ptr<Camera> camera = Renderer::GetCamera())
         {
@@ -2076,7 +2017,8 @@ namespace spartan
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);
         shared_ptr<Font> font = GetFont();
-        if (!shader_v || !shader_v->IsCompiled() || !shader_p || !shader_p->IsCompiled() || !draw || !font->HasText())
+
+        if (!font->HasText())
             return;
 
         cmd_list->BeginTimeblock("text");

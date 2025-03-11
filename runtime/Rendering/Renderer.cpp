@@ -291,7 +291,14 @@ namespace spartan
 
     void Renderer::Tick()
     {
-                // logic
+        // don't waste cpu/gpu time if nothing can be seen
+        wants_to_present = false;
+        if (Window::IsMinimized() || !m_initialized_resources)
+            return;
+
+        wants_to_present = true;
+
+        // logic
         {
             if (frame_num == 1)
             {
@@ -301,16 +308,7 @@ namespace spartan
             RHI_Device::Tick(frame_num);
             RHI_FidelityFX::Tick(&m_cb_frame_cpu);
             dynamic_resolution();
-
         }
-        // don't waste cpu/gpu time if nothing can be seen
-        wants_to_present = false;
-        if (Window::IsMinimized() || !m_initialized_resources)
-            return;
-
-        wants_to_present = true;
-
-
 
         GetSwapChain()->AcquireNextImage();
 
@@ -320,9 +318,9 @@ namespace spartan
         RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
         RHI_CommandList* cmd_list_compute  = queue_compute->GetCommandList();
         cmd_list_graphics->Begin(queue_graphics);
-        //cmd_list_compute->Begin(queue_compute);
+        //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
-        // produce frame
+        WaitForValidResources();
         OnUpdateBuffers(cmd_list_graphics);
         ProduceFrame(cmd_list_graphics, cmd_list_compute);
 

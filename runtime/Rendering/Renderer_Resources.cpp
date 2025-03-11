@@ -270,9 +270,7 @@ namespace spartan
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, mip_count, RHI_Format::R11G11B10_Float, flags | RHI_Texture_PerMipViews, "skysphere");
         }
 
-#ifdef _MSC_VER
         RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
-#endif
     }
 
     void Renderer::CreateShaders()
@@ -587,6 +585,135 @@ namespace spartan
         standard_material->SetProperty(MaterialProperty::ColorB,         1.0f);
         standard_material->SetProperty(MaterialProperty::ColorA,         1.0f);
         standard_material->SetTexture(MaterialTextureType::Color,        Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
+    }
+
+    void Renderer::WaitForValidResources()
+    {
+        while (true)
+        {
+            bool all_ready = true;
+    
+            for (const auto& rs : rasterizer_states)
+            {
+                if (!rs)
+                {
+                    all_ready = false;
+                    break;
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& dss : depth_stencil_states)
+                {
+                    if (!dss)
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& bs : blend_states)
+                {
+                    if (!bs)
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& rt : render_targets)
+                {
+                    if (!rt)
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& shader : shaders)
+                {
+                    if (!shader || !shader->IsCompiled())
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& sampler : samplers)
+                {
+                    if (!sampler)
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& buffer : buffers)
+                {
+                    if (!buffer)
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& tex : standard_textures)
+                {
+                    if (!tex)
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready)
+            {
+                for (const auto& mesh : standard_meshes)
+                {
+                    if (!mesh)
+                    {
+                        all_ready = false;
+                        break;
+                    }
+                }
+            }
+    
+            if (all_ready && (!standard_font))
+            {
+                all_ready = false;
+            }
+    
+            if (all_ready && (!standard_material))
+            {
+                all_ready = false;
+            }
+    
+            if (all_ready)
+                break;
+    
+            // otherwise, wait a bit and check again
+            this_thread::sleep_for(std::chrono::milliseconds(16));
+        }
     }
 
     void Renderer::DestroyResources()
