@@ -116,7 +116,7 @@ namespace spartan
 
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
         m_data_gpu = m_mappable ? RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource) : nullptr;
-        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name);
+        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name.c_str());
     }
 
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)

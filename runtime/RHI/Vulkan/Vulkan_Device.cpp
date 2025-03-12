@@ -913,7 +913,7 @@ namespace spartan
             array<VkDescriptorSet, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> sets;
             array<VkDescriptorSetLayout, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> layouts;
 
-            void create_layout(const RHI_Device_Bindless_Resource type, const uint32_t count, const uint32_t binding, const string& name)
+            void create_layout(const RHI_Device_Bindless_Resource type, const uint32_t count, const uint32_t binding, const char* name)
             {
                   VkDescriptorSetLayoutBinding layout_binding = {};
                   layout_binding.binding                      = binding;
@@ -952,7 +952,7 @@ namespace spartan
                   RHI_Device::SetResourceName(static_cast<void*>(*layout), RHI_Resource_Type::DescriptorSetLayout, name);
             }
 
-            void create_set(const RHI_Device_Bindless_Resource type, const uint32_t count, const string& debug_name)
+            void create_set(const RHI_Device_Bindless_Resource type, const uint32_t count, const char* name)
             {
                 // allocate descriptor set with actual descriptor count
                 VkDescriptorSetVariableDescriptorCountAllocateInfoEXT real_descriptor_count_info = {};
@@ -971,10 +971,10 @@ namespace spartan
                 // create
                 VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(type)];
                 SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set));
-                RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
+                RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, name);
             }
 
-            void update(void* data, const uint32_t count, const uint32_t slot, const RHI_Device_Bindless_Resource type, const string& name)
+            void update(void* data, const uint32_t count, const uint32_t slot, const RHI_Device_Bindless_Resource type, const char* name)
             {
                 // deduce binding from slot (HLSL register style)
                 uint32_t binding = 0;
@@ -2163,7 +2163,7 @@ namespace spartan
 
     // misc
 
-    void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const string name)
+    void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)
     {
         if (Debugging::IsValidationLayerEnabled()) // function pointers are not initialized if validation disabled
         {
@@ -2175,7 +2175,7 @@ namespace spartan
             name_info.pNext                         = nullptr;
             name_info.objectType                    = vulkan_object_type[static_cast<uint32_t>(resource_type)];
             name_info.objectHandle                  = reinterpret_cast<uint64_t>(resource);
-            name_info.pObjectName                   = name.c_str();
+            name_info.pObjectName                   = name;
 
             functions::set_object_name(RHI_Context::device, &name_info);
         }

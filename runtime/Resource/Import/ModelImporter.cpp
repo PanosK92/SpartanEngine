@@ -55,6 +55,7 @@ namespace spartan
         Mesh* mesh               = nullptr;
         bool model_has_animation = false;
         const aiScene* scene     = nullptr;
+        mutex mutex_assimp;
 
         Matrix to_matrix(const aiMatrix4x4& transform)
         {
@@ -413,15 +414,17 @@ namespace spartan
         Settings::RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
-    bool ModelImporter::Load(Mesh* mesh_in, const string& file_path)
+    void ModelImporter::Load(Mesh* mesh_in, const string& file_path)
     {
         SP_ASSERT_MSG(mesh_in != nullptr, "Invalid parameter");
 
         if (!FileSystem::IsFile(file_path))
         {
             SP_LOG_ERROR("Provided file path doesn't point to an existing file");
-            return false;
+            return;
         }
+
+        lock_guard<mutex> guard(mutex_assimp);
 
         // model params
         model_file_path = file_path;
@@ -517,8 +520,6 @@ namespace spartan
 
         importer.FreeScene();
         mesh = nullptr;
-
-        return scene != nullptr;
     }
 
     void ModelImporter::ParseNode(const aiNode* node, shared_ptr<Entity> parent_entity)

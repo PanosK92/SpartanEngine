@@ -62,7 +62,7 @@ namespace spartan
             // create the first one
             VkCommandPool cmd_pool = nullptr;
             SP_ASSERT_VK(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, &cmd_pool));
-            RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, m_object_name);
+            RHI_Device::SetResourceName(cmd_pool, RHI_Resource_Type::CommandPool, m_object_name.c_str());
             m_rhi_resource = static_cast<void*>(cmd_pool);
         }
 

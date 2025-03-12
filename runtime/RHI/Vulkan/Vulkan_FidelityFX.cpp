@@ -1529,7 +1529,7 @@ namespace spartan
         description.pipeline                               = to_ffx_pipeline(pipeline);
 
         RHI_PipelineState* pso = pipeline->GetState();
-        description.name       = { pso->name.c_str(), true};
+        description.name       = { pso->name, true};
 
         if (pso->shaders[RHI_Shader_Type::Vertex])
         { 

@@ -128,26 +128,7 @@ namespace spartan
 
         void set_debug_name(RHI_Texture* texture)
         {
-            string name = texture->GetObjectName();
-
-            // If a name hasn't been defined, try to make a reasonable one.
-            if (name.empty())
-            {
-                if (texture->IsSrv())
-                {
-                    name += name.empty() ? "sampled" : "-sampled";
-                }
-
-                if (texture->IsDsv())
-                {
-                    name += name.empty() ? "render_target_depth_stencil" : "-render_target_depth_stencil";
-                }
-
-                if (texture->IsRtv())
-                {
-                    name += name.empty() ? "render_target_color" : "-render_target_color";
-                }
-            }
+            const char* name = texture->GetObjectName().c_str();
 
             RHI_Device::SetResourceName(texture->GetRhiResource(), RHI_Resource_Type::Texture, name);
 

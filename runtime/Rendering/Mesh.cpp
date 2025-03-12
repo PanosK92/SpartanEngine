@@ -84,9 +84,7 @@ namespace spartan
         else
         {
             SetResourceFilePath(file_path);
-
-            if (!ModelImporter::Load(this, file_path))
-                return;
+            ModelImporter::Load(this, file_path);
         }
 
         // compute memory usage

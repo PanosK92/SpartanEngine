@@ -316,7 +316,7 @@ namespace spartan
         {
             for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                RHI_Device::SetResourceName(m_rhi_rt[i], RHI_Resource_Type::Texture, string(string("swapchain_image_") + to_string(i)));
+                RHI_Device::SetResourceName(m_rhi_rt[i], RHI_Resource_Type::Texture, string(string("swapchain_image_") + to_string(i)).c_str());
 
                 VkImageViewCreateInfo create_info           = {};
                 create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
