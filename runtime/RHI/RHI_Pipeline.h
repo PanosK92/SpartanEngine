@@ -37,13 +37,13 @@ namespace spartan
 
         RHI_PipelineState* GetState()      { return &m_state; }
         void* GetRhiResource() const       { return m_rhi_resource; }
-        void* GetRhiResourceLayout() const { return m_rhi_resource_pipeline; }
+        void* GetRhiResourceLayout() const { return m_rhi_resource_layout; }
 
     private:
         RHI_PipelineState m_state;
  
         // rhi
-        void* m_rhi_resource          = nullptr;
-        void* m_rhi_resource_pipeline = nullptr;
+        void* m_rhi_resource        = nullptr;
+        void* m_rhi_resource_layout = nullptr;
     };
 }
