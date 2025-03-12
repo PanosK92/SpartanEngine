@@ -785,11 +785,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -890,11 +890,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->IsActive() && entity->GetComponent<Renderable>())
+                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>())
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -928,11 +928,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -1076,11 +1076,11 @@ namespace spartan
                // enable physics for all meshes
                vector<Entity*> entities;
                entity->GetDescendants(&entities);
-               for (Entity* entity : entities)
+               for (Entity* entity_it : entities)
                {
-                   if (entity->GetComponent<Renderable>() != nullptr)
+                   if (entity_it->GetComponent<Renderable>() != nullptr)
                    {
-                       PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                       PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                        physics_body->SetShapeType(PhysicsShape::Mesh);
                    }
                }
@@ -1103,11 +1103,11 @@ namespace spartan
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
-                for (Entity* entity : entities)
+                for (Entity* entity_it : entities)
                 {
-                    if (entity->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>().get();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -1260,8 +1260,6 @@ namespace spartan
                     }
                 }
             }
-
-           
         }
     }
 
