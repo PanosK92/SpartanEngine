@@ -385,7 +385,7 @@ namespace spartan
             }
         }
 
-        void create_objects()
+        void create_physics_playground()
         {
             create_camera();
             create_sun(LightIntensity::sky_sunlight_morning_evening);
@@ -736,7 +736,7 @@ namespace spartan
             }
         }
 
-        void create_sponza()
+        void create_sponza_4k()
         {
             // set the mood
             create_camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
@@ -850,7 +850,7 @@ namespace spartan
             }
         }
 
-        void create_doom()
+        void create_doom_e1m1()
         {
             create_camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
             create_sun(LightIntensity::sky_sunlight_noon, false);
@@ -958,11 +958,14 @@ namespace spartan
             }
         }
 
-        void create_living_room()
+        void create_living_room_gi_test()
         {
             create_camera(Vector3(3.6573f, 2.4959f, -15.6978f), Vector3(3.9999f, -12.1947f, 0.0f));
             create_sun();
             create_music();
+
+            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
             {
@@ -1087,6 +1090,9 @@ namespace spartan
         void create_subway_gi_test()
         {
             create_camera();
+            
+            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
             {
@@ -1106,9 +1112,6 @@ namespace spartan
                     }
                 }
             }
-
-            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
-            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
         }
     }
 
@@ -1277,19 +1280,17 @@ namespace spartan
 
             switch (default_world)
             {
-                case DefaultWorld::Objects:      create_objects();        break;
-                case DefaultWorld::ForestCar:    create_forest_car();     break;
-                case DefaultWorld::Doom:         create_doom();           break;
-                case DefaultWorld::Bistro:       create_bistro();         break;
-                case DefaultWorld::Minecraft:    create_minecraft();      break;
-                case DefaultWorld::LivingRoom:   create_living_room();    break;
-                case DefaultWorld::Sponza:       create_sponza();         break;
-                case DefaultWorld::SubwayGiTest: create_subway_gi_test(); break;
-                default: SP_ASSERT_MSG(false, "Unhandled default world"); break;
+                case DefaultWorld::PhysicsPlayground: create_physics_playground();  break;
+                case DefaultWorld::ForestCar:         create_forest_car();          break;
+                case DefaultWorld::DoomE1M1:          create_doom_e1m1();           break;
+                case DefaultWorld::Bistro:            create_bistro();              break;
+                case DefaultWorld::Minecraft:         create_minecraft();           break;
+                case DefaultWorld::LivingRoomGiTest:  create_living_room_gi_test(); break;
+                case DefaultWorld::Sponza4K:          create_sponza_4k();           break;
+                case DefaultWorld::SubwayGiTest:      create_subway_gi_test();      break;
+                default: SP_ASSERT_MSG(false, "Unhandled default world");           break;
             }
 
-            // TODO-CRASH: when loading a world, the renderer can sometimes read the hierarchy before the entities are fully loaded and cause a GPU crash
-            // it's possible that an an entity/mesh has finished loaded but textures or other resources are still being loaded in other threads
             ProgressTracker::SetGlobalLoadingState(false);
         });
     }
