@@ -51,7 +51,7 @@ namespace spartan
             //desc.CachedPSO                          = 0;
             //desc.Flags                              = 0;
 
-            d3d12_utility::error::check(RHI_Context::device->CreateComputePipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_rhi_resource_pipeline))));
+            d3d12_utility::error::check(RHI_Context::device->CreateComputePipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_rhi_resource_layout))));
         }
         else if (pipeline_state.IsGraphics())
         {
@@ -140,7 +140,7 @@ namespace spartan
             desc.RTVFormats[0]                      = DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.SampleDesc.Count                   = 1;
 
-            d3d12_utility::error::check(RHI_Context::device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_rhi_resource_pipeline))));
+            d3d12_utility::error::check(RHI_Context::device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_rhi_resource_layout))));
         }
     }
     
