@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float g_ao_radius    = 2.0f;
-static const float g_ao_intensity = 5.0f;
+static const float g_ao_radius    = 3.0f;
+static const float g_ao_intensity = 2.5f;
 static const float offsets[]      = { 0.0f, 0.5f, 0.25f, 0.75f };
 static const float rotations[]    = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
 
