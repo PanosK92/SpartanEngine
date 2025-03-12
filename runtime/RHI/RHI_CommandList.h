@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_PipelineState.h"
 #include "../Rendering/Renderer_Definitions.h"
 #include <SpartanObject.h>
+#include <stack>
 //============================================
 
 namespace spartan
@@ -186,8 +187,9 @@ namespace spartan
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
-        const char* m_timeblock_active                       = nullptr;
         bool m_render_pass_active                            = false;
+        std::stack<const char*> m_active_timeblocks;
+        std::stack<const char*> m_debug_label_stack;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;
         std::vector<ImageBarrierInfo> m_image_barriers;

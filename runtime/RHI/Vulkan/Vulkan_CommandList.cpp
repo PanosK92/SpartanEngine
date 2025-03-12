@@ -1478,52 +1478,46 @@ namespace spartan
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
-        SP_ASSERT_MSG(m_timeblock_active == nullptr, "The previous time block is still active");
         SP_ASSERT(name != nullptr);
-
-        // allowed timing ?
+    
+        // timing
+        Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
+        if (Debugging::IsGpuTimingEnabled() && gpu_timing)
         {
-            // cpu
-            Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
-
-            // gpu
-            if (Debugging::IsGpuTimingEnabled() && gpu_timing)
-            {
-               
-                Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
-            }
+            Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
-
-        // allowed marking ?
+    
+        // markers (support nesting)
         if (Debugging::IsGpuMarkingEnabled() && gpu_marker)
         {
             RHI_Device::MarkerBegin(this, name, Vector4::Zero);
+            m_debug_label_stack.push(name);
         }
-
-        m_timeblock_active = name;
+    
+        // track active time blocks (for nesting)
+        m_active_timeblocks.push(name);
     }
 
     void RHI_CommandList::EndTimeblock()
     {
-        SP_ASSERT_MSG(m_timeblock_active != nullptr, "A time block wasn't started");
-
-        // allowed markers ?
-        if (Debugging::IsGpuTimingEnabled())
+        SP_ASSERT(!m_active_timeblocks.empty());
+    
+        // markers (only end if one was started)
+        if (Debugging::IsGpuMarkingEnabled() && !m_debug_label_stack.empty())
         {
             RHI_Device::MarkerEnd(this);
+            m_debug_label_stack.pop();
         }
-
-        // allowed timing
+    
+        // timing
+        if (Debugging::IsGpuTimingEnabled())
         {
-            if (Debugging::IsGpuTimingEnabled())
-            {
-                Profiler::TimeBlockEnd(); // gpu
-            }
-
-            Profiler::TimeBlockEnd(); // cpu
+            Profiler::TimeBlockEnd(); // gpu
         }
-
-        m_timeblock_active = nullptr;
+        Profiler::TimeBlockEnd(); // cpu
+    
+        // pop the active time block
+        m_active_timeblocks.pop();
     }
 
     void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
