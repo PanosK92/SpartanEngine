@@ -424,7 +424,7 @@ namespace
             "2. Doom",
             "3. Minecraft",
             "4. Living Room",
-            "5. Subway",
+            "5. Subway GI Test",
             "6. Sponza 4K (demanding)",
             "7. Bistro Exterior & Interior (demanding)",
             "8. Forest Car (demanding)",

@@ -312,7 +312,7 @@ namespace spartan
                 cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), false);
                 Pass_Downscale(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
 
-                // todo: remove this, and find out why it doesn't properly transition and cause a GPU crash
+                // todo: remove this, and find out why it doesn't properly transition and can cause a GPU crash
                 GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
             }
             cmd_list_graphics->EndTimeblock();

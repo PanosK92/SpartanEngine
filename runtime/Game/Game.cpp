@@ -1084,7 +1084,7 @@ namespace spartan
             }
         }
 
-        void create_subway()
+        void create_subway_gi_test()
         {
             create_camera();
 
@@ -1108,6 +1108,7 @@ namespace spartan
             }
 
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
         }
     }
 
@@ -1276,14 +1277,14 @@ namespace spartan
 
             switch (default_world)
             {
-                case DefaultWorld::Objects:    create_objects();      break;
-                case DefaultWorld::ForestCar:  create_forest_car();   break;
-                case DefaultWorld::Doom:       create_doom();         break;
-                case DefaultWorld::Bistro:     create_bistro();       break;
-                case DefaultWorld::Minecraft:  create_minecraft();    break;
-                case DefaultWorld::LivingRoom: create_living_room();  break;
-                case DefaultWorld::Sponza:     create_sponza();       break;
-                case DefaultWorld::Subway:     create_subway();       break;
+                case DefaultWorld::Objects:      create_objects();        break;
+                case DefaultWorld::ForestCar:    create_forest_car();     break;
+                case DefaultWorld::Doom:         create_doom();           break;
+                case DefaultWorld::Bistro:       create_bistro();         break;
+                case DefaultWorld::Minecraft:    create_minecraft();      break;
+                case DefaultWorld::LivingRoom:   create_living_room();    break;
+                case DefaultWorld::Sponza:       create_sponza();         break;
+                case DefaultWorld::SubwayGiTest: create_subway_gi_test(); break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world"); break;
             }
 

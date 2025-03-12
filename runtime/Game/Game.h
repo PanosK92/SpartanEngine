@@ -29,7 +29,7 @@ namespace spartan
         Doom,
         Minecraft,
         LivingRoom,
-        Subway,
+        SubwayGiTest,
         Sponza,
         Bistro,
         ForestCar,
