@@ -93,7 +93,7 @@ namespace spartan
 
         // instancing
         bool HasInstancing() const                              { return !m_instances.empty(); }
-        RHI_Buffer* GetInstanceBuffer() const                   { return m_instance_buffer.get(); }
+        RHI_Buffer* GetInstanceBuffer() const;
         math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
         uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<math::Matrix>& instances);
