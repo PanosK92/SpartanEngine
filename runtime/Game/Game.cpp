@@ -699,8 +699,8 @@ namespace spartan
                     vector<RHI_Vertex_PosTexNorTan> vertices;
                     vector<uint32_t> indices;
                     geometry_generation::generate_grass_blade(&vertices, &indices);                                       // generate grass blade
-                    mesh->AddGeometry(vertices, indices);
                     mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);                          // geometry is made to spec, don't optimize
+                    mesh->AddGeometry(vertices, indices);
                     mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
                     mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
                 

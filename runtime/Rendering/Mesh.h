@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <mutex>
 #include "../RHI/RHI_Vertex.h"
-#include "../Math/BoundingBox.h"
 #include "../Resource/IResource.h"
 //================================
 
@@ -59,7 +58,8 @@ namespace spartan
         uint32_t index_offset;  // Starting offset in m_indices
         uint32_t index_count;   // Number of indices for this LOD
     };
-    
+    static const uint32_t mesh_lod_count = 3;
+
     struct SubMesh
     {
         std::vector<MeshLod> lods; // List of LOD levels for this sub-mesh

@@ -171,13 +171,11 @@ namespace spartan
     
         // generate additional lods
         {
-            static const uint32_t k_lod_count = 3;
-            
             // start with the original geometry for lod 0
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
             vector<uint32_t> prev_indices                 = indices;
             
-            for (uint32_t lod_level = 1; lod_level < k_lod_count; ++lod_level)
+            for (uint32_t lod_level = 1; lod_level < mesh_lod_count; ++lod_level)
             {
                 // use the previous lod's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;

@@ -95,29 +95,53 @@ namespace spartan::geometry_processing
             // increase error linearly
             error += 0.1f;
         }
-    
-        // second attempt: use meshopt_simplifySloppy with max error if target not met
+
+        // second attempt: use meshopt_simplifySloppy with fallback if indices become zero
         if (current_triangle_count > triangle_target)
         {
             size_t target_index_count = triangle_target * 3;
             if (target_index_count >= 3)
             {
-                size_t index_count_new = meshopt_simplifySloppy(
-                    indices_simplified.data(),
-                    indices.data(),
-                    index_count,
-                    &vertices[0].pos[0],
-                    static_cast<uint32_t>(vertices.size()),
-                    sizeof(RHI_Vertex_PosTexNorTan),
-                    target_index_count,
-                    FLT_MAX,
-                    &lod_error
-                );
-                index_count = index_count_new;
-                indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
-                current_triangle_count = index_count / 3;
+                float target_error     = FLT_MAX;
+                size_t index_count_new = 0;
+                
+                // Keep trying with reduced aggressiveness until we get valid indices
+                do
+                {
+                    index_count_new = meshopt_simplifySloppy(
+                        indices_simplified.data(),
+                        indices.data(),
+                        index_count,
+                        &vertices[0].pos[0],
+                        static_cast<uint32_t>(vertices.size()),
+                        sizeof(RHI_Vertex_PosTexNorTan),
+                        target_index_count,
+                        target_error,
+                        &lod_error
+                    );
+                    
+                    // if we got zero indices, reduce the error and try again
+                    if (index_count_new == 0)
+                        target_error *= 0.5f; // reduce error
+                    
+                    // stop if error becomes too small to be practical
+                    if (target_error < 0.1f)
+                        break;
+                    
+                } while (index_count_new == 0);
+                
+                // only update if we got valid indices
+                if (index_count_new > 0)
+                {
+                    index_count = index_count_new;
+                    indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
+                    current_triangle_count = index_count / 3;
+                }
             }
         }
+
+        // agressive simplification can produce nothing - we never want that
+        SP_ASSERT(!indices.empty());
     
         // optimize the vertex buffer
         std::vector<RHI_Vertex_PosTexNorTan> new_vertices(vertices.size());
@@ -173,10 +197,9 @@ namespace spartan::geometry_processing
                 for (const auto& [reduction_percentage, triangle_threshold] : agressivness_table)
                 {
                     if (triangle_count > triangle_threshold)
-                    {
                         return static_cast<size_t>(triangle_count * reduction_percentage);
-                    }
                 }
+
                 return triangle_count; // native
             };
 

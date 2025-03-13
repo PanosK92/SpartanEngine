@@ -419,7 +419,7 @@ namespace spartan
             {
                 any_in_front = true;
                 float inv_w  = 1.0f / clip_pos.w;
-                float ndc_y  = clip_pos.y * inv_w; // y in Normalized Device Coordinates (-1 to 1)
+                float ndc_y  = clip_pos.y * inv_w; // y in normalized Device Coordinates (-1 to 1)
 
                 // map to screen space (0 to screen_size.y, with 0 at top)
                 float y_screen = (1.0f - ndc_y) * 0.5f * screen_size.y;
@@ -440,7 +440,7 @@ namespace spartan
     
         // step 5: determine LOD index based on screen height ratio
         // thresholds are in decreasing order; higher ratios mean higher detail (lower LOD index)
-        static const std::array<float, 3> lod_thresholds = {0.4f, 0.2f, 0.1f}; // example ratios: 40%, 20%, 10%
+        static const std::array<float, mesh_lod_count> lod_thresholds = {0.4f, 0.2f, 0.1f}; // example ratios: 40%, 20%, 10%
         for (uint32_t i = 0; i < lod_thresholds.size(); i++)
         {
             if (screen_height_ratio > lod_thresholds[i])
