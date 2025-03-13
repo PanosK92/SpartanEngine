@@ -183,9 +183,9 @@ namespace spartan
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
                 vector<uint32_t> lod_indices                = prev_indices;
                 
-                // calculate target triangle count (reduce by 50% from the previous lod)
+                // calculate target triangle count
                 size_t prev_triangle_count   = prev_indices.size() / 3;
-                size_t target_triangle_count = std::max(static_cast<size_t>(1), static_cast<size_t>(prev_triangle_count * 0.5f)); // 50% reduction from the previous lod
+                size_t target_triangle_count = std::max(static_cast<size_t>(1), static_cast<size_t>(prev_triangle_count * 0.4f)); // 40% of the previous lod
             
                 // simplify indices based on the previous lod
                 geometry_processing::simplify(lod_indices, lod_vertices, target_triangle_count);

@@ -388,13 +388,13 @@ namespace spartan
         float distance_squared = GetDistanceSquared();
         if (instance_group_index != -1) // instanced
         {
-            Vector3 closest_point;
-            GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index).GetClosestPoint(closest_point);
-            distance_squared = Vector3::DistanceSquared(closest_point, Renderer::GetCamera()->GetEntity()->GetPosition());
+            Vector3 camera_position = Renderer::GetCamera()->GetEntity()->GetPosition();
+            Vector3 closest_point   = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index).GetClosestPoint(camera_position);
+            distance_squared        = Vector3::DistanceSquared(closest_point, Renderer::GetCamera()->GetEntity()->GetPosition());
         }
     
         // determine lod index based on distance
-        static const array<float, 3> lod_distances = { 30.0f, 100.0f, 150.0f };
+        static const array<float, 3> lod_distances = { 50.0f, 100.0f, 150.0f };
         for (uint32_t i = 0; i < static_cast<uint32_t>(lod_distances.size()); i++)
         {
             if (distance_squared < (lod_distances[i] * lod_distances[i]))

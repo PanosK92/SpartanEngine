@@ -60,7 +60,7 @@ namespace spartan::geometry_processing
             return;
 
         // early exit if mesh is too small, few vertices can collapse to nothing
-        if (vertices.size() <= 32)
+        if (vertices.size() <= 16)
             return;
 
         // temporary buffer for simplified indices
