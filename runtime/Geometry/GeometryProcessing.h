@@ -46,49 +46,70 @@ namespace spartan::geometry_processing
         registered = true;
     }
 
-    static void simplify(std::vector<uint32_t>& indices, const std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t triangle_target)
+    static void simplify(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t triangle_target)
     {
         register_meshoptimizer();
-
-        float reduction               = 0.1f;
-        float error                   = 0.1f;
+    
+        // starting parameters
+        float error                   = 0.1f; // initial error tolerance
+        const int max_iterations      = 32;   // cap iterations to prevent infinite loops
+        uint32_t iteration            = 0;
         size_t index_count            = indices.size();
-        size_t current_triangle_count = indices.size() / 3;
-
+        size_t current_triangle_count = index_count / 3;
+    
+        // early exit if target is already met
         if (triangle_target >= current_triangle_count)
             return;
 
-        // loop until the current triangle count is less than or equal to the target triangle count
+        // temporary buffer for simplified indices
         std::vector<uint32_t> indices_simplified(index_count);
-        while (current_triangle_count > triangle_target)
+    
+        // simplification loop
+        while (current_triangle_count > triangle_target && iteration < max_iterations)
         {
-            float threshold           = 1.0f - reduction;
-            size_t target_index_count = static_cast<size_t>(index_count * threshold);
-
+            // calculate target index count based on reduction
+            size_t target_index_count = triangle_target * 3;
+    
+            // ensure we don’t go below a valid triangle (3 indices)
             if (target_index_count < 3)
                 break;
-
+    
+            // perform simplification using meshopt_simplify
             size_t index_count_new = meshopt_simplify(
-                indices_simplified.data(),
-                indices.data(),
-                index_count,
-                &vertices[0].pos[0],
-                static_cast<uint32_t>(vertices.size()),
-                sizeof(RHI_Vertex_PosTexNorTan),
-                target_index_count,
-                error
+                indices_simplified.data(),           // destination for simplified indices
+                indices.data(),                      // source indices
+                index_count,                         // current index count
+                &vertices[0].pos[0],                 // vertex position data
+                static_cast<uint32_t>(vertices.size()), // vertex count
+                sizeof(RHI_Vertex_PosTexNorTan),     // vertex stride
+                target_index_count,                  // desired index count
+                error                                // error tolerance
             );
-
-            // break if meshopt_simplify can't simplify further
-            if (index_count_new == index_count)
-                break;
-
+    
+            // update indices and triangle count
             index_count = index_count_new;
             indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
             current_triangle_count = index_count / 3;
-            reduction              = fmodf(reduction + 0.1f, 1.0f);
-            error                  = fmodf(error + 0.1f, 1.0f);
+    
+            // double the error tolerance
+            error += 0.1f;
+
+            iteration++;
         }
+    
+        // optimize the vertex buffer
+        std::vector<RHI_Vertex_PosTexNorTan> new_vertices(vertices.size()); // Temporary buffer for optimized vertices
+        size_t new_vertex_count = meshopt_optimizeVertexFetch(
+            new_vertices.data(),                 // destination for optimized vertices
+            indices.data(),                      // indices to optimize (modified in-place)
+            index_count,                         // number of indices
+            vertices.data(),                     // source vertex data
+            vertices.size(),                     // number of source vertices
+            sizeof(RHI_Vertex_PosTexNorTan)      // vertex size
+        );
+    
+        // update the input vectors with optimized data
+        vertices.assign(new_vertices.begin(), new_vertices.begin() + new_vertex_count);
     }
 
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
