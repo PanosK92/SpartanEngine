@@ -258,6 +258,7 @@ namespace spartan
         SpdCounter,
         MaterialParameters,
         LightParameters,
+        DummyInstance,
         Max
     };
 

@@ -86,6 +86,26 @@ namespace spartan
 
         stride                                   = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
         buffer(Renderer_Buffer::LightParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
+
+        // dummy instance buffer
+        {
+          
+            // define a single identity matrix (column-major by default)
+            Matrix identity = Matrix::Identity;
+
+            // transpose it to match row-major hlsl expectation
+            Matrix identity_transposed = identity.Transposed();
+
+            // create the dummy buffer once (static initialization)
+            buffer(Renderer_Buffer::DummyInstance) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Instance,                  // buffer type
+                sizeof(Matrix),                             // size of one matrix
+                1,                                          // one instance
+                static_cast<void*>(&identity_transposed),   // pointer to the transposed matrix data
+                false,                                      // not dynamic (static data)
+                "dummy_instance_buffer"                     // name for debugging
+            );
+        }
     }
 
     void Renderer::CreateDepthStencilStates()

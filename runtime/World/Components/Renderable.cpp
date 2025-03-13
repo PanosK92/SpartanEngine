@@ -358,38 +358,6 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
-    RHI_Buffer* Renderable::GetInstanceBuffer() const
-    {
-        if (m_instance_buffer)
-            return m_instance_buffer.get();
-
-        // not binding a dummy buffer can cause a validation error or gpu crash because the engine uses a single pipeline 
-        // for all geometry passes, avoiding permutations, so the pipeline always expects a valid instance buffer at binding 1
-        // even when instancing isn’t used (e.g., instance count = 0), the gpu fetches data from it based on the instance count
-
-        // otherwise, return a shared dummy buffer with an identity matrix
-        static std::shared_ptr<RHI_Buffer> dummy_instance_buffer = nullptr;
-        if (!dummy_instance_buffer)
-        {
-            // define a single identity matrix (column-major by default)
-            Matrix identity = Matrix::Identity;
-            // transpose it to match row-major hlsl expectation
-            Matrix identity_transposed = identity.Transposed();
-
-            // create the dummy buffer once (static initialization)
-            dummy_instance_buffer = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Instance,                  // buffer type
-                sizeof(Matrix),                             // size of one matrix
-                1,                                          // one instance
-                static_cast<void*>(&identity_transposed),   // pointer to the transposed matrix data
-                false,                                      // not dynamic (static data)
-                "dummy_instance_buffer"                     // name for debugging
-            );
-        }
-
-        return dummy_instance_buffer.get();
-    }
-
     void Renderable::SetInstances(const vector<Matrix>& instances)
     {
         m_instances = instances;

@@ -39,6 +39,7 @@ namespace spartan
     class Entity;
     class Camera;
     class Light;
+    class Renderable;
     namespace math
     {
         class BoundingBox;
@@ -179,6 +180,10 @@ namespace spartan
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
         // passes - utility
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
+
+        // renderable
+        static void RenderableSetBuffers(RHI_CommandList* cmd_list, Renderable* renderable);
+        static void RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0);
 
         // event handlers
         static void OnClear();
