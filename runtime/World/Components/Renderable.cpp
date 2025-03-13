@@ -391,32 +391,29 @@ namespace spartan
             100.0f,
             150.0f
         };
-    
-        float distance = 0.0f;
+
+        // get distance
+        float distance_squared = 0.0f;
         if (instance_group_index == -1) // non-instanced
         {
-            distance = std::sqrt(GetDistanceSquared());
+            distance_squared = GetDistanceSquared();
         }
         else // instanced
         {
             Vector3 closest_point;
-            const BoundingBox& bounding_box_group = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index);
-            distance = closest_point.Length();
+            GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index).GetClosestPoint(closest_point);
+            distance_squared = Vector3::DistanceSquared(closest_point, Renderer::GetCamera()->GetEntity()->GetPosition());
         }
     
         // determine lod index based on distance
         uint32_t lod_index = 0;
         for (uint32_t i = 0; i < 3; ++i)
         {
-            if (distance <= k_lod_distances[i])
-            {
-                lod_index = i;
-                break;
-            }
-            lod_index = i; // if distance exceeds all thresholds, use the last LOD (LOD 2)
+            if (distance_squared <= (k_lod_distances[i] * k_lod_distances[i]))
+                return i;
         }
     
-        return lod_index;
+        return 0;
     }
 
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)

@@ -475,6 +475,8 @@ namespace spartan
 
         void create_forest_car()
         {
+            const float foliage_max_render_distance = 1000.0f;
+
             create_sun(LightIntensity::sky_overcast_day);
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
             create_car(Vector3(-449.0260f, 6.5f, 359.2632f));
@@ -657,9 +659,8 @@ namespace spartan
                     shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("tree");
                     entity->SetScale(1.0f);
-                
-                    const float max_render_distance = 600.0;
-                
+
+               
                     // generate instances
                     {
                         vector<Matrix> instances;
@@ -668,7 +669,7 @@ namespace spartan
                         if (Entity* branches = entity->GetDescendantByName("tree_bark_0"))
                         {
                             branches->GetComponent<Renderable>()->SetInstances(instances);
-                            branches->GetComponent<Renderable>()->SetMaxRenderDistance(max_render_distance);
+                            branches->GetComponent<Renderable>()->SetMaxRenderDistance(foliage_max_render_distance);
                         }
                         
                         if (Entity* leaf = entity->GetDescendantByName("Plane.550_leaf_0"))
@@ -676,7 +677,7 @@ namespace spartan
                             Renderable* renderable = leaf->GetComponent<Renderable>().get();
                 
                             renderable->SetInstances(instances);
-                            renderable->SetMaxRenderDistance(max_render_distance);
+                            renderable->SetMaxRenderDistance(foliage_max_render_distance);
                             renderable->GetMaterial()->SetProperty(MaterialProperty::IsTree, 1.0f);
                         }
                         
@@ -723,7 +724,7 @@ namespace spartan
                     material->SetColor(Color::standard_white);
                     renderable->SetMaterial(material);
                 
-                    renderable->SetMaxRenderDistance(400.0f);
+                    renderable->SetMaxRenderDistance(foliage_max_render_distance);
                 }
             }
         }
@@ -1252,8 +1253,6 @@ namespace spartan
                     }
                 }
             }
-
-           
         }
     }
 
