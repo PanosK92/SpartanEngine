@@ -27,7 +27,7 @@ veterans, and contribution perks that you won't believe when you see, it's one o
 
 # Worlds
 
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.png"/>
+<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/>
 <img align="left" width="450" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection_4.png"/>
 
 Upon launching the engine, you'll be greeted with a selection of default worlds to load. Each world is physics-enabled, allowing you to walk around, pick objects using your mouse, and even drive a car. These worlds are designed to offer a diverse and enjoyable experience  
@@ -35,7 +35,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 | Sponza | Forest |
 |:-:|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>The Sponza building, found in Dubrovnik, is showcased here with a true-to-life scale. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.png"/><br>A height map-generated forest featuring water bodies amidst tens of thousands of trees and plants, all set in a walkable terrain. |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>The Sponza building, found in Dubrovnik, is showcased here with a true-to-life scale. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/><br>A height map-generated forest with **Ghost of Tsushima** grass blades, trees, water and a walkable height-map generated terrain. |
 | Car | Doom |
 | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_car.png"/><br>A drivable car implemented with a highly realistic tire friction formula, simulation of gearbox, anti-roll bar, and more | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_doom.png"/><br>This is a simple scene with the soundtrack from E1M1 |
 | Bistro | Minecraft |
