@@ -384,6 +384,10 @@ namespace spartan
 
     uint32_t Renderable::GetLodIndex(const int instance_group_index)
     {
+        // thresholds are in decreasing order, higher ratios mean higher detail (lower lod index)
+        static const array<float, mesh_lod_count> lod_thresholds = {0.4f, 0.2f, 0.1f}; // 40%, 20%, 10%
+        const uint32_t max_lod = static_cast<uint32_t>(lod_thresholds.size() - 1);
+
         // get camera and rendering information
         Camera* camera                = Renderer::GetCamera().get();
         const Matrix& view_projection = camera->GetViewProjectionMatrix();
@@ -399,16 +403,19 @@ namespace spartan
         {
             box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index);
         }
-    
-        // step 2: get the eight corners of the bounding box
-        std::array<Vector3, 8> corners;
+
+        // step 2: handle case where the camera is inside the bounding box
+        if (box.Contains(camera->GetEntity()->GetPosition()))
+            return 0;
+
+        // step 3: get the eight corners of the bounding box
+        array<Vector3, 8> corners;
         box.GetCorners(&corners);
     
-        // step 3: project corners to screen space and find min/max Y
-        float min_y       = std::numeric_limits<float>::max();
-        float max_y       = std::numeric_limits<float>::min();
+        // step 4: project corners to screen space and find min/max Y
+        float min_y       = numeric_limits<float>::max();
+        float max_y       = numeric_limits<float>::min();
         bool any_in_front = false;
-    
         for (const auto& corner : corners)
         {
             // transform to clip space
@@ -419,7 +426,7 @@ namespace spartan
             {
                 any_in_front = true;
                 float inv_w  = 1.0f / clip_pos.w;
-                float ndc_y  = clip_pos.y * inv_w; // y in normalized Device Coordinates (-1 to 1)
+                float ndc_y  = clip_pos.y * inv_w; // y in normalized device coordinates (-1 to 1)
 
                 // map to screen space (0 to screen_size.y, with 0 at top)
                 float y_screen = (1.0f - ndc_y) * 0.5f * screen_size.y;
@@ -430,25 +437,23 @@ namespace spartan
             }
         }
     
-        // step 4: handle case where object is entirely behind the camera
+        // step 5: handle case where object is entirely behind the camera
         if (!any_in_front)
-            return 0;
+            return max_lod;
     
         // calculate height in screen space and the ratio
         float height_in_screen_space = max_y - min_y;
         float screen_height_ratio    = height_in_screen_space / screen_size.y;
     
-        // step 5: determine LOD index based on screen height ratio
-        // thresholds are in decreasing order; higher ratios mean higher detail (lower LOD index)
-        static const std::array<float, mesh_lod_count> lod_thresholds = {0.4f, 0.2f, 0.1f}; // example ratios: 40%, 20%, 10%
+        // step 5: determine lod index based on screen height ratio
         for (uint32_t i = 0; i < lod_thresholds.size(); i++)
         {
             if (screen_height_ratio > lod_thresholds[i])
                 return i;
         }
     
-        // if ratio is below the smallest threshold, use the lowest detail LOD
-        return static_cast<uint32_t>(lod_thresholds.size() - 1);
+        // if ratio is below the smallest threshold, use the lowest detail lod
+        return max_lod;
     }
 
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
