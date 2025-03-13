@@ -133,9 +133,9 @@ namespace spartan
 
     namespace
     {
-        const float sea_level               = 0.0f;      // the height at which the sea level is= 0.0f; // this is an axiom of the engine
-        const uint32_t smoothing_iterations = 1;         // the number of height map neighboring pixel averaging
+        const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f; // this is an axiom of the engine
         const uint32_t scale                = 2;         // the scale factor to upscale the height map by
+        const uint32_t smoothing_iterations = 0;         // the number of height map neighboring pixel averaging - useful if you are reading the height map with a scale of 1 (no bilinear interpolation)
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
 
         float compute_terrain_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices)
@@ -175,7 +175,7 @@ namespace spartan
             return area_km2;
         }
 
-        bool get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y, const uint32_t scale)
+        void get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y, const uint32_t scale)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
             SP_ASSERT(height_data.size() > 0);
@@ -257,8 +257,8 @@ namespace spartan
 
             // third pass: smooth out the height map values, this will reduce hard terrain edges
             {
-                const uint32_t width  = height_texture->GetWidth();
-                const uint32_t height = height_texture->GetHeight();
+                const uint32_t width  = height_texture->GetWidth() * scale;
+                const uint32_t height = height_texture->GetHeight()  * scale;
 
                 for (uint32_t iteration = 0; iteration < smoothing_iterations; iteration++)
                 {
@@ -301,8 +301,6 @@ namespace spartan
                 }
 
             }
-
-            return true;
         }
 
         void add_perlin_noise(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
@@ -672,11 +670,7 @@ namespace spartan
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
 
-            if (!get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y, scale))
-            {
-                m_is_generating = false;
-                return;
-            }
+            get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y, scale);
 
             // deduce some stuff
             width            = GetWidth();
