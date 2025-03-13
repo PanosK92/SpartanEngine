@@ -115,6 +115,7 @@ namespace spartan
                 for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
                 {
                     const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+
                     // first, check if the bounding box is in the frustum
                     if (camera->IsInViewFrustum(bounding_box))
                     {
@@ -132,6 +133,7 @@ namespace spartan
             else
             {
                 const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::Transformed);
+
                 // first, check if the bounding box is in the frustum
                 if (camera->IsInViewFrustum(bounding_box))
                 {
@@ -378,6 +380,43 @@ namespace spartan
         );
 
         m_bounding_box_dirty = true;
+    }
+
+   uint32_t Renderable::GetLodIndex(const int instance_group_index)
+    {
+        // lod distance thresholds (in meters)
+        static const float k_lod_distances[3] =
+        {
+            30.0f,
+            100.0f,
+            150.0f
+        };
+    
+        float distance = 0.0f;
+        if (instance_group_index == -1) // non-instanced
+        {
+            distance = std::sqrt(GetDistanceSquared());
+        }
+        else // instanced
+        {
+            Vector3 closest_point;
+            const BoundingBox& bounding_box_group = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index);
+            distance = closest_point.Length();
+        }
+    
+        // determine lod index based on distance
+        uint32_t lod_index = 0;
+        for (uint32_t i = 0; i < 3; ++i)
+        {
+            if (distance <= k_lod_distances[i])
+            {
+                lod_index = i;
+                break;
+            }
+            lod_index = i; // if distance exceeds all thresholds, use the last LOD (LOD 2)
+        }
+    
+        return lod_index;
     }
 
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)

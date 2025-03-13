@@ -1707,11 +1707,13 @@ namespace spartan
                 if (instance_count > 0 && renderable->IsVisible(group_index))
                 {
                     RenderableSetBuffers(cmd_list, renderable);
-        
+
+                    // deduce lod
+                    uint32_t lod_index = renderable->GetLodIndex(group_index);
                     cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(),
-                        renderable->GetIndexOffset(),
-                        renderable->GetVertexOffset(),
+                        renderable->GetIndexCount(lod_index),
+                        renderable->GetIndexOffset(lod_index),
+                        renderable->GetVertexOffset(lod_index),
                         instance_start_index,
                         instance_count
                     );
@@ -1726,13 +1728,11 @@ namespace spartan
             {
                 RenderableSetBuffers(cmd_list, renderable);
 
-                uint32_t lod_index = 0;
-
-
+                uint32_t lod_index = renderable->GetLodIndex();
                 cmd_list->DrawIndexed(
-                    renderable->GetIndexCount(),
-                    renderable->GetIndexOffset(),
-                    renderable->GetVertexOffset()
+                    renderable->GetIndexCount(lod_index),
+                    renderable->GetIndexOffset(lod_index),
+                    renderable->GetVertexOffset(lod_index)
                 );
             }
         }

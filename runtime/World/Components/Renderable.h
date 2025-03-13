@@ -99,7 +99,9 @@ namespace spartan
         void SetInstances(const std::vector<math::Matrix>& instances);
 
         // distance & visibility
+        uint32_t GetLodIndex(const int instance_group_index = -1);
         float GetDistanceSquared() const                              { return m_distance_squared; }
+        float GetMaxRenderDistance() const                            { return m_max_render_distance; }
         void SetMaxRenderDistance(const float max_render_distance)    { m_max_render_distance = max_render_distance; }
         bool IsVisible(const uint32_t instance_group_index = 0) const { return m_is_visible[instance_group_index] && !HasFlag(RenderableFlags::Occluded); }
 
@@ -132,7 +134,7 @@ namespace spartan
 
         // distance
         float m_distance_squared            = 0.0f;
-        float m_max_render_distance         = FLT_MAX;
+        float m_max_render_distance         = 1000.0f; // 1000 meters is good for most meshes, it can be adjusted per mesh
         std::array<bool, 2048> m_is_visible = { false };
     };
 }
