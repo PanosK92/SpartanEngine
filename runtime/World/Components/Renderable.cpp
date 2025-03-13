@@ -413,7 +413,7 @@ namespace spartan
                 return i;
         }
     
-        return 0;
+        return 2; // max
     }
 
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
