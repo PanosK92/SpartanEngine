@@ -51,39 +51,37 @@ namespace spartan::geometry_processing
         register_meshoptimizer();
     
         // starting parameters
-        float error                   = 0.1f; // initial error tolerance
-        const int max_iterations      = 32;   // cap iterations to prevent infinite loops
-        uint32_t iteration            = 0;
-        size_t index_count            = indices.size();
+        float error = 0.01f;         // initial error tolerance
+        const float max_error = 1.0f; // practical cap within normalized range
+        size_t index_count = indices.size();
         size_t current_triangle_count = index_count / 3;
     
         // early exit if target is already met
         if (triangle_target >= current_triangle_count)
             return;
-
+    
         // temporary buffer for simplified indices
         std::vector<uint32_t> indices_simplified(index_count);
     
-        // simplification loop
-        while (current_triangle_count > triangle_target && iteration < max_iterations)
+        // simplification loop up to error = 1.0
+        float lod_error = 0.0f;
+        while (current_triangle_count > triangle_target && error <= max_error)
         {
-            // calculate target index count based on reduction
             size_t target_index_count = triangle_target * 3;
-    
-            // ensure we don’t go below a valid triangle (3 indices)
             if (target_index_count < 3)
                 break;
     
-            // perform simplification using meshopt_simplify
             size_t index_count_new = meshopt_simplify(
-                indices_simplified.data(),           // destination for simplified indices
-                indices.data(),                      // source indices
-                index_count,                         // current index count
-                &vertices[0].pos[0],                 // vertex position data
+                indices_simplified.data(),              // destination for simplified indices
+                indices.data(),                         // source indices
+                index_count,                            // current index count
+                &vertices[0].pos[0],                    // vertex position data
                 static_cast<uint32_t>(vertices.size()), // vertex count
-                sizeof(RHI_Vertex_PosTexNorTan),     // vertex stride
-                target_index_count,                  // desired index count
-                error                                // error tolerance
+                sizeof(RHI_Vertex_PosTexNorTan),        // vertex stride
+                target_index_count,                     // desired index count
+                error,                                  // error tolerance
+                0,                                      // options (default)
+                &lod_error                              // output error
             );
     
             // update indices and triangle count
@@ -91,24 +89,44 @@ namespace spartan::geometry_processing
             indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
             current_triangle_count = index_count / 3;
     
-            // double the error tolerance
+            // increase error linearly
             error += 0.1f;
-
-            iteration++;
+        }
+    
+        // second attempt: meshopt_simplifySloppy with max error if target not reached
+        if (current_triangle_count > triangle_target)
+        {
+            size_t target_index_count = triangle_target * 3;
+            if (target_index_count >= 3)
+            {
+                size_t index_count_new = meshopt_simplifySloppy(
+                    indices_simplified.data(),
+                    indices.data(),
+                    index_count,
+                    &vertices[0].pos[0],
+                    static_cast<uint32_t>(vertices.size()),
+                    sizeof(RHI_Vertex_PosTexNorTan),
+                    target_index_count,
+                    FLT_MAX,  // disable error limit
+                    &lod_error
+                );
+                index_count = index_count_new;
+                indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
+                current_triangle_count = index_count / 3;
+            }
         }
     
         // optimize the vertex buffer
-        std::vector<RHI_Vertex_PosTexNorTan> new_vertices(vertices.size()); // Temporary buffer for optimized vertices
+        std::vector<RHI_Vertex_PosTexNorTan> new_vertices(vertices.size());
         size_t new_vertex_count = meshopt_optimizeVertexFetch(
-            new_vertices.data(),                 // destination for optimized vertices
-            indices.data(),                      // indices to optimize (modified in-place)
-            index_count,                         // number of indices
-            vertices.data(),                     // source vertex data
-            vertices.size(),                     // number of source vertices
-            sizeof(RHI_Vertex_PosTexNorTan)      // vertex size
+            new_vertices.data(),
+            indices.data(),
+            index_count,
+            vertices.data(),
+            vertices.size(),
+            sizeof(RHI_Vertex_PosTexNorTan)
         );
     
-        // update the input vectors with optimized data
         vertices.assign(new_vertices.begin(), new_vertices.begin() + new_vertex_count);
     }
 
