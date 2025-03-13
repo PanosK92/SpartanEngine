@@ -384,21 +384,9 @@ namespace spartan
 
    uint32_t Renderable::GetLodIndex(const int instance_group_index)
     {
-        // lod distance thresholds (in meters)
-        static const float k_lod_distances[3] =
-        {
-            30.0f,
-            100.0f,
-            150.0f
-        };
-
         // get distance
-        float distance_squared = 0.0f;
-        if (instance_group_index == -1) // non-instanced
-        {
-            distance_squared = GetDistanceSquared();
-        }
-        else // instanced
+        float distance_squared = GetDistanceSquared();
+        if (instance_group_index != -1) // instanced
         {
             Vector3 closest_point;
             GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index).GetClosestPoint(closest_point);
@@ -406,14 +394,14 @@ namespace spartan
         }
     
         // determine lod index based on distance
-        uint32_t lod_index = 0;
-        for (uint32_t i = 0; i < 3; ++i)
+        static const array<float, 3> lod_distances = { 30.0f, 100.0f, 150.0f };
+        for (uint32_t i = 0; i < static_cast<uint32_t>(lod_distances.size()); i++)
         {
-            if (distance_squared <= (k_lod_distances[i] * k_lod_distances[i]))
+            if (distance_squared < (lod_distances[i] * lod_distances[i]))
                 return i;
         }
     
-        return 2; // max
+        return static_cast<uint32_t>(lod_distances.size() - 1);
     }
 
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)

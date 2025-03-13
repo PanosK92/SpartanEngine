@@ -49,23 +49,26 @@ namespace spartan::geometry_processing
     static void simplify(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t triangle_target)
     {
         register_meshoptimizer();
-    
+
         // starting parameters
-        float error = 0.01f;         // initial error tolerance
-        const float max_error = 1.0f; // practical cap within normalized range
-        size_t index_count = indices.size();
+        float error                   = 0.01f; // initial error tolerance
+        size_t index_count            = indices.size();
         size_t current_triangle_count = index_count / 3;
     
         // early exit if target is already met
         if (triangle_target >= current_triangle_count)
             return;
-    
+
+        // early exit if mesh is too small, few vertices can collapse to nothing
+        if (vertices.size() <= 32)
+            return;
+
         // temporary buffer for simplified indices
         std::vector<uint32_t> indices_simplified(index_count);
     
         // simplification loop up to error = 1.0
         float lod_error = 0.0f;
-        while (current_triangle_count > triangle_target && error <= max_error)
+        while (current_triangle_count > triangle_target && error <= 1.0f)
         {
             size_t target_index_count = triangle_target * 3;
             if (target_index_count < 3)
@@ -93,7 +96,7 @@ namespace spartan::geometry_processing
             error += 0.1f;
         }
     
-        // second attempt: meshopt_simplifySloppy with max error if target not reached
+        // second attempt: use meshopt_simplifySloppy with max error if target not met
         if (current_triangle_count > triangle_target)
         {
             size_t target_index_count = triangle_target * 3;
@@ -107,7 +110,7 @@ namespace spartan::geometry_processing
                     static_cast<uint32_t>(vertices.size()),
                     sizeof(RHI_Vertex_PosTexNorTan),
                     target_index_count,
-                    FLT_MAX,  // disable error limit
+                    FLT_MAX,
                     &lod_error
                 );
                 index_count = index_count_new;

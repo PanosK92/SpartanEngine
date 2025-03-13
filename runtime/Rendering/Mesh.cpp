@@ -190,14 +190,6 @@ namespace spartan
                 // simplify indices based on the previous lod
                 geometry_processing::simplify(lod_indices, lod_vertices, target_triangle_count);
 
-                if (shared_ptr<Entity> entity = m_root_entity.lock())
-                {
-                    if (prev_triangle_count == (lod_indices.size() / 3))
-                    {
-                        SP_LOG_WARNING("Failed to create lod for %s", entity->GetObjectName().c_str());
-                    }
-                }
-
                 // adjust vertex count based on simplified indices (assuming simplify keeps vertex order)
                 MeshLod lod;
                 lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
