@@ -382,26 +382,73 @@ namespace spartan
         m_bounding_box_dirty = true;
     }
 
-   uint32_t Renderable::GetLodIndex(const int instance_group_index)
+    uint32_t Renderable::GetLodIndex(const int instance_group_index)
     {
-        // get distance
-        float distance_squared = GetDistanceSquared();
-        if (instance_group_index != -1) // instanced
+        // get camera and rendering information
+        Camera* camera                = Renderer::GetCamera().get();
+        const Matrix& view_projection = camera->GetViewProjectionMatrix();
+        Vector2 screen_size           = Renderer::GetResolutionRender();
+    
+        // step 1: get the appropriate bounding box
+        BoundingBox box;
+        if (instance_group_index == -1) // non-instanced
         {
-            Vector3 camera_position = Renderer::GetCamera()->GetEntity()->GetPosition();
-            Vector3 closest_point   = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index).GetClosestPoint(camera_position);
-            distance_squared        = Vector3::DistanceSquared(closest_point, Renderer::GetCamera()->GetEntity()->GetPosition());
+            box = GetBoundingBox(BoundingBoxType::Transformed);
+        }
+        else // instanced object
+        {
+            box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index);
         }
     
-        // determine lod index based on distance
-        static const array<float, 3> lod_distances = { 50.0f, 100.0f, 150.0f };
-        for (uint32_t i = 0; i < static_cast<uint32_t>(lod_distances.size()); i++)
+        // step 2: get the eight corners of the bounding box
+        std::array<Vector3, 8> corners;
+        box.GetCorners(&corners);
+    
+        // step 3: project corners to screen space and find min/max Y
+        float min_y       = std::numeric_limits<float>::max();
+        float max_y       = std::numeric_limits<float>::min();
+        bool any_in_front = false;
+    
+        for (const auto& corner : corners)
         {
-            if (distance_squared < (lod_distances[i] * lod_distances[i]))
+            // transform to clip space
+            Vector4 clip_pos = view_projection * Vector4(corner, 1.0f);
+            
+            // check if the point is in front of the camera
+            if (clip_pos.w > 0.0f)
+            {
+                any_in_front = true;
+                float inv_w  = 1.0f / clip_pos.w;
+                float ndc_y  = clip_pos.y * inv_w; // y in Normalized Device Coordinates (-1 to 1)
+
+                // map to screen space (0 to screen_size.y, with 0 at top)
+                float y_screen = (1.0f - ndc_y) * 0.5f * screen_size.y;
+                
+                // update min and max Y
+                if (y_screen < min_y) min_y = y_screen;
+                if (y_screen > max_y) max_y = y_screen;
+            }
+        }
+    
+        // step 4: handle case where object is entirely behind the camera
+        if (!any_in_front)
+            return 0;
+    
+        // calculate height in screen space and the ratio
+        float height_in_screen_space = max_y - min_y;
+        float screen_height_ratio    = height_in_screen_space / screen_size.y;
+    
+        // step 5: determine LOD index based on screen height ratio
+        // thresholds are in decreasing order; higher ratios mean higher detail (lower LOD index)
+        static const std::array<float, 3> lod_thresholds = {0.4f, 0.2f, 0.1f}; // example ratios: 40%, 20%, 10%
+        for (uint32_t i = 0; i < lod_thresholds.size(); i++)
+        {
+            if (screen_height_ratio > lod_thresholds[i])
                 return i;
         }
     
-        return static_cast<uint32_t>(lod_distances.size() - 1);
+        // if ratio is below the smallest threshold, use the lowest detail LOD
+        return static_cast<uint32_t>(lod_thresholds.size() - 1);
     }
 
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
