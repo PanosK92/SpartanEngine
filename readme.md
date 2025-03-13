@@ -35,7 +35,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 | Sponza | Forest |
 |:-:|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>The Sponza building, found in Dubrovnik, is showcased here with a true-to-life scale. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/><br>A height map-generated forest with **Ghost of Tsushima** grass blades, trees, water and a walkable height-map generated terrain. |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>The Sponza building, found in Dubrovnik, is showcased here with a true-to-life scale. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/><br>A forest with **Ghost of Tsushima** grass blades, trees, water and a walkable height-map generated terrain. |
 | Car | Doom |
 | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_car.png"/><br>A drivable car implemented with a highly realistic tire friction formula, simulation of gearbox, anti-roll bar, and more | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_doom.png"/><br>This is a simple scene with the soundtrack from E1M1 |
 | Bistro | Minecraft |
