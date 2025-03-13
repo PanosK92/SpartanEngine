@@ -52,6 +52,19 @@ namespace spartan
         Max
     };
 
+    struct MeshLod
+    {
+        uint32_t vertex_offset; // Starting offset in m_vertices
+        uint32_t vertex_count;  // Number of vertices for this LOD
+        uint32_t index_offset;  // Starting offset in m_indices
+        uint32_t index_count;   // Number of indices for this LOD
+    };
+    
+    struct SubMesh
+    {
+        std::vector<MeshLod> lods; // List of LOD levels for this sub-mesh
+    };
+
     class Mesh : public IResource
     {
     public:
@@ -64,27 +77,18 @@ namespace spartan
 
         // geometry
         void Clear();
-        void GetGeometry(
-            uint32_t indexOffset,
-            uint32_t indexCount,
-            uint32_t vertexOffset,
-            uint32_t vertexCount,
-            std::vector<uint32_t>* indices,
-            std::vector<RHI_Vertex_PosTexNorTan>* vertices
-        );
+        void GetGeometry(uint32_t sub_mesh_index, std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices);
         uint32_t GetMemoryUsage() const;
 
         // geometry
-        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, uint32_t* vertex_offset_out = nullptr, uint32_t* index_offset_out = nullptr);
-        std::vector<RHI_Vertex_PosTexNorTan>& GetVertices() { return m_vertices; }
-        std::vector<uint32_t>& GetIndices()                 { return m_indices; }
+        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, uint32_t* sub_mesh_index = nullptr);
+        std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()   { return m_vertices; }
+        std::vector<uint32_t>& GetIndices()                   { return m_indices; }
+        const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
 
         // get counts
         uint32_t GetVertexCount() const;
         uint32_t GetIndexCount() const;
-
-        // aabb
-        const math::BoundingBox& GetAabb() const { return m_aabb; }
 
         // gpu buffers
         void CreateGpuBuffers();
@@ -103,19 +107,15 @@ namespace spartan
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
 
-        void PostProcess();
-
     private:
         // geometry
-        std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
-        std::vector<uint32_t> m_indices;
+        std::vector<RHI_Vertex_PosTexNorTan> m_vertices; // all vertices of a model file
+        std::vector<uint32_t> m_indices;                 // all indices of a model file
+        std::vector<SubMesh> m_sub_meshes;               // tracks sub-meshes and lods within the above vectors
 
         // gpu buffers
         std::shared_ptr<RHI_Buffer> m_vertex_buffer;
         std::shared_ptr<RHI_Buffer> m_index_buffer;
-
-        // aabb
-        math::BoundingBox m_aabb;
 
         // misc
         std::mutex m_mutex;

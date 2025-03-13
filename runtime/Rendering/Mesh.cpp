@@ -78,7 +78,7 @@ namespace spartan
             file->Read(&m_indices);
             file->Read(&m_vertices);
 
-            PostProcess();
+            CreateGpuBuffers();
         }
         // load foreign format
         else
@@ -121,50 +121,59 @@ namespace spartan
         return size;
     }
 
-    void Mesh::GetGeometry(uint32_t index_offset, uint32_t index_count, uint32_t vertex_offset, uint32_t vertex_count, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
+    void Mesh::GetGeometry(uint32_t sub_mesh_index, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
     {
         SP_ASSERT_MSG(indices != nullptr || vertices != nullptr, "Indices and vertices vectors can't both be null");
 
+        const MeshLod& lod = GetSubMesh(sub_mesh_index).lods[0];
+
         if (indices)
         {
-            SP_ASSERT_MSG(index_count != 0, "Index count can't be 0");
+            SP_ASSERT_MSG(lod.index_count != 0, "Index count can't be 0");
 
-            const auto index_first = m_indices.begin() + index_offset;
-            const auto index_last  = m_indices.begin() + index_offset + index_count;
+            const auto index_first = m_indices.begin() + lod.index_offset;
+            const auto index_last  = m_indices.begin() + lod.index_offset + lod.index_count;
             *indices               = vector<uint32_t>(index_first, index_last);
         }
 
         if (vertices)
         {
-            SP_ASSERT_MSG(vertex_count != 0, "Index count can't be 0");
+            SP_ASSERT_MSG(lod.vertex_count != 0, "Index count can't be 0");
 
-            const auto vertex_first = m_vertices.begin() + vertex_offset;
-            const auto vertex_last  = m_vertices.begin() + vertex_offset + vertex_count;
+            const auto vertex_first = m_vertices.begin() + lod.vertex_offset;
+            const auto vertex_last  = m_vertices.begin() + lod.vertex_offset + lod.vertex_count;
             *vertices               = vector<RHI_Vertex_PosTexNorTan>(vertex_first, vertex_last);
         }
     }
 
-    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, uint32_t* vertex_offset_out, uint32_t* index_offset_out)
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, uint32_t* sub_mesh_index)
     {
+        lock_guard lock(m_mutex);
+
+        // optimize
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
         {
             geometry_processing::optimize(vertices, indices);
         }
 
-        lock_guard lock(m_mutex);
-    
-        // set vertex offset if requested
-        if (vertex_offset_out)
+        // create a sub-mesh
+        SubMesh sub_mesh;
         {
-            *vertex_offset_out = static_cast<uint32_t>(m_vertices.size());
+            MeshLod lod;
+            lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
+            lod.vertex_count  = static_cast<uint32_t>(vertices.size());
+            lod.index_offset  = static_cast<uint32_t>(m_indices.size());
+            lod.index_count   = static_cast<uint32_t>(indices.size());
+            sub_mesh.lods.push_back(lod);
+
+            // store the sub-mesh and return its index
+            m_sub_meshes.push_back(sub_mesh);
+            if (sub_mesh_index)
+            {
+                *sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size() - 1);
+            }
         }
-    
-        // set index offset if requested
-        if (index_offset_out)
-        {
-            *index_offset_out = static_cast<uint32_t>(m_indices.size());
-        }
-    
+
         // add
         m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
         m_indices.insert(m_indices.end(), indices.begin(), indices.end());
@@ -184,7 +193,6 @@ namespace spartan
     {
         return
             static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData) |
-            //static_cast<uint32_t>(MeshFlags::ImportLights)              |
             static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale) |
             static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
     }
@@ -206,24 +214,17 @@ namespace spartan
             false,
             (string("mesh_index_buffer_") + m_object_name).c_str()
         );
-    }
-
-    void Mesh::PostProcess()
-    {
-        m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
 
         // normalize scale
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))
         {
-            if (shared_ptr<Entity> root_entity = m_root_entity.lock())
+            if (shared_ptr<Entity> entity = m_root_entity.lock())
             {
-                float scale_offset     = m_aabb.GetExtents().Length();
+                BoundingBox bounding_box(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
+                float scale_offset = bounding_box.GetExtents().Length();
                 float normalized_scale = 1.0f / scale_offset;
-
-                root_entity->SetScale(normalized_scale);
+                entity->SetScale(normalized_scale);
             }
         }
-
-        CreateGpuBuffers();
     }
 }

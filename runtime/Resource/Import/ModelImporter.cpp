@@ -505,7 +505,7 @@ namespace spartan
                     this_thread::sleep_for(std::chrono::milliseconds(16));
                 }
 
-                mesh->PostProcess();
+                mesh->CreateGpuBuffers();
             }
 
             // make the root entity active since it's now thread-safe
@@ -716,26 +716,12 @@ namespace spartan
             }
         }
 
-        // compute AABB (before doing move operation on vertices)
-        const BoundingBox aabb = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-
         // add vertex and index data to the mesh
-        uint32_t index_offset  = 0;
-        uint32_t vertex_offset = 0;
-        mesh->AddGeometry(vertices, indices, &vertex_offset, &index_offset);
-
-        // add a renderable component to this entity
-        shared_ptr<Renderable> renderable = entity_parent->AddComponent<Renderable>();
+        uint32_t sub_mesh_index = 0;
+        mesh->AddGeometry(vertices, indices, &sub_mesh_index);
 
         // set the geometry
-        renderable->SetGeometry(
-            mesh,
-            aabb,
-            index_offset,
-            static_cast<uint32_t>(indices.size()),
-            vertex_offset,
-            static_cast<uint32_t>(vertices.size())
-        );
+        entity_parent->AddComponent<Renderable>()->SetMesh(mesh, sub_mesh_index);
 
         // material
         if (scene->HasMaterials())

@@ -1725,7 +1725,10 @@ namespace spartan
             if (renderable->IsVisible())
             {
                 RenderableSetBuffers(cmd_list, renderable);
-        
+
+                uint32_t lod_index = 0;
+
+
                 cmd_list->DrawIndexed(
                     renderable->GetIndexCount(),
                     renderable->GetIndexOffset(),

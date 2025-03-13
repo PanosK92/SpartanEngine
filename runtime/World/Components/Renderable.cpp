@@ -41,15 +41,11 @@ namespace spartan
 {
     Renderable::Renderable(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,               Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,                  uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,  uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,   uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset, uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,  uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                   Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,           BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,         Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,            uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,             Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,     BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -60,10 +56,6 @@ namespace spartan
     void Renderable::Serialize(FileStream* stream)
     {
         // mesh
-        stream->Write(m_geometry_index_offset);
-        stream->Write(m_geometry_index_count);
-        stream->Write(m_geometry_vertex_offset);
-        stream->Write(m_geometry_vertex_count);
         stream->Write(m_bounding_box);
         MeshType mesh_type = m_mesh ? m_mesh->GetType() : MeshType::Max;
         stream->Write(static_cast<uint32_t>(mesh_type));
@@ -84,10 +76,6 @@ namespace spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // geometry
-        m_geometry_index_offset  = stream->ReadAs<uint32_t>();
-        m_geometry_index_count   = stream->ReadAs<uint32_t>();
-        m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
-        m_geometry_vertex_count  = stream->ReadAs<uint32_t>();
         stream->Read(&m_bounding_box);
         MeshType mesh_type = static_cast<MeshType>(stream->ReadAs<uint32_t>());
         if (mesh_type == MeshType::Max)
@@ -98,7 +86,7 @@ namespace spartan
         }
         else if (mesh_type != MeshType::Max)
         {
-            SetGeometry(mesh_type);
+            SetMesh(mesh_type);
         }
 
         // material
@@ -165,49 +153,34 @@ namespace spartan
         }
     }
 
-    void Renderable::SetGeometry(
-        Mesh* mesh,
-        const math::BoundingBox aabb /*= math::BoundingBox::Undefined*/,
-        uint32_t index_offset  /*= 0*/, uint32_t index_count  /*= 0*/,
-        uint32_t vertex_offset /*= 0*/, uint32_t vertex_count /*= 0 */
-    )
+    void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
     {
-        m_mesh                       = mesh;
-        m_bounding_box               = aabb;
-        m_geometry_index_offset      = index_offset;
-        m_geometry_index_count       = index_count;
-        m_geometry_vertex_offset     = vertex_offset;
-        m_geometry_vertex_count      = vertex_count;
-
-        if (m_geometry_index_count == 0)
+        // set mesh
         {
-            m_geometry_index_count = m_mesh->GetIndexCount();
+            m_mesh             = mesh;
+            m_sub_mesh_index   = sub_mesh_index;
+            const MeshLod& lod = mesh->GetSubMesh(sub_mesh_index).lods[0];
+            SP_ASSERT(lod.index_count  != 0);
+            SP_ASSERT(lod.vertex_count != 0);
         }
 
-        if (m_geometry_vertex_count == 0)
+        // compute and set bounding box
         {
-            m_geometry_vertex_count = m_mesh->GetVertexCount();
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
+            m_bounding_box = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            SP_ASSERT(m_bounding_box != BoundingBox::Undefined);
         }
-
-        if (m_bounding_box == BoundingBox::Undefined)
-        {
-            m_bounding_box = m_mesh->GetAabb();
-        }
-
-        SP_ASSERT(m_geometry_index_count       != 0);
-        SP_ASSERT(m_geometry_vertex_count      != 0);
-        SP_ASSERT(m_bounding_box != BoundingBox::Undefined);
     }
 
-    void Renderable::SetGeometry(const MeshType type)
+    void Renderable::SetMesh(const MeshType type)
     {
-        SetGeometry(Renderer::GetStandardMesh(type).get());
+        SetMesh(Renderer::GetStandardMesh(type).get());
     }
 
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
-        SP_ASSERT_MSG(m_mesh != nullptr, "invalid mesh");
-        m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
+        m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
 
     const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t index)
@@ -291,8 +264,10 @@ namespace spartan
 
         // compute local dimensions
         {
+            // acquire vertices
             vector<RHI_Vertex_PosTexNorTan> vertices;
             GetGeometry(nullptr, &vertices);
+            SP_ASSERT(!vertices.empty());
             
             float min_height = FLT_MAX;
             float max_height = -FLT_MAX;
@@ -331,6 +306,26 @@ namespace spartan
     string Renderable::GetMaterialName() const
     {
         return m_material ? m_material->GetObjectName() : "";
+    }
+
+    uint32_t Renderable::GetIndexOffset(const uint32_t lod) const
+    {
+        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_offset;
+    }
+
+    uint32_t Renderable::GetIndexCount(const uint32_t lod) const
+    {
+        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_count;
+    }
+
+    uint32_t Renderable::GetVertexOffset(const uint32_t lod) const
+    {
+        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_offset;
+    }
+
+    uint32_t Renderable::GetVertexCount(const uint32_t lod) const
+    {
+        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_count;
     }
 
     RHI_Buffer* Renderable::GetIndexBuffer() const

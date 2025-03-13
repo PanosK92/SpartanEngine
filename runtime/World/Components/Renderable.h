@@ -58,14 +58,9 @@ namespace spartan
         void Deserialize(FileStream* stream) override;
         void OnTick() override;
 
-        // geometry
-        void SetGeometry(
-            Mesh* mesh,
-            const math::BoundingBox aabb = math::BoundingBox::Undefined,
-            uint32_t index_offset  = 0, uint32_t index_count  = 0,
-            uint32_t vertex_offset = 0, uint32_t vertex_count = 0
-        );
-        void SetGeometry(const MeshType type);
+        // mesh/geometry
+        void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
+        void SetMesh(const MeshType type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
         // bounding box
@@ -87,9 +82,14 @@ namespace spartan
         //===============================================================================
 
         // mesh
+        uint32_t GetIndexOffset(const uint32_t lod = 0) const;
+        uint32_t GetIndexCount(const uint32_t lod = 0) const;
+        uint32_t GetVertexOffset(const uint32_t lod = 0) const;
+        uint32_t GetVertexCount(const uint32_t lod = 0) const;
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
+        bool HasMesh() const { return m_mesh != nullptr; }
 
         // instancing
         bool HasInstancing() const                              { return !m_instances.empty(); }
@@ -103,24 +103,14 @@ namespace spartan
         void SetMaxRenderDistance(const float max_render_distance)    { m_max_render_distance = max_render_distance; }
         bool IsVisible(const uint32_t instance_group_index = 0) const { return m_is_visible[instance_group_index] && !HasFlag(RenderableFlags::Occluded); }
 
-        // misc
-        uint32_t GetIndexOffset() const  { return m_geometry_index_offset; }
-        uint32_t GetIndexCount() const   { return m_geometry_index_count; }
-        uint32_t GetVertexOffset() const { return m_geometry_vertex_offset; }
-        uint32_t GetVertexCount() const  { return m_geometry_vertex_count; }
-        bool HasMesh() const             { return m_mesh != nullptr; }
-
         // flags
         bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }
         void SetFlag(const RenderableFlags flag, const bool enable = true);
 
     private:
         // geometry/mesh
-        uint32_t m_geometry_index_offset             = 0;
-        uint32_t m_geometry_index_count              = 0;
-        uint32_t m_geometry_vertex_offset            = 0;
-        uint32_t m_geometry_vertex_count             = 0;
         Mesh* m_mesh                                 = nullptr;
+        uint32_t m_sub_mesh_index                    = 0;
         bool m_bounding_box_dirty                    = true;
         math::BoundingBox m_bounding_box             = math::BoundingBox::Undefined;
         math::BoundingBox m_bounding_box_transformed = math::BoundingBox::Undefined;

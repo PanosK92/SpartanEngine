@@ -769,7 +769,7 @@ namespace spartan
         shared_ptr<Mesh>& mesh = m_tile_meshes[tile_index];
         mesh->Clear();
         mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index]);
-        mesh->PostProcess();
+        mesh->CreateGpuBuffers();
 
         // create a child entity, add a renderable, and this mesh tile to it
         {
@@ -779,15 +779,7 @@ namespace spartan
 
             if (shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>())
             {
-                renderable->SetGeometry(
-                    mesh.get(),
-                    mesh->GetAabb(),
-                    0,                     // index offset
-                    mesh->GetIndexCount(), // index count
-                    0,                     // vertex offset
-                    mesh->GetVertexCount() // vertex count
-                );
-
+                renderable->SetMesh(mesh.get());
                 renderable->SetMaterial(m_material);
             }
         }
@@ -810,7 +802,7 @@ namespace spartan
         {
             if (shared_ptr<Renderable> renderable = child->AddComponent<Renderable>())
             {
-                renderable->SetGeometry(nullptr);
+                renderable->SetMesh(nullptr);
             }
         }
     }

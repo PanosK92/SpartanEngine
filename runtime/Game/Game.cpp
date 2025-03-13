@@ -97,7 +97,7 @@ namespace spartan
             
             // add a renderable component
             shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Quad).get());
+            renderable->SetMesh(MeshType::Quad);
             renderable->SetDefaultMaterial();
             renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, entity->GetScale().x);
             renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, entity->GetScale().z);
@@ -421,7 +421,7 @@ namespace spartan
 
                 // add a renderable component
                 shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
-                renderable->SetGeometry(Renderer::GetStandardMesh(MeshType::Cube).get());
+                renderable->SetMesh(MeshType::Cube);
                 renderable->SetMaterial(material);
 
                 // add physics components
@@ -631,7 +631,7 @@ namespace spartan
                             mesh->SetObjectName(name);
                             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                             mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index]);
-                            mesh->PostProcess();
+                            mesh->CreateGpuBuffers();
 
                             // create a child entity, add a renderable, and this mesh tile to it
                             {
@@ -641,15 +641,7 @@ namespace spartan
 
                                 if (shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>())
                                 {
-                                    renderable->SetGeometry(
-                                        mesh.get(),
-                                        mesh->GetAabb(),
-                                        0,                     // index offset
-                                        mesh->GetIndexCount(), // index count
-                                        0,                     // vertex offset
-                                        mesh->GetVertexCount() // vertex count
-                                    );
-
+                                    renderable->SetMesh(mesh.get());
                                     renderable->SetMaterial(material);
                                     renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                 }
@@ -709,7 +701,7 @@ namespace spartan
                     mesh->AddGeometry(vertices, indices);
                     mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);                          // geometry is made to spec, don't optimize
                     mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
-                    mesh->PostProcess();                                                                                  // aabb, gpu buffers, etc.
+                    mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
                 
                     // generate instances
                     vector<Matrix> instances;
@@ -717,7 +709,7 @@ namespace spartan
                 
                     // add renderable component
                     Renderable* renderable = entity->AddComponent<Renderable>().get();
-                    renderable->SetGeometry(mesh.get());
+                    renderable->SetMesh(mesh.get());
                     renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
                     renderable->SetInstances(instances);
                 

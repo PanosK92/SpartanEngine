@@ -544,7 +544,7 @@ namespace spartan
 
             mesh->AddGeometry(vertices, indices);
             mesh->SetType(type);
-            mesh->PostProcess();
+            mesh->CreateGpuBuffers();
 
             standard_meshes[static_cast<uint8_t>(type)] = mesh;
         };
