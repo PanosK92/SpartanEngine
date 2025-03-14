@@ -82,6 +82,8 @@ namespace spartan
         //===============================================================================
 
         // mesh
+        uint32_t GetLodCount() const;
+        uint32_t GetLodIndex(const int instance_group_index = -1);
         uint32_t GetIndexOffset(const uint32_t lod = 0) const;
         uint32_t GetIndexCount(const uint32_t lod = 0) const;
         uint32_t GetVertexOffset(const uint32_t lod = 0) const;
@@ -99,7 +101,6 @@ namespace spartan
         void SetInstances(const std::vector<math::Matrix>& instances);
 
         // distance & visibility
-        uint32_t GetLodIndex(const int instance_group_index = -1);
         float GetDistanceSquared() const                              { return m_distance_squared; }
         float GetMaxRenderDistance() const                            { return m_max_render_distance; }
         void SetMaxRenderDistance(const float max_render_distance)    { m_max_render_distance = max_render_distance; }

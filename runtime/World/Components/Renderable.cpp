@@ -382,11 +382,16 @@ namespace spartan
         m_bounding_box_dirty = true;
     }
 
+    uint32_t Renderable::GetLodCount() const
+    {
+        return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());
+    }
+
     uint32_t Renderable::GetLodIndex(const int instance_group_index)
     {
         // thresholds are in decreasing order, higher ratios mean higher detail (lower lod index)
         static const array<float, mesh_lod_count> lod_thresholds = {0.4f, 0.2f, 0.1f}; // 40%, 20%, 10%
-        const uint32_t max_lod = static_cast<uint32_t>(lod_thresholds.size() - 1);
+        const uint32_t lod_count = GetLodCount();
 
         // get camera and rendering information
         Camera* camera                = Renderer::GetCamera().get();
@@ -439,21 +444,21 @@ namespace spartan
     
         // step 5: handle case where object is entirely behind the camera
         if (!any_in_front)
-            return max_lod;
+            return lod_count - 1;
     
         // calculate height in screen space and the ratio
         float height_in_screen_space = max_y - min_y;
         float screen_height_ratio    = height_in_screen_space / screen_size.y;
     
         // step 5: determine lod index based on screen height ratio
-        for (uint32_t i = 0; i < lod_thresholds.size(); i++)
+        for (uint32_t i = 0; i < lod_count; i++)
         {
             if (screen_height_ratio > lod_thresholds[i])
                 return i;
         }
     
         // if ratio is below the smallest threshold, use the lowest detail lod
-        return max_lod;
+        return lod_count - 1;
     }
 
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)

@@ -392,18 +392,23 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         // mesh
         ImGui::Text("Mesh");
         ImGui::SameLine(column_pos_x);
-        ImGui::InputText("##renderable_mesh", &name_mesh, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputText("##renderable_mesh_name", &name_mesh, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+
+        // lodding
+        ImGui::Text("LODs");
+        ImGui::SameLine(column_pos_x);
+        ImGui::LabelText("##renderable_lod_count", to_string(renderable->GetLodCount()).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
         // instancing
         if (instance_count != 0)
         {
             ImGui::Text("Instances");
             ImGui::SameLine(column_pos_x);
-            ImGui::LabelText("##renderable_mesh", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+            ImGui::LabelText("##renderable_instance_count", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
             ImGui::Text("Instance Groups");
             ImGui::SameLine(column_pos_x);
-            ImGui::LabelText("##renderable_mesh", to_string(instance_group_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+            ImGui::LabelText("##renderable_instance_group_count", to_string(instance_group_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         }
 
         // material

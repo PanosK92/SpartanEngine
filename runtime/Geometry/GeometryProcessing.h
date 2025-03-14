@@ -205,36 +205,6 @@ namespace spartan::geometry_processing
 
             simplify(indices, vertices, get_triangle_target(indices.size() / 3));
         }
-
-        // optimization #5: removed unused vertices
-        {
-            // create a remap table for compacting vertices
-            std::vector<uint32_t> vertex_remap(vertex_count, static_cast<uint32_t>(-1));
-            uint32_t new_vertex_count = 0;
-
-            // assign new indices and mark used vertices
-            for (uint32_t& index : indices)
-            {
-                if (vertex_remap[index] == static_cast<uint32_t>(-1))
-                {
-                    vertex_remap[index] = new_vertex_count++;
-                }
-                index = vertex_remap[index];
-            }
-
-            // create the compacted vertex buffer
-            std::vector<RHI_Vertex_PosTexNorTan> compacted_vertices(new_vertex_count);
-            for (size_t old_index = 0; old_index < vertex_count; ++old_index)
-            {
-                if (vertex_remap[old_index] != static_cast<uint32_t>(-1))
-                {
-                    compacted_vertices[vertex_remap[old_index]] = vertices[old_index];
-                }
-            }
-
-            // replace the original vertex buffer with the compacted one
-            vertices = std::move(compacted_vertices);
-        }
     }
 
     static void split_surface_into_tiles(

@@ -169,7 +169,7 @@ namespace spartan
         m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
         m_indices.insert(m_indices.end(), indices.begin(), indices.end());
     
-        // generate additional lods
+        // generate lods
         {
             // start with the original geometry for lod 0
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
@@ -177,32 +177,36 @@ namespace spartan
             
             for (uint32_t lod_level = 1; lod_level < mesh_lod_count; ++lod_level)
             {
-                // use the previous lod's geometry for simplification
+                 // use the previous lod's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
-                vector<uint32_t> lod_indices                = prev_indices;
-                
-                // calculate target triangle count
-                size_t prev_triangle_count   = prev_indices.size() / 3;
-                size_t target_triangle_count = std::max(static_cast<size_t>(1), static_cast<size_t>(prev_triangle_count * 0.4f)); // 40% of the previous lod
-            
-                // simplify indices based on the previous lod
-                geometry_processing::simplify(lod_indices, lod_vertices, target_triangle_count);
+                vector<uint32_t> lod_indices                 = prev_indices;
 
-                // adjust vertex count based on simplified indices (assuming simplify keeps vertex order)
-                MeshLod lod;
-                lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
-                lod.vertex_count  = static_cast<uint32_t>(lod_vertices.size());
-                lod.index_offset  = static_cast<uint32_t>(m_indices.size());
-                lod.index_count   = static_cast<uint32_t>(lod_indices.size());
-                sub_mesh.lods.push_back(lod);
-                
-                // append simplified geometry
-                m_vertices.insert(m_vertices.end(), lod_vertices.begin(), lod_vertices.end());
-                m_indices.insert(m_indices.end(), lod_indices.begin(), lod_indices.end());
-                
-                // update previous geometry for the next iteration
-                prev_vertices = std::move(lod_vertices);
-                prev_indices  = std::move(lod_indices);
+                // only simplify if the geometry is complex enough, otherwise it will collapse into nothing
+                if (lod_vertices.size() > 128 && lod_indices.size() > 3)
+                { 
+                    // calculate target triangle count
+                    size_t prev_triangle_count   = prev_indices.size() / 3;
+                    size_t target_triangle_count = std::max(static_cast<size_t>(1), static_cast<size_t>(prev_triangle_count * 0.4f)); // 40% of the previous lod
+            
+                    // simplify indices based on the previous lod
+                    geometry_processing::simplify(lod_indices, lod_vertices, target_triangle_count);
+
+                    // adjust vertex count based on simplified indices (assuming simplify keeps vertex order)
+                    MeshLod lod;
+                    lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
+                    lod.vertex_count  = static_cast<uint32_t>(lod_vertices.size());
+                    lod.index_offset  = static_cast<uint32_t>(m_indices.size());
+                    lod.index_count   = static_cast<uint32_t>(lod_indices.size());
+                    sub_mesh.lods.push_back(lod);
+                    
+                    // append simplified geometry
+                    m_vertices.insert(m_vertices.end(), lod_vertices.begin(), lod_vertices.end());
+                    m_indices.insert(m_indices.end(), lod_indices.begin(), lod_indices.end());
+                    
+                    // update previous geometry for the next iteration
+                    prev_vertices = std::move(lod_vertices);
+                    prev_indices  = std::move(lod_indices);
+                }
             }
         }
     
