@@ -1153,42 +1153,42 @@ namespace spartan
         );
     }
 
-        void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, const RHI_Buffer* instance)
+    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, const RHI_Buffer* instance)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(vertex && vertex->GetRhiResource());
+    
+        // prepare buffers and offsets arrays
+        VkBuffer vertex_buffers[2] = {
+    
+            static_cast<VkBuffer>(vertex->GetRhiResource()), // slot 0: vertex buffer
+            VK_NULL_HANDLE                                   // slot 1: instance buffer (default to null)
+        };
+        VkDeviceSize offsets[2] = { 0, 0 };
+    
+        // determine binding count based on instance buffer presence
+        uint32_t binding_count = 1; // default to 1 (vertex only)
+        if (instance && instance->GetRhiResource())
         {
-            SP_ASSERT(m_state == RHI_CommandListState::Recording);
-            SP_ASSERT(vertex && vertex->GetRhiResource());
-        
-            // prepare buffers and offsets arrays
-            VkBuffer vertex_buffers[2] = {
-
-                static_cast<VkBuffer>(vertex->GetRhiResource()), // slot 0: vertex buffer
-                VK_NULL_HANDLE                                   // slot 1: instance buffer (default to null)
-            };
-            VkDeviceSize offsets[2] = { 0, 0 };
-        
-            // determine binding count based on instance buffer presence
-            uint32_t binding_count = 1; // default to 1 (vertex only)
-            if (instance && instance->GetRhiResource())
-            {
-                vertex_buffers[1] = static_cast<VkBuffer>(instance->GetRhiResource());
-                binding_count      = 2; // include instance buffer
-            }
-        
-            // check if vertex buffer id has changed to trigger binding
-            if (m_buffer_id_vertex != vertex->GetObjectId())
-            {
-                vkCmdBindVertexBuffers(
-                    static_cast<VkCommandBuffer>(m_rhi_resource), // commandbuffer
-                    0,                                            // firstbinding (start at slot 0)
-                    binding_count,                                 // bindingcount (1 or 2)
-                    vertex_buffers,                               // pbuffers (array of buffers)
-                    offsets                                       // poffsets (array of offsets)
-                );
-        
-                // update cached vertex buffer id
-                m_buffer_id_vertex = vertex->GetObjectId();
-                Profiler::m_rhi_bindings_buffer_vertex++;
-            }
+            vertex_buffers[1] = static_cast<VkBuffer>(instance->GetRhiResource());
+            binding_count      = 2; // include instance buffer
+        }
+    
+        // check if vertex buffer id has changed to trigger binding
+        if (m_buffer_id_vertex != vertex->GetObjectId())
+        {
+            vkCmdBindVertexBuffers(
+                static_cast<VkCommandBuffer>(m_rhi_resource), // commandbuffer
+                0,                                            // firstbinding (start at slot 0)
+                binding_count,                                 // bindingcount (1 or 2)
+                vertex_buffers,                               // pbuffers (array of buffers)
+                offsets                                       // poffsets (array of offsets)
+            );
+    
+            // update cached vertex buffer id
+            m_buffer_id_vertex = vertex->GetObjectId();
+            Profiler::m_rhi_bindings_buffer_vertex++;
+        }
     }
 
     void RHI_CommandList::SetBufferIndex(const RHI_Buffer* buffer)

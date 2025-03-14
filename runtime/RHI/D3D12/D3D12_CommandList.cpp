@@ -223,29 +223,48 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* buffer, const uint32_t binding /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, const RHI_Buffer* instance)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        if (m_buffer_id_vertex == buffer->GetObjectId())
-            return;
-
-        D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view = {};
-        vertex_buffer_view.BufferLocation           = 0;
-        vertex_buffer_view.StrideInBytes            = static_cast<UINT>(buffer->GetStride());
-        vertex_buffer_view.SizeInBytes              = static_cast<UINT>(buffer->GetObjectSize());
-
-        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetVertexBuffers(
-            0,                  // StartSlot
-            1,                  // NumViews
-            &vertex_buffer_view // pViews
-        );
-
-        m_buffer_id_vertex = buffer->GetObjectId();
-
-        Profiler::m_rhi_bindings_buffer_vertex++;
-    }
+        SP_ASSERT(vertex && vertex->GetRhiResource());
     
+        // Prepare vertex buffer views array
+        D3D12_VERTEX_BUFFER_VIEW vertex_buffer_views[2] = {};
+        
+        // Vertex buffer (slot 0)
+        vertex_buffer_views[0].BufferLocation = static_cast<ID3D12Resource*>(vertex->GetRhiResource())->GetGPUVirtualAddress();
+        vertex_buffer_views[0].StrideInBytes  = static_cast<UINT>(vertex->GetStride());
+        vertex_buffer_views[0].SizeInBytes    = static_cast<UINT>(vertex->GetObjectSize());
+    
+        // Default to 1 buffer (vertex only)
+        UINT num_views = 1;
+        
+        // Handle instance buffer if present (slot 1)
+        uint32_t new_buffer_id = vertex->GetObjectId();
+        if (instance && instance->GetRhiResource())
+        {
+            vertex_buffer_views[1].BufferLocation = static_cast<ID3D12Resource*>(instance->GetRhiResource())->GetGPUVirtualAddress();
+            vertex_buffer_views[1].StrideInBytes  = static_cast<UINT>(instance->GetStride());
+            vertex_buffer_views[1].SizeInBytes    = static_cast<UINT>(instance->GetObjectSize());
+            num_views = 2;
+            new_buffer_id = (new_buffer_id << 16) | instance->GetObjectId(); // Combine IDs for uniqueness
+        }
+    
+        // Check if buffer configuration has changed
+        if (m_buffer_id_vertex != new_buffer_id)
+        {
+            static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetVertexBuffers(
+                0,                    // StartSlot
+                num_views,           // NumViews
+                vertex_buffer_views  // pViews
+            );
+    
+            // Update cached buffer ID
+            m_buffer_id_vertex = new_buffer_id;
+            Profiler::m_rhi_bindings_buffer_vertex++;
+        }
+    }
+        
     void RHI_CommandList::SetBufferIndex(const RHI_Buffer* buffer)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
