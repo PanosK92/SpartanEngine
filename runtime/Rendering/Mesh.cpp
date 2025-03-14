@@ -151,6 +151,7 @@ namespace spartan
         lock_guard lock(m_mutex);
     
         // optimize original geometry
+        // this is on by default as most meshes are way too detailed and kill performance
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
         {
             geometry_processing::optimize(vertices, indices);
@@ -168,14 +169,14 @@ namespace spartan
         sub_mesh.lods.push_back(lod_0);
         m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
         m_indices.insert(m_indices.end(), indices.begin(), indices.end());
-    
+
         // generate lods
         {
             // start with the original geometry for lod 0
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
             vector<uint32_t> prev_indices                 = indices;
             
-            for (uint32_t lod_level = 1; lod_level < mesh_lod_count; ++lod_level)
+            for (uint32_t lod_level = 1; lod_level < mesh_lod_count; lod_level++)
             {
                  // use the previous lod's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
@@ -184,12 +185,12 @@ namespace spartan
                 // only simplify if the geometry is complex enough, otherwise it will collapse into nothing
                 if (lod_vertices.size() > 128 && lod_indices.size() > 3)
                 { 
-                    // calculate target triangle count
-                    size_t prev_triangle_count   = prev_indices.size() / 3;
-                    size_t target_triangle_count = std::max(static_cast<size_t>(1), static_cast<size_t>(prev_triangle_count * 0.4f)); // 40% of the previous lod
-            
+                    // calculate target index count
+                    size_t prev_index_count   = prev_indices.size();
+                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_index_count * 0.4f)); // 40% of the previous lod
+
                     // simplify indices based on the previous lod
-                    geometry_processing::simplify(lod_indices, lod_vertices, target_triangle_count);
+                    geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
 
                     // adjust vertex count based on simplified indices (assuming simplify keeps vertex order)
                     MeshLod lod;
@@ -198,18 +199,18 @@ namespace spartan
                     lod.index_offset  = static_cast<uint32_t>(m_indices.size());
                     lod.index_count   = static_cast<uint32_t>(lod_indices.size());
                     sub_mesh.lods.push_back(lod);
-                    
+
                     // append simplified geometry
                     m_vertices.insert(m_vertices.end(), lod_vertices.begin(), lod_vertices.end());
                     m_indices.insert(m_indices.end(), lod_indices.begin(), lod_indices.end());
-                    
+
                     // update previous geometry for the next iteration
-                    prev_vertices = std::move(lod_vertices);
-                    prev_indices  = std::move(lod_indices);
+                    prev_vertices = move(lod_vertices);
+                    prev_indices  = move(lod_indices);
                 }
             }
         }
-    
+
         // store the sub-mesh and return its index
         if (sub_mesh_index)
         {

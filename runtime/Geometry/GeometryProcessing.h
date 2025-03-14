@@ -46,31 +46,30 @@ namespace spartan::geometry_processing
         registered = true;
     }
 
-    static void simplify(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t triangle_target)
+    static void simplify(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t target_index_count)
     {
         register_meshoptimizer();
-
+    
         // starting parameters
         float error                   = 0.01f; // initial error tolerance
         size_t index_count            = indices.size();
         size_t current_triangle_count = index_count / 3;
     
         // early exit if target is already met
-        if (triangle_target >= current_triangle_count)
+        if (target_index_count >= index_count)
             return;
-
+    
         // early exit if mesh is too small, few vertices can collapse to nothing
         if (vertices.size() <= 16)
             return;
-
+    
         // temporary buffer for simplified indices
         std::vector<uint32_t> indices_simplified(index_count);
     
         // simplification loop up to error = 1.0
         float lod_error = 0.0f;
-        while (current_triangle_count > triangle_target && error <= 1.0f)
+        while (current_triangle_count > (target_index_count / 3) && error <= 1.0f)
         {
-            size_t target_index_count = triangle_target * 3;
             if (target_index_count < 3)
                 break;
     
@@ -95,11 +94,10 @@ namespace spartan::geometry_processing
             // increase error linearly
             error += 0.1f;
         }
-
+    
         // second attempt: use meshopt_simplifySloppy with fallback if indices become zero
-        if (current_triangle_count > triangle_target)
+        if (current_triangle_count > (target_index_count / 3))
         {
-            size_t target_index_count = triangle_target * 3;
             if (target_index_count >= 3)
             {
                 float target_error     = FLT_MAX;
@@ -139,8 +137,8 @@ namespace spartan::geometry_processing
                 }
             }
         }
-
-        // agressive simplification can produce nothing - we never want that
+    
+        // aggressive simplification can produce nothing - we never want that
         SP_ASSERT(!indices.empty());
     
         // optimize the vertex buffer
@@ -184,26 +182,26 @@ namespace spartan::geometry_processing
     
         // optimization #4: create a simplified version of the mesh while trying to maintain the topology
         {
-            auto get_triangle_target = [](size_t triangle_count)
+            auto get_target_index_count = [](size_t index_count)
             {
-                std::tuple<float, size_t> agressivness_table[] =
+                std::tuple<float, size_t> aggressiveness_table[] =
                 {
-                    { 0.2f, 20000 },  // ultra aggressive
-                    { 0.4f, 10000  }, // aggressive
-                    { 0.6f, 5000  },  // balanced
-                    { 0.8f, 2500  }   // gentle
+                    { 0.2f, 60000 },  // ultra aggressive (20000 triangles * 3)
+                    { 0.4f, 30000 },  // aggressive (10000 triangles * 3)
+                    { 0.6f, 15000 },  // balanced (5000 triangles * 3)
+                    { 0.8f, 7500  }   // gentle (2500 triangles * 3)
                 };
             
-                for (const auto& [reduction_percentage, triangle_threshold] : agressivness_table)
+                for (const auto& [reduction_percentage, index_threshold] : aggressiveness_table)
                 {
-                    if (triangle_count > triangle_threshold)
-                        return static_cast<size_t>(triangle_count * reduction_percentage);
+                    if (index_count > index_threshold)
+                        return static_cast<size_t>(index_count * reduction_percentage);
                 }
-
-                return triangle_count; // native
+        
+                return index_count; // native
             };
-
-            simplify(indices, vertices, get_triangle_target(indices.size() / 3));
+        
+            simplify(indices, vertices, get_target_index_count(indices.size()));
         }
     }
 
