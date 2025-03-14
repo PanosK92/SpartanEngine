@@ -414,8 +414,7 @@ namespace spartan
 
     void Renderable::UpdateLodIndices()
     {
-        // thresholds are in decreasing order, higher ratios mean higher detail (lower lod index)
-        static const array<float, mesh_lod_count> lod_thresholds = {0.5f, 0.25f, 0.1f}; // screen height percentage
+        static const array<float, mesh_lod_count> lod_thresholds = { 0.5f, 0.25f, 0.1f }; // screen height percentage
         const uint32_t lod_count                                 = GetLodCount();
         const uint32_t max_lod                                   = lod_count - 1;
         Camera* camera                                           = Renderer::GetCamera().get();
@@ -423,78 +422,54 @@ namespace spartan
         // default to lowest lod if no camera
         if (!camera)
         {
-            m_lod_indices.fill(lod_count - 1);
+            m_lod_indices.fill(max_lod);
             return;
         }
-    
-        const Matrix& view_projection = camera->GetViewProjectionMatrix();
-        const Vector2 screen_size     = Renderer::GetResolutionRender();
-        const Vector3 camera_position = camera->GetEntity()->GetPosition();
-    
-        // lambda to compute lod index for a given bounding box and visibility flag
+
+        const RHI_Viewport& screen_size = Renderer::GetViewport();
+        const Vector3 camera_position   = camera->GetEntity()->GetPosition();
+
+        // lambda to compute lod index using camera's bounding box projection
         auto compute_lod_index = [&](const BoundingBox& box, bool is_visible, uint32_t index)
         {
-            // step 1: if not visible, opt for the lowest lod
+            // if not visible, use lowest detail
             if (!is_visible)
             {
                 m_lod_indices[index] = max_lod;
                 return;
             }
 
-            // step 2: if the camera is inside the bounding box, we already know we need the highest lod
+            // if camera is inside the box, use highest detail
             if (box.Contains(camera_position))
             {
                 m_lod_indices[index] = 0;
                 return;
             }
 
-            // step 4: compute the screen space height of the bounding box
-            {
-                array<Vector3, 8> corners;
-                box.GetCorners(&corners);
-    
-                float min_y       = numeric_limits<float>::max();
-                float max_y       = numeric_limits<float>::min();
-                bool any_in_front = false;
-                for (const auto& corner : corners)
-                {
-                    Vector4 clip_pos = view_projection * Vector4(corner, 1.0f);
-                    if (clip_pos.w > 0.0f)
-                    {
-                        any_in_front                = true;
-                        float inv_w                 = 1.0f / clip_pos.w;
-                        float ndc_y                 = clip_pos.y * inv_w;
-                        float y_screen              = (1.0f - ndc_y) * 0.5f * screen_size.y;
-                        if (y_screen < min_y) min_y = y_screen;
-                        if (y_screen > max_y) max_y = y_screen;
-                    }
-                }
-    
-                if (!any_in_front)
-                {
-                    m_lod_indices[index] = max_lod;
-                    return;
-                }
-    
-                float height_in_screen_space = max_y - min_y;
-                float screen_height_ratio    = height_in_screen_space / screen_size.y;
-    
-                for (uint32_t i = 0; i < lod_count; i++)
-                {
-                    if (screen_height_ratio > lod_thresholds[i])
-                    {
-                        m_lod_indices[index] = i;
-                        return;
-                    }
+            // project bounding box to screen space using camera function
+            Rectangle rectangle = camera->WorldToScreenCoordinates(box);
 
-                    if (i == max_lod)
-                    {
-                        m_lod_indices[index] = max_lod;
-                    }
+            // compute screen height ratio
+            float height_in_screen_space = rectangle.bottom - rectangle.top;
+            float screen_height_ratio    = height_in_screen_space / screen_size.height;
+
+            // determine lod based on screen height ratio
+            uint32_t lod_index = max_lod; // default to lowest detail
+            for (uint32_t i = 0; i < lod_count - 1; i++) // iterate up to lod_count - 1
+            {
+                if (screen_height_ratio > lod_thresholds[i])
+                {
+                    lod_index = i;
+                    break;
                 }
             }
+
+            // ensure lod_index is valid
+            SP_ASSERT(lod_index < lod_count);
+            m_lod_indices[index] = lod_index;
         };
-    
+
+        // handle instanced and non-instanced cases
         if (HasInstancing())
         {
             for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)

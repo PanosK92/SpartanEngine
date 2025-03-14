@@ -714,7 +714,7 @@ namespace spartan
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 2); // medium detail
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 3); // medium detail
                             mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
                         }
                     
