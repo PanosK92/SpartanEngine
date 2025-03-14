@@ -111,6 +111,8 @@ namespace spartan
         void SetFlag(const RenderableFlags flag, const bool enable = true);
 
     private:
+        void UpdateFrustumAndDistanceCulling();
+
         // geometry/mesh
         Mesh* m_mesh                                 = nullptr;
         uint32_t m_sub_mesh_index                    = 0;

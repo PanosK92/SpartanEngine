@@ -106,53 +106,7 @@ namespace spartan
 
     void Renderable::OnTick()
     {
-        if (Camera* camera = Renderer::GetCamera().get())
-        {
-            Vector3 camera_position = camera->GetEntity()->GetPosition();
-    
-            if (HasInstancing())
-            {
-                for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
-                {
-                    const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-
-                    // first, check if the bounding box is in the frustum
-                    if (camera->IsInViewFrustum(bounding_box))
-                    {
-                        // only if in frustum, calculate distance
-                        float distance_squared    = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                        m_is_visible[group_index] = distance_squared <= m_max_render_distance * m_max_render_distance;
-                    }
-                    else
-                    {
-                        // outside frustum, no need for distance check
-                        m_is_visible[group_index] = false;
-                    }
-                }
-            }
-            else
-            {
-                const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::Transformed);
-
-                // first, check if the bounding box is in the frustum
-                if (camera->IsInViewFrustum(bounding_box))
-                {
-                    // only if in frustum, calculate distance
-                    m_distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                    m_is_visible[0]    = m_distance_squared <= m_max_render_distance * m_max_render_distance;
-                }
-                else
-                {
-                    // outside frustum, no need for distance check
-                    m_is_visible[0] = false;
-                }
-            }
-        }
-        else
-        {
-            m_distance_squared = 0.0f;
-            m_is_visible.fill(true);
-        }
+        UpdateFrustumAndDistanceCulling();
     }
 
     void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
@@ -391,14 +345,25 @@ namespace spartan
     {
         // thresholds are in decreasing order, higher ratios mean higher detail (lower lod index)
         static const array<float, mesh_lod_count> lod_thresholds = {0.4f, 0.2f, 0.1f}; // 40%, 20%, 10%
-        const uint32_t lod_count = GetLodCount();
+        const uint32_t lod_count                                 = GetLodCount();
+        Camera* camera                                           = Renderer::GetCamera().get();
+        const Matrix& view_projection                            = camera->GetViewProjectionMatrix();
+        const Vector2 screen_size                                = Renderer::GetResolutionRender();
 
-        // get camera and rendering information
-        Camera* camera                = Renderer::GetCamera().get();
-        const Matrix& view_projection = camera->GetViewProjectionMatrix();
-        Vector2 screen_size           = Renderer::GetResolutionRender();
-    
-        // step 1: get the appropriate bounding box
+        // step 1: early exit if not visible (lod index will never be requested)
+        bool visible = false;
+        if (instance_group_index == -1)
+        {
+            visible = IsVisible();
+        }
+        else
+        {
+            visible = IsVisible(instance_group_index);
+        }
+        if (!visible)
+            return GetLodCount() - 1;
+
+        // step 2: get the appropriate bounding box
         BoundingBox box;
         if (instance_group_index == -1) // non-instanced
         {
@@ -409,15 +374,15 @@ namespace spartan
             box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index);
         }
 
-        // step 2: handle case where the camera is inside the bounding box
+        // step 3: handle case where the camera is inside the bounding box
         if (box.Contains(camera->GetEntity()->GetPosition()))
             return 0;
 
-        // step 3: get the eight corners of the bounding box
+        // step 4: get the eight corners of the bounding box
         array<Vector3, 8> corners;
         box.GetCorners(&corners);
     
-        // step 4: project corners to screen space and find min/max Y
+        // step 5: project corners to screen space and find min/max Y
         float min_y       = numeric_limits<float>::max();
         float max_y       = numeric_limits<float>::min();
         bool any_in_front = false;
@@ -442,7 +407,7 @@ namespace spartan
             }
         }
     
-        // step 5: handle case where object is entirely behind the camera
+        // step 6: handle case where object is entirely behind the camera
         if (!any_in_front)
             return lod_count - 1;
     
@@ -450,7 +415,7 @@ namespace spartan
         float height_in_screen_space = max_y - min_y;
         float screen_height_ratio    = height_in_screen_space / screen_size.y;
     
-        // step 5: determine lod index based on screen height ratio
+        // step 7: determine lod index based on screen height ratio
         for (uint32_t i = 0; i < lod_count; i++)
         {
             if (screen_height_ratio > lod_thresholds[i])
@@ -477,6 +442,57 @@ namespace spartan
         {
             m_flags  &= ~static_cast<uint32_t>(flag);
             disabled  = true;
+        }
+    }
+
+    void Renderable::UpdateFrustumAndDistanceCulling()
+    {
+        if (Camera* camera = Renderer::GetCamera().get())
+        {
+            Vector3 camera_position = camera->GetEntity()->GetPosition();
+    
+            if (HasInstancing())
+            {
+                for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
+                {
+                    const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+
+                    // first, check if the bounding box is in the frustum
+                    if (camera->IsInViewFrustum(bounding_box))
+                    {
+                        // only if in frustum, calculate distance
+                        float distance_squared    = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                        m_is_visible[group_index] = distance_squared <= m_max_render_distance * m_max_render_distance;
+                    }
+                    else
+                    {
+                        // outside frustum, no need for distance check
+                        m_is_visible[group_index] = false;
+                    }
+                }
+            }
+            else
+            {
+                const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::Transformed);
+
+                // first, check if the bounding box is in the frustum
+                if (camera->IsInViewFrustum(bounding_box))
+                {
+                    // only if in frustum, calculate distance
+                    m_distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                    m_is_visible[0]    = m_distance_squared <= m_max_render_distance * m_max_render_distance;
+                }
+                else
+                {
+                    // outside frustum, no need for distance check
+                    m_is_visible[0] = false;
+                }
+            }
+        }
+        else
+        {
+            m_distance_squared = 0.0f;
+            m_is_visible.fill(true);
         }
     }
 }
