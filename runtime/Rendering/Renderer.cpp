@@ -256,6 +256,19 @@ namespace spartan
             CreateSamplers();
         }
 
+        // handle edge cases
+        {
+            if (Debugging::IsBreadcrumbsEnabled())
+            { 
+                SP_ASSERT_MSG(RHI_Device::GetPrimaryPhysicalDevice()->IsAmd(), "Breadcrumbs are only supported on AMD GPUs");
+            }
+
+            if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
+            {
+                SP_WARNING_WINDOW("The GPU does not meet the minimum requirements for running the engine. The engine may not function correctly.");
+            }
+        }
+
         // events
         {
             // subscribe

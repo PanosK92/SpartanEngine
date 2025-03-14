@@ -1481,19 +1481,6 @@ namespace spartan
         vulkan_memory_allocator::initialize();
         descriptors::create_pool();
 
-        // gpu dependent actions
-        {
-            if (Debugging::IsBreadcrumbsEnabled())
-            { 
-                SP_ASSERT_MSG(GetPrimaryPhysicalDevice()->IsAmd(), "Breadcrumbs are only supported on AMD GPUs");
-            }
-
-            if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
-            {
-                SP_WARNING_WINDOW("The GPU does not meet the minimum requirements for running the engine. The engine may not function correctly.");
-            }
-        }
-
         // register the vulkan sdk version, which can be higher than the version we are using which is driver dependent
         string version_Sdlk = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));
         Settings::RegisterThirdPartyLib("Vulkan", version_Sdlk, "https://vulkan.lunarg.com/");
