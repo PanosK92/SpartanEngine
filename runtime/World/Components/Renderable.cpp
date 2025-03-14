@@ -415,7 +415,7 @@ namespace spartan
     void Renderable::UpdateLodIndices()
     {
         // thresholds are in decreasing order, higher ratios mean higher detail (lower lod index)
-        static const array<float, mesh_lod_count> lod_thresholds = {0.5f, 0.25f, 0.05f}; // 40%, 20%, 10%
+        static const array<float, mesh_lod_count> lod_thresholds = {0.5f, 0.25f, 0.1f}; // screen height percentage
         const uint32_t lod_count                                 = GetLodCount();
         const uint32_t max_lod                                   = lod_count - 1;
         Camera* camera                                           = Renderer::GetCamera().get();

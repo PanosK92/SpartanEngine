@@ -330,19 +330,18 @@ namespace spartan::geometry_generation
         generate_cylinder(vertices, indices, 0.0f, radius, height);
     }
 
-    static void generate_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
+    static void generate_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count)
     {
         using namespace math;
 
         // constants
-        const int blade_segment_count = 6;     // segments per blade
-        const float grass_width       = 0.2f;  // base width
-        const float grass_height      = 1.0f;  // blade height
-        const float thinning_start    = 0.4f;  // thinning start (0=base, 1=top)
-        const float thinning_power    = 1.0f;  // thinning sharpness
+        const float grass_width    = 0.2f;  // base width
+        const float grass_height   = 1.0f;  // blade height
+        const float thinning_start = 0.4f;  // thinning start (0=base, 1=top)
+        const float thinning_power = 1.0f;  // thinning sharpness
     
-        int vertices_per_face = (blade_segment_count + 1) * 2 - 1;
-        int total_vertices    = vertices_per_face * 2;
+        uint32_t vertices_per_face = (segment_count + 1) * 2 - 1;
+        uint32_t total_vertices    = vertices_per_face * 2;
         vertices->reserve(total_vertices);
 
         // helper to compute width factor
@@ -364,13 +363,13 @@ namespace spartan::geometry_generation
         };
     
         // build front face (basic normals)
-        for (int i = 0; i <= blade_segment_count; i++)
+        for (uint32_t i = 0; i <= segment_count; i++)
         {
-            float t            = float(i) / blade_segment_count;
+            float t            = float(i) / segment_count;
             float y            = t * grass_height;
             float width_factor = compute_width_factor(t);
 
-            if (i < blade_segment_count)
+            if (i < segment_count)
             {
                 // left vertex
                 push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t), Vector3(1.0f, 0.0f, 0.0f));
@@ -385,13 +384,13 @@ namespace spartan::geometry_generation
         }
     
         // build back face (basic normals)
-        for (int i = 0; i <= blade_segment_count; i++)
+        for (uint32_t i = 0; i <= segment_count; i++)
         {
-            float t            = float(i) / blade_segment_count;
+            float t            = float(i) / segment_count;
             float y            = t * grass_height;
             float width_factor = compute_width_factor(t);
 
-            if (i < blade_segment_count)
+            if (i < segment_count)
             {
                 // left vertex
                 push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t), Vector3(-1.0f, 0.0f, 0.0f));
@@ -406,10 +405,10 @@ namespace spartan::geometry_generation
         }
     
         // generate front face indices
-        int vi = 0;
-        for (int i = 0; i < blade_segment_count; i++)
+        uint32_t vi = 0;
+        for (uint32_t i = 0; i < segment_count; i++)
         {
-            if (i < blade_segment_count - 1)
+            if (i < segment_count - 1)
             {
                 indices->push_back(vi);
                 indices->push_back(vi + 1);
@@ -429,11 +428,11 @@ namespace spartan::geometry_generation
         }
     
         // generate back face indices
-        int offset = vertices_per_face;
+        uint32_t offset = vertices_per_face;
         vi = 0;
-        for (int i = 0; i < blade_segment_count; i++)
+        for (uint32_t i = 0; i < segment_count; i++)
         {
-            if (i < blade_segment_count - 1)
+            if (i < segment_count - 1)
             {
                 indices->push_back(offset + vi + 2);
                 indices->push_back(offset + vi + 1);

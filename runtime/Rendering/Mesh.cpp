@@ -146,88 +146,88 @@ namespace spartan
         }
     }
 
-    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index)
+    void Mesh::AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices,vector<uint32_t>& indices, const uint32_t sub_mesh_index)
     {
         lock_guard lock(m_mutex);
+        SP_ASSERT(sub_mesh_index < m_sub_meshes.size());
 
+        // build LOD
+        MeshLod lod;
+        lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
+        lod.vertex_count  = static_cast<uint32_t>(vertices.size());
+        lod.index_offset  = static_cast<uint32_t>(m_indices.size());
+        lod.index_count   = static_cast<uint32_t>(indices.size());
+    
+        // append geometry to mesh buffers
+        m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
+        m_indices.insert(m_indices.end(), indices.begin(), indices.end());
+    
+        // add lod to the specified sub-mesh
+        m_sub_meshes[sub_mesh_index].lods.push_back(lod);
+    }
+
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index)
+    {
         // create a sub-mesh
         SubMesh sub_mesh;
-
-        // lod 0: Original geometry
+        uint32_t current_sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size());
+        m_sub_meshes.push_back(sub_mesh); // add it to the list so AddLod() can access it
+    
+        // lod 0: original geometry
         {
-            // optimize original geometry
-            // this is on by default as most meshes are way too detailed and kill performance
+            // optimize original geometry if flagged
             if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
             {
                 geometry_processing::optimize(vertices, indices);
             }
-
-            // build lod
-            MeshLod lod;
-            lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
-            lod.vertex_count  = static_cast<uint32_t>(vertices.size());
-            lod.index_offset  = static_cast<uint32_t>(m_indices.size());
-            lod.index_count   = static_cast<uint32_t>(indices.size());
-
-            // store lod
-            sub_mesh.lods.push_back(lod);
-
-            // append geometry
-            m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
-            m_indices.insert(m_indices.end(), indices.begin(), indices.end());
+    
+            // add the original geometry as lod 0
+            AddLod(vertices, indices, current_sub_mesh_index);
         }
-
-        // generate lods
+    
+        // generate additional lods if requested
         if (generate_lods)
         {
-            // start with the original geometry for lod 0
+            // start with the original geometry for lod 1 onwards
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
-            vector<uint32_t> prev_indices                 = indices;
-
-            // start from lod 1
+            vector<uint32_t> prev_indices = indices;
+    
             for (uint32_t lod_level = 1; lod_level < mesh_lod_count; lod_level++)
             {
-                 // use the previous lod's geometry for simplification
+                // use the previous lod's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
                 vector<uint32_t> lod_indices                 = prev_indices;
-
-                // only simplify if the geometry is complex enough, otherwise it will collapse into nothing
-                if (lod_vertices.size() > 128 && lod_indices.size() > 3)
-                { 
-                    // calculate target index count
+    
+                // only simplify if the geometry is complex enough
+                if (lod_vertices.size() > 256 && lod_indices.size() > 256)
+                {
+                    // calculate target index count (50% reduction)
                     size_t prev_index_count   = prev_indices.size();
-                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_index_count * 0.4f)); // 40% of the previous lod
-
-                    // simplify indices based on the previous lod
+                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_index_count * 0.5f));
+    
+                    // simplify geometry
                     geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
-
-                    // build lod
-                    MeshLod lod;
-                    lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
-                    lod.vertex_count  = static_cast<uint32_t>(lod_vertices.size());
-                    lod.index_offset  = static_cast<uint32_t>(m_indices.size());
-                    lod.index_count   = static_cast<uint32_t>(lod_indices.size());
-
-                    // store lod
-                    sub_mesh.lods.push_back(lod);
-
-                    // append geometry
-                    m_vertices.insert(m_vertices.end(), lod_vertices.begin(), lod_vertices.end());
-                    m_indices.insert(m_indices.end(), lod_indices.begin(), lod_indices.end());
-
+    
+                    // add the simplified geometry as a new lod
+                    AddLod(lod_vertices, lod_indices, current_sub_mesh_index);
+    
                     // update previous geometry for the next iteration
-                    prev_vertices = move(lod_vertices);
-                    prev_indices  = move(lod_indices);
+                    prev_vertices =move(lod_vertices);
+                    prev_indices  =move(lod_indices);
+                }
+                else
+                {
+                    // if too simple to simplify further, stop generating lods
+                    break;
                 }
             }
         }
-
-        // store the sub-mesh and return its index
+    
+        // return the sub-mesh index if requested
         if (sub_mesh_index)
         {
-            *sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size());
+            *sub_mesh_index = current_sub_mesh_index;
         }
-        m_sub_meshes.push_back(sub_mesh);
     }
 
     uint32_t Mesh::GetVertexCount() const

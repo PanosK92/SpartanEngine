@@ -412,7 +412,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
                 // Header row
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text(""); // empty cell in first column
+                ImGui::Text("LODs");
                 for (int i = 0; i < lod_count; i++)
                 {
                     ImGui::TableSetColumnIndex(i + 1);
