@@ -107,6 +107,7 @@ namespace spartan
     void Renderable::OnTick()
     {
         UpdateFrustumAndDistanceCulling();
+        UpdateLodIndices();
     }
 
     void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
@@ -341,91 +342,6 @@ namespace spartan
         return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());
     }
 
-    uint32_t Renderable::GetLodIndex(const int instance_group_index)
-    {
-        // thresholds are in decreasing order, higher ratios mean higher detail (lower lod index)
-        static const array<float, mesh_lod_count> lod_thresholds = {0.4f, 0.2f, 0.1f}; // 40%, 20%, 10%
-        const uint32_t lod_count                                 = GetLodCount();
-        Camera* camera                                           = Renderer::GetCamera().get();
-        const Matrix& view_projection                            = camera->GetViewProjectionMatrix();
-        const Vector2 screen_size                                = Renderer::GetResolutionRender();
-
-        // step 1: early exit if not visible (lod index will never be requested)
-        bool visible = false;
-        if (instance_group_index == -1)
-        {
-            visible = IsVisible();
-        }
-        else
-        {
-            visible = IsVisible(instance_group_index);
-        }
-        if (!visible)
-            return GetLodCount() - 1;
-
-        // step 2: get the appropriate bounding box
-        BoundingBox box;
-        if (instance_group_index == -1) // non-instanced
-        {
-            box = GetBoundingBox(BoundingBoxType::Transformed);
-        }
-        else // instanced object
-        {
-            box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, instance_group_index);
-        }
-
-        // step 3: handle case where the camera is inside the bounding box
-        if (box.Contains(camera->GetEntity()->GetPosition()))
-            return 0;
-
-        // step 4: get the eight corners of the bounding box
-        array<Vector3, 8> corners;
-        box.GetCorners(&corners);
-    
-        // step 5: project corners to screen space and find min/max Y
-        float min_y       = numeric_limits<float>::max();
-        float max_y       = numeric_limits<float>::min();
-        bool any_in_front = false;
-        for (const auto& corner : corners)
-        {
-            // transform to clip space
-            Vector4 clip_pos = view_projection * Vector4(corner, 1.0f);
-            
-            // check if the point is in front of the camera
-            if (clip_pos.w > 0.0f)
-            {
-                any_in_front = true;
-                float inv_w  = 1.0f / clip_pos.w;
-                float ndc_y  = clip_pos.y * inv_w; // y in normalized device coordinates (-1 to 1)
-
-                // map to screen space (0 to screen_size.y, with 0 at top)
-                float y_screen = (1.0f - ndc_y) * 0.5f * screen_size.y;
-                
-                // update min and max Y
-                if (y_screen < min_y) min_y = y_screen;
-                if (y_screen > max_y) max_y = y_screen;
-            }
-        }
-    
-        // step 6: handle case where object is entirely behind the camera
-        if (!any_in_front)
-            return lod_count - 1;
-    
-        // calculate height in screen space and the ratio
-        float height_in_screen_space = max_y - min_y;
-        float screen_height_ratio    = height_in_screen_space / screen_size.y;
-    
-        // step 7: determine lod index based on screen height ratio
-        for (uint32_t i = 0; i < lod_count; i++)
-        {
-            if (screen_height_ratio > lod_thresholds[i])
-                return i;
-        }
-    
-        // if ratio is below the smallest threshold, use the lowest detail lod
-        return lod_count - 1;
-    }
-
     void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
     {
         bool enabled      = false;
@@ -493,6 +409,96 @@ namespace spartan
         {
             m_distance_squared = 0.0f;
             m_is_visible.fill(true);
+        }
+    }
+
+    void Renderable::UpdateLodIndices()
+    {
+        // thresholds are in decreasing order, higher ratios mean higher detail (lower lod index)
+        static const array<float, mesh_lod_count> lod_thresholds = {0.5f, 0.25f, 0.05f}; // 40%, 20%, 10%
+        const uint32_t lod_count                                 = GetLodCount();
+        Camera* camera                                           = Renderer::GetCamera().get();
+    
+        if (!camera)
+        {
+            m_lod_indices.fill(lod_count - 1); // default to lowest LOD if no camera
+            return;
+        }
+    
+        const Matrix& view_projection = camera->GetViewProjectionMatrix();
+        const Vector2 screen_size     = Renderer::GetResolutionRender();
+        const Vector3 camera_position = camera->GetEntity()->GetPosition();
+    
+        // lambda to compute LOD index for a given bounding box and visibility flag
+        auto compute_lod_index = [&](const BoundingBox& box, bool is_visible, uint32_t index)
+        {
+            if (!is_visible)
+            {
+                m_lod_indices[index] = lod_count - 1;
+                return;
+            }
+    
+            if (box.Contains(camera_position))
+            {
+                m_lod_indices[index] = 0;
+                return;
+            }
+    
+            array<Vector3, 8> corners;
+            box.GetCorners(&corners);
+    
+            float min_y       = numeric_limits<float>::max();
+            float max_y       = numeric_limits<float>::min();
+            bool any_in_front = false;
+            for (const auto& corner : corners)
+            {
+                Vector4 clip_pos = view_projection * Vector4(corner, 1.0f);
+                if (clip_pos.w > 0.0f)
+                {
+                    any_in_front                = true;
+                    float inv_w                 = 1.0f / clip_pos.w;
+                    float ndc_y                 = clip_pos.y * inv_w;
+                    float y_screen              = (1.0f - ndc_y) * 0.5f * screen_size.y;
+                    if (y_screen < min_y) min_y = y_screen;
+                    if (y_screen > max_y) max_y = y_screen;
+                }
+            }
+    
+            if (!any_in_front)
+            {
+                m_lod_indices[index] = lod_count - 1;
+                return;
+            }
+    
+            float height_in_screen_space = max_y - min_y;
+            float screen_height_ratio = height_in_screen_space / screen_size.y;
+    
+            for (uint32_t i = 0; i < lod_count; i++)
+            {
+                if (screen_height_ratio > lod_thresholds[i])
+                {
+                    m_lod_indices[index] = i;
+                    return;
+                }
+                if (i == lod_count - 1)
+                {
+                    m_lod_indices[index] = lod_count - 1;
+                }
+            }
+        };
+    
+        if (HasInstancing())
+        {
+            for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
+            {
+                const BoundingBox& box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                compute_lod_index(box, IsVisible(group_index), group_index);
+            }
+        }
+        else
+        {
+            const BoundingBox& box = GetBoundingBox(BoundingBoxType::Transformed);
+            compute_lod_index(box, IsVisible(), 0);
         }
     }
 }

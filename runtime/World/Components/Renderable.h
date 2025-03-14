@@ -83,7 +83,7 @@ namespace spartan
 
         // mesh
         uint32_t GetLodCount() const;
-        uint32_t GetLodIndex(const int instance_group_index = -1);
+        uint32_t GetLodIndex(const uint32_t instance_group_index = 0) const { return m_lod_indices[instance_group_index]; }
         uint32_t GetIndexOffset(const uint32_t lod = 0) const;
         uint32_t GetIndexCount(const uint32_t lod = 0) const;
         uint32_t GetVertexOffset(const uint32_t lod = 0) const;
@@ -112,6 +112,7 @@ namespace spartan
 
     private:
         void UpdateFrustumAndDistanceCulling();
+        void UpdateLodIndices();
 
         // geometry/mesh
         Mesh* m_mesh                                 = nullptr;
@@ -135,9 +136,10 @@ namespace spartan
         math::Matrix m_transform_previous = math::Matrix::Identity;
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
-        // distance
-        float m_distance_squared            = 0.0f;
-        float m_max_render_distance         = 1000.0f; // 1000 meters is good for most meshes, it can be adjusted per mesh
-        std::array<bool, 2048> m_is_visible = { false };
+        // visibility & lods
+        float m_distance_squared                 = 0.0f;
+        float m_max_render_distance              = 1000.0f; // 1000 meters is good for most meshes, it can be adjusted per mesh
+        std::array<bool, 2048> m_is_visible      = { false };
+        std::array<uint32_t, 2048> m_lod_indices = { 0 };
     };
 }
