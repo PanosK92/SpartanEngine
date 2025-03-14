@@ -1671,8 +1671,7 @@ namespace spartan
         instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
 
         // set vertex, index and instance buffers
-        cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-        cmd_list->SetBufferVertex(instance_buffer, 1);
+        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     }
 
