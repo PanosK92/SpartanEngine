@@ -632,7 +632,7 @@ namespace spartan
                             shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
                             mesh->SetObjectName(name);
                             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                            mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index]);
+                            mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], true);
                             mesh->CreateGpuBuffers();
 
                             // create a child entity, add a renderable, and this mesh tile to it
@@ -700,7 +700,7 @@ namespace spartan
                     vector<uint32_t> indices;
                     geometry_generation::generate_grass_blade(&vertices, &indices);                                       // generate grass blade
                     mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);                          // geometry is made to spec, don't optimize
-                    mesh->AddGeometry(vertices, indices);
+                    mesh->AddGeometry(vertices, indices, false);
                     mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
                     mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
                 

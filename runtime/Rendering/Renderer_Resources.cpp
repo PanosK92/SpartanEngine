@@ -542,7 +542,7 @@ namespace spartan
             // don't optimize this geometry as it's made to spec
             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
 
-            mesh->AddGeometry(vertices, indices);
+            mesh->AddGeometry(vertices, indices, false);
             mesh->SetType(type);
             mesh->CreateGpuBuffers();
 

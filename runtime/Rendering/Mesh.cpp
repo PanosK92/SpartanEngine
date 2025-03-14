@@ -146,36 +146,45 @@ namespace spartan
         }
     }
 
-    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, uint32_t* sub_mesh_index)
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index)
     {
         lock_guard lock(m_mutex);
-    
-        // optimize original geometry
-        // this is on by default as most meshes are way too detailed and kill performance
-        if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
-        {
-            geometry_processing::optimize(vertices, indices);
-        }
-    
+
         // create a sub-mesh
         SubMesh sub_mesh;
-    
+
         // lod 0: Original geometry
-        MeshLod lod_0;
-        lod_0.vertex_offset = static_cast<uint32_t>(m_vertices.size());
-        lod_0.vertex_count  = static_cast<uint32_t>(vertices.size());
-        lod_0.index_offset  = static_cast<uint32_t>(m_indices.size());
-        lod_0.index_count   = static_cast<uint32_t>(indices.size());
-        sub_mesh.lods.push_back(lod_0);
-        m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
-        m_indices.insert(m_indices.end(), indices.begin(), indices.end());
+        {
+            // optimize original geometry
+            // this is on by default as most meshes are way too detailed and kill performance
+            if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessOptimize))
+            {
+                geometry_processing::optimize(vertices, indices);
+            }
+
+            // build lod
+            MeshLod lod;
+            lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
+            lod.vertex_count  = static_cast<uint32_t>(vertices.size());
+            lod.index_offset  = static_cast<uint32_t>(m_indices.size());
+            lod.index_count   = static_cast<uint32_t>(indices.size());
+
+            // store lod
+            sub_mesh.lods.push_back(lod);
+
+            // append geometry
+            m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
+            m_indices.insert(m_indices.end(), indices.begin(), indices.end());
+        }
 
         // generate lods
+        if (generate_lods)
         {
             // start with the original geometry for lod 0
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
             vector<uint32_t> prev_indices                 = indices;
-            
+
+            // start from lod 1
             for (uint32_t lod_level = 1; lod_level < mesh_lod_count; lod_level++)
             {
                  // use the previous lod's geometry for simplification
@@ -192,15 +201,17 @@ namespace spartan
                     // simplify indices based on the previous lod
                     geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
 
-                    // adjust vertex count based on simplified indices (assuming simplify keeps vertex order)
+                    // build lod
                     MeshLod lod;
                     lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
                     lod.vertex_count  = static_cast<uint32_t>(lod_vertices.size());
                     lod.index_offset  = static_cast<uint32_t>(m_indices.size());
                     lod.index_count   = static_cast<uint32_t>(lod_indices.size());
+
+                    // store lod
                     sub_mesh.lods.push_back(lod);
 
-                    // append simplified geometry
+                    // append geometry
                     m_vertices.insert(m_vertices.end(), lod_vertices.begin(), lod_vertices.end());
                     m_indices.insert(m_indices.end(), lod_indices.begin(), lod_indices.end());
 

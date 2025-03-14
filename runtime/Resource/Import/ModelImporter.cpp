@@ -718,7 +718,7 @@ namespace spartan
 
         // add vertex and index data to the mesh
         uint32_t sub_mesh_index = 0;
-        mesh->AddGeometry(vertices, indices, &sub_mesh_index);
+        mesh->AddGeometry(vertices, indices, true, &sub_mesh_index);
 
         // set the geometry
         entity_parent->AddComponent<Renderable>()->SetMesh(mesh, sub_mesh_index);

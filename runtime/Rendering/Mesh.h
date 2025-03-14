@@ -81,7 +81,7 @@ namespace spartan
         uint32_t GetMemoryUsage() const;
 
         // geometry
-        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, uint32_t* sub_mesh_index = nullptr);
+        void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()   { return m_vertices; }
         std::vector<uint32_t>& GetIndices()                   { return m_indices; }
         const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
