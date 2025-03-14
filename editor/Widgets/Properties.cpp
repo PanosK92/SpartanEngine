@@ -396,20 +396,20 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
         // geometry
         {
-            // Move to column_pos_x before starting the table
+            // move to column_pos_x before starting the table
             ImGui::SetCursorPosX(column_pos_x);
             
             int lod_count = renderable->GetLodCount();
             if (ImGui::BeginTable("##geometry_table", lod_count + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
             {
-                // Setup columns
+                // setup columns
                 ImGui::TableSetupColumn("");  // first column for labels
                 for (int i = 0; i < lod_count; i++)
                 {
                     ImGui::TableSetupColumn(("LOD " + to_string(i + 1)).c_str());  // start numbering from 1
                 }
         
-                // Header row
+                // header row
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("LODs");
@@ -419,7 +419,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
                     ImGui::Text(("LOD " + to_string(i + 1)).c_str());
                 }
         
-                // Row 1: Vertices
+                // row 1: vertices
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("Vertices");
@@ -429,7 +429,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
                     ImGui::Text("%d", renderable->GetVertexCount(i));
                 }
         
-                // Row 2: Indices
+                // row 2: indices
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("Indices");
@@ -440,6 +440,14 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
                 }
         
                 ImGui::EndTable();
+            }
+
+            // we can print the lod index for each instanceb but it's not needed (so far)
+            if (!renderable->HasInstancing())
+            { 
+                ImGui::Text("Lod Index");
+                ImGui::SameLine(column_pos_x);
+                ImGui::LabelText("##renderable_lod_index", to_string(renderable->GetLodIndex()).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
             }
         }
 

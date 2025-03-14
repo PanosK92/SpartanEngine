@@ -199,12 +199,12 @@ namespace spartan
                 vector<uint32_t> lod_indices                 = prev_indices;
     
                 // only simplify if the geometry is complex enough
-                if (lod_vertices.size() > 256 && lod_indices.size() > 256)
+                if (lod_vertices.size() > 128 && lod_indices.size() > 128)
                 {
-                    // calculate target index count (50% reduction)
+                    // 75% retention
                     size_t prev_index_count   = prev_indices.size();
-                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_index_count * 0.5f));
-    
+                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_index_count * 0.8f));
+
                     // simplify geometry
                     geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
     
@@ -212,8 +212,8 @@ namespace spartan
                     AddLod(lod_vertices, lod_indices, current_sub_mesh_index);
     
                     // update previous geometry for the next iteration
-                    prev_vertices =move(lod_vertices);
-                    prev_indices  =move(lod_indices);
+                    prev_vertices = move(lod_vertices);
+                    prev_indices  = move(lod_indices);
                 }
                 else
                 {

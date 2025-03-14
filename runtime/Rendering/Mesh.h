@@ -58,7 +58,7 @@ namespace spartan
         uint32_t index_offset;  // Starting offset in m_indices
         uint32_t index_count;   // Number of indices for this LOD
     };
-    static const uint32_t mesh_lod_count = 3;
+    static const uint32_t mesh_lod_count = 5;
 
     struct SubMesh
     {

@@ -414,10 +414,10 @@ namespace spartan
 
     void Renderable::UpdateLodIndices()
     {
-        static const array<float, mesh_lod_count> lod_thresholds = { 0.5f, 0.25f, 0.1f }; // screen height percentage
-        const uint32_t lod_count                                 = GetLodCount();
-        const uint32_t max_lod                                   = lod_count - 1;
-        Camera* camera                                           = Renderer::GetCamera().get();
+        static const array<float, 4> lod_thresholds = { 0.6f, 0.4f, 0.2f, 0.1f }; // screen height percentage (4 thresholds for 5 LODs)
+        const uint32_t lod_count                    = GetLodCount();
+        const uint32_t max_lod                      = lod_count - 1;
+        Camera* camera                              = Renderer::GetCamera().get();
 
         // default to lowest lod if no camera
         if (!camera)

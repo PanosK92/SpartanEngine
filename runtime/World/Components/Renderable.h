@@ -138,7 +138,7 @@ namespace spartan
 
         // visibility & lods
         float m_distance_squared                 = 0.0f;
-        float m_max_render_distance              = 1000.0f; // 1000 meters is good for most meshes, it can be adjusted per mesh
+        float m_max_render_distance              = FLT_MAX;
         std::array<bool, 2048> m_is_visible      = { false };
         std::array<uint32_t, 2048> m_lod_indices = { 0 };
     };
