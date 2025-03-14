@@ -394,10 +394,54 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         ImGui::SameLine(column_pos_x);
         ImGui::InputText("##renderable_mesh_name", &name_mesh, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
-        // lodding
-        ImGui::Text("LODs");
-        ImGui::SameLine(column_pos_x);
-        ImGui::LabelText("##renderable_lod_count", to_string(renderable->GetLodCount()).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+        // geometry
+        {
+            // Move to column_pos_x before starting the table
+            ImGui::SetCursorPosX(column_pos_x);
+            
+            int lod_count = renderable->GetLodCount();
+            if (ImGui::BeginTable("##geometry_table", lod_count + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
+            {
+                // Setup columns
+                ImGui::TableSetupColumn("");  // first column for labels
+                for (int i = 0; i < lod_count; i++)
+                {
+                    ImGui::TableSetupColumn(("LOD " + to_string(i + 1)).c_str());  // start numbering from 1
+                }
+        
+                // Header row
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text(""); // empty cell in first column
+                for (int i = 0; i < lod_count; i++)
+                {
+                    ImGui::TableSetColumnIndex(i + 1);
+                    ImGui::Text(("LOD " + to_string(i + 1)).c_str());
+                }
+        
+                // Row 1: Vertices
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("Vertices");
+                for (int i = 0; i < lod_count; i++)
+                {
+                    ImGui::TableSetColumnIndex(i + 1);
+                    ImGui::Text("%d", renderable->GetVertexCount(i));
+                }
+        
+                // Row 2: Indices
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("Indices");
+                for (int i = 0; i < lod_count; i++)
+                {
+                    ImGui::TableSetColumnIndex(i + 1);
+                    ImGui::Text("%d", renderable->GetIndexCount(i));
+                }
+        
+                ImGui::EndTable();
+            }
+        }
 
         // instancing
         if (instance_count != 0)
