@@ -102,7 +102,7 @@ I personally cover the costs for Dropbox hosting and a GitHub Pro subscription t
 
 # Interesting Facts & Use Cases  
 
-- This engine started as a personal learning project and a way to enhance my portfolio while I was a university student. I also used it for my studies at [this university](http://www.cs.teilar.gr/CS/Home.jsp).  
+- This engine started as a personal learning project and a way to enhance my portfolio while I was a university student. I also used it for my thesis at [this university](http://www.cs.teilar.gr/CS/Home.jsp).  
 - Contributing to this project comes with great perks! Learn more about the benefits [here](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor).  
 - **Godot** integrates Spartan’s TAA. See it in action [here](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2).  
 - **Stalker Anomaly** features an addon that enhances rendering using Spartan's source. Check it out [here](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders).  
