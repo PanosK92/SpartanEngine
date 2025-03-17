@@ -24,9 +24,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
+#ifdef _WIN32
 SP_WARNINGS_OFF
 #include "meshoptimizer/meshoptimizer.h"
 SP_WARNINGS_ON
+#else
+#include "meshoptimizer.h"
+#endif
 //======================================
 
 namespace spartan::geometry_processing
