@@ -171,7 +171,7 @@ namespace spartan
         // create a sub-mesh
         SubMesh sub_mesh;
         uint32_t current_sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size());
-        m_sub_meshes.push_back(sub_mesh); // add it to the list so AddLod() can access it
+        m_sub_meshes.push_back(sub_mesh); // add it to the list so addlod() can access it
     
         // lod 0: original geometry
         {
@@ -188,23 +188,27 @@ namespace spartan
         // generate additional lods if requested
         if (generate_lods)
         {
+            // store the original index count
+            size_t original_index_count = indices.size();
+    
             // start with the original geometry for lod 1 onwards
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
-            vector<uint32_t> prev_indices = indices;
+            vector<uint32_t> prev_indices                 = indices;
     
             for (uint32_t lod_level = 1; lod_level < mesh_lod_count; lod_level++)
             {
                 // use the previous lod's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
-                vector<uint32_t> lod_indices                 = prev_indices;
+                vector<uint32_t> lod_indices = prev_indices;
     
                 // only simplify if the geometry is complex enough
                 if (lod_vertices.size() > 128 && lod_indices.size() > 128)
                 {
-                    // 75% retention
-                    size_t prev_index_count   = prev_indices.size();
-                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_index_count * 0.8f));
-
+                    // compute target index count based on original index count
+                    float t                   = static_cast<float>(lod_level) / static_cast<float>(mesh_lod_count);
+                    float target_fraction     = 1.0f - pow(t, 2.0f); // power = 2 for exponential-like reduction
+                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(original_index_count * target_fraction));
+    
                     // simplify geometry
                     geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
     
