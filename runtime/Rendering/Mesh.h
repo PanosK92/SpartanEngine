@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include "../RHI/RHI_Vertex.h"
 #include "../Resource/IResource.h"
+#include "../Math/BoundingBox.h"
 //================================
 
 namespace spartan
@@ -41,6 +42,13 @@ namespace spartan
         PostProcessOptimize       = 1 << 4
     };
 
+    enum class MeshLodDropoff
+    {
+        Exponential,
+        Linear,
+        Max
+    };
+
     enum class MeshType
     {
         Cube,
@@ -53,16 +61,17 @@ namespace spartan
 
     struct MeshLod
     {
-        uint32_t vertex_offset; // Starting offset in m_vertices
-        uint32_t vertex_count;  // Number of vertices for this LOD
-        uint32_t index_offset;  // Starting offset in m_indices
-        uint32_t index_count;   // Number of indices for this LOD
+        uint32_t vertex_offset; // starting offset in m_vertices
+        uint32_t vertex_count;  // number of vertices for this LOD
+        uint32_t index_offset;  // starting offset in m_indices
+        uint32_t index_count;   // number of indices for this LOD
+        math::BoundingBox aabb; // bounding box of this LOD
     };
     static const uint32_t mesh_lod_count = 5;
 
     struct SubMesh
     {
-        std::vector<MeshLod> lods; // List of LOD levels for this sub-mesh
+        std::vector<MeshLod> lods; // list of LOD levels for this sub-mesh
     };
 
     class Mesh : public IResource
@@ -79,13 +88,13 @@ namespace spartan
         void Clear();
         void GetGeometry(uint32_t sub_mesh_index, std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices);
         uint32_t GetMemoryUsage() const;
-
-        // geometry
         void AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const uint32_t sub_mesh_index);
         void AddGeometry(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index = nullptr);
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()   { return m_vertices; }
         std::vector<uint32_t>& GetIndices()                   { return m_indices; }
         const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
+        MeshLodDropoff GetLodDropoff() const                  { return m_lod_dropoff; }
+        void SetLodDropoff(const MeshLodDropoff dropoff)      { m_lod_dropoff = dropoff; }
 
         // get counts
         uint32_t GetVertexCount() const;
@@ -121,6 +130,7 @@ namespace spartan
         // misc
         std::mutex m_mutex;
         std::weak_ptr<Entity> m_root_entity;
-        MeshType m_type = MeshType::Max;
+        MeshType m_type              = MeshType::Max;
+        MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Exponential;
     };
 }

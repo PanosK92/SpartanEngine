@@ -660,7 +660,7 @@ namespace spartan
                     entity->SetObjectName("tree");
                     entity->SetScale(1.0f);
 
-               
+
                     // generate instances
                     {
                         vector<Matrix> instances;
@@ -698,7 +698,8 @@ namespace spartan
                     shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
                     {
                         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
-                    
+                        mesh->SetLodDropoff(MeshLodDropoff::Linear); // linear dropoff - more agressive
+
                         // create sub-mesh and add three lods for the grass blade
                         uint32_t sub_mesh_index = 0;
                     
@@ -714,18 +715,10 @@ namespace spartan
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 3); // medium detail
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // medium detail
                             mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
                         }
-                    
-                        // lod 2: low quality grass blade (1 segments)
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // low detail
-                            mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 2
-                        }
-                    
+
                         mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
                         mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
                     }

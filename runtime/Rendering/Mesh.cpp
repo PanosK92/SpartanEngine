@@ -146,22 +146,23 @@ namespace spartan
         }
     }
 
-    void Mesh::AddLod(std::vector<RHI_Vertex_PosTexNorTan>& vertices,vector<uint32_t>& indices, const uint32_t sub_mesh_index)
+    void Mesh::AddLod(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t sub_mesh_index)
     {
         lock_guard lock(m_mutex);
         SP_ASSERT(sub_mesh_index < m_sub_meshes.size());
 
-        // build LOD
+        // build lod
         MeshLod lod;
         lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
         lod.vertex_count  = static_cast<uint32_t>(vertices.size());
         lod.index_offset  = static_cast<uint32_t>(m_indices.size());
         lod.index_count   = static_cast<uint32_t>(indices.size());
+        lod.aabb          = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
     
         // append geometry to mesh buffers
         m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
         m_indices.insert(m_indices.end(), indices.begin(), indices.end());
-    
+
         // add lod to the specified sub-mesh
         m_sub_meshes[sub_mesh_index].lods.push_back(lod);
     }
@@ -180,7 +181,7 @@ namespace spartan
             {
                 geometry_processing::optimize(vertices, indices);
             }
-    
+
             // add the original geometry as lod 0
             AddLod(vertices, indices, current_sub_mesh_index);
         }
@@ -199,14 +200,18 @@ namespace spartan
             {
                 // use the previous lod's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
-                vector<uint32_t> lod_indices = prev_indices;
+                vector<uint32_t> lod_indices                 = prev_indices;
     
-                // only simplify if the geometry is complex enough
-                if (lod_vertices.size() > 128 && lod_indices.size() > 128)
+                // onlyl simplify if the geometry is complex enough, this prevents collapsing into nothing
+                if (lod_indices.size() > 64)
                 {
                     // compute target index count based on original index count
-                    float t                   = static_cast<float>(lod_level) / static_cast<float>(mesh_lod_count);
-                    float target_fraction     = 1.0f - pow(t, 2.0f); // power = 2 for exponential-like reduction
+                    float t = static_cast<float>(lod_level) / static_cast<float>(mesh_lod_count);
+                    if (m_lod_dropoff == MeshLodDropoff::Exponential)
+                    {
+                        t = pow(t, 2.0f);
+                    }
+                    float target_fraction     = 1.0f - t;
                     size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(original_index_count * target_fraction));
     
                     // simplify geometry

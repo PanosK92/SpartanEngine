@@ -219,7 +219,7 @@ namespace spartan
             m_material->PrepareForGpu();
         }
 
-        // compute local dimensions
+        // compute world dimensions
         {
             // acquire vertices
             vector<RHI_Vertex_PosTexNorTan> vertices;
@@ -230,18 +230,19 @@ namespace spartan
             float max_height = -FLT_MAX;
             float min_width  = FLT_MAX;
             float max_width  = -FLT_MAX;
+
             Matrix transform = HasInstancing() ? GetEntity()->GetMatrix() * GetInstanceTransform(0) : GetEntity()->GetMatrix();
             for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
             {
-                Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]) * transform;
+                Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
                 min_height       = min(min_height, position.y);
                 max_height       = max(max_height, position.y);
                 min_width        = min(min_width, position.x);
                 max_width        = max(max_width, position.x);
             }
 
-            material->SetProperty(MaterialProperty::LocalWidth,  max_width - min_width);
-            material->SetProperty(MaterialProperty::LocalHeight, max_height - min_height);
+            material->SetProperty(MaterialProperty::WorldWidth,  max_width - min_width);
+            material->SetProperty(MaterialProperty::WorldHeight, max_height - min_height);
         }
     }
 

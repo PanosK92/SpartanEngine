@@ -47,8 +47,8 @@ namespace spartan
     enum class MaterialProperty
     {
         Optimized,            // indicates if the material has been optimized (textures packed and compressed)
-        LocalHeight,          // height of the mesh to which the material is applied
-        LocalWidth,           // width of the mesh to which the material is applied
+        WorldHeight,          // height of the mesh to which the material is applied
+        WorldWidth,           // width of the mesh to which the material is applied
         Clearcoat,            // additional specular layer on top of the base specular
         Clearcoat_Roughness,  // roughness level of the clearcoat layer
         Anisotropic,          // controls the anisotropy level of specular reflections

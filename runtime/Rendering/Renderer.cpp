@@ -924,8 +924,8 @@ namespace spartan
             {
                 SP_ASSERT(index < rhi_max_array_size);
 
-                properties[index].local_width           = material->GetProperty(MaterialProperty::LocalWidth);
-                properties[index].local_height          = material->GetProperty(MaterialProperty::LocalHeight);
+                properties[index].local_width           = material->GetProperty(MaterialProperty::WorldWidth);
+                properties[index].local_height          = material->GetProperty(MaterialProperty::WorldHeight);
                 properties[index].color.x               = material->GetProperty(MaterialProperty::ColorR);
                 properties[index].color.y               = material->GetProperty(MaterialProperty::ColorG);
                 properties[index].color.z               = material->GetProperty(MaterialProperty::ColorB);

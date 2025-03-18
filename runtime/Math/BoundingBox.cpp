@@ -82,10 +82,8 @@ namespace spartan::math
         {
             return Intersection::Outside;
         }
-        else
-        {
-            return Intersection::Inside;
-        }
+
+        return Intersection::Inside;
     }
 
     Intersection BoundingBox::Intersects(const BoundingBox& box) const
@@ -103,10 +101,8 @@ namespace spartan::math
         {
             return Intersection::Intersects;
         }
-        else
-        {
-            return Intersection::Inside;
-        }
+
+        return Intersection::Inside;
     }
 
     BoundingBox BoundingBox::Transform(const Matrix& transform) const

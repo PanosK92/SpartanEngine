@@ -351,18 +351,18 @@ namespace spartan::geometry_generation
         };
     
         // helper to push vertex
-        auto push_vertex = [&](const Vector3 &pos, const Vector2 &tex, const Vector3 &tan)
+        auto push_vertex = [&](const Vector3 &pos, const Vector2 &tex)
         {
             RHI_Vertex_PosTexNorTan v;
             v.pos[0] = pos.x; v.pos[1] = pos.y; v.pos[2] = pos.z;
             v.tex[0] = tex.x; v.tex[1] = tex.y;
             v.nor[0] = 0.0f;  v.nor[1] = 0.0f;  v.nor[2] = 0.0f;
-            v.tan[0] = tan.x; v.tan[1] = tan.y; v.tan[2] = tan.z;
+            v.tan[0] = 0.0f;  v.tan[1] = 0.0f;  v.tan[2] = 0.0f;
 
             vertices->push_back(v);
         };
     
-        // build front face (basic normals)
+        // build front face
         for (uint32_t i = 0; i <= segment_count; i++)
         {
             float t            = float(i) / segment_count;
@@ -372,18 +372,18 @@ namespace spartan::geometry_generation
             if (i < segment_count)
             {
                 // left vertex
-                push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t), Vector3(1.0f, 0.0f, 0.0f));
+                push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t));
                 // right vertex
-                push_vertex(Vector3(grass_width * 0.5f * width_factor, y, 0.0f), Vector2(1.0f, t), Vector3(1.0f, 0.0f, 0.0f));
+                push_vertex(Vector3(grass_width * 0.5f * width_factor, y, 0.0f), Vector2(1.0f, t));
             }
             else
             {
                 // top vertex
-                push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t), Vector3(1.0f, 0.0f, 0.0f));
+                push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t));
             }
         }
     
-        // build back face (basic normals)
+        // build back face
         for (uint32_t i = 0; i <= segment_count; i++)
         {
             float t            = float(i) / segment_count;
@@ -393,14 +393,14 @@ namespace spartan::geometry_generation
             if (i < segment_count)
             {
                 // left vertex
-                push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t), Vector3(-1.0f, 0.0f, 0.0f));
+                push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t));
                 // right vertex
-                push_vertex(Vector3(grass_width * 0.5f * width_factor, y, 0.0f), Vector2(1.0f, t), Vector3(-1.0f, 0.0f, 0.0f));
+                push_vertex(Vector3(grass_width * 0.5f * width_factor, y, 0.0f), Vector2(1.0f, t));
             }
             else
             {
                 // top vertex
-                push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t), Vector3(-1.0f, 0.0f, 0.0f));
+                push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t));
             }
         }
     
@@ -451,51 +451,30 @@ namespace spartan::geometry_generation
             }
         }
     
-        // re-calculate normals (necessary if any curvature is present)
+        // normals
+        for (size_t i = 0; i < indices->size(); i += 3)
         {
-            // zero out
-            for (size_t i = 0; i < vertices->size(); i++)
-            {
-                (*vertices)[i].nor[0] = 0.0f;
-                (*vertices)[i].nor[1] = 0.0f;
-                (*vertices)[i].nor[2] = 0.0f;
-            }
-
-            // triangle normals
-            for (size_t i = 0; i < indices->size(); i += 3)
-            {
-                uint32_t i0 = (*indices)[i];
-                uint32_t i1 = (*indices)[i + 1];
-                uint32_t i2 = (*indices)[i + 2];
-    
-                Vector3 p0((*vertices)[i0].pos[0], (*vertices)[i0].pos[1], (*vertices)[i0].pos[2]);
-                Vector3 p1((*vertices)[i1].pos[0], (*vertices)[i1].pos[1], (*vertices)[i1].pos[2]);
-                Vector3 p2((*vertices)[i2].pos[0], (*vertices)[i2].pos[1], (*vertices)[i2].pos[2]);
-    
-                Vector3 edge1       = p1 - p0;
-                Vector3 edge2       = p2 - p0;
-                Vector3 face_normal = Vector3::Normalize(Vector3::Cross(edge1, edge2));
-    
-                (*vertices)[i0].nor[0] += face_normal.x;
-                (*vertices)[i0].nor[1] += face_normal.y;
-                (*vertices)[i0].nor[2] += face_normal.z;
-                (*vertices)[i1].nor[0] += face_normal.x;
-                (*vertices)[i1].nor[1] += face_normal.y;
-                (*vertices)[i1].nor[2] += face_normal.z;
-                (*vertices)[i2].nor[0] += face_normal.x;
-                (*vertices)[i2].nor[1] += face_normal.y;
-                (*vertices)[i2].nor[2] += face_normal.z;
-            }
-
-            // normalize
-            for (size_t i = 0; i < vertices->size(); i++)
-            {
-                Vector3 norm((*vertices)[i].nor[0], (*vertices)[i].nor[1], (*vertices)[i].nor[2]);
-                norm = Vector3::Normalize(norm);
-                (*vertices)[i].nor[0] = norm.x;
-                (*vertices)[i].nor[1] = norm.y;
-                (*vertices)[i].nor[2] = norm.z;
-            }
+            uint32_t i0 = (*indices)[i];
+            uint32_t i1 = (*indices)[i + 1];
+            uint32_t i2 = (*indices)[i + 2];
+        
+            Vector3 p0((*vertices)[i0].pos[0], (*vertices)[i0].pos[1], (*vertices)[i0].pos[2]);
+            Vector3 p1((*vertices)[i1].pos[0], (*vertices)[i1].pos[1], (*vertices)[i1].pos[2]);
+            Vector3 p2((*vertices)[i2].pos[0], (*vertices)[i2].pos[1], (*vertices)[i2].pos[2]);
+        
+            Vector3 edge1       = p1 - p0;
+            Vector3 edge2       = p2 - p0;
+            Vector3 face_normal = Vector3::Normalize(Vector3::Cross(edge1, edge2));
+        
+            (*vertices)[i0].nor[0] += face_normal.x;
+            (*vertices)[i0].nor[1] += face_normal.y;
+            (*vertices)[i0].nor[2] += face_normal.z;
+            (*vertices)[i1].nor[0] += face_normal.x;
+            (*vertices)[i1].nor[1] += face_normal.y;
+            (*vertices)[i1].nor[2] += face_normal.z;
+            (*vertices)[i2].nor[0] += face_normal.x;
+            (*vertices)[i2].nor[1] += face_normal.y;
+            (*vertices)[i2].nor[2] += face_normal.z;
         }
     }
 
