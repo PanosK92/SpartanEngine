@@ -51,8 +51,6 @@ namespace spartan
         int64_t mesh_index_transparent                     = 0;
         int64_t mesh_index_non_instanced_transparent       = 0;
 
-        // note: the code below is a work in progress, that's why its here
-
         namespace visibility
         {
             unordered_map<uint64_t, Rectangle> rectangles;
@@ -74,24 +72,16 @@ namespace spartan
 
             void sort(vector<shared_ptr<Entity>>& renderables)
             {
-                // 1. sort by depth
-                sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
+                // 1. sort by depth (in case of instancing, use the smallest depth, which is not ideal)
+                std::sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
                 {
-                    // skip entities which are outside of the view frustum
-                    if (!a->GetComponent<Renderable>()->IsVisible() || !b->GetComponent<Renderable>()->IsVisible())
-                        return false;
-                    
-                    // front-to-back for opaque (todo, handle inverse sorting for transparents)
-                    return a->GetComponent<Renderable>()->GetDistanceSquared() < b->GetComponent<Renderable>()->GetDistanceSquared();
+                    Renderable* renderable_a = a->GetComponent<Renderable>().get();
+                    Renderable* renderable_b = b->GetComponent<Renderable>().get();
+
+                    return renderable_a->GetDistanceSquared() < renderable_b->GetDistanceSquared();
                 });
 
-                // 2. sort by instancing, instanced objects go to the front
-                stable_sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
-                {
-                    return a->GetComponent<Renderable>()->HasInstancing() > b->GetComponent<Renderable>()->HasInstancing();
-                });
-
-                // 3. sort by transparency, transparent materials go to the end
+                // 2. sort by transparency, transparent materials go to the end
                 stable_sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
                 {
                     bool a_transparent = a->GetComponent<Renderable>()->GetMaterial()->IsTransparent();
@@ -1662,84 +1652,6 @@ namespace spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::RenderableSetBuffers(RHI_CommandList* cmd_list, Renderable* renderable)
-    {
-        // not binding a dummy buffer can cause a validation error or gpu crash because the engine uses a single pipeline 
-        // for all geometry passes, avoiding permutations, so the pipeline always expects a valid instance buffer at binding 1
-        // even when instancing isn’t used (e.g., instance count = 0), the gpu fetches data from it based on the instance count
-        RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
-        instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
-
-        // set vertex, index and instance buffers
-        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
-        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    }
-
-    void Renderer::RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light, uint32_t array_index)
-    {
-        uint32_t instance_start_index = 0;
-        bool draw_instanced           = renderable->HasInstancing();
-        Vector3 camera_position       = camera->GetEntity()->GetPosition();
-        uint32_t lod_bias             = light != nullptr ? 2 : 0;
-        
-        if (draw_instanced)
-        {
-            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
-            {
-                uint32_t group_end_index              = renderable->GetBoundingBoxGroupEndIndices()[group_index];
-                uint32_t instance_count               = group_end_index - instance_start_index;
-                const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-
-                // skip instance groups outside of the view frustum when a light is provided
-                if (light)
-                {
-                    if (!light->IsInViewFrustum(renderable, array_index))
-                    {
-                        instance_start_index = group_end_index;
-                        continue;
-                    }
-                }
-        
-                // clamp instance_count to prevent exceeding total instance count
-                instance_count = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-        
-                // draw only if there are instances and the group is visible
-                if (instance_count > 0 && renderable->IsVisible(group_index))
-                {
-                    RenderableSetBuffers(cmd_list, renderable);
-
-                    // deduce lod
-                    uint32_t lod_index = min(renderable->GetLodIndex(group_index) + lod_bias, renderable->GetLodCount() - 1);
-                    cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(lod_index),
-                        renderable->GetIndexOffset(lod_index),
-                        renderable->GetVertexOffset(lod_index),
-                        instance_start_index,
-                        instance_count
-                    );
-                }
-        
-                instance_start_index = group_end_index;
-            }
-        }
-        else 
-        {
-            if (renderable->IsVisible())
-            {
-                RenderableSetBuffers(cmd_list, renderable);
-
-                uint32_t lod_index = min(renderable->GetLodIndex() + lod_bias, renderable->GetLodCount() - 1);
-                cmd_list->DrawIndexed(
-                    renderable->GetIndexCount(lod_index),
-                    renderable->GetIndexOffset(lod_index),
-                    renderable->GetVertexOffset(lod_index)
-                );
-            }
-        }
-        
-        cmd_list->SetIgnoreClearValues(true);
-    }
-
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (!GetOption<bool>(Renderer_Option::Lights) || Engine::IsFlagSet(EngineMode::Playing))
@@ -2049,5 +1961,73 @@ namespace spartan
         }
 
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light, uint32_t array_index)
+    {
+        bool draw_instanced     = renderable->HasInstancing();
+        Vector3 camera_position = camera->GetEntity()->GetPosition();
+        uint32_t lod_bias       = light != nullptr ? 2 : 0;
+
+        auto set_buffers = [cmd_list](Renderable* renderable)
+        {
+            // not binding a dummy buffer can cause a validation error or gpu crash because the engine uses a single pipeline 
+            // for all geometry passes, avoiding permutations, so the pipeline always expects a valid instance buffer at binding 1
+            // even when instancing isn’t used (e.g., instance count = 0), the gpu fetches data from it based on the instance count
+            RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
+            instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
+
+            // set vertex, index and instance buffers
+            cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+        };
+
+        if (draw_instanced)
+        {
+            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+            {
+                uint32_t instance_start_index         = renderable->GetInstanceGroupStartIndex(group_index);
+                uint32_t instance_count               = renderable->GetInstanceGroupCount(group_index);
+                const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+        
+                // skip instance groups outside of the view frustum when a light is provided
+                if (light && !light->IsInViewFrustum(renderable, array_index))
+                    continue;
+        
+                // clamp instance_count to prevent exceeding total instance count
+                instance_count = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+        
+                // draw only if there are instances and the group is visible
+                if (instance_count > 0 && renderable->IsVisible(group_index))
+                {
+                    set_buffers(renderable);
+
+                    uint32_t lod_index = min(renderable->GetLodIndex(group_index) + lod_bias, renderable->GetLodCount() - 1);
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(lod_index),
+                        renderable->GetIndexOffset(lod_index),
+                        renderable->GetVertexOffset(lod_index),
+                        instance_start_index,
+                        instance_count
+                    );
+                }
+            }
+        }
+        else 
+        {
+            if (renderable->IsVisible())
+            {
+                set_buffers(renderable);
+
+                uint32_t lod_index = min(renderable->GetLodIndex() + lod_bias, renderable->GetLodCount() - 1);
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(lod_index),
+                    renderable->GetIndexOffset(lod_index),
+                    renderable->GetVertexOffset(lod_index)
+                );
+            }
+        }
+        
+        cmd_list->SetIgnoreClearValues(true);
     }
 }

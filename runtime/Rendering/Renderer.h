@@ -181,10 +181,6 @@ namespace spartan
         // passes - utility
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
 
-        // renderable
-        static void RenderableSetBuffers(RHI_CommandList* cmd_list, Renderable* renderable);
-        static void RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0);
-
         // event handlers
         static void OnClear();
         static void OnFullScreenToggled();
@@ -194,6 +190,7 @@ namespace spartan
         static void AddLinesToBeRendered();
         static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
+        static void RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0);
 
         // bindless
         static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);

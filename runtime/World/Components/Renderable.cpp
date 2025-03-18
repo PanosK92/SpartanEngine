@@ -311,6 +311,19 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
+    uint32_t Renderable::GetInstanceGroupStartIndex(uint32_t group_index) const
+    {
+        return group_index == 0 ? 0 : m_instance_group_end_indices[group_index - 1];
+    }
+    
+    uint32_t Renderable::GetInstanceGroupCount(uint32_t group_index) const
+    {
+        uint32_t start_index = GetInstanceGroupStartIndex(group_index);
+        uint32_t end_index   = m_instance_group_end_indices[group_index];
+
+        return end_index - start_index;
+    }
+
     void Renderable::SetInstances(const vector<Matrix>& instances)
     {
         m_instances = instances;
@@ -378,8 +391,8 @@ namespace spartan
                     if (camera->IsInViewFrustum(bounding_box))
                     {
                         // only if in frustum, calculate distance
-                        float distance_squared    = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                        m_is_visible[group_index] = distance_squared <= m_max_render_distance * m_max_render_distance;
+                        m_distance_squared[group_index] = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                        m_is_visible[group_index]       = m_distance_squared[group_index] <= m_max_render_distance * m_max_render_distance;
                     }
                     else
                     {
@@ -396,8 +409,8 @@ namespace spartan
                 if (camera->IsInViewFrustum(bounding_box))
                 {
                     // only if in frustum, calculate distance
-                    m_distance_squared = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                    m_is_visible[0]    = m_distance_squared <= m_max_render_distance * m_max_render_distance;
+                    m_distance_squared[0] = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
+                    m_is_visible[0]       = m_distance_squared[0]  <= m_max_render_distance * m_max_render_distance;
                 }
                 else
                 {
@@ -408,7 +421,7 @@ namespace spartan
         }
         else
         {
-            m_distance_squared = 0.0f;
+            m_distance_squared.fill(0.0f);
             m_is_visible.fill(true);
         }
     }

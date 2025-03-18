@@ -98,13 +98,15 @@ namespace spartan
         RHI_Buffer* GetInstanceBuffer() const                   { return m_instance_buffer.get(); }
         math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
         uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
+        uint32_t GetInstanceGroupStartIndex(uint32_t group_index) const;
+        uint32_t GetInstanceGroupCount(uint32_t group_index) const;
         void SetInstances(const std::vector<math::Matrix>& instances);
 
         // distance & visibility
-        float GetDistanceSquared() const                              { return m_distance_squared; }
-        float GetMaxRenderDistance() const                            { return m_max_render_distance; }
-        void SetMaxRenderDistance(const float max_render_distance)    { m_max_render_distance = max_render_distance; }
-        bool IsVisible(const uint32_t instance_group_index = 0) const { return m_is_visible[instance_group_index] && !HasFlag(RenderableFlags::Occluded); }
+        float GetDistanceSquared(const uint32_t instance_group_index = 0) const { return m_distance_squared[instance_group_index]; }
+        float GetMaxRenderDistance() const                                      { return m_max_render_distance; }
+        void SetMaxRenderDistance(const float max_render_distance)              { m_max_render_distance = max_render_distance; }
+        bool IsVisible(const uint32_t instance_group_index = 0) const           { return m_is_visible[instance_group_index] && !HasFlag(RenderableFlags::Occluded); }
 
         // flags
         bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }
@@ -137,9 +139,9 @@ namespace spartan
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
         // visibility & lods
-        float m_distance_squared                 = 0.0f;
-        float m_max_render_distance              = FLT_MAX;
-        std::array<bool, 2048> m_is_visible      = { false };
-        std::array<uint32_t, 2048> m_lod_indices = { 0 };
+        float m_max_render_distance                = FLT_MAX;
+        std::array<float, 2048> m_distance_squared = { 0.0f };
+        std::array<bool, 2048> m_is_visible        = { false };
+        std::array<uint32_t, 2048> m_lod_indices   = { 0 };
     };
 }
