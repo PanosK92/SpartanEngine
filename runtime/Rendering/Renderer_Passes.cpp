@@ -391,9 +391,6 @@ namespace spartan
                     if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
                         continue;
 
-                    if (!light->IsInViewFrustum(renderable.get(), array_index))
-                        continue;
-
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
 
                     // set pipeline
@@ -1968,20 +1965,15 @@ namespace spartan
         bool draw_instanced     = renderable->HasInstancing();
         Vector3 camera_position = camera->GetEntity()->GetPosition();
         uint32_t lod_bias       = light != nullptr ? 2 : 0;
-
+    
         auto set_buffers = [cmd_list](Renderable* renderable)
         {
-            // not binding a dummy buffer can cause a validation error or gpu crash because the engine uses a single pipeline 
-            // for all geometry passes, avoiding permutations, so the pipeline always expects a valid instance buffer at binding 1
-            // even when instancing isn’t used (e.g., instance count = 0), the gpu fetches data from it based on the instance count
             RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
             instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
-
-            // set vertex, index and instance buffers
             cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
         };
-
+    
         if (draw_instanced)
         {
             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
@@ -1989,16 +1981,10 @@ namespace spartan
                 uint32_t instance_start_index         = renderable->GetInstanceGroupStartIndex(group_index);
                 uint32_t instance_count               = renderable->GetInstanceGroupCount(group_index);
                 const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-        
-                // skip instance groups outside of the view frustum when a light is provided
-                if (light && !light->IsInViewFrustum(renderable, array_index))
-                    continue;
-        
-                // clamp instance_count to prevent exceeding total instance count
-                instance_count = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-        
-                // draw only if there are instances and the group is visible
-                if (instance_count > 0 && renderable->IsVisible(group_index))
+                bool is_visible                       = light ? light->IsInViewFrustum(renderable, array_index, group_index) : renderable->IsVisible(group_index);
+                instance_count                        = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+
+                if (instance_count > 0 && is_visible)
                 {
                     set_buffers(renderable);
 
@@ -2013,9 +1999,9 @@ namespace spartan
                 }
             }
         }
-        else 
+        else
         {
-            if (renderable->IsVisible())
+            if (light ? light->IsInViewFrustum(renderable, array_index) : renderable->IsVisible())
             {
                 set_buffers(renderable);
 
@@ -2027,7 +2013,7 @@ namespace spartan
                 );
             }
         }
-        
+    
         cmd_list->SetIgnoreClearValues(true);
     }
 }

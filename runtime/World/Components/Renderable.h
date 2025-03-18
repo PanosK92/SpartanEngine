@@ -66,7 +66,7 @@ namespace spartan
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
         uint32_t GetInstanceGroupCount() const                             { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
-        const math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t index = 0);
+        const math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index = 0);
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)

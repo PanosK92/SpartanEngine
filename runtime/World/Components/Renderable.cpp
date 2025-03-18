@@ -140,7 +140,7 @@ namespace spartan
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
 
-    const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t index)
+    const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index)
     {
         if (m_bounding_box_dirty || m_transform_previous != GetEntity()->GetMatrix())
         {
@@ -196,10 +196,10 @@ namespace spartan
             return m_bounding_box_transformed;
 
         if (type == BoundingBoxType::TransformedInstance)
-            return m_bounding_box_instances[index];
+            return m_bounding_box_instances[instance_group_index];
 
         if (type == BoundingBoxType::TransformedInstanceGroup)
-            return m_bounding_box_instance_group[index];
+            return m_bounding_box_instance_group[instance_group_index];
 
         return BoundingBox::Undefined;
     }

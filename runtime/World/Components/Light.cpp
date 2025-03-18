@@ -511,9 +511,9 @@ namespace spartan
         }
     }
 
-    bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
+    bool Light::IsInViewFrustum(Renderable* renderable, uint32_t array_index, const uint32_t instance_group_index) const
     {
-        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::Transformed, instance_group_index);
 
         if (box == BoundingBox::Undefined)
         {
@@ -521,6 +521,6 @@ namespace spartan
             return false;
         }
 
-        return IsInViewFrustum(box, index);
+        return IsInViewFrustum(box, array_index);
     }
 }  
