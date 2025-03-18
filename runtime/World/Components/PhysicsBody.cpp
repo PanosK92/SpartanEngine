@@ -22,12 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================================================
 #include "pch.h"
 #include "PhysicsBody.h"
-#include "Constraint.h"
 #include "Renderable.h"
 #include "Terrain.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
-#include "../../RHI/RHI_Texture.h"
 #include "../../IO/FileStream.h"
 #include "../../Game/Car.h"
 #include "../../Physics/Physics.h"
@@ -532,29 +530,6 @@ namespace spartan
         rigid_body->setActivationState(WANTS_DEACTIVATION);
     }
 
-    void PhysicsBody::AddConstraint(Constraint* constraint)
-    {
-        m_constraints.emplace_back(constraint);
-    }
-
-    void PhysicsBody::RemoveConstraint(Constraint* constraint)
-    {
-        for (auto it = m_constraints.begin(); it != m_constraints.end(); )
-        {
-            const auto itConstraint = *it;
-            if (constraint->GetObjectId() == itConstraint->GetObjectId())
-            {
-                it = m_constraints.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
-        Activate();
-    }
-
     void PhysicsBody::AddBodyToWorld()
     {
         if (!shape)
@@ -591,12 +566,6 @@ namespace spartan
 
             m_rigid_body = new btRigidBody(construction_info);
             rigid_body->setUserPointer(this);
-        }
-
-        // reapply constraint positions for new center of mass shift
-        for (Constraint* constraint : m_constraints)
-        {
-            constraint->ApplyFrames();
         }
 
         if (m_body_type == PhysicsBodyType::Vehicle)
@@ -668,11 +637,6 @@ namespace spartan
     {
         if (!m_rigid_body)
             return;
-
-        for (const auto& constraint : m_constraints)
-        {
-            constraint->ReleaseConstraint();
-        }
 
         if (m_rigid_body)
         {

@@ -37,7 +37,6 @@ namespace spartan
     {
         AudioSource,
         Camera,
-        Constraint,
         Light,
         PhysicsBody,
         Renderable,

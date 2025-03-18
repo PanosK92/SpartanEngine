@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Component.h"
 #include "Light.h"
 #include "PhysicsBody.h"
-#include "Constraint.h"
 #include "Camera.h"
 #include "AudioSource.h"
 #include "Terrain.h"
@@ -54,7 +53,6 @@ namespace spartan
     // to add a new component to the engine, simply register it here
     REGISTER_COMPONENT(AudioSource, ComponentType::AudioSource)
     REGISTER_COMPONENT(Camera,      ComponentType::Camera)
-    REGISTER_COMPONENT(Constraint,  ComponentType::Constraint)
     REGISTER_COMPONENT(Light,       ComponentType::Light)
     REGISTER_COMPONENT(Renderable,  ComponentType::Renderable)
     REGISTER_COMPONENT(PhysicsBody, ComponentType::PhysicsBody)

@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Entity;
-    class Constraint;
     class Physics;
     class Car;
     namespace math { class Quaternion; }
@@ -136,10 +135,6 @@ namespace spartan
         math::Quaternion GetRotation() const;
         void SetRotation(const math::Quaternion& rotation, const bool activate = true) const;
 
-        // constraint
-        void AddConstraint(Constraint* constraint);
-        void RemoveConstraint(Constraint* constraint);
-
         // bounding box
         const math::Vector3& GetBoundingBox() const { return m_size; }
         void SetBoundingBox(const math::Vector3& boundingBox);
@@ -194,6 +189,5 @@ namespace spartan
         std::shared_ptr<Car> m_car     = nullptr;
         bool m_replicate_hierarchy     = false;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
-        std::vector<Constraint*> m_constraints;
     };
 }

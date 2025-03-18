@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Entity.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/PhysicsBody.h"
-#include "World/Components/Constraint.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/Terrain.h"
@@ -168,7 +167,6 @@ void Properties::OnTickVisible()
                 ShowRenderable(renderable);
                 ShowMaterial(material);
                 ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
-                ShowConstraint(entity_ptr->GetComponent<Constraint>());
 
                 ShowAddComponentButton();
             }
@@ -628,99 +626,6 @@ void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
         if (center_of_mass != body->GetCenterOfMass())                    body->SetCenterOfMass(center_of_mass);
         if (bounding_box != body->GetBoundingBox())                       body->SetBoundingBox(bounding_box);
         //=====================================================================================================================================================================================================
-    }
-    component_end();
-}
-
-void Properties::ShowConstraint(shared_ptr<Constraint> constraint) const
-{
-    if (!constraint)
-        return;
-
-    if (component_begin("Constraint", IconType::Component_AudioSource, constraint))
-    {
-        //= REFLECT ========================================================================================
-        vector<string> constraint_types = {"Point", "Hinge", "Slider", "ConeTwist" };
-        auto other_body                 = constraint->GetBodyOther();
-        bool other_body_dirty           = false;
-        Vector3 position                = constraint->GetPosition();
-        Vector3 rotation                = constraint->GetRotation().ToEulerAngles();
-        Vector2 high_limit              = constraint->GetHighLimit();
-        Vector2 low_limit               = constraint->GetLowLimit();
-        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetObjectName();
-        //==================================================================================================
-
-        const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;
-        const float step            = 0.1f;
-        const float step_fast       = 0.1f;
-        const char* precision       = "%.3f";
-
-        // Type
-        ImGui::Text("Type");
-        ImGui::SameLine(column_pos_x);
-        uint32_t selection_index = static_cast<uint32_t>(constraint->GetConstraintType());
-        if (ImGuiSp::combo_box("##constraintType", constraint_types, &selection_index))
-        {
-            constraint->SetConstraintType(static_cast<ConstraintType>(selection_index));
-        }
-
-        // Other body
-        ImGui::Text("Other Body"); ImGui::SameLine(column_pos_x);
-        ImGui::PushID("##OtherBodyName");
-        ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
-        if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
-        {
-            const uint64_t entity_id = get<uint64_t>(payload->data);
-            other_body               = World::GetEntityById(entity_id);
-            other_body_dirty         = true;
-        }
-        ImGui::PopID();
-
-        // Position
-        ImGui::Text("Position");
-        ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsPosX", &position.x, step, step_fast, precision, inputTextFlags);
-        ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsPosY", &position.y, step, step_fast, precision, inputTextFlags);
-        ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsPosZ", &position.z, step, step_fast, precision, inputTextFlags);
-
-        // Rotation
-        ImGui::Text("Rotation");
-        ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsRotX", &rotation.x, step, step_fast, precision, inputTextFlags);
-        ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsRotY", &rotation.y, step, step_fast, precision, inputTextFlags);
-        ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsRotZ", &rotation.z, step, step_fast, precision, inputTextFlags);
-
-        // High Limit
-        ImGui::Text("High Limit");
-        ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsHighLimX", &high_limit.x, step, step_fast, precision, inputTextFlags);
-        if (constraint->GetConstraintType() == ConstraintType_Slider)
-        {
-            ImGui::SameLine(); ImGui::Text("Y");
-            ImGui::SameLine(); ImGui::InputFloat("##ConsHighLimY", &high_limit.y, step, step_fast, precision, inputTextFlags);
-        }
-
-        // Low Limit
-        ImGui::Text("Low Limit");
-        ImGui::SameLine(column_pos_x); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimX", &low_limit.x, step, step_fast, precision, inputTextFlags);
-        if (constraint->GetConstraintType() == ConstraintType_Slider)
-        {
-            ImGui::SameLine(); ImGui::Text("Y");
-            ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimY", &low_limit.y, step, step_fast, precision, inputTextFlags);
-        }
-
-        //= MAP =======================================================================================================================
-        if (other_body_dirty)                                       { constraint->SetBodyOther(other_body); other_body_dirty = false; }
-        if (position != constraint->GetPosition())                  constraint->SetPosition(position);
-        if (rotation != constraint->GetRotation().ToEulerAngles())  constraint->SetRotation(Quaternion::FromEulerAngles(rotation));
-        if (high_limit != constraint->GetHighLimit())               constraint->SetHighLimit(high_limit);
-        if (low_limit != constraint->GetLowLimit())                 constraint->SetLowLimit(low_limit);
-        //=============================================================================================================================
     }
     component_end();
 }
@@ -1210,18 +1115,9 @@ void Properties::ComponentContextMenu_Add() const
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("Physics"))
+            if (ImGui::MenuItem("Physics Body"))
             {
-                if (ImGui::MenuItem("Physics Body"))
-                {
-                    entity->AddComponent<PhysicsBody>();
-                }
-                else if (ImGui::MenuItem("Constraint"))
-                {
-                    entity->AddComponent<Constraint>();
-                }
-
-                ImGui::EndMenu();
+                entity->AddComponent<PhysicsBody>();
             }
 
             if (ImGui::BeginMenu("Audio"))

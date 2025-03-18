@@ -35,7 +35,6 @@ namespace spartan
     class Renderable;
     class PhysicsBody;
     class Collider;
-    class Constraint;
     class Material;
     class Camera;
     class AudioSource;
@@ -64,7 +63,6 @@ private:
     void ShowLight(std::shared_ptr<spartan::Light> light) const;
     void ShowRenderable(std::shared_ptr<spartan::Renderable> renderable) const;
     void ShowPhysicsBody(std::shared_ptr<spartan::PhysicsBody> rigid_body) const;
-    void ShowConstraint(std::shared_ptr<spartan::Constraint> constraint) const;
     void ShowMaterial(spartan::Material* material) const;
     void ShowCamera(std::shared_ptr<spartan::Camera> camera) const;
     void ShowTerrain(std::shared_ptr<spartan::Terrain> terrain) const;

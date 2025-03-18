@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/PhysicsBody.h"
-#include "World/Components/Constraint.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
@@ -381,10 +380,6 @@ void WorldViewer::PopupContextMenu() const
         {
             ActionEntityCreatePhysicsBody();
         }
-        else if (ImGui::MenuItem("Constraint"))
-        {
-            ActionEntityCreateConstraint();
-        }
 
         ImGui::EndMenu();
     }
@@ -608,13 +603,6 @@ void WorldViewer::ActionEntityCreatePhysicsBody()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<spartan::PhysicsBody>();
     entity->SetObjectName("PhysicsBody");
-}
-
-void WorldViewer::ActionEntityCreateConstraint()
-{
-    auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<spartan::Constraint>();
-    entity->SetObjectName("Constraint");
 }
 
 void WorldViewer::ActionEntityCreateAudioSource()

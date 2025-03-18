@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Entity.h"
 #include "Components/Camera.h"
-#include "Components/Constraint.h"
 #include "Components/Light.h"
 #include "Components/PhysicsBody.h"
 #include "Components/AudioSource.h"
@@ -310,7 +309,6 @@ namespace spartan
         {
             case ComponentType::AudioSource: component = static_pointer_cast<Component>(AddComponent<AudioSource>());   break;
             case ComponentType::Camera:      component = static_pointer_cast<Component>(AddComponent<Camera>());        break;
-            case ComponentType::Constraint:  component = static_pointer_cast<Component>(AddComponent<Constraint>());    break;
             case ComponentType::Light:       component = static_pointer_cast<Component>(AddComponent<Light>());         break;
             case ComponentType::Renderable:  component = static_pointer_cast<Component>(AddComponent<Renderable>());    break;
             case ComponentType::PhysicsBody: component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());   break;
