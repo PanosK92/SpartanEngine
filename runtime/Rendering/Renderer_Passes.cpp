@@ -63,7 +63,7 @@ namespace spartan
 
                 for (shared_ptr<Entity>& entity : renderables)
                 {
-                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
                         renderable->SetFlag(RenderableFlags::Occluded, false);
                     }
@@ -75,8 +75,8 @@ namespace spartan
                 // 1. sort by depth (in case of instancing, use the smallest depth, which is not ideal)
                 std::sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
                 {
-                    Renderable* renderable_a = a->GetComponent<Renderable>().get();
-                    Renderable* renderable_b = b->GetComponent<Renderable>().get();
+                    Renderable* renderable_a = a->GetComponent<Renderable>();
+                    Renderable* renderable_b = b->GetComponent<Renderable>();
 
                     return renderable_a->GetDistanceSquared() < renderable_b->GetDistanceSquared();
                 });
@@ -112,9 +112,9 @@ namespace spartan
                 // find non-instanced index for opaque objects
                 auto non_instanced_opaque_start = find_if(renderables.begin(), renderables.end(), [&](const shared_ptr<Entity>& entity)
                 {
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                    bool is_transparent               = renderable->GetMaterial()->IsTransparent();
-                    bool is_instanced                 = renderable->HasInstancing();
+                    Renderable* renderable = entity->GetComponent<Renderable>();
+                    bool is_transparent    = renderable->GetMaterial()->IsTransparent();
+                    bool is_instanced      = renderable->HasInstancing();
                     return !is_transparent && !is_instanced;
                 });
 
@@ -150,12 +150,11 @@ namespace spartan
 
                     for (shared_ptr<Entity>& entity : entities)
                     {
-                        shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
-                        if (!renderable)
-                            continue;
-
-                        bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
-                        renderable->SetFlag(RenderableFlags::Occluded, occluded);
+                        if (Renderable* renderable = entity->GetComponent<Renderable>())
+                        { 
+                            bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
+                            renderable->SetFlag(RenderableFlags::Occluded, occluded);
+                        }
                     }
                 }
             }
@@ -212,7 +211,7 @@ namespace spartan
             Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
         }
 
-        if (shared_ptr<Camera> camera = GetCamera())
+        if (Camera* camera = GetCamera())
         {
             Pass_Visibility(cmd_list_graphics);
 
@@ -348,7 +347,7 @@ namespace spartan
         // iterate over lights
         for (shared_ptr<Entity>& light_entity : lights)
         {
-            shared_ptr<Light> light = light_entity->GetComponent<Light>();
+            Light* light = light_entity->GetComponent<Light>();
             if (!light || !light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                 continue;
 
@@ -386,8 +385,8 @@ namespace spartan
                     if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
                         continue;
 
-                    shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
+                    Renderable* renderable     = entity->GetComponent<Renderable>();
                     if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
                         continue;
 
@@ -417,7 +416,7 @@ namespace spartan
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
 
-                    RenderableDraw(cmd_list, pso, GetCamera().get(), renderable.get(), light.get(), array_index);
+                    RenderableDraw(cmd_list, pso, renderable, light, array_index);
                 }
             }
         }
@@ -474,8 +473,8 @@ namespace spartan
                 if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
                     continue;
 
-                shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
-                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
+                Renderable* renderable     = entity->GetComponent<Renderable>();
 
                 // toggles
                 {
@@ -530,7 +529,7 @@ namespace spartan
                     cmd_list->BeginOcclusionQuery(entity->GetObjectId());
                 }
 
-                RenderableDraw(cmd_list, pso, GetCamera().get(), renderable.get());
+                RenderableDraw(cmd_list, pso, renderable);
 
                 if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
                 {
@@ -615,8 +614,8 @@ namespace spartan
             if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
                 continue;
 
-            shared_ptr<Entity>& entity        = m_renderables[Renderer_Entity::Mesh][i];
-            shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+            shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
+            Renderable* renderable     = entity->GetComponent<Renderable>();
 
             // toggles
             {
@@ -653,7 +652,7 @@ namespace spartan
                 entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
             }
 
-            RenderableDraw(cmd_list, pso, GetCamera().get(), renderable.get());
+            RenderableDraw(cmd_list, pso, renderable);
         }
 
         // perform early resource transitions
@@ -753,7 +752,7 @@ namespace spartan
             static float array_slice_index = 0.0f;
             for (shared_ptr<Entity> entity : entities)
             {
-                if (shared_ptr<Light> light = entity->GetComponent<Light>())
+                if (Light* light = entity->GetComponent<Light>())
                 {
                     if (!light->GetFlag(LightFlags::ShadowsScreenSpace) || light->GetIntensityWatt() == 0.0f)
                         continue;
@@ -814,22 +813,22 @@ namespace spartan
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
         // get directional light
-        shared_ptr<Light> light = nullptr;
+        Light* light_directional = nullptr;
         {
             const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
             for (size_t i = 0; i < entities.size(); i++)
             {
-                if (shared_ptr<Light> light_ = entities[i]->GetComponent<Light>())
+                if (Light* light = entities[i]->GetComponent<Light>())
                 {
-                    if (light_->GetLightType() == LightType::Directional)
+                    if (light->GetLightType() == LightType::Directional)
                     {
-                        light = light_;
+                        light_directional = light;
                         break;
                     }
                 }
             }
 
-            if (!light)
+            if (!light_directional)
                 return;
         }
 
@@ -842,7 +841,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso_skysphere);
 
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light_directional->GetIndex()), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
@@ -884,7 +883,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3, GetRenderTarget(Renderer_RenderTarget::light_shadow));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
 
-                if (shared_ptr<Light> light = entities[light_index]->GetComponent<Light>())
+                if (Light* light = entities[light_index]->GetComponent<Light>())
                 {
                     // do lighting even if the intensity is 0 as the first light (index 0) clears the render targets in the shader
 
@@ -1079,7 +1078,7 @@ namespace spartan
         {
             for (const shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
             {
-                if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
+                if (Light* light = entity->GetComponent<Light>())
                 {
                     if (light->GetLightType() == LightType::Directional)
                     {
@@ -1487,7 +1486,7 @@ namespace spartan
         {
             RHI_FidelityFX::FSR3_Dispatch(
                 cmd_list,
-                GetCamera().get(),
+                GetCamera(),
                 m_cb_frame_cpu.delta_time,
                 GetOption<float>(Renderer_Option::Sharpness),
                 1.0f,
@@ -1725,7 +1724,7 @@ namespace spartan
             RHI_Texture* texture = nullptr;
 
             // light can be null if it just got removed and our buffer doesn't update till the next frame
-            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            if (Light* light = entity->GetComponent<Light>())
             {
                 // get the texture
                 if (light->GetLightType() == LightType::Directional) texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
@@ -1839,7 +1838,7 @@ namespace spartan
         RHI_Shader* shader_p = GetShader(Renderer_Shader::outline_p);
         RHI_Shader* shader_c = GetShader(Renderer_Shader::outline_c);
 
-        if (shared_ptr<Camera> camera = Renderer::GetCamera())
+        if (Camera* camera = Renderer::GetCamera())
         {
             if (shared_ptr<Entity> entity_selected = camera->GetSelectedEntity())
             {
@@ -1847,7 +1846,7 @@ namespace spartan
                 {
                     RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline);
 
-                    if (shared_ptr<Renderable> renderable = entity_selected->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity_selected->GetComponent<Renderable>())
                     {
                         cmd_list->BeginMarker("color_silhouette");
                         {
@@ -1960,11 +1959,9 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light, uint32_t array_index)
+    void Renderer::RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Renderable* renderable, Light* light, uint32_t array_index)
     {
-        bool draw_instanced     = renderable->HasInstancing();
-        Vector3 camera_position = camera->GetEntity()->GetPosition();
-        uint32_t lod_bias       = light != nullptr ? 2 : 0;
+        const uint32_t lod_bias = light != nullptr ? 2 : 0;
     
         auto set_buffers = [cmd_list](Renderable* renderable)
         {
@@ -1974,7 +1971,7 @@ namespace spartan
             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
         };
     
-        if (draw_instanced)
+        if (renderable->HasInstancing())
         {
             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
             {

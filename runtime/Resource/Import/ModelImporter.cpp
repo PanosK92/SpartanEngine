@@ -616,7 +616,7 @@ namespace spartan
                 const aiLight* light_assimp = scene->mLights[i];
 
                 // add a light component
-                shared_ptr<Light> light = new_entity->AddComponent<Light>();
+                Light* light = new_entity->AddComponent<Light>();
 
                 // disable shadows (to avoid tanking the framerate)
                 light->SetFlag(LightFlags::Shadows, false);

@@ -102,7 +102,7 @@ namespace spartan
         //===============================================================================================
   
         //= RESOURCES =========================================================================================================
-        static std::shared_ptr<Camera> GetCamera();
+        static Camera* GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
         static std::vector<std::shared_ptr<Entity>> GetEntitiesLights();
 
@@ -190,7 +190,7 @@ namespace spartan
         static void AddLinesToBeRendered();
         static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
-        static void RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Camera* camera, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0);
+        static void RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0);
 
         // bindless
         static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);

@@ -60,13 +60,13 @@ public:
 
 private:
     void ShowTransform(std::shared_ptr<spartan::Entity> transform) const;
-    void ShowLight(std::shared_ptr<spartan::Light> light) const;
-    void ShowRenderable(std::shared_ptr<spartan::Renderable> renderable) const;
-    void ShowPhysicsBody(std::shared_ptr<spartan::PhysicsBody> rigid_body) const;
+    void ShowLight(spartan::Light* light) const;
+    void ShowRenderable(spartan::Renderable* renderable) const;
+    void ShowPhysicsBody(spartan::PhysicsBody* rigid_body) const;
     void ShowMaterial(spartan::Material* material) const;
-    void ShowCamera(std::shared_ptr<spartan::Camera> camera) const;
-    void ShowTerrain(std::shared_ptr<spartan::Terrain> terrain) const;
-    void ShowAudioSource(std::shared_ptr<spartan::AudioSource> audio_source) const;
+    void ShowCamera(spartan::Camera* camera) const;
+    void ShowTerrain(spartan::Terrain* terrain) const;
+    void ShowAudioSource(spartan::AudioSource* audio_source) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

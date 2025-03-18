@@ -771,7 +771,7 @@ namespace spartan
             entity->SetObjectName(name);
             entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
 
-            if (shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>())
+            if (Renderable* renderable = entity->AddComponent<Renderable>())
             {
                 renderable->SetMesh(mesh.get());
                 renderable->SetMaterial(m_material);
@@ -794,7 +794,7 @@ namespace spartan
 
         for (Entity* child : m_entity_ptr->GetChildren())
         {
-            if (shared_ptr<Renderable> renderable = child->AddComponent<Renderable>())
+            if (Renderable* renderable = child->AddComponent<Renderable>())
             {
                 renderable->SetMesh(nullptr);
             }

@@ -57,7 +57,7 @@ namespace spartan
                 if (component_original != nullptr)
                 {
                     // component
-                    shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
+                    Component* component_clone = clone->AddComponent(component_original->GetType());
 
                     // component's properties
                     component_clone->SetAttributes(component_original->GetAttributes());
@@ -243,7 +243,7 @@ namespace spartan
                     uint64_t component_id = 0;
                     stream->Read(&component_id);
 
-                    shared_ptr<Component> component = AddComponent(static_cast<ComponentType>(component_type));
+                    Component* component = AddComponent(static_cast<ComponentType>(component_type));
                     component->SetObjectId(component_id);
                 }
             }
@@ -301,19 +301,19 @@ namespace spartan
         return m_is_active;
     }
     
-    shared_ptr<Component> Entity::AddComponent(const ComponentType type)
+    Component* Entity::AddComponent(const ComponentType type)
     {
-        shared_ptr<Component> component = nullptr;
+        Component* component = nullptr;
 
         switch (type)
         {
-            case ComponentType::AudioSource: component = static_pointer_cast<Component>(AddComponent<AudioSource>());   break;
-            case ComponentType::Camera:      component = static_pointer_cast<Component>(AddComponent<Camera>());        break;
-            case ComponentType::Light:       component = static_pointer_cast<Component>(AddComponent<Light>());         break;
-            case ComponentType::Renderable:  component = static_pointer_cast<Component>(AddComponent<Renderable>());    break;
-            case ComponentType::PhysicsBody: component = static_pointer_cast<Component>(AddComponent<PhysicsBody>());   break;
-            case ComponentType::Terrain:     component = static_pointer_cast<Component>(AddComponent<Terrain>());       break;
-            default:                         component = nullptr;                                                       break;
+            case ComponentType::AudioSource: component = static_cast<Component*>(AddComponent<AudioSource>());   break;
+            case ComponentType::Camera:      component = static_cast<Component*>(AddComponent<Camera>());        break;
+            case ComponentType::Light:       component = static_cast<Component*>(AddComponent<Light>());         break;
+            case ComponentType::Renderable:  component = static_cast<Component*>(AddComponent<Renderable>());    break;
+            case ComponentType::PhysicsBody: component = static_cast<Component*>(AddComponent<PhysicsBody>());   break;
+            case ComponentType::Terrain:     component = static_cast<Component*>(AddComponent<Terrain>());       break;
+            default:                         component = nullptr;                                               break;
         }
 
         SP_ASSERT(component != nullptr);

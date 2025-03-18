@@ -130,7 +130,7 @@ void TextureViewer::OnVisible()
         // lights
         for (shared_ptr<Entity>& entity : Renderer::GetEntitiesLights())
         {
-            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            if (Light* light = entity->GetComponent<Light>())
             {
                 if (RHI_Texture* depth_map = light->GetDepthTexture())
                 {

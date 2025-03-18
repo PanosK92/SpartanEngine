@@ -60,12 +60,12 @@ namespace spartan
 
         // adds a component of type T
         template <class T>
-        std::shared_ptr<T> AddComponent()
+        T* AddComponent()
         {
             const ComponentType type = Component::TypeToEnum<T>();
 
             // early exit if the component exists
-            if (std::shared_ptr<T> component = GetComponent<T>())
+            if (T* component = GetComponent<T>())
                 return component;
 
             // create a new component
@@ -80,18 +80,18 @@ namespace spartan
 
             World::Resolve();
 
-            return component;
+            return component.get();
         }
 
         // adds a component of ComponentType 
-        std::shared_ptr<Component> AddComponent(ComponentType type);
+        Component* AddComponent(ComponentType type);
 
         // returns a component of type T
         template <class T>
-        std::shared_ptr<T> GetComponent()
+        T* GetComponent()
         {
             const ComponentType component_type = Component::TypeToEnum<T>();
-            return std::static_pointer_cast<T>(m_components[static_cast<uint32_t>(component_type)]);
+            return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
         }
 
         // removes a component

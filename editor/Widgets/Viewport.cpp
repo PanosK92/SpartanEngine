@@ -100,7 +100,7 @@ void Viewport::OnTickVisible()
         m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(get<const char*>(payload->data));
     }
 
-    shared_ptr<Camera> camera = Renderer::GetCamera();
+    Camera* camera = Renderer::GetCamera();
 
     // mouse picking
     if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())

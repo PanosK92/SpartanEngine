@@ -307,7 +307,7 @@ namespace spartan
 
     void Physics::PickBody()
     {
-        if (shared_ptr<Camera> camera = Renderer::GetCamera())
+        if (Camera* camera = Renderer::GetCamera())
         {
             const Ray& picking_ray = camera->ComputePickingRay();
 
@@ -366,7 +366,7 @@ namespace spartan
 
     void Physics::MovePickedBody()
     {
-        if (shared_ptr<Camera> camera = Renderer::GetCamera())
+        if (Camera* camera = Renderer::GetCamera())
         {
             Ray picking_ray       = camera->ComputePickingRay();
             Vector3 ray_start     = picking_ray.GetStart();

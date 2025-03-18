@@ -599,7 +599,7 @@ namespace spartan
             FfxBrixelizerInstanceDescription create_instance_description(const shared_ptr<Entity>& entity, uint32_t instance_index = 0)
             {
                 FfxBrixelizerInstanceDescription desc = {};
-                shared_ptr<Renderable> renderable     = entity->GetComponent<Renderable>();
+                Renderable* renderable                = entity->GetComponent<Renderable>();
             
                 // aabb: world space, pre-transformed
                 const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBox(BoundingBoxType::TransformedInstance, instance_index) : renderable->GetBoundingBox(BoundingBoxType::Transformed);
@@ -1201,7 +1201,7 @@ namespace spartan
                 bool is_dynamic                      = entity->IsMoving();
                 auto static_it                       = brixelizer_gi::static_instances.find(entity_id);
                 bool was_static                      = static_it != brixelizer_gi::static_instances.end();
-                shared_ptr<Renderable> renderable    = entity->GetComponent<Renderable>();
+                Renderable* renderable               = entity->GetComponent<Renderable>();
 
                 if (is_dynamic)
                 {

@@ -140,7 +140,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     if (!is_in_game_mode)
     { 
-        if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
+        if (spartan::Camera* camera = spartan::Renderer::GetCamera())
         {
             if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
@@ -261,7 +261,7 @@ void WorldViewer::SetSelectedEntity(const std::shared_ptr<spartan::Entity> entit
 
     m_expand_to_selection = true;
 
-    if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
+    if (spartan::Camera* camera = spartan::Renderer::GetCamera())
     {
         camera->SetSelectedEntity(entity);
     }
@@ -282,7 +282,7 @@ void WorldViewer::PopupContextMenu() const
 
     // Get selected entity
     shared_ptr<spartan::Entity> selected_entity = nullptr;
-    if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
+    if (spartan::Camera* camera = spartan::Renderer::GetCamera())
     {
         selected_entity = camera->GetSelectedEntity();
     }
@@ -443,7 +443,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (spartan::Input::GetKey(spartan::KeyCode::Delete))
     {
-        if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
+        if (spartan::Camera* camera = spartan::Renderer::GetCamera())
         { 
             if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
@@ -501,7 +501,7 @@ spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
 {
     shared_ptr<spartan::Entity> entity = spartan::World::CreateEntity();
     
-    if (shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera())
+    if (spartan::Camera* camera = spartan::Renderer::GetCamera())
     {
         if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {
@@ -583,7 +583,7 @@ void WorldViewer::ActionEntityCreateLightPoint()
     auto entity = ActionEntityCreateEmpty();
     entity->SetObjectName("Point");
 
-    shared_ptr<spartan::Light> light = entity->AddComponent<spartan::Light>();
+    spartan::Light* light = entity->AddComponent<spartan::Light>();
     light->SetLightType(spartan::LightType::Point);
     light->SetIntensity(spartan::LightIntensity::bulb_150_watt);
 }
@@ -593,7 +593,7 @@ void WorldViewer::ActionEntityCreateLightSpot()
     auto entity = ActionEntityCreateEmpty();
     entity->SetObjectName("Spot");
 
-    shared_ptr<spartan::Light> light = entity->AddComponent<spartan::Light>();
+    spartan::Light* light = entity->AddComponent<spartan::Light>();
     light->SetLightType(spartan::LightType::Spot);
     light->SetIntensity(spartan::LightIntensity::bulb_150_watt);
 }

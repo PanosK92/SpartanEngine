@@ -226,7 +226,7 @@ namespace spartan
         for (RayHit& hit : hits)
         {
             // Get entity geometry
-            shared_ptr<Renderable> renderable = hit.m_entity->GetComponent<Renderable>();
+            Renderable* renderable = hit.m_entity->GetComponent<Renderable>();
             vector<uint32_t> indicies;
             vector<RHI_Vertex_PosTexNorTan> vertices;
             renderable->GetGeometry(&indicies, &vertices);
@@ -636,7 +636,7 @@ namespace spartan
 
             // if the entity has a renderable component, we can get a more accurate target position
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
-            if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+            if (Renderable* renderable = entity->GetComponent<Renderable>())
             {
                 m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox(BoundingBoxType::Transformed).GetExtents().Length() * 2.0f;
             }

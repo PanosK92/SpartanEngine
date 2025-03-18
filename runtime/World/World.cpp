@@ -348,7 +348,7 @@ namespace spartan
             {
                 if (entity.second->IsActive())
                 {
-                    if (shared_ptr<Renderable> renderable = entity.second->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity.second->GetComponent<Renderable>())
                     {
                         if (renderable->IsVisible())
                         {

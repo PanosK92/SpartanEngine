@@ -130,7 +130,7 @@ namespace spartan
         bool update = GetEntity()->IsMoving();
         if (m_light_type == LightType::Directional)
         { 
-            if (shared_ptr<Camera> camera = Renderer::GetCamera())
+            if (Camera* camera = Renderer::GetCamera())
             {
                 if (camera->GetEntity()->IsMoving())
                 {
@@ -379,7 +379,7 @@ namespace spartan
         }
 
         // multiply by the camera's exposure to get the final intensity
-        Camera* camera  = Renderer::GetCamera().get();
+        Camera* camera  = Renderer::GetCamera();
         power_watts    *= camera ? camera->GetExposure() : 1.0f;
 
         return power_watts;
@@ -431,7 +431,7 @@ namespace spartan
         if (m_light_type == LightType::Directional)
         {
             Vector3 target = Vector3::Zero;
-            if (shared_ptr<Camera> camera = Renderer::GetCamera())
+            if (Camera* camera = Renderer::GetCamera())
             {
                 target = camera->GetEntity()->GetPosition();
             }

@@ -51,9 +51,9 @@ namespace
     #define item_width   120.0f * spartan::Window::GetDpiScale()
 
     string context_menu_id;
-    shared_ptr<Component> copied_component = nullptr;
+    Component* copied_component = nullptr;
 
-    void component_context_menu_options(const string& id, shared_ptr<Component> component, const bool removable)
+    void component_context_menu_options(const string& id, Component* component, const bool removable)
     {
         if (ImGui::BeginPopup(id.c_str()))
         {
@@ -88,7 +88,7 @@ namespace
         }
     }
 
-    bool component_begin(const string& name, const IconType icon_enum, shared_ptr<Component> component_instance, bool options = true, const bool removable = true)
+    bool component_begin(const string& name, const IconType icon_enum, Component* component_instance, bool options = true, const bool removable = true)
     {
         // collapsible contents
         ImGui::PushFont(Editor::font_bold);
@@ -155,9 +155,9 @@ void Properties::OnTickVisible()
         {
             if (!m_inspected_entity.expired())
             {
-                shared_ptr<Entity> entity_ptr     = m_inspected_entity.lock();
-                shared_ptr<Renderable> renderable = entity_ptr->GetComponent<Renderable>();
-                Material* material                = renderable ? renderable->GetMaterial() : nullptr;
+                shared_ptr<Entity> entity_ptr = m_inspected_entity.lock();
+                Renderable* renderable        = entity_ptr->GetComponent<Renderable>();
+                Material* material            = renderable ? renderable->GetMaterial() : nullptr;
 
                 ShowTransform(entity_ptr);
                 ShowLight(entity_ptr->GetComponent<Light>());
@@ -236,7 +236,7 @@ void Properties::ShowTransform(shared_ptr<Entity> entity) const
     component_end();
 }
 
-void Properties::ShowLight(shared_ptr<Light> light) const
+void Properties::ShowLight(spartan::Light* light) const
 {
     if (!light)
         return;
@@ -370,7 +370,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
     component_end();
 }
 
-void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
+void Properties::ShowRenderable(spartan::Renderable* renderable) const
 {
     if (!renderable)
         return;
@@ -485,7 +485,7 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
     component_end();
 }
 
-void Properties::ShowPhysicsBody(shared_ptr<PhysicsBody> body) const
+void Properties::ShowPhysicsBody(PhysicsBody* body) const
 {
     if (!body)
         return;
@@ -867,7 +867,7 @@ void Properties::ShowMaterial(Material* material) const
     component_end();
 }
 
-void Properties::ShowCamera(shared_ptr<Camera> camera) const
+void Properties::ShowCamera(Camera* camera) const
 {
     if (!camera)
         return;
@@ -942,7 +942,7 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
     component_end();
 }
 
-void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
+void Properties::ShowTerrain(Terrain* terrain) const
 {
     if (!terrain)
         return;
@@ -1003,7 +1003,7 @@ void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
     component_end();
 }
 
-void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
+void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 {
     if (!audio_source)
         return;

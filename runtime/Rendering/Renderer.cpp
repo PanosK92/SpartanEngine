@@ -99,7 +99,7 @@ namespace spartan
             float intensity = 0.0f;
             for (const shared_ptr<Entity>& entity : lights)
             {
-                if (const shared_ptr<Light>& light = entity->GetComponent<Light>())
+                if (Light* light = entity->GetComponent<Light>())
                 {
                     if (light->GetLightType() == LightType::Directional)
                     {
@@ -434,7 +434,7 @@ namespace spartan
     {
         // matrices
         {
-            if (shared_ptr<Camera> camera = GetCamera())
+            if (Camera* camera = GetCamera())
             {
                 if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
                 {
@@ -476,7 +476,7 @@ namespace spartan
         m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
         m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
         m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
-        if (shared_ptr<Camera> camera = GetCamera())
+        if (Camera* camera = GetCamera())
         {
             m_cb_frame_cpu.view_projection_previous_unjittered =  m_cb_frame_cpu.view_projection_unjittered;
             m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
@@ -526,7 +526,7 @@ namespace spartan
             if (!entity->IsActive())
                 continue;
 
-            if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+            if (Renderable* renderable = entity->GetComponent<Renderable>())
             {
                 if (Material* material = renderable->GetMaterial())
                 {
@@ -541,17 +541,17 @@ namespace spartan
                 }
             }
 
-            if (shared_ptr<Light> light = entity->GetComponent<Light>())
+            if (Light* light = entity->GetComponent<Light>())
             {
                 m_renderables[Renderer_Entity::Light].emplace_back(entity);
             }
 
-            if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
+            if (Camera* camera = entity->GetComponent<Camera>())
             {
                 m_renderables[Renderer_Entity::Camera].emplace_back(entity);
             }
 
-            if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
+            if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
             {
                 m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
             }
@@ -877,7 +877,7 @@ namespace spartan
         return frame_num;
     }
 
-    shared_ptr<Camera> Renderer::GetCamera()
+    Camera* Renderer::GetCamera()
     {
         if (m_renderables[Renderer_Entity::Camera].empty())
             return nullptr;
@@ -991,7 +991,7 @@ namespace spartan
             {
                 if (entity)
                 {
-                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
@@ -1043,7 +1043,7 @@ namespace spartan
             // go through each light
             for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
             {
-                if (Light* light = entity->GetComponent<Light>().get())
+                if (Light* light = entity->GetComponent<Light>())
                 {
                     light->SetIndex(index);
 

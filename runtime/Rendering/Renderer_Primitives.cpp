@@ -206,12 +206,12 @@ namespace spartan
             auto& lights = GetEntities()[Renderer_Entity::Light];
             for (const auto& entity : lights)
             {
-                if (shared_ptr<Camera> camera = GetCamera())
+                if (Camera* camera = GetCamera())
                 {
                     shared_ptr<Entity> entity_selected = camera->GetSelectedEntity();
                     if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
                     {
-                        shared_ptr<Light> light = entity->GetComponent<Light>();
+                        Light* light = entity->GetComponent<Light>();
 
                         if (light->GetLightType() == LightType::Directional)
                         {
@@ -270,9 +270,9 @@ namespace spartan
             {
                 for (const auto& entity : GetEntities()[entity_type])
                 {
-                    if (auto renderable = entity->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
-                        DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), get_color(renderable.get()));
+                        DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), get_color(renderable));
                     }
                 }
             };
@@ -281,13 +281,13 @@ namespace spartan
             {
                 for (const auto& entity : GetEntities()[entity_type])
                 {
-                    if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
                         uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
                         for (uint32_t group_index = 0; group_index < group_count; group_index++)
                         {
                             const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-                            DrawBox(bounding_box_group, get_color(renderable.get()));
+                            DrawBox(bounding_box_group, get_color(renderable));
                         }
                     }
                 }

@@ -71,7 +71,7 @@ namespace ImGui::TransformGizmo
         if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
             return;
 
-        std::shared_ptr<spartan::Camera> camera = spartan::Renderer::GetCamera();
+        spartan::Camera* camera = spartan::Renderer::GetCamera();
         if (!camera)
             return;
 

@@ -812,7 +812,7 @@ namespace spartan
 
             case PhysicsShape::Terrain:
             {
-                Terrain* terrain = GetEntity()->GetComponent<Terrain>().get();
+                Terrain* terrain = GetEntity()->GetComponent<Terrain>();
                 if (!terrain)
                 {
                     SP_LOG_WARNING("For a terrain shape to be constructed, there needs to be a Terrain component");
@@ -849,7 +849,7 @@ namespace spartan
                 function<void(Entity*, btCompoundShape*, bool, bool)> recursive_renderable_to_shape = [&](Entity* entity, btCompoundShape* shape_compount, const bool is_root_entity, const bool replicate_hierarchy)
                 {
                     // get renderable
-                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
+                    Renderable* renderable = entity->GetComponent<Renderable>();
                     if (renderable)
                     {
                         if (is_root_entity)

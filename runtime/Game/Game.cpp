@@ -67,7 +67,7 @@ namespace spartan
             shared_ptr<Entity> entity = World::CreateEntity();
             entity->SetObjectName("audio_source");
 
-            shared_ptr<AudioSource> audio_source = entity->AddComponent<AudioSource>();
+            AudioSource* audio_source = entity->AddComponent<AudioSource>();
             audio_source->SetAudioClip(soundtrack_file_path);
             audio_source->SetLoop(true);
         }
@@ -78,7 +78,7 @@ namespace spartan
             m_default_light_directional->SetObjectName("light_directional");
             m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
             
-            shared_ptr<Light> light = m_default_light_directional->AddComponent<Light>();
+            Light* light = m_default_light_directional->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
             light->SetTemperature(2300.0f);
             light->SetIntensity(sun_intensity);
@@ -96,14 +96,14 @@ namespace spartan
             entity->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
             
             // add a renderable component
-            shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
+            Renderable* renderable = entity->AddComponent<Renderable>();
             renderable->SetMesh(MeshType::Quad);
             renderable->SetDefaultMaterial();
             renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, entity->GetScale().x);
             renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, entity->GetScale().z);
             
             // add physics components
-            shared_ptr<PhysicsBody> physics_body = entity->AddComponent<PhysicsBody>();
+            PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
             physics_body->SetShapeType(PhysicsShape::StaticPlane);
         }
 
@@ -115,7 +115,7 @@ namespace spartan
             m_default_physics_body_camera->SetPosition(camera_position);
             
             // add a physics body so that the camera can move through the environment in a physical manner
-            PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>().get();
+            PhysicsBody* physics_body = m_default_physics_body_camera->AddComponent<PhysicsBody>();
             physics_body->SetBoundingBox(Vector3(0.45f, 1.8f, 0.25f)); // average european male
             physics_body->SetMass(82.0f);
             physics_body->SetShapeType(PhysicsShape::Capsule);
@@ -243,7 +243,7 @@ namespace spartan
 
                 // add physics body
                 {
-                    PhysicsBody* physics_body = m_default_car->AddComponent<PhysicsBody>().get();
+                    PhysicsBody* physics_body = m_default_car->AddComponent<PhysicsBody>();
                     physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
                     physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
                     physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
@@ -353,7 +353,7 @@ namespace spartan
                     sound->SetObjectName("sound_start");
                     sound->SetParent(m_default_car);
 
-                    shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_start.wav");
                     audio_source->SetLoop(false);
                     audio_source->SetPlayOnStart(false);
@@ -365,7 +365,7 @@ namespace spartan
                     sound->SetObjectName("sound_idle");
                     sound->SetParent(m_default_car);
 
-                    shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_idle.wav");
                     audio_source->SetLoop(true);
                     audio_source->SetPlayOnStart(false);
@@ -377,7 +377,7 @@ namespace spartan
                     sound->SetObjectName("sound_door");
                     sound->SetParent(m_default_car);
 
-                    shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_door.wav");
                     audio_source->SetLoop(false);
                     audio_source->SetPlayOnStart(false);
@@ -420,12 +420,12 @@ namespace spartan
                 material->SetResourceFilePath(file_path);
 
                 // add a renderable component
-                shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
+                Renderable* renderable = entity->AddComponent<Renderable>();
                 renderable->SetMesh(MeshType::Cube);
                 renderable->SetMaterial(material);
 
                 // add physics components
-                shared_ptr<PhysicsBody> physics_body = entity->AddComponent<PhysicsBody>();
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Box);
             }
@@ -438,7 +438,7 @@ namespace spartan
                 entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
                 entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
 
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
@@ -451,7 +451,7 @@ namespace spartan
                 entity->SetPosition(Vector3(2.0f, y, 0.0f));
                 entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh);
             }
@@ -466,7 +466,7 @@ namespace spartan
 
                 if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
                 {
-                    PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>().get();
+                    PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>();
                     physics_body->SetMass(PhysicsBody::mass_auto);
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                 }
@@ -502,7 +502,7 @@ namespace spartan
                     sound->SetObjectName("footsteps");
                     sound->SetParent(entity);
 
-                    shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\footsteps_grass.wav");
                     audio_source->SetPlayOnStart(false);
                 }
@@ -513,7 +513,7 @@ namespace spartan
                     sound->SetObjectName("forest_river");
                     sound->SetParent(entity);
 
-                    shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\forest_river.wav");
                     audio_source->SetLoop(true);
                 }
@@ -524,7 +524,7 @@ namespace spartan
                     sound->SetObjectName("wind");
                     sound->SetParent(entity);
 
-                    shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\wind.wav");
                     audio_source->SetLoop(true);
                 }
@@ -535,7 +535,7 @@ namespace spartan
                     sound->SetObjectName("underwater");
                     sound->SetParent(entity);
 
-                    shared_ptr<AudioSource> audio_source = sound->AddComponent<AudioSource>();
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\underwater.wav");
                     audio_source->SetPlayOnStart(false);
                 }
@@ -543,7 +543,7 @@ namespace spartan
 
             // terrain
             {
-                shared_ptr<Terrain> terrain = m_default_terrain->AddComponent<Terrain>();
+                Terrain* terrain = m_default_terrain->AddComponent<Terrain>();
 
                 // add renderable component with a material
                 {
@@ -580,7 +580,7 @@ namespace spartan
                 terrain->Generate();
 
                 // add physics so we can walk on it
-                PhysicsBody* physics_body = m_default_terrain->AddComponent<PhysicsBody>().get();
+                PhysicsBody* physics_body = m_default_terrain->AddComponent<PhysicsBody>();
                 physics_body->SetShapeType(PhysicsShape::Terrain);
 
                 // water
@@ -641,7 +641,7 @@ namespace spartan
                                 entity->SetObjectName(name);
                                 entity->SetParent(water);
 
-                                if (shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>())
+                                if (Renderable* renderable = entity->AddComponent<Renderable>())
                                 {
                                     renderable->SetMesh(mesh.get());
                                     renderable->SetMaterial(material);
@@ -674,7 +674,7 @@ namespace spartan
                         
                         if (Entity* leaf = entity->GetDescendantByName("Plane.550_leaf_0"))
                         {
-                            Renderable* renderable = leaf->GetComponent<Renderable>().get();
+                            Renderable* renderable = leaf->GetComponent<Renderable>();
                 
                             renderable->SetInstances(instances);
                             renderable->SetMaxRenderDistance(foliage_max_render_distance);
@@ -728,7 +728,7 @@ namespace spartan
                     terrain->GenerateTransforms(&instances, 20000000, TerrainProp::Grass);
                 
                     // add renderable component
-                    Renderable* renderable = entity->AddComponent<Renderable>().get();
+                    Renderable* renderable = entity->AddComponent<Renderable>();
                     renderable->SetMesh(mesh.get());
                     renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
                     renderable->SetInstances(instances);
@@ -762,7 +762,7 @@ namespace spartan
                 entity->SetObjectName("light_point");
                 entity->SetPosition(Vector3(0.0f, 7.5f, 0.0f));
 
-                shared_ptr<Light> light = entity->AddComponent<Light>();
+                Light* light = entity->AddComponent<Light>();
                 light->SetLightType(LightType::Point);
                 light->SetColor(Color::light_light_bulb);
                 light->SetRange(39.66f);
@@ -783,7 +783,7 @@ namespace spartan
                 entity->SetScale(scale);
 
                 // make the lamp frame not cast shadows
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
                 {
                     renderable->SetFlag(RenderableFlags::CastsShadows, false);
                 }
@@ -801,7 +801,7 @@ namespace spartan
                 {
                     if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -875,7 +875,7 @@ namespace spartan
                 entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
                 entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
 
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
         }
@@ -906,7 +906,7 @@ namespace spartan
                 {
                     if (entity->IsActive() && entity->GetComponent<Renderable>())
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -944,7 +944,7 @@ namespace spartan
                 {
                     if (entity->IsActive() && entity->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -965,7 +965,7 @@ namespace spartan
                 entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
                 entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
 
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
         }
@@ -987,7 +987,7 @@ namespace spartan
                 entity->SetScale(Vector3(2.5f, 2.5f, 2.5f));
 
                 // make the radiator metallic
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_93")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("Mesh_93")->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
@@ -997,7 +997,7 @@ namespace spartan
                 }
 
                 // make the vase/plate smoother
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_122")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("Mesh_122")->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
@@ -1006,7 +1006,7 @@ namespace spartan
                 }
 
                 // make the tv smoother
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_20")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("Mesh_20")->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
@@ -1015,7 +1015,7 @@ namespace spartan
                 }
 
                 // make the floor smoother
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_111")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("Mesh_111")->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
@@ -1033,7 +1033,7 @@ namespace spartan
                 m_default_light_directional->GetComponent<Light>()->SetIntensity(LightIntensity::sky_overcast_day);
 
                 // make the walls double sided
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_114")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("Mesh_114")->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
@@ -1042,7 +1042,7 @@ namespace spartan
                 }
 
                 // make the ceiling double sided
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_110")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("Mesh_110")->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
@@ -1051,7 +1051,7 @@ namespace spartan
                 }
 
                 // make the windows double sided
-                if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("WhitePaint")->GetComponent<Renderable>())
+                if (Renderable* renderable = entity->GetDescendantByName("WhitePaint")->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
@@ -1059,16 +1059,16 @@ namespace spartan
                     }
                 }
 
-                 // make the windows blinds double sided
+                // make the windows blinds double sided
                 {
-                    if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_45")->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity->GetDescendantByName("Mesh_45")->GetComponent<Renderable>())
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
                             material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         }
                     }
-                    if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_55")->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity->GetDescendantByName("Mesh_55")->GetComponent<Renderable>())
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
@@ -1076,7 +1076,7 @@ namespace spartan
                         }
                     }
 
-                    if (shared_ptr<Renderable> renderable = entity->GetDescendantByName("Mesh_95")->GetComponent<Renderable>())
+                    if (Renderable* renderable = entity->GetDescendantByName("Mesh_95")->GetComponent<Renderable>())
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
@@ -1092,7 +1092,7 @@ namespace spartan
                {
                    if (entity->GetComponent<Renderable>() != nullptr)
                    {
-                       PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                       PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                        physics_body->SetShapeType(PhysicsShape::Mesh);
                    }
                }
@@ -1119,7 +1119,7 @@ namespace spartan
                 {
                     if (entity->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>().get();
+                        PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -1159,9 +1159,9 @@ namespace spartan
         
             // get some commonly used things
             bool inside_the_car             = m_default_physics_body_camera->GetChildrenCount() == 0;
-            AudioSource* audio_source_door  = m_default_car->GetChildByName("sound_door")->GetComponent<AudioSource>().get();
-            AudioSource* audio_source_start = m_default_car->GetChildByName("sound_start")->GetComponent<AudioSource>().get();
-            AudioSource* audio_source_idle  = m_default_car->GetChildByName("sound_idle")->GetComponent<AudioSource>().get();
+            AudioSource* audio_source_door  = m_default_car->GetChildByName("sound_door")->GetComponent<AudioSource>();
+            AudioSource* audio_source_start = m_default_car->GetChildByName("sound_start")->GetComponent<AudioSource>();
+            AudioSource* audio_source_idle  = m_default_car->GetChildByName("sound_idle")->GetComponent<AudioSource>();
         
             // enter/exit
             if (Input::GetKeyDown(KeyCode::E))
@@ -1226,8 +1226,8 @@ namespace spartan
         // forest logic
         if (m_default_terrain)
         {
-            Camera*  camera  = Renderer::GetCamera().get();
-            Terrain* terrain = m_default_terrain->GetComponent<Terrain>().get();
+            Camera*  camera  = Renderer::GetCamera();
+            Terrain* terrain = m_default_terrain->GetComponent<Terrain>();
             if (!camera || !terrain)
                 return;
 
@@ -1239,7 +1239,7 @@ namespace spartan
                 {
                     if (Entity* entity = m_default_terrain->GetDescendantByName("underwater"))
                     {
-                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
+                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
                         {
                             if (is_below_water_level && !audio_source->IsPlaying())
                             {
@@ -1258,7 +1258,7 @@ namespace spartan
                 {
                     if (Entity* entity = m_default_terrain->GetDescendantByName("footsteps"))
                     {
-                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>().get())
+                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
                         {
                             if (camera->IsWalking() && !audio_source->IsPlaying())
                             {
