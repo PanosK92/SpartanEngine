@@ -1680,6 +1680,7 @@ namespace spartan
         uint32_t instance_start_index = 0;
         bool draw_instanced           = renderable->HasInstancing();
         Vector3 camera_position       = camera->GetEntity()->GetPosition();
+        uint32_t lod_bias             = light != nullptr ? 2 : 0;
         
         if (draw_instanced)
         {
@@ -1688,7 +1689,7 @@ namespace spartan
                 uint32_t group_end_index              = renderable->GetBoundingBoxGroupEndIndices()[group_index];
                 uint32_t instance_count               = group_end_index - instance_start_index;
                 const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-        
+
                 // skip instance groups outside of the view frustum when a light is provided
                 if (light)
                 {
@@ -1700,7 +1701,7 @@ namespace spartan
                 }
         
                 // clamp instance_count to prevent exceeding total instance count
-                instance_count = std::min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                instance_count = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
         
                 // draw only if there are instances and the group is visible
                 if (instance_count > 0 && renderable->IsVisible(group_index))
@@ -1708,7 +1709,7 @@ namespace spartan
                     RenderableSetBuffers(cmd_list, renderable);
 
                     // deduce lod
-                    uint32_t lod_index = renderable->GetLodIndex(group_index);
+                    uint32_t lod_index = min(renderable->GetLodIndex(group_index) + lod_bias, renderable->GetLodCount() - 1);
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(lod_index),
                         renderable->GetIndexOffset(lod_index),
@@ -1727,7 +1728,7 @@ namespace spartan
             {
                 RenderableSetBuffers(cmd_list, renderable);
 
-                uint32_t lod_index = renderable->GetLodIndex();
+                uint32_t lod_index = min(renderable->GetLodIndex() + lod_bias, renderable->GetLodCount() - 1);
                 cmd_list->DrawIndexed(
                     renderable->GetIndexCount(lod_index),
                     renderable->GetIndexOffset(lod_index),

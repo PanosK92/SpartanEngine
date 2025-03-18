@@ -202,7 +202,7 @@ namespace spartan
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
                 vector<uint32_t> lod_indices                 = prev_indices;
     
-                // onlyl simplify if the geometry is complex enough, this prevents collapsing into nothing
+                // only simplify if the geometry is complex enough, this prevents collapsing into nothing
                 if (lod_indices.size() > 64)
                 {
                     // compute target index count based on original index count
