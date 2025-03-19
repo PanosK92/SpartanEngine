@@ -613,7 +613,7 @@ namespace spartan
         // reset dynamic buffers and parse deletion queue
         {
             m_resource_index++;
-            bool is_sync_point = m_resource_index == resources_frame_lifetime;
+            bool is_sync_point = m_resource_index == renderer_resource_frame_lifetime;
             if (is_sync_point)
             {
                 m_resource_index = 0;

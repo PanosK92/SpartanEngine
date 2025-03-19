@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    // we are using double buffering so 5 is enough
-    constexpr uint8_t resources_frame_lifetime = 5;
+    constexpr uint32_t renderer_resource_frame_lifetime = 5;
+    constexpr uint32_t renderer_max_entities            = 4096;
 
     enum class Renderer_Option : uint32_t
     {

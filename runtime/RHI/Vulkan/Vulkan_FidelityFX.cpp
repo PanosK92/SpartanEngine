@@ -1173,8 +1173,6 @@ namespace spartan
         const float resolution_scale,
         Cb_Frame* cb_frame,
         vector<shared_ptr<Entity>>& entities,
-        int64_t index_start,
-        int64_t index_end,
         RHI_Texture* tex_debug
     )
     {
@@ -1188,12 +1186,11 @@ namespace spartan
             brixelizer_gi::entity_map.clear();
         
             // process entities
-            for (int64_t i = index_start; i < index_end; i++)
+            for (shared_ptr<Entity>& entity : entities)
             {
-                shared_ptr<Entity>& entity = entities[i];
-
-                // skip grass blades, it's going to bring it to a crawl
-                if (entity->GetComponent<Renderable>()->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlasde))
+                // skip entities that won't contribute yet will kill performance
+                Renderable* renderable = entity->GetComponent<Renderable>();
+                if (renderable->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlasde) || renderable->GetMaterial()->IsTransparent())
                     continue;
 
                 uint64_t entity_id                   = entity->GetObjectId();
@@ -1201,7 +1198,6 @@ namespace spartan
                 bool is_dynamic                      = entity->IsMoving();
                 auto static_it                       = brixelizer_gi::static_instances.find(entity_id);
                 bool was_static                      = static_it != brixelizer_gi::static_instances.end();
-                Renderable* renderable               = entity->GetComponent<Renderable>();
 
                 if (is_dynamic)
                 {

@@ -21,13 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =================================
 #include "Component.h"
 #include <vector>
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
 #include "../Rendering/Mesh.h"
-//=================================
+#include "../Rendering/Renderer_Definitions.h"
+//============================================
 
 namespace spartan
 {
@@ -139,9 +140,9 @@ namespace spartan
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
         // visibility & lods
-        float m_max_render_distance                = FLT_MAX;
-        std::array<float, 2048> m_distance_squared = { 0.0f };
-        std::array<bool, 2048> m_is_visible        = { false };
-        std::array<uint32_t, 2048> m_lod_indices   = { 0 };
+        float m_max_render_distance                                 = FLT_MAX;
+        std::array<float, renderer_max_entities> m_distance_squared = { 0.0f };
+        std::array<bool, renderer_max_entities> m_is_visible        = { false };
+        std::array<uint32_t, renderer_max_entities> m_lod_indices   = { 0 };
     };
 }

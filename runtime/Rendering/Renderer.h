@@ -190,7 +190,6 @@ namespace spartan
         static void AddLinesToBeRendered();
         static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
-        static void RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Renderable* renderable, Light* light = nullptr, uint32_t array_index = 0);
 
         // bindless
         static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);

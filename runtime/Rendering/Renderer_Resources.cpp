@@ -70,7 +70,7 @@ namespace spartan
 
     void Renderer::CreateBuffers()
     {
-        uint32_t element_count = resources_frame_lifetime;
+        uint32_t element_count = renderer_resource_frame_lifetime;
         #define buffer(x) buffers[static_cast<uint8_t>(x)]
 
         // frame constant buffer - updates once per frame

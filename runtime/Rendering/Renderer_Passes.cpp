@@ -47,20 +47,108 @@ namespace spartan
 {
     namespace
     {
-        bool light_integration_brdf_speculat_lut_completed = false;
-        int64_t mesh_index_transparent                     = 0;
-        int64_t mesh_index_non_instanced_transparent       = 0;
+        bool light_integration_brdf_specular_lut_completed = false;
 
-        namespace visibility
+        // draw_calls and occlusion are WIP functionality, that's why they live here
+
+        struct DrawCall
         {
-            unordered_map<uint64_t, Rectangle> rectangles;
-            unordered_map<uint64_t, BoundingBox> boxes;
+            Renderable* renderable;        // Pointer to the renderable object
+            bool is_instanced;             // Flag to indicate if this is an instanced draw call
+            uint32_t instance_group_index; // Index of the instance group (used if instanced)
+            uint32_t instance_start_index; // Starting index in the instance buffer (used if instanced)
+            uint32_t instance_count;       // Number of instances to draw (used if instanced)
+            uint32_t lod_index;            // Level of detail index for the mesh
+            float distance_squared;        // Distance for sorting or other purposes
+        };
+        array<DrawCall, renderer_max_entities> draw_calls;
+
+        namespace utility
+        {
+            uint32_t draw_call_count  = 0;
+            bool transparents_present = false;
+        
+            void build_draw_calls(vector<shared_ptr<Entity>>& renderables)
+            {
+                draw_call_count      = 0;
+                transparents_present = false;
+
+                for (shared_ptr<Entity>& entity : renderables)
+                {
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        if (renderable->GetMaterial()->IsTransparent())
+                        {
+                            transparents_present = true;
+                        }
+
+                        if (renderable->HasInstancing())
+                        {
+                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+                            {
+                                // Check visibility for this instance group (assuming main camera for depth prepass)
+                                if (renderable->IsVisible(group_index))
+                                {
+                                    uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                    uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
+                                    instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                    if (instance_count == 0)
+                                        continue; // Skip if no instances to draw
+
+                                    uint32_t lod_index = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+
+                                    DrawCall& draw_call = draw_calls[draw_call_count++];
+                                    draw_call.renderable           = renderable;
+                                    draw_call.is_instanced         = true;
+                                    draw_call.instance_group_index = group_index;
+                                    draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
+                                    draw_call.instance_start_index = instance_start_index;
+                                    draw_call.instance_count       = instance_count;
+                                    draw_call.lod_index            = lod_index;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Check visibility for non-instanced renderable
+                            if (renderable->IsVisible())
+                            {
+                                uint32_t lod_index = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+
+                                DrawCall& draw_call = draw_calls[draw_call_count++];
+                                draw_call.renderable           = renderable;
+                                draw_call.is_instanced         = false;
+                                draw_call.instance_group_index = 0;
+                                draw_call.distance_squared     = renderable->GetDistanceSquared();
+                                draw_call.instance_start_index = 0;
+                                draw_call.instance_count       = 0;
+                                draw_call.lod_index            = lod_index;
+                            }
+                        }
+                    }
+                }
+            }
+
+            void sort_draw_calls()
+            {
+                sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const DrawCall& a, const DrawCall& b)
+                {
+                    // first, compare transparency (opaque first, transparent last)
+                    bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+                    bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+                    
+                    if (a_transparent != b_transparent)
+                    {
+                        return !a_transparent; // false (opaque) comes before true (transparent)
+                    }
+                    
+                    // if both are opaque or both are transparent, sort by distance (front to back)
+                    return a.distance_squared > b.distance_squared;
+                });
+            }
 
             void clear(vector<shared_ptr<Entity>>& renderables)
             {
-                rectangles.clear();
-                boxes.clear();
-
                 for (shared_ptr<Entity>& entity : renderables)
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
@@ -70,87 +158,15 @@ namespace spartan
                 }
             }
 
-            void sort(vector<shared_ptr<Entity>>& renderables)
-            {
-                // 1. sort by depth (in case of instancing, use the smallest depth, which is not ideal)
-                std::sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
-                {
-                    Renderable* renderable_a = a->GetComponent<Renderable>();
-                    Renderable* renderable_b = b->GetComponent<Renderable>();
-
-                    return renderable_a->GetDistanceSquared() < renderable_b->GetDistanceSquared();
-                });
-
-                // 2. sort by transparency, transparent materials go to the end
-                stable_sort(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& a, const shared_ptr<Entity>& b)
-                {
-                    bool a_transparent = a->GetComponent<Renderable>()->GetMaterial()->IsTransparent();
-                    bool b_transparent = b->GetComponent<Renderable>()->GetMaterial()->IsTransparent();
-
-                    // non-transparent objects should come first, so invert the condition
-                    return !a_transparent && b_transparent;
-                });
-
-                // find transparent index
-                auto transparent_start = find_if(renderables.begin(), renderables.end(), [](const shared_ptr<Entity>& entity)
-                {
-                    Material* material = entity->GetComponent<Renderable>()->GetMaterial();
-                    bool is_transparent = material->IsTransparent();
-                    return is_transparent;
-                });
-
-                // check if any transparent object was found
-                if (transparent_start == renderables.end())
-                {
-                    mesh_index_transparent = -1;
-                }
-                else
-                {
-                    mesh_index_transparent = distance(renderables.begin(), transparent_start);
-                }
-
-                // find non-instanced index for opaque objects
-                auto non_instanced_opaque_start = find_if(renderables.begin(), renderables.end(), [&](const shared_ptr<Entity>& entity)
-                {
-                    Renderable* renderable = entity->GetComponent<Renderable>();
-                    bool is_transparent    = renderable->GetMaterial()->IsTransparent();
-                    bool is_instanced      = renderable->HasInstancing();
-                    return !is_transparent && !is_instanced;
-                });
-
-                // find non-instanced index for transparent objects
-                auto non_instanced_transparent_start = find_if(transparent_start, renderables.end(), [&](const shared_ptr<Entity>& entity)
-                {
-                    return !entity->GetComponent<Renderable>()->HasInstancing();
-                });
-
-                // check if any non-instanced transparent object was found
-                if (non_instanced_transparent_start == renderables.end())
-                {
-                    mesh_index_non_instanced_transparent = -1;
-                }
-                else
-                {
-                    mesh_index_non_instanced_transparent = distance(renderables.begin(), non_instanced_transparent_start);
-                }
-            }
-
-            void get_gpu_occlusion_query_results(RHI_CommandList* cmd_list, unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& renderables)
+            void get_gpu_query_results(RHI_CommandList* cmd_list, vector<shared_ptr<Entity>>& renderables)
             {
                 cmd_list->UpdateOcclusionQueries();
 
-                bool is_transparent_pass = false;
-                uint32_t start_index     = !is_transparent_pass ? 0 : 2;
-                uint32_t end_index       = !is_transparent_pass ? 2 : 4;
-                for (uint32_t i = start_index; i < end_index; i++)
+                for (shared_ptr<Entity>& entity : renderables)
                 {
-                    auto& entities = renderables[static_cast<Renderer_Entity>(i)];
-                    if (entities.empty())
-                        continue;
-
-                    for (shared_ptr<Entity>& entity : entities)
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
-                        if (Renderable* renderable = entity->GetComponent<Renderable>())
+                        if (!renderable->GetMaterial()->IsTransparent())
                         { 
                             bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
                             renderable->SetFlag(RenderableFlags::Occluded, occluded);
@@ -158,29 +174,6 @@ namespace spartan
                     }
                 }
             }
-        }
-
-        int64_t get_mesh_indices(vector<shared_ptr<Entity>>& renderables, bool is_transparent, bool get_start)
-        {
-            int64_t index_start, index_end;
-            int64_t total_size = static_cast<int64_t>(renderables.size());
-
-            if (!is_transparent)
-            {
-                index_start = 0;
-                index_end   = (mesh_index_transparent != -1) ? mesh_index_transparent : total_size;
-            }
-            else
-            {
-                index_start = (mesh_index_transparent != -1) ? mesh_index_transparent : total_size;
-                index_end   = total_size;
-            }
-
-            // ensure indices are within bounds
-            index_start = std::max(int64_t(0), std::min(index_start, total_size));
-            index_end   = std::max(int64_t(0), std::min(index_end, total_size));
-
-            return get_start ? index_start : index_end;
         }
     }
 
@@ -202,10 +195,10 @@ namespace spartan
 
         // light integration
         {
-            if (!light_integration_brdf_speculat_lut_completed)
+            if (!light_integration_brdf_specular_lut_completed)
             {
                 Pass_Light_Integration_BrdfSpecularLut(cmd_list_graphics);
-                light_integration_brdf_speculat_lut_completed = true;
+                light_integration_brdf_specular_lut_completed = true;
             }
 
             Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
@@ -225,7 +218,7 @@ namespace spartan
 
                 // shadow maps
                 Pass_ShadowMaps(cmd_list_graphics, false);
-                if (mesh_index_transparent != -1)
+                if (utility::transparents_present)
                 {
                     Pass_ShadowMaps(cmd_list_graphics, true);
                 }
@@ -250,7 +243,7 @@ namespace spartan
             cmd_list_graphics->EndTimeblock();
 
             // transparents
-            if (mesh_index_transparent != -1)
+            if (utility::transparents_present)
             {
                 bool is_transparent = true;
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
@@ -331,10 +324,10 @@ namespace spartan
         RHI_Shader* shader_v             = GetShader(Renderer_Shader::depth_light_v);
         RHI_Shader* shader_alpha_color_p = GetShader(Renderer_Shader::depth_light_alpha_color_p);
         auto& lights                     = m_renderables[Renderer_Entity::Light];
-
+    
         lock_guard lock(m_mutex_renderables);
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
-
+    
         // set pso
         static RHI_PipelineState pso;
         pso.name                             = "shadow_maps";
@@ -343,18 +336,18 @@ namespace spartan
         pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadEqual) : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.clear_depth                      = 0.0f;
         pso.clear_color[0]                   = Color::standard_white;
-
+    
         // iterate over lights
         for (shared_ptr<Entity>& light_entity : lights)
         {
             Light* light = light_entity->GetComponent<Light>();
             if (!light || !light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                 continue;
-
+    
             // skip lights that don't cast transparent shadows (if this is a transparent pass)
             if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
                 continue;
-
+    
             // set light pso
             {
                 pso.render_target_color_textures[0] = light->GetColorTexture();
@@ -369,58 +362,74 @@ namespace spartan
                     pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
                 }
             }
-
+    
             // iterate over light cascade/faces
             for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
             {
                 pso.render_target_array_index = array_index;
                 cmd_list->SetIgnoreClearValues(is_transparent_pass);
-
-                // iterate over entities
-                int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
-                int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, false);
-                for (int64_t i = index_start; i < index_end; i++)
+    
+                // iterate over draw calls
+                for (uint32_t i = 0; i < utility::draw_call_count; i++)
                 {
-                    // this can happen during async loading
-                    if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
+                    const DrawCall& draw_call = draw_calls[i];
+                    Renderable* renderable    = draw_call.renderable;
+                    Material* material        = renderable->GetMaterial();
+                    if (!renderable->HasFlag(RenderableFlags::CastsShadows) || material->IsTransparent() != is_transparent_pass)
                         continue;
-
-                    shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
-                    Renderable* renderable     = entity->GetComponent<Renderable>();
-                    if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
-                        continue;
-
-                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode)));
-
+    
+                    // set cull mode
+                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+    
                     // set pipeline
                     {
-                        bool needs_pixel_shader             = renderable->GetMaterial()->IsAlphaTested() || is_transparent_pass;
+                        bool needs_pixel_shader             = material->IsAlphaTested() || is_transparent_pass;
                         pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_alpha_color_p : nullptr;
-
                         cmd_list->SetPipelineState(pso);
                     }
-
+    
                     // set pass constants
                     {
                         // for the vertex shader
                         m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
-                        m_pcb_pass_cpu.transform = entity->GetMatrix();
-
+                        m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+    
                         // for the pixel shader
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
-                            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-                        }
-
+                        m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
+                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
-
-                    RenderableDraw(cmd_list, pso, renderable, light, array_index);
+    
+                    // draw
+                    {
+                        RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
+                        instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
+                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+    
+                        if (draw_call.is_instanced)
+                        {
+                            cmd_list->DrawIndexed(
+                                renderable->GetIndexCount(draw_call.lod_index),
+                                renderable->GetIndexOffset(draw_call.lod_index),
+                                renderable->GetVertexOffset(draw_call.lod_index),
+                                draw_call.instance_start_index,
+                                draw_call.instance_count
+                            );
+                        }
+                        else
+                        {
+                            cmd_list->DrawIndexed(
+                                renderable->GetIndexCount(draw_call.lod_index),
+                                renderable->GetIndexOffset(draw_call.lod_index),
+                                renderable->GetVertexOffset(draw_call.lod_index)
+                            );
+                        }
+                    }
                 }
             }
         }
-
+    
         cmd_list->EndTimeblock();
     }
 
@@ -430,8 +439,10 @@ namespace spartan
 
         cmd_list->BeginTimeblock("visibility", false, false);
 
-        visibility::clear(m_renderables[Renderer_Entity::Mesh]);
-        visibility::sort(m_renderables[Renderer_Entity::Mesh]);
+        vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Mesh];
+
+        utility::clear(renderables);
+        utility::build_draw_calls(renderables);
 
         cmd_list->EndTimeblock();
     }
@@ -442,12 +453,13 @@ namespace spartan
         RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         RHI_Texture* tex_depth_opaque = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque);
         RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
-
+   
         // deduce rasterizer state
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
-
+    
+        // define the pass lambda
         auto pass = [cmd_list, rasterizer_state, tex_depth](bool is_transparent_pass)
         {
             // set pipeline state
@@ -462,108 +474,122 @@ namespace spartan
             pso.render_target_depth_texture      = tex_depth;
             pso.resolution_scale                 = true;
             pso.clear_depth                      = is_transparent_pass ? rhi_depth_load : 0.0f;
-
-            bool instancing     = false;
-            bool set_pipeline   = true;
-            int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
-            int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, false);
-            for (int64_t i = index_start; i < index_end; i++)
+    
+            bool set_pipeline = true;
+            for (uint32_t i = 0; i < utility::draw_call_count; i++)
             {
-                // this can happen during async loading
-                if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
+                const DrawCall& draw_call = draw_calls[i];
+                Renderable* renderable    = draw_call.renderable;
+                Material* material        = renderable->GetMaterial();
+                if (!material || material->IsTransparent() != is_transparent_pass)
                     continue;
-
-                shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
-                Renderable* renderable     = entity->GetComponent<Renderable>();
-
+    
                 // toggles
                 {
-                    // instancing
-
-                    if (instancing != renderable->HasInstancing())
+                    // alpha testing
+                    bool needs_alpha_test_shader = material->IsAlphaTested();
+                    bool has_pixel_shader        = pso.shaders[RHI_Shader_Type::Pixel] != nullptr;
+                    if (needs_alpha_test_shader != has_pixel_shader)
                     {
-                        instancing                          = renderable->HasInstancing();
-                        pso.shaders[RHI_Shader_Type::Pixel] = instancing ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr; // vegetation is instanced and uses alpha testing (not ideal way to handle this)
+                        pso.shaders[RHI_Shader_Type::Pixel] = needs_alpha_test_shader ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
                         set_pipeline                        = true;
                     }
-
+    
                     // tessellation & culling
-                    if (Material* material = renderable->GetMaterial())
+                    RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                    cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
+                    cmd_list->SetCullMode(cull_mode);
+    
+                    bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                    if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
                     {
-                        RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-                        cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
-                        cmd_list->SetCullMode(cull_mode);
-
-                        bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                        if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
-                        {
-                            pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                            pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
-                            set_pipeline                         = true;
-                        }
+                        pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+                        pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+                        set_pipeline                         = true;
                     }
-
+    
                     if (set_pipeline)
                     {
                         cmd_list->SetPipelineState(pso);
                         set_pipeline = false;
                     }
                 }
-
+    
                 // set pass constants
                 {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        bool is_tesselated     = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                        bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
-                        m_pcb_pass_cpu.set_f3_value(is_tesselated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f);
-                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-                    }
-
-                    m_pcb_pass_cpu.transform = entity->GetMatrix();
+                    bool is_tessellated    = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                    bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
+                    m_pcb_pass_cpu.set_f3_value(is_tessellated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f);
+                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                 }
-
+    
+                // occlusion culling
                 if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
                 {
-                    cmd_list->BeginOcclusionQuery(entity->GetObjectId());
+                    cmd_list->BeginOcclusionQuery(renderable->GetEntity()->GetObjectId());
                 }
-
-                RenderableDraw(cmd_list, pso, renderable);
-
+    
+                // draw
+                {
+                    RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
+                    instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+    
+                    if (draw_call.is_instanced)
+                    {
+                        cmd_list->DrawIndexed(
+                            renderable->GetIndexCount(draw_call.lod_index),
+                            renderable->GetIndexOffset(draw_call.lod_index),
+                            renderable->GetVertexOffset(draw_call.lod_index),
+                            draw_call.instance_start_index,
+                            draw_call.instance_count
+                        );
+                    }
+                    else
+                    {
+                        cmd_list->DrawIndexed(
+                            renderable->GetIndexCount(draw_call.lod_index),
+                            renderable->GetIndexOffset(draw_call.lod_index),
+                            renderable->GetVertexOffset(draw_call.lod_index)
+                        );
+                    }
+                }
+    
                 if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
                 {
                     cmd_list->EndOcclusionQuery();
                 }
             }
         };
-
+    
         cmd_list->BeginTimeblock("depth_prepass");
-
         lock_guard lock(m_mutex_renderables);
-
+    
         // depth for opaques
-        cmd_list->SetIgnoreClearValues(false); // this is a hack, needs to go asap
+        cmd_list->SetIgnoreClearValues(false); // todo: replace this hack with proper clear value handling
         pass(false);
         if (GetOption<bool>(Renderer_Option::OcclusionCulling))
         {
-            visibility::get_gpu_occlusion_query_results(cmd_list, m_renderables);
-        }        
+            utility::get_gpu_query_results(cmd_list, m_renderables[Renderer_Entity::Mesh]);
+        }
         cmd_list->Blit(tex_depth, tex_depth_opaque, false);
-
+    
         // depth for transparents
         pass(true);
-
+    
         // blit to output resolution
         float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
         cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
-
+    
         // perform early resource transitions
-        tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);         // depth attachment for g-buffer right after
-        tex_depth_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // never written during this frame
-        tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // never written during this frame
+        tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
+        tex_depth_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         cmd_list->InsertPendingBarrierGroup();
-
+    
         cmd_list->EndTimeblock();
     }
 
@@ -575,14 +601,14 @@ namespace spartan
         RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
         RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTarget::gbuffer_depth) : GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque);
-
+    
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
-
+    
         // deduce rasterizer state
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
-
+    
         // set pipeline state
         static RHI_PipelineState pso;
         pso.name                             = "g_buffer";
@@ -603,58 +629,77 @@ namespace spartan
         pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         cmd_list->SetIgnoreClearValues(false);
-        cmd_list->SetPipelineState(pso);
-
-        lock_guard lock(m_mutex_renderables);
-        int64_t index_start = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, true);
-        int64_t index_end   = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], is_transparent_pass, false);
-        for (int64_t i = index_start; i < index_end; i++)
+    
+        bool set_pipeline = true;
+        for (uint32_t i = 0; i < utility::draw_call_count; i++)
         {
-            // this can happen during async loading
-            if (i >= static_cast<int64_t>(m_renderables[Renderer_Entity::Mesh].size()))
+            const DrawCall& draw_call = draw_calls[i];
+            Renderable* renderable    = draw_call.renderable;
+            Material* material        = renderable->GetMaterial();
+            if (material->IsTransparent() != is_transparent_pass)
                 continue;
-
-            shared_ptr<Entity>& entity = m_renderables[Renderer_Entity::Mesh][i];
-            Renderable* renderable     = entity->GetComponent<Renderable>();
-
+    
             // toggles
             {
                 // tessellation & culling
-                bool toggled = false;
-                if (Material* material = renderable->GetMaterial())
+                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                cull_mode              = is_wireframe ? RHI_CullMode::None : cull_mode;
+                cmd_list->SetCullMode(cull_mode);
+    
+                bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
                 {
-                    RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
-                    cull_mode              = is_wireframe ? RHI_CullMode::None : cull_mode;
-                    cmd_list->SetCullMode(cull_mode);
-
-                    bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
-                    {
-                        pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                        pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
-                        toggled                              = true;
-                    }
+                    pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+                    pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+                    set_pipeline                         = true;
                 }
-
-                if (toggled)
+    
+                if (set_pipeline)
                 {
                     cmd_list->SetPipelineState(pso);
+                    set_pipeline = false;
                 }
             }
-
+    
             // set pass constants
             {
+                Entity* entity = renderable->GetEntity();
                 m_pcb_pass_cpu.transform = entity->GetMatrix();
                 m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
-                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, renderable->GetMaterial()->GetIndex());
+                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                 cmd_list->PushConstants(m_pcb_pass_cpu);
-
+    
                 entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
             }
-
-            RenderableDraw(cmd_list, pso, renderable);
+    
+            // draw
+            {
+                RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
+                instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
+                cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+    
+                if (draw_call.is_instanced)
+                {
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(draw_call.lod_index),
+                        renderable->GetIndexOffset(draw_call.lod_index),
+                        renderable->GetVertexOffset(draw_call.lod_index),
+                        draw_call.instance_start_index,
+                        draw_call.instance_count
+                    );
+                }
+                else
+                {
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(draw_call.lod_index),
+                        renderable->GetIndexOffset(draw_call.lod_index),
+                        renderable->GetVertexOffset(draw_call.lod_index)
+                    );
+                }
+            }
         }
-
+    
         // perform early resource transitions
         tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -662,7 +707,7 @@ namespace spartan
         tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->InsertPendingBarrierGroup();
-
+    
         cmd_list->EndTimeblock();
     }
 
@@ -923,17 +968,11 @@ namespace spartan
 
             // update
             {
-                vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Mesh];
-                int64_t index_start                  = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, true);
-                int64_t index_end                    = get_mesh_indices(m_renderables[Renderer_Entity::Mesh], false, false);
-
                 RHI_FidelityFX::BrixelizerGI_Update(
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     &m_cb_frame_cpu,
-                    entities,
-                    index_start,
-                    index_end,
+                    m_renderables[Renderer_Entity::Mesh],
                     GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi) // use as debug output (if needed)
                 );
             }
@@ -1957,60 +1996,5 @@ namespace spartan
         }
 
         cmd_list->EndTimeblock();
-    }
-
-    void Renderer::RenderableDraw(RHI_CommandList* cmd_list, RHI_PipelineState& pso, Renderable* renderable, Light* light, uint32_t array_index)
-    {
-        const uint32_t lod_bias = light != nullptr ? 2 : 0;
-    
-        auto set_buffers = [cmd_list](Renderable* renderable)
-        {
-            RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
-            instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
-            cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
-            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-        };
-    
-        if (renderable->HasInstancing())
-        {
-            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
-            {
-                uint32_t instance_start_index         = renderable->GetInstanceGroupStartIndex(group_index);
-                uint32_t instance_count               = renderable->GetInstanceGroupCount(group_index);
-                const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
-                bool is_visible                       = light ? light->IsInViewFrustum(renderable, array_index, group_index) : renderable->IsVisible(group_index);
-                instance_count                        = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-
-                if (instance_count > 0 && is_visible)
-                {
-                    set_buffers(renderable);
-
-                    uint32_t lod_index = min(renderable->GetLodIndex(group_index) + lod_bias, renderable->GetLodCount() - 1);
-                    cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(lod_index),
-                        renderable->GetIndexOffset(lod_index),
-                        renderable->GetVertexOffset(lod_index),
-                        instance_start_index,
-                        instance_count
-                    );
-                }
-            }
-        }
-        else
-        {
-            if (light ? light->IsInViewFrustum(renderable, array_index) : renderable->IsVisible())
-            {
-                set_buffers(renderable);
-
-                uint32_t lod_index = min(renderable->GetLodIndex() + lod_bias, renderable->GetLodCount() - 1);
-                cmd_list->DrawIndexed(
-                    renderable->GetIndexCount(lod_index),
-                    renderable->GetIndexOffset(lod_index),
-                    renderable->GetVertexOffset(lod_index)
-                );
-            }
-        }
-    
-        cmd_list->SetIgnoreClearValues(true);
     }
 }
