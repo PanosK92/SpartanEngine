@@ -475,7 +475,8 @@ namespace spartan
 
         void create_forest_car()
         {
-            const float foliage_max_render_distance = 1000.0f;
+            const float render_distance_trees = 1000.0f;
+            const float render_distance_grass = 500.0f;
 
             create_sun(LightIntensity::sky_overcast_day);
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
@@ -669,7 +670,7 @@ namespace spartan
                         if (Entity* branches = entity->GetDescendantByName("tree_bark_0"))
                         {
                             branches->GetComponent<Renderable>()->SetInstances(instances);
-                            branches->GetComponent<Renderable>()->SetMaxRenderDistance(foliage_max_render_distance);
+                            branches->GetComponent<Renderable>()->SetMaxRenderDistance(render_distance_trees);
                         }
                         
                         if (Entity* leaf = entity->GetDescendantByName("Plane.550_leaf_0"))
@@ -677,7 +678,7 @@ namespace spartan
                             Renderable* renderable = leaf->GetComponent<Renderable>();
                 
                             renderable->SetInstances(instances);
-                            renderable->SetMaxRenderDistance(foliage_max_render_distance);
+                            renderable->SetMaxRenderDistance(render_distance_trees);
                             renderable->GetMaterial()->SetProperty(MaterialProperty::IsTree, 1.0f);
                         }
                         
@@ -743,7 +744,7 @@ namespace spartan
                     material->SetColor(Color::standard_white);
                     renderable->SetMaterial(material);
                 
-                    renderable->SetMaxRenderDistance(foliage_max_render_distance);
+                    renderable->SetMaxRenderDistance(render_distance_grass);
                 }
             }
         }

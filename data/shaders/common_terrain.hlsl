@@ -25,8 +25,8 @@ static const float snow_level = 75.0f;
 static float get_snow_level_with_variation(float3 position_world)
 {
     // define constants
-    const float frequency = 0.075f;
-    const float amplitude = 5.0f;
+    const float frequency = 0.05f;
+    const float amplitude = 20.0f;
 
     // apply sine wave based on world position
     float sine_value = sin(position_world.x * frequency);

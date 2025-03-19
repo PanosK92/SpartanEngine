@@ -461,6 +461,13 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             ImGui::LabelText("##renderable_instance_group_count", to_string(instance_group_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         }
 
+        // draw distance
+        ImGui::Text("Draw Distance");
+        ImGui::SameLine(column_pos_x);
+        float draw_distance = renderable->GetMaxRenderDistance();
+        ImGui::InputFloat("##renderable_draw_distance", &draw_distance, 1.0f, 10.0f, "%.0f");
+        renderable->SetMaxRenderDistance(draw_distance);
+
         // material
         ImGui::Text("Material");
         ImGui::SameLine(column_pos_x);
