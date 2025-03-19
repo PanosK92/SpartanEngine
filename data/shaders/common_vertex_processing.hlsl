@@ -48,9 +48,6 @@ struct gbuffer_vertex
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
     float3 color                  : COLOR;
-    uint instance_id              : INSTANCE_ID;
-    matrix transform              : TRANSFORM;
-    matrix transform_previous     : TRANSFORM_PREVIOUS;
 };
 
 // remap a value from one range to another
@@ -337,11 +334,6 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.normal            = normalize(mul(input.normal, (float3x3)transform));
     vertex.tangent           = normalize(mul(input.tangent, (float3x3)transform));
 
-    // save some things into the vertex
-    vertex.instance_id        = instance_id;
-    vertex.transform          = transform;
-    vertex.transform_previous = transform_previous;
-
     // vertex processing - world space
     vertex_processing::process_world_space(surface, vertex.position, vertex, input.position.xyz, transform, width_percent, height_percent, instance_id);
     vertex_processing::process_world_space(surface, vertex.position_previous, vertex, input.position.xyz, transform_previous, width_percent, height_percent, instance_id, -buffer_frame.delta_time);
@@ -460,10 +452,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     }
 
     // pass through unused fields (use patch[0] since they’re per-instance)
-    vertex.color              = patch[0].color;
-    vertex.instance_id        = patch[0].instance_id;
-    vertex.transform          = patch[0].transform;
-    vertex.transform_previous = patch[0].transform_previous;
+    vertex.color = patch[0].color;
 
     return transform_to_clip_space(vertex);
 }
