@@ -245,29 +245,48 @@ struct vertex_processing
         {
             // wind simulation
             {
-                const float wind_direction_scale      = 0.05f; // scale for large-scale wind direction noise
-                const float wind_direction_time_scale = 0.05f; // time-based animation speed for wind direction
-                const float wind_strength_scale       = 0.25f; // scale for wind strength noise
-                const float wind_strength_time_scale  = 2.0f;  // faster time-based animation for wind strength
-                const float wind_strength_amplitude   = 2.0f;  // amplifies wind strength noise output
-                const float min_wind_lean             = 0.25f; // minimum lean angle for grass blades
-                const float max_wind_lean             = 1.0f;  // maximum lean angle for grass blades
+                const float wind_direction_scale      = 0.05f; // Scale for wind direction noise (larger scale = broader patterns)
+                const float wind_direction_time_scale = 0.05f; // Speed of wind direction animation
+                const float wind_strength_scale       = 0.25f; // Scale for wind strength noise
+                const float wind_strength_time_scale  = 2.0f;  // Speed of wind strength animation (faster for more dynamic changes)
+                const float wind_strength_amplitude   = 2.0f;  // Amplifies the wind strength noise
+                const float min_wind_lean             = 0.25f; // Minimum grass lean angle
+                const float max_wind_lean             = 1.0f;  // Maximum grass lean angle
+                const float gust_scale                = 0.01f; // Scale for global gust noise (slower for broad gusts)
             
-                float wind_direction      = get_noise_perlin(dot(position_world.xz, float2(wind_direction_scale, wind_direction_scale)) + wind_direction_time_scale * time);
-                wind_direction            = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
-                float wind_strength_noise = get_noise_perlin(dot(position_world.xz, float2(wind_strength_scale, wind_strength_scale)) + time * wind_strength_time_scale) * wind_strength_amplitude;
-                float wind_lean_angle     = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
-                wind_lean_angle           = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in for natural bending
-                float3 wind_dir           = float3(cos(wind_direction), 0, sin(wind_direction));
-                float3 rotation_axis      = normalize(cross(float3(0, 1, 0), wind_dir));
-                float total_height        = 1.0f; // this could be passed as a parameter but currently it's not needed
-                float curve_angle         = (wind_lean_angle / total_height) * height_percent;
-                float3 base_position      = position_world - position_local; // base is where position_local = (0, 0, 0)
-                float3 local_pos          = position_world - base_position;
-                local_pos                 = rotate_around_axis(rotation_axis, curve_angle, local_pos);
-                position_world            = base_position + local_pos;
-                vertex.normal             = rotate_around_axis(rotation_axis, curve_angle, vertex.normal);
-                vertex.tangent            = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
+                // global wind strength modulation (simulates gusts and lulls)
+                float global_wind_strength = get_noise_perlin(float2(time * gust_scale, 0.0f));
+                global_wind_strength       = remap(global_wind_strength, -1.0f, 1.0f, 0.5f, 1.5f); // varies between 0.5x and 1.5x strength
+            
+                // 2D noise for wind direction
+                float2 noise_pos_dir = position_world.xz * wind_direction_scale + float2(time * wind_direction_time_scale, 0.0f);
+                float wind_direction = get_noise_perlin(noise_pos_dir);
+                wind_direction       = remap(wind_direction, -1.0f, 1.0f, 0.0f, 6.2832f); // remap to [0, 2π]
+            
+                // 2D noise for wind strength
+                float2 noise_pos_strength = position_world.xz * wind_strength_scale + float2(time * wind_strength_time_scale, 0.0f);
+                float wind_strength_noise = get_noise_perlin(noise_pos_strength) * wind_strength_amplitude * global_wind_strength;
+            
+                // calculate wind lean angle with cubic easing for natural bending
+                float wind_lean_angle = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
+                wind_lean_angle       = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in
+                wind_lean_angle       = clamp(wind_lean_angle, 0.0f, PI); // cap at π to avoid bending below ground
+            
+                // wind direction vector and rotation axis
+                float3 wind_dir      = float3(cos(wind_direction), 0, sin(wind_direction));
+                float3 rotation_axis = normalize(cross(float3(0, 1, 0), wind_dir));
+            
+                // apply wind bend based on height
+                float total_height = 1.0f; // this can be passed from the cpu, but it's currently not needed
+                float curve_angle  = (wind_lean_angle / total_height) * height_percent;
+            
+                // rotate position, normal, and tangent around the axis
+                float3 base_position = position_world - position_local; // base of the blade
+                float3 local_pos     = position_world - base_position;
+                local_pos            = rotate_around_axis(rotation_axis, curve_angle, local_pos);
+                position_world       = base_position + local_pos;
+                vertex.normal        = rotate_around_axis(rotation_axis, curve_angle, vertex.normal);
+                vertex.tangent       = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
             }
 
             // color
@@ -432,9 +451,8 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
         // for the terrain, add some perlin noise to make it look less flat
         if (surface.is_terrain())
         {
-            float height_big          = get_noise_perlin(vertex.position.xz * 1.0f) * 0.3f;
-            float height_small        = get_noise_perlin(vertex.position.xz * 8.0f) * 0.1f;
-            float3 displacement       = vertex.normal * (height_big + height_small) * fade_factor;
+            float height              = get_noise_perlin(vertex.position.xz * 8.0f) * 0.1f;
+            float3 displacement       = vertex.normal * height * fade_factor;
             vertex.position          += displacement;
             vertex.position_previous += displacement;
         }
