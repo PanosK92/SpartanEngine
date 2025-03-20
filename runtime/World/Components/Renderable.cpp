@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ============================
 #include "pch.h"
 #include "Renderable.h"
 #include "Camera.h"
@@ -29,8 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/Material.h"
-#include "../../Rendering/GridPartitioning.h"
-//===========================================
+//=======================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -39,6 +38,77 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace grid_partitioning
+    {
+        // this namespace organizes 3D objects into a grid layout, grouping instances into grid cells
+        // it enables optimized rendering by allowing culling of non-visible chunks efficiently
+    
+        const uint32_t cell_size = 64;
+    
+        struct GridKey
+        {
+            uint32_t x, y, z;
+    
+            bool operator==(const GridKey& other) const
+            {
+                return x == other.x && y == other.y && z == other.z;
+            }
+        };
+    
+        struct GridKeyHash
+        {
+            size_t operator()(const GridKey& k) const
+            {
+                // interleave the bits of the x, y, and z coordinates
+                // this approach tends to maintain spatial locality better, as nearby
+                // coordinates will result in hash values that are also close to each other
+    
+                size_t result = 0;
+    
+                for (uint32_t i = 0; i < (sizeof(uint32_t) * 8); i++) // for each bit in the integers
+                {
+                    result |= ((k.x & (1 << i)) << (2 * i)) | ((k.y & (1 << i)) << ((2 * i) + 1)) | ((k.z & (1 << i)) << ((2 * i) + 2));
+                }
+    
+                return result;
+            }
+    
+            static GridKey get_key(const Vector3& position)
+            {
+                return
+                {
+                    static_cast<uint32_t>(floor(position.x / static_cast<float>(cell_size))),
+                    static_cast<uint32_t>(floor(position.y / static_cast<float>(cell_size))),
+                    static_cast<uint32_t>(floor(position.z / static_cast<float>(cell_size)))
+                };
+            }
+        };
+    
+        void reorder_instances_into_cell_chunks(vector<Matrix>& instance_transforms, vector<uint32_t>& cell_end_indices)
+        {
+            // populate the grid map
+            unordered_map<GridKey, vector<Matrix>, GridKeyHash> grid_map;
+            for (const auto& instance : instance_transforms)
+            {
+                Vector3 position = instance.GetTranslation();
+    
+                GridKey key = GridKeyHash::get_key(position);
+                grid_map[key].push_back(instance);
+            }
+    
+            // reorder instances based on grid map
+            instance_transforms.clear();
+            cell_end_indices.clear();
+            uint32_t index = 0;
+            for (const auto& [key, transforms] : grid_map)
+            {
+                instance_transforms.insert(instance_transforms.end(), transforms.begin(), transforms.end());
+                index += static_cast<uint32_t>(transforms.size());
+                cell_end_indices.push_back(index);
+            }
+        }
+    }
+
     Renderable::Renderable(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
