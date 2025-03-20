@@ -195,6 +195,7 @@ namespace spartan
         ffx_cas_c,
         ffx_spd_average_c,
         ffx_spd_max_c,
+        blit_c,
         max
     };
     
@@ -205,6 +206,7 @@ namespace spartan
         gbuffer_material,
         gbuffer_velocity,
         gbuffer_depth,
+        gbuffer_depth_hiz,
         gbuffer_depth_opaque,
         gbuffer_depth_output,
         brdf_specular_lut,

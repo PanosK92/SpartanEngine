@@ -875,8 +875,8 @@ namespace spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling)
     {
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0,      "The texture needs the RHI_Texture_ClearOrBlit flag");
-        SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0,      "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearBlit) != 0, "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
         if (blit_mips)
         {
             SP_ASSERT_MSG(source->GetMipCount() == destination->GetMipCount(),
@@ -923,13 +923,18 @@ namespace spartan
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
 
+        VkFilter filter = (source->IsDepthFormat() || destination->IsDepthFormat() || 
+                          (source->GetWidth() == destination->GetWidth() && source->GetHeight() == destination->GetHeight())) 
+        ? VK_FILTER_NEAREST 
+        : VK_FILTER_LINEAR;
+
         // blit
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             blit_region_count, &blit_regions[0],
-            vulkan_filter[static_cast<uint32_t>(destination->IsDepthFormat() ? RHI_Filter::Nearest : RHI_Filter::Linear)]
+            filter
         );
 
         // transition to the initial layouts

@@ -120,22 +120,22 @@ namespace spartan
             }
 
         void draw_calls_sort()
+        {
+            sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const DrawCall& a, const DrawCall& b)
             {
-                sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const DrawCall& a, const DrawCall& b)
+                // first, compare transparency (opaque first, transparent last)
+                bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+                bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+                
+                if (a_transparent != b_transparent)
                 {
-                    // first, compare transparency (opaque first, transparent last)
-                    bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-                    bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-                    
-                    if (a_transparent != b_transparent)
-                    {
-                        return !a_transparent; // false (opaque) comes before true (transparent)
-                    }
-                    
-                    // if both are opaque or both are transparent, sort by distance (front to back)
-                    return a.distance_squared > b.distance_squared;
-                });
-            }
+                    return !a_transparent; // false (opaque) comes before true (transparent)
+                }
+                
+                // if both are opaque or both are transparent, sort by distance (front to back)
+                return a.distance_squared > b.distance_squared;
+            });
+        }
 
         void draw_calls_update_with_gpu_occlusion_results(RHI_CommandList* cmd_list)
         {
@@ -424,9 +424,10 @@ namespace spartan
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
     {
         // acquire resources
-        RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        RHI_Texture* tex_depth_opaque = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque);
-        RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
+        RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);        // render resolution - base depth
+        RHI_Texture* tex_depth_hiz    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz);    // render resolution - used for occulusion culling
+        RHI_Texture* tex_depth_opaque = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque); // render resolution - opaque only
+        RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output); // output resolution
    
         // deduce rasterizer state
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
@@ -549,7 +550,15 @@ namespace spartan
             draw_calls_update_with_gpu_occlusion_results(cmd_list);
         }
         cmd_list->Blit(tex_depth, tex_depth_opaque, false);
-    
+
+        // hiz
+        {
+            // We use a compute shader to blit from depth to float, as Vulkan doesn't support blitting depth to float formats
+            // and AMD hardware requires UAV textures to be float-based (preventing depth format usage)
+            Pass_Blit(cmd_list, tex_depth, tex_depth_hiz);
+            Pass_Downscale(cmd_list, tex_depth_hiz, Renderer_DownsampleFilter::Max);
+        }
+
         // depth for transparents
         pass(true);
     
@@ -558,11 +567,13 @@ namespace spartan
         cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
     
         // perform early resource transitions
-        tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
-        tex_depth_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        cmd_list->InsertPendingBarrierGroup();
-    
+        {
+            tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
+            tex_depth_opaque->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            cmd_list->InsertPendingBarrierGroup();
+        }
+
         cmd_list->EndTimeblock();
     }
 
@@ -969,6 +980,7 @@ namespace spartan
                     &m_cb_frame_cpu,
                     GetRenderTarget(Renderer_RenderTarget::source_gi),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz), // hiz is the previous depth, which is what brixelizer gi wants
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
@@ -1517,6 +1529,33 @@ namespace spartan
         // used for refraction by the transparent passes, so generate mips to emulate roughness
         Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
 
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        // we use a compute shader to blit from depth to float, as Vulkan doesn't support blitting depth to float formats
+        // and amd hardware requires UAV textures to be float-based (preventing depth format usage)
+        // if the above is not your case, use RHI_CommandList::Blit instead, which is the fastest option
+
+        // acquire resources
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::blit_c);
+
+        cmd_list->BeginTimeblock("blit");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.name             = "blit";
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+            
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            
+            // render
+            cmd_list->Dispatch(tex_out);
+        }
         cmd_list->EndTimeblock();
     }
 
