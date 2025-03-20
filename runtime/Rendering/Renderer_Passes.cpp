@@ -54,7 +54,6 @@ namespace spartan
         struct DrawCall
         {
             Renderable* renderable;        // Pointer to the renderable object
-            bool is_instanced;             // Flag to indicate if this is an instanced draw call
             uint32_t instance_group_index; // Index of the instance group (used if instanced)
             uint32_t instance_start_index; // Starting index in the instance buffer (used if instanced)
             uint32_t instance_count;       // Number of instances to draw (used if instanced)
@@ -86,20 +85,17 @@ namespace spartan
                         {
                             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
-                                // Check visibility for this instance group (assuming main camera for depth prepass)
                                 if (renderable->IsVisible(group_index))
                                 {
                                     uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
                                     uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
                                     instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
                                     if (instance_count == 0)
-                                        continue; // Skip if no instances to draw
+                                        continue;
 
-                                    uint32_t lod_index = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
-
-                                    DrawCall& draw_call = draw_calls[draw_call_count++];
+                                    uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+                                    DrawCall& draw_call            = draw_calls[draw_call_count++];
                                     draw_call.renderable           = renderable;
-                                    draw_call.is_instanced         = true;
                                     draw_call.instance_group_index = group_index;
                                     draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
                                     draw_call.instance_start_index = instance_start_index;
@@ -113,16 +109,11 @@ namespace spartan
                             // Check visibility for non-instanced renderable
                             if (renderable->IsVisible())
                             {
-                                uint32_t lod_index = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
-
-                                DrawCall& draw_call = draw_calls[draw_call_count++];
-                                draw_call.renderable           = renderable;
-                                draw_call.is_instanced         = false;
-                                draw_call.instance_group_index = 0;
-                                draw_call.distance_squared     = renderable->GetDistanceSquared();
-                                draw_call.instance_start_index = 0;
-                                draw_call.instance_count       = 0;
-                                draw_call.lod_index            = lod_index;
+                                uint32_t lod_index         = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                                DrawCall& draw_call        = draw_calls[draw_call_count++];
+                                draw_call.renderable       = renderable;
+                                draw_call.distance_squared = renderable->GetDistanceSquared();
+                                draw_call.lod_index        = lod_index;
                             }
                         }
                     }
@@ -407,7 +398,7 @@ namespace spartan
                         cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
                         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
-                        if (draw_call.is_instanced)
+                        if (renderable->HasInstancing())
                         {
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(draw_call.lod_index),
@@ -466,7 +457,6 @@ namespace spartan
             static RHI_PipelineState pso;
             pso.name                             = "depth_prepass";
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v);
-            pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::depth_prepass_alpha_test_p);
             pso.rasterizer_state                 = rasterizer_state;
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -538,7 +528,7 @@ namespace spartan
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
-                    if (draw_call.is_instanced)
+                    if (renderable->HasInstancing())
                     {
                         cmd_list->DrawIndexed(
                             renderable->GetIndexCount(draw_call.lod_index),
@@ -679,7 +669,7 @@ namespace spartan
                 cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
                 cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
-                if (draw_call.is_instanced)
+                if (renderable->HasInstancing())
                 {
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),

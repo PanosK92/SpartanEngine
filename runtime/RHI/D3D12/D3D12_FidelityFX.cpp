@@ -106,8 +106,6 @@ namespace spartan
         const float resolution_scale,
         Cb_Frame* cb_frame,
         vector<shared_ptr<Entity>>& entities,
-        int64_t index_start,
-        int64_t index_end,
         RHI_Texture* tex_debug
     )
     {

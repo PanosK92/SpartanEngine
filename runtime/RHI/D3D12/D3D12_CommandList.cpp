@@ -240,7 +240,7 @@ namespace spartan
         UINT num_views = 1;
         
         // Handle instance buffer if present (slot 1)
-        uint32_t new_buffer_id = vertex->GetObjectId();
+        uint64_t new_buffer_id = vertex->GetObjectId();
         if (instance && instance->GetRhiResource())
         {
             vertex_buffer_views[1].BufferLocation = static_cast<ID3D12Resource*>(instance->GetRhiResource())->GetGPUVirtualAddress();
