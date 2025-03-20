@@ -44,8 +44,7 @@ namespace spartan
 
     enum RenderableFlags : uint32_t
     {
-        Occluded     = 1U << 0,
-        CastsShadows = 1U << 1
+        CastsShadows = 1U << 0
     };
 
     class Renderable : public Component
@@ -107,7 +106,7 @@ namespace spartan
         float GetDistanceSquared(const uint32_t instance_group_index = 0) const { return m_distance_squared[instance_group_index]; }
         float GetMaxRenderDistance() const                                      { return m_max_render_distance; }
         void SetMaxRenderDistance(const float max_render_distance)              { m_max_render_distance = max_render_distance; }
-        bool IsVisible(const uint32_t instance_group_index = 0) const           { return m_is_visible[instance_group_index] && !HasFlag(RenderableFlags::Occluded); }
+        bool IsVisible(const uint32_t instance_group_index = 0) const           { return m_is_visible[instance_group_index]; }
 
         // flags
         bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }

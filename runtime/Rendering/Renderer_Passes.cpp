@@ -59,15 +59,14 @@ namespace spartan
             uint32_t instance_count;       // Number of instances to draw (used if instanced)
             uint32_t lod_index;            // Level of detail index for the mesh
             float distance_squared;        // Distance for sorting or other purposes
+            bool occluded;                 // Occlusion result
         };
         array<DrawCall, renderer_max_entities> draw_calls;
 
-        namespace utility
-        {
-            uint32_t draw_call_count  = 0;
-            bool transparents_present = false;
+        uint32_t draw_call_count  = 0;
+        bool transparents_present = false;
         
-            void build_draw_calls(vector<shared_ptr<Entity>>& renderables)
+        void draw_calls_builds(vector<shared_ptr<Entity>>& renderables)
             {
                 draw_call_count      = 0;
                 transparents_present = false;
@@ -120,7 +119,7 @@ namespace spartan
                 }
             }
 
-            void sort_draw_calls()
+        void draw_calls_sort()
             {
                 sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const DrawCall& a, const DrawCall& b)
                 {
@@ -138,31 +137,16 @@ namespace spartan
                 });
             }
 
-            void clear(vector<shared_ptr<Entity>>& renderables)
+        void draw_calls_update_with_gpu_occlusion_results(RHI_CommandList* cmd_list)
+        {
+            cmd_list->UpdateOcclusionQueries();
+        
+            for (uint32_t i = 0; i < draw_call_count; i++)
             {
-                for (shared_ptr<Entity>& entity : renderables)
-                {
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
-                    {
-                        renderable->SetFlag(RenderableFlags::Occluded, false);
-                    }
-                }
-            }
-
-            void get_gpu_query_results(RHI_CommandList* cmd_list, vector<shared_ptr<Entity>>& renderables)
-            {
-                cmd_list->UpdateOcclusionQueries();
-
-                for (shared_ptr<Entity>& entity : renderables)
-                {
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
-                    {
-                        if (!renderable->GetMaterial()->IsTransparent())
-                        { 
-                            bool occluded = cmd_list->GetOcclusionQueryResult(entity->GetObjectId());
-                            renderable->SetFlag(RenderableFlags::Occluded, occluded);
-                        }
-                    }
+                DrawCall& draw_call = draw_calls[i];
+                if (!draw_call.renderable->GetMaterial()->IsTransparent())
+                { 
+                    draw_call.occluded = cmd_list->GetOcclusionQueryResult(i);
                 }
             }
         }
@@ -197,7 +181,7 @@ namespace spartan
 
         if (Camera* camera = GetCamera())
         {
-            Pass_Visibility(cmd_list_graphics);
+            Pass_BuildDrawCalls(cmd_list_graphics);
 
             Pass_Depth_Prepass(cmd_list_graphics); // produces opaque and opaque & transparent depth buffers
             Pass_Ssr(cmd_list_graphics);           // operates on the opaque & transparent depth buffer
@@ -209,7 +193,7 @@ namespace spartan
 
                 // shadow maps
                 Pass_ShadowMaps(cmd_list_graphics, false);
-                if (utility::transparents_present)
+                if (transparents_present)
                 {
                     Pass_ShadowMaps(cmd_list_graphics, true);
                 }
@@ -234,7 +218,7 @@ namespace spartan
             cmd_list_graphics->EndTimeblock();
 
             // transparents
-            if (utility::transparents_present)
+            if (transparents_present)
             {
                 bool is_transparent = true;
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
@@ -361,7 +345,7 @@ namespace spartan
                 cmd_list->SetIgnoreClearValues(is_transparent_pass);
     
                 // iterate over draw calls
-                for (uint32_t i = 0; i < utility::draw_call_count; i++)
+                for (uint32_t i = 0; i < draw_call_count; i++)
                 {
                     const DrawCall& draw_call = draw_calls[i];
                     Renderable* renderable    = draw_call.renderable;
@@ -424,16 +408,15 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Visibility(RHI_CommandList* cmd_list)
+    void Renderer::Pass_BuildDrawCalls(RHI_CommandList* cmd_list)
     {
         // cpu pass
 
-        cmd_list->BeginTimeblock("visibility", false, false);
+        cmd_list->BeginTimeblock("build_draw_calls", false, false);
 
         vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Mesh];
 
-        utility::clear(renderables);
-        utility::build_draw_calls(renderables);
+        draw_calls_builds(renderables);
 
         cmd_list->EndTimeblock();
     }
@@ -466,7 +449,7 @@ namespace spartan
             pso.clear_depth                      = is_transparent_pass ? rhi_depth_load : 0.0f;
     
             bool set_pipeline = true;
-            for (uint32_t i = 0; i < utility::draw_call_count; i++)
+            for (uint32_t i = 0; i < draw_call_count; i++)
             {
                 const DrawCall& draw_call = draw_calls[i];
                 Renderable* renderable    = draw_call.renderable;
@@ -518,7 +501,7 @@ namespace spartan
                 // occlusion culling
                 if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
                 {
-                    cmd_list->BeginOcclusionQuery(renderable->GetEntity()->GetObjectId());
+                    cmd_list->BeginOcclusionQuery(i);
                 }
     
                 // draw
@@ -563,7 +546,7 @@ namespace spartan
         pass(false);
         if (GetOption<bool>(Renderer_Option::OcclusionCulling))
         {
-            utility::get_gpu_query_results(cmd_list, m_renderables[Renderer_Entity::Mesh]);
+            draw_calls_update_with_gpu_occlusion_results(cmd_list);
         }
         cmd_list->Blit(tex_depth, tex_depth_opaque, false);
     
@@ -621,12 +604,12 @@ namespace spartan
         cmd_list->SetIgnoreClearValues(false);
     
         bool set_pipeline = true;
-        for (uint32_t i = 0; i < utility::draw_call_count; i++)
+        for (uint32_t i = 0; i < draw_call_count; i++)
         {
             const DrawCall& draw_call = draw_calls[i];
             Renderable* renderable    = draw_call.renderable;
             Material* material        = renderable->GetMaterial();
-            if (material->IsTransparent() != is_transparent_pass)
+            if (material->IsTransparent() != is_transparent_pass || draw_call.occluded)
                 continue;
     
             // toggles
