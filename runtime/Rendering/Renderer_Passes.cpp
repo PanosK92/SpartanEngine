@@ -45,7 +45,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    std::array<DrawCall, renderer_max_entities> Renderer::m_draw_calls;
+    std::array<Renderer_DrawCall, renderer_max_entities> Renderer::m_draw_calls;
     uint32_t Renderer::m_draw_call_count;
 
     namespace
@@ -53,7 +53,7 @@ namespace spartan
         bool light_integration_brdf_specular_lut_completed = false;
         bool transparents_present = false;
 
-        void draw_calls_build(vector<shared_ptr<Entity>>& renderables, array<DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
+        void draw_calls_build(vector<shared_ptr<Entity>>& renderables, array<Renderer_DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
         {
             draw_call_count      = 0;
             transparents_present = false;
@@ -80,7 +80,7 @@ namespace spartan
                                     continue;
 
                                 uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
-                                DrawCall& draw_call            = draw_calls[draw_call_count++];
+                                Renderer_DrawCall& draw_call            = draw_calls[draw_call_count++];
                                 draw_call.renderable           = renderable;
                                 draw_call.instance_group_index = group_index;
                                 draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
@@ -96,7 +96,7 @@ namespace spartan
                         if (renderable->IsVisible())
                         {
                             uint32_t lod_index         = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
-                            DrawCall& draw_call        = draw_calls[draw_call_count++];
+                            Renderer_DrawCall& draw_call        = draw_calls[draw_call_count++];
                             draw_call.renderable       = renderable;
                             draw_call.distance_squared = renderable->GetDistanceSquared();
                             draw_call.lod_index        = lod_index;
@@ -104,11 +104,8 @@ namespace spartan
                     }
                 }
             }
-        }
 
-        void draw_calls_sort(array<DrawCall, renderer_max_entities>& draw_calls, const uint32_t draw_call_count)
-        {
-            sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const DrawCall& a, const DrawCall& b)
+            sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
             {
                 // first, compare transparency (opaque first, transparent last)
                 bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
@@ -124,13 +121,13 @@ namespace spartan
             });
         }
 
-        void draw_calls_update_with_gpu_occlusion_results(RHI_CommandList* cmd_list, array<DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
+        void draw_calls_update_with_gpu_occlusion_results(RHI_CommandList* cmd_list, array<Renderer_DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
         {
             cmd_list->UpdateOcclusionQueries();
         
             for (uint32_t i = 0; i < draw_call_count; i++)
             {
-                DrawCall& draw_call = draw_calls[i];
+                Renderer_DrawCall& draw_call = draw_calls[i];
                 if (!draw_call.renderable->GetMaterial()->IsTransparent())
                 { 
                     cmd_list->GetOcclusionQueryResult(i);
@@ -335,7 +332,7 @@ namespace spartan
                 // iterate over draw calls
                 for (uint32_t i = 0; i < m_draw_call_count; i++)
                 {
-                    const DrawCall& draw_call = m_draw_calls[i];
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
                     Renderable* renderable    = draw_call.renderable;
                     Material* material        = renderable->GetMaterial();
                     if (!renderable->HasFlag(RenderableFlags::CastsShadows) || material->IsTransparent() != is_transparent_pass)
@@ -400,15 +397,10 @@ namespace spartan
     void Renderer::Pass_BuildDrawCalls(RHI_CommandList* cmd_list)
     {
         // cpu pass
-
         cmd_list->BeginTimeblock("build_draw_calls", false, false);
         {
-            vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Mesh];
-
-            draw_calls_build(renderables, m_draw_calls, m_draw_call_count);
-            draw_calls_sort(m_draw_calls, m_draw_call_count);
+            draw_calls_build(m_renderables[Renderer_Entity::Mesh], m_draw_calls, m_draw_call_count);
         }
-
         cmd_list->EndTimeblock();
     }
 
@@ -468,7 +460,7 @@ namespace spartan
             bool set_pipeline = true;
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
-                const DrawCall& draw_call = m_draw_calls[i];
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
                 Renderable* renderable    = draw_call.renderable;
                 Material* material        = renderable->GetMaterial();
                 if (!material || material->IsTransparent() != is_transparent_pass)
@@ -623,9 +615,9 @@ namespace spartan
         bool set_pipeline = true;
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
-            const DrawCall& draw_call = m_draw_calls[i];
-            Renderable* renderable    = draw_call.renderable;
-            Material* material        = renderable->GetMaterial();
+            const Renderer_DrawCall& draw_call = m_draw_calls[i];
+            Renderable* renderable             = draw_call.renderable;
+            Material* material                 = renderable->GetMaterial();
             if (material->IsTransparent() != is_transparent_pass)
                 continue;
     

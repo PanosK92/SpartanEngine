@@ -209,7 +209,7 @@ namespace spartan
         static std::atomic<bool> m_initialized_resources;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;
         static std::mutex m_mutex_renderables;
-        static std::array<DrawCall, renderer_max_entities> m_draw_calls;
+        static std::array<Renderer_DrawCall, renderer_max_entities> m_draw_calls;
         static uint32_t m_draw_call_count;
     };
 }

@@ -319,7 +319,7 @@ namespace spartan
     };
 
     class Renderable;
-    struct DrawCall
+    struct Renderer_DrawCall
     {
         Renderable* renderable;        // Pointer to the renderable object
         uint32_t instance_group_index; // Index of the instance group (used if instanced)

@@ -1019,9 +1019,9 @@ namespace spartan
         // gpu
         {
             // material properties
-            Renderer::GetBuffer(Renderer_Buffer::MaterialParameters)->ResetOffset();
-            uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Material)) * index;
-            Renderer::GetBuffer(Renderer_Buffer::MaterialParameters)->Update(cmd_list, &properties[0], update_size);
+            RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
+            buffer->ResetOffset();
+            buffer->Update(cmd_list, &properties[0], buffer->GetStride() * index);
         }
 
         index = 0;
@@ -1105,7 +1105,7 @@ namespace spartan
         uint32_t count = 0;
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
-            const DrawCall& draw_call = m_draw_calls[i];
+            const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Renderable* renderable    = draw_call.renderable;
             const BoundingBox& aabb   = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
             aabbs[count].min          = aabb.GetMin();

@@ -72,63 +72,17 @@ namespace spartan
     {
         uint32_t element_count = renderer_resource_frame_lifetime;
         #define buffer(x) buffers[static_cast<uint8_t>(x)]
-    
-        // frame constant buffer - updates once per frame
-        buffer(Renderer_Buffer::ConstantFrame) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame), element_count, nullptr, true, "frame");
-    
-        // single dispatch downsample buffer
-        uint32_t times_used_in_frame        = 12; // safe to tweak this, if it's not enough the engine will assert
-        uint32_t stride                     = static_cast<uint32_t>(sizeof(uint32_t));
-        buffer(Renderer_Buffer::SpdCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
-    
-        stride                                      = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
-        buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
-    
-        stride                                   = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size;
-        buffer(Renderer_Buffer::LightParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
-    
-        // dummy instance buffer
-        {
-            Matrix identity = Matrix::Identity;
-    
-            // create the dummy buffer
-            buffer(Renderer_Buffer::DummyInstance) = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Instance,     // buffer type
-                sizeof(Matrix),                // size of one matrix
-                1,                             // one instance
-                static_cast<void*>(&identity), // pointer to the transposed matrix data
-                false,                         // not dynamic (static data)
-                "dummy_instance_buffer"        // name for debugging
-            );
-        }
-    
-        // aabb structured buffer - stores world-space aabbs for occlusion culling
-        {
-            stride = static_cast<uint32_t>(sizeof(Sb_Aabb)); // 32 bytes per aabb
 
-            buffer(Renderer_Buffer::AABBs) = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage,    // structured buffer for SRV
-                stride * rhi_max_array_size, // total size: stride * count
-                1,                           // single allocation (not multi-frame like ConstantFrame)
-                nullptr,                     // no initial data
-                true,                        // dynamic, updated per frame
-                "aabbs"                      // name for debugging
-            );
-        }
-    
-        // visibility results structured buffer - stores occlusion culling results
-        {
-            stride = static_cast<uint32_t>(sizeof(int)); // 4 bytes per visibility flag
+        uint32_t spd_uses_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
+        Matrix identity            = Matrix::Identity;
 
-            buffer(Renderer_Buffer::Visibility) = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage,    // structured buffer for UAV
-                stride * rhi_max_array_size, // total size: stride * count
-                1,                           // single allocation
-                nullptr,                     // no initial data
-                true,                        // dynamic, updated per frame
-                "visibility"                 // name for debugging
-            );
-        }
+        buffer(Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame), element_count, nullptr, true, "frame");
+        buffer(Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), element_count * spd_uses_in_frame, nullptr, true, "spd_counter");
+        buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size, nullptr, true, "materials");
+        buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Light)), rhi_max_array_size, nullptr, true, "lights");
+        buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Matrix), 1, static_cast<void*>(&identity), false, "dummy_instance_buffer");
+        buffer(Renderer_Buffer::AABBs)              = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Aabb)), rhi_max_array_size, nullptr, true, "aabbs");
+        buffer(Renderer_Buffer::Visibility)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(int)), rhi_max_array_size, nullptr, true, "visibility");
     }
 
     void Renderer::CreateDepthStencilStates()
