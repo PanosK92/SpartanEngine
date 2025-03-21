@@ -51,99 +51,6 @@ namespace spartan
     namespace
     {
         bool light_integration_brdf_specular_lut_completed = false;
-        bool transparents_present = false;
-
-        void draw_calls_build(vector<shared_ptr<Entity>>& renderables, array<Renderer_DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
-        {
-            draw_call_count      = 0;
-            transparents_present = false;
-
-            for (shared_ptr<Entity>& entity : renderables)
-            {
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
-                {
-                    if (renderable->GetMaterial()->IsTransparent())
-                    {
-                        transparents_present = true;
-                    }
-
-                    if (renderable->HasInstancing())
-                    {
-                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
-                        {
-                            if (renderable->IsVisible(group_index))
-                            {
-                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
-                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
-                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-                                if (instance_count == 0)
-                                    continue;
-
-                                uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
-                                Renderer_DrawCall& draw_call            = draw_calls[draw_call_count++];
-                                draw_call.renderable           = renderable;
-                                draw_call.instance_group_index = group_index;
-                                draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                                draw_call.instance_start_index = instance_start_index;
-                                draw_call.instance_count       = instance_count;
-                                draw_call.lod_index            = lod_index;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Check visibility for non-instanced renderable
-                        if (renderable->IsVisible())
-                        {
-                            uint32_t lod_index         = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
-                            Renderer_DrawCall& draw_call        = draw_calls[draw_call_count++];
-                            draw_call.renderable       = renderable;
-                            draw_call.distance_squared = renderable->GetDistanceSquared();
-                            draw_call.lod_index        = lod_index;
-                        }
-                    }
-                }
-            }
-
-            sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-            {
-                // check transparency
-                bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-                bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-                
-                if (a_transparent != b_transparent)
-                {
-                    return !a_transparent; // opaque (false) before transparent (true)
-                }
-                
-                if (!a_transparent) // both are opaque
-                { 
-                    // check tessellation
-                    bool a_tess = a.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    bool b_tess = b.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    if (a_tess != b_tess)
-                    {
-                        return !a_tess; // no tessellation (false) before tessellation (true)
-                    }
-                    
-                    // check alpha testing
-                    bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
-                    bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
-                    if (a_alpha != b_alpha)
-                    {
-                        return !a_alpha; // no alpha testing (false) before alpha testing (true)
-                    }
-                    
-                    // sort by distance front to back
-                    return a.distance_squared < b.distance_squared;
-                }
-                else // both are transparent
-                { 
-                    // sort by distance back to front
-                    return a.distance_squared > b.distance_squared;
-                }
-            });
-        }
 
         void draw_calls_update_with_gpu_occlusion_results(RHI_CommandList* cmd_list, array<Renderer_DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
         {
@@ -190,7 +97,6 @@ namespace spartan
 
         if (Camera* camera = GetCamera())
         {
-            Pass_BuildDrawCalls(cmd_list_graphics);
             Pass_Depth_Prepass(cmd_list_graphics); // produces opaque and opaque & transparent depth buffers
             Pass_HiZ(cmd_list_graphics);
             Pass_Ssr(cmd_list_graphics);           // operates on the opaque & transparent depth buffer
@@ -202,7 +108,7 @@ namespace spartan
 
                 // shadow maps
                 Pass_ShadowMaps(cmd_list_graphics, false);
-                if (transparents_present)
+                if (m_transparents_present)
                 {
                     Pass_ShadowMaps(cmd_list_graphics, true);
                 }
@@ -227,7 +133,7 @@ namespace spartan
             cmd_list_graphics->EndTimeblock();
 
             // transparents
-            if (transparents_present)
+            if (m_transparents_present)
             {
                 bool is_transparent = true;
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
@@ -415,16 +321,6 @@ namespace spartan
             }
         }
     
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_BuildDrawCalls(RHI_CommandList* cmd_list)
-    {
-        // cpu pass
-        cmd_list->BeginTimeblock("build_draw_calls", false, false);
-        {
-            draw_calls_build(m_renderables[Renderer_Entity::Mesh], m_draw_calls, m_draw_call_count);
-        }
         cmd_list->EndTimeblock();
     }
 

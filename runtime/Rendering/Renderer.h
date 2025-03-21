@@ -146,7 +146,7 @@ namespace spartan
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        static void Pass_BuildDrawCalls(RHI_CommandList* cmd_list);
+        static void BuildDrawCalls(RHI_CommandList* cmd_list);
         static void Pass_HiZ(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
@@ -211,5 +211,6 @@ namespace spartan
         static std::mutex m_mutex_renderables;
         static std::array<Renderer_DrawCall, renderer_max_entities> m_draw_calls;
         static uint32_t m_draw_call_count;
+        static bool m_transparents_present;
     };
 }

@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Material.h"
 #include "ThreadPool.h"
-#include "ProgressTracker.h"
 #include "../Profiling/RenderDoc.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
@@ -66,6 +65,7 @@ namespace spartan
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     mutex Renderer::m_mutex_renderables;
+    bool Renderer::m_transparents_present = false;
 
     namespace
     {
@@ -335,6 +335,7 @@ namespace spartan
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
         WaitForValidResources();
+        BuildDrawCalls(cmd_list_graphics);
         UpdateBuffers(cmd_list_graphics);
         ProduceFrame(cmd_list_graphics, cmd_list_compute);
 
@@ -537,13 +538,10 @@ namespace spartan
             {
                 if (Material* material = renderable->GetMaterial())
                 {
-                    if (material->IsVisible())
-                    {
-                        // a mesh can be uninitialized if it's currently loading in a different thread
-                        if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
-                        { 
-                            m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
-                        }
+                    // a mesh can be uninitialized if it's currently loading in a different thread
+                    if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
+                    { 
+                        m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
                     }
                 }
             }
@@ -1095,9 +1093,11 @@ namespace spartan
 
     void Renderer::BindlessUpdateAabbs(RHI_CommandList* cmd_list)
     {
-        // cpu
+        // clear
         bindless_aabbs.fill(Sb_Aabb());
         uint32_t count = 0;
+
+        // cpu
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -1123,5 +1123,103 @@ namespace spartan
     void Renderer::Screenshot(const string& file_path)
     {
         GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
+    }
+
+    
+    void Renderer::BuildDrawCalls(RHI_CommandList* cmd_list)
+    {
+        // cpu pass
+        cmd_list->BeginTimeblock("build_draw_calls", false, false);
+        {
+            m_draw_call_count      = 0;
+
+            
+            for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Mesh])
+            {
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                {
+                    if (renderable->GetMaterial()->IsTransparent())
+                    {
+                        m_transparents_present = true;
+                    }
+            
+                    if (renderable->HasInstancing())
+                    {
+                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+                        {
+                            if (renderable->IsVisible(group_index))
+                            {
+                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
+                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                if (instance_count == 0)
+                                    continue;
+            
+                                uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+                                Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
+                                draw_call.renderable           = renderable;
+                                draw_call.instance_group_index = group_index;
+                                draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
+                                draw_call.instance_start_index = instance_start_index;
+                                draw_call.instance_count       = instance_count;
+                                draw_call.lod_index            = lod_index;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Check visibility for non-instanced renderable
+                        if (renderable->IsVisible())
+                        {
+                            uint32_t lod_index           = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                            Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
+                            draw_call.renderable         = renderable;
+                            draw_call.distance_squared   = renderable->GetDistanceSquared();
+                            draw_call.lod_index          = lod_index;
+                        }
+                    }
+                }
+            }
+            
+            sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+            {
+                // check transparency
+                bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+                bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+                
+                if (a_transparent != b_transparent)
+                {
+                    return !a_transparent; // opaque (false) before transparent (true)
+                }
+                
+                if (!a_transparent) // both are opaque
+                { 
+                    // check tessellation
+                    bool a_tess = a.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                    bool b_tess = b.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                    if (a_tess != b_tess)
+                    {
+                        return !a_tess; // no tessellation (false) before tessellation (true)
+                    }
+                    
+                    // check alpha testing
+                    bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
+                    bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+                    if (a_alpha != b_alpha)
+                    {
+                        return !a_alpha; // no alpha testing (false) before alpha testing (true)
+                    }
+                    
+                    // sort by distance front to back
+                    return a.distance_squared < b.distance_squared;
+                }
+                else // both are transparent
+                { 
+                    // sort by distance back to front
+                    return a.distance_squared > b.distance_squared;
+                }
+            });
+        }
+        cmd_list->EndTimeblock();
     }
 }
