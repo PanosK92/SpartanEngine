@@ -1106,10 +1106,10 @@ namespace spartan
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
-            Renderable* renderable    = draw_call.renderable;
-            const BoundingBox& aabb   = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
-            aabbs[count].min          = aabb.GetMin();
-            aabbs[count].max          = aabb.GetMax();
+            Renderable* renderable             = draw_call.renderable;
+            const BoundingBox& aabb            = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
+            aabbs[count].min                   = aabb.GetMin();
+            aabbs[count].max                   = aabb.GetMax();
 
             count++;
         }

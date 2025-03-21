@@ -107,17 +107,41 @@ namespace spartan
 
             sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
             {
-                // first, compare transparency (opaque first, transparent last)
+                // check transparency
                 bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
                 bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
                 
                 if (a_transparent != b_transparent)
                 {
-                    return !a_transparent; // false (opaque) comes before true (transparent)
+                    return !a_transparent; // opaque (false) before transparent (true)
                 }
                 
-                // if both are opaque or both are transparent, sort by distance (front to back)
-                return a.distance_squared < b.distance_squared;
+                if (!a_transparent) // both are opaque
+                { 
+                    // check tessellation
+                    bool a_tess = a.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                    bool b_tess = b.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                    if (a_tess != b_tess)
+                    {
+                        return !a_tess; // no tessellation (false) before tessellation (true)
+                    }
+                    
+                    // check alpha testing
+                    bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
+                    bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+                    if (a_alpha != b_alpha)
+                    {
+                        return !a_alpha; // no alpha testing (false) before alpha testing (true)
+                    }
+                    
+                    // sort by distance front to back
+                    return a.distance_squared < b.distance_squared;
+                }
+                else // both are transparent
+                { 
+                    // sort by distance back to front
+                    return a.distance_squared > b.distance_squared;
+                }
             });
         }
 
@@ -333,8 +357,8 @@ namespace spartan
                 for (uint32_t i = 0; i < m_draw_call_count; i++)
                 {
                     const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                    Renderable* renderable    = draw_call.renderable;
-                    Material* material        = renderable->GetMaterial();
+                    Renderable* renderable             = draw_call.renderable;
+                    Material* material                 = renderable->GetMaterial();
                     if (!renderable->HasFlag(RenderableFlags::CastsShadows) || material->IsTransparent() != is_transparent_pass)
                         continue;
     
@@ -342,13 +366,13 @@ namespace spartan
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
     
                     // alpha testing
-                    if ((material->IsAlphaTested() && !pso.shaders[RHI_Shader_Type::Pixel]) || (material->IsAlphaTested() && pso.shaders[RHI_Shader_Type::Pixel]))
                     {
                         bool needs_pixel_shader             = material->IsAlphaTested() || is_transparent_pass;
                         pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_alpha_color_p : nullptr;
-                        cmd_list->SetPipelineState(pso);
                     }
-    
+
+                    cmd_list->SetPipelineState(pso);
+
                     // set pass constants
                     {
                         // for the vertex shader
@@ -457,42 +481,27 @@ namespace spartan
             pso.resolution_scale                 = true;
             pso.clear_depth                      = is_transparent_pass ? rhi_depth_load : 0.0f;
     
-            bool set_pipeline = true;
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                Renderable* renderable    = draw_call.renderable;
-                Material* material        = renderable->GetMaterial();
+                Renderable* renderable             = draw_call.renderable;
+                Material* material                 = renderable->GetMaterial();
                 if (!material || material->IsTransparent() != is_transparent_pass)
                     continue;
     
                 // toggles
                 {
-                    // alpha testing
-                    if ((material->IsAlphaTested() && !pso.shaders[RHI_Shader_Type::Pixel]) || (material->IsAlphaTested() && pso.shaders[RHI_Shader_Type::Pixel]))
-                    {
-                        pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
-                        set_pipeline                        = true;
-                    }
-    
-                    // tessellation & culling
+                    // alpha testing & tessellation
+                    pso.shaders[RHI_Shader_Type::Pixel]  = material->IsAlphaTested()                                    ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
+                    pso.shaders[RHI_Shader_Type::Hull]   = material->GetProperty(MaterialProperty::Tessellation) > 0.0f ? GetShader(Renderer_Shader::tessellation_h)             : nullptr;
+                    pso.shaders[RHI_Shader_Type::Domain] = material->GetProperty(MaterialProperty::Tessellation) > 0.0f ? GetShader(Renderer_Shader::tessellation_d)             : nullptr;
+
+                     // culling
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
                     cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
-    
-                    bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    if ((is_tessellated && !pso.shaders[RHI_Shader_Type::Hull]) || (!is_tessellated && pso.shaders[RHI_Shader_Type::Hull]))
-                    {
-                        pso.shaders[RHI_Shader_Type::Hull]   = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                        pso.shaders[RHI_Shader_Type::Domain] = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
-                        set_pipeline                         = true;
-                    }
-    
-                    if (set_pipeline)
-                    {
-                        cmd_list->SetPipelineState(pso);
-                        set_pipeline = false;
-                    }
+
+                    cmd_list->SetPipelineState(pso);
                 }
     
                 // set pass constants
