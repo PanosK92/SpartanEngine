@@ -75,7 +75,7 @@ namespace spartan
             // create input layout
             if (m_shader_type == RHI_Shader_Type::Vertex)
             {
-                m_input_layout->Create(m_vertex_type, nullptr);
+                m_input_layout->Create(m_vertex_type);
             }
 
             m_object_size = shader_buffer->GetBufferSize();
