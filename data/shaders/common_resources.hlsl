@@ -175,7 +175,7 @@ RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);
 RWTexture2D<float4> tex_uav4                               : register(u3);
 RWTexture2DArray<float4> tex_uav_sss                       : register(u4);
-RWStructuredBuffer<int> visibility                         : register(u5);
+RWStructuredBuffer<uint> visibility                        : register(u5);
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u6); // used by FidelityFX SPD
 globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u7); // used by FidelityFX SPD
 

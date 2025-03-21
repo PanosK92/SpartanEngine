@@ -36,25 +36,16 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // transform world-space aabb to clip space
     float4 min_clip = mul(float4(current_aabb.min, 1.0), buffer_frame.view_projection);
     float4 max_clip = mul(float4(current_aabb.max, 1.0), buffer_frame.view_projection);
-
-    // check if aabb is behind the camera (w <= 0)
-    if (min_clip.w <= 0 && max_clip.w <= 0)
-    {
-        visibility[aabb_index] = 0; // fully behind near plane
-        return;
-    }
-
-    // perspective divide to ndc
-    float2 min_ndc = min_clip.xy / min_clip.w;
-    float2 max_ndc = max_clip.xy / max_clip.w;
+    float2 min_ndc  = min_clip.xy / min_clip.w;
+    float2 max_ndc  = max_clip.xy / max_clip.w;
 
     // convert ndc (-1 to 1) to uv (0 to 1)
     float2 min_uv = float2(0.5 * min_ndc.x + 0.5, 0.5 * min_ndc.y + 0.5);
     float2 max_uv = float2(0.5 * max_ndc.x + 0.5, 0.5 * max_ndc.y + 0.5);
 
     // clamp to valid uv range
-    min_uv = clamp(min_uv, 0.0, 1.0);
-    max_uv = clamp(max_uv, 0.0, 1.0);
+    min_uv = saturate(min_uv);
+    max_uv = saturate(max_uv);
 
     // calculate screen-space size of the aabb
     float2 size_uv = abs(max_uv - min_uv);
@@ -68,7 +59,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // sample hi-z buffer at the center (reverse z: 1.0 = near, 0.0 = far)
     float2 center_uv = (min_uv + max_uv) * 0.5;
-    float hiz_depth  = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), center_uv, mip_level).r;
+    float hiz_depth  = tex.Load(int3(center_uv.x, center_uv.y, mip_count)).r;
 
     // compute ndc depth (z/w) for min and max points
     float aabb_min_depth = min_clip.z / min_clip.w; // closest point in ndc
@@ -79,6 +70,6 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // visibility test: aabb is visible if its farthest depth is closer than hi-z depth
     // (i.e., aabb_farthest_depth > hiz_depth)
-    bool is_visible = (aabb_farthest_depth > hiz_depth);
+    bool is_visible        = (aabb_farthest_depth > hiz_depth);
     visibility[aabb_index] = is_visible ? 1 : 0;
 }

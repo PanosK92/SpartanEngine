@@ -76,13 +76,13 @@ namespace spartan
         uint32_t spd_uses_in_frame = 12; // safe to tweak this, if it's not enough the engine will assert
         Matrix identity            = Matrix::Identity;
 
-        buffer(Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame), element_count, nullptr, true, "frame");
-        buffer(Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), element_count * spd_uses_in_frame, nullptr, true, "spd_counter");
-        buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size, nullptr, true, "materials");
-        buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Light)), rhi_max_array_size, nullptr, true, "lights");
-        buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Matrix), 1, static_cast<void*>(&identity), false, "dummy_instance_buffer");
-        buffer(Renderer_Buffer::AABBs)              = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Aabb)), rhi_max_array_size, nullptr, true, "aabbs");
-        buffer(Renderer_Buffer::Visibility)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(int)), rhi_max_array_size, nullptr, true, "visibility");
+        buffer(Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame),                           element_count,                     nullptr,                       true,  "frame");
+        buffer(Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    element_count * spd_uses_in_frame, nullptr,                       true,  "spd_counter");
+        buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                nullptr,                       true,  "materials");
+        buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                nullptr,                       true,  "lights");
+        buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Matrix),                             1,                                 static_cast<void*>(&identity), false, "dummy_instance_buffer");
+        buffer(Renderer_Buffer::AABBs)              = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Aabb)),     rhi_max_array_size,                nullptr,                       true,  "aabbs");
+        buffer(Renderer_Buffer::Visibility)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                nullptr,                       true,  "visibility");
     }
 
     void Renderer::CreateDepthStencilStates()

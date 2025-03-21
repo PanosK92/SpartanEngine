@@ -1131,9 +1131,8 @@ namespace spartan
         // cpu pass
         cmd_list->BeginTimeblock("build_draw_calls", false, false);
         {
-            m_draw_call_count      = 0;
+            m_draw_call_count = 0;
 
-            
             for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Mesh])
             {
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
