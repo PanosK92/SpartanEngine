@@ -186,7 +186,7 @@ namespace spartan
         // event handlers
         static void OnClear();
         static void OnFullScreenToggled();
-        static void OnUpdateBuffers(RHI_CommandList* cmd_list);
+        static void UpdateBuffers(RHI_CommandList* cmd_list);
 
         // misc
         static void AddLinesToBeRendered();

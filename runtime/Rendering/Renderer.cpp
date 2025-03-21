@@ -80,6 +80,8 @@ namespace spartan
 
         // bindless
         array<RHI_Texture*, rhi_max_array_size> bindless_textures;
+        array<Sb_Light, rhi_max_array_size> bindless_lights;
+        array<Sb_Aabb, rhi_max_array_size> bindless_aabbs;
         bool bindless_materials_dirty = true;
         bool bindless_lights_dirty    = true;
         bool bindless_samplers_dirty  = true;
@@ -333,7 +335,7 @@ namespace spartan
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
         WaitForValidResources();
-        OnUpdateBuffers(cmd_list_graphics);
+        UpdateBuffers(cmd_list_graphics);
         ProduceFrame(cmd_list_graphics, cmd_list_compute);
 
         // blit to back buffer when not in editor mode
@@ -513,11 +515,17 @@ namespace spartan
 
     void Renderer::SetEntities(unordered_map<uint64_t, shared_ptr<Entity>>& entities)
     {
-        m_mutex_renderables.lock();
+        lock_guard lock(m_mutex_renderables);
 
         // clear previous state
         m_renderables.clear();
+        m_draw_calls.fill(Renderer_DrawCall());
+        m_draw_call_count        = 0;
+        bindless_materials_dirty = true;
+        bindless_lights_dirty    = true;
+        bindless_aabbs_dirty     = true;
 
+        // build new state
         for (auto it : entities)
         {
             shared_ptr<Entity>& entity = it.second;
@@ -555,11 +563,6 @@ namespace spartan
                 m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
             }
         }
-
-        m_mutex_renderables.unlock();
-        bindless_materials_dirty = true;
-        bindless_lights_dirty    = true;
-        bindless_aabbs_dirty     = true;
     }
 
     const Vector3& Renderer::GetWind()
@@ -606,7 +609,7 @@ namespace spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::OnUpdateBuffers(RHI_CommandList* cmd_list)
+    void Renderer::UpdateBuffers(RHI_CommandList* cmd_list)
     {
         // reset dynamic buffers and parse deletion queue
         {
@@ -629,41 +632,48 @@ namespace spartan
             }
         }
 
-        // samplers
-        if (bindless_samplers_dirty)
-        {
-             RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
-
-             bindless_samplers_dirty = false;
-        }
-
-        // materials and their textures
-        if (bindless_materials_dirty)
-        {
-            BindlessUpdateMaterialsParameters(cmd_list);
-            RHI_Device::UpdateBindlessResources(&bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
-            bindless_materials_dirty = false;
-        }
-
-        // lights
-        if (bindless_lights_dirty)
-        {
-            BindlessUpdateLights(cmd_list);
-            RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
-            bindless_lights_dirty = false;
-        }
-
-        // bounding boxes (world space)
-        if (bindless_aabbs_dirty)
-        {
-            BindlessUpdateAabbs(cmd_list);
-            RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
-            bindless_aabbs_dirty = false;
-        }
-
+        // frame consntant buffer (just a single buffer for the entire frame)
         UpdateFrameConstantBuffer(cmd_list);
 
+        // line rendering buffer (used for debugging)
         AddLinesToBeRendered();
+
+        // bindless arrays
+        {
+            // samplers
+            if (bindless_samplers_dirty)
+            {
+                 RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
+                 bindless_samplers_dirty = false;
+            }
+
+            // materials and their textures
+            if (bindless_materials_dirty)
+            {
+                lock_guard lock(m_mutex_renderables);
+                BindlessUpdateMaterialsParameters(cmd_list);
+                RHI_Device::UpdateBindlessResources(&bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
+                bindless_materials_dirty = false;
+            }
+
+            // lights
+            if (bindless_lights_dirty)
+            {
+                lock_guard lock(m_mutex_renderables);
+                BindlessUpdateLights(cmd_list);
+                RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
+                bindless_lights_dirty = false;
+            }
+
+            // bounding boxes (world space)
+            if (bindless_aabbs_dirty)
+            {
+                lock_guard lock(m_mutex_renderables);
+                BindlessUpdateAabbs(cmd_list);
+                RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+                bindless_aabbs_dirty = false;
+            }
+        }
     }
 
     void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
@@ -908,13 +918,9 @@ namespace spartan
     
     void Renderer::BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list)
     {
-        lock_guard lock(m_mutex_renderables);
-        if (ProgressTracker::IsLoading())
-            return;
-
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
-        static uint32_t index = 0;
+        static uint32_t count = 0;
     
         auto update_material = [](Material* material)
         {
@@ -927,44 +933,44 @@ namespace spartan
     
             // properties
             {
-                SP_ASSERT(index < rhi_max_array_size);
+                SP_ASSERT(count < rhi_max_array_size);
 
-                properties[index].local_width           = material->GetProperty(MaterialProperty::WorldWidth);
-                properties[index].local_height          = material->GetProperty(MaterialProperty::WorldHeight);
-                properties[index].color.x               = material->GetProperty(MaterialProperty::ColorR);
-                properties[index].color.y               = material->GetProperty(MaterialProperty::ColorG);
-                properties[index].color.z               = material->GetProperty(MaterialProperty::ColorB);
-                properties[index].color.w               = material->GetProperty(MaterialProperty::ColorA);
-                properties[index].tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
-                properties[index].tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
-                properties[index].offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
-                properties[index].offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
-                properties[index].roughness_mul         = material->GetProperty(MaterialProperty::Roughness);
-                properties[index].metallic_mul          = material->GetProperty(MaterialProperty::Metalness);
-                properties[index].normal_mul            = material->GetProperty(MaterialProperty::Normal);
-                properties[index].height_mul            = material->GetProperty(MaterialProperty::Height);
-                properties[index].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
-                properties[index].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
-                properties[index].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
-                properties[index].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-                properties[index].sheen                 = material->GetProperty(MaterialProperty::Sheen);
-                properties[index].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                properties[index].ior                   = material->GetProperty(MaterialProperty::Ior);
+                properties[count].local_width           = material->GetProperty(MaterialProperty::WorldWidth);
+                properties[count].local_height          = material->GetProperty(MaterialProperty::WorldHeight);
+                properties[count].color.x               = material->GetProperty(MaterialProperty::ColorR);
+                properties[count].color.y               = material->GetProperty(MaterialProperty::ColorG);
+                properties[count].color.z               = material->GetProperty(MaterialProperty::ColorB);
+                properties[count].color.w               = material->GetProperty(MaterialProperty::ColorA);
+                properties[count].tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
+                properties[count].tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
+                properties[count].offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
+                properties[count].offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
+                properties[count].roughness_mul         = material->GetProperty(MaterialProperty::Roughness);
+                properties[count].metallic_mul          = material->GetProperty(MaterialProperty::Metalness);
+                properties[count].normal_mul            = material->GetProperty(MaterialProperty::Normal);
+                properties[count].height_mul            = material->GetProperty(MaterialProperty::Height);
+                properties[count].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
+                properties[count].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
+                properties[count].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
+                properties[count].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+                properties[count].sheen                 = material->GetProperty(MaterialProperty::Sheen);
+                properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
+                properties[count].ior                   = material->GetProperty(MaterialProperty::Ior);
 
                 // flags
-                properties[index].flags  = material->HasTextureOfType(MaterialTextureType::Height)     ? (1U << 0)  : 0;
-                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Normal)     ? (1U << 1)  : 0;
-                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Color)      ? (1U << 2)  : 0;
-                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Roughness)  ? (1U << 3)  : 0;
-                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Metalness)  ? (1U << 4)  : 0;
-                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::AlphaMask)  ? (1U << 5)  : 0;
-                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Emission)   ? (1U << 6)  : 0;
-                properties[index].flags |= material->HasTextureOfType(MaterialTextureType::Occlusion)  ? (1U << 7)  : 0;
-                properties[index].flags |= material->GetProperty(MaterialProperty::TextureSlopeBased)  ? (1U << 8)  : 0;
-                properties[index].flags |= material->GetProperty(MaterialProperty::IsTree)  ? (1U << 9)  : 0;
-                properties[index].flags |= material->GetProperty(MaterialProperty::IsGrassBlasde)         ? (1U << 10) : 0;
-                properties[index].flags |= material->GetProperty(MaterialProperty::IsWater) ? (1U << 11) : 0;
-                properties[index].flags |= material->GetProperty(MaterialProperty::Tessellation)       ? (1U << 12) : 0;
+                properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)     ? (1U << 0)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Normal)     ? (1U << 1)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Color)      ? (1U << 2)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Roughness)  ? (1U << 3)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Metalness)  ? (1U << 4)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::AlphaMask)  ? (1U << 5)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Emission)   ? (1U << 6)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Occlusion)  ? (1U << 7)  : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::TextureSlopeBased)  ? (1U << 8)  : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsTree)  ? (1U << 9)  : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsGrassBlasde)         ? (1U << 10) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsWater) ? (1U << 11) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)       ? (1U << 12) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
     
@@ -976,7 +982,7 @@ namespace spartan
                     for (uint32_t slot = 0; slot < Material::slots_per_texture_type; slot++)
                     {
                         // calculate the final index in the bindless array
-                        uint32_t bindless_index = index + (type * Material::slots_per_texture_type) + slot;
+                        uint32_t bindless_index = count + (type * Material::slots_per_texture_type) + slot;
                         
                         // get the texture from the material using type and slot
                         bindless_textures[bindless_index] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
@@ -984,10 +990,10 @@ namespace spartan
                 }
             }
     
-            material->SetIndex(index);
+            material->SetIndex(count);
 
             // update index increment to account for all texture slots
-            index += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture_type;
+            count += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture_type;
         };
     
         auto update_entities = [update_material](vector<shared_ptr<Entity>>& entities)
@@ -1021,32 +1027,27 @@ namespace spartan
             // material properties
             RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
             buffer->ResetOffset();
-            buffer->Update(cmd_list, &properties[0], buffer->GetStride() * index);
+            buffer->Update(cmd_list, &properties[0], buffer->GetStride() * count);
         }
 
-        index = 0;
+        count = 0;
     }
 
     void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
     {
-        lock_guard lock(m_mutex_renderables);
-        if (ProgressTracker::IsLoading())
-            return;
-
-        static array<Sb_Light, rhi_max_array_size> lights;
-        uint32_t index = 0;
+        uint32_t count = 0;
 
         // cpu
         {
             // clear
-            lights.fill(Sb_Light());
+            bindless_lights.fill(Sb_Light());
 
             // go through each light
             for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
             {
                 if (Light* light = entity->GetComponent<Light>())
                 {
-                    light->SetIndex(index);
+                    light->SetIndex(count);
 
                     // set light properties
                     if (RHI_Texture* texture = light->GetDepthTexture())
@@ -1056,32 +1057,32 @@ namespace spartan
                             if (light->GetLightType() == LightType::Point)
                             {
                                 // we do paraboloid projection in the vertex shader so we only want the view here
-                                lights[index].view_projection[i] = light->GetViewMatrix(i);
+                                bindless_lights[count].view_projection[i] = light->GetViewMatrix(i);
                             }
                             else
                             { 
-                                lights[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                                bindless_lights[count].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
                             }
                         }
                     }
 
-                    lights[index].intensity  = light->GetIntensityWatt();
-                    lights[index].range      = light->GetRange();
-                    lights[index].angle      = light->GetAngle();
-                    lights[index].color      = light->GetColor();
-                    lights[index].position   = light->GetEntity()->GetPosition();
-                    lights[index].direction  = light->GetEntity()->GetForward();
-                    lights[index].flags      = 0;
-                    lights[index].flags     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-                    lights[index].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-                    lights[index].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-                    lights[index].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-                    lights[index].flags     |= light->GetFlag(LightFlags::ShadowsTransparent)  ? (1 << 4) : 0;
-                    lights[index].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    lights[index].flags     |= (light->GetFlag(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
+                    bindless_lights[count].intensity  = light->GetIntensityWatt();
+                    bindless_lights[count].range      = light->GetRange();
+                    bindless_lights[count].angle      = light->GetAngle();
+                    bindless_lights[count].color      = light->GetColor();
+                    bindless_lights[count].position   = light->GetEntity()->GetPosition();
+                    bindless_lights[count].direction  = light->GetEntity()->GetForward();
+                    bindless_lights[count].flags      = 0;
+                    bindless_lights[count].flags     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+                    bindless_lights[count].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+                    bindless_lights[count].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+                    bindless_lights[count].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+                    bindless_lights[count].flags     |= light->GetFlag(LightFlags::ShadowsTransparent)  ? (1 << 4) : 0;
+                    bindless_lights[count].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    bindless_lights[count].flags     |= (light->GetFlag(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
-                    index++;
+                    count++;
                 }
             }
         }
@@ -1089,27 +1090,21 @@ namespace spartan
         // gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &lights[0], buffer->GetStride() * index);
+        buffer->Update(cmd_list, &bindless_lights[0], buffer->GetStride() * count);
     }
 
     void Renderer::BindlessUpdateAabbs(RHI_CommandList* cmd_list)
     {
-        lock_guard lock(m_mutex_renderables);
-        if (ProgressTracker::IsLoading())
-            return;
-
-        static array<Sb_Aabb, rhi_max_array_size> aabbs;
-
         // cpu
-        aabbs.fill(Sb_Aabb());
+        bindless_aabbs.fill(Sb_Aabb());
         uint32_t count = 0;
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Renderable* renderable             = draw_call.renderable;
             const BoundingBox& aabb            = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
-            aabbs[count].min                   = aabb.GetMin();
-            aabbs[count].max                   = aabb.GetMax();
+            bindless_aabbs[count].min          = aabb.GetMin();
+            bindless_aabbs[count].max          = aabb.GetMax();
 
             count++;
         }
@@ -1117,7 +1112,7 @@ namespace spartan
         // gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::AABBs);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &aabbs[0], buffer->GetStride() * count);
+        buffer->Update(cmd_list, &bindless_aabbs[0], buffer->GetStride() * count);
     }
 
     void Renderer::BindlessUpdateSamplers()

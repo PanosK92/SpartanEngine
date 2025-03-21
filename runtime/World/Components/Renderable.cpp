@@ -212,51 +212,54 @@ namespace spartan
 
     const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index)
     {
-        if (m_bounding_box_dirty || m_transform_previous != GetEntity()->GetMatrix())
+        if (Entity* entity = GetEntity())
         {
-            Matrix transform = GetEntity()->GetMatrix();
+            const Matrix& transform = entity->GetMatrix();
 
-            // bounding box that contains all instances
-            if (m_instances.empty())
+            if (m_bounding_box_dirty || m_transform_previous != transform)
             {
-                m_bounding_box_transformed = m_bounding_box.Transform(transform);
-            }
-            else // transformed instances
-            {
-                m_bounding_box_transformed = BoundingBox::Undefined;
-                m_bounding_box_instances.clear();
-                m_bounding_box_instances.reserve(m_instances.size());
-                m_bounding_box_instances.resize(m_instances.size());
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_instances.size()); i++)
+                // bounding box that contains all instances
+                if (m_instances.empty())
                 {
-                    const Matrix& instance_transform = m_instances[i];
-                    m_bounding_box_instances[i]      = m_bounding_box.Transform(transform * instance_transform); // 1. bounding box of the instance
-                    m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                               // 2. bounding box of all instances
+                    m_bounding_box_transformed = m_bounding_box.Transform(transform);
                 }
-
-                // 3. bounding boxes of instance groups
+                else // transformed instances
                 {
-                    // loop through each group end index
-                    m_bounding_box_instance_group.clear();
-                    uint32_t start_index = 0;
-                    for (const uint32_t group_end_index : m_instance_group_end_indices)
+                    m_bounding_box_transformed = BoundingBox::Undefined;
+                    m_bounding_box_instances.clear();
+                    m_bounding_box_instances.reserve(m_instances.size());
+                    m_bounding_box_instances.resize(m_instances.size());
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(m_instances.size()); i++)
                     {
-                        // loop through the instances in this group
-                        BoundingBox bounding_box_group = BoundingBox::Undefined;
-                        for (uint32_t i = start_index; i < group_end_index; i++)
-                        {
-                            BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * m_instances[i]);
-                            bounding_box_group.Merge(bounding_box_instance);
-                        }
+                        const Matrix& instance_transform = m_instances[i];
+                        m_bounding_box_instances[i]      = m_bounding_box.Transform(transform * instance_transform); // 1. bounding box of the instance
+                        m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                               // 2. bounding box of all instances
+                    }
 
-                        m_bounding_box_instance_group.push_back(bounding_box_group);
-                        start_index = group_end_index;
+                    // 3. bounding boxes of instance groups
+                    {
+                        // loop through each group end index
+                        m_bounding_box_instance_group.clear();
+                        uint32_t start_index = 0;
+                        for (const uint32_t group_end_index : m_instance_group_end_indices)
+                        {
+                            // loop through the instances in this group
+                            BoundingBox bounding_box_group = BoundingBox::Undefined;
+                            for (uint32_t i = start_index; i < group_end_index; i++)
+                            {
+                                BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * m_instances[i]);
+                                bounding_box_group.Merge(bounding_box_instance);
+                            }
+
+                            m_bounding_box_instance_group.push_back(bounding_box_group);
+                            start_index = group_end_index;
+                        }
                     }
                 }
-            }
 
-            m_transform_previous = transform;
-            m_bounding_box_dirty = false;
+                m_transform_previous = transform;
+                m_bounding_box_dirty = false;
+            }
         }
 
         if (type == BoundingBoxType::Mesh)

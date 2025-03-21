@@ -1652,7 +1652,7 @@ namespace spartan
 
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
-        const  uint32_t frames_selflife            = 1000;
+        const  uint32_t frames_selflife            = 100;
         static uint32_t frames_equilibrium         = 0;
         static uint32_t objects_to_delete_previous = 0;
     
@@ -1746,7 +1746,7 @@ namespace spartan
         RHI_Buffer* material_parameteres,
         RHI_Buffer* light_parameters,
         const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
-        RHI_Buffer* aabbs
+        RHI_Buffer* bindless_aabbs
     )
     {
         if (samplers)
@@ -1797,10 +1797,10 @@ namespace spartan
         }
 
         // aabb
-        if (aabbs)
+        if (bindless_aabbs)
         {
             uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_aabbs);
-            descriptors::bindless::update(aabbs, 1, binding_slot, RHI_Device_Bindless_Resource::Aabbs, "aabbs");
+            descriptors::bindless::update(bindless_aabbs, 1, binding_slot, RHI_Device_Bindless_Resource::Aabbs, "aabbs");
         }
     }
 
