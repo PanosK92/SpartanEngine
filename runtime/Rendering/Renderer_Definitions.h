@@ -65,7 +65,6 @@ namespace spartan
         VariableRateShading,
         ResolutionScale,
         DynamicResolution,
-        OcclusionCulling,
         Max
     };
 
@@ -135,9 +134,10 @@ namespace spartan
         tex2        = 18,
 
         // bindless
-        material_textures   = 19,
-        material_parameters = 20,
-        light_parameters    = 21
+        bindless_material_textures    = 19,
+        bindless_material_parameteres = 20,
+        bindless_light_parameters     = 21,
+        bindless_aabbs                = 22,
     };
 
     enum class Renderer_BindingsUav
@@ -147,8 +147,9 @@ namespace spartan
         tex3              = 2,
         tex4              = 3,
         tex_sss           = 4,
-        sb_spd            = 5,
-        tex_spd           = 6,
+        visibility        = 5,
+        sb_spd            = 6,
+        tex_spd           = 7,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -196,6 +197,7 @@ namespace spartan
         ffx_spd_average_c,
         ffx_spd_max_c,
         blit_c,
+        hiz_c,
         max
     };
     
@@ -261,6 +263,8 @@ namespace spartan
         MaterialParameters,
         LightParameters,
         DummyInstance,
+        AABBs,
+        Visibility,
         Max
     };
 
@@ -312,5 +316,16 @@ namespace spartan
     {
         Max,
         Average
+    };
+
+    class Renderable;
+    struct DrawCall
+    {
+        Renderable* renderable;        // Pointer to the renderable object
+        uint32_t instance_group_index; // Index of the instance group (used if instanced)
+        uint32_t instance_start_index; // Starting index in the instance buffer (used if instanced)
+        uint32_t instance_count;       // Number of instances to draw (used if instanced)
+        uint32_t lod_index;            // Level of detail index for the mesh
+        float distance_squared;        // Distance for sorting or other purposes
     };
 }

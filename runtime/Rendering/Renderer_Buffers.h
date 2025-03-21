@@ -197,4 +197,12 @@ namespace spartan
         uint32_t flags;
         math::Vector2 padding;
     };
+
+    struct Sb_Aabb
+    {
+        math::Vector3 min;
+        float padding;
+        math::Vector3 max;
+        float padding2;
+    };
 }

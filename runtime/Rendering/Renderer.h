@@ -147,6 +147,7 @@ namespace spartan
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_BuildDrawCalls(RHI_CommandList* cmd_list);
+        static void Pass_HiZ(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Ssao(RHI_CommandList* cmd_list);
@@ -195,6 +196,7 @@ namespace spartan
         // bindless
         static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);
         static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
+        static void BindlessUpdateAabbs(RHI_CommandList* cmd_list);
         static void BindlessUpdateSamplers();
 
         // misc
@@ -207,5 +209,7 @@ namespace spartan
         static std::atomic<bool> m_initialized_resources;
         static std::atomic<uint32_t> m_environment_mips_to_filter_count;
         static std::mutex m_mutex_renderables;
+        static std::array<DrawCall, renderer_max_entities> m_draw_calls;
+        static uint32_t m_draw_call_count;
     };
 }

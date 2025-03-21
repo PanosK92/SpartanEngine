@@ -45,81 +45,68 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    std::array<DrawCall, renderer_max_entities> Renderer::m_draw_calls;
+    uint32_t Renderer::m_draw_call_count;
+
     namespace
     {
         bool light_integration_brdf_specular_lut_completed = false;
-
-        // draw_calls and occlusion are WIP functionality, that's why they live here
-
-        struct DrawCall
-        {
-            Renderable* renderable;        // Pointer to the renderable object
-            uint32_t instance_group_index; // Index of the instance group (used if instanced)
-            uint32_t instance_start_index; // Starting index in the instance buffer (used if instanced)
-            uint32_t instance_count;       // Number of instances to draw (used if instanced)
-            uint32_t lod_index;            // Level of detail index for the mesh
-            float distance_squared;        // Distance for sorting or other purposes
-            bool occluded;                 // Occlusion result
-        };
-        array<DrawCall, renderer_max_entities> draw_calls;
-
-        uint32_t draw_call_count  = 0;
         bool transparents_present = false;
-        
-        void draw_calls_builds(vector<shared_ptr<Entity>>& renderables)
+
+        void draw_calls_build(vector<shared_ptr<Entity>>& renderables, array<DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
+        {
+            draw_call_count      = 0;
+            transparents_present = false;
+
+            for (shared_ptr<Entity>& entity : renderables)
             {
-                draw_call_count      = 0;
-                transparents_present = false;
-
-                for (shared_ptr<Entity>& entity : renderables)
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    if (renderable->GetMaterial()->IsTransparent())
                     {
-                        if (renderable->GetMaterial()->IsTransparent())
-                        {
-                            transparents_present = true;
-                        }
+                        transparents_present = true;
+                    }
 
-                        if (renderable->HasInstancing())
+                    if (renderable->HasInstancing())
+                    {
+                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                         {
-                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+                            if (renderable->IsVisible(group_index))
                             {
-                                if (renderable->IsVisible(group_index))
-                                {
-                                    uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
-                                    uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
-                                    instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-                                    if (instance_count == 0)
-                                        continue;
+                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
+                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                if (instance_count == 0)
+                                    continue;
 
-                                    uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
-                                    DrawCall& draw_call            = draw_calls[draw_call_count++];
-                                    draw_call.renderable           = renderable;
-                                    draw_call.instance_group_index = group_index;
-                                    draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                                    draw_call.instance_start_index = instance_start_index;
-                                    draw_call.instance_count       = instance_count;
-                                    draw_call.lod_index            = lod_index;
-                                }
+                                uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+                                DrawCall& draw_call            = draw_calls[draw_call_count++];
+                                draw_call.renderable           = renderable;
+                                draw_call.instance_group_index = group_index;
+                                draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
+                                draw_call.instance_start_index = instance_start_index;
+                                draw_call.instance_count       = instance_count;
+                                draw_call.lod_index            = lod_index;
                             }
                         }
-                        else
+                    }
+                    else
+                    {
+                        // Check visibility for non-instanced renderable
+                        if (renderable->IsVisible())
                         {
-                            // Check visibility for non-instanced renderable
-                            if (renderable->IsVisible())
-                            {
-                                uint32_t lod_index         = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
-                                DrawCall& draw_call        = draw_calls[draw_call_count++];
-                                draw_call.renderable       = renderable;
-                                draw_call.distance_squared = renderable->GetDistanceSquared();
-                                draw_call.lod_index        = lod_index;
-                            }
+                            uint32_t lod_index         = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                            DrawCall& draw_call        = draw_calls[draw_call_count++];
+                            draw_call.renderable       = renderable;
+                            draw_call.distance_squared = renderable->GetDistanceSquared();
+                            draw_call.lod_index        = lod_index;
                         }
                     }
                 }
             }
+        }
 
-        void draw_calls_sort()
+        void draw_calls_sort(array<DrawCall, renderer_max_entities>& draw_calls, const uint32_t draw_call_count)
         {
             sort(draw_calls.begin(), draw_calls.begin() + draw_call_count, [](const DrawCall& a, const DrawCall& b)
             {
@@ -133,11 +120,11 @@ namespace spartan
                 }
                 
                 // if both are opaque or both are transparent, sort by distance (front to back)
-                return a.distance_squared > b.distance_squared;
+                return a.distance_squared < b.distance_squared;
             });
         }
 
-        void draw_calls_update_with_gpu_occlusion_results(RHI_CommandList* cmd_list)
+        void draw_calls_update_with_gpu_occlusion_results(RHI_CommandList* cmd_list, array<DrawCall, renderer_max_entities>& draw_calls, uint32_t& draw_call_count)
         {
             cmd_list->UpdateOcclusionQueries();
         
@@ -146,7 +133,7 @@ namespace spartan
                 DrawCall& draw_call = draw_calls[i];
                 if (!draw_call.renderable->GetMaterial()->IsTransparent())
                 { 
-                    draw_call.occluded = cmd_list->GetOcclusionQueryResult(i);
+                    cmd_list->GetOcclusionQueryResult(i);
                 }
             }
         }
@@ -156,6 +143,7 @@ namespace spartan
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
         cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::SpdCounter));
+        cmd_list->SetBuffer(Renderer_BindingsUav::visibility,   GetBuffer(Renderer_Buffer::Visibility));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)
@@ -182,8 +170,8 @@ namespace spartan
         if (Camera* camera = GetCamera())
         {
             Pass_BuildDrawCalls(cmd_list_graphics);
-
             Pass_Depth_Prepass(cmd_list_graphics); // produces opaque and opaque & transparent depth buffers
+            Pass_HiZ(cmd_list_graphics);
             Pass_Ssr(cmd_list_graphics);           // operates on the opaque & transparent depth buffer
 
             // opaques
@@ -277,19 +265,19 @@ namespace spartan
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate);
 
         cmd_list->BeginTimeblock("variable_rate_shading");
+        {
+            // set pipeline state
+            static RHI_PipelineState pso;
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
 
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
 
-        // set textures
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-
-        // render
-        cmd_list->Dispatch(tex_out);
-
+            // render
+            cmd_list->Dispatch(tex_out);
+        }
         cmd_list->EndTimeblock();
     }
 
@@ -345,9 +333,9 @@ namespace spartan
                 cmd_list->SetIgnoreClearValues(is_transparent_pass);
     
                 // iterate over draw calls
-                for (uint32_t i = 0; i < draw_call_count; i++)
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
                 {
-                    const DrawCall& draw_call = draw_calls[i];
+                    const DrawCall& draw_call = m_draw_calls[i];
                     Renderable* renderable    = draw_call.renderable;
                     Material* material        = renderable->GetMaterial();
                     if (!renderable->HasFlag(RenderableFlags::CastsShadows) || material->IsTransparent() != is_transparent_pass)
@@ -356,7 +344,8 @@ namespace spartan
                     // set cull mode
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
     
-                    // set pipeline
+                    // alpha testing
+                    if ((material->IsAlphaTested() && !pso.shaders[RHI_Shader_Type::Pixel]) || (material->IsAlphaTested() && pso.shaders[RHI_Shader_Type::Pixel]))
                     {
                         bool needs_pixel_shader             = material->IsAlphaTested() || is_transparent_pass;
                         pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_alpha_color_p : nullptr;
@@ -413,10 +402,37 @@ namespace spartan
         // cpu pass
 
         cmd_list->BeginTimeblock("build_draw_calls", false, false);
+        {
+            vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Mesh];
 
-        vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Mesh];
+            draw_calls_build(renderables, m_draw_calls, m_draw_call_count);
+            draw_calls_sort(m_draw_calls, m_draw_call_count);
+        }
 
-        draw_calls_builds(renderables);
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_HiZ(RHI_CommandList* cmd_list)
+    {
+        cmd_list->BeginTimeblock("hiz");
+
+        uint32_t aabb_count = m_draw_call_count;
+
+        // define pipeline state
+        static RHI_PipelineState pso;
+        pso.name             = "hiz";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::hiz_c);
+
+        cmd_list->SetPipelineState(pso);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz));
+
+        // set aabb count
+        m_pcb_pass_cpu.set_f2_value(static_cast<float>(aabb_count), 0.0f);
+        cmd_list->PushConstants(m_pcb_pass_cpu);
+
+        // dispatch: ceil(aabb_count / 64) thread groups
+        uint32_t thread_group_count = (aabb_count + 63) / 64; // ceiling division
+        cmd_list->Dispatch(thread_group_count, 1, 1);
 
         cmd_list->EndTimeblock();
     }
@@ -425,7 +441,7 @@ namespace spartan
     {
         // acquire resources
         RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);        // render resolution - base depth
-        RHI_Texture* tex_depth_hiz    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz);    // render resolution - used for occulusion culling
+        RHI_Texture* tex_depth_hiz    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz);    // render resolution - used for occlusion culling
         RHI_Texture* tex_depth_opaque = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque); // render resolution - opaque only
         RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output); // output resolution
    
@@ -450,9 +466,9 @@ namespace spartan
             pso.clear_depth                      = is_transparent_pass ? rhi_depth_load : 0.0f;
     
             bool set_pipeline = true;
-            for (uint32_t i = 0; i < draw_call_count; i++)
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
-                const DrawCall& draw_call = draw_calls[i];
+                const DrawCall& draw_call = m_draw_calls[i];
                 Renderable* renderable    = draw_call.renderable;
                 Material* material        = renderable->GetMaterial();
                 if (!material || material->IsTransparent() != is_transparent_pass)
@@ -461,11 +477,9 @@ namespace spartan
                 // toggles
                 {
                     // alpha testing
-                    bool needs_alpha_test_shader = material->IsAlphaTested();
-                    bool has_pixel_shader        = pso.shaders[RHI_Shader_Type::Pixel] != nullptr;
-                    if (needs_alpha_test_shader != has_pixel_shader)
+                    if ((material->IsAlphaTested() && !pso.shaders[RHI_Shader_Type::Pixel]) || (material->IsAlphaTested() && pso.shaders[RHI_Shader_Type::Pixel]))
                     {
-                        pso.shaders[RHI_Shader_Type::Pixel] = needs_alpha_test_shader ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
+                        pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
                         set_pipeline                        = true;
                     }
     
@@ -499,11 +513,8 @@ namespace spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                 }
     
-                // occlusion culling
-                if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
-                {
-                    cmd_list->BeginOcclusionQuery(i);
-                }
+                // occlusion query
+                cmd_list->BeginOcclusionQuery(i);
     
                 // draw
                 {
@@ -532,10 +543,7 @@ namespace spartan
                     }
                 }
     
-                if (GetOption<bool>(Renderer_Option::OcclusionCulling) && !is_transparent_pass)
-                {
-                    cmd_list->EndOcclusionQuery();
-                }
+                cmd_list->EndOcclusionQuery();
             }
         };
     
@@ -545,20 +553,18 @@ namespace spartan
         // depth for opaques
         cmd_list->SetIgnoreClearValues(false); // todo: replace this hack with proper clear value handling
         pass(false);
-        if (GetOption<bool>(Renderer_Option::OcclusionCulling))
-        {
-            draw_calls_update_with_gpu_occlusion_results(cmd_list);
-        }
         cmd_list->Blit(tex_depth, tex_depth_opaque, false);
 
         // hiz
         {
-            // We use a compute shader to blit from depth to float, as Vulkan doesn't support blitting depth to float formats
+            draw_calls_update_with_gpu_occlusion_results(cmd_list, m_draw_calls, m_draw_call_count);
+
+            // We use a compute shader to blit from depth to float, as vulkan doesn't support blitting depth to float formats
             // and AMD hardware requires UAV textures to be float-based (preventing depth format usage)
             Pass_Blit(cmd_list, tex_depth, tex_depth_hiz);
             Pass_Downscale(cmd_list, tex_depth_hiz, Renderer_DownsampleFilter::Max);
         }
-
+       
         // depth for transparents
         pass(true);
     
@@ -615,12 +621,12 @@ namespace spartan
         cmd_list->SetIgnoreClearValues(false);
     
         bool set_pipeline = true;
-        for (uint32_t i = 0; i < draw_call_count; i++)
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
-            const DrawCall& draw_call = draw_calls[i];
+            const DrawCall& draw_call = m_draw_calls[i];
             Renderable* renderable    = draw_call.renderable;
             Material* material        = renderable->GetMaterial();
-            if (material->IsTransparent() != is_transparent_pass || draw_call.occluded)
+            if (material->IsTransparent() != is_transparent_pass)
                 continue;
     
             // toggles
@@ -1362,15 +1368,12 @@ namespace spartan
 
     void Renderer::Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::fxaa_c);
-
         cmd_list->BeginTimeblock("fxaa");
 
         // set pipeline state
         static RHI_PipelineState pso;
         pso.name             = "fxaa";
-        pso.shaders[Compute] = shader_c;
+        pso.shaders[Compute] = GetShader(Renderer_Shader::fxaa_c);
         cmd_list->SetPipelineState(pso);
 
         // set textures
@@ -1385,15 +1388,12 @@ namespace spartan
 
     void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire shaders
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::chromatic_aberration_c);
-
         cmd_list->BeginTimeblock("chromatic_aberration");
 
         // define pipeline state
         static RHI_PipelineState pso;
         pso.name             = "chromatic_aberration";
-        pso.shaders[Compute] = shader_c;
+        pso.shaders[Compute] = GetShader(Renderer_Shader::chromatic_aberration_c);
 
         // set pipeline state
         cmd_list->SetPipelineState(pso);

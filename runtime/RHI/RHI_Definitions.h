@@ -307,10 +307,11 @@ namespace spartan
 
     enum class RHI_Device_Bindless_Resource
     {
-        // must match order of appearance in common_textures_storage.hlsl
+        // must match order of appearance in common_resources.hlsl
         MaterialTextures,
         MaterialParameters,
         LightParameters,
+        Aabbs,
         SamplersComparison,
         SamplersRegular,
         Max
@@ -435,7 +436,6 @@ namespace spartan
     const uint8_t  rhi_max_render_target_count   = 8;
     const uint8_t  rhi_max_constant_buffer_count = 8;
     const uint32_t rhi_max_array_size            = 16384;
-    const uint32_t rhi_max_array_size_lights     = 128;
     const uint32_t rhi_max_descriptor_set_count  = 512;
     const uint8_t  rhi_max_mip_count             = 13;
     const uint32_t rhi_all_mips                  = std::numeric_limits<uint32_t>::max();

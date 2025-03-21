@@ -72,38 +72,61 @@ namespace spartan
     {
         uint32_t element_count = renderer_resource_frame_lifetime;
         #define buffer(x) buffers[static_cast<uint8_t>(x)]
-
+    
         // frame constant buffer - updates once per frame
         buffer(Renderer_Buffer::ConstantFrame) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame), element_count, nullptr, true, "frame");
-
+    
         // single dispatch downsample buffer
         uint32_t times_used_in_frame        = 12; // safe to tweak this, if it's not enough the engine will assert
         uint32_t stride                     = static_cast<uint32_t>(sizeof(uint32_t));
         buffer(Renderer_Buffer::SpdCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, element_count * times_used_in_frame, nullptr, true, "spd_counter");
-
+    
         stride                                      = static_cast<uint32_t>(sizeof(Sb_Material)) * rhi_max_array_size;
         buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "materials");
-
-        stride                                   = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size_lights;
+    
+        stride                                   = static_cast<uint32_t>(sizeof(Sb_Light)) * rhi_max_array_size;
         buffer(Renderer_Buffer::LightParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, stride, 1, nullptr, true, "lights");
-
+    
         // dummy instance buffer
         {
-          
-            // define a single identity matrix (column-major by default)
             Matrix identity = Matrix::Identity;
-
-            // transpose it to match row-major hlsl expectation
-            Matrix identity_transposed = identity.Transposed();
-
-            // create the dummy buffer once (static initialization)
+    
+            // create the dummy buffer
             buffer(Renderer_Buffer::DummyInstance) = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Instance,                  // buffer type
-                sizeof(Matrix),                             // size of one matrix
-                1,                                          // one instance
-                static_cast<void*>(&identity_transposed),   // pointer to the transposed matrix data
-                false,                                      // not dynamic (static data)
-                "dummy_instance_buffer"                     // name for debugging
+                RHI_Buffer_Type::Instance,     // buffer type
+                sizeof(Matrix),                // size of one matrix
+                1,                             // one instance
+                static_cast<void*>(&identity), // pointer to the transposed matrix data
+                false,                         // not dynamic (static data)
+                "dummy_instance_buffer"        // name for debugging
+            );
+        }
+    
+        // aabb structured buffer - stores world-space aabbs for occlusion culling
+        {
+            stride = static_cast<uint32_t>(sizeof(Sb_Aabb)); // 32 bytes per aabb
+
+            buffer(Renderer_Buffer::AABBs) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,    // structured buffer for SRV
+                stride * rhi_max_array_size, // total size: stride * count
+                1,                           // single allocation (not multi-frame like ConstantFrame)
+                nullptr,                     // no initial data
+                true,                        // dynamic, updated per frame
+                "aabbs"                      // name for debugging
+            );
+        }
+    
+        // visibility results structured buffer - stores occlusion culling results
+        {
+            stride = static_cast<uint32_t>(sizeof(int)); // 4 bytes per visibility flag
+
+            buffer(Renderer_Buffer::Visibility) = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,    // structured buffer for UAV
+                stride * rhi_max_array_size, // total size: stride * count
+                1,                           // single allocation
+                nullptr,                     // no initial data
+                true,                        // dynamic, updated per frame
+                "visibility"                 // name for debugging
             );
         }
     }
@@ -492,6 +515,10 @@ namespace spartan
         // blit
         shader(Renderer_Shader::blit_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::blit_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blit.hlsl", async);
+
+        // hiz
+        shader(Renderer_Shader::hiz_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::hiz_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "hiz.hlsl", async);
     }
 
     void Renderer::CreateFonts()

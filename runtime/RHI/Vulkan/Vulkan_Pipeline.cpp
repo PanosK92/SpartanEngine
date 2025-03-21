@@ -96,7 +96,7 @@ namespace spartan
 
         // layout
         {
-            // build descriptor set layouts array - must much order of appearance in common_textures_storage.hlsl
+            // build descriptor set layouts array - must much order of appearance in common_resources.hlsl
             array<void*, static_cast<size_t>(RHI_Device_Bindless_Resource::Max) + 1> layouts;
             {
                 layouts[0] = descriptor_set_layout->GetRhiResource();

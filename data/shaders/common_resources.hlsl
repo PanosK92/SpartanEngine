@@ -126,7 +126,14 @@ struct LightParameters
     float2 padding;
 };
 
-//= RESOURCES ======================================================================================
+struct aabb
+{
+    float3 min;
+    float padding1;
+    float3 max;
+    float padding2;
+};
+
 // g-buffer
 Texture2D tex_albedo       : register(t0);
 Texture2D tex_normal       : register(t1);
@@ -158,8 +165,9 @@ Texture2D tex2            : register(t18);
 Texture2D material_textures[]                            : register(t19, space1);
 StructuredBuffer<MaterialParameters> material_parameters : register(t20, space2);
 StructuredBuffer<LightParameters> light_parameters       : register(t21, space3);
-SamplerComparisonState samplers_comparison[]             : register(s0,  space4);
-SamplerState samplers[]                                  : register(s1,  space5);
+StructuredBuffer<aabb> aabbs                             : register(t22, space4);
+SamplerComparisonState samplers_comparison[]             : register(s0,  space5);
+SamplerState samplers[]                                  : register(s1,  space6);
 
 // storage textures/buffers
 RWTexture2D<float4> tex_uav                                : register(u0);
@@ -167,17 +175,16 @@ RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);
 RWTexture2D<float4> tex_uav4                               : register(u3);
 RWTexture2DArray<float4> tex_uav_sss                       : register(u4);
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u5); // used by FidelityFX SPD
-globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u6); // used by FidelityFX SPD
+RWStructuredBuffer<int> visibility                         : register(u5);
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u6); // used by FidelityFX SPD
+globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u7); // used by FidelityFX SPD
 
 // buffers
 [[vk::push_constant]]
 PassBufferData buffer_pass;
-cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame;  };
-//==================================================================================================
+cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
 
-// == EASY ACCESS FUNCTIONS/DEFINES =======================================================================================================================
-// buffers
+// easy access to buffer_frame members
 bool is_taa_enabled()                { return any(buffer_frame.taa_jitter_current); }
 bool is_ssr_enabled()                { return buffer_frame.options & uint(1U << 0); }
 bool is_ssao_enabled()               { return buffer_frame.options & uint(1U << 1); }
@@ -217,6 +224,5 @@ static const uint sampler_anisotropic_wrap      = 7;
 #define GET_TEXTURE(index_texture) material_textures[pass_get_material_index() + index_texture]
 MaterialParameters GetMaterial() { return material_parameters[pass_get_material_index()]; }
 #define GET_SAMPLER(index_sampler) samplers[index_sampler]
-// ========================================================================================================================================================
 
 #endif // SPARTAN_COMMON_RESOURCES

@@ -922,7 +922,7 @@ namespace spartan
                   {
                       layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                   }
-                  else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters)
+                  else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters || type == RHI_Device_Bindless_Resource::Aabbs)
                   {
                       layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                   }
@@ -978,7 +978,7 @@ namespace spartan
             {
                 // deduce binding from slot (HLSL register style)
                 uint32_t binding = 0;
-                if (type == RHI_Device_Bindless_Resource::MaterialTextures  || type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters)
+                if (type == RHI_Device_Bindless_Resource::MaterialTextures  || type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters || type == RHI_Device_Bindless_Resource::Aabbs)
                 {
                     binding = rhi_shader_register_shift_t + slot;
                 }
@@ -1034,7 +1034,7 @@ namespace spartan
             
                     vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
                 }
-                else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters)
+                else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters || type == RHI_Device_Bindless_Resource::Aabbs)
                 {
                     RHI_Buffer* buffer = static_cast<RHI_Buffer*>(data);
 
@@ -1743,9 +1743,10 @@ namespace spartan
 
     void RHI_Device::UpdateBindlessResources(
         array<RHI_Texture*, rhi_max_array_size>* material_textures,
-        RHI_Buffer* material_parameters,
+        RHI_Buffer* material_parameteres,
         RHI_Buffer* light_parameters,
-        const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers
+        const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
+        RHI_Buffer* aabbs
     )
     {
         if (samplers)
@@ -1781,18 +1782,25 @@ namespace spartan
         // lights
         if (light_parameters)
         {
-            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::light_parameters);
+            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_light_parameters);
             descriptors::bindless::update(light_parameters, 1, binding_slot, RHI_Device_Bindless_Resource::LightParameters, "light_parameters");
         }
 
         // textures
-        if (material_textures || material_parameters)
+        if (material_textures || material_parameteres)
         {
-            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::material_textures);
+            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_material_textures);
             descriptors::bindless::update(&material_textures[0], rhi_max_array_size, binding_slot, RHI_Device_Bindless_Resource::MaterialTextures, "material_textures");
 
-            binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::material_parameters);
-            descriptors::bindless::update(material_parameters, 1, binding_slot, RHI_Device_Bindless_Resource::MaterialParameters, "material_parameters");
+            binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_material_parameteres);
+            descriptors::bindless::update(material_parameteres, 1, binding_slot, RHI_Device_Bindless_Resource::MaterialParameters, "material_parameters");
+        }
+
+        // aabb
+        if (aabbs)
+        {
+            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_aabbs);
+            descriptors::bindless::update(aabbs, 1, binding_slot, RHI_Device_Bindless_Resource::Aabbs, "aabbs");
         }
     }
 

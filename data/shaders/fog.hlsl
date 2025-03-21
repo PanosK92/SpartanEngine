@@ -56,7 +56,7 @@ float3 got_fog_atmospheric(const float camera_to_pixel_length, const float pixel
 /*------------------------------------------------------------------------------
     FOG - VOLUMETRIC
 ------------------------------------------------------------------------------*/
-float visibility(float3 position, Light light, uint2 pixel_pos)
+float visible(float3 position, Light light, uint2 pixel_pos)
 {
     bool is_visible      = is_visible = light.is_directional(); // directioanl light is everywhere, so assume visible
     float2 projected_uv  = 0.0f;
@@ -119,7 +119,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     {
         for (uint i = 0; i < step_count; i++)
         {
-            fog     += fog_density * visibility(ray_pos, light, pixel_pos);
+            fog     += fog_density * visible(ray_pos, light, pixel_pos);
             ray_pos += ray_step;
         }
         fog /= float(step_count);

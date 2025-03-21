@@ -29,7 +29,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 **Forest**
 <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/>
-The Forest World is one of the most advanced open-source game engine worlds available. It features millions of procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans multiple square kilometers, covered in thousands of trees, and includes a fully drivable, physics-based car with realistic tire friction, gearbox simulation, and an anti-roll bar system.
+The Forest world is one of the most advanced open-source game engine worlds available. It features millions of procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans multiple square kilometers, covered in thousands of trees, and includes a fully drivable, physics-based car with realistic tire friction, gearbox simulation, and an anti-roll bar system.
 
 **Some of the other worlds**
 | Sponza | Doom |
@@ -62,7 +62,7 @@ The Forest World is one of the most advanced open-source game engine worlds avai
 - Breadcrumbs for tracing GPU crashes on AMD (FidelityFX Breadcrumbs).
 - Advanced shadow features with penumbra and colored translucency.
 - Physical light units (intensity from lumens and color from kelvin).
-- Frustum & occlusion culling (software and hardware hybrid).
+- Frustum & occlusion (Hi-Z) culling.
 - Physically based camera.
 - Volumetric fog.
 - HDR10 output.

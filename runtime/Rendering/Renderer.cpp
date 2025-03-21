@@ -80,10 +80,10 @@ namespace spartan
 
         // bindless
         array<RHI_Texture*, rhi_max_array_size> bindless_textures;
-        array<Sb_Light, rhi_max_array_size_lights> binldess_lights;
         bool bindless_materials_dirty = true;
         bool bindless_lights_dirty    = true;
         bool bindless_samplers_dirty  = true;
+        bool bindless_aabbs_dirty     = true;
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
@@ -180,7 +180,6 @@ namespace spartan
             SetOption(Renderer_Option::Lights,                      1.0f);
             SetOption(Renderer_Option::Physics,                     0.0f);
             SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
-            SetOption(Renderer_Option::OcclusionCulling,            0.0f);                                                 // disabled by default as it's a WIP (you can see the query delays)
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
 
             SetWind(Vector3(1.0f, 0.0f, 0.5f));
@@ -560,6 +559,7 @@ namespace spartan
         m_mutex_renderables.unlock();
         bindless_materials_dirty = true;
         bindless_lights_dirty    = true;
+        bindless_aabbs_dirty     = true;
     }
 
     const Vector3& Renderer::GetWind()
@@ -575,8 +575,6 @@ namespace spartan
     void Renderer::OnClear()
     {
         m_renderables.clear();
-        bindless_textures.fill(nullptr);
-        binldess_lights.fill(Sb_Light());
     }
 
     void Renderer::OnFullScreenToggled()
@@ -631,33 +629,36 @@ namespace spartan
             }
         }
 
+        // samplers
         if (bindless_samplers_dirty)
         {
-             RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers());
+             RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
 
              bindless_samplers_dirty = false;
         }
 
+        // materials and their textures
         if (bindless_materials_dirty)
         {
-            // update parameters buffer
             BindlessUpdateMaterialsParameters(cmd_list);
-
-            // update bindless descriptors with the textures and the parameters
-            RHI_Device::UpdateBindlessResources(&bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr);
-
+            RHI_Device::UpdateBindlessResources(&bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
             bindless_materials_dirty = false;
         }
 
+        // lights
         if (bindless_lights_dirty)
         {
-            // update parameters buffer
             BindlessUpdateLights(cmd_list);
-
-            // update the bindless descriptor with the light parameters
-            RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr);
-
+            RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
             bindless_lights_dirty = false;
+        }
+
+        // bounding boxes (world space)
+        if (bindless_aabbs_dirty)
+        {
+            BindlessUpdateAabbs(cmd_list);
+            RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+            bindless_aabbs_dirty = false;
         }
 
         UpdateFrameConstantBuffer(cmd_list);
@@ -907,6 +908,10 @@ namespace spartan
     
     void Renderer::BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list)
     {
+        lock_guard lock(m_mutex_renderables);
+        if (ProgressTracker::IsLoading())
+            return;
+
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
         static uint32_t index = 0;
@@ -1002,11 +1007,6 @@ namespace spartan
             }
         };
     
-        if (ProgressTracker::IsLoading())
-            return;
-    
-        lock_guard lock(m_mutex_renderables);
-    
         // cpu
         {
             // clear
@@ -1029,16 +1029,17 @@ namespace spartan
 
     void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
     {
+        lock_guard lock(m_mutex_renderables);
         if (ProgressTracker::IsLoading())
             return;
 
-        lock_guard lock(m_mutex_renderables);
+        static array<Sb_Light, rhi_max_array_size> lights;
         uint32_t index = 0;
 
         // cpu
         {
             // clear
-            binldess_lights.fill(Sb_Light());
+            lights.fill(Sb_Light());
 
             // go through each light
             for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
@@ -1055,29 +1056,29 @@ namespace spartan
                             if (light->GetLightType() == LightType::Point)
                             {
                                 // we do paraboloid projection in the vertex shader so we only want the view here
-                                binldess_lights[index].view_projection[i] = light->GetViewMatrix(i);
+                                lights[index].view_projection[i] = light->GetViewMatrix(i);
                             }
                             else
                             { 
-                                binldess_lights[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                                lights[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
                             }
                         }
                     }
 
-                    binldess_lights[index].intensity  = light->GetIntensityWatt();
-                    binldess_lights[index].range      = light->GetRange();
-                    binldess_lights[index].angle      = light->GetAngle();
-                    binldess_lights[index].color      = light->GetColor();
-                    binldess_lights[index].position   = light->GetEntity()->GetPosition();
-                    binldess_lights[index].direction  = light->GetEntity()->GetForward();
-                    binldess_lights[index].flags      = 0;
-                    binldess_lights[index].flags     |= light->GetLightType() == LightType::Directional  ? (1 << 0) : 0;
-                    binldess_lights[index].flags     |= light->GetLightType() == LightType::Point        ? (1 << 1) : 0;
-                    binldess_lights[index].flags     |= light->GetLightType() == LightType::Spot         ? (1 << 2) : 0;
-                    binldess_lights[index].flags     |= light->GetFlag(LightFlags::Shadows)            ? (1 << 3) : 0;
-                    binldess_lights[index].flags     |= light->GetFlag(LightFlags::ShadowsTransparent) ? (1 << 4) : 0;
-                    binldess_lights[index].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    binldess_lights[index].flags     |= (light->GetFlag(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
+                    lights[index].intensity  = light->GetIntensityWatt();
+                    lights[index].range      = light->GetRange();
+                    lights[index].angle      = light->GetAngle();
+                    lights[index].color      = light->GetColor();
+                    lights[index].position   = light->GetEntity()->GetPosition();
+                    lights[index].direction  = light->GetEntity()->GetForward();
+                    lights[index].flags      = 0;
+                    lights[index].flags     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+                    lights[index].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+                    lights[index].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+                    lights[index].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+                    lights[index].flags     |= light->GetFlag(LightFlags::ShadowsTransparent)  ? (1 << 4) : 0;
+                    lights[index].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
+                    lights[index].flags     |= (light->GetFlag(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
                     index++;
@@ -1085,11 +1086,38 @@ namespace spartan
             }
         }
 
-        // cpu to gpu
-        uint32_t update_size = static_cast<uint32_t>(sizeof(Sb_Light)) * index;
-        RHI_Buffer* buffer   = GetBuffer(Renderer_Buffer::LightParameters);
+        // gpu
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &binldess_lights[0], update_size);
+        buffer->Update(cmd_list, &lights[0], buffer->GetStride() * index);
+    }
+
+    void Renderer::BindlessUpdateAabbs(RHI_CommandList* cmd_list)
+    {
+        lock_guard lock(m_mutex_renderables);
+        if (ProgressTracker::IsLoading())
+            return;
+
+        static array<Sb_Aabb, rhi_max_array_size> aabbs;
+
+        // cpu
+        aabbs.fill(Sb_Aabb());
+        uint32_t count = 0;
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        {
+            const DrawCall& draw_call = m_draw_calls[i];
+            Renderable* renderable    = draw_call.renderable;
+            const BoundingBox& aabb   = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
+            aabbs[count].min          = aabb.GetMin();
+            aabbs[count].max          = aabb.GetMax();
+
+            count++;
+        }
+
+        // gpu
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::AABBs);
+        buffer->ResetOffset();
+        buffer->Update(cmd_list, &aabbs[0], buffer->GetStride() * count);
     }
 
     void Renderer::BindlessUpdateSamplers()
