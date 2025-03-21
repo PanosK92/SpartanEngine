@@ -328,6 +328,12 @@ namespace spartan
     {
         cmd_list->BeginTimeblock("hiz");
 
+        // we use a compute shader to blit from depth to float, as vulkan doesn't support blitting depth to float formats
+        // and AMD hardware requires UAV textures to be float-based (preventing depth format usage)
+        RHI_Texture* tex_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz);
+        Pass_Blit(cmd_list, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth), tex_hiz);
+        Pass_Downscale(cmd_list, tex_hiz, Renderer_DownsampleFilter::Min);
+
         uint32_t aabb_count = m_draw_call_count;
 
         // define pipeline state
@@ -336,7 +342,7 @@ namespace spartan
         pso.shaders[Compute] = GetShader(Renderer_Shader::hiz_c);
 
         cmd_list->SetPipelineState(pso);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_hiz));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_hiz);
 
         // set aabb count
         m_pcb_pass_cpu.set_f2_value(static_cast<float>(aabb_count), 0.0f);
@@ -451,16 +457,7 @@ namespace spartan
         cmd_list->SetIgnoreClearValues(false); // todo: replace this hack with proper clear value handling
         pass(false);
         cmd_list->Blit(tex_depth, tex_depth_opaque, false);
-
-        // hiz
-        {
-            draw_calls_update_with_gpu_occlusion_results(cmd_list, m_draw_calls, m_draw_call_count);
-
-            // We use a compute shader to blit from depth to float, as vulkan doesn't support blitting depth to float formats
-            // and AMD hardware requires UAV textures to be float-based (preventing depth format usage)
-            Pass_Blit(cmd_list, tex_depth, tex_depth_hiz);
-            Pass_Downscale(cmd_list, tex_depth_hiz, Renderer_DownsampleFilter::Max);
-        }
+        draw_calls_update_with_gpu_occlusion_results(cmd_list, m_draw_calls, m_draw_call_count);
        
         // depth for transparents
         pass(true);
@@ -1477,7 +1474,10 @@ namespace spartan
         SP_ASSERT(mip_start < output_mip_count);
 
         // acquire shader
-        RHI_Shader* shader_c = GetShader((filter == Renderer_DownsampleFilter::Average) ? Renderer_Shader::ffx_spd_average_c : Renderer_Shader::ffx_spd_max_c);
+        Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
+        shader                 = filter == Renderer_DownsampleFilter::Min ? Renderer_Shader::ffx_spd_min_c : shader;
+        shader                 = filter == Renderer_DownsampleFilter::Max ? Renderer_Shader::ffx_spd_max_c : shader;
+        RHI_Shader* shader_c   = GetShader(shader);
 
         // only needs to be set once, then after each use SPD resets it itself
         static bool initialized = false;

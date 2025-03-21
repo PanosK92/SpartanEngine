@@ -195,6 +195,7 @@ namespace spartan
         variable_rate_shading_c,
         ffx_cas_c,
         ffx_spd_average_c,
+        ffx_spd_min_c,
         ffx_spd_max_c,
         blit_c,
         hiz_c,
@@ -314,6 +315,7 @@ namespace spartan
 
     enum class Renderer_DownsampleFilter
     {
+        Min,
         Max,
         Average
     };

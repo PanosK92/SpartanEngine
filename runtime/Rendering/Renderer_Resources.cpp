@@ -414,6 +414,10 @@ namespace spartan
                 shader(Renderer_Shader::ffx_spd_average_c)->AddDefine("AVERAGE");
                 shader(Renderer_Shader::ffx_spd_average_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
+                shader(Renderer_Shader::ffx_spd_min_c) = make_shared<RHI_Shader>();
+                shader(Renderer_Shader::ffx_spd_min_c)->AddDefine("MIN");
+                shader(Renderer_Shader::ffx_spd_min_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+
                 shader(Renderer_Shader::ffx_spd_max_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_max_c)->AddDefine("MAX");
                 shader(Renderer_Shader::ffx_spd_max_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);

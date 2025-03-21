@@ -65,6 +65,8 @@ AF4 SpdReduce4(AF4 s1, AF4 s2, AF4 s3, AF4 s4)
 {
     #if AVERAGE
         return (s1 + s2 + s3 + s4) * 0.25f;
+    #elif MIN
+        return min(min(s1, s2), min(s3, s4));
     #elif MAX
         return max(max(s1, s2), max(s3, s4));
     #endif
