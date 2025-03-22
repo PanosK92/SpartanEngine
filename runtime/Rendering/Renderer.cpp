@@ -1166,17 +1166,13 @@ namespace spartan
                             }
                         }
                     }
-                    else
+                    else if (renderable->IsVisible())
                     {
-                        // Check visibility for non-instanced renderable
-                        if (renderable->IsVisible())
-                        {
-                            uint32_t lod_index           = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
-                            Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-                            draw_call.renderable         = renderable;
-                            draw_call.distance_squared   = renderable->GetDistanceSquared();
-                            draw_call.lod_index          = lod_index;
-                        }
+                        uint32_t lod_index           = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                        Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
+                        draw_call.renderable         = renderable;
+                        draw_call.distance_squared   = renderable->GetDistanceSquared();
+                        draw_call.lod_index          = lod_index;
                     }
                 }
             }

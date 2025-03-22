@@ -526,8 +526,8 @@ namespace spartan
                 return;
             }
 
-            // if camera is inside the box, use highest detail
-            if (box.Contains(camera_position))
+            // if camera intersects the box, use highest detail
+            if (box.Intersects(camera_position) == Intersection::Intersects)
             {
                 m_lod_indices[index] = 0;
                 return;

@@ -340,7 +340,7 @@ namespace spartan
             vector<Occluder> occluders;
             occluders.reserve(m_draw_call_count);
     
-            // lambda to compute screen-space area using camera's worldtoscreencoordinates
+            // lambda to compute screen-space area of a bounding box
             auto compute_screen_space_area = [&] (const BoundingBox& aabb_world) -> float
             {
                 // project aabb to screen space using camera function
@@ -368,7 +368,7 @@ namespace spartan
                 // compute screen space bounding box
                 const BoundingBox& aabb_world = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
                 float screen_area             = compute_screen_space_area(aabb_world);
-                if (screen_area > 1.0f)
+                if (screen_area > 12000.0f)
                 {
                     occluders.emplace_back(&draw_call, screen_area);
                 }
