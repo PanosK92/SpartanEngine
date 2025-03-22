@@ -361,12 +361,12 @@ namespace spartan
                 Renderable* renderable             = draw_call.renderable;
                 Material* material                 = renderable->GetMaterial();
 
-                // skip transparent or alpha-tested materials
-                if (!material || material->IsTransparent() || material->IsAlphaTested())
-                    continue;
+                // skip objects which are transparent, alpha tested, or instanced (as instanced objects can create arbitrary disconnected shapes)
+                //if (!material || material->IsTransparent() || material->IsAlphaTested() || renderable->HasInstancing())
+                    //continue;
     
                 // compute screen space bounding box
-                const BoundingBox& aabb_world = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
+                const BoundingBox& aabb_world = renderable->GetBoundingBox(BoundingBoxType::Transformed);
                 float screen_area             = compute_screen_space_area(aabb_world);
                 if (screen_area > 12000.0f)
                 {

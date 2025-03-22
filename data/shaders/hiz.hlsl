@@ -35,14 +35,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // retrieve the current aabb
     aabb current_aabb = aabbs[aabb_index];
 
-    if (current_aabb.alpha_tested == 1 || current_aabb.transparent == 1)
-    {
-        visibility[aabb_index] = 1;
-        return;
-    }
-
-    // define all eight corners of the aabb in world space
-    float3 corners[8] =
+    // compute the world space corners of the aabb
+    float3 corners_world[8] =
     {
         current_aabb.min,
         float3(current_aabb.min.x, current_aabb.min.y, current_aabb.max.z),
@@ -54,70 +48,57 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         current_aabb.max
     };
 
-    // transform all corners to clip space and check for near-plane intersection
-    float4 clip_corners[8];
-    bool any_behind = false;
+    // compute the uv coordinates of the corners, the min z, the min and the max
+    float4 corners_uv[8];
+    float closest_box_z = 0;
+    float2 min_uv       = 1;
+    float2 max_uv       = 0;
     for (int i = 0; i < 8; ++i)
     {
-        clip_corners[i] = mul(float4(corners[i], 1.0), buffer_frame.view_projection);
-        if (clip_corners[i].w < 0.0)
-            any_behind = true;
+        corners_uv[i]      = mul(float4(corners_world[i], 1.0), buffer_frame.view_projection);
+        corners_uv[i].xyz /= corners_uv[i].w;
+        corners_uv[i].z    = saturate(corners_uv[i].z);      // handle corners behind the camera
+        corners_uv[i].xy   = clamp(corners_uv[i].xy, -1, 1); // handle corners outside of the screen
+        corners_uv[i].xy   = ndc_to_uv(corners_uv[i].xy);
+        
+        min_uv        = min(corners_uv[i].xy, min_uv);
+        max_uv        = max(corners_uv[i].xy, max_uv);
+        closest_box_z = max(closest_box_z, corners_uv[i].z); // revese z
     }
 
-    // if any corner is behind the near plane, mark as visible (post-frustum culling safety)
-    if (any_behind)
-    {
-        visibility[aabb_index] = 1;
-        return;
-    }
-
-    // all corners are in front; proceed with hi-z occlusion test
-    // compute ndc coordinates and track min/max values
-    float2 ndc_min       = float2(1e9, 1e9);
-    float2 ndc_max       = float2(-1e9, -1e9);
-    float aabb_min_depth = 1e9;
-    float aabb_max_depth = -1e9;
-
-    for (int i = 0; i < 8; ++i)
-    {
-        float4 clip = clip_corners[i];
-        float w = max(clip.w, 0.0001);               // avoid division by zero
-        float3 ndc = clip.xyz / w;                   // convert to ndc
-        ndc_min = min(ndc_min, ndc.xy);              // update min xy in ndc
-        ndc_max = max(ndc_max, ndc.xy);              // update max xy in ndc
-        aabb_min_depth = min(aabb_min_depth, ndc.z); // update min depth (farthest)
-        aabb_max_depth = max(aabb_max_depth, ndc.z); // update max depth (closest)
-    }
-
-    // clamp ndc coordinates to [-1, 1]
-    ndc_min = clamp(ndc_min, -1.0, 1.0);
-    ndc_max = clamp(ndc_max, -1.0, 1.0);
-
-    // convert ndc xy to uv coordinates (0 to 1 range)
-    float2 min_uv = float2(0.5 * ndc_min.x + 0.5, 0.5 * ndc_min.y + 0.5);
-    float2 max_uv = float2(0.5 * ndc_max.x + 0.5, 0.5 * ndc_max.y + 0.5);
-
-    // calculate screen-space size in uv space and convert to pixels
-    float2 size_uv = abs(max_uv - min_uv);
     float2 hiz_size;
-    tex.GetDimensions(hiz_size.x, hiz_size.y);
-    float2 size_pixels    = size_uv * hiz_size;
-    float max_size_pixels = max(size_pixels.x, size_pixels.y);
+    tex.GetDimensions(hiz_size.x, hiz_size.y); // get depth buffer dimensions at mip 0
+    float4 box_uvs = float4(min_uv, max_uv);   // define the screen-space bounding box
 
-    // calculate mip level with conservative adjustment
-    float mip_count = log2(max(hiz_size.x, hiz_size.y)) + 1;
-    float mip_level = clamp(log2(max_size_pixels) + 1.0, 0, mip_count - 1);
+    // calculate initial mip level based on screen-space size
+    int2 size           = (max_uv - min_uv) * hiz_size;
+    float mip           = ceil(log2(max(size.x, size.y)));
+    float max_mip_level = floor(log2(max(hiz_size.x, hiz_size.y)));
+    mip                 = clamp(mip, 0, max_mip_level);
 
-    // calculate center uv and convert to texel coordinates
-    float2 center_uv = (min_uv + max_uv) * 0.5;
-    float2 mip_size  = hiz_size / pow(2.0, mip_level);
-    int2 texel       = int2(center_uv * mip_size);
+    // texel footprint for the lower (finer-grained) level
+    float level_lower = max(mip - 1, 0);
+    float2 scale      = exp2(-level_lower);
+    float2 a          = floor(box_uvs.xy * scale * hiz_size);
+    float2 b          = ceil(box_uvs.zw * scale * hiz_size);
+    float2 dims       = b - a;
 
-    // sample the hi-z buffer
-    float hiz_depth = tex.Load(int3(texel, mip_level)).r;
+    // use the lower level if we touch <= 2 texels in both dimensions
+    if (dims.x <= 2 && dims.y <= 2)
+        mip = level_lower;
 
-    // visibility test (reverse z: larger ndc.z is closer)
-    bool is_visible = (aabb_max_depth > hiz_depth);
+    float4 depth = float4(
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xy, mip).r, // bottom-left
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zy, mip).r, // bottom-right
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xw, mip).r, // top-left
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zw, mip).r  // top-right
+    );
+
+    // find the maximum depth from the four samples - reverse z
+    float furthest_z = min(min(min(depth.x, depth.y), depth.z), depth.w);
+
+    // visibility test - reverse z
+    bool is_visible = closest_box_z > furthest_z;
 
     // write visibility flag
     visibility[aabb_index] = is_visible ? 1 : 0;

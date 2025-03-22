@@ -201,8 +201,8 @@ namespace spartan
     struct Sb_Aabb
     {
         math::Vector3 min;
-        float alpha_tested;
+        float padding;
         math::Vector3 max;
-        float transparent;
+        float padding2;
     };
 }

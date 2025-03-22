@@ -1104,8 +1104,6 @@ namespace spartan
             const BoundingBox& aabb            = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
             bindless_aabbs[count].min          = aabb.GetMin();
             bindless_aabbs[count].max          = aabb.GetMax();
-            bindless_aabbs[count].alpha_tested = renderable->GetMaterial()->IsAlphaTested();
-            bindless_aabbs[count].transparent  = renderable->GetMaterial()->IsTransparent();
 
             count++;
         }

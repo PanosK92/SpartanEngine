@@ -102,7 +102,7 @@ I regularly upload livestreams and podcasts on my YouTube channel, discussing Sp
 
 # Support
 
-I personally cover the costs for Dropbox hosting and a GitHub Pro subscription to ensure assets and package bandwidth are available. If you enjoy the ease of running a single script and having everything download and work seamlessly, please consider [sponsoring](https://github.com/sponsors/PanosK92) to help keep it that way. Sponsoring directly is much more helpful than boosting the Discord server since boosts only benefit Discord, not the project. Your support goes directly into maintaining and improving everything.
+I personally cover the costs for Dropbox hosting to ensure library and assets bandwidth is available. If you enjoy the ease of running a single script and having everything download, compile and work seamlessly, please consider [sponsoring](https://github.com/sponsors/PanosK92) to help keep it that way. Sponsoring directly is much more helpful than boosting the Discord server since boosts only benefit Discord, not the project. Your support goes directly into maintaining and improving everything.
 
 # Interesting Facts & Use Cases  
 

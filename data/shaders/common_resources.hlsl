@@ -129,9 +129,9 @@ struct LightParameters
 struct aabb
 {
     float3 min;
-    float alpha_tested;
+    float padding;
     float3 max;
-    float transparent;
+    float padding2;
 };
 
 // g-buffer
