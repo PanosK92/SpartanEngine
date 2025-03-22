@@ -597,6 +597,7 @@ namespace spartan
                     {
                         material->SetObjectName("material_water");
                         material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
+                        material->SetProperty(MaterialProperty::Roughness,           0.0f);
                         material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
                         material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
