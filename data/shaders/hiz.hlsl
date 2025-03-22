@@ -26,9 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
-    // get the aabb index and total count
-    uint aabb_index = dispatch_thread_id.x;
-    uint aabb_count = pass_get_f2_value().x;
+    // get the aabb index, viewport size, and total count
+    uint aabb_index      = dispatch_thread_id.x;
+    float2 viewport_size = pass_get_f3_value().xy;
+    uint aabb_count      = pass_get_f3_value().z;
     if (aabb_index >= aabb_count)
         return;
 
@@ -48,53 +49,71 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         current_aabb.max
     };
 
-    // compute the uv coordinates of the corners, the min z, the min and the max
+    // get render resolution
+    float2 render_size;
+    tex.GetDimensions(render_size.x, render_size.y);
+
+    // compute scaling factor
+    float2 scale = render_size / viewport_size;
+
+    // compute uv coordinates and track off-screen corners
     float4 corners_uv[8];
-    float closest_box_z = 0;
-    float2 min_uv       = 1;
-    float2 max_uv       = 0;
+    float closest_box_z         = 0;
+    float2 min_uv               = 1;
+    float2 max_uv               = 0;
+    bool is_partially_offscreen = false;
     for (int i = 0; i < 8; ++i)
     {
         corners_uv[i]      = mul(float4(corners_world[i], 1.0), buffer_frame.view_projection);
         corners_uv[i].xyz /= corners_uv[i].w;
-        corners_uv[i].z    = saturate(corners_uv[i].z);      // handle corners behind the camera
-        corners_uv[i].xy   = clamp(corners_uv[i].xy, -1, 1); // handle corners outside of the screen
-        corners_uv[i].xy   = ndc_to_uv(corners_uv[i].xy);
-        
-        min_uv        = min(corners_uv[i].xy, min_uv);
-        max_uv        = max(corners_uv[i].xy, max_uv);
-        closest_box_z = max(closest_box_z, corners_uv[i].z); // revese z
+
+        // check if any corner is outside ndc [-1, 1] for xy
+        if (any(corners_uv[i].xy < -1.0) || any(corners_uv[i].xy > 1.0))
+            is_partially_offscreen = true;
+
+        // update min uv, max uv and closest z with scaled uvs
+        float2 uv = ndc_to_uv(corners_uv[i].xy) * scale;
+        min_uv    = min(uv, min_uv);
+        max_uv    = max(uv, max_uv);
+        closest_box_z = max(closest_box_z, corners_uv[i].z); // reverse z
     }
 
-    float2 hiz_size;
-    tex.GetDimensions(hiz_size.x, hiz_size.y); // get depth buffer dimensions at mip 0
-    float4 box_uvs = float4(min_uv, max_uv);   // define the screen-space bounding box
+    // if partially off-screen, mark as visible
+    if (is_partially_offscreen)
+    {
+        visibility[aabb_index] = 1;
+        return;
+    }
+
+    // proceed with hi-z test for fully on-screen objects
+    float4 box_uvs = float4(min_uv, max_uv);
 
     // calculate initial mip level based on screen-space size
-    int2 size           = (max_uv - min_uv) * hiz_size;
+    int2 size           = (max_uv - min_uv) * render_size;
     float mip           = ceil(log2(max(size.x, size.y)));
-    float max_mip_level = floor(log2(max(hiz_size.x, hiz_size.y)));
+    float max_mip_level = floor(log2(max(render_size.x, render_size.y)));
     mip                 = clamp(mip, 0, max_mip_level);
 
     // texel footprint for the lower (finer-grained) level
     float level_lower = max(mip - 1, 0);
-    float2 scale      = exp2(-level_lower);
-    float2 a          = floor(box_uvs.xy * scale * hiz_size);
-    float2 b          = ceil(box_uvs.zw * scale * hiz_size);
+    float2 scale_mip  = exp2(-level_lower);
+    float2 a          = floor(box_uvs.xy * scale_mip * render_size);
+    float2 b          = ceil(box_uvs.zw * scale_mip * render_size);
     float2 dims       = b - a;
 
     // use the lower level if we touch <= 2 texels in both dimensions
     if (dims.x <= 2 && dims.y <= 2)
         mip = level_lower;
 
+    // sample hi-z texture
     float4 depth = float4(
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xy, mip).r, // bottom-left
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zy, mip).r, // bottom-right
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xw, mip).r, // top-left
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zw, mip).r  // top-right
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xy, mip).r,
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zy, mip).r,
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xw, mip).r,
+        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zw, mip).r
     );
 
-    // find the maximum depth from the four samples - reverse z
+    // find the farthest depth from the four samples - reverse z
     float furthest_z = min(min(min(depth.x, depth.y), depth.z), depth.w);
 
     // visibility test - reverse z

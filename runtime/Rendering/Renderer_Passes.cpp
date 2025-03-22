@@ -442,7 +442,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
     
             // set aabb count
-            m_pcb_pass_cpu.set_f2_value(static_cast<float>(aabb_count), 0.0f);
+            m_pcb_pass_cpu.set_f3_value(GetViewport().width, GetViewport().height, static_cast<float>(aabb_count));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
             // dispatch: ceil(aabb_count / 256) thread groups
