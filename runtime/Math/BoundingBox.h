@@ -112,7 +112,6 @@ namespace spartan
             static const BoundingBox Undefined;
 
         private:
-
             Vector3 m_min;
             Vector3 m_max;
         };

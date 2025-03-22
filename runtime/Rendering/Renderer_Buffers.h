@@ -72,7 +72,7 @@ namespace spartan
         float resolution_scale;
 
         double time;
-        math::Vector2 padding;
+        math::Vector2 alpha_tested;
 
         math::Vector3 wind;
         float gamma;
@@ -173,7 +173,7 @@ namespace spartan
 
         float sheen;
         float local_height = 0.0f;
-        math::Vector2 padding;
+        math::Vector2 alpha_tested;
 
         float anisotropic;
         float anisotropic_rotation;
@@ -195,14 +195,14 @@ namespace spartan
 
         float angle;
         uint32_t flags;
-        math::Vector2 padding;
+        math::Vector2 alpha_tested;
     };
 
     struct Sb_Aabb
     {
         math::Vector3 min;
-        float padding;
+        float alpha_tested;
         math::Vector3 max;
-        float padding2;
+        float transparent;
     };
 }

@@ -129,43 +129,42 @@ struct LightParameters
 struct aabb
 {
     float3 min;
-    float padding1;
+    float alpha_tested;
     float3 max;
-    float padding2;
+    float transparent;
 };
 
 // g-buffer
-Texture2D tex_albedo       : register(t0);
-Texture2D tex_normal       : register(t1);
-Texture2D tex_material     : register(t2);
-Texture2D tex_velocity     : register(t3);
-Texture2D tex_depth        : register(t4);
-Texture2D tex_depth_opaque : register(t5);
+Texture2D tex_albedo   : register(t0);
+Texture2D tex_normal   : register(t1);
+Texture2D tex_material : register(t2);
+Texture2D tex_velocity : register(t3);
+Texture2D tex_depth    : register(t4);
 
 // lighting
-Texture2D tex_light_diffuse     : register(t6);
-Texture2D tex_light_diffuse_gi  : register(t7);
-Texture2D tex_light_specular    : register(t8);
-Texture2D tex_light_specular_gi : register(t9);
-Texture2D tex_light_shadow      : register(t10);
-Texture2D tex_light_volumetric  : register(t11);
+Texture2D tex_light_diffuse     : register(t5);
+Texture2D tex_light_diffuse_gi  : register(t6);
+Texture2D tex_light_specular    : register(t7);
+Texture2D tex_light_specular_gi : register(t8);
+Texture2D tex_light_shadow      : register(t9);
+Texture2D tex_light_volumetric  : register(t10);
 
 // shadow maps
-Texture2DArray tex_light_depth : register(t12);
-Texture2DArray tex_light_color : register(t13);
+Texture2DArray tex_light_depth : register(t11);
+Texture2DArray tex_light_color : register(t12);
 
 // misc
-Texture2D tex_lut_ibl     : register(t14);
-Texture2D tex_environment : register(t15);
-Texture2D tex_ssao        : register(t16);
-Texture2D tex             : register(t17);
-Texture2D tex2            : register(t18);
+Texture2D tex_lut_ibl     : register(t13);
+Texture2D tex_environment : register(t14);
+Texture2D tex_ssao        : register(t15);
+Texture2D tex             : register(t16);
+Texture2D tex2            : register(t17);
 
 // bindless arrays
-Texture2D material_textures[]                            : register(t19, space1);
-StructuredBuffer<MaterialParameters> material_parameters : register(t20, space2);
-StructuredBuffer<LightParameters> light_parameters       : register(t21, space3);
-StructuredBuffer<aabb> aabbs                             : register(t22, space4);
+Texture2D material_textures[]                            : register(t18, space1);
+StructuredBuffer<MaterialParameters> material_parameters : register(t19, space2);
+StructuredBuffer<LightParameters> light_parameters       : register(t20, space3);
+StructuredBuffer<aabb> aabbs                             : register(t21, space4);
 SamplerComparisonState samplers_comparison[]             : register(s0,  space5);
 SamplerState samplers[]                                  : register(s1,  space6);
 

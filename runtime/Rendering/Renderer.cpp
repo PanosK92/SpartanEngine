@@ -906,12 +906,11 @@ namespace spartan
     
     void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,       GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,       GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material,     GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth_opaque, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
     }
     
     void Renderer::BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list)
@@ -1105,6 +1104,8 @@ namespace spartan
             const BoundingBox& aabb            = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
             bindless_aabbs[count].min          = aabb.GetMin();
             bindless_aabbs[count].max          = aabb.GetMax();
+            bindless_aabbs[count].alpha_tested = renderable->GetMaterial()->IsAlphaTested();
+            bindless_aabbs[count].transparent  = renderable->GetMaterial()->IsTransparent();
 
             count++;
         }

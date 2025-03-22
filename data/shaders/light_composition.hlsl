@@ -61,14 +61,10 @@ struct refraction
         float3 color            = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, mip_level).rgb;
         float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, mip_level).rgb;
 
-        // don't refract what's behind the surface
-        float depth_surface    = get_linear_depth(surface.depth);
-        float depth_refraction = get_linear_depth_opaque(refracted_uv);
-        float is_in_front      = depth_surface > depth_refraction;
         // don't refract what's outside the screen
-        float screen_fade      = compute_fade_factor(refracted_uv);
+        float screen_fade = compute_fade_factor(refracted_uv);
 
-        return lerp(color, color_refraction, is_in_front * screen_fade);
+        return lerp(color, color_refraction, screen_fade);
     }
 };
 

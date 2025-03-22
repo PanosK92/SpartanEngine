@@ -234,10 +234,6 @@ float get_depth(const float2 uv)
     return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
 
-float get_depth_opaque(const float2 uv)
-{
-    return tex_depth_opaque.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
-}
 
 float linearize_depth(const float z)
 {
@@ -256,11 +252,6 @@ float get_linear_depth(const uint2 pos)
 float get_linear_depth(const float2 uv)
 {
     return linearize_depth(get_depth(uv));
-}
-
-float get_linear_depth_opaque(const float2 uv)
-{
-    return linearize_depth(get_depth_opaque(uv));
 }
 
 /*------------------------------------------------------------------------------

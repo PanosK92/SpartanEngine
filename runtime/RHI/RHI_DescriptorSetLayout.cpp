@@ -73,7 +73,7 @@ namespace spartan
             if (descriptor.slot == slot + rhi_shader_register_shift_u)
             {
                 descriptor.data           = static_cast<void*>(buffer);
-                descriptor.range          = buffer->GetStride();
+                descriptor.range          = buffer->GetObjectSize();
                 descriptor.dynamic_offset = buffer->GetOffset();
 
                 return;

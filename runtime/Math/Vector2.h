@@ -64,8 +64,6 @@ namespace spartan::math
         }
 
         ~Vector2() = default;
-
-        //= ADDITION ===============================
         Vector2 operator+(const Vector2& b) const
         {
             return Vector2
@@ -80,9 +78,7 @@ namespace spartan::math
             this->x += b.x;
             this->y += b.y;
         }
-        //==========================================
 
-        //= MULTIPLICATION =======================================================================================
         Vector2 operator*(const Vector2& b) const
         {
             return Vector2(x * b.x, y * b.y);
@@ -104,10 +100,7 @@ namespace spartan::math
             x *= value;
             y *= value;
         }
-        //=======================================================================================================
 
-
-        //= SUBTRACTION ===============================================================
         Vector2 operator-(const Vector2& b) const { return Vector2(x - b.x, y - b.y); }
         Vector2 operator-(const float value) const { return Vector2(x - value, y - value); }
 
@@ -116,9 +109,7 @@ namespace spartan::math
             x -= rhs.x;
             y -= rhs.y;
         }
-        //=============================================================================
 
-        //= DIVISION ========================================================================
         Vector2 operator/(const Vector2& rhs) const { return Vector2(x / rhs.x, y / rhs.y); }
         Vector2 operator/(const float rhs) const { return Vector2(x / rhs, y / rhs); }
 
@@ -127,7 +118,21 @@ namespace spartan::math
             x /= rhs.x;
             y /= rhs.y;
         }
-        //===================================================================================
+
+         static Vector2 Min(const Vector2& a, const Vector2& b)
+        {
+            return Vector2(
+                a.x < b.x ? a.x : b.x,
+                a.y < b.y ? a.y : b.y
+            );
+        }
+        static Vector2 Max(const Vector2& a, const Vector2& b)
+        {
+            return Vector2(
+                a.x > b.x ? a.x : b.x,
+                a.y > b.y ? a.y : b.y
+            );
+        }
 
         [[nodiscard]] float Length() const { return sqrt(x * x + y * y); }
         [[nodiscard]] float LengthSquared() const { return x * x + y * y; }

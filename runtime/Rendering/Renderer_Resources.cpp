@@ -228,9 +228,15 @@ namespace spartan
                 render_target(Renderer_RenderTarget::light_volumetric)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_volumetric");
             }
 
+            // hi-z
+            {
+                // amd is very specific with depth formats, so if something is a depth render target, it can only have one mip and flags like RHI_Texture_Uav
+                // so we create second texture with the flags we want and then blit to that, not mention that we can't even use vkBlitImage so we do a manual one (AMD is killing is us here)
+                render_target(Renderer_RenderTarget::gbuffer_depth_occluders)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1,         RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv, "depth_occluders");
+                render_target(Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, mip_count, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "depth_occluders_hiz");
+            }
+
             // misc
-            render_target(Renderer_RenderTarget::gbuffer_depth_hiz)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, mip_count, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "depth_hiz");
-            render_target(Renderer_RenderTarget::gbuffer_depth_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1,         RHI_Format::D32_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,                           "depth_opaque");
             render_target(Renderer_RenderTarget::sss)                  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1,         RHI_Format::R16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit,                           "sss");
             render_target(Renderer_RenderTarget::ssr)                  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1,         format_standard,       RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit,                           "ssr");
             render_target(Renderer_RenderTarget::ssao)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1,         RHI_Format::R16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit,                           "ssao");
@@ -302,8 +308,12 @@ namespace spartan
             }
         }
 
-        // depth pre-pass
+        // depth
         {
+            shader(Renderer_Shader::depth_hiz_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_hiz_v)->AddDefine("HIZ_DEPTH_PASS");
+            shader(Renderer_Shader::depth_hiz_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
             shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 

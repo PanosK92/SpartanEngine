@@ -520,6 +520,7 @@ namespace spartan
 
             // resources
             shared_ptr<RHI_Texture>                                    texture_sdf_atlas        = nullptr;
+            shared_ptr<RHI_Texture>                                    texture_depth_previous   = nullptr;
             shared_ptr<RHI_Texture>                                    texture_normal_previous  = nullptr;
             shared_ptr<RHI_Buffer>                                     buffer_scratch           = nullptr;
             shared_ptr<RHI_Buffer>                                     buffer_brick_aabbs       = nullptr;
@@ -723,6 +724,7 @@ namespace spartan
                 // resources
                 {
                     uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
+                    texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, resolution_render_width, resolution_render_height, 1, 1, RHI_Format::D32_Float, flags, "ffx_deoth_previous");
                     texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, resolution_render_width, resolution_render_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
                 }
                 
@@ -909,6 +911,7 @@ namespace spartan
         brixelizer_gi::texture_sdf_atlas       = nullptr;
         brixelizer_gi::buffer_brick_aabbs      = nullptr;
         brixelizer_gi::buffer_scratch          = nullptr;
+        brixelizer_gi::texture_depth_previous  = nullptr;
         brixelizer_gi::texture_normal_previous = nullptr;
         brixelizer_gi::buffer_cascade_aabb_tree.fill(nullptr);
         brixelizer_gi::buffer_cascade_brick_map.fill(nullptr);
@@ -1349,7 +1352,6 @@ namespace spartan
         Cb_Frame* cb_frame,
         RHI_Texture* tex_frame,
         RHI_Texture* tex_depth,
-        RHI_Texture* tex_depth_previous,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
@@ -1381,7 +1383,7 @@ namespace spartan
         brixelizer_gi::description_dispatch_gi.environmentMap   = to_ffx_resource(texture_skybox.get(),                          L"brixelizer_gi_environment");
         brixelizer_gi::description_dispatch_gi.prevLitOutput    = to_ffx_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous"); // linear
         brixelizer_gi::description_dispatch_gi.depth            = to_ffx_resource(tex_depth,                                     L"brixelizer_gi_depth");
-        brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(tex_depth_previous,                            L"brixelizer_gi_depth_previous");
+        brixelizer_gi::description_dispatch_gi.historyDepth     = to_ffx_resource(brixelizer_gi::texture_depth_previous.get(),   L"brixelizer_gi_depth_previous");
         brixelizer_gi::description_dispatch_gi.normal           = to_ffx_resource(tex_normal,                                    L"brixelizer_gi_normal");
         brixelizer_gi::description_dispatch_gi.historyNormal    = to_ffx_resource(brixelizer_gi::texture_normal_previous.get(),  L"brixelizer_gi_normal_previous");
         brixelizer_gi::description_dispatch_gi.roughness        = to_ffx_resource(tex_material,                                  L"brixelizer_gi_roughness");

@@ -112,32 +112,31 @@ namespace spartan
         gbuffer_material       = 2,
         gbuffer_velocity       = 3,
         gbuffer_depth          = 4,
-        gbuffer_depth_opaque   = 5,
 
         // lighting
-        light_diffuse     = 6,
-        light_diffuse_gi  = 7,
-        light_specular    = 8,
-        light_specular_gi = 9,
-        light_shadow      = 10,
-        light_volumetric  = 11,
+        light_diffuse     = 5,
+        light_diffuse_gi  = 6,
+        light_specular    = 7,
+        light_specular_gi = 8,
+        light_shadow      = 9,
+        light_volumetric  = 10,
     
         // light depth/color maps
-        light_depth = 12,
-        light_color = 13,
+        light_depth = 11,
+        light_color = 12,
     
         // misc
-        lutIbl      = 14,
-        environment = 15,
-        ssao        = 16,
-        tex         = 17,
-        tex2        = 18,
+        lutIbl      = 13,
+        environment = 14,
+        ssao        = 15,
+        tex         = 16,
+        tex2        = 17,
 
         // bindless
-        bindless_material_textures    = 19,
-        bindless_material_parameteres = 20,
-        bindless_light_parameters     = 21,
-        bindless_aabbs                = 22,
+        bindless_material_textures    = 18,
+        bindless_material_parameteres = 19,
+        bindless_light_parameters     = 20,
+        bindless_aabbs                = 21,
     };
 
     enum class Renderer_BindingsUav
@@ -158,6 +157,7 @@ namespace spartan
         tessellation_d,
         gbuffer_v,
         gbuffer_p,
+        depth_hiz_v,
         depth_prepass_v,
         depth_prepass_alpha_test_p,
         depth_light_v,
@@ -209,8 +209,8 @@ namespace spartan
         gbuffer_material,
         gbuffer_velocity,
         gbuffer_depth,
-        gbuffer_depth_hiz,
-        gbuffer_depth_opaque,
+        gbuffer_depth_occluders,
+        gbuffer_depth_occluders_hiz,
         gbuffer_depth_output,
         brdf_specular_lut,
         light_diffuse,
