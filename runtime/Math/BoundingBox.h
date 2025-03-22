@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======
 #include "Helper.h"
 #include "Vector3.h"
+#include "Matrix.h"
 #include <array>
 //==================
 
@@ -33,8 +34,6 @@ namespace spartan
 
     namespace math
     {
-        class Matrix;
-
         class BoundingBox
         {
         public:
@@ -72,9 +71,6 @@ namespace spartan
 
             bool Contains(const Vector3& point) const;
 
-            // Returns a transformed bounding box
-            BoundingBox Transform(const Matrix& transform) const;
-
             // merge with another bounding box
             void Merge(const BoundingBox& box);
 
@@ -105,6 +101,47 @@ namespace spartan
             {
                 return GetMin() == other.GetMin() && GetMax() == other.GetMax();
             }
+        BoundingBox operator*(const Matrix& transform) const
+            {
+                const Vector3 center_new = transform * GetCenter();
+                const Vector3 extent_old = GetExtents();
+        
+        #if defined(__AVX2__)
+                // Load the old extents into a vector
+                __m128 ext_old = _mm_set_ps(0.0f, extent_old.z, extent_old.y, extent_old.x);
+        
+                // Load matrix columns (absolute values)
+                __m128 col0 = _mm_set_ps(0.0f, abs(transform.m20), abs(transform.m10), abs(transform.m00));
+                __m128 col1 = _mm_set_ps(0.0f, abs(transform.m21), abs(transform.m11), abs(transform.m01));
+                __m128 col2 = _mm_set_ps(0.0f, abs(transform.m22), abs(transform.m12), abs(transform.m02));
+        
+                // Compute contributions: extent_new = abs(transform) * extent_old
+                __m128 prod0 = _mm_mul_ps(col0, ext_old); // m00*x, m10*y, m20*z
+                __m128 prod1 = _mm_mul_ps(col1, ext_old); // m01*x, m11*y, m21*z
+                __m128 prod2 = _mm_mul_ps(col2, ext_old); // m02*x, m12*y, m22*z
+        
+                // Horizontal add to sum the contributions for each component
+                __m128 sum0 = _mm_hadd_ps(prod0, prod1); // [m00*x + m10*y, m20*z + junk, m01*x + m11*y, m21*z + junk]
+                __m128 sum1 = _mm_hadd_ps(prod2, _mm_setzero_ps()); // [m02*x + m12*y, m22*z + 0, 0, 0]
+                __m128 temp = _mm_hadd_ps(sum0, sum1); // [m00*x + m10*y + m20*z, junk, m01*x + m11*y + m21*z, junk]
+                __m128 extent_new_vec = _mm_hadd_ps(temp, temp); // [extent_new.x, extent_new.y, extent_new.z, junk]
+        
+                // Extract results
+                float extent_new_arr[4];
+                _mm_store_ps(extent_new_arr, extent_new_vec);
+                Vector3 extent_new(extent_new_arr[0], extent_new_arr[1], extent_new_arr[2]);
+        #else
+                // Scalar fallback
+                const Vector3 extent_new = Vector3
+                (
+                    abs(transform.m00) * extent_old.x + abs(transform.m10) * extent_old.y + abs(transform.m20) * extent_old.z,
+                    abs(transform.m01) * extent_old.x + abs(transform.m11) * extent_old.y + abs(transform.m21) * extent_old.z,
+                    abs(transform.m02) * extent_old.x + abs(transform.m12) * extent_old.y + abs(transform.m22) * extent_old.z
+                );
+        #endif
+
+        return BoundingBox(center_new - extent_new, center_new + extent_new);
+    }
 
             const Vector3& GetMin() const { return m_min; }
             const Vector3& GetMax() const { return m_max; }

@@ -105,20 +105,6 @@ namespace spartan::math
         return Intersection::Inside;
     }
 
-    BoundingBox BoundingBox::Transform(const Matrix& transform) const
-    {
-        const Vector3 center_new = transform * GetCenter();
-        const Vector3 extent_old = GetExtents();
-        const Vector3 extend_new = Vector3
-        (
-            abs(transform.m00) * extent_old.x + abs(transform.m10) * extent_old.y + abs(transform.m20) * extent_old.z,
-            abs(transform.m01) * extent_old.x + abs(transform.m11) * extent_old.y + abs(transform.m21) * extent_old.z,
-            abs(transform.m02) * extent_old.x + abs(transform.m12) * extent_old.y + abs(transform.m22) * extent_old.z
-        );
-
-        return BoundingBox(center_new - extend_new, center_new + extend_new);
-    }
-
     void BoundingBox::Merge(const BoundingBox& box)
     {
         m_min.x = std::min(m_min.x, box.m_min.x);

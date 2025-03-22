@@ -221,7 +221,7 @@ namespace spartan
                 // bounding box that contains all instances
                 if (m_instances.empty())
                 {
-                    m_bounding_box_transformed = m_bounding_box.Transform(transform);
+                    m_bounding_box_transformed = m_bounding_box * transform;
                 }
                 else // transformed instances
                 {
@@ -232,8 +232,8 @@ namespace spartan
                     for (uint32_t i = 0; i < static_cast<uint32_t>(m_instances.size()); i++)
                     {
                         const Matrix& instance_transform = m_instances[i];
-                        m_bounding_box_instances[i]      = m_bounding_box.Transform(transform * instance_transform); // 1. bounding box of the instance
-                        m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                               // 2. bounding box of all instances
+                        m_bounding_box_instances[i]      = m_bounding_box * (transform * instance_transform); // 1. bounding box of the instance
+                        m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                        // 2. bounding box of all instances
                     }
 
                     // 3. bounding boxes of instance groups
@@ -247,7 +247,7 @@ namespace spartan
                             BoundingBox bounding_box_group = BoundingBox::Undefined;
                             for (uint32_t i = start_index; i < group_end_index; i++)
                             {
-                                BoundingBox bounding_box_instance = m_bounding_box.Transform(transform * m_instances[i]);
+                                BoundingBox bounding_box_instance = m_bounding_box * (transform * m_instances[i]);
                                 bounding_box_group.Merge(bounding_box_instance);
                             }
 
