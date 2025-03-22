@@ -1,4 +1,4 @@
-/*
+f/*
 Copyright(c) 2016-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -603,7 +603,7 @@ namespace spartan
                         material->SetProperty(MaterialProperty::TextureTilingX,      400.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY,      400.0f);
                         material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                        material->SetProperty(MaterialProperty::Tessellation,        1.0f); // close up water needs tessellation so you can see fine ripples
+                        material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
 
                         // create a file path for this material (required for the material to be able to be cached by the resource cache)
                         const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -633,7 +633,7 @@ namespace spartan
                             shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
                             mesh->SetObjectName(name);
                             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                            mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], true);
+                            mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
                             mesh->CreateGpuBuffers();
 
                             // create a child entity, add a renderable, and this mesh tile to it
