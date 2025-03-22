@@ -117,7 +117,6 @@ namespace spartan
         Cb_Frame* cb_frame,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
-        RHI_Texture* tex_depth_previous,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
         RHI_Texture* tex_material,
