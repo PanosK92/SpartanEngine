@@ -115,7 +115,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,         Material*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,            uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,             Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,     BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh,     BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -126,7 +126,7 @@ namespace spartan
     void Renderable::Serialize(FileStream* stream)
     {
         // mesh
-        stream->Write(m_bounding_box);
+        stream->Write(m_bounding_box_mesh);
         MeshType mesh_type = m_mesh ? m_mesh->GetType() : MeshType::Max;
         stream->Write(static_cast<uint32_t>(mesh_type));
         if (mesh_type == MeshType::Max)
@@ -146,7 +146,7 @@ namespace spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // geometry
-        stream->Read(&m_bounding_box);
+        stream->Read(&m_bounding_box_mesh);
         MeshType mesh_type = static_cast<MeshType>(stream->ReadAs<uint32_t>());
         if (mesh_type == MeshType::Max)
         {
@@ -186,19 +186,19 @@ namespace spartan
                 // bounding box that contains all instances
                 if (m_instances.empty())
                 {
-                    m_bounding_box_transformed = m_bounding_box * transform;
+                    m_bounding_box = m_bounding_box_mesh * transform;
                 }
                 else // transformed instances
                 {
-                    m_bounding_box_transformed = BoundingBox::Undefined;
+                    m_bounding_box = BoundingBox::Undefined;
                     m_bounding_box_instances.clear();
                     m_bounding_box_instances.reserve(m_instances.size());
                     m_bounding_box_instances.resize(m_instances.size());
                     for (uint32_t i = 0; i < static_cast<uint32_t>(m_instances.size()); i++)
                     {
                         const Matrix& instance_transform = m_instances[i];
-                        m_bounding_box_instances[i]      = m_bounding_box * (transform * instance_transform); // 1. bounding box of the instance
-                        m_bounding_box_transformed.Merge(m_bounding_box_instances[i]);                        // 2. bounding box of all instances
+                        m_bounding_box_instances[i]      = m_bounding_box_mesh * (transform * instance_transform); // 1. bounding box of the instance
+                        m_bounding_box.Merge(m_bounding_box_instances[i]);                                         // 2. bounding box of all instances
                     }
 
                     // 3. bounding boxes of instance groups
@@ -212,7 +212,7 @@ namespace spartan
                             BoundingBox bounding_box_group = BoundingBox::Undefined;
                             for (uint32_t i = start_index; i < group_end_index; i++)
                             {
-                                BoundingBox bounding_box_instance = m_bounding_box * (transform * m_instances[i]);
+                                BoundingBox bounding_box_instance = m_bounding_box_mesh * (transform * m_instances[i]);
                                 bounding_box_group.Merge(bounding_box_instance);
                             }
 
@@ -246,8 +246,8 @@ namespace spartan
         {
             vector<RHI_Vertex_PosTexNorTan> vertices;
             mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
-            m_bounding_box = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-            SP_ASSERT(m_bounding_box != BoundingBox::Undefined);
+            m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            SP_ASSERT(m_bounding_box_mesh != BoundingBox::Undefined);
         }
     }
 
@@ -511,7 +511,7 @@ namespace spartan
             }
 
             // if camera intersects the box, use highest detail
-            if (box.Intersects(camera_position) == Intersection::Intersects)
+            if (box.Intersects(camera_position) != Intersection::Outside)
             {
                 m_lod_indices[index] = 0;
                 return;

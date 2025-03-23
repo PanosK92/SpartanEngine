@@ -59,22 +59,16 @@ namespace spartan
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const               { return m_instance_group_end_indices; }
         uint32_t GetInstanceGroupCount() const                                           { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
-        const math::BoundingBox& GetBoundingBox() const                                  { return m_bounding_box_transformed;}
-        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances[index];}
-        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group[index];}
+        const math::BoundingBox& GetBoundingBox() const                                  { return m_bounding_box;}
+        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances[index]; }
+        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group[index]; }
 
-        //= MATERIAL ====================================================================
-        // Sets a material from memory (adds it to the resource cache by default)
+        // material
         void SetMaterial(const std::shared_ptr<Material>& material);
-
-        // Loads a material and the sets it
         void SetMaterial(const std::string& file_path);
-
         void SetDefaultMaterial();
         std::string GetMaterialName() const;
         Material* GetMaterial() const { return m_material; }
-        auto HasMaterial() const      { return m_material != nullptr; }
-        //===============================================================================
 
         // mesh
         uint32_t GetLodCount() const;
@@ -115,8 +109,8 @@ namespace spartan
         Mesh* m_mesh                                 = nullptr;
         uint32_t m_sub_mesh_index                    = 0;
         bool m_bounding_box_dirty                    = true;
-        math::BoundingBox m_bounding_box             = math::BoundingBox::Undefined;
-        math::BoundingBox m_bounding_box_transformed = math::BoundingBox::Undefined;
+        math::BoundingBox m_bounding_box_mesh             = math::BoundingBox::Undefined;
+        math::BoundingBox m_bounding_box = math::BoundingBox::Undefined;
         std::vector<math::BoundingBox> m_bounding_box_instances;
         std::vector<math::BoundingBox> m_bounding_box_instance_group;
 
