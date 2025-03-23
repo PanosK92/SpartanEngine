@@ -53,30 +53,26 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         current_aabb.max
     };
 
-    float2 viewport_size = pass_get_f4_value().xy;
-    
     // compute uv coordinates and track off-screen corners
     float4 corners_uv[8];
-    float closest_box_z = 0;
-    float2 min_uv       = 1;
-    float2 max_uv       = 0;
+    float closest_box_z = 0.0f;
+    float2 min_uv       = 1.0f;
+    float2 max_uv       = 0.0f;
     for (int i = 0; i < 8; ++i)
     {
+        // project box corner into clip space
         corners_uv[i]      = mul(float4(corners_world[i], 1.0), buffer_frame.view_projection);
+        corners_uv[i].z    = saturate(corners_uv[i].z);
         corners_uv[i].xyz /= corners_uv[i].w;
+        corners_uv[i].xy   = clamp(corners_uv[i].xy, -1.0f, 1.0f);
 
-        // if any corner is off-screen, mark the aabb as visible since we can't do a hi-z test
-        if (any(corners_uv[i].xy < -1.0) || any(corners_uv[i].xy > 1.0))
-        {
-            visibility[aabb_index] = 1;
-            return;
-        }
+        // update min uv, max uv
+        float2 uv = ndc_to_uv(corners_uv[i].xy);
+        min_uv    = min(uv, min_uv);
+        max_uv    = max(uv, max_uv);
 
-        // update min uv, max uv and closest z with scaled uvs
-        float2 uv     = ndc_to_uv(corners_uv[i].xy);
-        min_uv        = min(uv, min_uv);
-        max_uv        = max(uv, max_uv);
-        closest_box_z = max(closest_box_z, corners_uv[i].z); // reverse z
+        // track the closest z
+        closest_box_z = saturate(max(closest_box_z, corners_uv[i].z)); // reverse z
     }
 
     // visibility test
@@ -86,10 +82,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         float2 render_size;
         tex.GetDimensions(render_size.x, render_size.y);
         
-        // adjust uvs to hi-z texture space
-        float2 uv_scale = 1;//render_size / viewport_size;
-        float4 box_uvs  = float4(min_uv * uv_scale, max_uv * uv_scale);
- 
+        float4 box_uvs = float4(min_uv, max_uv);
+
         // calculate initial mip level based on screen-space size
         int2 size           = (max_uv - min_uv) * render_size;
         float mip           = ceil(log2(max(size.x, size.y)));

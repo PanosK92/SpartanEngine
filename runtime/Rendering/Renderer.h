@@ -147,7 +147,7 @@ namespace spartan
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list);
-        static void Pass_HiZ(RHI_CommandList* cmd_list);
+        static void Pass_Occlusion(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Ssao(RHI_CommandList* cmd_list);

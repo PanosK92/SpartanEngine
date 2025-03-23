@@ -85,7 +85,7 @@ namespace spartan
         {
             // opaques
             {
-                Pass_HiZ(cmd_list_graphics);
+                Pass_Occlusion(cmd_list_graphics);
                 Pass_Depth_Prepass(cmd_list_graphics);
                 bool is_transparent = false;
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
@@ -308,9 +308,9 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_HiZ(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
-        cmd_list->BeginTimeblock("hiz");
+        cmd_list->BeginTimeblock("occlusion");
     
         // get render targets for occluders and hi-z buffer
         RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
@@ -320,7 +320,7 @@ namespace spartan
         {
             // set pipeline state for depth-only rendering
             static RHI_PipelineState pso;
-            pso.name                             = "hiz_occluders";
+            pso.name                             = "occluders";
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_hiz_v);
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
@@ -348,29 +348,14 @@ namespace spartan
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
                 // draw
-                RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
-                instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
-                cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), GetBuffer(Renderer_Buffer::DummyInstance));
                 cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
-                if (renderable->HasInstancing())
-                {
-                    cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(draw_call.lod_index),
-                        renderable->GetIndexOffset(draw_call.lod_index),
-                        renderable->GetVertexOffset(draw_call.lod_index),
-                        draw_call.instance_start_index,
-                        draw_call.instance_count
-                    );
-                }
-                else
-                {
-                    cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(draw_call.lod_index),
-                        renderable->GetIndexOffset(draw_call.lod_index),
-                        renderable->GetVertexOffset(draw_call.lod_index)
-                    );
-                }
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(draw_call.lod_index),
+                    renderable->GetIndexOffset(draw_call.lod_index),
+                    renderable->GetVertexOffset(draw_call.lod_index)
+                );
             }
         }
     
@@ -380,24 +365,25 @@ namespace spartan
     
         // visibility
         {
-            uint32_t aabb_count = m_draw_call_count;
-    
             // define pipeline state
             static RHI_PipelineState pso;
-            pso.name             = "hiz_aabb_tests";
+            pso.name             = "visiblity";
             pso.shaders[Compute] = GetShader(Renderer_Shader::hiz_c);
     
             cmd_list->SetPipelineState(pso);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
     
             // set aabb count
-            m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(aabb_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
+            m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
             // dispatch: ceil(aabb_count / 256) thread groups
-            uint32_t thread_group_count = (aabb_count + 255) / 256; // ceiling division
+            uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
             cmd_list->Dispatch(thread_group_count, 1, 1);
         }
+
+        // wait for the compute shader to finish
+        cmd_list->InsertBarrierBufferReadWrite(GetBuffer(Renderer_Buffer::Visibility));
     
         cmd_list->EndTimeblock();
     }

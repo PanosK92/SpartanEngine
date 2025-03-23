@@ -1105,7 +1105,6 @@ namespace spartan
             bindless_aabbs[count].min          = aabb.GetMin();
             bindless_aabbs[count].max          = aabb.GetMax();
             bindless_aabbs[count].is_occluder  = draw_call.is_occluder;
-
             count++;
         }
 
@@ -1125,7 +1124,6 @@ namespace spartan
         GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
     }
 
-    
     void Renderer::BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list)
     {
         // cpu pass
@@ -1256,17 +1254,8 @@ namespace spartan
                     if (!material || material->IsTransparent() || material->IsAlphaTested() || renderable->HasInstancing())
                         continue;
             
-                    // get the correct bounding box
-                    BoundingBox aabb_world;
-                    if (renderable->HasInstancing())
-                    {
-                        aabb_world = renderable->GetBoundingBoxInstanceGroup(draw_call.instance_group_index);
-                    }
-                    else
-                    {
-                        // use the transformed aabb for non-instanced objects
-                        aabb_world = renderable->GetBoundingBox();
-                    }
+                    // get bounding box
+                    const BoundingBox& aabb_world = renderable->GetBoundingBox();
 
                     // this can cause all sorts of issues, so skip
                     if (aabb_world.Contains(GetCamera()->GetEntity()->GetPosition()))
