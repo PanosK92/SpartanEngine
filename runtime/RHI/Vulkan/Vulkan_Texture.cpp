@@ -205,7 +205,7 @@ namespace spartan
                         uint32_t mip_width  = max(1u, width >> mip_index);
                         uint32_t mip_height = max(1u, height >> mip_index);
                         uint32_t mip_depth  = (texture->GetType() == RHI_Texture_Type::Type3D) ? (depth >> mip_index) : 1;
-                        size_t size = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
+                        size_t size         = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
 
                         if (texture->GetMip(array_index, mip_index).bytes.size() != 0)
                         {

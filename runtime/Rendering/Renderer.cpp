@@ -1253,8 +1253,8 @@ namespace spartan
                     Material* material           = renderable->GetMaterial();
             
                     // skip if material is null, transparent, or alpha-tested (unreliable occluders)
-                    //if (!material || material->IsTransparent() || material->IsAlphaTested())
-                        //continue;
+                    if (!material || material->IsTransparent() || material->IsAlphaTested() || renderable->HasInstancing())
+                        continue;
             
                     // get the correct bounding box
                     BoundingBox aabb_world;
@@ -1267,7 +1267,11 @@ namespace spartan
                         // use the transformed aabb for non-instanced objects
                         aabb_world = renderable->GetBoundingBox();
                     }
-            
+
+                    // this can cause all sorts of issues, so skip
+                    if (aabb_world.Contains(GetCamera()->GetEntity()->GetPosition()))
+                        continue;
+
                     // compute screen-space area and store it
                     float screen_area = compute_screen_space_area(aabb_world);
                     areas.push_back({i, screen_area});
@@ -1280,7 +1284,7 @@ namespace spartan
                 });
             
                 // select the top n occluders
-                const uint32_t max_occluders = 2;
+                const uint32_t max_occluders = 16;
                 uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
                 for (uint32_t i = 0; i < occluder_count; i++)
                 {

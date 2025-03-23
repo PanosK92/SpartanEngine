@@ -51,10 +51,20 @@ namespace spartan
         void Deserialize(FileStream* stream) override;
         void OnTick() override;
 
-        // mesh/geometry
+        // mesh
         void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
         void SetMesh(const MeshType type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
+        uint32_t GetLodCount() const;
+        uint32_t GetLodIndex(const uint32_t instance_group_index = 0) const { return m_lod_indices[instance_group_index]; }
+        uint32_t GetIndexOffset(const uint32_t lod = 0) const;
+        uint32_t GetIndexCount(const uint32_t lod = 0) const;
+        uint32_t GetVertexOffset(const uint32_t lod = 0) const;
+        uint32_t GetVertexCount(const uint32_t lod = 0) const;
+        RHI_Buffer* GetIndexBuffer() const;
+        RHI_Buffer* GetVertexBuffer() const;
+        const std::string& GetMeshName() const;
+        bool HasMesh() const { return m_mesh != nullptr; }
 
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const               { return m_instance_group_end_indices; }
@@ -69,18 +79,6 @@ namespace spartan
         void SetDefaultMaterial();
         std::string GetMaterialName() const;
         Material* GetMaterial() const { return m_material; }
-
-        // mesh
-        uint32_t GetLodCount() const;
-        uint32_t GetLodIndex(const uint32_t instance_group_index = 0) const { return m_lod_indices[instance_group_index]; }
-        uint32_t GetIndexOffset(const uint32_t lod = 0) const;
-        uint32_t GetIndexCount(const uint32_t lod = 0) const;
-        uint32_t GetVertexOffset(const uint32_t lod = 0) const;
-        uint32_t GetVertexCount(const uint32_t lod = 0) const;
-        RHI_Buffer* GetIndexBuffer() const;
-        RHI_Buffer* GetVertexBuffer() const;
-        const std::string& GetMeshName() const;
-        bool HasMesh() const { return m_mesh != nullptr; }
 
         // instancing
         bool HasInstancing() const                              { return !m_instances.empty(); }
@@ -106,11 +104,11 @@ namespace spartan
         void UpdateLodIndices();
 
         // geometry/mesh
-        Mesh* m_mesh                                 = nullptr;
-        uint32_t m_sub_mesh_index                    = 0;
-        bool m_bounding_box_dirty                    = true;
-        math::BoundingBox m_bounding_box_mesh             = math::BoundingBox::Undefined;
-        math::BoundingBox m_bounding_box = math::BoundingBox::Undefined;
+        Mesh* m_mesh                          = nullptr;
+        uint32_t m_sub_mesh_index             = 0;
+        bool m_bounding_box_dirty             = true;
+        math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Undefined;
+        math::BoundingBox m_bounding_box      = math::BoundingBox::Undefined;
         std::vector<math::BoundingBox> m_bounding_box_instances;
         std::vector<math::BoundingBox> m_bounding_box_instance_group;
 

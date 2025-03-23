@@ -85,9 +85,9 @@ namespace spartan
         {
             // opaques
             {
-                bool is_transparent = false;
                 Pass_HiZ(cmd_list_graphics);
-                Pass_Depth_Prepass(cmd_list_graphics, false);
+                Pass_Depth_Prepass(cmd_list_graphics);
+                bool is_transparent = false;
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
 
                 // shadow maps
@@ -120,7 +120,6 @@ namespace spartan
             if (m_transparents_present)
             {
                 bool is_transparent = true;
-                Pass_Depth_Prepass(cmd_list_graphics, is_transparent);
                 Pass_GBuffer(cmd_list_graphics, is_transparent);
                 Pass_Light(cmd_list_graphics, is_transparent);
                 Pass_Light_Composition(cmd_list_graphics, is_transparent);
@@ -403,7 +402,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass)
+    void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
     {
         // acquire resources
         RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);        // render resolution - base depth
@@ -426,7 +425,7 @@ namespace spartan
             pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.render_target_depth_texture      = tex_depth;
             pso.resolution_scale                 = true;
-            pso.clear_depth                      = is_transparent_pass ? rhi_depth_load : 0.0f;
+            pso.clear_depth                      = 0.0f;
             cmd_list->SetIgnoreClearValues(false);
 
             for (uint32_t i = 0; i < m_draw_call_count; i++)
@@ -434,7 +433,7 @@ namespace spartan
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
                 Renderable* renderable             = draw_call.renderable;
                 Material* material                 = renderable->GetMaterial();
-                if (!material || material->IsTransparent() != is_transparent_pass)
+                if (!material || material->IsTransparent())
                     continue;
     
                 // toggles
@@ -457,7 +456,7 @@ namespace spartan
                     bool is_tessellated    = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                     bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
                     m_pcb_pass_cpu.set_f3_value(is_tessellated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
-                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+                    m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                     m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                 }
@@ -519,6 +518,9 @@ namespace spartan
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
+
+        // deduce depth stencil state
+        RHI_DepthStencilState* depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
     
         // set pipeline state
         static RHI_PipelineState pso;
@@ -527,7 +529,7 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.rasterizer_state                 = rasterizer_state;
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
+        pso.depth_stencil_state              = depth_stencil_state;
         pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
         pso.resolution_scale                 = true;
         pso.render_target_color_textures[0]  = tex_color;
