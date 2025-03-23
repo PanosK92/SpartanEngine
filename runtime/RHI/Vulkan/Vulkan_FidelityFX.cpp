@@ -602,7 +602,7 @@ namespace spartan
                 Renderable* renderable                = entity->GetComponent<Renderable>();
             
                 // aabb: world space, pre-transformed
-                const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBox(BoundingBoxType::TransformedInstance, instance_index) : renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(instance_index) : renderable->GetBoundingBox();
                 desc.aabb.min[0]        = aabb.GetMin().x;
                 desc.aabb.min[1]        = aabb.GetMin().y;
                 desc.aabb.min[2]        = aabb.GetMin().z;

@@ -152,7 +152,7 @@ namespace spartan
 
     bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
-        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+        const BoundingBox& box = renderable->GetBoundingBox();
         return IsInViewFrustum(box);
     }
 
@@ -181,17 +181,17 @@ namespace spartan
             {
                 shared_ptr<Entity> entity = it.second;
 
-                // Make sure there entity has a renderable
+                // make sure there entity has a renderable
                 if (!entity->GetComponent<Renderable>())
                     continue;
 
-                // Get object oriented bounding box
-                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::Transformed);
+                // get object oriented bounding box
+                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox();
 
-                // Compute hit distance
+                // compute hit distance
                 float distance = ray.HitDistance(aabb);
 
-                // Don't store hit data if there was no hit
+                // don't store hit data if there was no hit
                 if (distance == std::numeric_limits<float>::infinity())
                     continue;
 
@@ -638,7 +638,7 @@ namespace spartan
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
             if (Renderable* renderable = entity->GetComponent<Renderable>())
             {
-                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox(BoundingBoxType::Transformed).GetExtents().Length() * 2.0f;
+                m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox().GetExtents().Length() * 2.0f;
             }
             else
             {

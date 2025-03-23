@@ -34,13 +34,6 @@ namespace spartan
 {
     class Material;
 
-    enum class BoundingBoxType
-    {
-        Mesh,
-        Transformed,              // includes all instances            - if there no instances it's just the mesh bounding box
-        TransformedInstance,      // bounding box of an instance       - instance index is provided in GetBoundingBox()
-        TransformedInstanceGroup, // bounding box of an instance group - instance group index is provided in GetBoundingBox()
-    };
 
     enum RenderableFlags : uint32_t
     {
@@ -64,9 +57,11 @@ namespace spartan
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
 
         // bounding box
-        const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const { return m_instance_group_end_indices; }
-        uint32_t GetInstanceGroupCount() const                             { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
-        const math::BoundingBox& GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index = 0);
+        const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const               { return m_instance_group_end_indices; }
+        uint32_t GetInstanceGroupCount() const                                           { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
+        const math::BoundingBox& GetBoundingBox() const                                  { return m_bounding_box_transformed;}
+        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances[index];}
+        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group[index];}
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)

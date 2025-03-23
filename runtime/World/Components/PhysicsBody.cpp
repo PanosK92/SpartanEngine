@@ -78,7 +78,7 @@ namespace spartan
 
         bool can_player_fit(Entity* entity, const vector<RHI_Vertex_PosTexNorTan>& vertices, const Vector3& scale)
         {
-            const BoundingBox& bounding_box = entity->GetComponent<Renderable>()->GetBoundingBox(BoundingBoxType::Transformed);
+            const BoundingBox& bounding_box = entity->GetComponent<Renderable>()->GetBoundingBox();
         
             // skip tiny objects
             if (bounding_box.Volume() < 8.0f) // 2x2x2
@@ -854,7 +854,7 @@ namespace spartan
                     {
                         if (is_root_entity)
                         {
-                            volume = renderable->GetBoundingBox(BoundingBoxType::Transformed).Volume();
+                            volume = renderable->GetBoundingBox().Volume();
                         }
 
                         // get geometry and save it as well

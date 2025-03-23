@@ -1101,7 +1101,7 @@ namespace spartan
         {
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Renderable* renderable             = draw_call.renderable;
-            const BoundingBox& aabb            = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
+            const BoundingBox& aabb            = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(draw_call.instance_group_index) : renderable->GetBoundingBox();
             bindless_aabbs[count].min          = aabb.GetMin();
             bindless_aabbs[count].max          = aabb.GetMax();
             bindless_aabbs[count].is_occluder  = draw_call.is_occluder;
@@ -1260,12 +1260,12 @@ namespace spartan
                     BoundingBox aabb_world;
                     if (renderable->HasInstancing())
                     {
-                        aabb_world = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, draw_call.instance_group_index);
+                        aabb_world = renderable->GetBoundingBoxInstanceGroup(draw_call.instance_group_index);
                     }
                     else
                     {
                         // use the transformed aabb for non-instanced objects
-                        aabb_world = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                        aabb_world = renderable->GetBoundingBox();
                     }
             
                     // compute screen-space area and store it

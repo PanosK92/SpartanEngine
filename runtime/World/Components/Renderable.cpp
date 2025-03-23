@@ -176,42 +176,7 @@ namespace spartan
 
     void Renderable::OnTick()
     {
-        UpdateFrustumAndDistanceCulling();
-        UpdateLodIndices();
-    }
-
-    void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
-    {
-        // set mesh
-        {
-            m_mesh             = mesh;
-            m_sub_mesh_index   = sub_mesh_index;
-            const MeshLod& lod = mesh->GetSubMesh(sub_mesh_index).lods[0];
-            SP_ASSERT(lod.index_count  != 0);
-            SP_ASSERT(lod.vertex_count != 0);
-        }
-
-        // compute and set bounding box
-        {
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
-            m_bounding_box = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-            SP_ASSERT(m_bounding_box != BoundingBox::Undefined);
-        }
-    }
-
-    void Renderable::SetMesh(const MeshType type)
-    {
-        SetMesh(Renderer::GetStandardMesh(type).get());
-    }
-
-    void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
-    {
-        m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
-    }
-
-    const BoundingBox& Renderable::GetBoundingBox(const BoundingBoxType type, const uint32_t instance_group_index)
-    {
+        // update bounding boxes on  transform change
         if (Entity* entity = GetEntity())
         {
             const Matrix& transform = entity->GetMatrix();
@@ -262,19 +227,38 @@ namespace spartan
             }
         }
 
-        if (type == BoundingBoxType::Mesh)
-            return m_bounding_box;
+        UpdateFrustumAndDistanceCulling();
+        UpdateLodIndices();
+    }
 
-        if (type == BoundingBoxType::Transformed)
-            return m_bounding_box_transformed;
+    void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
+    {
+        // set mesh
+        {
+            m_mesh             = mesh;
+            m_sub_mesh_index   = sub_mesh_index;
+            const MeshLod& lod = mesh->GetSubMesh(sub_mesh_index).lods[0];
+            SP_ASSERT(lod.index_count  != 0);
+            SP_ASSERT(lod.vertex_count != 0);
+        }
 
-        if (type == BoundingBoxType::TransformedInstance)
-            return m_bounding_box_instances[instance_group_index];
+        // compute and set bounding box
+        {
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
+            m_bounding_box = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            SP_ASSERT(m_bounding_box != BoundingBox::Undefined);
+        }
+    }
 
-        if (type == BoundingBoxType::TransformedInstanceGroup)
-            return m_bounding_box_instance_group[instance_group_index];
+    void Renderable::SetMesh(const MeshType type)
+    {
+        SetMesh(Renderer::GetStandardMesh(type).get());
+    }
 
-        return BoundingBox::Undefined;
+    void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
+    {
+        m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
     
     void Renderable::SetMaterial(const shared_ptr<Material>& material)
@@ -458,7 +442,7 @@ namespace spartan
             {
                 for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
                 {
-                    const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                    const BoundingBox& bounding_box = GetBoundingBoxInstanceGroup(group_index);
 
                     // first, check if the bounding box is in the frustum
                     if (camera->IsInViewFrustum(bounding_box))
@@ -476,7 +460,7 @@ namespace spartan
             }
             else
             {
-                const BoundingBox& bounding_box = GetBoundingBox(BoundingBoxType::Transformed);
+                const BoundingBox& bounding_box = GetBoundingBox();
 
                 // first, check if the bounding box is in the frustum
                 if (camera->IsInViewFrustum(bounding_box))
@@ -561,13 +545,13 @@ namespace spartan
         {
             for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
             {
-                const BoundingBox& box = GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                const BoundingBox& box = GetBoundingBoxInstanceGroup(group_index);
                 compute_lod_index(box, IsVisible(group_index), group_index);
             }
         }
         else
         {
-            const BoundingBox& box = GetBoundingBox(BoundingBoxType::Transformed);
+            const BoundingBox& box = GetBoundingBox();
             compute_lod_index(box, IsVisible(), 0);
         }
     }

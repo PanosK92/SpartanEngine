@@ -352,7 +352,7 @@ namespace spartan
                     {
                         if (renderable->IsVisible())
                         {
-                            bounding_box.Merge(renderable->GetBoundingBox(BoundingBoxType::Transformed));
+                            bounding_box.Merge(renderable->GetBoundingBox());
                         }
                     }
                 }

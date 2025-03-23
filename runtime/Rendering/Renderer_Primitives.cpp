@@ -272,7 +272,7 @@ namespace spartan
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
-                        DrawBox(renderable->GetBoundingBox(BoundingBoxType::Transformed), get_color(renderable));
+                        DrawBox(renderable->GetBoundingBox(), get_color(renderable));
                     }
                 }
             };
@@ -286,7 +286,7 @@ namespace spartan
                         uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
                         for (uint32_t group_index = 0; group_index < group_count; group_index++)
                         {
-                            const BoundingBox& bounding_box_group = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, group_index);
+                            const BoundingBox& bounding_box_group = renderable->GetBoundingBoxInstanceGroup(group_index);
                             DrawBox(bounding_box_group, get_color(renderable));
                         }
                     }

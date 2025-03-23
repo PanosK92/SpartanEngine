@@ -513,7 +513,7 @@ namespace spartan
 
     bool Light::IsInViewFrustum(Renderable* renderable, uint32_t array_index, const uint32_t instance_group_index) const
     {
-        const BoundingBox& box = renderable->GetBoundingBox(BoundingBoxType::Transformed, instance_group_index);
+        const BoundingBox& box = renderable->GetBoundingBoxInstanceGroup(instance_group_index);
 
         if (box == BoundingBox::Undefined)
         {
