@@ -146,7 +146,7 @@ namespace spartan
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        static void BuildDrawCalls(RHI_CommandList* cmd_list);
+        static void BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list);
         static void Pass_HiZ(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);

@@ -230,10 +230,11 @@ namespace spartan
 
             // hi-z
             {
-                // amd is very specific with depth formats, so if something is a depth render target, it can only have one mip and flags like RHI_Texture_Uav
+                // note #1: amd is very specific with depth formats, so if something is a depth render target, it can only have one mip and flags like RHI_Texture_Uav
                 // so we create second texture with the flags we want and then blit to that, not mention that we can't even use vkBlitImage so we do a manual one (AMD is killing is us here)
-                render_target(Renderer_RenderTarget::gbuffer_depth_occluders)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1,         RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv, "depth_occluders");
-                render_target(Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, mip_count, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "depth_occluders_hiz");
+                // note #2: too many mips can degrade depth to nothing (0), which is infinate distance (in reverse-z), which breaks things
+                render_target(Renderer_RenderTarget::gbuffer_depth_occluders)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv, "depth_occluders");
+                render_target(Renderer_RenderTarget::gbuffer_depth_occluders_hiz) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 5, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "depth_occluders_hiz");
             }
 
             // misc

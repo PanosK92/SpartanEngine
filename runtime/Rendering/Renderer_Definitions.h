@@ -323,11 +323,12 @@ namespace spartan
     class Renderable;
     struct Renderer_DrawCall
     {
-        Renderable* renderable;        // Pointer to the renderable object
-        uint32_t instance_group_index; // Index of the instance group (used if instanced)
-        uint32_t instance_start_index; // Starting index in the instance buffer (used if instanced)
-        uint32_t instance_count;       // Number of instances to draw (used if instanced)
-        uint32_t lod_index;            // Level of detail index for the mesh
-        float distance_squared;        // Distance for sorting or other purposes
+        Renderable* renderable;        // pointer to the renderable object
+        uint32_t instance_group_index; // index of the instance group (used if instanced)
+        uint32_t instance_start_index; // starting index in the instance buffer (used if instanced)
+        uint32_t instance_count;       // number of instances to draw (used if instanced)
+        uint32_t lod_index;            // level of detail index for the mesh
+        float distance_squared;        // distance for sorting or other purposes
+        bool is_occluder;              // is this draw call an occluder
     };
 }

@@ -332,65 +332,15 @@ namespace spartan
             cmd_list->SetIgnoreClearValues(false);
             cmd_list->SetPipelineState(pso);
     
-            struct Occluder
-            {
-                const Renderer_DrawCall* draw_call;
-                float screen_area;
-            };
-            vector<Occluder> occluders;
-            occluders.reserve(m_draw_call_count);
-    
-            // lambda to compute screen-space area of a bounding box
-            auto compute_screen_space_area = [&] (const BoundingBox& aabb_world) -> float
-            {
-                // project aabb to screen space using camera function
-                math::Rectangle rect_screen = GetCamera()->WorldToScreenCoordinates(aabb_world);
-    
-                // compute screen-space dimensions using rectangle's left, top, right, bottom
-                float width  = rect_screen.right - rect_screen.left;
-                float height = rect_screen.bottom - rect_screen.top;
-    
-                // compute area and ensure it's non-negative
-                float area = width * height;
-                return area > 0.0f ? area : 0.0f;
-            };
-    
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                Renderable* renderable             = draw_call.renderable;
-                Material* material                 = renderable->GetMaterial();
+                if (!draw_call.is_occluder)
+                    continue;
 
-                // skip objects which are transparent, alpha tested, or instanced (as instanced objects can create arbitrary disconnected shapes)
-                //if (!material || material->IsTransparent() || material->IsAlphaTested() || renderable->HasInstancing())
-                    //continue;
-    
-                // compute screen space bounding box
-                const BoundingBox& aabb_world = renderable->GetBoundingBox(BoundingBoxType::Transformed);
-                float screen_area             = compute_screen_space_area(aabb_world);
-                if (screen_area > 12000.0f)
-                {
-                    occluders.emplace_back(&draw_call, screen_area);
-                }
-            }
-    
-            // sort candidates by screen-space area (descending)
-            sort(occluders.begin(), occluders.end(), [](const Occluder& a, const Occluder& b)
-            {
-                return a.screen_area > b.screen_area;
-            });
-    
-            // render top 32 occluders
-            const uint32_t max_occluders = 32;
-            uint32_t occluder_count = min(max_occluders, static_cast<uint32_t>(occluders.size()));
-            for (uint32_t i = 0; i < occluder_count; i++)
-            {
-                const Renderer_DrawCall& draw_call = *occluders[i].draw_call;
-                Renderable* renderable             = draw_call.renderable;
-                Material* material                 = renderable->GetMaterial();
-    
                 // culling
-                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                Renderable* renderable = draw_call.renderable;
+                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
                 cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                 cmd_list->SetCullMode(cull_mode);
     
@@ -442,7 +392,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
     
             // set aabb count
-            m_pcb_pass_cpu.set_f3_value(GetViewport().width, GetViewport().height, static_cast<float>(aabb_count));
+            m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(aabb_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
             // dispatch: ceil(aabb_count / 256) thread groups

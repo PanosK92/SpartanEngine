@@ -201,7 +201,7 @@ namespace spartan
     struct Sb_Aabb
     {
         math::Vector3 min;
-        float padding;
+        float is_occluder;
         math::Vector3 max;
         float padding2;
     };

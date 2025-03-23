@@ -335,7 +335,7 @@ namespace spartan
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
         WaitForValidResources();
-        BuildDrawCalls(cmd_list_graphics);
+        BuildDrawCallsAndOccluders(cmd_list_graphics);
         UpdateBuffers(cmd_list_graphics);
         ProduceFrame(cmd_list_graphics, cmd_list_compute);
 
@@ -1104,6 +1104,7 @@ namespace spartan
             const BoundingBox& aabb            = renderable->GetBoundingBox(renderable->HasInstancing() ? BoundingBoxType::TransformedInstanceGroup : BoundingBoxType::Transformed, draw_call.instance_group_index);
             bindless_aabbs[count].min          = aabb.GetMin();
             bindless_aabbs[count].max          = aabb.GetMax();
+            bindless_aabbs[count].is_occluder  = draw_call.is_occluder;
 
             count++;
         }
@@ -1125,94 +1126,167 @@ namespace spartan
     }
 
     
-    void Renderer::BuildDrawCalls(RHI_CommandList* cmd_list)
+    void Renderer::BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list)
     {
         // cpu pass
-        cmd_list->BeginTimeblock("build_draw_calls", false, false);
+        cmd_list->BeginTimeblock("build_draw_calls_and_occluders", false, false);
         {
-            m_draw_call_count = 0;
-
-            for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Mesh])
+            // build draw calls and sort them
             {
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                m_draw_call_count = 0;
+
+                for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Mesh])
                 {
-                    if (renderable->GetMaterial()->IsTransparent())
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
-                        m_transparents_present = true;
-                    }
-            
-                    if (renderable->HasInstancing())
-                    {
-                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+                        if (renderable->GetMaterial()->IsTransparent())
                         {
-                            if (renderable->IsVisible(group_index))
+                            m_transparents_present = true;
+                        }
+                
+                        if (renderable->HasInstancing())
+                        {
+                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
-                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
-                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
-                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-                                if (instance_count == 0)
-                                    continue;
-            
-                                uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
-                                Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
-                                draw_call.renderable           = renderable;
-                                draw_call.instance_group_index = group_index;
-                                draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                                draw_call.instance_start_index = instance_start_index;
-                                draw_call.instance_count       = instance_count;
-                                draw_call.lod_index            = lod_index;
+                                if (renderable->IsVisible(group_index))
+                                {
+                                    uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                    uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
+                                    instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                    if (instance_count == 0)
+                                        continue;
+                
+                                    uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+                                    Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
+                                    draw_call.renderable           = renderable;
+                                    draw_call.instance_group_index = group_index;
+                                    draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
+                                    draw_call.instance_start_index = instance_start_index;
+                                    draw_call.instance_count       = instance_count;
+                                    draw_call.lod_index            = lod_index;
+                                    draw_call.is_occluder          = false;
+                                }
                             }
                         }
+                        else if (renderable->IsVisible())
+                        {
+                            uint32_t lod_index           = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                            Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
+                            draw_call.renderable         = renderable;
+                            draw_call.distance_squared   = renderable->GetDistanceSquared();
+                            draw_call.lod_index          = lod_index;
+                            draw_call.is_occluder        = false;
+                        }
                     }
-                    else if (renderable->IsVisible())
+                }
+                
+                sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+                {
+                    // check transparency
+                    bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+                    bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+                    
+                    if (a_transparent != b_transparent)
                     {
-                        uint32_t lod_index           = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
-                        Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-                        draw_call.renderable         = renderable;
-                        draw_call.distance_squared   = renderable->GetDistanceSquared();
-                        draw_call.lod_index          = lod_index;
+                        return !a_transparent; // opaque (false) before transparent (true)
                     }
+                    
+                    if (!a_transparent) // both are opaque
+                    { 
+                        // check tessellation
+                        bool a_tess = a.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                        bool b_tess = b.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                        if (a_tess != b_tess)
+                        {
+                            return !a_tess; // no tessellation (false) before tessellation (true)
+                        }
+                        
+                        // check alpha testing
+                        bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
+                        bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+                        if (a_alpha != b_alpha)
+                        {
+                            return !a_alpha; // no alpha testing (false) before alpha testing (true)
+                        }
+                        
+                        // sort by distance front to back
+                        return a.distance_squared < b.distance_squared;
+                    }
+                    else // both are transparent
+                    { 
+                        // sort by distance back to front
+                        return a.distance_squared > b.distance_squared;
+                    }
+                });
+            }
+
+            // select occluders by finding the top n largest screen-space bounding boxes
+            {
+                // lambda to compute screen-space area of a bounding box
+                auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
+                {
+                    // project aabb to screen space using camera function
+                    math::Rectangle rect_screen = GetCamera()->WorldToScreenCoordinates(aabb_world);
+                
+                    // compute screen-space dimensions using rectangle's left, top, right, bottom
+                    float width  = rect_screen.right - rect_screen.left;
+                    float height = rect_screen.bottom - rect_screen.top;
+                
+                    // compute area and ensure it's non-negative
+                    float area = width * height;
+                    return area > 0.0f ? area : 0.0f;
+                };
+            
+                // temporary storage for draw call areas
+                struct DrawCallArea {
+                    uint32_t index;
+                    float area;
+                };
+                vector<DrawCallArea> areas;
+                areas.reserve(m_draw_call_count); // pre-allocate to avoid reallocations
+            
+                // collect screen-space areas for eligible draw calls
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    Renderable* renderable       = draw_call.renderable;
+                    Material* material           = renderable->GetMaterial();
+            
+                    // skip if material is null, transparent, or alpha-tested (unreliable occluders)
+                    //if (!material || material->IsTransparent() || material->IsAlphaTested())
+                        //continue;
+            
+                    // get the correct bounding box
+                    BoundingBox aabb_world;
+                    if (renderable->HasInstancing())
+                    {
+                        aabb_world = renderable->GetBoundingBox(BoundingBoxType::TransformedInstanceGroup, draw_call.instance_group_index);
+                    }
+                    else
+                    {
+                        // use the transformed aabb for non-instanced objects
+                        aabb_world = renderable->GetBoundingBox(BoundingBoxType::Transformed);
+                    }
+            
+                    // compute screen-space area and store it
+                    float screen_area = compute_screen_space_area(aabb_world);
+                    areas.push_back({i, screen_area});
+                }
+            
+                // sort draw calls by screen-space area (descending)
+                sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
+                {
+                    return a.area > b.area;
+                });
+            
+                // select the top n occluders
+                const uint32_t max_occluders = 2;
+                uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
+                for (uint32_t i = 0; i < occluder_count; i++)
+                {
+                    m_draw_calls[areas[i].index].is_occluder = true;
                 }
             }
-            
-            sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-            {
-                // check transparency
-                bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-                bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-                
-                if (a_transparent != b_transparent)
-                {
-                    return !a_transparent; // opaque (false) before transparent (true)
-                }
-                
-                if (!a_transparent) // both are opaque
-                { 
-                    // check tessellation
-                    bool a_tess = a.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    bool b_tess = b.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    if (a_tess != b_tess)
-                    {
-                        return !a_tess; // no tessellation (false) before tessellation (true)
-                    }
-                    
-                    // check alpha testing
-                    bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
-                    bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
-                    if (a_alpha != b_alpha)
-                    {
-                        return !a_alpha; // no alpha testing (false) before alpha testing (true)
-                    }
-                    
-                    // sort by distance front to back
-                    return a.distance_squared < b.distance_squared;
-                }
-                else // both are transparent
-                { 
-                    // sort by distance back to front
-                    return a.distance_squared > b.distance_squared;
-                }
-            });
         }
         cmd_list->EndTimeblock();
     }

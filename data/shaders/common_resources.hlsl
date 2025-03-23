@@ -129,7 +129,7 @@ struct LightParameters
 struct aabb
 {
     float3 min;
-    float padding;
+    float is_occluder;
     float3 max;
     float padding2;
 };
