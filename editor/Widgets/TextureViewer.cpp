@@ -56,43 +56,52 @@ namespace
     {
         // calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
         float bottom_padding              = 200.0f * spartan::Window::GetDpiScale(); // to fit the information text
-        float texture_shrink_percentage_x = ImGui::GetWindowWidth() / static_cast<float>(texture->GetWidth()) * 0.95f; // 0.95 to avoid not be hidden by the scroll bar
+        float texture_shrink_percentage_x = ImGui::GetWindowWidth() / static_cast<float>(texture->GetWidth()) * 0.95f; // 0.95 to avoid being hidden by the scroll bar
         float texture_shrink_percentage_y = ImGui::GetWindowHeight() / static_cast<float>(texture->GetHeight() + bottom_padding);
         float texture_shrink_percentage   = min(texture_shrink_percentage_x, texture_shrink_percentage_y);
         
-        // texture
+        // texture dimensions on screen
         float virtual_width  = static_cast<float>(texture->GetWidth()) * texture_shrink_percentage;
         float virtual_height = static_cast<float>(texture->GetHeight()) * texture_shrink_percentage;
+        
+        // get the position where the texture will be drawn
+        ImVec2 pos = ImGui::GetCursorScreenPos();
         ImGuiSp::image(texture, Vector2(virtual_width, virtual_height), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
         
         // magnifying glass
         if (m_magnifying_glass && ImGui::IsItemHovered())
         {
-            const float region_sz   = 32.0f;
-            const float zoom        = 16.0f;
-            const ImVec4 tint_col   = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // No tint
-            const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f); // 50% opaque white
-        
-            ImVec2 pos     = ImGui::GetCursorScreenPos();
-            ImGuiIO& io    = ImGui::GetIO();
-            float region_x = io.MousePos.x - pos.x - region_sz * 0.5f;
-            float region_y = io.MousePos.y - pos.y - region_sz * 0.5f;
-        
+            // configuration
+            const float region_sz   = 32.0f; // size of the region in screen pixels
+            const float zoom        = 8.0f;  // zoom factor (e.g., 8x magnification)
+            const ImVec4 tint_col   = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // no tint
+            const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f); // 50% opaque white border
+            
+            // get mouse position
+            ImGuiIO& io = ImGui::GetIO();
+            ImVec2 mouse_pos = io.MousePos;
+            
+            // calculate the top-left corner of the region in screen coordinates, centered around the mouse
+            float region_x = mouse_pos.x - pos.x - region_sz * 0.5f;
+            float region_y = mouse_pos.y - pos.y - region_sz * 0.5f;
+            
+            // clamp the region to stay within the texture bounds
+            region_x = std::max(0.0f, std::min(region_x, virtual_width - region_sz));
+            region_y = std::max(0.0f, std::min(region_y, virtual_height - region_sz));
+            
+            // compute uv coordinates for the region
+            ImVec2 uv0 = ImVec2(region_x / virtual_width, region_y / virtual_height);                             // top-left
+            ImVec2 uv1 = ImVec2((region_x + region_sz) / virtual_width, (region_y + region_sz) / virtual_height); // bottom-right
+            
+            // display the magnified region in a tooltip
             ImGui::BeginTooltip();
-            {
-                region_x = clamp(region_x, 0.0f, virtual_width - region_sz);
-                region_y = clamp(region_y, 0.0f, virtual_height - region_sz);
-        
-                ImVec2 uv0 = ImVec2(region_x / virtual_width, region_y / virtual_height);
-                ImVec2 uv1 = ImVec2((region_x + region_sz) / virtual_width, (region_y + region_sz) / virtual_height);
-                ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
-            }
+            ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
             ImGui::EndTooltip();
         }
         
-        // disable for now as it's buggy
-        //ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
-
+        // checkbox to enable/disable the magnifying glass
+        ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
+        
         texture_current = texture;
     }
 }

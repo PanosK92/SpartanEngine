@@ -219,7 +219,7 @@ namespace spartan
         for (auto& entity : renderables)
         {
             Renderable* renderable = entity->GetComponent<Renderable>();
-            if (!renderable || !entity->HasMovedInTheLastSeconds(0.1f))
+            if (!renderable )
                 continue;
     
             uint64_t current_lights = 0;

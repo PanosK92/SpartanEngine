@@ -867,7 +867,7 @@ namespace spartan
         void create_doom_e1m1()
         {
             create_camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-            create_sun(LightIntensity::sky_sunlight_noon, true);
+            create_sun(LightIntensity::sky_sunlight_noon);
             create_music("project\\music\\doom_e1m1.wav");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
@@ -885,12 +885,9 @@ namespace spartan
                 entity->GetDescendants(&entities);
                 for (Entity* entity_it : entities)
                 {
-                    if (entity_it->IsActive())
+                    if (Renderable* renderable = entity_it->GetComponent<Renderable>())
                     {
-                        if (Renderable* renderable = entity_it->GetComponent<Renderable>())
-                        {
-                            renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        }
+                        renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                     }
                 }
             }
@@ -899,7 +896,7 @@ namespace spartan
         void create_bistro()
         {
             create_camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
-            create_sun(LightIntensity::bulb_150_watt, true);
+            create_sun(LightIntensity::bulb_150_watt);
             create_music();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
