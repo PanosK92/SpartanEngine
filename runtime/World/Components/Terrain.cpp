@@ -179,98 +179,111 @@ namespace spartan
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
             SP_ASSERT(height_data.size() > 0);
-
-            // first pass: map the red channel values to heights in the range [min_y, max_y]
+        
+            // first pass: map the red channel values to heights in the range [min_y, max_y] (parallelized)
             {
                 uint32_t bytes_per_pixel = (height_texture->GetChannelCount() * height_texture->GetBitsPerChannel()) / 8;
-            
-                // normalized mapping: red channel [0,255] -> [min_y, max_y]
-                height_data_out.resize(height_data.size() / bytes_per_pixel);
-                for (uint32_t i = 0; i < height_data.size(); i += bytes_per_pixel)
+                uint32_t pixel_count = static_cast<uint32_t>(height_data.size() / bytes_per_pixel);
+        
+                // pre-allocate output vector
+                height_data_out.resize(pixel_count);
+        
+                // parallel mapping of heights
+                auto map_height = [&height_data_out, &height_data, bytes_per_pixel, min_y, max_y](uint32_t start_pixel, uint32_t end_pixel)
                 {
-                    // assuming the height is stored in the red channel (first channel)
-                    float normalized_value = static_cast<float>(height_data[i]) / 255.0f;
-                    height_data_out[i / bytes_per_pixel] = min_y + normalized_value * (max_y - min_y);
-                }
+                    for (uint32_t pixel = start_pixel; pixel < end_pixel; pixel++)
+                    {
+                        uint32_t byte_index = pixel * bytes_per_pixel;
+                        float normalized_value = static_cast<float>(height_data[byte_index]) / 255.0f;
+                        height_data_out[pixel] = min_y + normalized_value * (max_y - min_y);
+                    }
+                };
+                ThreadPool::ParallelLoop(map_height, pixel_count);
             }
-            
-            // second pass: upscale the height map by bilinearly interpolating the height values
+        
+            // second pass: upscale the height map by bilinearly interpolating the height values (parallelized)
             if (scale > 1)
             {
-                // Get the dimensions of the original texture
+                // get the dimensions of the original texture
                 uint32_t width  = height_texture->GetWidth();
                 uint32_t height = height_texture->GetHeight();
-            
-                // Create a new vector for the upscaled height map
-                std::vector<float> upscaled_height_data(scale * width * scale * height);
-            
-                // Helper function to safely access height values with clamping
+                uint32_t upscaled_width  = scale * width;
+                uint32_t upscaled_height = scale * height;
+        
+                // create a new vector for the upscaled height map
+                vector<float> upscaled_height_data(upscaled_width * upscaled_height);
+        
+                // helper function to safely access height values with clamping
                 auto get_height = [&](uint32_t i, uint32_t j) {
-                    i = std::min(i, width - 1);
-                    j = std::min(j, height - 1);
+                    i = min(i, width - 1);
+                    j = min(j, height - 1);
                     return height_data_out[j * width + i];
                 };
-            
-                // Iterate over each pixel in the upscaled height map
-                for (uint32_t y = 0; y < scale * height; ++y)
+        
+                // parallel upscaling of the height map
+                auto upscale_pixel = [&upscaled_height_data, &get_height, width, height, upscaled_width, upscaled_height, scale](uint32_t start_index, uint32_t end_index)
                 {
-                    for (uint32_t x = 0; x < scale * width; ++x)
+                    for (uint32_t index = start_index; index < end_index; index++)
                     {
-                        // Compute texture coordinates (u, v) in the range [0, 1]
-                        float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(scale * width);
-                        float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(scale * height);
-            
-                        // Map to original texture pixel coordinates
+                        uint32_t x = index % upscaled_width;
+                        uint32_t y = index / upscaled_width;
+        
+                        // compute texture coordinates (u, v) in the range [0, 1]
+                        float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(upscaled_width);
+                        float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(upscaled_height);
+        
+                        // map to original texture pixel coordinates
                         float i_float = u * static_cast<float>(width);
                         float j_float = v * static_cast<float>(height);
-            
-                        // Determine the four surrounding pixel indices
-                        uint32_t i0 = static_cast<uint32_t>(std::floor(i_float));
-                        uint32_t i1 = std::min(i0 + 1, width - 1);
-                        uint32_t j0 = static_cast<uint32_t>(std::floor(j_float));
-                        uint32_t j1 = std::min(j0 + 1, height - 1);
-            
-                        // Compute interpolation weights
+        
+                        // determine the four surrounding pixel indices
+                        uint32_t i0 = static_cast<uint32_t>(floor(i_float));
+                        uint32_t i1 = min(i0 + 1, width - 1);
+                        uint32_t j0 = static_cast<uint32_t>(floor(j_float));
+                        uint32_t j1 = min(j0 + 1, height - 1);
+        
+                        // compute interpolation weights
                         float frac_i = i_float - static_cast<float>(i0);
                         float frac_j = j_float - static_cast<float>(j0);
-            
-                        // Get the four height values
-                        float val00 = get_height(i0, j0); // Top-left
-                        float val10 = get_height(i1, j0); // Top-right
-                        float val01 = get_height(i0, j1); // Bottom-left
-                        float val11 = get_height(i1, j1); // Bottom-right
-            
-                        // Perform bilinear interpolation
+        
+                        // get the four height values
+                        float val00 = get_height(i0, j0); // top-left
+                        float val10 = get_height(i1, j0); // top-right
+                        float val01 = get_height(i0, j1); // bottom-left
+                        float val11 = get_height(i1, j1); // bottom-right
+        
+                        // perform bilinear interpolation
                         float interpolated = (1.0f - frac_i) * (1.0f - frac_j) * val00 +
                                              frac_i * (1.0f - frac_j) * val10 +
                                              (1.0f - frac_i) * frac_j * val01 +
                                              frac_i * frac_j * val11;
-            
-                        // Store the interpolated value in the upscaled height map
-                        upscaled_height_data[y * (scale * width) + x] = interpolated;
+        
+                        // store the interpolated value
+                        upscaled_height_data[y * upscaled_width + x] = interpolated;
                     }
-                }
-            
-                // Replace the original height data with the upscaled data
-                height_data_out = std::move(upscaled_height_data);
+                };
+                ThreadPool::ParallelLoop(upscale_pixel, upscaled_width * upscaled_height);
+        
+                // replace the original height data with the upscaled data
+                height_data_out = move(upscaled_height_data);
             }
-
+        
             // third pass: smooth out the height map values, this will reduce hard terrain edges
             {
                 const uint32_t width  = height_texture->GetWidth() * scale;
                 const uint32_t height = height_texture->GetHeight()  * scale;
-
+        
                 for (uint32_t iteration = 0; iteration < smoothing_iterations; iteration++)
                 {
                     vector<float> smoothed_height_data = height_data_out; // create a copy to store the smoothed data
-
+        
                     for (uint32_t y = 0; y < height; y++)
                     {
                         for (uint32_t x = 0; x < width; x++)
                         {
                             float sum      = height_data_out[y * width + x];
                             uint32_t count = 1;
-
+        
                             // iterate over neighboring pixels
                             for (int ny = -1; ny <= 1; ++ny)
                             {
@@ -279,10 +292,10 @@ namespace spartan
                                     // skip self/center pixel
                                     if (nx == 0 && ny == 0)
                                         continue;
-
+        
                                     uint32_t neighbor_x = x + nx;
                                     uint32_t neighbor_y = y + ny;
-
+        
                                     // check boundaries
                                     if (neighbor_x >= 0 && neighbor_x < width && neighbor_y >= 0 && neighbor_y < height)
                                     {
@@ -291,39 +304,44 @@ namespace spartan
                                     }
                                 }
                             }
-
+        
                             // average the sum
                             smoothed_height_data[y * width + x] = sum / static_cast<float>(count);
                         }
                     }
-
+        
                     height_data_out = smoothed_height_data;
                 }
-
             }
         }
 
         void add_perlin_noise(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
         {
-            for (uint32_t j = 0; j < height; ++j)
+            // parallel application of perlin noise to height data
+            auto add_noise = [&height_data, width, height, frequency, amplitude](uint32_t start_index, uint32_t end_index)
             {
-                for (uint32_t i = 0; i < width; ++i)
+                for (uint32_t index = start_index; index < end_index; ++index)
                 {
-                    float x                     = static_cast<float>(i) - width * 0.5f;
-                    float z                     = static_cast<float>(j) - height * 0.5f;
-                    float noise_value           = perlin::noise(x * frequency, z * frequency);
+                    uint32_t i = index % width;
+                    uint32_t j = index / width;
+                    float x = static_cast<float>(i) - width * 0.5f;
+                    float z = static_cast<float>(j) - height * 0.5f;
+                    float noise_value = perlin::noise(x * frequency, z * frequency);
                     height_data[j * width + i] += noise_value * amplitude;
                 }
-            }
+            };
+            ThreadPool::ParallelLoop(add_noise, width * height);
         }
 
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
         
-            mutex mtx;
+            // pre-allocate positions vector
             positions.resize(width * height);
-            auto generate_position_range = [&mtx, &positions, &height_map, width, height](uint32_t start_index, uint32_t end_index)
+        
+            // parallel generation of positions
+            auto generate_position_range = [&positions, &height_map, width, height](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t index = start_index; index < end_index; index++)
                 {
@@ -331,15 +349,14 @@ namespace spartan
                     uint32_t x = index % width;
                     uint32_t y = index / width;
         
-                    // center on the X and Z axis
+                    // center on the x and z axis
                     float centered_x = static_cast<float>(x) - width * 0.5f;
                     float centered_z = static_cast<float>(y) - height * 0.5f;
         
                     // get height from height_map
                     float height_value = height_map[index];
         
-                    // assign position
-                    lock_guard<mutex> lock(mtx);
+                    // assign position (no mutex needed since each index is unique)
                     positions[index] = Vector3(centered_x, height_value, centered_z);
                 }
             };
@@ -423,82 +440,74 @@ namespace spartan
             }
         }
 
-        void generate_normals(const vector<uint32_t>& terrain_indices, vector<RHI_Vertex_PosTexNorTan>& terrain_vertices)
+        void generate_normals(const vector<uint32_t>& /*terrain_indices*/, vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, uint32_t width, uint32_t height)
         {
-            SP_ASSERT_MSG(!terrain_indices.empty(), "Indices are empty");
             SP_ASSERT_MSG(!terrain_vertices.empty(), "Vertices are empty");
-
-            uint32_t triangle_count = static_cast<uint32_t>(terrain_indices.size()) / 3;
-            vector<Vector3> face_normals(triangle_count);
-            vector<Vector3> face_tangents(triangle_count);
-            vector<vector<uint32_t>> vertex_to_triangle_map(terrain_vertices.size());
-            Vector3 edge_a, edge_b;
-
-            for (uint32_t i = 0; i < triangle_count; ++i)
+        
+            auto compute_vertex_data = [&](uint32_t start, uint32_t end)
             {
-                uint32_t index_a = terrain_indices[i * 3];
-                uint32_t index_b = terrain_indices[i * 3 + 1];
-                uint32_t index_c = terrain_indices[i * 3 + 2];
-
-                vertex_to_triangle_map[index_a].push_back(i);
-                vertex_to_triangle_map[index_b].push_back(i);
-                vertex_to_triangle_map[index_c].push_back(i);
-
-                edge_a.x = terrain_vertices[index_a].pos[0] - terrain_vertices[index_b].pos[0];
-                edge_a.y = terrain_vertices[index_a].pos[1] - terrain_vertices[index_b].pos[1];
-                edge_a.z = terrain_vertices[index_a].pos[2] - terrain_vertices[index_b].pos[2];
-
-                edge_b.x = terrain_vertices[index_b].pos[0] - terrain_vertices[index_c].pos[0];
-                edge_b.y = terrain_vertices[index_b].pos[1] - terrain_vertices[index_c].pos[1];
-                edge_b.z = terrain_vertices[index_b].pos[2] - terrain_vertices[index_c].pos[2];
-
-                face_normals[i] = Vector3::Cross(edge_a, edge_b);
-
-                const float tc_u1 = terrain_vertices[index_a].tex[0] - terrain_vertices[index_b].tex[0];
-                const float tc_v1 = terrain_vertices[index_a].tex[1] - terrain_vertices[index_b].tex[1];
-                const float tc_u2 = terrain_vertices[index_b].tex[0] - terrain_vertices[index_c].tex[0];
-                const float tc_v2 = terrain_vertices[index_b].tex[1] - terrain_vertices[index_c].tex[1];
-
-                float coef = 1.0f / (tc_u1 * tc_v2 - tc_u2 * tc_v1);
-                face_tangents[i] = coef * (tc_v2 * edge_a - tc_v1 * edge_b);
-            }
-
-            auto compute_vertex_normals_tangents = [&terrain_vertices, &vertex_to_triangle_map, &face_normals, &face_tangents](uint32_t start_index, uint32_t end_index)
-            {
-                for (uint32_t i = start_index; i < end_index; i++)
+                for (uint32_t index = start; index < end; index++)
                 {
-                    Vector3 normal_average  = Vector3::Zero;
-                    Vector3 tangent_average = Vector3::Zero;
-                    float face_usage_count  = 0;
-
-                    for (uint32_t j : vertex_to_triangle_map[i])
+                    uint32_t i = index % width;
+                    uint32_t j = index / width;
+        
+                    // compute normal using gradients
+                    float h_left, h_right, h_bottom, h_top;
+        
+                    // x-direction gradient
+                    if (i == 0)
                     {
-                        normal_average  += face_normals[j];
-                        tangent_average += face_tangents[j];
-                        face_usage_count++;
+                        h_left  = terrain_vertices[j * width + i].pos[1];
+                        h_right = terrain_vertices[j * width + i + 1].pos[1];
                     }
-
-                    if (face_usage_count > 0)
+                    else if (i == width - 1)
                     {
-                        normal_average  /= face_usage_count;
-                        tangent_average /= face_usage_count;
-
-                        normal_average.Normalize();
-                        tangent_average.Normalize();
-
-                        terrain_vertices[i].nor[0] = normal_average.x;
-                        terrain_vertices[i].nor[1] = normal_average.y;
-                        terrain_vertices[i].nor[2] = normal_average.z;
-
-                        terrain_vertices[i].tan[0] = tangent_average.x;
-                        terrain_vertices[i].tan[1] = tangent_average.y;
-                        terrain_vertices[i].tan[2] = tangent_average.z;
+                        h_left  = terrain_vertices[j * width + i - 1].pos[1];
+                        h_right = terrain_vertices[j * width + i].pos[1];
+                    } else
+                    {
+                        h_left  = terrain_vertices[j * width + i - 1].pos[1];
+                        h_right = terrain_vertices[j * width + i + 1].pos[1];
                     }
+                    float dh_dx = (h_right - h_left) / (i == 0 || i == width - 1 ? 1.0f : 2.0f);
+        
+                    // z-direction gradient
+                    if (j == 0)
+                    {
+                        h_bottom = terrain_vertices[j * width + i].pos[1];
+                        h_top    = terrain_vertices[(j + 1) * width + i].pos[1];
+                    }
+                    else if (j == height - 1)
+                    {
+                        h_bottom = terrain_vertices[(j - 1) * width + i].pos[1];
+                        h_top    = terrain_vertices[j * width + i].pos[1];
+                    }
+                    else
+                    {
+                        h_bottom = terrain_vertices[(j - 1) * width + i].pos[1];
+                        h_top    = terrain_vertices[(j + 1) * width + i].pos[1];
+                    }
+                    float dh_dz = (h_top - h_bottom) / (j == 0 || j == height - 1 ? 1.0f : 2.0f);
+
+                    // normal
+                    Vector3 normal(-dh_dx, 1.0f, -dh_dz);
+                    normal.Normalize();
+                    terrain_vertices[index].nor[0] = normal.x;
+                    terrain_vertices[index].nor[1] = normal.y;
+                    terrain_vertices[index].nor[2] = normal.z;
+        
+                    // tangent
+                    Vector3 tangent(1.0f, 0.0f, 0.0f);
+                    float proj  = Vector3::Dot(normal, tangent);
+                    tangent     -= normal * proj; // Orthogonalize to normal
+                    tangent.Normalize();
+                    terrain_vertices[index].tan[0] = tangent.x;
+                    terrain_vertices[index].tan[1] = tangent.y;
+                    terrain_vertices[index].tan[2] = tangent.z;
                 }
             };
-
-            uint32_t vertex_count = static_cast<uint32_t>(terrain_vertices.size());
-            ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
+        
+            ThreadPool::ParallelLoop(compute_vertex_data, terrain_vertices.size());
         }
 
         float get_random_float(mt19937& gen, float x, float y)
@@ -507,48 +516,67 @@ namespace spartan
             return distr(gen);
         }
 
-        vector<Matrix> generate_transforms(
-            const vector<RHI_Vertex_PosTexNorTan>& terrain_vertices,
-            const vector<uint32_t>& terrain_indices,
-            uint32_t transform_count,
-            float max_slope_radians,
-            bool rotate_to_match_surface_normal,
-            float terrain_offset,
-            float min_height
-        )
-        {
-            vector<Matrix> transforms;
-            random_device seed;
-            mt19937 generator(seed());
-            uniform_int_distribution<> distribution(0, static_cast<int>(terrain_indices.size() / 3 - 1));
-            mutex mtx;
-
-            auto place_mesh = [&mtx, &transforms, &terrain_vertices, &terrain_indices, &distribution, &max_slope_radians, &generator, &terrain_offset, &rotate_to_match_surface_normal, min_height](uint32_t start_index, uint32_t end_index)
+       vector<Matrix> generate_transforms(const vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, const vector<uint32_t>& terrain_indices, uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal,float terrain_offset, float min_height)
+       {
+           // step 1: precompute acceptable triangles - this means within acceptable slope and height
+            vector<uint32_t> acceptable_triangles;
             {
-                // each thread gets its own generator
-                random_device rd; 
-                mt19937 generator(rd());
-                uniform_int_distribution<> distribution(0, static_cast<int>(terrain_indices.size() / 3 - 1));
-                uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
+                acceptable_triangles.reserve(terrain_indices.size() / 3);
 
-                for (uint32_t i = start_index; i < end_index; i++)
+                for (uint32_t i = 0; i < terrain_indices.size(); i += 3)
                 {
-                    // randomly select a triangle from the mesh
-                    uint32_t triangle_index = distribution(generator) * 3;
-
-                    // get the vertices of the the terrain triangle
-                    Vector3 v0 = Vector3(terrain_vertices[terrain_indices[triangle_index]].pos[0],     terrain_vertices[terrain_indices[triangle_index]].pos[1],     terrain_vertices[terrain_indices[triangle_index]].pos[2]);
-                    Vector3 v1 = Vector3(terrain_vertices[terrain_indices[triangle_index + 1]].pos[0], terrain_vertices[terrain_indices[triangle_index + 1]].pos[1], terrain_vertices[terrain_indices[triangle_index + 1]].pos[2]);
-                    Vector3 v2 = Vector3(terrain_vertices[terrain_indices[triangle_index + 2]].pos[0], terrain_vertices[terrain_indices[triangle_index + 2]].pos[1], terrain_vertices[terrain_indices[triangle_index + 2]].pos[2]);
-
-                    // ensure the the triangle is within acceptable slope and height
+                    uint32_t idx0 = terrain_indices[i];
+                    uint32_t idx1 = terrain_indices[i + 1];
+                    uint32_t idx2 = terrain_indices[i + 2];
+                
+                    Vector3 v0(terrain_vertices[idx0].pos[0], terrain_vertices[idx0].pos[1], terrain_vertices[idx0].pos[2]);
+                    Vector3 v1(terrain_vertices[idx1].pos[0], terrain_vertices[idx1].pos[1], terrain_vertices[idx1].pos[2]);
+                    Vector3 v2(terrain_vertices[idx2].pos[0], terrain_vertices[idx2].pos[1], terrain_vertices[idx2].pos[2]);
+                
                     Vector3 normal            = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
                     float slope_radians       = acos(Vector3::Dot(normal, Vector3::Up));
                     bool is_acceptable_slope  = slope_radians <= max_slope_radians;
                     bool is_acceptable_height = v0.y >= min_height && v1.y >= min_height && v2.y >= min_height;
-
+                
                     if (is_acceptable_slope && is_acceptable_height)
                     {
+                        acceptable_triangles.push_back(i / 3); // store triangle index (divided by 3 since indices are per vertex)
+                    }
+                }
+                
+                if (acceptable_triangles.empty())
+                    return {};
+            }
+
+            // step 2: prepare output vector and mutex
+            vector<Matrix> transforms;
+            {
+                transforms.reserve(transform_count);
+                mutex mtx;
+                
+                // step 3: parallel placement with local storage
+                auto place_mesh = [&terrain_vertices, &terrain_indices, &acceptable_triangles, &transforms, &mtx, rotate_to_match_surface_normal, terrain_offset](uint32_t start_index, uint32_t end_index)
+                {
+                    // thread-local local resources and reservations (for maximum performance - no mutexes)
+                    thread_local mt19937 generator(random_device{}());
+                    uniform_int_distribution<> triangle_dist(0, acceptable_triangles.size() - 1);
+                    uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
+                    uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
+                    vector<Matrix> local_transforms;
+                    local_transforms.reserve(end_index - start_index);
+                
+                    for (uint32_t i = start_index; i < end_index; i++)
+                    {
+                        // select a random acceptable triangle
+                        uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
+                        uint32_t index0 = terrain_indices[tri_idx * 3];
+                        uint32_t index1 = terrain_indices[tri_idx * 3 + 1];
+                        uint32_t index2 = terrain_indices[tri_idx * 3 + 2];
+                
+                        Vector3 v0(terrain_vertices[index0].pos[0], terrain_vertices[index0].pos[1], terrain_vertices[index0].pos[2]);
+                        Vector3 v1(terrain_vertices[index1].pos[0], terrain_vertices[index1].pos[1], terrain_vertices[index1].pos[2]);
+                        Vector3 v2(terrain_vertices[index2].pos[0], terrain_vertices[index2].pos[1], terrain_vertices[index2].pos[2]);
+                
                         // generate barycentric coordinates
                         float u = barycentric_dist(generator);
                         float v = barycentric_dist(generator);
@@ -557,28 +585,31 @@ namespace spartan
                             u = 1.0f - u;
                             v = 1.0f - v;
                         }
-
-                        // position is the barycentric coordinates multiplied by the vertices of the triangle, plus a user defined terrain offset (to avoid floating meshes)
-                        Vector3 position = v0 + (u * (v1 - v0) + terrain_offset) + v * (v2 - v0);
-
-                        // rotation is a random rotation around the Y axis, and then rotated to match the normal of the triangle
-                        Quaternion rotate_to_normal = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
-                        Quaternion rotation         = rotate_to_normal * Quaternion::FromEulerAngles(0.0f, get_random_float(generator, 0.0f, 360.0f), 0.0f);
-
-                        lock_guard<mutex> lock(mtx);
-                        transforms.emplace_back(position, rotation, 1.0f);
+                
+                        // compute position with offset
+                        Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0) + Vector3(0.0f, terrain_offset, 0.0f);
+                
+                        // compute rotation
+                        Vector3 normal               = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+                        Quaternion rotate_to_normal  = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
+                        Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                        Quaternion rotation          = rotate_to_normal * random_y_rotation;
+                
+                        // create transform matrix (assuming Matrix constructor takes position, rotation, scale)
+                        Matrix transform = Matrix::CreateScale(1.0f) *  Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
+                        local_transforms.push_back(transform);
                     }
-                    else
-                    {
-                        // if the slope is too steep or the object is underwater, try again
-                        --i;
-                    }
-                }
-            };
-
-            ThreadPool::ParallelLoop(place_mesh, transform_count);
-
-            return transforms;
+                
+                    // merge local transforms into the shared vector
+                    lock_guard<mutex> lock(mtx);
+                    transforms.insert(transforms.end(), local_transforms.begin(), local_transforms.end());
+                };
+                
+                // step 4: execute parallel loop
+                ThreadPool::ParallelLoop(place_mesh, transform_count);
+                
+                return transforms;
+            }
         }
     }
 
@@ -714,7 +745,7 @@ namespace spartan
         // 5. compute normals and tangents
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
-            generate_normals(m_indices, m_vertices);
+            generate_normals(m_indices, m_vertices, width, height);
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
