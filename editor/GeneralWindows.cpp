@@ -420,17 +420,16 @@ namespace
     {
         const char* world_names[] =
         {
-            "1. Physics playground",  
-            "2. Doom E1M1",  
-            "3. Minecraft world",  
-            "4. Living room GI test",  
-            "5. Subway GI test",  
-            "6. Sponza 4K (demanding)",  
-            "7. Bistro interior & exterior (demanding)",  
-            "8. Open world forest with car (demanding)",  
+            "1. Open world forest with car (demanding)",
+            "2. Sponza 4K (demanding)",
+            "3. Subway GI test",
+            "4. Doom E1M1",
+            "5. Minecraft world",
+            "6. Living room GI test",
+            "7. Bistro interior & exterior (demanding)"
         };
 
-        int world_index = 7;
+        int world_index = 0;
 
         bool downloaded_and_extracted = false;
         bool visible_download_prompt  = false;

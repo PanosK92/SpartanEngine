@@ -507,7 +507,7 @@ namespace spartan
                 }
             };
         
-            ThreadPool::ParallelLoop(compute_vertex_data, terrain_vertices.size());
+            ThreadPool::ParallelLoop(compute_vertex_data, static_cast<uint32_t>(terrain_vertices.size()));
         }
 
         float get_random_float(mt19937& gen, float x, float y)
@@ -559,7 +559,7 @@ namespace spartan
                 {
                     // thread-local local resources and reservations (for maximum performance - no mutexes)
                     thread_local mt19937 generator(random_device{}());
-                    uniform_int_distribution<> triangle_dist(0, acceptable_triangles.size() - 1);
+                    uniform_int_distribution<> triangle_dist(0, static_cast<uint32_t>(acceptable_triangles.size() - 1));
                     uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
                     uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
                     vector<Matrix> local_transforms;

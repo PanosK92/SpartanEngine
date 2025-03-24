@@ -194,18 +194,18 @@ namespace spartan
                                 material->SetProperty(MaterialProperty::Roughness, 0.35f);
                             }
                         }
-                    
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            }
-                        }
+
+if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
+{
+    if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+    {
+        material->SetColor(Color::material_tire);
+        material->SetProperty(MaterialProperty::Roughness, 0.35f);
+    }
+}
                     }
                 }
-            
+
                 // interior
                 {
                     if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
@@ -215,7 +215,7 @@ namespace spartan
                         material->SetProperty(MaterialProperty::Roughness, 0.8f);
                         material->SetProperty(MaterialProperty::Metalness, 0.0f);
                     }
-                    
+
                     if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
@@ -223,7 +223,7 @@ namespace spartan
                         material->SetProperty(MaterialProperty::Metalness, 0.0f);
                     }
                 }
-            
+
                 // lights
                 {
                     if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
@@ -232,7 +232,7 @@ namespace spartan
                         material->SetProperty(MaterialProperty::Roughness, 0.2f);
                         material->SetTexture(MaterialTextureType::Emission, material->GetTexture(MaterialTextureType::Color));
                     }
-                    
+
                     // plastic covers
                     if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
                     {
@@ -257,57 +257,6 @@ namespace spartan
                     if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
                     {
                         physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
-                    }
-
-                    // load our own wheel
-                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
-                    {
-                        shared_ptr<Entity> entity_wheel_root = mesh->GetRootEntity().lock();
-                        entity_wheel_root->SetScale(Vector3(wheel_scale));
-
-                        if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
-                        {
-                            // create material
-                            shared_ptr<Material> material = make_shared<Material>();
-                            material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
-                            material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
-                            material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
-                            material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
-
-                            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                            const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
-                            material->SetResourceFilePath(file_path);
-
-                            // set material
-                            entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
-                        }
-
-                        // add the wheels to the body
-                        {
-                            shared_ptr<Entity> wheel = entity_wheel_root;
-                            wheel->SetObjectName("wheel_fl");
-                            wheel->SetParent(m_default_car);
-                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
-
-                            wheel = entity_wheel_root->Clone();
-                            wheel->SetObjectName("wheel_fr");
-                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->SetParent(m_default_car);
-                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
-
-                            wheel = entity_wheel_root->Clone();
-                            wheel->SetObjectName("wheel_rl");
-                            wheel->SetParent(m_default_car);
-                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
-
-                            wheel = entity_wheel_root->Clone();
-                            wheel->SetObjectName("wheel_rr");
-                            wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                            wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                            wheel->SetParent(m_default_car);
-                            physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
-                        }
                     }
                 }
 
@@ -344,6 +293,59 @@ namespace spartan
                 // set the position last so that transforms all the way down to the new wheels are updated
                 m_default_car->SetPosition(position);
             }
+
+             // load our own wheel
+             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
+             {
+                 shared_ptr<Entity> entity_wheel_root = mesh->GetRootEntity().lock();
+                 entity_wheel_root->SetScale(Vector3(wheel_scale));
+
+                 if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
+                 {
+                     // create material
+                     shared_ptr<Material> material = make_shared<Material>();
+                     material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
+                     material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
+                     material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+                     material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
+
+                     // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                     const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
+                     material->SetResourceFilePath(file_path);
+
+                     // set material
+                     entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
+                 }
+
+                 // add the wheels to the body
+                 {
+                     PhysicsBody* physics_body = m_default_car->AddComponent<PhysicsBody>();
+
+                     shared_ptr<Entity> wheel = entity_wheel_root;
+                     wheel->SetObjectName("wheel_fl");
+                     wheel->SetParent(m_default_car);
+                     physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
+
+                     wheel = entity_wheel_root->Clone();
+                     wheel->SetObjectName("wheel_fr");
+                     wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                     wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                     wheel->SetParent(m_default_car);
+                     physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
+
+                     wheel = entity_wheel_root->Clone();
+                     wheel->SetObjectName("wheel_rl");
+                     wheel->SetParent(m_default_car);
+                     physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
+
+                     wheel = entity_wheel_root->Clone();
+                     wheel->SetObjectName("wheel_rr");
+                     wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                     wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                     wheel->SetParent(m_default_car);
+                     physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
+                 }
+             }
 
             // sounds
             {
@@ -385,83 +387,75 @@ namespace spartan
             }
         }
 
-        void create_physics_playground()
+        void create_metal_cube(const Vector3& position)
         {
-            create_camera();
-            create_sun(LightIntensity::sky_sunlight_morning_evening);
-            create_music();
-            create_floor();
+            // create entity
+            shared_ptr<Entity> entity = World::CreateEntity();
+            entity->SetObjectName("metal_cube");
+            entity->SetPosition(position);
+            
+            // create material
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
+            material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
+            material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
+            material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
+            material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
+            material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
+            material->SetProperty(MaterialProperty::Tessellation, 1.0f);
+            
+            // create a file path for this material (required for the material to be able to be cached by the resource cache)
+            const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
+            material->SetResourceFilePath(file_path);
+            
+            // add a renderable component
+            Renderable* renderable = entity->AddComponent<Renderable>();
+            renderable->SetMesh(MeshType::Cube);
+            renderable->SetMaterial(material);
+            
+            // add physics components
+            PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
+            physics_body->SetMass(PhysicsBody::mass_auto);
+            physics_body->SetShapeType(PhysicsShape::Box);
+        }
 
-            // we have long screen space shadows so they don't look good with small objects here
-            m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
-            m_default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
-
-            float y = 5.0f;
-
-            // cube
-            {
-                // create entity
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("cube");
-                entity->SetPosition(Vector3(-2.0f, y, 0.0f));
-
-                // create material
-                shared_ptr<Material> material = make_shared<Material>();
-                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
-                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
-                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
-                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
-                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
-                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
-                material->SetProperty(MaterialProperty::Tessellation, 1.0f);
-
-                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
-                material->SetResourceFilePath(file_path);
-
-                // add a renderable component
-                Renderable* renderable = entity->AddComponent<Renderable>();
-                renderable->SetMesh(MeshType::Cube);
-                renderable->SetMaterial(material);
-
-                // add physics components
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetMass(PhysicsBody::mass_auto);
-                physics_body->SetShapeType(PhysicsShape::Box);
-            }
-
-            // flight helmet
+        void create_flight_helmet(const Vector3& position)
+        {
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("flight_helmet");
-                entity->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
+                entity->SetPosition(position);
                 entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh, true);
             }
+        }
 
-            // damaged helmet
+        void create_damaged_helmet(const Vector3& position)
+        {
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("damaged_helmet");
-                entity->SetPosition(Vector3(2.0f, y, 0.0f));
+                entity->SetPosition(position);
                 entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh);
             }
+        }
 
-            // material ball
+        void create_material_ball(const Vector3& position)
+        {
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("material_ball");
-                entity->SetPosition(Vector3(4.0f, y, 0.0f));
+                entity->SetPosition(position);
                 entity->SetRotation(Quaternion::Identity);
 
                 if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
@@ -480,7 +474,13 @@ namespace spartan
 
             create_sun(LightIntensity::sky_overcast_day);
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
-            create_car(Vector3(-449.0260f, 6.5f, 359.2632f));
+
+            const Vector3 object_position = Vector3(-449.0260f, 6.5f, 359.2632f);
+            create_car(object_position);
+            create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
+            create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
+            create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f));
+            create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f));
 
             // mood adjustment
             m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(20.0f, 5.0f, 0.0f));
@@ -1292,7 +1292,6 @@ namespace spartan
 
             switch (default_world)
             {
-                case DefaultWorld::PhysicsPlayground: create_physics_playground();  break;
                 case DefaultWorld::ForestCar:         create_forest_car();          break;
                 case DefaultWorld::DoomE1M1:          create_doom_e1m1();           break;
                 case DefaultWorld::Bistro:            create_bistro();              break;
