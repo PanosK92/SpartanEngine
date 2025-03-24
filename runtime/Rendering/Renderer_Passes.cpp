@@ -292,7 +292,7 @@ namespace spartan
             // set light-specific pso
             pso.render_target_color_textures[0] = light->GetColorTexture();
             pso.render_target_depth_texture     = light->GetDepthTexture();
-            pso.rasterizer_state = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+            pso.rasterizer_state                = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
     
             // iterate over cascades/faces
             for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
@@ -336,7 +336,7 @@ namespace spartan
                                 if (instance_count == 0)
                                     continue;
         
-                                uint32_t lod_index = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+                                uint32_t lod_index = 0;
         
                                 cmd_list->DrawIndexed(
                                     renderable->GetIndexCount(lod_index),
@@ -352,7 +352,8 @@ namespace spartan
                     {
                         if (light->IsInViewFrustum(renderable, array_index))
                         {
-                            uint32_t lod_index = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                            uint32_t lod_index = 0
+                                ;
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(lod_index),
                                 renderable->GetIndexOffset(lod_index),

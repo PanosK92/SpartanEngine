@@ -427,7 +427,7 @@ namespace spartan
             // define extents for snapping
             BoundingBox world_bounds = World::GetBoundingBox();
             float max_extent         = world_bounds.GetExtents().Abs().Max();
-            float extents[2]         = {max_extent * 0.1f, max_extent * 1.2f}; // near and far extents
+            float extents[2]         = { max_extent * 0.1f, max_extent * 0.7f }; // near and far extents, beyond the far extend the screen space shadows are more than enough
     
             // near cascade: center on camera position
             Vector3 near_eye_position = camera_pos - (light_direction * depth_range);
@@ -482,7 +482,7 @@ namespace spartan
             float width_at_d  = height_at_d * camera->GetAspectRatio();
             float near_extent = max(width_at_d, height_at_d) / 2.0f;
     
-            // near cascade: use a fixed depth range
+            // near cascade: fixed depth range
             float near_depth_range = 1000.0f;
     
             // near cascade projection
@@ -503,8 +503,8 @@ namespace spartan
             float far_depth_range         = max(abs(min_z), abs(max_z)) + padding;
     
             // far cascade lateral extent
-            Vector3 extents = world_bounds.GetExtents();
-            float far_extent = max(extents.x, max(extents.y, extents.z)) * 1.1f; // 10% padding
+            Vector3 extents  = world_bounds.GetExtents();
+            float far_extent = max(extents.x, max(extents.y, extents.z));
     
             // far cascade projection
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
