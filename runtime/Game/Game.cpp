@@ -474,18 +474,9 @@ namespace spartan
 
             create_sun(LightIntensity::sky_overcast_day);
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
-
-            const Vector3 object_position = Vector3(-449.0260f, 6.5f, 359.2632f);
-            create_car(object_position);
-            create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
-            create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
-            //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // this produces NAN - investigate
-            //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // this produces NAN - investigate
-
-            // mood adjustment
             m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(20.0f, 5.0f, 0.0f));
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
-            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs the same
+            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 
             // create
             m_default_terrain = World::CreateEntity();
@@ -748,6 +739,14 @@ namespace spartan
                     renderable->SetMaxRenderDistance(render_distance_grass);
                 }
             }
+
+            // car and a bunch of objects
+            const Vector3 object_position = Vector3(-449.0260f, 6.5f, 359.2632f);
+            create_car(object_position);
+            create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
+            create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
+            //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // this produces NAN - investigate
+            //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // this produces NAN - investigate
         }
 
         void create_sponza_4k()
@@ -982,7 +981,8 @@ namespace spartan
                 entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh, true);
+                bool lods = false; // don't generate lods as the entire town is a single mesh
+                physics_body->SetShapeType(PhysicsShape::Mesh, lods);
             }
         }
 

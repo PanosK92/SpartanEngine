@@ -47,6 +47,21 @@ namespace spartan
         bool resolve             = false;
         bool was_in_editor_mode  = false;
         BoundingBox bounding_box = BoundingBox::Undefined;
+
+        void compute_bounding_box()
+        {
+            for (auto& entity_pair : entities)
+            {
+                shared_ptr<Entity> entity = entity_pair.second;
+                if (entity->IsActive())
+                {
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        bounding_box.Merge(renderable->GetBoundingBox());
+                    }
+                }
+            }
+        }
     }
 
     void World::Initialize()
@@ -102,8 +117,8 @@ namespace spartan
         if (resolve && !ProgressTracker::IsLoading())
         {
             Renderer::SetEntities(entities);
-            resolve      = false;
-            bounding_box = BoundingBox::Undefined;
+            resolve = false;
+            compute_bounding_box();
         }
 
         Game::Tick();
@@ -125,7 +140,7 @@ namespace spartan
 
     bool World::SaveToFile(const string& file_path_in)
     {
-        // Add scene file extension to the filepath if it's missing
+        // add scene file extension to the filepath if it's missing
         auto file_path = file_path_in;
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
         {
@@ -135,10 +150,10 @@ namespace spartan
         name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         file_path = file_path;
 
-        // Notify subsystems that need to save data
+        // notify subsystems that need to save data
         SP_FIRE_EVENT(EventType::WorldSaveStart);
 
-        // Create a prefab file
+        // create a prefab file
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
         {
@@ -146,34 +161,34 @@ namespace spartan
             return false;
         }
 
-        // Only save root entities as they will also save their descendants
+        // only save root entities as they will also save their descendants
         vector<shared_ptr<Entity>> root_actors = GetRootEntities();
         const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
 
-        // Start progress tracking and timing
+        // start progress tracking and timing
         const Stopwatch timer;
         ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
 
-        // Save root entity count
+        // save root entity count
         file->Write(root_entity_count);
 
-        // Save root entity IDs
+        // save root entity IDs
         for (shared_ptr<Entity>& root : root_actors)
         {
             file->Write(root->GetObjectId());
         }
 
-        // Save root entities
+        // save root entities
         for (shared_ptr<Entity>& root : root_actors)
         {
             root->Serialize(file.get());
             ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
-        // Report time
+        // report time
         SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
-        // Notify subsystems waiting for us to finish
+        // notify subsystems waiting for us to finish
         SP_FIRE_EVENT(EventType::WorldSavedEnd);
 
         return true;
@@ -246,6 +261,8 @@ namespace spartan
         entity->Initialize();
         entities[entity->GetObjectId()] = entity;
 
+        bounding_box = BoundingBox::Undefined;
+
         return entity;
     }
 
@@ -261,20 +278,21 @@ namespace spartan
 
         lock_guard<mutex> lock(entity_access_mutex);
 
-        // Remove the entity and all of its children
+        // remove the entity and all of its children
         {
-            // Get the root entity and its descendants
-            std::vector<Entity*> entities_to_remove;
+            // get the root entity and its descendants
+            vector<Entity*> entities_to_remove;
             entities_to_remove.push_back(entity_to_remove);        // add the root entity
             entity_to_remove->GetDescendants(&entities_to_remove); // get descendants
 
-            // Create a set containing the object IDs of entities to remove
-            std::set<uint64_t> ids_to_remove;
-            for (Entity* entity : entities_to_remove) {
+            // create a set containing the object ids of entities to remove
+            set<uint64_t> ids_to_remove;
+            for (Entity* entity : entities_to_remove)
+            {
                 ids_to_remove.insert(entity->GetObjectId());
             }
 
-            // Remove entities using a single loop
+            // remove entities using a single loop
             for (auto it = entities.begin(); it != entities.end(); )
             {
                 if (ids_to_remove.count(it->first) > 0)
@@ -287,14 +305,15 @@ namespace spartan
                 }
             }
 
-            // If there was a parent, update it
-            if (std::shared_ptr<Entity> parent = entity_to_remove->GetParent())
+            // if there was a parent, update it
+            if (shared_ptr<Entity> parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
             }
         }
 
-        resolve = true;
+        resolve      = true;
+        bounding_box = BoundingBox::Undefined;
     }
 
     vector<shared_ptr<Entity>> World::GetRootEntities()
@@ -343,20 +362,8 @@ namespace spartan
     BoundingBox& World::GetBoundinBox()
     {
         if (bounding_box == BoundingBox::Undefined)
-        { 
-            for (auto& entity : entities)
-            {
-                if (entity.second->IsActive())
-                {
-                    if (Renderable* renderable = entity.second->GetComponent<Renderable>())
-                    {
-                        if (renderable->IsVisible())
-                        {
-                            bounding_box.Merge(renderable->GetBoundingBox());
-                        }
-                    }
-                }
-            }
+        {
+            compute_bounding_box();
         }
 
         return bounding_box;

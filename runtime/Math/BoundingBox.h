@@ -54,49 +54,6 @@ namespace spartan
             // assign from bounding box
             BoundingBox& operator =(const BoundingBox& rhs) = default;
 
-            // returns the center
-            Vector3 GetCenter() const { return (m_max + m_min) * 0.5f; }
-
-            // returns the size
-            Vector3 GetSize() const { return m_max - m_min; }
-
-            // returns extents
-            Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
-
-            // test if a point is inside
-            Intersection Intersects(const Vector3& point) const;
-
-            // test if a bounding box is inside
-            Intersection Intersects(const BoundingBox& box) const;
-
-            bool Contains(const Vector3& point) const;
-
-            // merge with another bounding box
-            void Merge(const BoundingBox& box);
-
-            float Volume() const
-            {
-                Vector3 size = GetSize();
-                return size.x * size.y * size.z;
-            }
-
-            Vector3 GetClosestPoint(const Vector3& point) const;
-
-            void GetCorners(std::array<Vector3, 8>* corners) const
-            {
-                *corners =
-                {
-                    m_min,
-                    Vector3(m_max.x, m_min.y, m_min.z),
-                    Vector3(m_min.x, m_max.y, m_min.z),
-                    Vector3(m_min.x, m_min.y, m_max.z),
-                    Vector3(m_min.x, m_max.y, m_max.z),
-                    Vector3(m_max.x, m_min.y, m_max.z),
-                    Vector3(m_max.x, m_max.y, m_min.z),
-                    m_max
-                };
-            }
-
             bool operator==(const BoundingBox& other) const
             {
                 return GetMin() == other.GetMin() && GetMax() == other.GetMax();
@@ -117,6 +74,40 @@ namespace spartan
                 return BoundingBox(center_new - extent_new, center_new + extent_new);
             }
 
+            // intersection
+            Intersection Intersects(const Vector3& point) const;
+            Intersection Intersects(const BoundingBox& box) const;
+            bool Contains(const Vector3& point) const;
+
+            // modulation
+            void Merge(const BoundingBox& box);
+
+            // edges and points on them
+            Vector3 GetClosestPoint(const Vector3& point) const;
+            void GetCorners(std::array<Vector3, 8>* corners) const
+            {
+                *corners =
+                {
+                    m_min,
+                    Vector3(m_max.x, m_min.y, m_min.z),
+                    Vector3(m_min.x, m_max.y, m_min.z),
+                    Vector3(m_min.x, m_min.y, m_max.z),
+                    Vector3(m_min.x, m_max.y, m_max.z),
+                    Vector3(m_max.x, m_min.y, m_max.z),
+                    Vector3(m_max.x, m_max.y, m_min.z),
+                    m_max
+                };
+            }
+
+            // dimensions
+            Vector3 GetCenter() const  { return (m_max + m_min) * 0.5f; }
+            Vector3 GetSize() const    { return m_max - m_min; }
+            Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
+            float Volume() const
+            {
+                Vector3 size = GetSize();
+                return size.x * size.y * size.z;
+            }
             const Vector3& GetMin() const { return m_min; }
             const Vector3& GetMax() const { return m_max; }
 

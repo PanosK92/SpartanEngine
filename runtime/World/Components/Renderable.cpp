@@ -201,7 +201,7 @@ namespace spartan
                         m_bounding_box.Merge(m_bounding_box_instances[i]);                                         // 2. bounding box of all instances
                     }
 
-                    // 3. bounding boxes of instance groups
+                    // bounding boxes of instance groups
                     {
                         // loop through each group end index
                         m_bounding_box_instance_group.clear();

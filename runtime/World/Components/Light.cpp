@@ -451,7 +451,9 @@ namespace spartan
             BoundingBox world_bounds = World::GetBoundinBox();
             Vector3 extents = world_bounds.GetExtents();
             float max_extent = extents.Abs().Max(); // largest dimension of the scene
-    
+
+            SP_LOG_INFO("extents: %s, max_extent: %.2f", extents.ToString().c_str(), max_extent);
+
             // near cascade: Smaller extent for higher detail
             float near_extent = orthographic_extent_near;
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
