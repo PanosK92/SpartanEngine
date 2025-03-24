@@ -38,14 +38,6 @@ namespace spartan
 {
     namespace
     {
-        float orthographic_extent_near = 16.0f;
-        float orthographic_extent_far  = 128.0f;
-
-        float get_world_depth()
-        {
-            return World::GetBoundinBox().GetExtents().Abs().Max() * 2.0f;
-        }
-
         float get_sensible_range(const LightType type)
         {
             if (type == LightType::Directional)
@@ -128,8 +120,8 @@ namespace spartan
         // if the light or the camera moves...
         m_filtering_pending = GetEntity()->HasMovedInTheLastSeconds(2.0f) ? true : m_filtering_pending;
 
-        // ...update the matrices
-        if (GetEntity()->HasMovedInTheLastSeconds(0.1f))
+        // update the matrices
+        if (GetEntity()->HasMovedInTheLastSeconds(0.1f) || (Renderer::GetCamera() ? Renderer::GetCamera()->GetEntity()->HasMovedInTheLastSeconds(0.1f) : false))
         {
             UpdateMatrices();
         }
@@ -412,23 +404,43 @@ namespace spartan
 
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
-    
+
     void Light::ComputeViewMatrix()
     {
-        const Vector3 position = GetEntity()->GetPosition();
+        const Vector3 position        = GetEntity()->GetPosition();
+        const Vector3 light_direction = GetEntity()->GetForward();
+        const Vector3 target          = Renderer::GetCamera() ? Renderer::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
+        const uint32_t texture_width  = m_texture_depth ? m_texture_depth->GetWidth() : 0;
     
         if (m_light_type == LightType::Directional)
         {
-            Vector3 target = World::GetBoundinBox().GetCenter();
-            float world_depth = get_world_depth();
+            float world_depth = World::GetBoundinBox().GetExtents().Abs().Max() * 2.0f;
+            float factor[2]   = {0.5f, 1.5f}; // near and far cascade distances
     
-            // near cascade: Closer to the target
-            Vector3 near_position = target - GetEntity()->GetForward() * world_depth * 0.5f;
-            m_matrix_view[0] = Matrix::CreateLookAtLH(near_position, target, Vector3::Up);
+            // extents matching ComputeProjectionMatrix
+            float max_extent  = World::GetBoundinBox().GetExtents().Abs().Max();
+            float near_extent = max_extent * 0.3f; // dynamic near extent, adjust multiplier as needed
+            float far_extent  = max_extent * 1.2f;
+            float extent[2]   = {near_extent, far_extent};
     
-            // far cascade: Further back to encompass more of the scene
-            Vector3 far_position = target - GetEntity()->GetForward() * world_depth * 1.5f;
-            m_matrix_view[1] = Matrix::CreateLookAtLH(far_position, target, Vector3::Up);
+            // shadow map resolution
+            float N = static_cast<float>(texture_width);
+    
+            for (int i = 0; i < 2; i++)
+            {
+                // compute eye position for the cascade
+                Vector3 eye_position = target - light_direction * world_depth * factor[i];
+                m_matrix_view[i] = Matrix::CreateLookAtLH(eye_position, target, Vector3::Up);
+    
+                // snapping to reduce shadow shimmering
+                if (N > 0) // prevent division by zero
+                {
+                    float texel_size = (2.0f * extent[i]) / N; // Texel size in world space
+                    m_matrix_view[i].m30 = round(m_matrix_view[i].m30 / texel_size) * texel_size; // snap x-translation
+                    m_matrix_view[i].m31 = round(m_matrix_view[i].m31 / texel_size) * texel_size; // snap y-translation
+                    // m32 (z-translation) remains unchanged for orthographic projection
+                }
+            }
         }
         else if (m_light_type == LightType::Spot)
         {
@@ -440,7 +452,7 @@ namespace spartan
             m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - Vector3::Forward, Vector3::Up); // back paraboloid
         }
     }
-
+    
     void Light::ComputeProjectionMatrix()
     {
         const float near_plane = 0.01f;
@@ -449,26 +461,28 @@ namespace spartan
         {
             // get scene bounds for proper sizing
             BoundingBox world_bounds = World::GetBoundinBox();
-            Vector3 extents = world_bounds.GetExtents();
-            float max_extent = extents.Abs().Max(); // largest dimension of the scene
+            Vector3 extents          = world_bounds.GetExtents();
+            float max_extent         = extents.Abs().Max(); // largest dimension of the scene
+            float world_depth        = World::GetBoundinBox().GetExtents().Abs().Max() * 2.0f;
 
             SP_LOG_INFO("extents: %s, max_extent: %.2f", extents.ToString().c_str(), max_extent);
 
+        
             // near cascade: Smaller extent for higher detail
-            float near_extent = orthographic_extent_near;
+            float near_extent = max_extent * 0.3f; // dynamic near extent, adjust multiplier as needed
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
                 -near_extent, near_extent, -near_extent, near_extent,
-                get_world_depth() * 1.0f, near_plane // depth covers closer region
+                near_plane, world_depth * 1.0f // corrected depth range
             );
-            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], get_world_depth() * 1.0f - near_plane);
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], world_depth * 1.0f - near_plane);
     
-            // far cascade: Larger extent to fit scene bounds
+            // far cascade: larger extent to fit scene bounds
             float far_extent = max_extent * 1.2f; // slightly larger than scene bounds for safety
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
                 -far_extent, far_extent, -far_extent, far_extent,
-                get_world_depth() * 4.0f, near_plane // depth covers entire scene
+                near_plane, world_depth * 4.0f // corrected depth range
             );
-            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], get_world_depth() * 4.0f - near_plane);
+            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], world_depth * 4.0f - near_plane);
         }
         else if (m_light_type == LightType::Spot)
         {

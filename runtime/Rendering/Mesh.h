@@ -35,11 +35,12 @@ namespace spartan
 
     enum class MeshFlags : uint32_t
     {
-        ImportRemoveRedundantData = 1 << 0,
-        ImportLights              = 1 << 1,
-        ImportCombineMeshes       = 1 << 2,
-        PostProcessNormalizeScale = 1 << 3,
-        PostProcessOptimize       = 1 << 4
+        ImportRemoveRedundantData   = 1 << 0,
+        ImportLights                = 1 << 1,
+        ImportCombineMeshes         = 1 << 2,
+        PostProcessNormalizeScale   = 1 << 3,
+        PostProcessOptimize         = 1 << 4,
+        PostProcessDontGenerateLods = 1 << 5
     };
 
     enum class MeshLodDropoff

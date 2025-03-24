@@ -973,7 +973,8 @@ namespace spartan
             create_music();
             create_floor();
 
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj"))
+            // the entire minecraft world is a single mesh so don't generate any lods
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("minecraft");
@@ -981,8 +982,7 @@ namespace spartan
                 entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                bool lods = false; // don't generate lods as the entire town is a single mesh
-                physics_body->SetShapeType(PhysicsShape::Mesh, lods);
+                physics_body->SetShapeType(PhysicsShape::Mesh, false);
             }
         }
 

@@ -187,7 +187,7 @@ namespace spartan
         }
     
         // generate additional lods if requested
-        if (generate_lods)
+        if (generate_lods && !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
         {
             // store the original index count
             size_t original_index_count = indices.size();
