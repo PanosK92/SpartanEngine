@@ -195,14 +195,14 @@ namespace spartan
                             }
                         }
 
-if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
-{
-    if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-    {
-        material->SetColor(Color::material_tire);
-        material->SetProperty(MaterialProperty::Roughness, 0.35f);
-    }
-}
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
+                        {
+                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                            {
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                            }
+                        }
                     }
                 }
 
@@ -479,8 +479,8 @@ if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
             create_car(object_position);
             create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
             create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
-            create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f));
-            create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f));
+            //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // this produces NAN - investigate
+            //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // this produces NAN - investigate
 
             // mood adjustment
             m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(20.0f, 5.0f, 0.0f));

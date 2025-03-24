@@ -198,11 +198,11 @@ namespace spartan
         RHI_Shader* shader_v             = GetShader(Renderer_Shader::depth_light_v);
         RHI_Shader* shader_alpha_color_p = GetShader(Renderer_Shader::depth_light_alpha_color_p);
         auto& lights                     = m_renderables[Renderer_Entity::Light];
-    
-        lock_guard lock(m_mutex_renderables);
+        auto& renderables                = m_renderables[Renderer_Entity::Mesh];
+
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
-    
-        // set pso
+
+        // set base pipeline state
         static RHI_PipelineState pso;
         pso.name                             = "shadow_maps";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
@@ -210,94 +210,94 @@ namespace spartan
         pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadEqual) : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.clear_depth                      = 0.0f;
         pso.clear_color[0]                   = Color::standard_white;
-    
+
         // iterate over lights
         for (shared_ptr<Entity>& light_entity : lights)
         {
             Light* light = light_entity->GetComponent<Light>();
             if (!light || !light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                 continue;
-    
-            // skip lights that don't cast transparent shadows (if this is a transparent pass)
+
             if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
                 continue;
-    
-            // set light pso
-            {
-                pso.render_target_color_textures[0] = light->GetColorTexture();
-                pso.render_target_depth_texture     = light->GetDepthTexture();
-                if (light->GetLightType() == LightType::Directional)
-                {
-                    // disable depth clipping so that we can capture silhouettes even behind the light
-                    pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_directional);
-                }
-                else
-                {
-                    pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
-                }
-            }
-    
-            // iterate over light cascade/faces
+
+            // set light-specific pso
+            pso.render_target_color_textures[0] = light->GetColorTexture();
+            pso.render_target_depth_texture     = light->GetDepthTexture();
+            pso.rasterizer_state = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+
+            // iterate over cascades/faces
             for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
             {
                 pso.render_target_array_index = array_index;
                 cmd_list->SetIgnoreClearValues(is_transparent_pass);
-    
-                // iterate over draw calls
-                for (uint32_t i = 0; i < m_draw_call_count; i++)
+
+                // iterate over all renderables
+                for (shared_ptr<Entity>& entity : renderables)
                 {
-                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                    Renderable* renderable             = draw_call.renderable;
-                    Material* material                 = renderable->GetMaterial();
-                    if (!renderable->HasFlag(RenderableFlags::CastsShadows) || material->IsTransparent() != is_transparent_pass)
+                    Renderable* renderable = entity->GetComponent<Renderable>();
+                    if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
                         continue;
-    
-                    // set cull mode
+
+                    Material* material = renderable->GetMaterial();
+                    if (!material || material->IsTransparent() != is_transparent_pass)
+                        continue;
+
+                    // set cull mode and shaders
                     cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-    
-                    // alpha testing
-                    {
-                        bool needs_pixel_shader             = material->IsAlphaTested() || is_transparent_pass;
-                        pso.shaders[RHI_Shader_Type::Pixel] = needs_pixel_shader ? shader_alpha_color_p : nullptr;
-                    }
-
+                    pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? shader_alpha_color_p : nullptr;
                     cmd_list->SetPipelineState(pso);
-
+                    
                     // set pass constants
+                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
+                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                    m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
+                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    // set buffers
+                    RHI_Buffer* instance_buffer = GetBuffer(Renderer_Buffer::DummyInstance);
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                    if (renderable->HasInstancing())
                     {
-                        // for the vertex shader
-                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
-                        m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
-    
-                        // for the pixel shader
-                        m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
-                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-                        cmd_list->PushConstants(m_pcb_pass_cpu);
-                    }
-    
-                    // draw
-                    {
-                        RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
-                        instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
-                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
-                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
-                        if (renderable->HasInstancing())
+                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                         {
-                            cmd_list->DrawIndexed(
-                                renderable->GetIndexCount(draw_call.lod_index),
-                                renderable->GetIndexOffset(draw_call.lod_index),
-                                renderable->GetVertexOffset(draw_call.lod_index),
-                                draw_call.instance_start_index,
-                                draw_call.instance_count
-                            );
+                            // check if instance group is visible in light's frustum
+                            if (light->IsInViewFrustum(renderable, array_index, group_index))
+                            {
+                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
+                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                if (instance_count == 0)
+                                    continue;
+    
+                                uint32_t lod_index = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+    
+                                // draw
+                                cmd_list->DrawIndexed(
+                                    renderable->GetIndexCount(lod_index),
+                                    renderable->GetIndexOffset(lod_index),
+                                    renderable->GetVertexOffset(lod_index),
+                                    instance_start_index,
+                                    instance_count
+                                );
+                            }
                         }
-                        else
+                    }
+                    else
+                    {
+                        // check if renderable is visible in light's frustum
+                        if (light->IsInViewFrustum(renderable->GetBoundingBox(), array_index))
                         {
+                            uint32_t lod_index = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+
+                            // draw
                             cmd_list->DrawIndexed(
-                                renderable->GetIndexCount(draw_call.lod_index),
-                                renderable->GetIndexOffset(draw_call.lod_index),
-                                renderable->GetVertexOffset(draw_call.lod_index)
+                                renderable->GetIndexCount(lod_index),
+                                renderable->GetIndexOffset(lod_index),
+                                renderable->GetVertexOffset(lod_index)
                             );
                         }
                     }
