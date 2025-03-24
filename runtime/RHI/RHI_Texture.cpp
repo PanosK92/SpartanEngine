@@ -63,7 +63,7 @@ namespace spartan
             return CMP_FORMAT::CMP_FORMAT_Unknown;
         }
 
-        void compress(RHI_Texture* texture, const uint32_t mip_index, const RHI_Format destination_format)
+        void compress(RHI_Texture* texture, const uint32_t mip_index, const RHI_Format dest_format)
         {
             // source texture
             CMP_Texture source_texture = {};
@@ -77,7 +77,7 @@ namespace spartan
 
             // destination texture
             CMP_Texture destination_texture = {};
-            destination_texture.format      = to_cmp_format(destination_format);
+            destination_texture.format      = to_cmp_format(dest_format);
             destination_texture.dwSize      = sizeof(CMP_Texture);
             destination_texture.dwWidth     = source_texture.dwWidth;
             destination_texture.dwHeight    = source_texture.dwHeight;
@@ -254,7 +254,6 @@ namespace spartan
             }
         }
 
-        bool append = true;
         auto file = make_unique<FileStream>(file_path, FileStream_Write | FileStream_Append);
         if (!file->IsOpen())
             return;
@@ -448,7 +447,6 @@ namespace spartan
             {
                 const uint32_t mip_width  = max(1u, m_width >> mip_index);
                 const uint32_t mip_height = max(1u, m_height >> mip_index);
-                const uint32_t mip_depth  = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth  >> mip_index) : 1;
 
                 m_object_size += CalculateMipSize(mip_width, mip_height, m_depth, m_format, m_bits_per_channel, m_channel_count);
             }

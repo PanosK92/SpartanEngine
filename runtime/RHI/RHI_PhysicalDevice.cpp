@@ -78,20 +78,20 @@ namespace spartan
                     RegCloseKey(hKey);
             
                     // remove everything after the version number (a bunch of codes and text)
-                    string version = value;
-                    size_t pos_dash = version.find('-');
+                    string version_amd = value;
+                    size_t pos_dash = version_amd.find('-');
                     if (pos_dash != string::npos)
                     {
-                        version = version.substr(0, pos_dash);
+                        version_amd = version_amd.substr(0, pos_dash);
                     }
                     
                     // extract year, month, and revision
-                    size_t pos1     = version.find('.');
-                    size_t pos2     = version.find('.', pos1 + 1);
-                    size_t pos3     = version.find('.', pos2 + 1);               // find the fourth dot
-                    string year     = version.substr(0, pos1);
-                    string month    = version.substr(pos1 + 1, pos2 - pos1 - 1); // exclude the dot
-                    string revision = version.substr(pos3 + 1);                  // start from the fourth dot
+                    size_t pos1     = version_amd.find('.');
+                    size_t pos2     = version_amd.find('.', pos1 + 1);
+                    size_t pos3     = version_amd.find('.', pos2 + 1);               // find the fourth dot
+                    string year     = version_amd.substr(0, pos1);
+                    string month    = version_amd.substr(pos1 + 1, pos2 - pos1 - 1); // exclude the dot
+                    string revision = version_amd.substr(pos3 + 1);                  // start from the fourth dot
 
                     return year + "." + month + "." + revision;
                 }
