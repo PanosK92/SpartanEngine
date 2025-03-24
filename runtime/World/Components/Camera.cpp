@@ -136,6 +136,11 @@ namespace spartan
         SetFlag(CameraFlags::IsDirty, true);
     }
 
+    float Camera::GetAspectRatio() const
+    {
+        return Renderer::GetViewport().GetAspectRatio();
+    }
+
     bool Camera::IsInViewFrustum(const BoundingBox& bounding_box) const
     {
         if (bounding_box == BoundingBox::Undefined || bounding_box.GetCenter().IsNaN() || bounding_box.GetExtents().IsNaN())
@@ -700,7 +705,7 @@ namespace spartan
     {
         if (m_projection_type == Projection_Perspective)
         {
-            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), Renderer::GetViewport().GetAspectRatio(), near_plane, far_plane);
+            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetAspectRatio(), near_plane, far_plane);
         }
         else if (m_projection_type == Projection_Orthographic)
         {

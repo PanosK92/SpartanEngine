@@ -52,6 +52,6 @@ namespace spartan
         static void Resolve();
         static const std::string GetName();
         static const std::string& GetFilePath();
-        static math::BoundingBox& GetBoundinBox();
+        static math::BoundingBox& GetBoundingBox();
     };
 }

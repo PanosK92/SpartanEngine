@@ -359,7 +359,7 @@ namespace spartan
         return file_path;
     }
 
-    BoundingBox& World::GetBoundinBox()
+    BoundingBox& World::GetBoundingBox()
     {
         if (bounding_box == BoundingBox::Undefined)
         {

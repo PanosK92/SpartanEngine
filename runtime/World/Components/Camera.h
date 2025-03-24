@@ -118,6 +118,7 @@ namespace spartan
         float GetFovVerticalRad()   const;
         float GetFovHorizontalDeg() const;
         void SetFovHorizontalDeg(float fov);
+        float GetAspectRatio() const;
   
         // frustum
         bool IsInViewFrustum(const math::BoundingBox& bounding_box) const;

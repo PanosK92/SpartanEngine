@@ -407,38 +407,49 @@ namespace spartan
 
     void Light::ComputeViewMatrix()
     {
-        const Vector3 position        = GetEntity()->GetPosition();
-        const Vector3 light_direction = GetEntity()->GetForward();
-        const Vector3 target          = Renderer::GetCamera() ? Renderer::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
+        const Vector3 position        = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
+        const Vector3 light_direction = GetEntity()->GetForward();  // light direction
         const uint32_t texture_width  = m_texture_depth ? m_texture_depth->GetWidth() : 0;
     
         if (m_light_type == LightType::Directional)
         {
-            float world_depth = World::GetBoundinBox().GetExtents().Abs().Max() * 2.0f;
-            float factor[2]   = {0.5f, 1.5f}; // near and far cascade distances
+            // get camera
+            Camera* camera = Renderer::GetCamera();
+            if (!camera)
+                return;
     
-            // extents matching ComputeProjectionMatrix
-            float max_extent  = World::GetBoundinBox().GetExtents().Abs().Max();
-            float near_extent = max_extent * 0.3f; // dynamic near extent, adjust multiplier as needed
-            float far_extent  = max_extent * 1.2f;
-            float extent[2]   = {near_extent, far_extent};
+            // get camera position in world space
+            Vector3 camera_pos = camera->GetEntity()->GetPosition();
     
-            // shadow map resolution
-            float N = static_cast<float>(texture_width);
+            // define a temporary depth range for view matrix construction
+            float temp_depth_range = 1000.0f; // will be overridden for far cascade in projection
     
-            for (int i = 0; i < 2; i++)
+            // define extents for snapping
+            BoundingBox world_bounds = World::GetBoundingBox();
+            float max_extent         = world_bounds.GetExtents().Abs().Max();
+            float extents[2]         = {max_extent * 0.1f, max_extent * 1.2f}; // near and far extents
+    
+            // near cascade: center on camera position
+            Vector3 near_eye_position = camera_pos - light_direction * (temp_depth_range / 2.0f);
+            Vector3 near_target       = camera_pos;
+            m_matrix_view[0]          = Matrix::CreateLookAtLH(near_eye_position, near_target, Vector3::Up);
+    
+            // far cascade: center on scene’s bounding box
+            Vector3 scene_center     = world_bounds.GetCenter();
+            Vector3 far_eye_position = scene_center - light_direction * (temp_depth_range / 2.0f);
+            Vector3 far_target       = scene_center;
+            m_matrix_view[1]         = Matrix::CreateLookAtLH(far_eye_position, far_target, Vector3::Up);
+    
+            // snapping to reduce shadow shimmering
+            if (texture_width > 0)
             {
-                // compute eye position for the cascade
-                Vector3 eye_position = target - light_direction * world_depth * factor[i];
-                m_matrix_view[i] = Matrix::CreateLookAtLH(eye_position, target, Vector3::Up);
-    
-                // snapping to reduce shadow shimmering
-                if (N > 0) // prevent division by zero
+                float N = static_cast<float>(texture_width);
+                for (int i = 0; i < 2; i++)
                 {
-                    float texel_size = (2.0f * extent[i]) / N; // Texel size in world space
+                    float texel_size     = (2.0f * extents[i]) / N; // texel size in world space
                     m_matrix_view[i].m30 = round(m_matrix_view[i].m30 / texel_size) * texel_size; // snap x-translation
                     m_matrix_view[i].m31 = round(m_matrix_view[i].m31 / texel_size) * texel_size; // snap y-translation
-                    // m32 (z-translation) remains unchanged for orthographic projection
+                    // z-translation (m32) remains unchanged for orthographic projection
                 }
             }
         }
@@ -448,41 +459,64 @@ namespace spartan
         }
         else if (m_light_type == LightType::Point)
         {
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Forward, Vector3::Up); // front paraboloid
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - Vector3::Forward, Vector3::Up); // back paraboloid
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Forward, Vector3::Up); // front
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - Vector3::Forward, Vector3::Up); // back
         }
     }
     
     void Light::ComputeProjectionMatrix()
     {
-        const float near_plane = 0.01f;
+        const float near_plane = 0.1f; // near plane for other light types
     
         if (m_light_type == LightType::Directional)
         {
-            // get scene bounds for proper sizing
-            BoundingBox world_bounds = World::GetBoundinBox();
-            Vector3 extents          = world_bounds.GetExtents();
-            float max_extent         = extents.Abs().Max(); // largest dimension of the scene
-            float world_depth        = World::GetBoundinBox().GetExtents().Abs().Max() * 2.0f;
-
-            SP_LOG_INFO("extents: %s, max_extent: %.2f", extents.ToString().c_str(), max_extent);
-
-        
-            // near cascade: Smaller extent for higher detail
-            float near_extent = max_extent * 0.3f; // dynamic near extent, adjust multiplier as needed
-            m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -near_extent, near_extent, -near_extent, near_extent,
-                near_plane, world_depth * 1.0f // corrected depth range
-            );
-            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], world_depth * 1.0f - near_plane);
+            // get camera
+            Camera* camera = Renderer::GetCamera();
+            if (!camera)
+                return;
     
-            // far cascade: larger extent to fit scene bounds
-            float far_extent = max_extent * 1.2f; // slightly larger than scene bounds for safety
-            m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
-                -far_extent, far_extent, -far_extent, far_extent,
-                near_plane, world_depth * 4.0f // corrected depth range
+            // define split distance for near cascade (in view space)
+            float split_distance = 10.0f; // 10 meters
+    
+            // compute lateral extents for near cascade based on camera fov
+            float height_at_d = 2.0f * split_distance * tan(camera->GetFovVerticalRad() / 2.0f);
+            float width_at_d  = height_at_d * camera->GetAspectRatio();
+            float near_extent = max(width_at_d, height_at_d) / 2.0f;
+    
+            // near cascade: use a fixed depth range
+            float near_depth_range = 1000.0f;
+    
+            // near cascade projection
+            m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
+                -near_extent, near_extent,
+                -near_extent, near_extent,
+                near_depth_range, -near_depth_range // reverse-Z: near = max, far = min
             );
-            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], world_depth * 4.0f - near_plane);
+    
+            // far cascade: compute dynamic depth range
+            BoundingBox world_bounds      = World::GetBoundingBox();
+            // transform bounding box to far cascade view space
+            BoundingBox view_space_bounds = world_bounds * m_matrix_view[1];
+            float min_z                   = view_space_bounds.GetMin().z;
+            float max_z                   = view_space_bounds.GetMax().z;
+            // compute required depth range with padding
+            float padding                 = 10.0f; // small padding to avoid clipping
+            float far_depth_range         = max(abs(min_z), abs(max_z)) + padding;
+    
+            // far cascade lateral extent
+            Vector3 extents = world_bounds.GetExtents();
+            float far_extent = max(extents.x, max(extents.y, extents.z)) * 1.1f; // 10% padding
+    
+            // far cascade projection
+            m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
+                -far_extent, far_extent,
+                -far_extent, far_extent,
+                far_depth_range, -far_depth_range // reverse-Z: near = max, far = min
+            );
+    
+            // update frustums for each cascade
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], 2 * near_depth_range);
+            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], 2 * far_depth_range);
         }
         else if (m_light_type == LightType::Spot)
         {
@@ -493,7 +527,7 @@ namespace spartan
             const float fov          = m_angle_rad * 2.0f;
             Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
             m_matrix_projection[0]   = projection;
-            m_frustums[0]            = Frustum(m_matrix_view[0], projection, m_range);
+            m_frustums[0]            = Frustum(m_matrix_view[0], projection, m_range - near_plane);
         }
     }
 
