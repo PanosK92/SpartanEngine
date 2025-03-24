@@ -324,7 +324,7 @@ namespace ImGui::RHI
                                 bool m_boost               = false;
                                 bool m_abs                 = false;
                                 bool m_point_sampling      = false;
-                                float mip_level            = 0.0f;
+                                float mip_and_array_packed = 0.0f;
                                 bool is_texture_visualised = false;
                                 bool is_frame_texture      = false;
 
@@ -335,11 +335,20 @@ namespace ImGui::RHI
                                     // during engine startup, some textures might be loading in different threads
                                     if (texture->GetResourceState() == ResourceState::PreparedForGpu)
                                     {
-                                        cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-
                                         // update texture viewer parameters
                                         is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                        mip_level             = static_cast<float>(is_texture_visualised ? TextureViewer::GetMipLevel() : 0);
+                                        int mip_level         = TextureViewer::GetMipLevel();
+                                        int array_level       = TextureViewer::GetArrayLevel();
+                                        mip_and_array_packed  = static_cast<float>(mip_level) + static_cast<float>(array_level) * 0.03125f; // 1/32 = 0.03125
+
+                                        if (array_level > 0)
+                                        {
+                                            cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, texture);
+                                        }
+                                        else
+                                        { 
+                                            cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
+                                        }
 
                                         if (is_texture_visualised)
                                         {
@@ -358,7 +367,7 @@ namespace ImGui::RHI
 
                                 rhi_resources->push_constant_buffer_pass.set_f4_value(m_channel_r, m_channel_g, m_channel_b, m_channel_a);
                                 rhi_resources->push_constant_buffer_pass.set_f3_value(m_gamma_correct, m_pack, m_boost);
-                                rhi_resources->push_constant_buffer_pass.set_f3_value2(m_abs, m_point_sampling, mip_level);
+                                rhi_resources->push_constant_buffer_pass.set_f3_value2(m_abs, m_point_sampling, mip_and_array_packed);
                                 rhi_resources->push_constant_buffer_pass.set_is_transparent_and_material_index(is_texture_visualised, is_frame_texture ? 1 : 0);
                             }
 

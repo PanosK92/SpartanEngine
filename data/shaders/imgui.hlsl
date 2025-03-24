@@ -50,7 +50,7 @@ vertex main_vs(Vertex_Pos2dUvColor input)
 
 float4 main_ps(vertex input) : SV_Target
 {
-     // texture visualization options
+    // texture visualization options
     float4 channels       = pass_get_f4_value();
     float3 f3_value       = pass_get_f3_value();
     bool gamma_correct    = f3_value.x == 1.0f;
@@ -59,12 +59,30 @@ float4 main_ps(vertex input) : SV_Target
     float3 f3_value2      = pass_get_f3_value2();
     bool absolute         = f3_value2.x == 1.0f;
     bool point_sampling   = f3_value2.y == 1.0f;
-    float mip             = f3_value2.z;
+    float mip_and_array   = f3_value2.z; // packed mip and array value
     bool is_visualized    = pass_is_transparent();
     uint is_frame_texture = pass_get_material_index();
 
-    float4 color_texture = point_sampling ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip) : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip);
- 
+    // unpack mip and array levels
+    float mip_level   = floor(mip_and_array);              // integer part is mip level
+    float array_level = round(frac(mip_and_array) * 32.0); // fractional part scaled by 32 is array level
+
+    // sample texture based on array_level
+    float4 color_texture;
+    if (array_level > 0.0f)
+    {
+        float3 uv_array = float3(input.uv, array_level);
+        color_texture = point_sampling 
+            ? tex_light_depth.SampleLevel(samplers[sampler_point_wrap], uv_array, mip_level) 
+            : tex_light_depth.SampleLevel(samplers[sampler_bilinear_wrap], uv_array, mip_level);
+    }
+    else
+    {
+        color_texture = point_sampling 
+            ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip_level) 
+            : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip_level);
+    }
+
     if (is_visualized)
     {
         color_texture.r *= channels.r ? 1.0f : 0.0f;
@@ -103,4 +121,4 @@ float4 main_ps(vertex input) : SV_Target
     }
 
     return color;
- }
+}
