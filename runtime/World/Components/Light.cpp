@@ -421,8 +421,8 @@ namespace spartan
             // get camera position in world space
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
     
-            // define a temporary depth range for view matrix construction
-            float temp_depth_range = 1000.0f; // will be overridden for far cascade in projection
+            // define depth range
+            float depth_range = 500.0f; // will be overridden for far cascade in projection
     
             // define extents for snapping
             BoundingBox world_bounds = World::GetBoundingBox();
@@ -430,25 +430,24 @@ namespace spartan
             float extents[2]         = {max_extent * 0.1f, max_extent * 1.2f}; // near and far extents
     
             // near cascade: center on camera position
-            Vector3 near_eye_position = camera_pos - light_direction * (temp_depth_range / 2.0f);
+            Vector3 near_eye_position = camera_pos - (light_direction * depth_range);
             Vector3 near_target       = camera_pos;
             m_matrix_view[0]          = Matrix::CreateLookAtLH(near_eye_position, near_target, Vector3::Up);
     
             // far cascade: center on scene’s bounding box
             Vector3 scene_center     = world_bounds.GetCenter();
-            Vector3 far_eye_position = scene_center - light_direction * (temp_depth_range / 2.0f);
+            Vector3 far_eye_position = scene_center - (light_direction * depth_range);
             Vector3 far_target       = scene_center;
             m_matrix_view[1]         = Matrix::CreateLookAtLH(far_eye_position, far_target, Vector3::Up);
     
             // snapping to reduce shadow shimmering
             if (texture_width > 0)
             {
-                float N = static_cast<float>(texture_width);
                 for (int i = 0; i < 2; i++)
                 {
-                    float texel_size     = (2.0f * extents[i]) / N; // texel size in world space
-                    m_matrix_view[i].m30 = round(m_matrix_view[i].m30 / texel_size) * texel_size; // snap x-translation
-                    m_matrix_view[i].m31 = round(m_matrix_view[i].m31 / texel_size) * texel_size; // snap y-translation
+                    float texel_size     = (2.0f * extents[i]) / static_cast<float>(texture_width); // texel size in world space
+                    m_matrix_view[i].m30 = round(m_matrix_view[i].m30 / texel_size) * texel_size;   // snap x-translation
+                    m_matrix_view[i].m31 = round(m_matrix_view[i].m31 / texel_size) * texel_size;   // snap y-translation
                     // z-translation (m32) remains unchanged for orthographic projection
                 }
             }

@@ -91,9 +91,9 @@ void ShaderEditor::ShowShaderSource()
                         }
 
                         // calculate available space
-                        float used_y = ImGui::GetCursorPosY() - start_y; // Height used by title and tab bar
-                        float available_height = size.y - used_y - ImGui::GetStyle().ItemSpacing.y; // Remaining height minus spacing
-                        float available_width = ImGui::GetContentRegionAvail().x; // Full available width
+                        float used_y = ImGui::GetCursorPosY() - start_y; // height used by title and tab bar
+                        float available_height = size.y - used_y - ImGui::GetStyle().ItemSpacing.y; // remaining height minus spacing
+                        float available_width = ImGui::GetContentRegionAvail().x; // full available width
 
                         // render multi-line text input with explicit size
                         ImGui::InputTextMultiline(
@@ -105,7 +105,7 @@ void ShaderEditor::ShowShaderSource()
                         );
 
                         // update shader source if text was edited
-                        if (ImGui::IsItemEdited())
+                        if (ImGui::IsItemDeactivatedAfterEdit())
                         {
                             m_shader->SetSource(i, string(m_buffer));
                         }
