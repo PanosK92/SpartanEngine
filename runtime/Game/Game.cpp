@@ -1,4 +1,4 @@
-f/*
+/*
 Copyright(c) 2016-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -867,7 +867,7 @@ namespace spartan
         void create_doom_e1m1()
         {
             create_camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-            create_sun(LightIntensity::sky_sunlight_noon, false);
+            create_sun(LightIntensity::sky_sunlight_noon, true);
             create_music("project\\music\\doom_e1m1.wav");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
@@ -879,13 +879,27 @@ namespace spartan
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetShapeType(PhysicsShape::Mesh, true);
+
+                // nothing is double sided, so we need to disable culling to get proper shadows
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (entity_it->IsActive())
+                    {
+                        if (Renderable* renderable = entity_it->GetComponent<Renderable>())
+                        {
+                            renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        }
+                    }
+                }
             }
         }
 
         void create_bistro()
         {
             create_camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
-            create_sun(LightIntensity::bulb_150_watt, false);
+            create_sun(LightIntensity::bulb_150_watt, true);
             create_music();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
@@ -906,10 +920,13 @@ namespace spartan
                 entity->GetDescendants(&entities);
                 for (Entity* entity_it : entities)
                 {
-                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>())
+                    if (entity_it->IsActive())
                     {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        if (Renderable* renderable = entity_it->GetComponent<Renderable>())
+                        {
+                            PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                            physics_body->SetShapeType(PhysicsShape::Mesh);
+                        }
                     }
                 }
             }
