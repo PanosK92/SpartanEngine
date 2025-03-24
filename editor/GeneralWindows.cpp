@@ -139,7 +139,7 @@ namespace
             //"Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                            N/A"
         };
 
-        vector<string> comma_seperate_contributors(const vector<string>& contributors)
+        vector<string> comma_seperate_contributors()
         {
             vector<string> result;
         
@@ -212,7 +212,7 @@ namespace
 
         void contributors_table()
         {
-            static vector<string> comma_seperated_contributors = comma_seperate_contributors(contributors);
+            static vector<string> comma_seperated_contributors = comma_seperate_contributors();
 
             ImGui::Text("Contributors");
             if (ImGui::BeginTable("##contributors_table", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
@@ -253,11 +253,6 @@ namespace
                     ImGui::TableSetColumnIndex(3);
                     string& button_text = comma_seperated_contributors[index++];
                     string& button_url  = comma_seperated_contributors[index++];
-            
-                    // calculate center position for the button
-                    float cell_width    = ImGui::GetColumnWidth();
-                    float button_width  = ImGui::CalcTextSize(button_text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-                    float button_offset = (cell_width - button_width) * 0.5f;
             
                     // set cursor position to center the button
                     ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));

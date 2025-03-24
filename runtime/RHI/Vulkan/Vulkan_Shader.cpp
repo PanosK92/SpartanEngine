@@ -175,7 +175,7 @@ namespace spartan
             // create input layout
             if (m_input_layout)
             {
-                m_input_layout->Create(m_vertex_type, nullptr);
+                m_input_layout->Create(m_vertex_type);
             }
 
             // release
