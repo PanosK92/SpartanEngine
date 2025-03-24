@@ -632,7 +632,7 @@ namespace spartan
                 desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
             
                 // misc
-                desc.flags           = entity->IsMoving() ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
+                desc.flags           = entity->HasMovedInTheLastSeconds(2.0f) ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
                 uint64_t instance_id = renderable->HasInstancing() ? (entity->GetObjectId() | (static_cast<uint64_t>(instance_index) << 32)) : entity->GetObjectId();
                 desc.outInstanceID   = &get_or_create_id(instance_id);
             
@@ -1195,7 +1195,7 @@ namespace spartan
 
                 uint64_t entity_id                   = entity->GetObjectId();
                 brixelizer_gi::entity_map[entity_id] = entity;
-                bool is_dynamic                      = entity->IsMoving();
+                bool is_dynamic                      = entity->HasMovedInTheLastSeconds(2.0f);
                 auto static_it                       = brixelizer_gi::static_instances.find(entity_id);
                 bool was_static                      = static_it != brixelizer_gi::static_instances.end();
 

@@ -123,7 +123,6 @@ namespace spartan
         RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
 
         // frustum
-        bool IsInViewFrustum(const math::BoundingBox& bounding_box, const uint32_t index) const;
         bool IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index = 0) const;
 
         // index

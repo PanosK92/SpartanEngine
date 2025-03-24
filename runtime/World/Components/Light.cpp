@@ -126,21 +126,10 @@ namespace spartan
     void Light::OnTick()
     {
         // if the light or the camera moves...
-        m_filtering_pending = GetEntity()->IsMoving() ? true : m_filtering_pending;
-        bool update = GetEntity()->IsMoving();
-        if (m_light_type == LightType::Directional)
-        { 
-            if (Camera* camera = Renderer::GetCamera())
-            {
-                if (camera->GetEntity()->IsMoving())
-                {
-                    update = true;
-                }
-            }
-        }
+        m_filtering_pending = GetEntity()->HasMovedInTheLastSeconds(2.0f) ? true : m_filtering_pending;
 
         // ...update the matrices
-        if (update)
+        if (GetEntity()->HasMovedInTheLastSeconds(0.1f))
         {
             UpdateMatrices();
         }
@@ -427,18 +416,19 @@ namespace spartan
     void Light::ComputeViewMatrix()
     {
         const Vector3 position = GetEntity()->GetPosition();
-
+    
         if (m_light_type == LightType::Directional)
         {
-            Vector3 target = Vector3::Zero;
-            if (Camera* camera = Renderer::GetCamera())
-            {
-                target = camera->GetEntity()->GetPosition();
-            }
-            Vector3 position = target - GetEntity()->GetForward() * get_world_depth() * 1.5f;
-
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, target, Vector3::Up); // near
-            m_matrix_view[1] = m_matrix_view[0];                                      // far
+            Vector3 target = World::GetBoundinBox().GetCenter();
+            float world_depth = get_world_depth();
+    
+            // near cascade: Closer to the target
+            Vector3 near_position = target - GetEntity()->GetForward() * world_depth * 0.5f;
+            m_matrix_view[0] = Matrix::CreateLookAtLH(near_position, target, Vector3::Up);
+    
+            // far cascade: Further back to encompass more of the scene
+            Vector3 far_position = target - GetEntity()->GetForward() * world_depth * 1.5f;
+            m_matrix_view[1] = Matrix::CreateLookAtLH(far_position, target, Vector3::Up);
         }
         else if (m_light_type == LightType::Spot)
         {
@@ -454,26 +444,35 @@ namespace spartan
     void Light::ComputeProjectionMatrix()
     {
         const float near_plane = 0.01f;
-
+    
         if (m_light_type == LightType::Directional)
         {
-            for (uint32_t i = 0; i < 2; i++)
-            {
-                float extent           = (i == 0) ? orthographic_extent_near : orthographic_extent_far;
-                float left             = -extent;
-                float right            = extent;
-                float bottom           = -extent;
-                float top              = extent;
-                float far_plane        = get_world_depth() * 4.0f;
-                m_matrix_projection[i] = Matrix::CreateOrthoOffCenterLH(left, right, bottom, top, far_plane, near_plane);
-                m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], far_plane - near_plane);
-            }
+            // get scene bounds for proper sizing
+            BoundingBox world_bounds = World::GetBoundinBox();
+            Vector3 extents = world_bounds.GetExtents();
+            float max_extent = extents.Abs().Max(); // largest dimension of the scene
+    
+            // near cascade: Smaller extent for higher detail
+            float near_extent = orthographic_extent_near;
+            m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
+                -near_extent, near_extent, -near_extent, near_extent,
+                get_world_depth() * 1.0f, near_plane // depth covers closer region
+            );
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], get_world_depth() * 1.0f - near_plane);
+    
+            // far cascade: Larger extent to fit scene bounds
+            float far_extent = max_extent * 1.2f; // slightly larger than scene bounds for safety
+            m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
+                -far_extent, far_extent, -far_extent, far_extent,
+                get_world_depth() * 4.0f, near_plane // depth covers entire scene
+            );
+            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], get_world_depth() * 4.0f - near_plane);
         }
         else if (m_light_type == LightType::Spot)
         {
             if (!m_texture_depth)
                 return;
-
+    
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
             const float fov          = m_angle_rad * 2.0f;
             Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
@@ -482,8 +481,9 @@ namespace spartan
         }
     }
 
-    bool Light::IsInViewFrustum(const BoundingBox& bounding_box, const uint32_t index) const
+    bool Light::IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index) const
     {
+        const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(instance_group_index) : renderable->GetBoundingBox();
         SP_ASSERT(bounding_box != BoundingBox::Undefined);
 
         if (m_light_type != LightType::Point)
@@ -492,12 +492,12 @@ namespace spartan
             const Vector3 extents   = bounding_box.GetExtents();
             const bool ignore_depth = m_light_type == LightType::Directional; // orthographic
             
-            return m_frustums[index].IsVisible(center, extents, ignore_depth);
+            return m_frustums[array_index].IsVisible(center, extents, ignore_depth);
         }
 
         // paraboloid point light
         {
-            float sign = (index == 0) ? 1.0f : -1.0f;
+            float sign = (array_index == 0) ? 1.0f : -1.0f;
             array<Vector3, 8> corners;
             bounding_box.GetCorners(&corners);
             for (const Vector3& corner : corners)
@@ -509,18 +509,5 @@ namespace spartan
 
             return false; // no corners are inside
         }
-    }
-
-    bool Light::IsInViewFrustum(Renderable* renderable, uint32_t array_index, const uint32_t instance_group_index) const
-    {
-        const BoundingBox& box = renderable->GetBoundingBoxInstanceGroup(instance_group_index);
-
-        if (box == BoundingBox::Undefined)
-        {
-            SP_LOG_WARNING("Undefined bounding box, treating as outside of the view frustum");
-            return false;
-        }
-
-        return IsInViewFrustum(box, array_index);
     }
 }  

@@ -164,7 +164,7 @@ namespace spartan
         const math::Matrix& GetLocalMatrix() const         { return m_matrix_local; }
         const math::Matrix& GetMatrixPrevious() const      { return m_matrix_previous; }
         void SetMatrixPrevious(const math::Matrix& matrix) { m_matrix_previous = matrix; }
-        bool IsMoving() const;
+        bool HasMovedInTheLastSeconds(const float seconds) const;
 
     private:
         std::atomic<bool> m_is_active = true;
