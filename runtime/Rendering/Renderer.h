@@ -196,7 +196,7 @@ namespace spartan
         // bindless
         static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);
         static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
-        static void BindlessUpdateAabbs(RHI_CommandList* cmd_list);
+        static void BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list);
         static void BindlessUpdateSamplers();
 
         // misc

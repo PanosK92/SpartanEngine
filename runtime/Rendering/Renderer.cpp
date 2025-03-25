@@ -85,7 +85,6 @@ namespace spartan
         bool bindless_materials_dirty = true;
         bool bindless_lights_dirty    = true;
         bool bindless_samplers_dirty  = true;
-        bool bindless_aabbs_dirty     = true;
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
@@ -524,7 +523,6 @@ namespace spartan
         m_draw_call_count        = 0;
         bindless_materials_dirty = true;
         bindless_lights_dirty    = true;
-        bindless_aabbs_dirty     = true;
 
         // build new state
         for (auto it : entities)
@@ -663,13 +661,11 @@ namespace spartan
                 bindless_lights_dirty = false;
             }
 
-            // bounding boxes (world space)
-            if (bindless_aabbs_dirty)
+            // bounding boxes (world space) - they need to constantly update 
             {
                 lock_guard lock(m_mutex_renderables);
-                BindlessUpdateAabbs(cmd_list);
+                BindlessUpdateOccludersAndOccludes(cmd_list);
                 RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
-                bindless_aabbs_dirty = false;
             }
         }
     }
@@ -1090,7 +1086,7 @@ namespace spartan
         buffer->Update(cmd_list, &bindless_lights[0], buffer->GetStride() * count);
     }
 
-    void Renderer::BindlessUpdateAabbs(RHI_CommandList* cmd_list)
+    void Renderer::BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list)
     {
         // clear
         bindless_aabbs.fill(Sb_Aabb());
@@ -1251,7 +1247,7 @@ namespace spartan
                     Material* material           = renderable->GetMaterial();
             
                     // skip if material is null, transparent, or alpha-tested (unreliable occluders)
-                    if (!material || material->IsTransparent() || material->IsAlphaTested() || renderable->HasInstancing())
+                    if (!material || material->IsTransparent())
                         continue;
             
                     // get bounding box

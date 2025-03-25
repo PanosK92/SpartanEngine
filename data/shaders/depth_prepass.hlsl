@@ -30,9 +30,9 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     
     // hi-z occlusion culling (skipped if HIZ_DEPTH_PASS is defined)
     #ifndef HIZ_DEPTH_PASS
-        //uint aabb_index = (uint)pass_get_f3_value().z;
-        //if (visibility[aabb_index] == 0)
-        //    return vertex;
+        uint aabb_index = (uint)pass_get_f3_value().z;
+        if (visibility[aabb_index] == 0)
+            return vertex;
     #endif
     
     // to world space

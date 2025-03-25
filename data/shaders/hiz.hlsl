@@ -62,9 +62,14 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     {
         // project box corner into clip space
         corners_uv[i]      = mul(float4(corners_world[i], 1.0), buffer_frame.view_projection);
-        corners_uv[i].z    = saturate(corners_uv[i].z);
         corners_uv[i].xyz /= corners_uv[i].w;
-        corners_uv[i].xy   = clamp(corners_uv[i].xy, -1.0f, 1.0f);
+
+        // if any corner is off-screen, mark the aabb as visible
+        if (any(corners_uv[i].xy < -1.0f) || any(corners_uv[i].xy > 1.0f))
+        {
+            visibility[aabb_index] = 1;
+            return;
+        }
 
         // update min uv, max uv
         float2 uv = ndc_to_uv(corners_uv[i].xy);
@@ -118,4 +123,32 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // write visibility flag
     visibility[aabb_index] = is_visible ? 1 : 0;
+
+    // debug
+    {
+        // Debug visualization: Draw AABB corners
+        float3 color = is_visible ? float3(0, 1, 0) : float3(1, 0, 0); // Green if visible, red if occluded
+        float2 render_size = pass_get_f4_value().xy; // Viewport width and height
+
+        for (int i = 0; i < 8; i++)
+        {
+            // Convert NDC to UV to pixel coordinates
+            float2 uv = ndc_to_uv(corners_uv[i].xy);
+            int2 base_pos = int2(floor(uv * render_size));
+
+            // Draw a 3x3 square around each corner
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    int2 pos = base_pos + int2(dx, dy);
+                    // Ensure the position is within texture bounds
+                    if (pos.x >= 0 && pos.y >= 0 && pos.x < render_size.x && pos.y < render_size.y)
+                    {
+                        tex_uav[uint2(pos)] = float4(color, 1.0);
+                    }
+                }
+            }
+        }
+    }
 }

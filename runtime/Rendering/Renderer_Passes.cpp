@@ -432,7 +432,11 @@ namespace spartan
     
             cmd_list->SetPipelineState(pso);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
-    
+
+            // temp to debug visibility
+            //cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi), Color::standard_black);
+            //cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi)); 
+
             // set aabb count
             m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
             cmd_list->PushConstants(m_pcb_pass_cpu);

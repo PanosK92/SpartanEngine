@@ -1150,7 +1150,8 @@ namespace spartan
         create_camera();
         create_sun();
         create_floor();
-
+        create_damaged_helmet(Vector3(5.0f, 1.0f, 0.0f));
+        create_material_ball(Vector3(8.0f, 1.0f, 0.0f));
         create_metal_cube(Vector3(0.0f, 2.0f, 0.0f));
 
         PhysicsBody* physics_body = m_default_metal_cube->GetComponent<PhysicsBody>();
@@ -1159,7 +1160,7 @@ namespace spartan
         physics_body->SetShapeType(PhysicsShape::Box);
         physics_body->SetBodyType(PhysicsBodyType::Vehicle2);
   
-        Renderer::SetOption(Renderer_Option::Physics, 1.0f);
+        //Renderer::SetOption(Renderer_Option::Physics, 1.0f);
     }
 
     void Game::Shutdown()
