@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Vertex.h"
 #include "../../IO/FileStream.h"
 #include "../../Game/Car.h"
+#include "../../Game/Car2.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../Rendering/Renderer.h"
@@ -41,7 +42,6 @@ SP_WARNINGS_OFF
 #include <BulletCollision/CollisionShapes/btCapsuleShape.h>
 #include <BulletCollision/CollisionShapes/btConeShape.h>
 #include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
-#include <BulletCollision/CollisionShapes/btTriangleMesh.h>
 #include <BulletCollision/CollisionShapes/btBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include <BulletCollision/CollisionShapes/btCompoundShape.h>
@@ -204,6 +204,10 @@ namespace spartan
         if (m_body_type == PhysicsBodyType::Vehicle)
         {
             m_car->Tick();
+        }
+        else if (m_body_type == PhysicsBodyType::Vehicle2 && m_car2)
+        {
+            //m_car2->stepSimulation(Timer::GetDeltaTimeSec()); // Use engine delta time
         }
     }
 
@@ -572,6 +576,10 @@ namespace spartan
         {
             m_car->Create(rigid_body, m_entity_ptr);
         }
+        else if (m_body_type == PhysicsBodyType::Vehicle2)
+        {
+            m_car2 = make_shared<Car2>(static_cast<btDiscreteDynamicsWorld*>(Physics::GetWorld()), rigid_body);
+        }
 
         // set flags
         {
@@ -645,6 +653,9 @@ namespace spartan
             delete rigid_body;
             m_rigid_body = nullptr;
         }
+
+        m_car  = nullptr;
+        m_car2 = nullptr;
     }
 
     void PhysicsBody::SetBoundingBox(const Vector3& bounding_box)

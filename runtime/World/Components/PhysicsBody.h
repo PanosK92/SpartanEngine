@@ -32,12 +32,14 @@ namespace spartan
     class Entity;
     class Physics;
     class Car;
+    class Car2;
     namespace math { class Quaternion; }
 
     enum class PhysicsBodyType
     {
         RigidBody,
         Vehicle,
+        Vehicle2
     };
 
     enum class PhysicsForce
@@ -186,8 +188,11 @@ namespace spartan
         uint32_t terrain_length        = 0;
         void* m_shape                  = nullptr;
         void* m_rigid_body             = nullptr;
-        std::shared_ptr<Car> m_car     = nullptr;
         bool m_replicate_hierarchy     = false;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
+
+        // vehicle
+        std::shared_ptr<Car> m_car;
+        std::shared_ptr<Car2> m_car2;
     };
 }

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Game.h"
 #include "../Game/Car.h"
+#include "../Physics/Physics.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
@@ -57,6 +58,7 @@ namespace spartan
         shared_ptr<Entity> m_default_physics_body_camera = nullptr;
         shared_ptr<Entity> m_default_environment         = nullptr;
         shared_ptr<Entity> m_default_light_directional   = nullptr;
+        shared_ptr<Entity> m_default_metal_cube          = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
         void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
@@ -390,9 +392,9 @@ namespace spartan
         void create_metal_cube(const Vector3& position)
         {
             // create entity
-            shared_ptr<Entity> entity = World::CreateEntity();
-            entity->SetObjectName("metal_cube");
-            entity->SetPosition(position);
+            m_default_metal_cube = World::CreateEntity();
+            m_default_metal_cube->SetObjectName("metal_cube");
+            m_default_metal_cube->SetPosition(position);
             
             // create material
             shared_ptr<Material> material = make_shared<Material>();
@@ -409,12 +411,12 @@ namespace spartan
             material->SetResourceFilePath(file_path);
             
             // add a renderable component
-            Renderable* renderable = entity->AddComponent<Renderable>();
+            Renderable* renderable = m_default_metal_cube->AddComponent<Renderable>();
             renderable->SetMesh(MeshType::Cube);
             renderable->SetMaterial(material);
             
             // add physics components
-            PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
+            PhysicsBody* physics_body = m_default_metal_cube->AddComponent<PhysicsBody>();
             physics_body->SetMass(PhysicsBody::mass_auto);
             physics_body->SetShapeType(PhysicsShape::Box);
         }
@@ -1143,6 +1145,23 @@ namespace spartan
         }
     }
 
+    void car_mark2()
+    {
+        create_camera();
+        create_sun();
+        create_floor();
+
+        create_metal_cube(Vector3(0.0f, 2.0f, 0.0f));
+
+        PhysicsBody* physics_body = m_default_metal_cube->GetComponent<PhysicsBody>();
+        physics_body->SetBoundingBox(Vector3(1.0f, 0.5f, 2.5f));
+        physics_body->SetMass(960.0f);
+        physics_body->SetShapeType(PhysicsShape::Box);
+        physics_body->SetBodyType(PhysicsBodyType::Vehicle2);
+  
+        Renderer::SetOption(Renderer_Option::Physics, 1.0f);
+    }
+
     void Game::Shutdown()
     {
         m_default_physics_body_camera = nullptr;
@@ -1150,6 +1169,7 @@ namespace spartan
         m_default_light_directional   = nullptr;
         m_default_terrain             = nullptr;
         m_default_car                 = nullptr;
+        m_default_metal_cube          = nullptr;
         meshes.clear();
     }
 
@@ -1306,14 +1326,15 @@ namespace spartan
 
             switch (default_world)
             {
-                case DefaultWorld::Forest:         create_forest_car();          break;
-                case DefaultWorld::Doom:          create_doom_e1m1();           break;
-                case DefaultWorld::Bistro:            create_bistro();              break;
-                case DefaultWorld::Minecraft:         create_minecraft();           break;
+                case DefaultWorld::Forest:      create_forest_car();          break;
+                case DefaultWorld::Doom:        create_doom_e1m1();           break;
+                case DefaultWorld::Bistro:      create_bistro();              break;
+                case DefaultWorld::Minecraft:   create_minecraft();           break;
                 case DefaultWorld::LivingRoom:  create_living_room_gi_test(); break;
-                case DefaultWorld::Sponza:          create_sponza_4k();           break;
+                case DefaultWorld::Sponza:      create_sponza_4k();           break;
                 case DefaultWorld::Subway:      create_subway_gi_test();      break;
-                default: SP_ASSERT_MSG(false, "Unhandled default world");           break;
+                case DefaultWorld::CarMark2:    car_mark2();                  break;
+                default: SP_ASSERT_MSG(false, "Unhandled default world");     break;
             }
 
             ProgressTracker::SetGlobalLoadingState(false);

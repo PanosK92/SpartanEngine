@@ -32,6 +32,7 @@ namespace spartan
         LivingRoom,
         Doom,
         Minecraft,
+        CarMark2,
         Max
     };
 

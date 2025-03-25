@@ -602,13 +602,6 @@ namespace spartan
                 }
             }
         }
-
-        // add basic audio
-        {
-            ///shared_ptr<AudioSource> audio_source = entity->AddComponent<AudioSource>();
-            ///audio_source->SetAudioClip("project\\music\\car_engine_idle.mp3");
-            ///audio_source->SetLoop(true);
-        }
     }
 
     void Car::Tick()
