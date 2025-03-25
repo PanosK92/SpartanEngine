@@ -415,13 +415,13 @@ namespace
     {
         const char* world_names[] =
         {
-            "1. Open world forest with car (demanding)",
-            "2. Sponza 4K (demanding)",
-            "3. Subway GI test",
-            "4. Doom E1M1",
-            "5. Minecraft world",
-            "6. Living room GI test",
-            "7. Bistro interior & exterior (demanding)"
+            "1. Open world forest with car (millions of Ghost of Tsushima grass blades - demanding)",
+            "2. Sponza 4k (high-resolution textures & meshes - demanding)",
+            "3. Bistro interior & exterior (excessive draw calls - demanding)",
+            "4. Subway (gi test, no lights, only emissive textures - moderate)",
+            "5. Living room (gi test, sunlight through window - moderate)",
+            "6. Doom E1M1 (classic level recreation - light)",
+            "7. Minecraft world (blocky aesthetic - light)",
         };
 
         int world_index = 0;
@@ -486,12 +486,23 @@ namespace
                 {
                     ImGui::Text("Select the world you would like to load and click \"Ok\"");
             
-                    // list
-                    ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
+                    // Calculate the maximum width of the world names
+                    float max_width = 0.0f;
+                    for (const char* name : world_names)
+                    {
+                        ImVec2 size = ImGui::CalcTextSize(name);
+                        if (size.x > max_width)
+                            max_width = size.x;
+                    }
+                    // Add padding for the list box frame (left and right)
+                    float padding = ImGui::GetStyle().FramePadding.x * 2;
+                    ImGui::PushItemWidth(max_width + padding);
+            
+                    // List box with dynamic width
                     ImGui::ListBox("##list_box", &world_index, world_names, IM_ARRAYSIZE(world_names), IM_ARRAYSIZE(world_names));
                     ImGui::PopItemWidth();
             
-                    // button
+                    // Button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
                         spartan::Game::Load(static_cast<spartan::DefaultWorld>(world_index));

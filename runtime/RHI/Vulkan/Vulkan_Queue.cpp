@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
-#include "../RHI_FidelityFX.h"
+#include "../RHI_AMD_FFX.h"
 #include "../Core/Debugging.h"
 #include "../Core/ProgressTracker.h"
 //==================================
@@ -172,7 +172,7 @@ namespace spartan
             {
                 if (Debugging::IsBreadcrumbsEnabled())
                 { 
-                    RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved();
+                    RHI_AMD_FFX::Breadcrumbs_OnDeviceRemoved();
                 }
 
                 SP_ERROR_WINDOW("GPU crashed");

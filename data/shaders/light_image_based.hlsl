@@ -69,15 +69,6 @@ float3 fresnel_schlick_roughness(float cos_theta, float3 F0, float roughness)
     return F0 + (max(1.0 - roughness.xxx, F0) - F0) * pow(saturate(1.0 - cos_theta), 5.0);
 }
 
-float3 get_ssr_gi_specular_energy(float roughness, float3 f0, float3 n, float3 v)
-{
-    float n_dot_v            = saturate(dot(n, v));
-    float2 brdf_sample_point = saturate(float2(n_dot_v, 1.0 - roughness));
-    float2 brdf              = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], brdf_sample_point, 0.0f).xy;
-    
-    return (f0 * brdf.x + brdf.y);
-}
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -105,22 +96,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment, mip_count_environment);
     float4 specular_ssr                = tex2[thread_id.xy].rgba;
-    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb  * 3.0f;
-    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb * 3.0f;
+    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb;
+    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb;
     float shadow_mask                  = tex[thread_id.xy].r;
 
-    // apply specular energy
-    specular_skysphere            *= specular_energy * shadow_mask;
-    float3 specular_ssr_gi_energy  = get_ssr_gi_specular_energy(surface.roughness, surface.F0, surface.normal, surface.camera_to_pixel);
-    specular_ssr.rgb              *= specular_ssr_gi_energy;
-    specular_gi                   *= specular_ssr_gi_energy;
-    
     // combine the diffuse light
     shadow_mask        = max(0.5f, shadow_mask); // GI is not as good, so never go full dark
     float3 diffuse_ibl = diffuse_skysphere * shadow_mask + diffuse_gi;
 
     // combine all the specular light, fallback order: ssr -> gi -> skysphere
-    float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere);
+    float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere * specular_energy * shadow_mask);
     
     // combine the diffuse and specular light
     float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + specular_ibl;

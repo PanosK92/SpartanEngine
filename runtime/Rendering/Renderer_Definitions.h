@@ -223,7 +223,7 @@ namespace spartan
         frame_output,
         frame_output_2,
         source_gi,
-        source_refraction_ssr,
+        source_refraction,
         ssao,
         ssr,
         sss,

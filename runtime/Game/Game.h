@@ -25,13 +25,13 @@ namespace spartan
 {
     enum class DefaultWorld
     {
-        ForestCar,
-        Sponza4K,
-        SubwayGiTest,
-        DoomE1M1,
-        Minecraft,
-        LivingRoomGiTest,
+        Forest,
+        Sponza,
         Bistro,
+        Subway,
+        LivingRoom,
+        Doom,
+        Minecraft,
         Max
     };
 

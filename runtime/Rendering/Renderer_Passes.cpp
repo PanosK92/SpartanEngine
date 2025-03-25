@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../Rendering/Material.h"
-#include "../RHI/RHI_FidelityFX.h"
+#include "../RHI/RHI_AMD_FFX.h"
 #include "../RHI/RHI_RasterizerState.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
@@ -108,11 +108,11 @@ namespace spartan
             // create sampling source for refraction
             cmd_list_graphics->BeginTimeblock("create_refraction_ssr_source");
             {
-                cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), false);
-                Pass_Downscale(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
+                cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
+                Pass_Downscale(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::source_refraction), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
 
                 // todo: remove this, and find out why it doesn't properly transition and can cause a GPU crash
-                GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
+                GetRenderTarget(Renderer_RenderTarget::source_refraction)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
             }
             cmd_list_graphics->EndTimeblock();
 
@@ -708,10 +708,13 @@ namespace spartan
         { 
             cmd_list->BeginTimeblock("ssr");
             {
-                RHI_FidelityFX::SSSR_Dispatch(
+                // fidelityfx sssr seems to be working with a gamma corrected final output of the previous frame, however I am not happy with the blit here
+                cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_output_2), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
+
+                RHI_AMD_FFX::SSSR_Dispatch(
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
-                    GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr),
+                    GetRenderTarget(Renderer_RenderTarget::source_refraction),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -927,7 +930,7 @@ namespace spartan
 
             // update
             {
-                RHI_FidelityFX::BrixelizerGI_Update(
+                RHI_AMD_FFX::BrixelizerGI_Update(
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     &m_cb_frame_cpu,
@@ -950,7 +953,7 @@ namespace spartan
                     GetStandardTexture(Renderer_StandardTexture::Noise_blue_7)
                 };
 
-                RHI_FidelityFX::BrixelizerGI_Dispatch(
+                RHI_AMD_FFX::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
                     GetRenderTarget(Renderer_RenderTarget::source_gi),
@@ -1004,7 +1007,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));
         cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction_ssr));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction));
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere); // for the sky
 
@@ -1476,7 +1479,7 @@ namespace spartan
 
         if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3)
         {
-            RHI_FidelityFX::FSR3_Dispatch(
+            RHI_AMD_FFX::FSR3_Dispatch(
                 cmd_list,
                 GetCamera(),
                 m_cb_frame_cpu.delta_time,

@@ -1306,13 +1306,13 @@ namespace spartan
 
             switch (default_world)
             {
-                case DefaultWorld::ForestCar:         create_forest_car();          break;
-                case DefaultWorld::DoomE1M1:          create_doom_e1m1();           break;
+                case DefaultWorld::Forest:         create_forest_car();          break;
+                case DefaultWorld::Doom:          create_doom_e1m1();           break;
                 case DefaultWorld::Bistro:            create_bistro();              break;
                 case DefaultWorld::Minecraft:         create_minecraft();           break;
-                case DefaultWorld::LivingRoomGiTest:  create_living_room_gi_test(); break;
-                case DefaultWorld::Sponza4K:          create_sponza_4k();           break;
-                case DefaultWorld::SubwayGiTest:      create_subway_gi_test();      break;
+                case DefaultWorld::LivingRoom:  create_living_room_gi_test(); break;
+                case DefaultWorld::Sponza:          create_sponza_4k();           break;
+                case DefaultWorld::Subway:      create_subway_gi_test();      break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");           break;
             }
 

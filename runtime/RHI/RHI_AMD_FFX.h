@@ -38,7 +38,7 @@ namespace spartan
         Sssr
     };
 
-    class RHI_FidelityFX
+    class RHI_AMD_FFX
     {
     public:
         static void Initialize();

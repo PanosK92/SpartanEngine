@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Queue.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Buffer.h"
-#include "../RHI/RHI_FidelityFX.h"
+#include "../RHI/RHI_AMD_FFX.h"
 #include "../RHI/RHI_OpenImageDenoise.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
@@ -208,7 +208,7 @@ namespace spartan
 
         // in case of breadcrumb support, anything that uses a command list can use RHI_FidelityFX
         // so we need to initialize even before the swapchain which can use a copy queue etc.
-        RHI_FidelityFX::Initialize();
+        RHI_AMD_FFX::Initialize();
         RHI_OpenImageDenoise::Initialize();
 
         // swap chain
@@ -298,7 +298,7 @@ namespace spartan
         }
 
         RHI_OpenImageDenoise::Shutdown();
-        RHI_FidelityFX::Shutdown();
+        RHI_AMD_FFX::Shutdown();
         RenderDoc::Shutdown();
         RHI_Device::Destroy();
     }
@@ -320,7 +320,7 @@ namespace spartan
             }
 
             RHI_Device::Tick(frame_num);
-            RHI_FidelityFX::Tick(&m_cb_frame_cpu);
+            RHI_AMD_FFX::Tick(&m_cb_frame_cpu);
             dynamic_resolution();
         }
 
@@ -466,7 +466,7 @@ namespace spartan
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
         if (upsampling_mode == Renderer_Upsampling::Fsr3 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
         {
-            RHI_FidelityFX::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+            RHI_AMD_FFX::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
             m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
         }
         else
@@ -748,7 +748,7 @@ namespace spartan
                     if (!fsr_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Fsr3);
-                        RHI_FidelityFX::FSR3_ResetHistory();
+                        RHI_AMD_FFX::FSR3_ResetHistory();
                     }
                 }
                 else
@@ -772,14 +772,14 @@ namespace spartan
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
                     }
 
-                    RHI_FidelityFX::Shutdown(FidelityFX::Fsr);
+                    RHI_AMD_FFX::Shutdown(FidelityFX::Fsr);
                 }
                 else if (value == static_cast<float>(Renderer_Upsampling::Fsr3))
                 {
                     if (!taa_enabled)
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
-                        RHI_FidelityFX::FSR3_ResetHistory();
+                        RHI_AMD_FFX::FSR3_ResetHistory();
                     }
                 }
             }

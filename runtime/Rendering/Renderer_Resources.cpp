@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
 #ifdef _MSC_VER
-#include "../RHI/RHI_FidelityFX.h"
+#include "../RHI/RHI_AMD_FFX.h"
 #endif
 //========================================
 
@@ -202,7 +202,7 @@ namespace spartan
             // sources
             {
                 render_target(Renderer_RenderTarget::source_gi)             = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1,         format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,                           "source_gi");
-                render_target(Renderer_RenderTarget::source_refraction_ssr) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, mip_count, format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "source_refraction_ssr");
+                render_target(Renderer_RenderTarget::source_refraction) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, mip_count, format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "source_refraction_ssr");
             }
 
             // g-buffer
@@ -270,7 +270,7 @@ namespace spartan
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "skysphere");
         }
 
-        RHI_FidelityFX::Resize(GetResolutionRender(), GetResolutionOutput());
+        RHI_AMD_FFX::Resize(GetResolutionRender(), GetResolutionOutput());
     }
 
     void Renderer::CreateShaders()

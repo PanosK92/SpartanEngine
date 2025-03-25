@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================
 #include "pch.h"
-#include "../RHI_FidelityFX.h"
+#include "../RHI_AMD_FFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
@@ -785,7 +785,7 @@ namespace spartan
     }
     #endif 
 
-    void RHI_FidelityFX::Initialize()
+    void RHI_AMD_FFX::Initialize()
     {
     #ifdef _WIN32
         // register FidelityFX version
@@ -892,7 +892,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::Shutdown()
+    void RHI_AMD_FFX::Shutdown()
     {
     #ifdef _WIN32
         fsr3::context_destroy();
@@ -921,7 +921,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::Shutdown(const FidelityFX fx)
+    void RHI_AMD_FFX::Shutdown(const FidelityFX fx)
     {
         #ifdef _MSC_VER
         if (fx == FidelityFX::Sssr)
@@ -939,7 +939,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
+    void RHI_AMD_FFX::Tick(Cb_Frame* cb_frame)
     {
     #ifdef _WIN32
         // matrices - ffx is right-handed
@@ -985,7 +985,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    void RHI_AMD_FFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _WIN32
         RHI_Device::QueueWaitAll();
@@ -1014,14 +1014,14 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::FSR3_ResetHistory()
+    void RHI_AMD_FFX::FSR3_ResetHistory()
     {
     #ifdef _WIN32
         fsr3::description_dispatch.reset = true;
     #endif
     }
 
-    void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
+    void RHI_AMD_FFX::FSR3_GenerateJitterSample(float* x, float* y)
     {
     #ifdef _WIN32
         // get jitter phase count
@@ -1042,7 +1042,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::FSR3_Dispatch
+    void RHI_AMD_FFX::FSR3_Dispatch
     (
         RHI_CommandList* cmd_list,
         Camera* camera,
@@ -1099,7 +1099,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::SSSR_Dispatch(
+    void RHI_AMD_FFX::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         RHI_Texture* tex_color,
@@ -1137,19 +1137,19 @@ namespace spartan
         sssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
 
         // set sssr specific parameters
-        sssr::description_dispatch.motionVectorScale.x                  = -0.5f; // expects [-0.5, 0.5] range
-        sssr::description_dispatch.motionVectorScale.y                  = -0.5f; // expects [-0.5, 0.5] range, +Y as top-down
+        sssr::description_dispatch.motionVectorScale.x                  = 1.0f;  // expects [-0.5, 0.5] range
+        sssr::description_dispatch.motionVectorScale.y                  = -1.0f; // expects [-0.5, 0.5] range, +Y as top-down
         sssr::description_dispatch.normalUnPackMul                      = 1.0f;
         sssr::description_dispatch.normalUnPackAdd                      = 0.0f;
-        sssr::description_dispatch.depthBufferThickness                 = 0.05f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
+        sssr::description_dispatch.depthBufferThickness                 = 0.03f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
         sssr::description_dispatch.varianceThreshold                    = 0.04f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
         sssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         sssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running
         sssr::description_dispatch.mostDetailedMip                      = 0;     
-        sssr::description_dispatch.temporalStabilityFactor              = 0.8f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        sssr::description_dispatch.temporalStabilityFactor              = 0.7f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         sssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         sssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
-        sssr::description_dispatch.iblFactor                            = 0.0f;  
+        sssr::description_dispatch.iblFactor                            = 0.0f;
         sssr::description_dispatch.roughnessChannel                     = 0;     
         sssr::description_dispatch.isRoughnessPerceptual                = true;  
         sssr::description_dispatch.roughnessThreshold                   = 0.9f;  // regions with a roughness value greater than this threshold won't spawn rays
@@ -1168,7 +1168,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Update(
+    void RHI_AMD_FFX::BrixelizerGI_Update(
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         Cb_Frame* cb_frame,
@@ -1347,7 +1347,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Dispatch(
+    void RHI_AMD_FFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
         Cb_Frame* cb_frame,
         RHI_Texture* tex_frame,
@@ -1460,7 +1460,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
+    void RHI_AMD_FFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
     {
         #ifdef _MSC_VER
         if (resolution_percentage == 0.25f)
@@ -1488,7 +1488,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
+    void RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
         #ifdef _MSC_VER
 
@@ -1513,7 +1513,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
+    void RHI_AMD_FFX::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
     {
         #ifdef _MSC_VER
         // note: pipelines need to register only once
@@ -1556,7 +1556,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
+    void RHI_AMD_FFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
     {
         #ifdef _MSC_VER
         SP_ASSERT(breadcrumbs::context_created);
@@ -1567,7 +1567,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
+    void RHI_AMD_FFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
     {
         #ifdef _MSC_VER
         SP_ASSERT(breadcrumbs::context_created);
@@ -1579,7 +1579,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
+    void RHI_AMD_FFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
         #ifdef _MSC_VER
         SP_ASSERT(breadcrumbs::context_created);
@@ -1590,7 +1590,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved()
+    void RHI_AMD_FFX::Breadcrumbs_OnDeviceRemoved()
     {
         #ifdef _MSC_VER
         SP_ASSERT(breadcrumbs::context_created);
