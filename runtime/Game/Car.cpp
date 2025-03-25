@@ -366,30 +366,33 @@ namespace spartan
         {
             btWheelInfo& wheel_info1 = vehicle->getWheelInfo(wheel_index_1);
             btWheelInfo& wheel_info2 = vehicle->getWheelInfo(wheel_index_2);
-
-            float suspension_difference = (wheel_info1.m_raycastInfo.m_suspensionLength - tuning::suspension_rest_length) - (wheel_info2.m_raycastInfo.m_suspensionLength - tuning::suspension_rest_length);
-            float anti_roll_force       = suspension_difference * force;
-
+            
+            float suspension_difference = (wheel_info1.m_raycastInfo.m_suspensionLength - tuning::suspension_rest_length) - 
+                                         (wheel_info2.m_raycastInfo.m_suspensionLength - tuning::suspension_rest_length);
+            float anti_roll_force = suspension_difference * force;
+            
             if (wheel_info1.m_raycastInfo.m_isInContact || wheel_info2.m_raycastInfo.m_isInContact)
             {
                 btVector3 chassis_center = chassis->getCenterOfMassPosition();
-                btVector3 roll_axis      = (wheel_info2.m_raycastInfo.m_contactPointWS - wheel_info1.m_raycastInfo.m_contactPointWS).normalized();
-
+                btVector3 roll_axis = (wheel_info2.m_raycastInfo.m_contactPointWS - wheel_info1.m_raycastInfo.m_contactPointWS).normalized();
+            
                 if (wheel_info1.m_raycastInfo.m_isInContact)
                 {
-                    btVector3 force_position         = wheel_info1.m_raycastInfo.m_contactPointWS + roll_axis * (chassis_center - wheel_info1.m_raycastInfo.m_contactPointWS).dot(roll_axis);
-                    btVector3 anti_roll_force_vector = -roll_axis * anti_roll_force;
+                    btVector3 force_position = wheel_info1.m_raycastInfo.m_contactPointWS + 
+                                              roll_axis * (chassis_center - wheel_info1.m_raycastInfo.m_contactPointWS).dot(roll_axis);
+                    btVector3 anti_roll_force_vector = roll_axis * anti_roll_force; // Push wheel 1 up if compressed
                     chassis->applyForce(anti_roll_force_vector, force_position);
                 }
-
+            
                 if (wheel_info2.m_raycastInfo.m_isInContact)
                 {
-                    btVector3 force_position         = wheel_info2.m_raycastInfo.m_contactPointWS + roll_axis * (chassis_center - wheel_info2.m_raycastInfo.m_contactPointWS).dot(roll_axis);
-                    btVector3 anti_roll_force_vector = roll_axis * anti_roll_force;
+                    btVector3 force_position = wheel_info2.m_raycastInfo.m_contactPointWS + 
+                                              roll_axis * (chassis_center - wheel_info2.m_raycastInfo.m_contactPointWS).dot(roll_axis);
+                    btVector3 anti_roll_force_vector = -roll_axis * anti_roll_force; // Push wheel 2 down if wheel 1 compressed
                     chassis->applyForce(anti_roll_force_vector, force_position);
                 }
             }
-        }
+         }
     }
 
     namespace gearbox

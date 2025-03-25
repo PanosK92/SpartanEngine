@@ -336,7 +336,7 @@ namespace spartan
                                 if (instance_count == 0)
                                     continue;
         
-                                uint32_t lod_index = 0;
+                                uint32_t lod_index = renderable->GetLodCount() - 1;
         
                                 cmd_list->DrawIndexed(
                                     renderable->GetIndexCount(lod_index),
@@ -352,8 +352,8 @@ namespace spartan
                     {
                         if (light->IsInViewFrustum(renderable, array_index))
                         {
-                            uint32_t lod_index = 0
-                                ;
+                            uint32_t lod_index = renderable->GetLodCount() - 1;
+
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(lod_index),
                                 renderable->GetIndexOffset(lod_index),
