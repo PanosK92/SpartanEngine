@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "pch.h"
-#include "../RHI_FidelityFX.h"
+#include "../RHI_AMD_FFX.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../../World/Components/Camera.h"
@@ -34,42 +34,42 @@ using namespace std;
 
 namespace spartan
 {
-    void RHI_FidelityFX::Initialize()
+    void RHI_AMD_FFX::Initialize()
     {
 
     }
 
-    void RHI_FidelityFX::Shutdown()
+    void RHI_AMD_FFX::Shutdown()
     {
 
     }
 
-    void RHI_FidelityFX::Shutdown(const FidelityFX fx)
+    void RHI_AMD_FFX::Shutdown(const FidelityFX fx)
     {
 
     }
 
-    void RHI_FidelityFX::FSR3_ResetHistory()
+    void RHI_AMD_FFX::FSR3_ResetHistory()
     {
 
     }
 
-    void RHI_FidelityFX::FSR3_GenerateJitterSample(float* x, float* y)
+    void RHI_AMD_FFX::FSR3_GenerateJitterSample(float* x, float* y)
     {
 
     }
 
-    void RHI_FidelityFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    void RHI_AMD_FFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
 
     }
 
-    void RHI_FidelityFX::Tick(Cb_Frame* cb_frame)
+    void RHI_AMD_FFX::Tick(Cb_Frame* cb_frame)
     {
 
     }
 
-    void RHI_FidelityFX::FSR3_Dispatch
+    void RHI_AMD_FFX::FSR3_Dispatch
     (
         RHI_CommandList* cmd_list,
         Camera* camera,
@@ -86,7 +86,7 @@ namespace spartan
 
     }
 
-    void RHI_FidelityFX::SSSR_Dispatch(
+    void RHI_AMD_FFX::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         RHI_Texture* tex_color,
@@ -101,7 +101,7 @@ namespace spartan
 
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Update(
+    void RHI_AMD_FFX::BrixelizerGI_Update(
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         Cb_Frame* cb_frame,
@@ -112,7 +112,7 @@ namespace spartan
 
     }
 
-    void RHI_FidelityFX::BrixelizerGI_Dispatch(
+    void RHI_AMD_FFX::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
         Cb_Frame* cb_frame,
         RHI_Texture* tex_color,
@@ -129,32 +129,32 @@ namespace spartan
 
     }
 
-    void RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
+    void RHI_AMD_FFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
     {
 
     }
 
-    void RHI_FidelityFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
+    void RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
 
     }
 
-    void RHI_FidelityFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
+    void RHI_AMD_FFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
     {
 
     }
 
-    void RHI_FidelityFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
+    void RHI_AMD_FFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
     {
 
     }
 
-    void RHI_FidelityFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
+    void RHI_AMD_FFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
 
     }
 
-    void RHI_FidelityFX::Breadcrumbs_OnDeviceRemoved()
+    void RHI_AMD_FFX::Breadcrumbs_OnDeviceRemoved()
     {
 
     }
