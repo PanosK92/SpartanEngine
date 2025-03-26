@@ -534,14 +534,7 @@ namespace spartan
 
             if (Renderable* renderable = entity->GetComponent<Renderable>())
             {
-                if (Material* material = renderable->GetMaterial())
-                {
-                    // a mesh can be uninitialized if it's currently loading in a different thread
-                    if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
-                    { 
-                        m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
-                    }
-                }
+                m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
             }
 
             if (Light* light = entity->GetComponent<Light>())

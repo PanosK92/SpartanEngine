@@ -344,27 +344,31 @@ namespace spartan::math
         {
             float v0 = matrix.m20 * matrix.m31 - matrix.m21 * matrix.m30;
             float v1 = matrix.m20 * matrix.m32 - matrix.m22 * matrix.m30;
-            float v2 = matrix.m20 * matrix.m33 - matrix.m23 *matrix.m30;
+            float v2 = matrix.m20 * matrix.m33 - matrix.m23 * matrix.m30;
             float v3 = matrix.m21 * matrix.m32 - matrix.m22 * matrix.m31;
             float v4 = matrix.m21 * matrix.m33 - matrix.m23 * matrix.m31;
             float v5 = matrix.m22 * matrix.m33 - matrix.m23 * matrix.m32;
 
-            float i00 = (v5 * matrix.m11 - v4 * matrix.m12 + v3 * matrix.m13);
+            float i00 =  (v5 * matrix.m11 - v4 * matrix.m12 + v3 * matrix.m13);
             float i10 = -(v5 * matrix.m10 - v2 * matrix.m12 + v1 * matrix.m13);
-            float i20 = (v4 * matrix.m10 - v2 * matrix.m11 + v0 * matrix.m13);
+            float i20 =  (v4 * matrix.m10 - v2 * matrix.m11 + v0 * matrix.m13);
             float i30 = -(v3 * matrix.m10 - v1 * matrix.m11 + v0 * matrix.m12);
 
-            const float invDet = 1.0f / (i00 * matrix.m00 + i10 * matrix.m01 + i20 * matrix.m02 + i30 * matrix.m03);
+            float det = i00 * matrix.m00 + i10 * matrix.m01 + i20 * matrix.m02 + i30 * matrix.m03;
+            if (std::isnan(det))
+                return Matrix::Identity;
 
-            i00 *= invDet;
-            i10 *= invDet;
-            i20 *= invDet;
-            i30 *= invDet;
+            const float inv_det = 1.0f / det;
 
-            const float i01 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
-            const float i11 = (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
-            const float i21 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
-            const float i31 = (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
+            i00 *= inv_det;
+            i10 *= inv_det;
+            i20 *= inv_det;
+            i30 *= inv_det;
+
+            const float i01 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * inv_det;
+            const float i11 =  (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * inv_det;
+            const float i21 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * inv_det;
+            const float i31 =  (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * inv_det;
 
             v0 = matrix.m10 * matrix.m31 - matrix.m11 * matrix.m30;
             v1 = matrix.m10 * matrix.m32 - matrix.m12 * matrix.m30;
@@ -373,10 +377,10 @@ namespace spartan::math
             v4 = matrix.m11 * matrix.m33 - matrix.m13 * matrix.m31;
             v5 = matrix.m12 * matrix.m33 - matrix.m13 * matrix.m32;
 
-            const float i02 = (v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
-            const float i12 = -(v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
-            const float i22 = (v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
-            const float i32 = -(v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
+            const float i02 =  (v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * inv_det;
+            const float i12 = -(v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * inv_det;
+            const float i22 =  (v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * inv_det;
+            const float i32 = -(v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * inv_det;
 
             v0 = matrix.m21 * matrix.m10 - matrix.m20 * matrix.m11;
             v1 = matrix.m22 * matrix.m10 - matrix.m20 * matrix.m12;
@@ -385,10 +389,10 @@ namespace spartan::math
             v4 = matrix.m23 * matrix.m11 - matrix.m21 * matrix.m13;
             v5 = matrix.m23 * matrix.m12 - matrix.m22 * matrix.m13;
 
-            const float i03 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * invDet;
-            const float i13 = (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * invDet;
-            const float i23 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * invDet;
-            const float i33 = (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * invDet;
+            const float i03 = -(v5 * matrix.m01 - v4 * matrix.m02 + v3 * matrix.m03) * inv_det;
+            const float i13 =  (v5 * matrix.m00 - v2 * matrix.m02 + v1 * matrix.m03) * inv_det;
+            const float i23 = -(v4 * matrix.m00 - v2 * matrix.m01 + v0 * matrix.m03) * inv_det;
+            const float i33 =  (v3 * matrix.m00 - v1 * matrix.m01 + v0 * matrix.m02) * inv_det;
 
             return Matrix(
                 i00, i01, i02, i03,

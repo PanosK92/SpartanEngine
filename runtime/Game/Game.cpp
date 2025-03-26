@@ -747,8 +747,8 @@ namespace spartan
             create_car(object_position);
             create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
             create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
-            //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // this produces NAN - investigate
-            //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // this produces NAN - investigate
+           //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
+           //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
         }
 
         void create_sponza_4k()

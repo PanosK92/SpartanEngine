@@ -129,11 +129,16 @@ namespace spartan
         // bullet -> engine
         void setWorldTransform(const btTransform& transform) override
         {
+            // set rotation, this seems to be okay
             const Quaternion new_rotation = bt_to_quaternion(transform.getRotation());
-            const Vector3 new_position    = bt_to_vector(transform.getOrigin()) - new_rotation * m_rigid_body->GetCenterOfMass();
-
-            m_rigid_body->GetEntity()->SetPosition(new_position);
             m_rigid_body->GetEntity()->SetRotation(new_rotation);
+
+            // set position, this can be Nan during the first frame of the simulation - bullet has issues with multi-threading, I bet it's that
+            const Vector3 new_position = bt_to_vector(transform.getOrigin()) - new_rotation * m_rigid_body->GetCenterOfMass();
+            if (!new_position.IsNaN())
+            {
+                m_rigid_body->GetEntity()->SetPosition(new_position);
+            }
         }
     private:
         PhysicsBody* m_rigid_body;
