@@ -84,7 +84,6 @@ namespace spartan
         array<Sb_Aabb, rhi_max_array_size> bindless_aabbs;
         bool bindless_materials_dirty = true;
         bool bindless_lights_dirty    = true;
-        bool bindless_samplers_dirty  = true;
 
         // misc
         unordered_map<Renderer_Option, float> m_options;
@@ -629,13 +628,6 @@ namespace spartan
 
         // bindless arrays
         {
-            // samplers
-            if (bindless_samplers_dirty)
-            {
-                 RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
-                 bindless_samplers_dirty = false;
-            }
-
             // materials and their textures
             if (bindless_materials_dirty)
             {
@@ -1101,11 +1093,6 @@ namespace spartan
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::AABBs);
         buffer->ResetOffset();
         buffer->Update(cmd_list, &bindless_aabbs[0], buffer->GetStride() * count);
-    }
-
-    void Renderer::BindlessUpdateSamplers()
-    {
-        bindless_samplers_dirty = true;
     }
 
     void Renderer::Screenshot(const string& file_path)

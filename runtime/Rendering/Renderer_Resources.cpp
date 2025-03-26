@@ -164,7 +164,7 @@ namespace spartan
             }
         }
 
-        Renderer::BindlessUpdateSamplers();
+        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
     }
 
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
