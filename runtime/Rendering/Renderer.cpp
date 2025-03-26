@@ -1218,7 +1218,7 @@ namespace spartan
                     Material* material           = renderable->GetMaterial();
             
                     // skip if material is null, transparent, or alpha-tested (unreliable occluders)
-                    if (!material )
+                    if (!material || material->IsTransparent())
                         continue;
             
                     // get bounding box
