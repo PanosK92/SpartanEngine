@@ -646,11 +646,10 @@ namespace spartan
                 bindless_lights_dirty = false;
             }
 
-            // bounding boxes (world space) - they need to constantly update 
+            // bounding boxes (world space) - they need to constantly update
             {
                 lock_guard lock(m_mutex_renderables);
                 BindlessUpdateOccludersAndOccludes(cmd_list);
-                RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
             }
         }
     }
@@ -1219,7 +1218,7 @@ namespace spartan
                     Material* material           = renderable->GetMaterial();
             
                     // skip if material is null, transparent, or alpha-tested (unreliable occluders)
-                    if (!material || material->IsTransparent())
+                    if (!material )
                         continue;
             
                     // get bounding box
