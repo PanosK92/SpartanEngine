@@ -184,6 +184,7 @@ namespace spartan
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
         bool m_render_pass_active                            = false;
+        uint32_t m_render_pass_draw_calls                    = 0;
         std::stack<const char*> m_active_timeblocks;
         std::stack<const char*> m_debug_label_stack;
         std::mutex m_mutex_reset;

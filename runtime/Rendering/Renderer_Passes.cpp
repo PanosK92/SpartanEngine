@@ -45,7 +45,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    std::array<Renderer_DrawCall, renderer_max_entities> Renderer::m_draw_calls;
+    array<Renderer_DrawCall, renderer_max_entities> Renderer::m_draw_calls;
     uint32_t Renderer::m_draw_call_count;
 
     namespace
@@ -178,7 +178,7 @@ namespace spartan
         cmd_list->BeginTimeblock("variable_rate_shading");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
@@ -192,6 +192,9 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
+    constexpr size_t MAX_LIGHTS = 64;      // maximum number of lights supported
+    constexpr size_t MAX_RENDERABLES = 1024; // maximum number of renderables per cascade/face
+    
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
@@ -203,7 +206,7 @@ namespace spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
     
         // set base pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name                             = "shadow_maps";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.blend_state                      = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha) : GetBlendState(Renderer_BlendState::Off);
@@ -211,15 +214,15 @@ namespace spartan
         pso.clear_depth                      = 0.0f;
         pso.clear_color[0]                   = Color::standard_white;
     
-        // static vector to track which lights need shadow map updates
-        static std::vector<bool> update_shadow_map;
-        update_shadow_map.assign(lights.size(), false);
+        // static array to track which lights need shadow map updates
+        static bool update_shadow_map[MAX_LIGHTS];
+        fill(update_shadow_map, update_shadow_map + lights.size(), false);
     
         // compute update flags for lights based on moving renderables
         for (auto& entity : renderables)
         {
             Renderable* renderable = entity->GetComponent<Renderable>();
-            if (!renderable )
+            if (!renderable)
                 continue;
     
             uint64_t current_lights = 0;
@@ -259,13 +262,13 @@ namespace spartan
                 }
                 if (is_in_light)
                 {
-                    current_lights |= (1ULL << light->GetIndex());
+                    current_lights |= (1ULL << i); // assuming GetIndex() matches array index i
                 }
             }
     
             uint64_t previous_lights  = renderable->GetPreviousLights();
             uint64_t lights_to_update = previous_lights | current_lights;
-            for (uint32_t i = 0; i < lights.size() && i < 64; ++i)
+            for (uint32_t i = 0; i < lights.size() && i < MAX_LIGHTS; ++i)
             {
                 if (lights_to_update & (1ULL << i))
                 {
@@ -289,7 +292,7 @@ namespace spartan
             if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
                 continue;
     
-            // set light-specific pso
+            // set light-specific pso properties
             pso.render_target_color_textures[0] = light->GetColorTexture();
             pso.render_target_depth_texture     = light->GetDepthTexture();
             pso.rasterizer_state                = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
@@ -300,7 +303,10 @@ namespace spartan
                 pso.render_target_array_index = array_index;
                 cmd_list->SetIgnoreClearValues(is_transparent_pass);
     
-                // iterate over renderables
+                // collect visible renderables to avoid wasted pso sets
+                Entity* visible_renderables[MAX_RENDERABLES];
+                size_t visible_count = 0;
+    
                 for (shared_ptr<Entity>& entity : renderables)
                 {
                     Renderable* renderable = entity->GetComponent<Renderable>();
@@ -311,40 +317,15 @@ namespace spartan
                     if (!material || material->IsTransparent() != is_transparent_pass)
                         continue;
     
-                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                    pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? shader_alpha_color_p : nullptr;
-                    cmd_list->SetPipelineState(pso);
-                    
-                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
-                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
-                    m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
-                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), GetBuffer(Renderer_Buffer::DummyInstance));
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
+                    bool is_visible = false;
                     if (renderable->HasInstancing())
                     {
-                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); ++group_index)
                         {
                             if (light->IsInViewFrustum(renderable, array_index, group_index))
                             {
-                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
-                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
-                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-                                if (instance_count == 0)
-                                    continue;
-        
-                                uint32_t lod_index = renderable->GetLodCount() - 1;
-        
-                                cmd_list->DrawIndexed(
-                                    renderable->GetIndexCount(lod_index),
-                                    renderable->GetIndexOffset(lod_index),
-                                    renderable->GetVertexOffset(lod_index),
-                                    instance_start_index,
-                                    instance_count
-                                );
+                                is_visible = true;
+                                break;
                             }
                         }
                     }
@@ -352,8 +333,71 @@ namespace spartan
                     {
                         if (light->IsInViewFrustum(renderable, array_index))
                         {
+                            is_visible = true;
+                        }
+                    }
+    
+                    if (is_visible && visible_count < MAX_RENDERABLES)
+                    {
+                        visible_renderables[visible_count++] = entity.get();
+                    }
+                }
+    
+                // draw only if there are visible renderables
+                if (visible_count > 0)
+                {
+                    for (size_t i = 0; i < visible_count; ++i)
+                    {
+                        Entity* entity     = visible_renderables[i];
+                        Renderable* renderable = entity->GetComponent<Renderable>();
+                        Material* material = renderable->GetMaterial();
+    
+                        // set per-renderable states
+                        cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                        pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? shader_alpha_color_p : nullptr;
+                        cmd_list->SetPipelineState(pso);
+    
+                        // set push constants
+                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
+                        m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                        m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
+                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+                        cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                        // set buffers
+                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), GetBuffer(Renderer_Buffer::DummyInstance));
+                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+    
+                        // draw based on instancing
+                        if (renderable->HasInstancing())
+                        {
+                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+                            {
+                                if (light->IsInViewFrustum(renderable, array_index, group_index))
+                                {
+                                    uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                    uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
+                                    instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                    if (instance_count == 0)
+                                        continue;
+    
+                                    uint32_t lod_index = renderable->GetLodCount() - 1;
+    
+                                    cmd_list->DrawIndexed(
+                                        renderable->GetIndexCount(lod_index),
+                                        renderable->GetIndexOffset(lod_index),
+                                        renderable->GetVertexOffset(lod_index),
+                                        instance_start_index,
+                                        instance_count
+                                    );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // no need to check frustum again, already confirmed visible
                             uint32_t lod_index = renderable->GetLodCount() - 1;
-
+    
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(lod_index),
                                 renderable->GetIndexOffset(lod_index),
@@ -379,7 +423,7 @@ namespace spartan
         // occluders
         {
             // set pipeline state for depth-only rendering
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name                             = "occluders";
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_hiz_v);
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -426,7 +470,7 @@ namespace spartan
         // visibility
         {
             // define pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "visiblity";
             pso.shaders[Compute] = GetShader(Renderer_Shader::hiz_c);
     
@@ -462,7 +506,7 @@ namespace spartan
         cmd_list->BeginTimeblock("depth_prepass");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name                             = "depth_prepass";
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v);
             pso.rasterizer_state                 = rasterizer_state;
@@ -569,7 +613,7 @@ namespace spartan
         RHI_DepthStencilState* depth_stencil_state = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
     
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name                             = "g_buffer";
         pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::gbuffer_v);
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
@@ -678,7 +722,7 @@ namespace spartan
         if (GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
         {
             // define pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "ssao";
             pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);
 
@@ -746,7 +790,7 @@ namespace spartan
         cmd_list->BeginTimeblock("sss");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "sss";
             pso.shaders[Compute] = GetShader(Renderer_Shader::sss_c_bend);
             cmd_list->SetPipelineState(pso);
@@ -842,7 +886,7 @@ namespace spartan
         cmd_list->BeginTimeblock("skysphere");
         {
             // set pipeline state
-            static RHI_PipelineState pso_skysphere;
+            RHI_PipelineState pso_skysphere;
             pso_skysphere.name             = "skysphere";
             pso_skysphere.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
             cmd_list->SetPipelineState(pso_skysphere);
@@ -868,7 +912,7 @@ namespace spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "light";
             pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
             cmd_list->SetPipelineState(pso);
@@ -990,7 +1034,7 @@ namespace spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
 
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name             = "light_composition_transparent";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
@@ -1025,7 +1069,7 @@ namespace spartan
         cmd_list->BeginTimeblock("light_image_based");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "light_image_based";
             pso.shaders[Compute] = shader;
             cmd_list->SetPipelineState(pso);
@@ -1061,7 +1105,7 @@ namespace spartan
         cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "light_integration_brdf_specular_lut";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
@@ -1113,7 +1157,7 @@ namespace spartan
             }
 
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "light_integration_environment_filter";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
@@ -1231,7 +1275,7 @@ namespace spartan
         cmd_list->BeginMarker("luminance");
         {
             // define pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "bloom_luminance";
             pso.shaders[Compute] = shader_luminance;
 
@@ -1254,7 +1298,7 @@ namespace spartan
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
         {
             // define pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "bloom_upsample_blend_mip";
             pso.shaders[Compute] = shader_upsample_blend_mip;
 
@@ -1286,7 +1330,7 @@ namespace spartan
         cmd_list->BeginMarker("blend_with_frame");
         {
             // define pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "bloom_blend_frame";
             pso.shaders[Compute] = shader_blend_frame;
 
@@ -1318,7 +1362,7 @@ namespace spartan
         cmd_list->BeginTimeblock("output");
 
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name             = "output";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
@@ -1342,7 +1386,7 @@ namespace spartan
         cmd_list->BeginTimeblock("fxaa");
 
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name             = "fxaa";
         pso.shaders[Compute] = GetShader(Renderer_Shader::fxaa_c);
         cmd_list->SetPipelineState(pso);
@@ -1362,7 +1406,7 @@ namespace spartan
         cmd_list->BeginTimeblock("chromatic_aberration");
 
         // define pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name             = "chromatic_aberration";
         pso.shaders[Compute] = GetShader(Renderer_Shader::chromatic_aberration_c);
 
@@ -1391,7 +1435,7 @@ namespace spartan
         cmd_list->BeginTimeblock("motion_blur");
 
         // define pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name             = "motion_blur";
         pso.shaders[Compute] = shader_c;
 
@@ -1421,7 +1465,7 @@ namespace spartan
         cmd_list->BeginTimeblock("depth_of_field");
 
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name             = "depth_of_field";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
@@ -1450,7 +1494,7 @@ namespace spartan
         cmd_list->BeginTimeblock("film_grain");
 
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name             = "film_grain";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
@@ -1515,7 +1559,7 @@ namespace spartan
         cmd_list->BeginTimeblock("blit");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "blit";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
@@ -1568,7 +1612,7 @@ namespace spartan
         cmd_list->BeginMarker("downscale");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "downscale";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
@@ -1596,7 +1640,7 @@ namespace spartan
         cmd_list->BeginTimeblock("sharpening");
         {
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.name             = "sharpening";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
@@ -1637,7 +1681,7 @@ namespace spartan
         cmd_list->BeginMarker("blur");
 
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1675,91 +1719,109 @@ namespace spartan
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
+        // early exit if lights are disabled or engine is in playing mode
         if (!GetOption<bool>(Renderer_Option::Lights) || Engine::IsFlagSet(EngineMode::Playing))
             return;
-
-        // acquire shaders
+    
+        // acquire resources
         RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v);
         RHI_Shader* shader_p = GetShader(Renderer_Shader::quad_p);
-
-        // acquire entities
-        auto& lights        = m_renderables[Renderer_Entity::Light];
-        auto& audio_sources = m_renderables[Renderer_Entity::AudioSource];
+        auto& lights         = m_renderables[Renderer_Entity::Light];
+        auto& audio_sources  = m_renderables[Renderer_Entity::AudioSource];
         if ((lights.empty() && audio_sources.empty()) || !GetCamera())
             return;
-
+    
         cmd_list->BeginTimeblock("icons");
-
-        // set pipeline state
-        static RHI_PipelineState pso;
-        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-        pso.render_target_color_textures[0]  = tex_out;
-        cmd_list->SetPipelineState(pso);
-
-        auto draw_icon = [&cmd_list](Entity* entity, RHI_Texture* texture)
         {
-            const Vector3 pos_world        = entity->GetPosition();
-            const Vector3 pos_world_camera = GetCamera()->GetEntity()->GetPosition();
-            const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
-            const float v_dot_l            = Vector3::Dot(GetCamera()->GetEntity()->GetForward(), camera_to_light);
-
-            // only draw if it's inside our view
-            if (v_dot_l > 0.5f)
+            // define the draw_icon lambda
+            auto draw_icon = [&cmd_list](Entity* entity, RHI_Texture* texture)
             {
-                // compute transform
+                const Vector3 pos_world        = entity->GetPosition();
+                const Vector3 pos_world_camera = GetCamera()->GetEntity()->GetPosition();
+                const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
+                const float v_dot_l            = Vector3::Dot(GetCamera()->GetEntity()->GetForward(), camera_to_light);
+    
+                // only draw if inside view
+                if (v_dot_l > 0.5f)
                 {
-                    // use the distance from the camera to scale the icon, this will
-                    // cancel out perspective scaling, hence keeping the icon scale constant
-                    const float distance = (pos_world_camera - pos_world).Length();
-                    const float scale    = distance * 0.04f;
-
-                    // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing
-                    Quaternion rotation_reorient_quad = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
-                    // 2nd rotation: Rotate the camera facing quad with the camera, so that it remains a camera facing quad
+                    // compute transform
+                    const float distance                 = (pos_world_camera - pos_world).Length();
+                    const float scale                    = distance * 0.04f;
+                    Quaternion rotation_reorient_quad    = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
                     Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera);
-
-                    Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
-
-                    // set transform
+                    Matrix transform                     = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
                     m_pcb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection_unjittered;
                     cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                    // draw rectangle
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
+                    cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
+                    cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
+                    cmd_list->DrawIndexed(6);
                 }
-
-                // draw rectangle
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-                cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
-                cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
-                cmd_list->DrawIndexed(6);
-            }
-        };
-
-        // draw audio source icons
-        for (shared_ptr<Entity> entity : audio_sources)
-        {
-            draw_icon(entity.get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source));
-        }
-
-        // draw light icons
-        for (shared_ptr<Entity> entity : lights)
-        {
-            RHI_Texture* texture = nullptr;
-
-            // light can be null if it just got removed and our buffer doesn't update till the next frame
-            if (Light* light = entity->GetComponent<Light>())
+            };
+    
+            // static array for visible entities with a fixed size
+            constexpr size_t MAX_ICONS = 64;
+            pair<Entity*, RHI_Texture*> visible_entities[MAX_ICONS];
+            size_t visible_count = 0;
+    
+            // helper lambda to check visibility and add to the array
+            auto check_and_add = [&](Entity* entity, RHI_Texture* texture)
             {
-                // get the texture
-                if (light->GetLightType() == LightType::Directional) texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
-                else if (light->GetLightType() == LightType::Point)  texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
-                else if (light->GetLightType() == LightType::Spot)   texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
+                const Vector3 pos_world        = entity->GetPosition();
+                const Vector3 pos_world_camera = GetCamera()->GetEntity()->GetPosition();
+                const Vector3 camera_to_entity = (pos_world - pos_world_camera).Normalized();
+                const float v_dot_l            = Vector3::Dot(GetCamera()->GetEntity()->GetForward(), camera_to_entity);
+                if (v_dot_l > 0.5f && visible_count < MAX_ICONS)
+                {
+                    visible_entities[visible_count++] = {entity, texture};
+                }
+            };
+    
+            // process audio sources
+            for (auto& entity : audio_sources)
+            {
+                check_and_add(entity.get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source));
             }
-
-            draw_icon(entity.get(), texture);
+    
+            // process lights
+            for (auto& entity : lights)
+            {
+                RHI_Texture* texture = nullptr;
+                if (Light* light = entity->GetComponent<Light>())
+                {
+                    if (light->GetLightType() == LightType::Directional)
+                        texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
+                    else if (light->GetLightType() == LightType::Point)
+                        texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
+                    else if (light->GetLightType() == LightType::Spot)
+                        texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
+                }
+                check_and_add(entity.get(), texture);
+            }
+    
+            // only set pipeline state and draw if there are visible entities
+            if (visible_count > 0)
+            {
+                // set pipeline state
+                RHI_PipelineState pso;
+                pso.name                             = "icons";
+                pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+                pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+                pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+                pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
+                pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+                pso.render_target_color_textures[0]  = tex_out;
+                cmd_list->SetPipelineState(pso);
+    
+                // draw visible entities
+                for (size_t i = 0; i < visible_count; ++i)
+                {
+                    draw_icon(visible_entities[i].first, visible_entities[i].second);
+                }
+            }
         }
-
         cmd_list->EndTimeblock();
     }
 
@@ -1775,7 +1837,7 @@ namespace spartan
         cmd_list->BeginTimeblock("grid");
 
         // set pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
         pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -1819,7 +1881,7 @@ namespace spartan
             cmd_list->BeginTimeblock("lines");
 
             // set pipeline state
-            static RHI_PipelineState pso;
+            RHI_PipelineState pso;
             pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Wireframe);
@@ -1876,7 +1938,7 @@ namespace spartan
                         cmd_list->BeginMarker("color_silhouette");
                         {
                             // set pipeline state
-                            static RHI_PipelineState pso;
+                            RHI_PipelineState pso;
                             pso.name                             = "color_silhouette";
                             pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
                             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
@@ -1912,7 +1974,7 @@ namespace spartan
                         cmd_list->BeginMarker("composition");
                         {
                             // set pipeline state
-                            static RHI_PipelineState pso;
+                            RHI_PipelineState pso;
                             pso.name             = "composition";
                             pso.shaders[Compute] = shader_c;
                             cmd_list->SetPipelineState(pso);
@@ -1948,7 +2010,7 @@ namespace spartan
         font->UpdateVertexAndIndexBuffers(cmd_list);
 
         // define pipeline state
-        static RHI_PipelineState pso;
+        RHI_PipelineState pso;
         pso.name                             = "text";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;

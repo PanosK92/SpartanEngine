@@ -78,6 +78,7 @@ namespace spartan
         static uint32_t m_rhi_bindings_shader_compute;
         static uint32_t m_rhi_bindings_render_target;
         static uint32_t m_rhi_bindings_texture_storage;
+        static uint32_t m_rhi_bindings_pipeline;
 
         // misc
         static uint32_t m_descriptor_set_count;
@@ -102,6 +103,7 @@ namespace spartan
             m_rhi_bindings_shader_compute    = 0;
             m_rhi_bindings_render_target     = 0;
             m_rhi_bindings_texture_storage   = 0;
+            m_rhi_bindings_pipeline          = 0;
         }
 
         static void AcquireGpuData();

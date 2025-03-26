@@ -53,6 +53,7 @@ namespace spartan
     uint32_t Profiler::m_rhi_bindings_shader_compute    = 0;
     uint32_t Profiler::m_rhi_bindings_render_target     = 0;
     uint32_t Profiler::m_rhi_bindings_texture_storage   = 0;
+    uint32_t Profiler::m_rhi_bindings_pipeline          = 0;
 
     // misc
     uint32_t Profiler::m_descriptor_set_count = 0;
@@ -241,6 +242,7 @@ namespace spartan
         m_rhi_bindings_shader_compute    = 0;
         m_rhi_bindings_render_target     = 0;
         m_rhi_bindings_texture_storage   = 0;
+        m_rhi_bindings_pipeline          = 0;
     }
 
     void Profiler::ReadTimeBlocks()
@@ -458,7 +460,7 @@ namespace spartan
                 "Index buffer bindings:\t\t%u\n"
                 "Vertex buffer bindings:\t\t%u\n"
                 "Barriers:\t\t\t\t\t\t\t\t\t%u\n"
-                "Pipelines:\t\t\t\t\t\t\t\t%u\n"
+                "Bindings from pipelines:\t%u/%u\n"
                 "Descriptor set capacity:\t%u/%u",
 
                 m_fps,
@@ -497,7 +499,7 @@ namespace spartan
                 m_rhi_bindings_buffer_index,
                 m_rhi_bindings_buffer_vertex,
                 m_rhi_pipeline_barriers,
-                RHI_Device::GetPipelineCount(),
+                m_rhi_bindings_pipeline, RHI_Device::GetPipelineCount(),
                 m_descriptor_set_count, rhi_max_descriptor_set_count
             );
         }

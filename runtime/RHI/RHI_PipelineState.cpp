@@ -62,6 +62,8 @@ namespace spartan
                 SP_ASSERT_MSG(pso.rasterizer_state,                "You need to define a rasterizer state");
                 SP_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
             }
+
+            SP_ASSERT_MSG(pso.name, "Name your pipeline state");
         }
 
         uint64_t compute_hash(RHI_PipelineState& pso)

@@ -1141,7 +1141,7 @@ namespace spartan
         sssr::description_dispatch.motionVectorScale.y                  = -1.0f; // expects [-0.5, 0.5] range, +Y as top-down
         sssr::description_dispatch.normalUnPackMul                      = 1.0f;
         sssr::description_dispatch.normalUnPackAdd                      = 0.0f;
-        sssr::description_dispatch.depthBufferThickness                 = 0.03f; // hit acceptance bias, larger values can cause streaks, lower values can cause holes
+        sssr::description_dispatch.depthBufferThickness                 = 0.1f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
         sssr::description_dispatch.varianceThreshold                    = 0.04f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
         sssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         sssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running

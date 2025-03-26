@@ -52,7 +52,7 @@ namespace spartan
         RHI_Texture* render_target_depth_texture   = nullptr;
         RHI_Texture* vrs_input_texture             = nullptr;
         uint32_t render_target_array_index         = 0;
-        std::array<RHI_Shader*, static_cast<uint32_t>(RHI_Shader_Type::Max)> shaders;
+        std::array<RHI_Shader*, static_cast<uint32_t>(RHI_Shader_Type::Max)> shaders = {};
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
         //=================================================================================
 

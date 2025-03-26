@@ -530,6 +530,7 @@ namespace spartan
             // bind
             VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
+            Profiler::m_rhi_bindings_pipeline++;
 
             // set some dynamic states
             if (m_pso.IsGraphics())
@@ -704,8 +705,9 @@ namespace spartan
             SetViewport(viewport);
         }
 
-        m_render_pass_active  = true;
-        m_ignore_clear_values = true;
+        m_render_pass_active     = true;
+        m_render_pass_draw_calls = 0;
+        m_ignore_clear_values    = true;
     }
 
     void RHI_CommandList::RenderPassEnd()
@@ -715,6 +717,7 @@ namespace spartan
 
         vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
         m_render_pass_active = false;
+        SP_ASSERT_MSG(m_render_pass_draw_calls != 0, "No draw calls were made within the render pass, this wastes GPU resources");
 
         if (m_pso.render_target_swapchain)
         {
@@ -845,6 +848,7 @@ namespace spartan
             0                                             // firstInstance
         );
         Profiler::m_rhi_draw++;
+        m_render_pass_draw_calls++;
     }
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
@@ -862,6 +866,7 @@ namespace spartan
             instance_start_index                          // firstInstance
         );
         Profiler::m_rhi_draw++;
+        m_render_pass_draw_calls++;
     }
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
