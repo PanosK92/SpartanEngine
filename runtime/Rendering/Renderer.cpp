@@ -1115,13 +1115,12 @@ namespace spartan
 
     void Renderer::BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list)
     {
-        // cpu pass
         cmd_list->BeginTimeblock("build_draw_calls_and_occluders", false, false);
         {
             // build draw calls and sort them
             {
                 m_draw_call_count = 0;
-
+        
                 for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Mesh])
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
@@ -1142,6 +1141,8 @@ namespace spartan
                                     instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
                                     if (instance_count == 0)
                                         continue;
+        
+                                    renderable->GetMaterial()->GetObjectId(); // 64-bit, called but not used here
                 
                                     uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
                                     Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
@@ -1167,42 +1168,33 @@ namespace spartan
                     }
                 }
                 
+                // sort by transparency, material id, and distance (front-to-back for opaque, back-to-front for transparent)
                 sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
                 {
-                    // check transparency
+                    // step 1: sort by transparency (opaque before transparent)
                     bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
                     bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-                    
                     if (a_transparent != b_transparent)
                     {
-                        return !a_transparent; // opaque (false) before transparent (true)
+                        return !a_transparent; // false (opaque) before true (transparent)
                     }
                     
+                    // step 2: sort by material id within each transparency group
+                    uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
+                    uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
+                    if (a_material_id != b_material_id)
+                    {
+                        return a_material_id < b_material_id; // lower material ids first
+                    }
+                    
+                    // step 3: sort by distance within each material group
                     if (!a_transparent) // both are opaque
-                    { 
-                        // check tessellation
-                        bool a_tess = a.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                        bool b_tess = b.renderable->GetMaterial()->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                        if (a_tess != b_tess)
-                        {
-                            return !a_tess; // no tessellation (false) before tessellation (true)
-                        }
-                        
-                        // check alpha testing
-                        bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
-                        bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
-                        if (a_alpha != b_alpha)
-                        {
-                            return !a_alpha; // no alpha testing (false) before alpha testing (true)
-                        }
-                        
-                        // sort by distance front to back
-                        return a.distance_squared < b.distance_squared;
+                    {
+                        return a.distance_squared < b.distance_squared; // front-to-back
                     }
                     else // both are transparent
-                    { 
-                        // sort by distance back to front
-                        return a.distance_squared > b.distance_squared;
+                    {
+                        return a.distance_squared > b.distance_squared; // back-to-front
                     }
                 });
             }
