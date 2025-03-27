@@ -24,17 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float3 up_direction         = float3(0, 1, 0);                  // up direction
-static const float3 earth_center      = float3(0, -6371e3, 0);            // earth center at -radius (meters), y-up
-static const float earth_radius       = 6371e3;                           // earth radius in meters
-static const float atmosphere_height  = 100e3;                            // atmosphere thickness in meters
-static const float h_rayleigh         = 7994.0;                           // rayleigh scale height in meters
-static const float h_mie              = 1200.0;                           // mie scale height in meters
-static const float3 beta_rayleigh     = float3(5.8e-6, 13.5e-6, 33.1e-6); // rayleigh scattering coefficients (m^-1)
-static const float3 beta_mie          = float3(2e-5, 2e-5, 2e-5);         // mie scattering coefficients (m^-1)
-static const float g_mie              = 0.8;                              // mie phase asymmetry factor (forward scattering)
-static const int num_view_samples     = 6;                                // samples along view ray
-static const int num_sun_samples      = 6;                                // samples along sun ray
+static const float3 up_direction     = float3(0, 1, 0);                  // up direction
+static const float3 earth_center     = float3(0, -6371e3, 0);            // earth center at -radius (meters), y-up
+static const float earth_radius      = 6371e3;                           // earth radius in meters
+static const float atmosphere_height = 100e3;                            // atmosphere thickness in meters
+static const float h_rayleigh        = 7994.0;                           // rayleigh scale height in meters
+static const float h_mie             = 1200.0;                           // mie scale height in meters
+static const float3 beta_rayleigh    = float3(5.8e-6, 13.5e-6, 33.1e-6); // rayleigh scattering coefficients (m^-1)
+static const float3 beta_mie         = float3(2e-5, 2e-5, 2e-5);         // mie scattering coefficients (m^-1)
+static const float g_mie             = 0.8;                              // mie phase asymmetry factor (forward scattering)
+static const int num_view_samples    = 6;                                // samples along view ray
+static const int num_sun_samples     = 6;                                // samples along sun ray
 
 struct sun
 {
@@ -55,14 +55,48 @@ struct sun
         float mie                = lerp(0.01f, 0.04f, sun_elevation);
         float mie_g              = lerp(-0.9f, -0.6f, sun_elevation);
         float3 directional_light = compute_mie_scatter_color(view_dir, sun_dir, mie, mie_g) * 0.3f;
-        float3 sun_disc          = compute_mie_scatter_color(view_dir, sun_dir, 0.001f, -0.998f);     
+        float3 sun_disc          = compute_mie_scatter_color(view_dir, sun_dir, 0.001f, -0.998f);
         float fade_out_factor    = saturate(sun_elevation * 10.0f);
         
         return (directional_light + sun_disc) * fade_out_factor;
     }
 };
 
-// utility function to compute ray-sphere intersection
+struct stars
+{
+    static float2 hash22(float2 p)
+    {
+        float3 p3  = frac(float3(p.xyx) * float3(0.1031, 0.1030, 0.0973));
+        p3        += dot(p3, p3.yzx + 33.33);
+        return frac((p3.xx + p3.yz) * p3.zy);
+    }
+
+    static float3 compute_color(const float2 uv, const float3 sun_direction)
+    {
+        float sun_elevation = dot(sun_direction, up_direction);
+        bool is_night       = sun_elevation < 0.0;
+    
+        float brightness = 0.0;
+        if (is_night)
+        {
+            // create
+            float2 star_uv = uv * 100.0f;
+            float2 hash    = hash22(star_uv);
+            brightness     = step(0.999f, hash.x);
+
+            // twinkle
+            float twinkle  = 0.5 + 0.5 * sin((float) buffer_frame.time * 2.0 + hash.y * 6.28318);
+            brightness    *= twinkle;
+    
+            // fade in
+            float star_factor  = saturate(-sun_elevation * 10.0);
+            brightness        *= star_factor;
+        }
+        
+        return float3(brightness, brightness, brightness);
+    }
+};
+
 float intersect_sphere(float3 origin, float3 direction, float3 center, float radius)
 {
     float3 oc          = origin - center;
@@ -85,23 +119,12 @@ float intersect_sphere(float3 origin, float3 direction, float3 center, float rad
         return -1.0;
 }
 
-// improved hash function for stars
-float2 hash22(float2 p)
-{
-    float3 p3 = frac(float3(p.xyx) * float3(0.1031, 0.1030, 0.0973));
-    p3 += dot(p3, p3.yzx + 33.33);
-    return frac((p3.xx + p3.yz) * p3.zy);
-}
-
-// main compute shader
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : sv_dispatchthreadid)
 {
-    // get output texture dimensions and check bounds
+    // get output texture dimensions
     float2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
-    if (any(int2(thread_id.xy) >= resolution))
-        return;
 
     // compute uv coordinates
     float2 uv = (float2(thread_id.xy) + 0.5f) / resolution;
@@ -113,18 +136,18 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
     float cos_theta       = cos(theta);
     float3 view_direction = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
 
-    // get sun direction from light (light.forward points from sun to world)
+    // get sun direction from light
     Light light;
     light.Build();
     float3 sun_direction = -light.forward; // points from world to sun
 
-    // atmosphere
-    float3 atmosphere;
+    // compute atmosphere
+    float3 atmosphere_color = 0.0f;
     {
         float t_max = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
         if (t_max < 0)
         {
-            tex_uav[thread_id.xy] = float4(0, 0, 0, 1); // black if no intersection
+            tex_uav[thread_id.xy] = float4(atmosphere_color, 1.0f); // no intersection
             return;
         }
 
@@ -173,9 +196,9 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
                         if (height_sun < 0)
                             break;
 
-                        float density_r_sun = exp(-height_sun / h_rayleigh);
-                        float density_m_sun = exp(-height_sun / h_mie);
-                        optical_depth_sun  += (density_r_sun * beta_rayleigh + density_m_sun * beta_mie) * ds_sun;
+                        float density_r_sun  = exp(-height_sun / h_rayleigh);
+                        float density_m_sun  = exp(-height_sun / h_mie);
+                        optical_depth_sun   += (density_r_sun * beta_rayleigh + density_m_sun * beta_mie) * ds_sun;
                     }
                     t_sun = exp(-optical_depth_sun);
                 }
@@ -192,35 +215,14 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
             optical_depth_view += (density_rayleigh * beta_rayleigh + density_mie * beta_mie) * ds;
         }
 
-        atmosphere = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light.intensity;
+        atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light.intensity;
     }
     
-    // sun disc
-    float3 sun = sun::compute_color(view_direction, sun_direction);
 
-    // stars
-    float3 stars;
-    {
-        float sun_elevation = dot(sun_direction, up_direction);
-        bool is_night       = sun_elevation < 0.0;
-
-        float stars_value = 0.0;
-        if (is_night)
-        {
-            float2 star_uv = uv * 100.0f;
-            float2 hash = hash22(star_uv);
-            stars_value = step(0.999f, hash.x);
-
-            float twinkle = 0.5 + 0.5 * sin((float)buffer_frame.time * 2.0 + hash.y * 6.28318);
-            stars_value *= twinkle;
-
-            // fade in
-            float star_factor = saturate(-sun_elevation * 10.0);
-            stars_value *= star_factor;
-        }
-        stars = float3(stars_value, stars_value, stars_value);
-    }
+    // artistic touches
+    float3 sun_color  = sun::compute_color(view_direction, sun_direction);
+    float3 star_color = stars::compute_color(uv, sun_direction);
 
     // compose output
-    tex_uav[thread_id.xy] = float4(atmosphere + sun + stars, 1.0);
+    tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color, 1.0);
 }
