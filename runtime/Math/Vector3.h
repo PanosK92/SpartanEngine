@@ -235,6 +235,7 @@ namespace spartan::math
             };
         }
 
+
         // return absolute vector
         [[nodiscard]] Vector3 Abs() const { return Vector3(abs(x), abs(y), abs(z)); }
 
@@ -268,6 +269,24 @@ namespace spartan::math
         #endif
         }
         
+        static Vector3 Min(const Vector3& a, const Vector3& b)
+        {
+            return Vector3(
+                a.x < b.x ? a.x : b.x,
+                a.y < b.y ? a.y : b.y,
+                a.z < b.z ? a.z : b.z
+            );
+        }
+        
+        static Vector3 Max(const Vector3& a, const Vector3& b)
+        {
+            return Vector3(
+                a.x > b.x ? a.x : b.x,
+                a.y > b.y ? a.y : b.y,
+                a.z > b.z ? a.z : b.z
+            );
+        }
+
         void operator*=(const Vector3& b)
         {
             *this = *this * b;
