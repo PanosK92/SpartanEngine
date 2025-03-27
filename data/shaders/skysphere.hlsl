@@ -24,17 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float3 UP_VECTOR            = float3(0, 1, 0);                  // up direction
-static const float3 earth_center         = float3(0, -6371e3, 0);            // earth center at -radius (meters), y-up
-static const float earth_radius          = 6371e3;                           // earth radius in meters
-static const float atmosphere_height     = 100e3;                            // atmosphere thickness in meters
-static const float h_rayleigh            = 7994.0;                           // rayleigh scale height in meters
-static const float h_mie                 = 1200.0;                           // mie scale height in meters
-static const float3 beta_rayleigh        = float3(5.8e-6, 13.5e-6, 33.1e-6); // rayleigh scattering coefficients (m^-1)
-static const float3 beta_mie             = float3(2e-5, 2e-5, 2e-5);         // mie scattering coefficients (m^-1)
-static const float g_mie                 = 0.8;                              // mie phase asymmetry factor (forward scattering)
-static const int num_view_samples        = 6;                                // samples along view ray
-static const int num_sun_samples         = 6;                                // samples along sun ray
+static const float3 up_direction         = float3(0, 1, 0);                  // up direction
+static const float3 earth_center      = float3(0, -6371e3, 0);            // earth center at -radius (meters), y-up
+static const float earth_radius       = 6371e3;                           // earth radius in meters
+static const float atmosphere_height  = 100e3;                            // atmosphere thickness in meters
+static const float h_rayleigh         = 7994.0;                           // rayleigh scale height in meters
+static const float h_mie              = 1200.0;                           // mie scale height in meters
+static const float3 beta_rayleigh     = float3(5.8e-6, 13.5e-6, 33.1e-6); // rayleigh scattering coefficients (m^-1)
+static const float3 beta_mie          = float3(2e-5, 2e-5, 2e-5);         // mie scattering coefficients (m^-1)
+static const float g_mie              = 0.8;                              // mie phase asymmetry factor (forward scattering)
+static const int num_view_samples     = 6;                                // samples along view ray
+static const int num_sun_samples      = 6;                                // samples along sun ray
 
 struct sun
 {
@@ -51,7 +51,7 @@ struct sun
 
     static float3 compute_color(float3 view_dir, float3 sun_dir)
     {
-        float sun_elevation      = saturate(dot(sun_dir, UP_VECTOR) + 1.0);
+        float sun_elevation      = saturate(dot(sun_dir, up_direction) + 1.0);
         float mie                = lerp(0.01f, 0.04f, sun_elevation);
         float mie_g              = lerp(-0.9f, -0.6f, sun_elevation);
         float3 directional_light = compute_mie_scatter_color(view_dir, sun_dir, mie, mie_g) * 0.3f;
@@ -65,17 +65,17 @@ struct sun
 // utility function to compute ray-sphere intersection
 float intersect_sphere(float3 origin, float3 direction, float3 center, float radius)
 {
-    float3 oc = origin - center;
-    float b = dot(direction, oc);
-    float c = dot(oc, oc) - radius * radius;
+    float3 oc          = origin - center;
+    float b            = dot(direction, oc);
+    float c            = dot(oc, oc) - radius * radius;
     float discriminant = b * b - c;
     
     if (discriminant < 0)
         return -1.0;
         
     float sqrt_disc = sqrt(discriminant);
-    float t1 = -b - sqrt_disc; // near intersection
-    float t2 = -b + sqrt_disc; // far intersection
+    float t1        = -b - sqrt_disc; // near intersection
+    float t2        = -b + sqrt_disc; // far intersection
     
     if (t2 > 0)
         return t2;
@@ -145,12 +145,12 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
             float density_mie      = exp(-height / h_mie);
             float3 t_view          = exp(-optical_depth_view);
 
-            // check if the sun is occluded by the Earth
+            // check if the sun is occluded by the earth
             float s_earth = intersect_sphere(position, sun_direction, earth_center, earth_radius);
             float3 t_sun;
             if (s_earth > 0)
             {
-                t_sun = 0.0; // sun is blocked by the Earth, no light reaches this point
+                t_sun = 0.0; // sun is blocked by the earth, no light reaches this point
             }
             else
             {
@@ -201,7 +201,7 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
     // stars
     float3 stars;
     {
-        float sun_elevation = dot(sun_direction, UP_VECTOR);
+        float sun_elevation = dot(sun_direction, up_direction);
         bool is_night       = sun_elevation < 0.0;
 
         float stars_value = 0.0;
