@@ -68,7 +68,7 @@ namespace spartan
         TextureTilingY,       // tiling factor of the texture along the Y-axis
         TextureOffsetX,       // offset of the texture along the X-axis
         TextureOffsetY,       // offset of the texture along the Y-axis
-        TextureSlopeBased,    // applies texture mapping based on the mesh slope
+        IsTerrain,    // applies texture mapping based on the mesh slope
         IsTree,               // applies vertex-based animation to simulate wind
         IsGrassBlasde,        // applies grass blade specific enchantments
         IsWater,              // applies vertex-based animation to simulate water flow

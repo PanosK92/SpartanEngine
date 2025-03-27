@@ -100,12 +100,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb;
     float shadow_mask                  = tex[thread_id.xy].r;
 
+    // modulate specular light source with their respective outcoming energy
+    float3 fresnel      = F_Schlick(surface.F0, get_f90(surface), n_dot_v);
+    specular_ssr.rgb   *= fresnel;
+    specular_gi        *= fresnel;
+    specular_skysphere *= specular_energy * shadow_mask;
+
     // combine the diffuse light
     shadow_mask        = max(0.5f, shadow_mask); // GI is not as good, so never go full dark
     float3 diffuse_ibl = diffuse_skysphere * shadow_mask + diffuse_gi;
 
     // combine all the specular light, fallback order: ssr -> gi -> skysphere
-    float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere * specular_energy * shadow_mask);
+    float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere);
     
     // combine the diffuse and specular light
     float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + specular_ibl;

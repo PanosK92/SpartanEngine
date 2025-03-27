@@ -545,7 +545,7 @@ namespace spartan
 
                     // set properties
                     material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                    material->SetProperty(MaterialProperty::TextureSlopeBased, 1.0f);
+                    material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingX,    500.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,    500.0f);
 
