@@ -52,9 +52,9 @@ float2 get_velocity_3x3_average(float2 uv, float2 resolution_out)
     return total_velocity / float(sample_count);
 }
 
-uint get_adaptive_sample_count(float2 velocity)
+uint get_adaptive_sample_count(float2 velocity_UV)
 {
-    float velocity_length = length(velocity);
+    float velocity_length = length(velocity_UV);
     float t = saturate(velocity_length / g_adaptive_threshold);
     return (uint)lerp(g_motion_blur_samples_min, g_motion_blur_samples_max, t);
 }
@@ -64,25 +64,28 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    float2 uv      = (thread_id.xy + 0.5f) / resolution_out;
-    float4 color   = tex[thread_id.xy];
+    float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
+    float4 color    = tex[thread_id.xy];
     float2 velocity = get_velocity_3x3_average(uv, resolution_out);
+    
+    // Convert velocity from NDC to UV space
+    float2 velocity_UV = velocity / 2.0f;
     
     // compute motion blur strength from camera's shutter speed
     float camera_shutter_speed = pass_get_f3_value().x;
     float motion_blur_strength = saturate(camera_shutter_speed);
     
     // scale velocity by the motion blur strength, delta time, and additional scale factor
-    velocity *= motion_blur_strength * g_velocity_scale / (buffer_frame.delta_time + FLT_MIN);
+    velocity_UV *= motion_blur_strength * g_velocity_scale / (buffer_frame.delta_time + FLT_MIN);
     
-    // Compute max velocity squared for the tile
+    // compute max velocity squared for the tile
     if (group_index == 0)
     {
         g_tile_max_velocity_sqr = 0;
     }
     GroupMemoryBarrierWithGroupSync();
     
-    uint velocity_sqr = (uint)(dot(velocity, velocity) * 1000000.0f); // Scale up and convert to integer
+    uint velocity_sqr = (uint)(dot(velocity_UV, velocity_UV) * 1000000.0f); // Use velocity_UV
     InterlockedMax(g_tile_max_velocity_sqr, velocity_sqr);
     
     GroupMemoryBarrierWithGroupSync();
@@ -95,14 +98,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     }
     
     // skip blur calculation for low-motion pixels
-    if (length(velocity) < g_velocity_threshold)
+    if (length(velocity_UV) < g_velocity_threshold)
     {
         tex_uav[thread_id.xy] = color;
         return;
     }
     
     // determine adaptive sample count
-    uint sample_count = get_adaptive_sample_count(velocity);
+    uint sample_count = get_adaptive_sample_count(velocity_UV);
     
     float total_weight = 1.0f;
     float center_depth = get_linear_depth(uv);
@@ -111,7 +114,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     for (uint i = 1; i < sample_count; ++i)
     {
         float  t             = (float(i) / float(sample_count - 1) - 0.5f);
-        float2 sample_offset = velocity * t;
+        float2 sample_offset = velocity_UV * t;
         float2 sample_uv     = uv + sample_offset;
         
         float sample_depth = get_linear_depth(sample_uv);
@@ -123,7 +126,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
         total_weight += depth_weight;
     }
     
-    // normalize the accumulated color
+    // Nnormalize the accumulated color
     color /= total_weight;
     tex_uav[thread_id.xy] = float4(color.rgb, 1.0f);
 }

@@ -1079,8 +1079,8 @@ namespace spartan
             fsr3::description_dispatch.output                        = to_ffx_resource(tex_output,                                               L"fsr3_output");
 
             // configure
-            fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
-            fsr3::description_dispatch.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
+            fsr3::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;
+            fsr3::description_dispatch.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
             fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant parameter
             fsr3::description_dispatch.sharpness              = sharpness;
             fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;  // seconds to milliseconds
@@ -1414,8 +1414,8 @@ namespace spartan
         brixelizer_gi::description_dispatch_gi.roughnessChannel        = 0;    // the channel to read the roughness from the roughness texture
         brixelizer_gi::description_dispatch_gi.roughnessThreshold      = 0.8f; // regions with a roughness value greater than this threshold won't spawn specular rays
         brixelizer_gi::description_dispatch_gi.environmentMapIntensity = 0.0f; // value to scale the contribution from the environment map
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -1.0f;
-        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = -1.0f;
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.x     = -0.5f;
+        brixelizer_gi::description_dispatch_gi.motionVectorScale.y     = 0.5f;
         set_ffx_float3(brixelizer_gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);
 
         // dispatch
