@@ -36,7 +36,6 @@ static const float g_mie                 = 0.8;                              // 
 static const int num_view_samples        = 6;                                // samples along view ray
 static const int num_sun_samples         = 6;                                // samples along sun ray
 
-// sun disc computation (your preferred implementation)
 struct sun
 {
     static float3 compute_mie_scatter_color(float3 view_direction, float3 sun_direction, float mie, float mie_g)
@@ -144,37 +143,46 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
 
             float density_rayleigh = exp(-height / h_rayleigh);
             float density_mie      = exp(-height / h_mie);
+            float3 t_view          = exp(-optical_depth_view);
 
-            float3 t_view = exp(-optical_depth_view);
-
-            float s_max = intersect_sphere(position, sun_direction, earth_center, earth_radius + atmosphere_height);
+            // check if the sun is occluded by the Earth
+            float s_earth = intersect_sphere(position, sun_direction, earth_center, earth_radius);
             float3 t_sun;
-            if (s_max < 0)
+            if (s_earth > 0)
             {
-                t_sun = 0.0; // sun below horizon
+                t_sun = 0.0; // sun is blocked by the Earth, no light reaches this point
             }
             else
             {
-                float ds_sun             = s_max / num_sun_samples;
-                float3 optical_depth_sun = 0.0;
-
-                for (int j = 0; j < num_sun_samples; j++)
+                // sun is visible, compute transmission through the atmosphere
+                float s_max = intersect_sphere(position, sun_direction, earth_center, earth_radius + atmosphere_height);
+                if (s_max < 0)
                 {
-                    float s          = (j + 0.5) * ds_sun;
-                    float3 sun_pos   = position + s * sun_direction;
-                    float height_sun = length(sun_pos - earth_center) - earth_radius;
-                    if (height_sun < 0)
-                        break;
-
-                    float density_r_sun = exp(-height_sun / h_rayleigh);
-                    float density_m_sun = exp(-height_sun / h_mie);
-                    optical_depth_sun  += (density_r_sun * beta_rayleigh + density_m_sun * beta_mie) * ds_sun;
+                    t_sun = 0.0; // ray doesn’t intersect atmosphere (shouldn’t happen here)
                 }
-                t_sun = exp(-optical_depth_sun);
+                else
+                {
+                    float ds_sun             = s_max / num_sun_samples;
+                    float3 optical_depth_sun = 0.0;
+
+                    for (int j = 0; j < num_sun_samples; j++)
+                    {
+                        float s          = (j + 0.5) * ds_sun;
+                        float3 sun_pos   = position + s * sun_direction;
+                        float height_sun = length(sun_pos - earth_center) - earth_radius;
+                        if (height_sun < 0)
+                            break;
+
+                        float density_r_sun = exp(-height_sun / h_rayleigh);
+                        float density_m_sun = exp(-height_sun / h_mie);
+                        optical_depth_sun  += (density_r_sun * beta_rayleigh + density_m_sun * beta_mie) * ds_sun;
+                    }
+                    t_sun = exp(-optical_depth_sun);
+                }
             }
 
-            float cos_theta_phase = dot(-view_direction, sun_direction);
-            float phase_rayleigh  = (3.0 / (8.0 * PI)) * (1.0 + cos_theta_phase * cos_theta_phase);
+            float cos_theta_phase = dot(view_direction, sun_direction);
+            float phase_rayleigh  = (3.0 / (16.0 * PI)) * (1.0 + cos_theta_phase * cos_theta_phase);
             float phase_mie       = (1.0 - g_mie * g_mie) / 
                                    (4.0 * PI * pow(1.0 + g_mie * g_mie - 2.0 * g_mie * cos_theta_phase, 1.5));
 
@@ -205,10 +213,13 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
 
             float twinkle = 0.5 + 0.5 * sin((float)buffer_frame.time * 2.0 + hash.y * 6.28318);
             stars_value *= twinkle;
+
+            // fade in
+            float star_factor = saturate(-sun_elevation * 10.0);
+            stars_value *= star_factor;
         }
         stars = float3(stars_value, stars_value, stars_value);
     }
-    
 
     // compose output
     tex_uav[thread_id.xy] = float4(atmosphere + sun + stars, 1.0);
