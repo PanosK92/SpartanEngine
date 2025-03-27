@@ -133,8 +133,6 @@ namespace spartan
         if (!m_is_active)
             return;
 
-        m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
-
         for (shared_ptr<Component>& component : m_components)
         {
             if (component)
@@ -142,6 +140,8 @@ namespace spartan
                 component->OnTick();
             }
         }
+
+        m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
     }
 
     void Entity::Serialize(FileStream* stream)
@@ -635,12 +635,6 @@ namespace spartan
         }
 
         return nullptr;
-    }
-
-    bool Entity::HasMovedInTheLastSeconds(const float seconds) const
-    {
-        // an entity very rarely moves only for one frame, so we consider it moving if it has moved in the last 2 seconds
-        return m_time_since_last_transform_sec <= seconds;
     }
 
     Matrix Entity::GetParentTransformMatrix() const

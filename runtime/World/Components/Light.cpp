@@ -117,11 +117,24 @@ namespace spartan
 
     void Light::OnTick()
     {
-        // if the light or the camera moves...
-        m_filtering_pending = GetEntity()->HasMovedInTheLastSeconds(2.0f) ? true : m_filtering_pending;
+        // update matrices and request filterting
+        bool update_matrices = false;
+        if (GetEntity()->GetTimeSinceLastTransform() <= 0.25f) // I can't get this exactly at 0.0, fix it
+        {
+            m_filterting_needed = m_light_type == LightType::Directional;
+            update_matrices     = true;
+        }
 
-        // update the matrices
-        if (GetEntity()->HasMovedInTheLastSeconds(0.1f) || (Renderer::GetCamera() ? Renderer::GetCamera()->GetEntity()->HasMovedInTheLastSeconds(0.1f) : false))
+        // update matrices for the directional light when the camera has moved
+        if (m_light_type == LightType::Directional)
+        { 
+            if (Camera* camera = Renderer::GetCamera())
+            { 
+                update_matrices = (camera->GetEntity()->GetTimeSinceLastTransform() <= 0.25f) ? true : update_matrices; // I can't get this exactly at 0.0, fix it
+            }
+        }
+
+        if (update_matrices)
         {
             UpdateMatrices();
         }
@@ -156,11 +169,6 @@ namespace spartan
             {
                 m_texture_color = nullptr;
             }
-        }
-
-        if (m_filtering_pending)
-        { 
-            m_time_since_last_filtering_sec += static_cast<float>(Timer::GetDeltaTimeSec());
         }
     }
 
@@ -214,7 +222,7 @@ namespace spartan
                 }
             }
 
-            m_filtering_pending = true;
+            m_filterting_needed = true;
             SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
@@ -239,7 +247,7 @@ namespace spartan
         m_temperature_kelvin = temperature_kelvin;
         m_color_rgb          = Color(temperature_kelvin);
 
-        m_filtering_pending = true;
+        m_filterting_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -270,7 +278,7 @@ namespace spartan
         else if (rgb == Color::light_photo_flash)
             m_temperature_kelvin = 5500.0f;
 
-        m_filtering_pending = true;
+        m_filterting_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -327,7 +335,7 @@ namespace spartan
             m_intensity_lumens = 0.0f;
         }
 
-        m_filtering_pending = true;
+        m_filterting_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -336,7 +344,7 @@ namespace spartan
         m_intensity_lumens = lumens;
         m_intensity        = LightIntensity::custom;
 
-        m_filtering_pending = true;
+        m_filterting_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -388,13 +396,14 @@ namespace spartan
 
     void Light::DisableFilterPending()
     {
-        m_filtering_pending             = false;
-        m_time_since_last_filtering_sec = 0.0f;
+        m_filterting_needed = false;
     }
 
     bool Light::IsFilteringPending() const
     {
-        return m_filtering_pending && (m_time_since_last_filtering_sec >= 2.0f);
+        // if filtering needs to happen, wait for the light to be inactive for a few seconds, which means the user has stopped moving it
+        const float inactive_time = 1.0f;
+        return m_filterting_needed && (GetEntity()->GetTimeSinceLastTransform() >= inactive_time);
     }
 
     void Light::UpdateMatrices()

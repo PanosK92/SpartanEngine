@@ -421,6 +421,7 @@ namespace spartan
         RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
     
         // occluders
+        if (m_draw_call_count != 0)
         {
             // set pipeline state for depth-only rendering
             RHI_PipelineState pso;
