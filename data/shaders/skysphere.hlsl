@@ -85,11 +85,11 @@ struct stars
             brightness     = step(0.999f, hash.x);
 
             // twinkle
-            float twinkle  = 0.5 + 0.5 * sin((float) buffer_frame.time * 2.0 + hash.y * 6.28318);
+            float twinkle  = 0.5f + 0.5f * sin((float) buffer_frame.time * 2.0 + hash.y * 6.28318f);
             brightness    *= twinkle;
     
             // fade in
-            float star_factor  = saturate(-sun_elevation * 10.0);
+            float star_factor  = saturate(-sun_elevation * 10.0f);
             brightness        *= star_factor;
         }
         

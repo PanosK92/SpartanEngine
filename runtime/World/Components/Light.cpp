@@ -488,8 +488,8 @@ namespace spartan
                 depth_range, 0.1f // reverse-Z: near = max, far = min
             );
     
-             // far cascade lateral extent
-            float far_extent = near_extent * 10.0f; // 10 times the near extent, further away, screen space shadows are more than enough
+            // 10 times the near extent, further than that, screen space shadows are more than enough
+            float far_extent = near_extent * 10.0f; 
     
             // far cascade projection
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(

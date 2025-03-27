@@ -69,7 +69,7 @@ float compute_ssao(uint2 pos, float2 resolution_out)
     const float pixel_offset = max((g_ao_radius * resolution_out.x * 0.5f) / origin_position.z, (float)g_steps);
     const float step_offset  = pixel_offset / float(g_steps + 1.0f);
 
-    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos, true, true);
+    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos);
     const float offset_spatial           = get_offset_non_temporal(pos);
     const float offset_temporal          = offsets[buffer_frame.frame % 4];
     const float offset_rotation_temporal = rotations[buffer_frame.frame % 6];

@@ -386,15 +386,15 @@ float get_noise_random(float2 uv)
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Spartan Engine take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
-float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool animate_even_with_taa_off)
+// spartan Engine take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
+float get_noise_interleaved_gradient(float2 screen_pos, bool temporal = true)
 {
     // temporal factor
-    float animate_    = saturate((float)is_taa_enabled() + (float)animate_even_with_taa_off) * (float)animate;
-    float frame_count = (float)buffer_frame.frame;
-    float frame_step  = float(frame_count % 16) * RPC_16 * animate_;
-    screen_pos.x     += frame_step * 4.7526;
-    screen_pos.y     += frame_step * 3.1914;
+    float animate      = saturate((float)is_taa_enabled() + (float)temporal);
+    float frame_count  = (float)buffer_frame.frame;
+    float frame_step   = float(frame_count % 16) * RPC_16 * animate;
+    screen_pos.x      += frame_step * 4.7526;
+    screen_pos.y      += frame_step * 3.1914;
 
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
