@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Queue.h"
 #include "../Display/Display.h"
+#include <tlhelp32.h>
 SP_WARNINGS_OFF
 #include <SDL3/SDL_vulkan.h>
 SP_WARNINGS_ON
@@ -177,6 +178,78 @@ namespace spartan
 
             return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         }
+
+        bool is_process_running(const char* process_name)
+        {
+        #ifdef _WIN32
+            // Windows implementation
+            HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if (snapshot == INVALID_HANDLE_VALUE) {
+                return false; // Failed to create snapshot
+            }
+        
+            PROCESSENTRY32W pe32 = {0}; // Use PROCESSENTRY32W for Unicode
+            pe32.dwSize = sizeof(PROCESSENTRY32W);
+        
+            if (!Process32FirstW(snapshot, &pe32)) { // Use Process32FirstW for Unicode
+                CloseHandle(snapshot);
+                return false; // Failed to get first process
+            }
+        
+            // Convert processName to wide-character string for comparison
+            size_t convertedChars = 0;
+            wchar_t wProcessName[MAX_PATH];
+            mbstowcs_s(&convertedChars, wProcessName, process_name, strlen(process_name) + 1);
+        
+            // Iterate through all processes
+            do {
+                if (_wcsicmp(pe32.szExeFile, wProcessName) == 0) { // Case-insensitive wide-character comparison
+                    CloseHandle(snapshot);
+                    return true; // Process found
+                }
+            } while (Process32NextW(snapshot, &pe32)); // Use Process32NextW for Unicode
+        
+            CloseHandle(snapshot);
+            return false; // Process not found
+        
+        #elif defined(__linux__)
+            // Linux implementation
+            DIR* dir = opendir("/proc");
+            if (!dir) {
+                return false; // Failed to open /proc directory
+            }
+        
+            struct dirent* entry;
+            while ((entry = readdir(dir)) != NULL) {
+                // Check if the directory is a PID (starts with a digit)
+                if (entry->d_type == DT_DIR && isdigit(entry->d_name[0])) {
+                    char commPath[256];
+                    snprintf(commPath, sizeof(commPath), "/proc/%s/comm", entry->d_name);
+        
+                    FILE* commFile = fopen(commPath, "r");
+                    if (commFile) {
+                        char comm[256];
+                        if (fgets(comm, sizeof(comm), commFile)) {
+                            comm[strcspn(comm, "\n")] = 0; // Remove newline
+                            if (strcmp(comm, processName) == 0) { // Case-sensitive comparison
+                                fclose(commFile);
+                                closedir(dir);
+                                return true; // Process found
+                            }
+                        }
+                        fclose(commFile);
+                    }
+                }
+            }
+        
+            closedir(dir);
+            return false; // Process not found
+        
+        #else
+            // Unsupported platform
+            return false;
+        #endif
+        }
     }
 
     RHI_SwapChain::RHI_SwapChain(
@@ -276,6 +349,12 @@ namespace spartan
             create_info.presentMode    = get_present_mode(surface, m_present_mode);
             create_info.clipped        = VK_TRUE;
             create_info.oldSwapchain   = nullptr;
+
+            // check for potential overlay interference
+            if (is_process_running("RTSS.exe"))
+            {
+                SP_ERROR_WINDOW("RivaTuner is running and may crash the engine. Please close RivaTuner and restart the engine.");
+            }
 
             SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain));
 
