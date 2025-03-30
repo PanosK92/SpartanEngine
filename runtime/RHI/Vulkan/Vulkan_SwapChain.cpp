@@ -342,7 +342,13 @@ namespace spartan
         create_info.presentMode              = get_present_mode(static_cast<VkSurfaceKHR>(m_rhi_surface), m_present_mode);
         create_info.clipped                  = VK_TRUE;
         create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain); 
-    
+
+        // check for potential overlay interference
+        if (is_process_running("RTSS.exe"))
+        {
+            SP_ERROR_WINDOW("RivaTuner is running and may crash the engine. Please close RivaTuner and restart the engine.");
+        }
+
         SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkSwapchainKHR*>(&m_rhi_swapchain)));
    
         // destroy old swapchain if it existed
