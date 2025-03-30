@@ -421,7 +421,6 @@ namespace spartan
         RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
     
         // occluders
-        if (m_draw_call_count != 0)
         {
             // set pipeline state for depth-only rendering
             RHI_PipelineState pso;
@@ -434,13 +433,19 @@ namespace spartan
             pso.resolution_scale                 = true;
             pso.clear_depth                      = 0.0f;
             cmd_list->SetIgnoreClearValues(false);
-            cmd_list->SetPipelineState(pso);
-    
+
+            bool pipeline_set = false;
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
                 if (!draw_call.is_occluder)
                     continue;
+
+                if (!pipeline_set)
+                {
+                    cmd_list->SetPipelineState(pso);
+                    pipeline_set = true;
+                }
 
                 // culling
                 Renderable* renderable = draw_call.renderable;
