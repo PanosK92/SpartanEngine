@@ -35,8 +35,8 @@ using namespace spartan::math;
 namespace spartan
 {
     // keys
-    std::array<bool, 107> Input::m_keys;
-    std::array<bool, 107> m_keys_previous_frame;
+    array<bool, 107> Input::m_keys;
+    array<bool, 107> m_keys_previous_frame;
     uint32_t Input::m_start_index_mouse   = 83;
     uint32_t Input::m_start_index_gamepad = 86;
 

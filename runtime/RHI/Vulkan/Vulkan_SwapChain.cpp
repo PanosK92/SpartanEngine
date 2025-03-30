@@ -483,10 +483,10 @@ namespace spartan
     void RHI_SwapChain::Present()
     {
         SP_ASSERT(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source);
-
+    
         m_wait_semaphores.clear();
         RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-
+    
         // get semaphores from command lists
         RHI_CommandList* cmd_list       = queue->GetCommandList();
         bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
@@ -496,12 +496,21 @@ namespace spartan
             semaphore->has_been_waited_for = true;
             m_wait_semaphores.emplace_back(semaphore);
         }
-
+    
         // get semaphore from vkAcquireNextImageKHR
         RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
-
+    
+        // present the current frame
         queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
+    
+        // recreate the swapchain if needed
+        if (m_is_dirty)
+        {
+            Destroy();
+            Create();
+            m_is_dirty = false;
+        }
     }
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
@@ -526,31 +535,26 @@ namespace spartan
         {
             SP_ASSERT_MSG(Display::GetHdr(), "This display doesn't support HDR");
         }
-
+    
         RHI_Format new_format = enabled ? format_hdr : format_sdr;
-
+    
         if (new_format != m_format)
         {
-            m_format = new_format;
-            Destroy();
-            Create();
+            m_format   = new_format;
+            m_is_dirty = true;
         }
     }
 
     void RHI_SwapChain::SetVsync(const bool enabled)
     {
-        // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
-
         if ((m_present_mode == RHI_Present_Mode::Fifo) != enabled)
         {
             m_present_mode = enabled ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate;
-            Destroy();
-            Create();
+            m_is_dirty     = true;
             Timer::OnVsyncToggled(enabled);
-            SP_LOG_INFO("VSync has been %s", enabled ? "enabled" : "disabled");
         }
     }
-
+    
     bool RHI_SwapChain::GetVsync()
     {
         // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that

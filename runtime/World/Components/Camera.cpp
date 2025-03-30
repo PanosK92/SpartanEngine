@@ -436,7 +436,7 @@ namespace spartan
             // compute rotation
             const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * deg_to_rad, Vector3::Up);
             const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * deg_to_rad, Vector3::Right);
-            const Quaternion rotation = xQuaternion * yQuaternion;
+            const Quaternion rotation    = xQuaternion * yQuaternion;
 
             // rotate
             GetEntity()->SetRotationLocal(rotation);
@@ -456,10 +456,10 @@ namespace spartan
             }
             else if (Input::IsGamepadConnected())
             {
-                movement_direction += GetEntity()->GetForward() * -Input::GetGamepadThumbStickLeft().y;
-                movement_direction += GetEntity()->GetRight()   * Input::GetGamepadThumbStickLeft().x;
-                movement_direction += GetEntity()->GetDown()    * Input::GetGamepadTriggerLeft();
-                movement_direction += GetEntity()->GetUp()      * Input::GetGamepadTriggerRight();
+                movement_direction += GetEntity()->GetBackward() * Input::GetGamepadThumbStickLeft().y;
+                movement_direction += GetEntity()->GetRight()    * Input::GetGamepadThumbStickLeft().x;
+                movement_direction += GetEntity()->GetDown()     * Input::GetGamepadTriggerLeft();
+                movement_direction += GetEntity()->GetUp()       * Input::GetGamepadTriggerRight();
                 if (Input::GetGamepadTriggerRight()) movement_direction += Vector3::Up;   // world space
                 if (Input::GetGamepadTriggerLeft())  movement_direction += Vector3::Down; // world space
             }
@@ -490,7 +490,7 @@ namespace spartan
         {
             Vector3 translation = (movement_acceleration + m_movement_scroll_accumulator) * movement_direction;
 
-            // on shift, increase the translation
+            // on shift, increase the translation (it's sprinting)
             if (Input::GetKey(KeyCode::Shift_Left))
             {
                 translation *= 3.0f;

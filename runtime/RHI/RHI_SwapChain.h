@@ -91,6 +91,7 @@ namespace spartan
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
         // misc
+        bool m_is_dirty                                      = false;
         uint32_t m_buffer_index                              = 0;
         uint32_t m_image_index                               = 0;
         void* m_sdl_window                                   = nullptr;

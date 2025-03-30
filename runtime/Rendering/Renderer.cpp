@@ -309,6 +309,7 @@ namespace spartan
             return;
 
         wants_to_present = true;
+        GetSwapChain()->AcquireNextImage();
 
         // logic
         {
@@ -322,9 +323,7 @@ namespace spartan
             dynamic_resolution();
         }
 
-        GetSwapChain()->AcquireNextImage();
-
-         // begin command lists
+        // begin command lists
         RHI_Queue* queue_graphics          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
         RHI_Queue* queue_compute           = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
         RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
