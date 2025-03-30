@@ -233,7 +233,7 @@ namespace spartan
                         char comm[256];
                         if (fgets(comm, sizeof(comm), commFile)) {
                             comm[strcspn(comm, "\n")] = 0; // Remove newline
-                            if (strcmp(comm, processName) == 0) { // Case-sensitive comparison
+                            if (strcmp(comm, process_name) == 0) { // Case-sensitive comparison
                                 fclose(commFile);
                                 closedir(dir);
                                 return true; // Process found
