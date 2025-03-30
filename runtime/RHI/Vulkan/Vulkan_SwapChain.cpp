@@ -132,7 +132,6 @@ namespace spartan
 
         bool is_format_and_color_space_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space)
         {
-            // Get supported surface formats
             vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
 
             // NV supports RHI_Format::B8R8G8A8_Unorm instead of RHI_Format::R8G8B8A8_Unorm.
@@ -143,7 +142,7 @@ namespace spartan
 
             for (const VkSurfaceFormatKHR& supported_format : supported_formats)
             {
-                bool support_format = supported_format.format == vulkan_format[rhi_format_to_index(*format)];
+                bool support_format      = supported_format.format == vulkan_format[rhi_format_to_index(*format)];
                 bool support_color_space = supported_format.colorSpace == color_space;
 
                 if (support_format && support_color_space)
@@ -163,11 +162,11 @@ namespace spartan
                 VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
             };
 
-            // Get physical device surface capabilities
+            // get physical device surface capabilities
             VkSurfaceCapabilitiesKHR surface_capabilities;
             SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities));
 
-            // Simply select the first composite alpha format available
+            // simply select the first composite alpha format available
             for (VkCompositeAlphaFlagBitsKHR& composite_alpha : composite_alpha_flags)
             {
                 if (surface_capabilities.supportedCompositeAlpha & composite_alpha)
@@ -182,10 +181,9 @@ namespace spartan
         bool is_process_running(const char* process_name)
         {
         #ifdef _WIN32
-            // Windows implementation
             HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
             if (snapshot == INVALID_HANDLE_VALUE) {
-                return false; // Failed to create snapshot
+                return false;
             }
         
             PROCESSENTRY32W pe32 = {0}; // Use PROCESSENTRY32W for Unicode
@@ -264,7 +262,7 @@ namespace spartan
     {
         SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
         SP_ASSERT_MSG(buffer_count >= 2, "Buffer count can't be less than 2");
-
+    
         m_format       = hdr ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
@@ -272,182 +270,161 @@ namespace spartan
         m_sdl_window   = sdl_window;
         m_object_name  = name;
         m_present_mode = present_mode;
+    
+        // create surface once
+        {
+            VkSurfaceKHR surface = VK_NULL_HANDLE;
+            SP_ASSERT_MSG(
+                SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, &surface),
+                "Failed to create window surface"
+            );
+            VkBool32 present_support = false;
+            SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceSupportKHR(
+                RHI_Context::device_physical,
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
+                surface,
+                &present_support
+            ));
+            SP_ASSERT_MSG(present_support, "The device does not support this kind of surface");
+        m_rhi_surface = static_cast<void*>(surface);
+        }
 
         Create();
-
+    
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
 
     RHI_SwapChain::~RHI_SwapChain()
     {
         Destroy();
+
+        if (m_rhi_swapchain)
+        {
+            vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
+        }
+        if (m_rhi_surface)
+        {
+            vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(m_rhi_surface), nullptr);
+        }
     }
 
     void RHI_SwapChain::Create()
     {
         SP_ASSERT(m_sdl_window != nullptr);
-
-        // create surface
-        VkSurfaceKHR surface = VK_NULL_HANDLE;
-        {
-            SP_ASSERT_MSG(
-                SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, &surface),
-                "Failed to created window surface");
-
-            VkBool32 present_support = false;
-            SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceSupportKHR(
-                RHI_Context::device_physical,
-                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
-                surface,
-                &present_support)
-            );
-
-            SP_ASSERT_MSG(present_support, "The device does not support this kind of surface");
-        }
-
+        SP_ASSERT(m_rhi_surface != nullptr);
+    
         // get surface capabilities
-        VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(surface);
-
+        VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(static_cast<VkSurfaceKHR>(m_rhi_surface));
+    
+        // skip if window is minimized
+        if (capabilities.currentExtent.width == 0 || capabilities.currentExtent.height == 0)
+        {
+            SP_LOG_WARNING("Window is minimized, swapchain creation skipped");
+            return;
+        }
+    
         // ensure that the surface supports the requested format and color space
         VkColorSpaceKHR color_space = get_color_space(m_format);
-        SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
-
-        // clamp size between the supported min and max
-        m_width  = clamp(m_width,  capabilities.minImageExtent.width,  capabilities.maxImageExtent.width);
+        SP_ASSERT_MSG(is_format_and_color_space_supported(static_cast<VkSurfaceKHR>(m_rhi_surface), &m_format, color_space), "The surface doesn't support the requested format");
+    
+        // clamp size
+        m_width  = clamp(m_width,  capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
         m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
-        // swap chain
-        VkSwapchainKHR swap_chain = VK_NULL_HANDLE;
+    
+        // create new swapchain
+        VkSwapchainCreateInfoKHR create_info = {};
+        create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        create_info.surface                  = static_cast<VkSurfaceKHR>(m_rhi_surface);
+        create_info.minImageCount            = m_buffer_count;
+        create_info.imageFormat              = vulkan_format[rhi_format_to_index(m_format)];
+        create_info.imageColorSpace          = color_space;
+        create_info.imageExtent              = { m_width, m_height };
+        create_info.imageArrayLayers         = 1;
+        create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        create_info.imageSharingMode         = VK_SHARING_MODE_EXCLUSIVE;
+        create_info.preTransform             = capabilities.currentTransform;
+        create_info.compositeAlpha           = get_supported_composite_alpha_format(static_cast<VkSurfaceKHR>(m_rhi_surface));
+        create_info.presentMode              = get_present_mode(static_cast<VkSurfaceKHR>(m_rhi_surface), m_present_mode);
+        create_info.clipped                  = VK_TRUE;
+        create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain);  // save old swapchain
+    
+        VkSwapchainKHR new_swapchain = VK_NULL_HANDLE;
+        VkResult result              = vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &new_swapchain);
+    
+        // update swapchain
+        m_rhi_swapchain = static_cast<void*>(new_swapchain);
+    
+        // destroy old swapchain if it existed
+        if (create_info.oldSwapchain != VK_NULL_HANDLE)
         {
-            VkSwapchainCreateInfoKHR create_info  = {};
-            create_info.sType                     = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            create_info.surface                   = surface;
-            create_info.minImageCount             = m_buffer_count;
-            create_info.imageFormat               = vulkan_format[rhi_format_to_index(m_format)];
-            create_info.imageColorSpace           = color_space;
-            create_info.imageExtent               = { m_width, m_height };
-            create_info.imageArrayLayers          = 1;
-            create_info.imageUsage                = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // for rendering on it
-            create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
-
-            uint32_t queueFamilyIndices[] = { RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute), RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics) };
-            if (queueFamilyIndices[0] != queueFamilyIndices[1])
-            {
-                create_info.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
-                create_info.queueFamilyIndexCount = 2;
-                create_info.pQueueFamilyIndices   = queueFamilyIndices;
-            }
-            else
-            {
-                create_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
-                create_info.queueFamilyIndexCount = 0;
-                create_info.pQueueFamilyIndices   = nullptr;
-            }
-
-            create_info.preTransform   = capabilities.currentTransform;
-            create_info.compositeAlpha = get_supported_composite_alpha_format(surface);
-            create_info.presentMode    = get_present_mode(surface, m_present_mode);
-            create_info.clipped        = VK_TRUE;
-            create_info.oldSwapchain   = nullptr;
-
-            // check for potential overlay interference
-            if (is_process_running("RTSS.exe"))
-            {
-                SP_ERROR_WINDOW("RivaTuner is running and may crash the engine. Please close RivaTuner and restart the engine.");
-            }
-
-            SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain));
-
-            set_hdr_metadata(swap_chain);
+            vkDestroySwapchainKHR(RHI_Context::device, create_info.oldSwapchain, nullptr);
         }
-
-        // images
+    
+        // get new images
+        uint32_t image_count = 0;
+        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, new_swapchain, &image_count, nullptr));
+        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, new_swapchain, &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
+    
+        // create new image views
+        for (uint32_t i = 0; i < m_buffer_count; i++)
         {
-            uint32_t image_count = 0;
-            SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, nullptr));
-            SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
-
-            // transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-            if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
-            {
-                for (uint32_t i = 0; i < m_buffer_count; i++)
-                {
-                    cmd_list->InsertBarrierTexture(
-                        m_rhi_rt[i],
-                        VK_IMAGE_ASPECT_COLOR_BIT,
-                        0,
-                        1,
-                        1,
-                        RHI_Image_Layout::Max,
-                        RHI_Image_Layout::Attachment,
-                        false
-                    );
-
-                    m_layouts[i] = RHI_Image_Layout::Attachment;
-                }
-
-                // end/flush
-                RHI_Device::CmdImmediateSubmit(cmd_list);
-            }
+            VkImageViewCreateInfo view_info = {};
+            view_info.sType                 = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            view_info.image                 = static_cast<VkImage>(m_rhi_rt[i]);
+            view_info.viewType              = VK_IMAGE_VIEW_TYPE_2D;
+            view_info.format                = vulkan_format[rhi_format_to_index(m_format)];
+            view_info.subresourceRange      = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            view_info.components            = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+            SP_ASSERT_VK(vkCreateImageView(RHI_Context::device, &view_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])));
         }
-
-        // image views
+    
+        // transition layouts
+        if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
         {
             for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                RHI_Device::SetResourceName(m_rhi_rt[i], RHI_Resource_Type::Texture, string(string("swapchain_image_") + to_string(i)).c_str());
-
-                VkImageViewCreateInfo create_info           = {};
-                create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-                create_info.image                           = static_cast<VkImage>(m_rhi_rt[i]);
-                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-                create_info.format                          = vulkan_format[rhi_format_to_index(m_format)];
-                create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-                create_info.subresourceRange.baseMipLevel   = 0;
-                create_info.subresourceRange.levelCount     = 1;
-                create_info.subresourceRange.baseArrayLayer = 0;
-                create_info.subresourceRange.layerCount     = 1;
-                create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-                create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-                SP_ASSERT_VK(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])));
+                cmd_list->InsertBarrierTexture(
+                    m_rhi_rt[i],
+                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    0, 1, 1,
+                    RHI_Image_Layout::Max,
+                    RHI_Image_Layout::Attachment,
+                    false
+                );
+                m_layouts[i] = RHI_Image_Layout::Attachment;
             }
+            RHI_Device::CmdImmediateSubmit(cmd_list);
         }
-
-        m_rhi_surface   = static_cast<void*>(surface);
-        m_rhi_swapchain = static_cast<void*>(swap_chain);
-
+    
+        // recreate semaphores
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_" + to_string(i)).c_str());
+        }
+    
+        // set HDR metadata only if HDR is enabled
+        if (m_format == format_hdr)
+        {
+            set_hdr_metadata(new_swapchain);
         }
     }
 
     void RHI_SwapChain::Destroy()
     {
-        // there sdl/os asynchrony compared to the engine, so we need to flush here
-        // to ensure that resources are not used (especially the semaphores)
-        RHI_Device::QueueWaitAll();
-
+        RHI_Device::QueueWaitAll(); // ensure all queue operations are complete
+    
+        // destroy image views immediately
         for (void*& image_view : m_rhi_rtv)
         {
             if (image_view)
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, image_view);
+                vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(image_view), nullptr);
                 image_view = nullptr;
             }
         }
-
-        m_image_acquired_semaphore.fill(nullptr);
-
-        vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
-        m_rhi_swapchain = nullptr;
-
-        vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(m_rhi_surface), nullptr);
-        m_rhi_surface = nullptr;
-
+    
+        m_image_acquired_semaphore.fill(nullptr); // reset semaphores (shared_ptr cleanup)
+    
         // reset indices
         m_image_index  = 0;
         m_buffer_index = 0;
@@ -457,7 +434,9 @@ namespace spartan
     {
         SP_ASSERT(RHI_Device::IsValidResolution(width, height));
 
-        // save new dimensions
+        if (m_width == width && m_height == height)
+            return;
+
         m_width  = width;
         m_height = height;
 
