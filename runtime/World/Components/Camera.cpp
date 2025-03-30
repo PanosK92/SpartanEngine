@@ -450,9 +450,9 @@ namespace spartan
                 if (Input::GetKey(KeyCode::W)) movement_direction += GetEntity()->GetForward();
                 if (Input::GetKey(KeyCode::S)) movement_direction += GetEntity()->GetBackward();
                 if (Input::GetKey(KeyCode::D)) movement_direction += GetEntity()->GetRight();
-                if (Input::GetKey(KeyCode::A)) movement_direction += GetEntity()->GetLeft();
-                if (Input::GetKey(KeyCode::Q)) movement_direction += GetEntity()->GetDown();
-                if (Input::GetKey(KeyCode::E)) movement_direction += GetEntity()->GetUp();
+                if (Input::GetKey(KeyCode::A)) movement_direction += GetEntity()->GetLeft(); 
+                if (Input::GetKey(KeyCode::Q)) movement_direction += Vector3::Up;    // world space
+                if (Input::GetKey(KeyCode::E)) movement_direction += Vector3::Down;  // world space
             }
             else if (Input::IsGamepadConnected())
             {
@@ -460,6 +460,8 @@ namespace spartan
                 movement_direction += GetEntity()->GetRight()   * Input::GetGamepadThumbStickLeft().x;
                 movement_direction += GetEntity()->GetDown()    * Input::GetGamepadTriggerLeft();
                 movement_direction += GetEntity()->GetUp()      * Input::GetGamepadTriggerRight();
+                if (Input::GetGamepadTriggerRight()) movement_direction += Vector3::Up;   // world space
+                if (Input::GetGamepadTriggerLeft())  movement_direction += Vector3::Down; // world space
             }
 
             // when in game mode and controlling a physics based camera ignore the pitch
@@ -507,13 +509,13 @@ namespace spartan
             }
 
             // translate for as long as there is speed
+             const bool is_grounded = m_physics_body_to_control->RayTraceIsGrounded();
             if (m_movement_speed != Vector3::Zero)
             {
                 if (m_physics_body_to_control)
                 {
                     if (Engine::IsFlagSet(EngineMode::Playing))
                     {
-                        const bool is_grounded   = m_physics_body_to_control->RayTraceIsGrounded();
                         const bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
 
                         // walk
@@ -536,7 +538,7 @@ namespace spartan
                                 // calculate the submerged portion
                                 float submerged_height   = -GetEntity()->GetPosition().y;
                                 float total_height       = 1.8f;
-                                float submerged_fraction = std::min(std::max(submerged_height / total_height, 0.0f), 1.0f);
+                                float submerged_fraction = min(max(submerged_height / total_height, 0.0f), 1.0f);
 
                                 // compute the displacement volume based on the submerged fraction
                                 float displacement_volume = total_volume * submerged_fraction * (object_density / water_density);
@@ -544,7 +546,7 @@ namespace spartan
 
                                 // compute drag factor
                                 float drag_coefficient  = 0.34f;
-                                float frontal_area      = std::pow(pi * m_physics_body_to_control->GetCapsuleRadius(), 2.0f);
+                                float frontal_area      = pow(pi * m_physics_body_to_control->GetCapsuleRadius(), 2.0f);
                                 float linear_velocity_y = water_density * m_physics_body_to_control->GetLinearVelocity().y;
                                 float drag_force_y      = 0.5f * water_density * linear_velocity_y * linear_velocity_y * drag_coefficient;
 
@@ -563,15 +565,6 @@ namespace spartan
                             Vector3 velocity_new     = Vector3(m_movement_speed.x * 20.0f, velocity_current.y, m_movement_speed.z * 20.0f);
                             m_physics_body_to_control->SetLinearVelocity(velocity_new);
                         }
-                        
-                        // jump
-                        if (Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_A))
-                        {
-                            if (is_grounded)
-                            {
-                                m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
-                            }
-                        }
                     }
                     else
                     {
@@ -581,6 +574,15 @@ namespace spartan
                 else
                 {
                     GetEntity()->Translate(m_movement_speed);
+                }
+            }
+
+            // jump
+            if (Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South))
+            {
+                if (is_grounded)
+                {
+                    m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
                 }
             }
         }

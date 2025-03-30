@@ -273,20 +273,15 @@ namespace spartan
     
         // create surface once
         {
-            VkSurfaceKHR surface = VK_NULL_HANDLE;
-            SP_ASSERT_MSG(
-                SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, &surface),
-                "Failed to create window surface"
-            );
+            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_rhi_surface)), "Failed to create window surface");
+
             VkBool32 present_support = false;
             SP_ASSERT_VK(vkGetPhysicalDeviceSurfaceSupportKHR(
                 RHI_Context::device_physical,
                 RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
-                surface,
+                static_cast<VkSurfaceKHR>(m_rhi_surface),
                 &present_support
             ));
-            SP_ASSERT_MSG(present_support, "The device does not support this kind of surface");
-        m_rhi_surface = static_cast<void*>(surface);
         }
 
         Create();
@@ -346,14 +341,10 @@ namespace spartan
         create_info.compositeAlpha           = get_supported_composite_alpha_format(static_cast<VkSurfaceKHR>(m_rhi_surface));
         create_info.presentMode              = get_present_mode(static_cast<VkSurfaceKHR>(m_rhi_surface), m_present_mode);
         create_info.clipped                  = VK_TRUE;
-        create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain);  // save old swapchain
+        create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain); 
     
-        VkSwapchainKHR new_swapchain = VK_NULL_HANDLE;
-        VkResult result              = vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &new_swapchain);
-    
-        // update swapchain
-        m_rhi_swapchain = static_cast<void*>(new_swapchain);
-    
+        SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkSwapchainKHR*>(&m_rhi_swapchain)));
+   
         // destroy old swapchain if it existed
         if (create_info.oldSwapchain != VK_NULL_HANDLE)
         {
@@ -362,8 +353,8 @@ namespace spartan
     
         // get new images
         uint32_t image_count = 0;
-        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, new_swapchain, &image_count, nullptr));
-        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, new_swapchain, &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
+        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, nullptr));
+        SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
     
         // create new image views
         for (uint32_t i = 0; i < m_buffer_count; i++)
@@ -405,7 +396,7 @@ namespace spartan
         // set HDR metadata only if HDR is enabled
         if (m_format == format_hdr)
         {
-            set_hdr_metadata(new_swapchain);
+            set_hdr_metadata(static_cast<VkSwapchainKHR>(m_rhi_swapchain));
         }
     }
 

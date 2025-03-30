@@ -48,12 +48,12 @@ namespace spartan
         if (!gamepad.is_connected)
             return;
 
-        controller_trigger_left  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER); // L2
-        controller_trigger_right = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER); // R2
-        controller_thumb_left.x  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX);        // LEFT THUMBSTICK
-        controller_thumb_left.y  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY);        // LEFT THUMBSTICK
-        controller_thumb_right.x = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTX);       // RIGHT THUMBSTICK
-        controller_thumb_right.y = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTY);       // RIGHT THUMBSTICK
+        controller_trigger_left  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER);  // L2
+        controller_trigger_right = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHT_TRIGGER); // R2
+        controller_thumb_left.x  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX);         // LEFT THUMBSTICK
+        controller_thumb_left.y  = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY);         // LEFT THUMBSTICK
+        controller_thumb_right.x = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTX);        // RIGHT THUMBSTICK
+        controller_thumb_right.y = GetNormalizedAxisValue(gamepad.sdl_pointer, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTY);        // RIGHT THUMBSTICK
     }
 
     void Input::OnEventGamepad(void* event)
@@ -68,7 +68,7 @@ namespace spartan
         // keys
         if (event_type == SDL_EVENT_GAMEPAD_BUTTON_DOWN)
         {
-            Uint8 button = sdl_event->button.button;
+            Uint8 button = sdl_event->gbutton.button;
 
             m_keys[GetKeyIndexGamepad()]      = button == SDL_GAMEPAD_BUTTON_DPAD_UP;
             m_keys[GetKeyIndexGamepad() + 1]  = button == SDL_GAMEPAD_BUTTON_DPAD_DOWN;
