@@ -121,7 +121,7 @@ namespace spartan
     
                             bool is_wheel = name.find("wheel") != string::npos;
                             
-                            // Check if the controller type matches what we're looking for
+                            // check if the controller type matches what we're looking for
                             if ((type_to_detect == ControllerType::Gamepad && is_wheel) ||
                                 (type_to_detect == ControllerType::SteeringWheel && !is_wheel))
                             {
@@ -148,7 +148,7 @@ namespace spartan
             SDL_SetGamepadEventsEnabled(true);
         }
     
-        // Disconnected
+        // disconnected
         if (controller->is_connected && event_type == SDL_EVENT_GAMEPAD_REMOVED)
         {
             SP_LOG_INFO("Controller disconnected \"%s\"", controller->name.c_str());
