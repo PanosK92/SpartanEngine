@@ -398,6 +398,15 @@ namespace spartan
         {
             set_hdr_metadata(static_cast<VkSwapchainKHR>(m_rhi_swapchain));
         }
+
+         SP_LOG_INFO(
+            "Swapchain created with resolution: %dx%d, HDR: %s, VSync: %s, format: %s",
+            m_width,
+            m_height,
+            m_format == format_hdr ? "enabled" : "disabled",
+            m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled",
+            rhi_format_to_string(m_format)
+        );
     }
 
     void RHI_SwapChain::Destroy()
@@ -504,7 +513,7 @@ namespace spartan
         // present the current frame
         queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
     
-        // recreate the swapchain if needed
+        // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
         if (m_is_dirty)
         {
             Destroy();
