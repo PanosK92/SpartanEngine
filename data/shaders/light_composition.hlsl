@@ -53,7 +53,7 @@ struct refraction
         
         // compute refracted uv
         float2 refraction_uv_offset = refraction_direction.xy * (strength / surface.camera_to_pixel_length);
-        float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
+        float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset) * buffer_frame.resolution_scale;
 
         // get base and refraction color
         float frame_mip_count   = pass_get_f3_value().x;
