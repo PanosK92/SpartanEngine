@@ -473,12 +473,12 @@ namespace spartan
         Pass_Blit(cmd_list, tex_occluders, tex_occluders_hiz);
         Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
     
-        // visibility
+        // occlusin
         {
             // define pipeline state
             RHI_PipelineState pso;
-            pso.name             = "visiblity";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::hiz_c);
+            pso.name             = "occlusion";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::occlusion_c);
     
             cmd_list->SetPipelineState(pso);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);

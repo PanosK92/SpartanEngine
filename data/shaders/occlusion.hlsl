@@ -86,7 +86,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         // get the hi-z texture size
         float2 render_size;
         tex.GetDimensions(render_size.x, render_size.y);
-        
+
         float4 box_uvs = float4(min_uv, max_uv);
 
         // calculate initial mip level based on screen-space size
@@ -107,6 +107,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             mip = level_lower;
 
         // sample hi-z texture
+        box_uvs *= buffer_frame.resolution_scale;
         float4 depth = float4(
             tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xy, mip).r,
             tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zy, mip).r,

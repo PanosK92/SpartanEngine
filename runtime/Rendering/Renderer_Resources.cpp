@@ -230,7 +230,7 @@ namespace spartan
                 render_target(Renderer_RenderTarget::light_volumetric)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_volumetric");
             }
 
-            // hi-z
+            // occlusion
             {
                 // note #1: amd is very specific with depth formats, so if something is a depth render target, it can only have one mip and flags like RHI_Texture_Uav
                 // so we create second texture with the flags we want and then blit to that, not mention that we can't even use vkBlitImage so we do a manual one (AMD is killing is us here)
@@ -487,9 +487,9 @@ namespace spartan
         shader(Renderer_Shader::blit_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::blit_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blit.hlsl", async);
 
-        // hiz
-        shader(Renderer_Shader::hiz_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::hiz_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "hiz.hlsl", async);
+        // occlusion
+        shader(Renderer_Shader::occlusion_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::occlusion_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "occlusion.hlsl", async);
     }
 
     void Renderer::CreateFonts()

@@ -198,7 +198,7 @@ namespace spartan
         ffx_spd_min_c,
         ffx_spd_max_c,
         blit_c,
-        hiz_c,
+        occlusion_c,
         max
     };
     
