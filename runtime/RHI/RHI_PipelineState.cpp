@@ -44,9 +44,7 @@ namespace spartan
             bool has_shader_compute  = pso.shaders[RHI_Shader_Type::Compute] ? pso.shaders[RHI_Shader_Type::Compute]->IsCompiled() : false;
             bool has_shader_vertex   = pso.shaders[RHI_Shader_Type::Vertex]  ? pso.shaders[RHI_Shader_Type::Vertex]->IsCompiled()  : false;
             bool has_shader_pixel    = pso.shaders[RHI_Shader_Type::Pixel]   ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()   : false;
-
             bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
-            //bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
             SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There is no shader set, ensure that it compiled successfully and that it has been set");
             if (is_graphics)
@@ -63,7 +61,7 @@ namespace spartan
                 SP_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
             }
 
-            SP_ASSERT_MSG(pso.name, "Name your pipeline state");
+            SP_ASSERT_MSG(pso.name != nullptr, "Name your pipeline state");
         }
 
         uint64_t compute_hash(RHI_PipelineState& pso)

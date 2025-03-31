@@ -1688,6 +1688,7 @@ namespace spartan
 
         // set pipeline state
         RHI_PipelineState pso;
+        pso.name             = "blur";
         pso.shaders[Compute] = shader_c;
         cmd_list->SetPipelineState(pso);
 
@@ -1888,6 +1889,7 @@ namespace spartan
 
             // set pipeline state
             RHI_PipelineState pso;
+            pso.name                             = "";
             pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Wireframe);

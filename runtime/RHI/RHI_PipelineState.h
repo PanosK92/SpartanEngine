@@ -61,7 +61,7 @@ namespace spartan
         float clear_depth      = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
-        const char* name; // used by the validation layer
+        const char* name       = nullptr; // used by the validation layer
 
     private:
         bool HasShader(const RHI_Shader_Type shader_stage) const;

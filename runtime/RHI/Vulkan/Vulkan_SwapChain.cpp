@@ -406,12 +406,12 @@ namespace spartan
         }
 
          SP_LOG_INFO(
-            "Swapchain created with resolution: %dx%d, HDR: %s, VSync: %s, format: %s",
+            "Swapchain created with resolution: %dx%d, HDR: %s (%s), VSync: %s",
             m_width,
             m_height,
             m_format == format_hdr ? "enabled" : "disabled",
-            m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled",
-            rhi_format_to_string(m_format)
+            rhi_format_to_string(m_format),
+            m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled"
         );
     }
 
