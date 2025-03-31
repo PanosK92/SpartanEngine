@@ -44,7 +44,7 @@ float2 get_velocity_3x3_average(float2 uv, float2 resolution_out)
         for (int x = -1; x <= 1; ++x)
         {
             float2 offset   = float2(x, y) * texel_size;
-            float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv + offset, 0).xy;
+            float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp], (uv + offset) * buffer_frame.resolution_scale, 0).xy;
             total_velocity += velocity;
             ++sample_count;
         }
