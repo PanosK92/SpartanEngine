@@ -693,75 +693,187 @@ namespace spartan
         uint32_t width  = 0;
         uint32_t height = 0;
         vector<Vector3> positions;
-
-        // note: the physics body reads the height map values, so any changes that need
-        // to reflect on the collision shape, need to happen at the height value level
-
-        // 1. process height map
+    
+        // Define cache file path
+        const string cache_file = "terrain_cache.bin";
+        bool loaded_from_cache = false;
+    
+        // Check if cache exists and load it
         {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
-
-            get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y, scale);
-
-            // deduce some stuff
-            width            = GetWidth();
-            height           = GetHeight();
-            m_height_samples = width * height;
-            m_vertex_count   = m_height_samples;
-            m_index_count    = m_vertex_count * 6;
-            m_triangle_count = m_index_count / 3;
-
-            // allocate memory for the calculations that follow
-            positions  = vector<Vector3>(m_height_samples);
-            m_vertices = vector<RHI_Vertex_PosTexNorTan>(m_vertex_count);
-            m_indices  = vector<uint32_t>(m_index_count);
-
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            ifstream file(cache_file, ios::binary);
+            if (file.is_open())
+            {
+                // Read all sizes first
+                uint32_t height_data_size = 0;
+                uint32_t vertex_count = 0;
+                uint32_t index_count = 0;
+                uint32_t tile_count = 0;
+    
+                file.read(reinterpret_cast<char*>(&width), sizeof(uint32_t));
+                file.read(reinterpret_cast<char*>(&height), sizeof(uint32_t));
+                file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
+                file.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
+                file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
+                file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
+    
+                // Sanity check
+                if (tile_count > 10000) // Adjust as needed
+                {
+                    SP_LOG_ERROR("Invalid tile_count (%u) read from cache, aborting load", tile_count);
+                    file.close();
+                }
+                else
+                {
+                    // Resize vectors based on saved sizes
+                    m_height_data.resize(height_data_size);
+                    m_vertices.resize(vertex_count);
+                    m_indices.resize(index_count);
+                    m_tile_vertices.resize(tile_count);
+                    m_tile_indices.resize(tile_count);
+    
+                    // Read vector data
+                    file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
+                    file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
+                    file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
+    
+                    // Read tile data
+                    for (uint32_t i = 0; i < tile_count; i++)
+                    {
+                        uint32_t vertex_size, index_size;
+                        file.read(reinterpret_cast<char*>(&vertex_size), sizeof(uint32_t));
+                        file.read(reinterpret_cast<char*>(&index_size), sizeof(uint32_t));
+    
+                        m_tile_vertices[i].resize(vertex_size);
+                        m_tile_indices[i].resize(index_size);
+    
+                        file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
+                        file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
+                    }
+    
+                    file.close();
+                    loaded_from_cache = true;
+    
+                    SP_LOG_INFO("Loaded cache: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
+                                width, height, height_data_size, vertex_count, index_count, tile_count);
+    
+                    // Skip to step 8
+                    ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Loaded from cache, skipping to mesh creation...");
+                    for (uint32_t i = 0; i < 7; i++)
+                        ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                }
+            }
         }
     
-        // 2. add perlin noise
+        if (!loaded_from_cache)
         {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding Perlin noise...");
-            const float frequency = 0.1f;
-            const float amplitude = 1.0f;
-            add_perlin_noise(m_height_data, width, height, frequency, amplitude);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            // 1. process height map
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
+                get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y, scale);
+                width  = GetWidth();
+                height = GetHeight();
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+    
+            // 2. add perlin noise
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding Perlin noise...");
+                const float frequency = 0.1f;
+                const float amplitude = 1.0f;
+                add_perlin_noise(m_height_data, width, height, frequency, amplitude);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+    
+            // 3. compute positions 
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
+                positions.resize(width * height);
+                generate_positions(positions, m_height_data, width, height);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+    
+            // 4. compute vertices and indices
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
+                m_vertices.resize(width * height);
+                m_indices.resize(width * height * 6);
+                generate_vertices_and_indices(m_vertices, m_indices, positions, width, height);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+    
+            // 5. compute normals and tangents
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
+                generate_normals(m_indices, m_vertices, width, height);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+    
+            // 6. optimize geometry 
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
+                spartan::geometry_processing::optimize(m_vertices, m_indices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+    
+            // 7. split into tiles
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
+                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+    
+                // Write to cache file
+                ofstream file(cache_file, ios::binary);
+                if (file.is_open())
+                {
+                    // Write all sizes first
+                    uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
+                    uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
+                    uint32_t index_count = static_cast<uint32_t>(m_indices.size());
+                    uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
+    
+                    file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
+                    file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
+                    file.write(reinterpret_cast<const char*>(&height_data_size), sizeof(uint32_t));
+                    file.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
+                    file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
+                    file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
+    
+                    // Write vector data
+                    file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
+                    file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
+                    file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
+    
+                    // Write tile data
+                    for (uint32_t i = 0; i < tile_count; i++)
+                    {
+                        uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
+                        uint32_t index_size = static_cast<uint32_t>(m_tile_indices[i].size());
+                        file.write(reinterpret_cast<const char*>(&vertex_size), sizeof(uint32_t));
+                        file.write(reinterpret_cast<const char*>(&index_size), sizeof(uint32_t));
+                        file.write(reinterpret_cast<const char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
+                        file.write(reinterpret_cast<const char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
+                    }
+    
+                    file.close();
+    
+                    SP_LOG_INFO("Wrote cache: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
+                                width, height, height_data_size, vertex_count, index_count, tile_count);
+                }
+                else
+                {
+                    SP_LOG_ERROR("Failed to write terrain cache file");
+                }
+            }
         }
     
-        // 3. compute positions 
-        {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
-            generate_positions(positions, m_height_data, width, height);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-        }
-    
-        // 4. compute vertices and indices
-        {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
-            generate_vertices_and_indices(m_vertices, m_indices, positions, width, height);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-        }
-    
-        // 5. compute normals and tangents
-        {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
-            generate_normals(m_indices, m_vertices, width, height);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-        }
-    
-        // 6. optimize geometry 
-        {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
-            spartan::geometry_processing::optimize(m_vertices, m_indices);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-        }
-    
-        // 7. split into tiles
-        {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
-            spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices);
-            ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-        }
+        // Initialize members for both paths
+        m_height_samples = width * height;
+        m_vertex_count   = static_cast<uint32_t>(m_vertices.size()); // Use actual size from cache or generation
+        m_index_count    = static_cast<uint32_t>(m_indices.size());
+        m_triangle_count = m_index_count / 3;
+        positions        = vector<Vector3>(m_height_samples);
+        m_vertices.resize(m_vertex_count); // Ensure exact size
+        m_indices.resize(m_index_count);   // Ensure exact size
     
         // 8. create a mesh for each tile
         {
@@ -772,7 +884,7 @@ namespace spartan
             }
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
+    
         m_area_km2      = compute_terrain_area_km2(m_vertices);
         m_is_generating = false;
     }

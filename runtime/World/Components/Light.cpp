@@ -518,7 +518,7 @@ namespace spartan
     bool Light::IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index) const
     {
         const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(instance_group_index) : renderable->GetBoundingBox();
-        SP_ASSERT(bounding_box != BoundingBox::Undefined);
+        SP_ASSERT(!bounding_box.GetMin().IsNaN() && !bounding_box.GetMax().IsNaN());
 
         if (m_light_type != LightType::Point)
         { 
