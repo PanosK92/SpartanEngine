@@ -1845,6 +1845,7 @@ namespace spartan
 
         // set pipeline state
         RHI_PipelineState pso;
+        pso.name                             = "grid";
         pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
         pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
         pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
@@ -1889,7 +1890,7 @@ namespace spartan
 
             // set pipeline state
             RHI_PipelineState pso;
-            pso.name                             = "";
+            pso.name                             = "lines";
             pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
             pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Wireframe);

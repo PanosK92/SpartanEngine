@@ -1200,9 +1200,6 @@ namespace spartan
                     SP_ASSERT(support_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
                     features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
-                    SP_ASSERT(support_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
-                    features_1_2.descriptorBindingVariableDescriptorCount = VK_TRUE;
-
                     SP_ASSERT(support_1_2.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE);
                     features_1_2.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 
@@ -1212,10 +1209,13 @@ namespace spartan
                     SP_ASSERT(support_1_2.runtimeDescriptorArray == VK_TRUE);
                     features_1_2.runtimeDescriptorArray = VK_TRUE;
 
+                    SP_ASSERT(support_1_2.descriptorIndexing == VK_TRUE);
+                    features_1_2.descriptorIndexing = VK_TRUE;
+
                     SP_ASSERT(support_robustness.nullDescriptor == VK_TRUE);
                     features_robustness.nullDescriptor = VK_TRUE;
 
-                    // AMD doesn't support Vulkan 1.4 yet, so we'll wait on it.
+                    // My 6900 XT doesn't support this.
                     //SP_ASSERT(support_1_4.pushDescriptor == VK_TRUE);
                     //features_1_4.pushDescriptor = VK_TRUE;
                 }

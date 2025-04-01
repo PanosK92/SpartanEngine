@@ -467,8 +467,7 @@ namespace spartan
             if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes))
             {
                 import_flags |= aiProcess_OptimizeMeshes;
-                import_flags |= aiProcess_OptimizeGraph;
-                import_flags |= aiProcess_PreTransformVertices;
+                import_flags |= aiProcess_PreTransformVertices; // this is incompatible with aiProcess_OptimizeGraph (assert occurs)
             }
 
             // validate
