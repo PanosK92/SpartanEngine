@@ -77,7 +77,6 @@ namespace spartan
         std::shared_ptr<Material> GetMaterial() { return m_material; }
  
     private:
-        void AddGeometry(const uint32_t tile_index);
         void Clear();
 
         float m_min_y                     = -35.0f; // sea level is 0.0

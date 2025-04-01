@@ -134,7 +134,7 @@ namespace spartan
     namespace
     {
         const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f; // this is an axiom of the engine
-        const uint32_t scale                = 2;         // the scale factor to upscale the height map by
+        const uint32_t scale                = 3;         // the scale factor to upscale the height map by
         const uint32_t smoothing_iterations = 0;         // the number of height map neighboring pixel averaging - useful if you are reading the height map with a scale of 1 (no bilinear interpolation)
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
 
@@ -867,58 +867,47 @@ namespace spartan
             }
         }
     
-        // initialize members for both paths
+        // initialize members
         m_height_samples = width * height;
-        m_vertex_count   = static_cast<uint32_t>(m_vertices.size()); // Use actual size from cache or generation
+        m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
-        positions        = vector<Vector3>(m_height_samples);
-        m_vertices.resize(m_vertex_count); // Ensure exact size
-        m_indices.resize(m_index_count);   // Ensure exact size
-    
+
         // 8. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Building GPU mesh...");
+
+            m_mesh = make_shared<Mesh>();
+            m_mesh->SetObjectName("terrain_mesh");
+            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // the geometry was optimized at step 6, don't do it again
+
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {
-                AddGeometry(tile_index);
+                // update with geometry
+                uint32_t sub_mesh_index = 0;
+                m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
+
+                // create a child entity, add a renderable, and this mesh tile to it
+                {
+                    shared_ptr<Entity> entity = World::CreateEntity();
+                    entity->SetObjectName("tile_" + to_string(tile_index));
+                    entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
+
+                    if (Renderable* renderable = entity->AddComponent<Renderable>())
+                    {
+                        renderable->SetMesh(m_mesh.get(), sub_mesh_index);
+                        renderable->SetMaterial(m_material);
+                    }
+                }
             }
+
             m_mesh->CreateGpuBuffers();
+
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
         m_area_km2      = compute_terrain_area_km2(m_vertices);
         m_is_generating = false;
-    }
-    
-    void Terrain::AddGeometry(const uint32_t tile_index)
-    {
-        string name = "tile_" + to_string(tile_index);
-
-        // create mesh if it doesn't exist
-        if (!m_mesh)
-        {
-            m_mesh = make_shared<Mesh>();
-            m_mesh->SetObjectName("terrain_mesh");
-            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // the geometry is already optimized, don't do it again
-        }
-
-        // update with geometry
-        uint32_t sub_mesh_index = 0;
-        m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
-
-        // create a child entity, add a renderable, and this mesh tile to it
-        {
-            shared_ptr<Entity> entity = World::CreateEntity();
-            entity->SetObjectName(name);
-            entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
-
-            if (Renderable* renderable = entity->AddComponent<Renderable>())
-            {
-                renderable->SetMesh(m_mesh.get(), sub_mesh_index);
-                renderable->SetMaterial(m_material);
-            }
-        }
     }
 
     void Terrain::Clear()

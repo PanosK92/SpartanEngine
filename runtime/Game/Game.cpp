@@ -471,8 +471,8 @@ namespace spartan
 
         void create_forest_car()
         {
-            const float render_distance_trees = 1000.0f;
-            const float render_distance_grass = 500.0f;
+            const float render_distance_trees = 2000.0f;
+            const float render_distance_grass = 1000.0f;
 
             create_sun(LightIntensity::sky_overcast_day);
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
@@ -607,7 +607,7 @@ namespace spartan
                     // geometry
                     {
                         // generate grid
-                        const float extend                       = 2000.0f;
+                        const float extend                       = 4000.0f;
                         const uint32_t grid_points_per_dimension = 64;
                         vector<RHI_Vertex_PosTexNorTan> vertices;
                         vector<uint32_t> indices;
@@ -659,7 +659,7 @@ namespace spartan
                     // generate instances
                     {
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 5000, TerrainProp::Tree);
+                        terrain->GenerateTransforms(&instances, 10000, TerrainProp::Tree);
                         
                         if (Entity* branches = entity->GetDescendantByName("tree_bark_0"))
                         {
@@ -720,7 +720,7 @@ namespace spartan
 
                     // generate instances
                     vector<Matrix> instances;
-                    terrain->GenerateTransforms(&instances, 20000000, TerrainProp::Grass);
+                    terrain->GenerateTransforms(&instances, 50000000, TerrainProp::Grass);
                 
                     // add renderable component
                     Renderable* renderable = entity->AddComponent<Renderable>();
@@ -743,7 +743,7 @@ namespace spartan
             }
 
             // car and a bunch of objects
-            const Vector3 object_position = Vector3(-449.0260f, 6.5f, 359.2632f);
+            const Vector3 object_position = Vector3(-449.0260f, 15.0f, 359.2632f);
             create_car(object_position);
             create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
             create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
