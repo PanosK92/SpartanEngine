@@ -77,7 +77,7 @@ namespace spartan
         std::shared_ptr<Material> GetMaterial() { return m_material; }
  
     private:
-        void UpdateMesh(const uint32_t tile_index);
+        void AddGeometry(const uint32_t tile_index);
         void Clear();
 
         float m_min_y                     = -35.0f; // sea level is 0.0
@@ -94,7 +94,7 @@ namespace spartan
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
         std::vector<uint32_t> m_indices;
         std::vector<std::vector<uint32_t>> m_tile_indices;
-        std::vector<std::shared_ptr<Mesh>> m_tile_meshes;
+        std::shared_ptr<Mesh> m_mesh;
         std::shared_ptr<Material> m_material;
     };
 }

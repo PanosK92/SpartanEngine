@@ -753,13 +753,14 @@ namespace spartan
                     file.close();
                     loaded_from_cache = true;
     
-                    SP_LOG_INFO("Loaded cache: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
-                                width, height, height_data_size, vertex_count, index_count, tile_count);
+                    SP_LOG_INFO("Loaded cache: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u", width, height, height_data_size, vertex_count, index_count, tile_count);
     
                     // Skip to step 8
                     ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Loaded from cache, skipping to mesh creation...");
                     for (uint32_t i = 0; i < 7; i++)
+                    { 
                         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+                    }
                 }
             }
         }
@@ -866,7 +867,7 @@ namespace spartan
             }
         }
     
-        // Initialize members for both paths
+        // initialize members for both paths
         m_height_samples = width * height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size()); // Use actual size from cache or generation
         m_index_count    = static_cast<uint32_t>(m_indices.size());
@@ -877,11 +878,12 @@ namespace spartan
     
         // 8. create a mesh for each tile
         {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating tile meshes");
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Building GPU mesh...");
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {
-                UpdateMesh(tile_index);
+                AddGeometry(tile_index);
             }
+            m_mesh->CreateGpuBuffers();
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
@@ -889,24 +891,21 @@ namespace spartan
         m_is_generating = false;
     }
     
-    void Terrain::UpdateMesh(const uint32_t tile_index)
+    void Terrain::AddGeometry(const uint32_t tile_index)
     {
         string name = "tile_" + to_string(tile_index);
 
         // create mesh if it doesn't exist
-        if (m_tile_meshes.size() <= tile_index)
+        if (!m_mesh)
         {
-            shared_ptr<Mesh>& mesh = m_tile_meshes.emplace_back(make_shared<Mesh>());
-            mesh->SetObjectName(name);
-            // don't optimize the terrain as tile seams will be visible
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            m_mesh = make_shared<Mesh>();
+            m_mesh->SetObjectName("terrain_mesh");
+            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // the geometry is already optimized, don't do it again
         }
 
         // update with geometry
-        shared_ptr<Mesh>& mesh = m_tile_meshes[tile_index];
-        mesh->Clear();
-        mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true);
-        mesh->CreateGpuBuffers();
+        uint32_t sub_mesh_index = 0;
+        m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
 
         // create a child entity, add a renderable, and this mesh tile to it
         {
@@ -916,7 +915,7 @@ namespace spartan
 
             if (Renderable* renderable = entity->AddComponent<Renderable>())
             {
-                renderable->SetMesh(mesh.get());
+                renderable->SetMesh(m_mesh.get(), sub_mesh_index);
                 renderable->SetMaterial(m_material);
             }
         }
@@ -926,14 +925,10 @@ namespace spartan
     {
         m_vertices.clear();
         m_indices.clear();
-        m_tile_meshes.clear();
         m_tile_vertices.clear();
         m_tile_indices.clear();
-
-        for (auto& mesh : m_tile_meshes)
-        {
-            ResourceCache::Remove(mesh);
-        }
+        ResourceCache::Remove(m_mesh);
+        m_mesh = nullptr;
 
         for (Entity* child : m_entity_ptr->GetChildren())
         {
