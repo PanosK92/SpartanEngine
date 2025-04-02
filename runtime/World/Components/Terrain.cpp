@@ -42,7 +42,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    namespace perlin
+    namespace perlin_noise
     {
         // permutation table (256 values, typically used in Perlin noise for randomness)
         static unsigned char p[512] = {
@@ -75,19 +75,19 @@ namespace spartan
             61,156,180
         };
     
-        // Fade function for smooth interpolation (6t^5 - 15t^4 + 10t^3)
+        // fade function for smooth interpolation (6t^5 - 15t^4 + 10t^3)
         inline float fade(float t)
         {
             return t * t * t * (t * (t * 6 - 15) + 10);
         }
     
-        // Linear interpolation
+        // linear interpolation
         inline float lerp(float a, float b, float t)
         {
             return a + t * (b - a);
         }
     
-        // Gradient function: computes dot product between gradient vector and distance vector
+        // gradient function: computes dot product between gradient vector and distance vector
         inline float grad(int hash, float x, float y)
         {
             int h = hash & 15;           // Take lower 4 bits of hash
@@ -96,38 +96,155 @@ namespace spartan
             return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v); // Dot product
         }
     
-        // 2D Perlin noise function
+        // 2d perlin noise function
         float noise(float x, float y)
         {
-            // Find unit grid cell containing point
+            // gind unit grid cell containing point
             int X = static_cast<int>(floor(x)) & 255;
             int Y = static_cast<int>(floor(y)) & 255;
     
-            // Get relative coordinates within the cell
+            // get relative coordinates within the cell
             x -= floor(x);
             y -= floor(y);
     
-            // Compute fade curves for smooth interpolation
+            // compute fade curves for smooth interpolation
             float u = fade(x);
             float v = fade(y);
     
-            // Hash coordinates of the 4 corners of the grid cell
-            int aa = p[p[X] + Y];       // Bottom-left
-            int ab = p[p[X] + Y + 1];   // Top-left
-            int ba = p[p[X + 1] + Y];   // Bottom-right
-            int bb = p[p[X + 1] + Y + 1]; // Top-right
+            // hash coordinates of the 4 corners of the grid cell
+            int aa = p[p[X] + Y];         // bottom-left
+            int ab = p[p[X] + Y + 1];     // top-left
+            int ba = p[p[X + 1] + Y];     // bottom-right
+            int bb = p[p[X + 1] + Y + 1]; // top-right
     
-            // Compute gradients and interpolate
-            float g1 = grad(aa, x, y);           // Bottom-left gradient
-            float g2 = grad(ba, x - 1, y);       // Bottom-right gradient
-            float x1 = lerp(g1, g2, u);          // Interpolate along x (bottom edge)
+            // compute gradients and interpolate
+            float g1 = grad(aa, x, y);           // bottom-left gradient
+            float g2 = grad(ba, x - 1, y);       // bottom-right gradient
+            float x1 = lerp(g1, g2, u);          // interpolate along x (bottom edge)
             
-            float g3 = grad(ab, x, y - 1);       // Top-left gradient
-            float g4 = grad(bb, x - 1, y - 1);   // Top-right gradient
-            float x2 = lerp(g3, g4, u);          // Interpolate along x (top edge)
+            float g3 = grad(ab, x, y - 1);       // top-left gradient
+            float g4 = grad(bb, x - 1, y - 1);   // top-right gradient
+            float x2 = lerp(g3, g4, u);          // interpolate along x (top edge)
     
-            // Interpolate along y and return noise value in range [-1, 1]
+            // interpolate along y and return noise value in range [-1, 1]
             return lerp(x1, x2, v);
+        }
+
+        void add(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
+        {
+            auto add_noise = [&height_data, width, height, frequency, amplitude](uint32_t start_index, uint32_t end_index)
+            {
+                for (uint32_t index = start_index; index < end_index; ++index)
+                {
+                    uint32_t i                  = index % width;
+                    uint32_t j                  = index / width;
+                    float x                     = static_cast<float>(i) - width * 0.5f;
+                    float z                     = static_cast<float>(j) - height * 0.5f;
+                    float noise_value           = noise(x * frequency, z * frequency);
+                    height_data[j * width + i] += noise_value * amplitude;
+                }
+            };
+
+            ThreadPool::ParallelLoop(add_noise, width * height);
+        }
+    }
+
+    namespace placement
+    {
+        vector<Matrix> find_transforms(const vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, const vector<uint32_t>& terrain_indices, uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal,float terrain_offset, float min_height)
+        {
+            // step 1: precompute acceptable triangles - this means within acceptable slope and height
+             vector<uint32_t> acceptable_triangles;
+             {
+                 acceptable_triangles.reserve(terrain_indices.size() / 3);
+        
+                 for (uint32_t i = 0; i < terrain_indices.size(); i += 3)
+                 {
+                     uint32_t idx0 = terrain_indices[i];
+                     uint32_t idx1 = terrain_indices[i + 1];
+                     uint32_t idx2 = terrain_indices[i + 2];
+                 
+                     Vector3 v0(terrain_vertices[idx0].pos[0], terrain_vertices[idx0].pos[1], terrain_vertices[idx0].pos[2]);
+                     Vector3 v1(terrain_vertices[idx1].pos[0], terrain_vertices[idx1].pos[1], terrain_vertices[idx1].pos[2]);
+                     Vector3 v2(terrain_vertices[idx2].pos[0], terrain_vertices[idx2].pos[1], terrain_vertices[idx2].pos[2]);
+                 
+                     Vector3 normal            = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+                     float slope_radians       = acos(Vector3::Dot(normal, Vector3::Up));
+                     bool is_acceptable_slope  = slope_radians <= max_slope_radians;
+                     bool is_acceptable_height = v0.y >= min_height && v1.y >= min_height && v2.y >= min_height;
+                 
+                     if (is_acceptable_slope && is_acceptable_height)
+                     {
+                         acceptable_triangles.push_back(i / 3); // store triangle index (divided by 3 since indices are per vertex)
+                     }
+                 }
+                 
+                 if (acceptable_triangles.empty())
+                     return {};
+             }
+        
+             // step 2: prepare output vector and mutex
+             vector<Matrix> transforms;
+             {
+                 transforms.reserve(transform_count);
+                 mutex mtx;
+                 
+                 // step 3: parallel placement with local storage
+                 auto place_mesh = [&terrain_vertices, &terrain_indices, &acceptable_triangles, &transforms, &mtx, rotate_to_match_surface_normal, terrain_offset](uint32_t start_index, uint32_t end_index)
+                 {
+                     // thread-local local resources and reservations (for maximum performance - no mutexes)
+                     thread_local mt19937 generator(random_device{}());
+                     uniform_int_distribution<> triangle_dist(0, static_cast<uint32_t>(acceptable_triangles.size() - 1));
+                     uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
+                     uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
+                     vector<Matrix> local_transforms;
+                     local_transforms.reserve(end_index - start_index);
+                 
+                     for (uint32_t i = start_index; i < end_index; i++)
+                     {
+                         // select a random acceptable triangle
+                         uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
+                         uint32_t index0 = terrain_indices[tri_idx * 3];
+                         uint32_t index1 = terrain_indices[tri_idx * 3 + 1];
+                         uint32_t index2 = terrain_indices[tri_idx * 3 + 2];
+                 
+                         Vector3 v0(terrain_vertices[index0].pos[0], terrain_vertices[index0].pos[1], terrain_vertices[index0].pos[2]);
+                         Vector3 v1(terrain_vertices[index1].pos[0], terrain_vertices[index1].pos[1], terrain_vertices[index1].pos[2]);
+                         Vector3 v2(terrain_vertices[index2].pos[0], terrain_vertices[index2].pos[1], terrain_vertices[index2].pos[2]);
+                 
+                         // generate barycentric coordinates
+                         float u = barycentric_dist(generator);
+                         float v = barycentric_dist(generator);
+                         if (u + v > 1.0f)
+                         {
+                             u = 1.0f - u;
+                             v = 1.0f - v;
+                         }
+                 
+                         // compute position with offset
+                         Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0) + Vector3(0.0f, terrain_offset, 0.0f);
+                 
+                         // compute rotation
+                         Vector3 normal               = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+                         Quaternion rotate_to_normal  = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
+                         Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                         Quaternion rotation          = rotate_to_normal * random_y_rotation;
+                 
+                         // create transform matrix (assuming Matrix constructor takes position, rotation, scale)
+                         Matrix transform = Matrix::CreateScale(1.0f) *  Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
+                         local_transforms.push_back(transform);
+                     }
+                 
+                     // merge local transforms into the shared vector
+                     lock_guard<mutex> lock(mtx);
+                     transforms.insert(transforms.end(), local_transforms.begin(), local_transforms.end());
+                 };
+                 
+                 // step 4: execute parallel loop
+                 ThreadPool::ParallelLoop(place_mesh, transform_count);
+                 
+                 return transforms;
+             }
         }
     }
 
@@ -315,24 +432,6 @@ namespace spartan
             }
         }
 
-        void add_perlin_noise(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
-        {
-            // parallel application of perlin noise to height data
-            auto add_noise = [&height_data, width, height, frequency, amplitude](uint32_t start_index, uint32_t end_index)
-            {
-                for (uint32_t index = start_index; index < end_index; ++index)
-                {
-                    uint32_t i = index % width;
-                    uint32_t j = index / width;
-                    float x = static_cast<float>(i) - width * 0.5f;
-                    float z = static_cast<float>(j) - height * 0.5f;
-                    float noise_value = perlin::noise(x * frequency, z * frequency);
-                    height_data[j * width + i] += noise_value * amplitude;
-                }
-            };
-            ThreadPool::ParallelLoop(add_noise, width * height);
-        }
-
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
@@ -509,108 +608,6 @@ namespace spartan
         
             ThreadPool::ParallelLoop(compute_vertex_data, static_cast<uint32_t>(terrain_vertices.size()));
         }
-
-        float get_random_float(mt19937& gen, float x, float y)
-        {
-            uniform_real_distribution<float> distr(x, y); // define the distribution
-            return distr(gen);
-        }
-
-       vector<Matrix> generate_transforms(const vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, const vector<uint32_t>& terrain_indices, uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal,float terrain_offset, float min_height)
-       {
-           // step 1: precompute acceptable triangles - this means within acceptable slope and height
-            vector<uint32_t> acceptable_triangles;
-            {
-                acceptable_triangles.reserve(terrain_indices.size() / 3);
-
-                for (uint32_t i = 0; i < terrain_indices.size(); i += 3)
-                {
-                    uint32_t idx0 = terrain_indices[i];
-                    uint32_t idx1 = terrain_indices[i + 1];
-                    uint32_t idx2 = terrain_indices[i + 2];
-                
-                    Vector3 v0(terrain_vertices[idx0].pos[0], terrain_vertices[idx0].pos[1], terrain_vertices[idx0].pos[2]);
-                    Vector3 v1(terrain_vertices[idx1].pos[0], terrain_vertices[idx1].pos[1], terrain_vertices[idx1].pos[2]);
-                    Vector3 v2(terrain_vertices[idx2].pos[0], terrain_vertices[idx2].pos[1], terrain_vertices[idx2].pos[2]);
-                
-                    Vector3 normal            = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
-                    float slope_radians       = acos(Vector3::Dot(normal, Vector3::Up));
-                    bool is_acceptable_slope  = slope_radians <= max_slope_radians;
-                    bool is_acceptable_height = v0.y >= min_height && v1.y >= min_height && v2.y >= min_height;
-                
-                    if (is_acceptable_slope && is_acceptable_height)
-                    {
-                        acceptable_triangles.push_back(i / 3); // store triangle index (divided by 3 since indices are per vertex)
-                    }
-                }
-                
-                if (acceptable_triangles.empty())
-                    return {};
-            }
-
-            // step 2: prepare output vector and mutex
-            vector<Matrix> transforms;
-            {
-                transforms.reserve(transform_count);
-                mutex mtx;
-                
-                // step 3: parallel placement with local storage
-                auto place_mesh = [&terrain_vertices, &terrain_indices, &acceptable_triangles, &transforms, &mtx, rotate_to_match_surface_normal, terrain_offset](uint32_t start_index, uint32_t end_index)
-                {
-                    // thread-local local resources and reservations (for maximum performance - no mutexes)
-                    thread_local mt19937 generator(random_device{}());
-                    uniform_int_distribution<> triangle_dist(0, static_cast<uint32_t>(acceptable_triangles.size() - 1));
-                    uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
-                    uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
-                    vector<Matrix> local_transforms;
-                    local_transforms.reserve(end_index - start_index);
-                
-                    for (uint32_t i = start_index; i < end_index; i++)
-                    {
-                        // select a random acceptable triangle
-                        uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
-                        uint32_t index0 = terrain_indices[tri_idx * 3];
-                        uint32_t index1 = terrain_indices[tri_idx * 3 + 1];
-                        uint32_t index2 = terrain_indices[tri_idx * 3 + 2];
-                
-                        Vector3 v0(terrain_vertices[index0].pos[0], terrain_vertices[index0].pos[1], terrain_vertices[index0].pos[2]);
-                        Vector3 v1(terrain_vertices[index1].pos[0], terrain_vertices[index1].pos[1], terrain_vertices[index1].pos[2]);
-                        Vector3 v2(terrain_vertices[index2].pos[0], terrain_vertices[index2].pos[1], terrain_vertices[index2].pos[2]);
-                
-                        // generate barycentric coordinates
-                        float u = barycentric_dist(generator);
-                        float v = barycentric_dist(generator);
-                        if (u + v > 1.0f)
-                        {
-                            u = 1.0f - u;
-                            v = 1.0f - v;
-                        }
-                
-                        // compute position with offset
-                        Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0) + Vector3(0.0f, terrain_offset, 0.0f);
-                
-                        // compute rotation
-                        Vector3 normal               = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
-                        Quaternion rotate_to_normal  = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
-                        Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
-                        Quaternion rotation          = rotate_to_normal * random_y_rotation;
-                
-                        // create transform matrix (assuming Matrix constructor takes position, rotation, scale)
-                        Matrix transform = Matrix::CreateScale(1.0f) *  Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
-                        local_transforms.push_back(transform);
-                    }
-                
-                    // merge local transforms into the shared vector
-                    lock_guard<mutex> lock(mtx);
-                    transforms.insert(transforms.end(), local_transforms.begin(), local_transforms.end());
-                };
-                
-                // step 4: execute parallel loop
-                ThreadPool::ParallelLoop(place_mesh, transform_count);
-                
-                return transforms;
-            }
-        }
     }
 
     Terrain::Terrain(Entity* entity) : Component(entity)
@@ -665,7 +662,7 @@ namespace spartan
             min_height                  = 0.5f;
         }
     
-        *transforms = generate_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
+        *transforms = placement::find_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
     }
 
     void Terrain::Generate()
@@ -694,20 +691,20 @@ namespace spartan
         uint32_t height = 0;
         vector<Vector3> positions;
     
-        // Define cache file path
+        // define cache file path
         const string cache_file = "terrain_cache.bin";
         bool loaded_from_cache = false;
     
-        // Check if cache exists and load it
+        // check if cache exists and load it
         {
             ifstream file(cache_file, ios::binary);
             if (file.is_open())
             {
-                // Read all sizes first
+                // read all sizes first
                 uint32_t height_data_size = 0;
-                uint32_t vertex_count = 0;
-                uint32_t index_count = 0;
-                uint32_t tile_count = 0;
+                uint32_t vertex_count     = 0;
+                uint32_t index_count      = 0;
+                uint32_t tile_count       = 0;
     
                 file.read(reinterpret_cast<char*>(&width), sizeof(uint32_t));
                 file.read(reinterpret_cast<char*>(&height), sizeof(uint32_t));
@@ -724,19 +721,19 @@ namespace spartan
                 }
                 else
                 {
-                    // Resize vectors based on saved sizes
+                    // resize vectors based on saved sizes
                     m_height_data.resize(height_data_size);
                     m_vertices.resize(vertex_count);
                     m_indices.resize(index_count);
                     m_tile_vertices.resize(tile_count);
                     m_tile_indices.resize(tile_count);
     
-                    // Read vector data
+                    // read vector data
                     file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
                     file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
                     file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
     
-                    // Read tile data
+                    // read tile data
                     for (uint32_t i = 0; i < tile_count; i++)
                     {
                         uint32_t vertex_size, index_size;
@@ -755,7 +752,7 @@ namespace spartan
     
                     SP_LOG_INFO("Loaded cache: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u", width, height, height_data_size, vertex_count, index_count, tile_count);
     
-                    // Skip to step 8
+                    // skip to step 8
                     ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Loaded from cache, skipping to mesh creation...");
                     for (uint32_t i = 0; i < 7; i++)
                     { 
@@ -781,7 +778,7 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding Perlin noise...");
                 const float frequency = 0.1f;
                 const float amplitude = 1.0f;
-                add_perlin_noise(m_height_data, width, height, frequency, amplitude);
+                perlin_noise::add(m_height_data, width, height, frequency, amplitude);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
@@ -809,7 +806,7 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 6. optimize geometry 
+            // 6. optimize geometry
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
                 spartan::geometry_processing::optimize(m_vertices, m_indices);
@@ -822,11 +819,11 @@ namespace spartan
                 spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
     
-                // Write to cache file
+                // write to cache file
                 ofstream file(cache_file, ios::binary);
                 if (file.is_open())
                 {
-                    // Write all sizes first
+                    // write all sizes first
                     uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
                     uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
                     uint32_t index_count = static_cast<uint32_t>(m_indices.size());
@@ -839,12 +836,12 @@ namespace spartan
                     file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
                     file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
     
-                    // Write vector data
+                    // write vector data
                     file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
                     file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
                     file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
     
-                    // Write tile data
+                    // write tile data
                     for (uint32_t i = 0; i < tile_count; i++)
                     {
                         uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
