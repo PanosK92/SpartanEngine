@@ -48,11 +48,6 @@ namespace spartan
         Terrain(Entity* entity);
         ~Terrain();
 
-        //= Component ================================
-        void Serialize(FileStream* stream) override;
-        void Deserialize(FileStream* stream) override;
-        //============================================
-
         RHI_Texture* GetHeightMap() const          { return m_height_texture; }
         void SetHeightMap(RHI_Texture* height_map) { m_height_texture = height_map;}
 

@@ -151,100 +151,136 @@ namespace spartan
 
     namespace placement
     {
-        vector<Matrix> find_transforms(const vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, const vector<uint32_t>& terrain_indices, uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal,float terrain_offset, float min_height)
+        struct TriangleData
         {
-            // step 1: precompute acceptable triangles - this means within acceptable slope and height
-             vector<uint32_t> acceptable_triangles;
-             {
-                 acceptable_triangles.reserve(terrain_indices.size() / 3);
+            Vector3 normal;       // Precomputed normal vector
+            Vector3 v0;           // Vertex 0 position
+            Vector3 v1;           // Vertex 1 position
+            Vector3 v2;           // Vertex 2 position
+            float slope_radians;  // Slope angle in radians
+            float min_height;     // Minimum height among the triangle's vertices
+        };
+        static vector<TriangleData> triangle_data;
+
+        void compute_triangle_data(const vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, const vector<uint32_t>& terrain_indices)
+        {
+            uint32_t triangle_count = static_cast<uint32_t>(terrain_indices.size() / 3);
+            triangle_data.resize(triangle_count);
         
-                 for (uint32_t i = 0; i < terrain_indices.size(); i += 3)
-                 {
-                     uint32_t idx0 = terrain_indices[i];
-                     uint32_t idx1 = terrain_indices[i + 1];
-                     uint32_t idx2 = terrain_indices[i + 2];
-                 
-                     Vector3 v0(terrain_vertices[idx0].pos[0], terrain_vertices[idx0].pos[1], terrain_vertices[idx0].pos[2]);
-                     Vector3 v1(terrain_vertices[idx1].pos[0], terrain_vertices[idx1].pos[1], terrain_vertices[idx1].pos[2]);
-                     Vector3 v2(terrain_vertices[idx2].pos[0], terrain_vertices[idx2].pos[1], terrain_vertices[idx2].pos[2]);
-                 
-                     Vector3 normal            = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
-                     float slope_radians       = acos(Vector3::Dot(normal, Vector3::Up));
-                     bool is_acceptable_slope  = slope_radians <= max_slope_radians;
-                     bool is_acceptable_height = v0.y >= min_height && v1.y >= min_height && v2.y >= min_height;
-                 
-                     if (is_acceptable_slope && is_acceptable_height)
-                     {
-                         acceptable_triangles.push_back(i / 3); // store triangle index (divided by 3 since indices are per vertex)
-                     }
-                 }
-                 
-                 if (acceptable_triangles.empty())
-                     return {};
-             }
+            auto compute_triangle = [&terrain_vertices, &terrain_indices](uint32_t start_index, uint32_t end_index)
+            {
+                for (uint32_t i = start_index; i < end_index; i++)
+                {
+                    uint32_t idx0 = terrain_indices[i * 3];
+                    uint32_t idx1 = terrain_indices[i * 3 + 1];
+                    uint32_t idx2 = terrain_indices[i * 3 + 2];
         
-             // step 2: prepare output vector and mutex
-             vector<Matrix> transforms;
-             {
-                 transforms.reserve(transform_count);
-                 mutex mtx;
-                 
-                 // step 3: parallel placement with local storage
-                 auto place_mesh = [&terrain_vertices, &terrain_indices, &acceptable_triangles, &transforms, &mtx, rotate_to_match_surface_normal, terrain_offset](uint32_t start_index, uint32_t end_index)
-                 {
-                     // thread-local local resources and reservations (for maximum performance - no mutexes)
-                     thread_local mt19937 generator(random_device{}());
-                     uniform_int_distribution<> triangle_dist(0, static_cast<uint32_t>(acceptable_triangles.size() - 1));
-                     uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
-                     uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
-                     vector<Matrix> local_transforms;
-                     local_transforms.reserve(end_index - start_index);
-                 
-                     for (uint32_t i = start_index; i < end_index; i++)
-                     {
-                         // select a random acceptable triangle
-                         uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
-                         uint32_t index0 = terrain_indices[tri_idx * 3];
-                         uint32_t index1 = terrain_indices[tri_idx * 3 + 1];
-                         uint32_t index2 = terrain_indices[tri_idx * 3 + 2];
-                 
-                         Vector3 v0(terrain_vertices[index0].pos[0], terrain_vertices[index0].pos[1], terrain_vertices[index0].pos[2]);
-                         Vector3 v1(terrain_vertices[index1].pos[0], terrain_vertices[index1].pos[1], terrain_vertices[index1].pos[2]);
-                         Vector3 v2(terrain_vertices[index2].pos[0], terrain_vertices[index2].pos[1], terrain_vertices[index2].pos[2]);
-                 
-                         // generate barycentric coordinates
-                         float u = barycentric_dist(generator);
-                         float v = barycentric_dist(generator);
-                         if (u + v > 1.0f)
-                         {
-                             u = 1.0f - u;
-                             v = 1.0f - v;
-                         }
-                 
-                         // compute position with offset
-                         Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0) + Vector3(0.0f, terrain_offset, 0.0f);
-                 
-                         // compute rotation
-                         Vector3 normal               = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
-                         Quaternion rotate_to_normal  = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, normal) : Quaternion::Identity;
-                         Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
-                         Quaternion rotation          = rotate_to_normal * random_y_rotation;
-                 
-                         // create transform matrix (assuming Matrix constructor takes position, rotation, scale)
-                         Matrix transform = Matrix::CreateScale(1.0f) *  Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
-                         local_transforms.push_back(transform);
-                     }
-                 
-                     // merge local transforms into the shared vector
-                     lock_guard<mutex> lock(mtx);
-                     transforms.insert(transforms.end(), local_transforms.begin(), local_transforms.end());
-                 };
-                 
-                 // step 4: execute parallel loop
-                 ThreadPool::ParallelLoop(place_mesh, transform_count);
-                 
-                 return transforms;
-             }
+                    // extract vertex positions
+                    Vector3 v0(terrain_vertices[idx0].pos[0], terrain_vertices[idx0].pos[1], terrain_vertices[idx0].pos[2]);
+                    Vector3 v1(terrain_vertices[idx1].pos[0], terrain_vertices[idx1].pos[1], terrain_vertices[idx1].pos[2]);
+                    Vector3 v2(terrain_vertices[idx2].pos[0], terrain_vertices[idx2].pos[1], terrain_vertices[idx2].pos[2]);
+        
+                    // compute normal
+                    Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+        
+                    // compute slope
+                    float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
+        
+                    // compute minimum height
+                    float min_height = min({v0.y, v1.y, v2.y});
+        
+                    // store all precomputed data
+                    triangle_data[i] = {normal, v0, v1, v2, slope_radians, min_height};
+                }
+            };
+        
+            ThreadPool::ParallelLoop(compute_triangle, triangle_count);
+        }
+
+        vector<Matrix> find_transforms(uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal, float terrain_offset, float min_height)
+        {
+            if (triangle_data.empty())
+            {
+                SP_LOG_ERROR("Triangle data not initialized.");
+                return {};
+            }
+        
+            // step 1: filter acceptable triangles using precomputed data
+            vector<uint32_t> acceptable_triangles;
+            acceptable_triangles.reserve(triangle_data.size());
+        
+            for (uint32_t i = 0; i < triangle_data.size(); i++)
+            {
+                if (triangle_data[i].slope_radians <= max_slope_radians && triangle_data[i].min_height >= min_height)
+                {
+                    acceptable_triangles.push_back(i); // store triangle index
+                }
+            }
+        
+            if (acceptable_triangles.empty())
+            {
+                SP_LOG_WARNING("No acceptable triangles found for the given criteria.");
+                return {};
+            }
+        
+            // step 2: prepare output vector and mutex
+            vector<Matrix> transforms;
+            transforms.reserve(transform_count);
+            mutex mtx;
+        
+            // step 3: parallel placement with local storage
+            auto place_mesh = [&acceptable_triangles, &transforms, &mtx, rotate_to_match_surface_normal, terrain_offset](uint32_t start_index, uint32_t end_index)
+            {
+                thread_local mt19937 generator(random_device{}());
+                uniform_int_distribution<> triangle_dist(0, static_cast<uint32_t>(acceptable_triangles.size() - 1));
+                uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
+                uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
+        
+                vector<Matrix> local_transforms;
+                local_transforms.reserve(end_index - start_index);
+        
+                for (uint32_t i = start_index; i < end_index; i++)
+                {
+                    // select a random acceptable triangle
+                    uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
+                    const TriangleData& tri = triangle_data[tri_idx];
+        
+                    // use precomputed vertex positions
+                    Vector3 v0 = tri.v0;
+                    Vector3 v1 = tri.v1;
+                    Vector3 v2 = tri.v2;
+        
+                    // generate barycentric coordinates
+                    float u = barycentric_dist(generator);
+                    float v = barycentric_dist(generator);
+                    if (u + v > 1.0f)
+                    {
+                        u = 1.0f - u;
+                        v = 1.0f - v;
+                    }
+        
+                    // compute position with offset using precomputed vertices
+                    Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0) + Vector3(0.0f, terrain_offset, 0.0f);
+        
+                    // compute rotation using precomputed normal
+                    Quaternion rotate_to_normal = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, tri.normal) : Quaternion::Identity;
+                    Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                    Quaternion rotation = rotate_to_normal * random_y_rotation;
+        
+                    // create transform matrix
+                    Matrix transform = Matrix::CreateScale(1.0f) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
+                    local_transforms.push_back(transform);
+                }
+        
+                // merge local transforms into the shared vector
+                lock_guard<mutex> lock(mtx);
+                transforms.insert(transforms.end(), local_transforms.begin(), local_transforms.end());
+            };
+        
+            // step 4: Execute parallel loop
+            ThreadPool::ParallelLoop(place_mesh, transform_count);
+        
+            return transforms;
         }
     }
 
@@ -621,16 +657,6 @@ namespace spartan
         m_height_texture = nullptr;
     }
 
-    void Terrain::Serialize(FileStream* stream)
-    {
-        SP_LOG_WARNING("Not implemented");
-    }
-
-    void Terrain::Deserialize(FileStream* stream)
-    {
-        SP_LOG_WARNING("Not implemented");
-    }
-
     uint32_t Terrain::GetWidth() const
     {
         return m_height_texture->GetWidth() * scale;
@@ -662,12 +688,11 @@ namespace spartan
             min_height                  = 0.5f;
         }
     
-        *transforms = placement::find_transforms(m_vertices, m_indices, count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
+        *transforms = placement::find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
     }
 
     void Terrain::Generate()
     {
-        // thread safety
         if (m_is_generating)
         {
             SP_LOG_WARNING("Terrain is already being generated, please wait...");
@@ -677,14 +702,13 @@ namespace spartan
         if (!m_height_texture)
         {
             SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain");
-            Clear();
             return;
         }
     
         m_is_generating = true;
     
         // start progress tracking
-        uint32_t job_count = 8;
+        uint32_t job_count = 9;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
     
         uint32_t width  = 0;
@@ -705,6 +729,7 @@ namespace spartan
                 uint32_t vertex_count     = 0;
                 uint32_t index_count      = 0;
                 uint32_t tile_count       = 0;
+                uint32_t placement_count  = 0;
     
                 file.read(reinterpret_cast<char*>(&width), sizeof(uint32_t));
                 file.read(reinterpret_cast<char*>(&height), sizeof(uint32_t));
@@ -712,6 +737,7 @@ namespace spartan
                 file.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
                 file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
                 file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
+                file.read(reinterpret_cast<char*>(&placement_count), sizeof(uint32_t));
     
                 // Sanity check
                 if (tile_count > 10000) // Adjust as needed
@@ -727,11 +753,13 @@ namespace spartan
                     m_indices.resize(index_count);
                     m_tile_vertices.resize(tile_count);
                     m_tile_indices.resize(tile_count);
+                    placement::triangle_data.resize(placement_count);
     
                     // read vector data
                     file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
                     file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
                     file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
+                    file.read(reinterpret_cast<char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
     
                     // read tile data
                     for (uint32_t i = 0; i < tile_count; i++)
@@ -754,7 +782,7 @@ namespace spartan
     
                     // skip to step 8
                     ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Loaded from cache, skipping to mesh creation...");
-                    for (uint32_t i = 0; i < 7; i++)
+                    for (uint32_t i = 0; i < 8; i++)
                     { 
                         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
                     }
@@ -812,8 +840,15 @@ namespace spartan
                 spartan::geometry_processing::optimize(m_vertices, m_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
+
+            // 7. Compute triangle data for placement
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Computing triangle data for placement...");
+                placement::compute_triangle_data(m_vertices, m_indices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
     
-            // 7. split into tiles
+            // 8. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
                 spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices);
@@ -825,9 +860,10 @@ namespace spartan
                 {
                     // write all sizes first
                     uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
-                    uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
-                    uint32_t index_count = static_cast<uint32_t>(m_indices.size());
-                    uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
+                    uint32_t vertex_count     = static_cast<uint32_t>(m_vertices.size());
+                    uint32_t index_count      = static_cast<uint32_t>(m_indices.size());
+                    uint32_t tile_count       = static_cast<uint32_t>(m_tile_vertices.size());
+                    uint32_t placement_count  = static_cast<uint32_t>(placement::triangle_data.size());
     
                     file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
                     file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
@@ -835,11 +871,13 @@ namespace spartan
                     file.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
                     file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
                     file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
+                    file.write(reinterpret_cast<const char*>(&placement_count), sizeof(uint32_t));
     
                     // write vector data
                     file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
                     file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
                     file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
+                    file.write(reinterpret_cast<const char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
     
                     // write tile data
                     for (uint32_t i = 0; i < tile_count; i++)
@@ -870,7 +908,7 @@ namespace spartan
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
 
-        // 8. create a mesh for each tile
+        // 9. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Building GPU mesh...");
 
