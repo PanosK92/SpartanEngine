@@ -130,7 +130,7 @@ namespace spartan
         { 
             if (Camera* camera = Renderer::GetCamera())
             { 
-                update_matrices = (camera->GetEntity()->GetTimeSinceLastTransform() <= 0.25f) ? true : update_matrices; // I can't get this exactly at 0.0, fix it
+                update_matrices = (camera->GetEntity()->GetTimeSinceLastTransform() >= 0.25f) ? true : update_matrices;
             }
         }
 

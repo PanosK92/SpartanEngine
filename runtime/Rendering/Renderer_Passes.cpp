@@ -1041,7 +1041,7 @@ namespace spartan
         {
             // set pipeline state
             RHI_PipelineState pso;
-            pso.name             = "light_composition_transparent";
+            pso.name             = "light_composition";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
