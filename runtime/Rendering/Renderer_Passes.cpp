@@ -1038,31 +1038,32 @@ namespace spartan
         RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
+        {
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name             = "light_composition_transparent";
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
 
-        // set pipeline state
-        RHI_PipelineState pso;
-        pso.name             = "light_composition_transparent";
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
+            // push pass constants
+            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(tex_skysphere->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
-        // push pass constants
-        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-        m_pcb_pass_cpu.set_f3_value(static_cast<float>(tex_skysphere->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
+            // set textures
+            SetGbufferTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction));
+            cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere); // for the sky
 
-        // set textures
-        SetGbufferTextures(cmd_list);
-        cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex,              GetStandardTexture(Renderer_StandardTexture::Foam));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTarget::light_diffuse));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction));
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
-        cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere); // for the sky
-
-        // render
-        cmd_list->Dispatch(tex_out);
+            // render
+            cmd_list->Dispatch(tex_out);
+        }
         cmd_list->EndTimeblock();
     }
 

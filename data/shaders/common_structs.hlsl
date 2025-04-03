@@ -109,7 +109,7 @@ struct Surface
 
         // ssao
         occlusion = 1.0f;
-        if (is_ssao_enabled() && pass_is_opaque())
+        if (is_ssao_enabled())
         {
             float2 uv_unscaled = (position_screen + 0.5f) / resolution_out;
             occlusion          = tex_ssao.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv_unscaled, 0.0f).r;
@@ -235,7 +235,7 @@ struct Light
          return tex_light_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).rgb;
     }
 
-    void Build(float3 surface_position, float3 surface_normal, float occlusion)
+    void Build(float3 surface_position, float3 surface_normal)
     {
         index                 = (uint)pass_get_f3_value2().x;
         LightParameters light = light_parameters[index];
@@ -255,18 +255,18 @@ struct Light
         resolution            = compute_resolution();
         texel_size            = 1.0f / resolution;
 
-        radiance = color * intensity * attenuation * n_dot_l * occlusion;
+        radiance = color * intensity * attenuation * n_dot_l;
     }
 
     void Build(Surface surface)
     {
-        Build(surface.position, surface.normal, surface.occlusion);
+        Build(surface.position, surface.normal);
     }
 
     void Build()
     {
         Surface surface;
-        Build(surface.position, surface.normal, surface.occlusion);
+        Build(surface.position, surface.normal);
     }
 };
 

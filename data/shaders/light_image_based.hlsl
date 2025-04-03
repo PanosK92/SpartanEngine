@@ -108,7 +108,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // combine the diffuse light
     shadow_mask        = max(0.5f, shadow_mask); // GI is not as good, so never go full dark
-    float3 diffuse_ibl = diffuse_skysphere * shadow_mask + diffuse_gi;
+    float3 diffuse_ibl = diffuse_skysphere * surface.occlusion * shadow_mask + diffuse_gi;
 
     // combine all the specular light, fallback order: ssr -> gi -> skysphere
     float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere);
@@ -116,8 +116,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // combine the diffuse and specular light
     float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + specular_ibl;
 
-    // tone down for occluded and transparent surfaces
-    ibl *= surface.alpha * surface.occlusion;
+    // tone down for transparent surfaces
+    ibl *= surface.alpha;
 
     tex_uav[thread_id.xy] += float4(ibl, 0.0f);
 }
