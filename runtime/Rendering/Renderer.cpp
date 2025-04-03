@@ -167,7 +167,7 @@ namespace spartan
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::ShadowResolution,            4096.0f);
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                                 // becomes the upsampler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         0.4f);                                                 // controls the intensity of the volumetric fog as well
+            SetOption(Renderer_Option::Fog,                         0.1f);                                                 // controls the intensity of the volumetric fog as well
             SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                 // these is only a toggle for the volumetric fog
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 3 for taa
             SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
