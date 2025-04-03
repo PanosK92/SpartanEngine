@@ -136,7 +136,7 @@ namespace
             "Hoplite, Roman Koshchei,      Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,                   N/A",
             "Hoplite, Kristi Kercyku,      Albania,          GitHub,     https://github.com/kristiker,                             Identified g-buffer depth testing issue,                   N/A",
             "Hoplite, Kinjal Kishor,       India,            X,          https://x.com/kinjalkishor,                               Supported with testing & technical issues,                 N/A",
-            //"Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                            N/A"
+            "Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                            N/A"
         };
 
         vector<string> comma_seperate_contributors()
@@ -415,7 +415,7 @@ namespace
     {
         const char* world_names[] =
         {
-            "1. Open world forest with car (millions of Ghost of Tsushima grass blades - demanding)",
+            "1. Open world forest with car (millions of Ghost of Tsushima grass blades - very demanding)",
             "2. Sponza 4k (high-resolution textures & meshes - demanding)",
             "3. Bistro interior & exterior (excessive draw calls - demanding)",
             "4. Subway (gi test, no lights, only emissive textures - moderate)",

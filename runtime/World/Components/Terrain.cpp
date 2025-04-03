@@ -153,12 +153,13 @@ namespace spartan
     {
         struct TriangleData
         {
-            Vector3 normal;       // Precomputed normal vector
-            Vector3 v0;           // Vertex 0 position
-            Vector3 v1;           // Vertex 1 position
-            Vector3 v2;           // Vertex 2 position
-            float slope_radians;  // Slope angle in radians
-            float min_height;     // Minimum height among the triangle's vertices
+            Vector3 normal;
+            Vector3 v0;
+            Vector3 v1_minus_v0;
+            Vector3 v2_minus_v0;
+            float slope_radians;
+            float min_height;
+            Quaternion rotation_to_normal;
         };
         static vector<TriangleData> triangle_data;
 
@@ -175,22 +176,18 @@ namespace spartan
                     uint32_t idx1 = terrain_indices[i * 3 + 1];
                     uint32_t idx2 = terrain_indices[i * 3 + 2];
         
-                    // extract vertex positions
                     Vector3 v0(terrain_vertices[idx0].pos[0], terrain_vertices[idx0].pos[1], terrain_vertices[idx0].pos[2]);
                     Vector3 v1(terrain_vertices[idx1].pos[0], terrain_vertices[idx1].pos[1], terrain_vertices[idx1].pos[2]);
                     Vector3 v2(terrain_vertices[idx2].pos[0], terrain_vertices[idx2].pos[1], terrain_vertices[idx2].pos[2]);
         
-                    // compute normal
-                    Vector3 normal = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+                    Vector3 normal                = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
+                    float slope_radians           = acos(Vector3::Dot(normal, Vector3::Up));
+                    float min_height              = min({v0.y, v1.y, v2.y});
+                    Vector3 v1_minus_v0           = v1 - v0;
+                    Vector3 v2_minus_v0           = v2 - v0;
+                    Quaternion rotation_to_normal = Quaternion::FromToRotation(Vector3::Up, normal);
         
-                    // compute slope
-                    float slope_radians = acos(Vector3::Dot(normal, Vector3::Up));
-        
-                    // compute minimum height
-                    float min_height = min({v0.y, v1.y, v2.y});
-        
-                    // store all precomputed data
-                    triangle_data[i] = {normal, v0, v1, v2, slope_radians, min_height};
+                    triangle_data[i] = { normal, v0, v1_minus_v0, v2_minus_v0, slope_radians, min_height, rotation_to_normal };
                 }
             };
         
@@ -199,28 +196,26 @@ namespace spartan
 
         vector<Matrix> find_transforms(uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal, float terrain_offset, float min_height)
         {
-            if (triangle_data.empty())
-            {
-                SP_LOG_ERROR("Triangle data not initialized.");
-                return {};
-            }
+            SP_ASSERT(!triangle_data.empty());
         
             // step 1: filter acceptable triangles using precomputed data
             vector<uint32_t> acceptable_triangles;
-            acceptable_triangles.reserve(triangle_data.size());
-        
-            for (uint32_t i = 0; i < triangle_data.size(); i++)
             {
-                if (triangle_data[i].slope_radians <= max_slope_radians && triangle_data[i].min_height >= min_height)
+                acceptable_triangles.reserve(triangle_data.size());
+        
+                for (uint32_t i = 0; i < triangle_data.size(); i++)
                 {
-                    acceptable_triangles.push_back(i); // store triangle index
+                    if (triangle_data[i].slope_radians <= max_slope_radians && triangle_data[i].min_height >= min_height)
+                    {
+                        acceptable_triangles.push_back(i); // store triangle index
+                    }
                 }
-            }
         
-            if (acceptable_triangles.empty())
-            {
-                SP_LOG_WARNING("No acceptable triangles found for the given criteria.");
-                return {};
+                if (acceptable_triangles.empty())
+                {
+                    SP_LOG_WARNING("No acceptable triangles found for the given criteria.");
+                    return {};
+                }
             }
         
             // step 2: prepare output vector and mutex
@@ -241,16 +236,9 @@ namespace spartan
         
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
-                    // select a random acceptable triangle
-                    uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
+                    uint32_t tri_idx        = acceptable_triangles[triangle_dist(generator)];
                     const TriangleData& tri = triangle_data[tri_idx];
-        
-                    // use precomputed vertex positions
-                    Vector3 v0 = tri.v0;
-                    Vector3 v1 = tri.v1;
-                    Vector3 v2 = tri.v2;
-        
-                    // generate barycentric coordinates
+                
                     float u = barycentric_dist(generator);
                     float v = barycentric_dist(generator);
                     if (u + v > 1.0f)
@@ -258,17 +246,12 @@ namespace spartan
                         u = 1.0f - u;
                         v = 1.0f - v;
                     }
-        
-                    // compute position with offset using precomputed vertices
-                    Vector3 position = v0 + u * (v1 - v0) + v * (v2 - v0) + Vector3(0.0f, terrain_offset, 0.0f);
-        
-                    // compute rotation using precomputed normal
-                    Quaternion rotate_to_normal = rotate_to_match_surface_normal ? Quaternion::FromToRotation(Vector3::Up, tri.normal) : Quaternion::Identity;
+                
+                    Vector3 position             = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, terrain_offset, 0.0f);
+                    Quaternion rotate_to_normal  = rotate_to_match_surface_normal ? tri.rotation_to_normal : Quaternion::Identity;
                     Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
-                    Quaternion rotation = rotate_to_normal * random_y_rotation;
-        
-                    // create transform matrix
-                    Matrix transform = Matrix::CreateScale(1.0f) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
+                    Quaternion rotation          = rotate_to_normal * random_y_rotation;
+                    Matrix transform             = Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position); // simplified, since scale is 1.0
                     local_transforms.push_back(transform);
                 }
         
@@ -910,12 +893,13 @@ namespace spartan
 
         // 9. create a mesh for each tile
         {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Building GPU mesh...");
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating GPU mesh...");
 
             m_mesh = make_shared<Mesh>();
             m_mesh->SetObjectName("terrain_mesh");
             m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // the geometry was optimized at step 6, don't do it again
 
+            // accumulte geometry from all tiles
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {
                 // update with geometry
@@ -940,7 +924,13 @@ namespace spartan
 
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-    
+
+        // clear everything but the height and placement data (they are used for physics and for placing foliage)
+        m_vertices.clear();
+        m_indices.clear();
+        m_tile_vertices.clear();
+        m_tile_indices.clear();
+
         m_area_km2      = compute_terrain_area_km2(m_vertices);
         m_is_generating = false;
     }

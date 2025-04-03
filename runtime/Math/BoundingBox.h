@@ -37,21 +37,12 @@ namespace spartan
         class BoundingBox
         {
         public:
-            // construct with zero size
             BoundingBox();
-
-            // construct from minimum and maximum vectors
             BoundingBox(const Vector3& min, const Vector3& max);
-
-            // construct from points
             BoundingBox(const Vector3* vertices, const uint32_t point_count);
-
-            // construct from vertices
             BoundingBox(const RHI_Vertex_PosTexNorTan* vertices, const uint32_t vertex_count);
-
             ~BoundingBox() = default;
 
-            // assign from bounding box
             BoundingBox& operator =(const BoundingBox& rhs) = default;
 
             bool operator==(const BoundingBox& other) const
@@ -63,7 +54,7 @@ namespace spartan
             {
                 const Vector3 center_new = transform * GetCenter();
                 const Vector3 extent_old = GetExtents();
-        
+
                 const Vector3 extent_new = Vector3
                 (
                     abs(transform.m00) * extent_old.x + abs(transform.m10) * extent_old.y + abs(transform.m20) * extent_old.z,

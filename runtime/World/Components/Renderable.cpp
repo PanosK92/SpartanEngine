@@ -176,7 +176,7 @@ namespace spartan
 
     void Renderable::OnTick()
     {
-        // update bounding boxes on  transform change
+        // update bounding boxes on transform change
         if (Entity* entity = GetEntity())
         {
             // wait for model loading to finish and entity activation before reading its transform, as accessing it prematurely can cause NaNs and trigger an assertion

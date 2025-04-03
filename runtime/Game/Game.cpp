@@ -743,12 +743,15 @@ namespace spartan
             }
 
             // car and a bunch of objects
-            const Vector3 object_position = Vector3(-449.0260f, 15.0f, 359.2632f);
-            create_car(object_position);
-            create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
-            create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
-           //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
-           //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
+            ThreadPool::AddTask([]()
+            {
+                const Vector3 object_position = Vector3(-449.0260f, 15.0f, 359.2632f);
+                create_car(object_position);
+                create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
+                create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
+                //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
+                //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
+            });
         }
 
         void create_sponza_4k()

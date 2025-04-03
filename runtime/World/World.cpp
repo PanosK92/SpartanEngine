@@ -109,7 +109,10 @@ namespace spartan
             // tick
             for (auto it : entities)
             {
-                it.second->Tick();
+                if (it.second->IsActive())
+                { 
+                    it.second->Tick();
+                }
             }
         }
 
