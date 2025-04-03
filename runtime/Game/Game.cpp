@@ -758,7 +758,7 @@ namespace spartan
         {
             // set the mood
             create_camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            create_sun(LightIntensity::black_hole, false);
+            create_sun(LightIntensity::black_hole, false); // add even if dark so that the atmospheric scattering and IBL updates accordingly
             create_music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
@@ -1044,6 +1044,15 @@ namespace spartan
                     }
                 }
 
+                // make the ceiling light thingy rough
+                if (Renderable* renderable = entity->GetDescendantByName("Mesh_41")->GetComponent<Renderable>())
+                {
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 1.0f);
+                    }
+                }
+
                 // disable window blinds
                 entity->GetDescendantByName("Default_1")->SetActive(false);
                 entity->GetDescendantByName("Default_2")->SetActive(false);
@@ -1122,6 +1131,7 @@ namespace spartan
 
         void create_subway_gi_test()
         {
+            create_sun(LightIntensity::black_hole, false); // add even if dark so that the atmospheric scattering and IBL updates accordingly
             create_camera();
             
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
