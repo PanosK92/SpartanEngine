@@ -191,12 +191,12 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
     }
-
-    constexpr size_t MAX_LIGHTS = 64;      // maximum number of lights supported
-    constexpr size_t MAX_RENDERABLES = 1024; // maximum number of renderables per cascade/face
-    
+  
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
+        constexpr size_t MAX_LIGHTS      = 64;   // maximum number of lights supported
+        constexpr size_t MAX_RENDERABLES = 1024; // maximum number of renderables per cascade/face
+
         // acquire resources
         RHI_Shader* shader_v             = GetShader(Renderer_Shader::depth_light_v);
         RHI_Shader* shader_alpha_color_p = GetShader(Renderer_Shader::depth_light_alpha_color_p);
@@ -246,7 +246,8 @@ namespace spartan
                                 break;
                             }
                         }
-                        if (is_in_light) break;
+                        if (is_in_light)
+                            break;
                     }
                 }
                 else
@@ -260,7 +261,7 @@ namespace spartan
                         }
                     }
                 }
-                if (is_in_light)
+                if (is_in_light && entity->GetTimeSinceLastTransform() <= 0.25f)
                 {
                     current_lights |= (1ULL << i); // assuming GetIndex() matches array index i
                 }
@@ -348,9 +349,9 @@ namespace spartan
                 {
                     for (size_t i = 0; i < visible_count; ++i)
                     {
-                        Entity* entity     = visible_renderables[i];
+                        Entity* entity         = visible_renderables[i];
                         Renderable* renderable = entity->GetComponent<Renderable>();
-                        Material* material = renderable->GetMaterial();
+                        Material* material     = renderable->GetMaterial();
     
                         // set per-renderable states
                         cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
@@ -368,7 +369,7 @@ namespace spartan
                         cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), GetBuffer(Renderer_Buffer::DummyInstance));
                         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
-                        // draw based on instancing
+                        // draw
                         if (renderable->HasInstancing())
                         {
                             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
@@ -395,7 +396,6 @@ namespace spartan
                         }
                         else
                         {
-                            // no need to check frustum again, already confirmed visible
                             uint32_t lod_index = renderable->GetLodCount() - 1;
     
                             cmd_list->DrawIndexed(

@@ -34,7 +34,6 @@ namespace spartan
 {
     class Material;
 
-
     enum RenderableFlags : uint32_t
     {
         CastsShadows = 1U << 0
@@ -99,7 +98,7 @@ namespace spartan
         bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }
         void SetFlag(const RenderableFlags flag, const bool enable = true);
 
-        // previous Lights Tracking
+        // previous lights tracking
         uint64_t GetPreviousLights() const      { return m_previous_lights; }
         void SetPreviousLights(uint64_t lights) { m_previous_lights = lights; }
 

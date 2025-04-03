@@ -282,18 +282,18 @@ void Properties::ShowLight(spartan::Light* light) const
         {
             static vector<string> intensity_types =
             {
-                "Sky Sunlight Noon",
-                "Sky Sunlight Morning Evening",
-                "Sky Overcast Day",
-                "Sky Twilight",
-                "Bulb Stadium",
+                "Sky sunlight moon",
+                "Sky sunlight morning evening",
+                "Sky overcast day",
+                "Sky twilight",
+                "Bulb stadium",
                 "Bulb 500 watt",
                 "Bulb 150 watt",
                 "Bulb 100 watt",
                 "Bulb 60 watt",
                 "Bulb 25 watt",
-                "Bulb Flashlight",
-                "Black Hole",
+                "Bulb flashlight",
+                "Black hole",
                 "Custom"
             };
 
@@ -309,10 +309,10 @@ void Properties::ShowLight(spartan::Light* light) const
             }
             ImGuiSp::tooltip("Common light types");
 
-            // lumens
+            // intensity
             ImGui::SameLine();
-            ImGuiSp::draw_float_wrap("lm", &intensity, 10.0f, 0.0f, 120000.0f);
-            ImGuiSp::tooltip("Intensity expressed in lumens");
+            ImGuiSp::draw_float_wrap(light->GetLightType() == spartan::LightType::Directional ? "lux" : "lm", &intensity, 10.0f, 0.0f, 120000.0f);
+            ImGuiSp::tooltip("Intensity expressed in lux (directional) or lumens (point and spot)");
         }
 
         // shadows
