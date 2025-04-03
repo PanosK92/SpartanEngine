@@ -556,15 +556,15 @@ namespace spartan
 
                     // set properties
                     material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                    material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                    material->SetProperty(MaterialProperty::TextureTilingX,    500.0f);
-                    material->SetProperty(MaterialProperty::TextureTilingY,    500.0f);
+                    material->SetProperty(MaterialProperty::IsTerrain,      1.0f);
+                    material->SetProperty(MaterialProperty::TextureTilingX, 800.0f);
+                    material->SetProperty(MaterialProperty::TextureTilingY, 800.0f);
 
                     // set textures
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\grass\\albedo.png",    0);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\grass\\normal.png",    0);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\grass\\roughness.png", 0);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\grass\\occlusion.png", 0);
+                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\ground\\albedo.png",    0);
+                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\ground\\normal.png",    0);
+                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\ground\\roughness.png", 0);
+                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\ground\\occlusion.png", 0);
                     material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",     1);
                     material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",     1);
                     material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png",  1);
@@ -660,12 +660,11 @@ namespace spartan
 
                 // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\tree_elm\\scene.gltf", flags))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_tree\\scene.gltf", flags))
                 {
                     shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("tree");
                     entity->SetScale(1.0f);
-
 
                     // generate instances
                     {
@@ -694,6 +693,41 @@ namespace spartan
                     }
                 }
 
+                // rock
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_rock\\rock.obj"))
+                {
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    entity->SetObjectName("rock");
+                    entity->SetScale(0.7f);
+
+                    // generate instances
+                    {
+                        vector<Matrix> instances;
+                        terrain->GenerateTransforms(&instances, 10000, TerrainProp::Tree);
+                        
+                        if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
+                        {
+                            Renderable* renderable = rock_entity->GetComponent<Renderable>();
+                            renderable->SetInstances(instances);
+                            renderable->SetMaxRenderDistance(render_distance_trees);
+
+                            // create material
+                            shared_ptr<Material> material = make_shared<Material>();
+                            {
+                                material->SetObjectName("rock");
+                                material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_rock\\albedo.jpg");
+                                material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_rock\\normal.jpg");
+                                material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\model_rock\\occlusion.jpg");
+                                material->SetProperty(MaterialProperty::Roughness,1.0f);
+                                // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                                const string file_path = "project\\terrain\\rock_material" + string(EXTENSION_MATERIAL);
+                                material->SetResourceFilePath(file_path);
+                            }
+                            renderable->SetMaterial(material);
+                        }
+                    }
+                }
+
                 // grass
                 {
                     // create entity
@@ -704,7 +738,7 @@ namespace spartan
                     shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
                     {
                         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
-                        mesh->SetLodDropoff(MeshLodDropoff::Linear); // linear dropoff - more agressive
+                        mesh->SetLodDropoff(MeshLodDropoff::Linear); // linear dropoff - more aggressive
 
                         // create sub-mesh and add three lods for the grass blade
                         uint32_t sub_mesh_index = 0;
