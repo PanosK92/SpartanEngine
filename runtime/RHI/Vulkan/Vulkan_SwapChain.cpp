@@ -28,7 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Queue.h"
 #include "../Display/Display.h"
+#ifdef _WIN64
 #include <tlhelp32.h>
+#elif __linux__
+#include <dirent.h>
+#endif
 SP_WARNINGS_OFF
 #include <SDL3/SDL_vulkan.h>
 SP_WARNINGS_ON
@@ -229,7 +233,7 @@ namespace spartan
                         char comm[256];
                         if (fgets(comm, sizeof(comm), commFile)) {
                             comm[strcspn(comm, "\n")] = 0; // Remove newline
-                            if (strcmp(comm, processName) == 0) { // Case-sensitive comparison
+                            if (strcmp(comm, process_name) == 0) { // Case-sensitive comparison
                                 fclose(commFile);
                                 closedir(dir);
                                 return true; // Process found

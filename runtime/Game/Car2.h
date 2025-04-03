@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <btBulletDynamicsCommon.h>
 #include <BulletDynamics/ConstraintSolver/btGeneric6DofSpringConstraint.h>
-#include "../../Input/Input.h" // adjust path if needed
+#include "../Input/Input.h" // adjust path if needed
 #include <cmath>
 //=============================
 
