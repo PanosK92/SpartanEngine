@@ -772,7 +772,7 @@ namespace spartan
                 light->SetLightType(LightType::Point);
                 light->SetColor(Color::light_light_bulb);
                 light->SetRange(39.66f);
-                light->SetIntensity(LightIntensity::bulb_150_watt);
+                light->SetIntensity(LightIntensity::bulb_500_watt);
                 light->SetFlag(LightFlags::ShadowsTransparent, false);
                 light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
             }

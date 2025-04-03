@@ -110,6 +110,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float tone_mapping = f3_value.x;
     float4 color       = tex[thread_id.xy];
 
+    // apply exposure
+    color.rgb *= buffer_frame.camera_exposure;
+
     if (buffer_frame.hdr_enabled == 0.0f) // SDR
     {
         switch (tone_mapping)

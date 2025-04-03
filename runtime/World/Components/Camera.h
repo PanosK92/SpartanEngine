@@ -102,8 +102,20 @@ namespace spartan
         void SetIso(const float iso) { m_iso = iso; }
 
         // exposure
-        float GetEv100()    const { return std::log2(m_aperture / m_shutter_speed * 100.0f / m_iso); }
-        float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100())); }
+        float GetExposure() const
+        {
+            // computed ev (using squared aperture for photometric accuracy)
+            float ev100 = std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);
+
+            // base exposure from ev
+            float base_exposure = 1.0f / (std::pow(2.0f, ev100));
+
+            // the base exposure is very low for bright conditions
+            // so we apply an aristic bias here, to make it look right
+            float exposure_bias = 400.0f;
+
+            return base_exposure * exposure_bias;
+        }
 
         // planes/projection
         void SetNearPlane(float near_plane);
@@ -145,9 +157,9 @@ namespace spartan
         void Input_LerpToEntity();
 
         uint32_t m_flags                             = 0;
-        float m_aperture                             = 2.8f;         // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
-        float m_shutter_speed                        = 1.0f / 60.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
-        float m_iso                                  = 500.0f;       // sensitivity to light
+        float m_aperture                             = 5.6f;          // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
+        float m_shutter_speed                        = 1.0f / 125.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
+        float m_iso                                  = 200.0f;        // sensitivity to light
         float m_fov_horizontal_rad                   = 90.0f * math::deg_to_rad;
         float m_near_plane                           = 0.1f;
         float m_far_plane                            = 4000.0f;

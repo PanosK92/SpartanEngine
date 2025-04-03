@@ -97,7 +97,7 @@ namespace spartan
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_lumens, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_lumens_lux, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Color);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
@@ -121,7 +121,7 @@ namespace spartan
         bool update_matrices = false;
         if (GetEntity()->GetTimeSinceLastTransform() <= 0.25f) // I can't get this exactly at 0.0, fix it
         {
-            m_filterting_needed = m_light_type == LightType::Directional;
+            m_filtering_needed = m_light_type == LightType::Directional;
             update_matrices     = true;
         }
 
@@ -178,7 +178,7 @@ namespace spartan
         stream->Write(m_flags);
         stream->Write(m_color_rgb);
         stream->Write(m_range);
-        stream->Write(m_intensity_lumens);
+        stream->Write(m_intensity_lumens_lux);
         stream->Write(m_angle_rad);
     }
 
@@ -188,7 +188,7 @@ namespace spartan
         stream->Read(&m_flags);
         stream->Read(&m_color_rgb);
         stream->Read(&m_range);
-        stream->Read(&m_intensity_lumens);
+        stream->Read(&m_intensity_lumens_lux);
         stream->Read(&m_angle_rad);
     }
 
@@ -222,7 +222,7 @@ namespace spartan
                 }
             }
 
-            m_filterting_needed = true;
+            m_filtering_needed = true;
             SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
@@ -247,7 +247,7 @@ namespace spartan
         m_temperature_kelvin = temperature_kelvin;
         m_color_rgb          = Color(temperature_kelvin);
 
-        m_filterting_needed = true;
+        m_filtering_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -278,7 +278,7 @@ namespace spartan
         else if (rgb == Color::light_photo_flash)
             m_temperature_kelvin = 5500.0f;
 
-        m_filterting_needed = true;
+        m_filtering_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -288,91 +288,84 @@ namespace spartan
 
         if (intensity == LightIntensity::sky_sunlight_noon)
         {
-            m_intensity_lumens = 120000.0f;
+            m_intensity_lumens_lux = 120000.0f;
         }
         else if (intensity == LightIntensity::sky_sunlight_morning_evening)
         {
-            m_intensity_lumens = 60000.0f;
+            m_intensity_lumens_lux = 60000.0f;
         }
         else if (intensity == LightIntensity::sky_overcast_day)
         {
-            m_intensity_lumens = 20000.0f;
+            m_intensity_lumens_lux = 20000.0f;
         }
         else if (intensity == LightIntensity::sky_twilight)
         {
-            m_intensity_lumens = 10000.0f;
+            m_intensity_lumens_lux = 10000.0f;
         }
         else if (intensity == LightIntensity::bulb_stadium)
         {
-            m_intensity_lumens = 200000.0f;
+            m_intensity_lumens_lux = 200000.0f;
         }
         else if (intensity == LightIntensity::bulb_500_watt)
         {
-            m_intensity_lumens = 8500.0f;
+            m_intensity_lumens_lux = 8500.0f;
         }
         else if (intensity == LightIntensity::bulb_150_watt)
         {
-            m_intensity_lumens = 2600.0f;
+            m_intensity_lumens_lux = 2600.0f;
         }
         else if (intensity == LightIntensity::bulb_100_watt)
         {
-            m_intensity_lumens = 1600.0f;
+            m_intensity_lumens_lux = 1600.0f;
         }
         else if (intensity == LightIntensity::bulb_60_watt)
         {
-            m_intensity_lumens = 800.0f;
+            m_intensity_lumens_lux = 800.0f;
         }
         else if (intensity == LightIntensity::bulb_25_watt)
         {
-            m_intensity_lumens = 200.0f;
+            m_intensity_lumens_lux = 200.0f;
         }
         else if (intensity == LightIntensity::bulb_flashlight)
         {
-            m_intensity_lumens = 100.0f;
+            m_intensity_lumens_lux = 100.0f;
         }
         else // black hole
         {
-            m_intensity_lumens = 0.0f;
+            m_intensity_lumens_lux = 0.0f;
         }
 
-        m_filterting_needed = true;
+        m_filtering_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::SetIntensity(const float lumens)
     {
-        m_intensity_lumens = lumens;
-        m_intensity        = LightIntensity::custom;
-
-        m_filterting_needed = true;
+        m_intensity_lumens_lux = lumens;
+        m_intensity            = LightIntensity::custom;
+        m_filtering_needed     = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     float Light::GetIntensityWatt() const
     {
-        // this magic values are chosen empirically based on how the lights
-        // types in the LightIntensity enum should look in the engine
-        const float magic_value_a = 150.0f;
-        const float magic_value_b = 0.015f;
-
-        // convert lumens to power (in watts) assuming all light is at 555nm
-        float power_watts = (m_intensity_lumens / 683.0f) * magic_value_a;
-
-        // for point lights and spot lights, intensity should fall off with the square of the distance,
-        // so we don't need to modify the power. For directional lights, intensity should be constant,
-        // so we need to multiply the power by the area over which the light is spread
+        // ideal luminous efficacy at 555nm in lm/w
+        const float luminous_efficacy = 683.0f;
+        float intensity               = m_intensity_lumens_lux;
+        
         if (m_light_type == LightType::Directional)
         {
-            float area  = magic_value_b;
-            power_watts *= area;
+            // assume the intensity is in lux (lm/m^2)
+            // converting lux to W/m^2 using a reference area of 1 m^2
+            intensity = m_intensity_lumens_lux / luminous_efficacy;
+        } else
+        {
+            intensity = m_intensity_lumens_lux / luminous_efficacy;
         }
-
-        // multiply by the camera's exposure to get the final intensity
-        Camera* camera  = Renderer::GetCamera();
-        power_watts    *= camera ? camera->GetExposure() : 1.0f;
-
-        return power_watts;
+        
+        return intensity;
     }
+
 
     void Light::SetRange(float range)
     {
@@ -396,14 +389,14 @@ namespace spartan
 
     void Light::DisableFilterPending()
     {
-        m_filterting_needed = false;
+        m_filtering_needed = false;
     }
 
     bool Light::IsFilteringPending() const
     {
         // if filtering needs to happen, wait for the light to be inactive for a few seconds, which means the user has stopped moving it
         const float inactive_time = 1.0f;
-        return m_filterting_needed && (GetEntity()->GetTimeSinceLastTransform() >= inactive_time);
+        return m_filtering_needed && (GetEntity()->GetTimeSinceLastTransform() >= inactive_time);
     }
 
     void Light::UpdateMatrices()

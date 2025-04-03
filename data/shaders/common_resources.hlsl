@@ -70,7 +70,7 @@ struct FrameBufferData
     float gamma;
 
     float3 camera_right;
-    float padding2;
+    float camera_exposure;
 };
 
 // 128 byte push constant buffer used by every pass

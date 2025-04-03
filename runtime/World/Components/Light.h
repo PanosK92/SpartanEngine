@@ -98,7 +98,7 @@ namespace spartan
         // intensity
         void SetIntensity(const float lumens);
         void SetIntensity(const LightIntensity lumens);
-        float GetIntensityLumens() const    { return m_intensity_lumens; }
+        float GetIntensityLumens() const    { return m_intensity_lumens_lux; }
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt() const;
 
@@ -139,8 +139,8 @@ namespace spartan
         void ComputeProjectionMatrix();
 
         // intensity
-        LightIntensity m_intensity = LightIntensity::bulb_500_watt;
-        float m_intensity_lumens   = 2600.0f;
+        LightIntensity m_intensity   = LightIntensity::bulb_500_watt;
+        float m_intensity_lumens_lux = 2600.0f; // lux for directional light, lumens for point and spot lights
 
         // shadows
         std::shared_ptr<RHI_Texture> m_texture_color;
@@ -157,6 +157,6 @@ namespace spartan
         float m_range              = 0.0f;
         float m_angle_rad          = math::deg_to_rad * 30.0f;
         uint32_t m_index           = 0;
-        bool m_filterting_needed   = false;
+        bool m_filtering_needed    = false;
     };
 }

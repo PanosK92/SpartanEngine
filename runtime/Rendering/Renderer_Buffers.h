@@ -78,7 +78,7 @@ namespace spartan
         float gamma;
 
         math::Vector3 camera_right;
-        float padding2;
+        float camera_exposure;
 
         void set_bit(const bool set, const uint32_t bit)
         {

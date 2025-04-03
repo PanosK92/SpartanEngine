@@ -167,7 +167,7 @@ namespace spartan
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::ShadowResolution,            4096.0f);
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                                 // becomes the upsampler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0f);                                                 // controls the intensity of the volumetric fog as well
+            SetOption(Renderer_Option::Fog,                         0.4f);                                                 // controls the intensity of the volumetric fog as well
             SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                 // these is only a toggle for the volumetric fog
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 3 for taa
             SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
@@ -501,6 +501,7 @@ namespace spartan
         m_cb_frame_cpu.hdr_white_point             = GetOption<float>(Renderer_Option::WhitePoint);
         m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.directional_light_intensity = get_directional_light_intensity_lumens(m_renderables[Renderer_Entity::Light]);
+        m_cb_frame_cpu.camera_exposure             = GetCamera() ? GetCamera()->GetExposure() : 1.0f;
 
         // these must match what common_buffer.hlsl is reading
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
