@@ -282,10 +282,6 @@ void Properties::ShowLight(spartan::Light* light) const
         {
             static vector<string> intensity_types =
             {
-                "Sky sunlight moon",
-                "Sky sunlight morning evening",
-                "Sky overcast day",
-                "Sky twilight",
                 "Bulb stadium",
                 "Bulb 500 watt",
                 "Bulb 150 watt",
@@ -298,20 +294,27 @@ void Properties::ShowLight(spartan::Light* light) const
             };
 
             ImGui::Text("Intensity");
+            ImGui::SameLine(column_pos_x);
 
             // light types
-            ImGui::SameLine(column_pos_x);
-            uint32_t intensity_type_index = static_cast<uint32_t>(light->GetIntensity());
-            if (ImGuiSp::combo_box("##light_intensity_type", intensity_types, &intensity_type_index))
-            {
-                light->SetIntensity(static_cast<LightIntensity>(intensity_type_index));
-                intensity = light->GetIntensityLumens();
+            bool is_directional = light->GetLightType() == LightType::Directional;
+            if (!is_directional)
+            { 
+                uint32_t intensity_type_index = static_cast<uint32_t>(light->GetIntensity());
+                if (ImGuiSp::combo_box("##light_intensity_type", intensity_types, &intensity_type_index))
+                {
+                    light->SetIntensity(static_cast<LightIntensity>(intensity_type_index));
+                    intensity = light->GetIntensityLumens();
+                }
+                ImGuiSp::tooltip("Common light types");
             }
-            ImGuiSp::tooltip("Common light types");
 
             // intensity
-            ImGui::SameLine();
-            ImGuiSp::draw_float_wrap(light->GetLightType() == spartan::LightType::Directional ? "lux" : "lm", &intensity, 10.0f, 0.0f, 120000.0f);
+            if (!is_directional)
+            { 
+                ImGui::SameLine();
+            }
+            ImGuiSp::draw_float_wrap(is_directional ? "lux" : "lm", &intensity, 10.0f, 0.0f, 120000.0f);
             ImGuiSp::tooltip("Intensity expressed in lux (directional) or lumens (point and spot)");
         }
 

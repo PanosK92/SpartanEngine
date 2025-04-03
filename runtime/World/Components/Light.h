@@ -46,19 +46,15 @@ namespace spartan
 
     enum class LightIntensity
     {
-        sky_sunlight_noon,            // Direct sunlight at noon, the brightest light
-        sky_sunlight_morning_evening, // Direct sunlight at morning or evening, less intense than noon light
-        sky_overcast_day,             // Light on an overcast day, considerably less intense than direct sunlight
-        sky_twilight,                 // Light just after sunset, a soft and less intense light
-        bulb_stadium,                 // Intense light used in stadiums for sports events, comparable to sunlight
-        bulb_500_watt,                // A very bright domestic bulb or small industrial light
-        bulb_150_watt,                // A bright domestic bulb, equivalent to an old-school incandescent bulb
-        bulb_100_watt,                // A typical bright domestic bulb
-        bulb_60_watt,                 // A medium intensity domestic bulb
-        bulb_25_watt,                 // A low intensity domestic bulb, used for mood lighting or as a night light
-        bulb_flashlight,              // Light emitted by an average flashlight, portable and less intense
-        black_hole,                   // No light emitted
-        custom                        // Custom intensity
+        bulb_stadium,    // intense light used in stadiums for sports events, comparable to sunlight
+        bulb_500_watt,   // a very bright domestic bulb or small industrial light
+        bulb_150_watt,   // a bright domestic bulb, equivalent to an old-school incandescent bulb
+        bulb_100_watt,   // a typical bright domestic bulb
+        bulb_60_watt,    // a medium intensity domestic bulb
+        bulb_25_watt,    // a low intensity domestic bulb, used for mood lighting or as a night light
+        bulb_flashlight, // light emitted by an average flashlight, portable and less intense
+        black_hole,      // no light emitted
+        custom           // custom intensity
     };
 
     enum LightFlags : uint32_t
@@ -140,7 +136,7 @@ namespace spartan
 
         // intensity
         LightIntensity m_intensity   = LightIntensity::bulb_500_watt;
-        float m_intensity_lumens_lux = 2600.0f; // lux for directional light, lumens for point and spot lights
+        float m_intensity_lumens_lux = 2600.0f;
 
         // shadows
         std::shared_ptr<RHI_Texture> m_texture_color;
@@ -154,7 +150,7 @@ namespace spartan
         LightType m_light_type     = LightType::Max;
         Color m_color_rgb          = Color::standard_black;;
         float m_temperature_kelvin = 0.0f;
-        float m_range              = 0.0f;
+        float m_range              = 32.0f;
         float m_angle_rad          = math::deg_to_rad * 30.0f;
         uint32_t m_index           = 0;
         bool m_filtering_needed    = false;

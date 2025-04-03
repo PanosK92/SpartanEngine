@@ -74,17 +74,29 @@ namespace spartan
             audio_source->SetLoop(true);
         }
 
-        void create_sun(const LightIntensity sun_intensity = LightIntensity::sky_sunlight_morning_evening, const bool shadows_enabled = true)
+        void create_sun(const bool enabled, const Vector3& rotation = Vector3::Infinity)
         {
             m_default_light_directional = World::CreateEntity();
             m_default_light_directional->SetObjectName("light_directional");
-            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
-            
             Light* light = m_default_light_directional->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
+
+            // rotation
+            if (rotation == Vector3::Infinity)
+            { 
+                m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
+            }
+            else
+            {
+                m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(rotation));
+            }
+
+            // intensity
+            const float max_lux = 120000.0f; // max lux (during noon) - the rotation will scale it down in the shader
+            light->SetIntensity(enabled ? max_lux * 0.5f : 0.0f);
+
             light->SetTemperature(2300.0f);
-            light->SetIntensity(sun_intensity);
-            light->SetFlag(LightFlags::Shadows, shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
+            light->SetFlag(LightFlags::Shadows, enabled);
             light->SetFlag(LightFlags::ShadowsTransparent, false);
         }
 
@@ -474,9 +486,8 @@ namespace spartan
             const float render_distance_trees = 2000.0f;
             const float render_distance_grass = 1000.0f;
 
-            create_sun(LightIntensity::sky_overcast_day);
+            create_sun(true, Vector3(1.0f, 45.0f, 0.0f));
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
-            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(20.0f, 5.0f, 0.0f));
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
             Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 
@@ -758,7 +769,7 @@ namespace spartan
         {
             // set the mood
             create_camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            create_sun(LightIntensity::black_hole, false); // add even if dark so that the atmospheric scattering and IBL updates accordingly
+            create_sun(false);
             create_music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
@@ -847,7 +858,7 @@ namespace spartan
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::IsTree,  1.0f);
+                        material->SetProperty(MaterialProperty::IsTree,   1.0f);
                     }
                 }
             }
@@ -871,7 +882,7 @@ namespace spartan
         void create_doom_e1m1()
         {
             create_camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-            create_sun(LightIntensity::sky_sunlight_noon);
+            create_sun(true);
             create_music("project\\music\\doom_e1m1.wav");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
@@ -900,7 +911,7 @@ namespace spartan
         void create_bistro()
         {
             create_camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
-            create_sun(LightIntensity::bulb_150_watt);
+            create_sun(false);
             create_music();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
@@ -974,7 +985,7 @@ namespace spartan
         void create_minecraft()
         {
             create_camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-            create_sun();
+            create_sun(true);
             create_music();
             create_floor();
 
@@ -994,7 +1005,9 @@ namespace spartan
         void create_living_room_gi_test()
         {
             create_camera(Vector3(3.6573f, 2.4959f, -15.6978f), Vector3(3.9999f, -12.1947f, 0.0f));
-            create_sun();
+            create_sun(true);
+            // make the sun come in through the window
+            m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(30.0f, 180.0f, 0.0f));
             create_music();
 
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
@@ -1057,10 +1070,6 @@ namespace spartan
                 entity->GetDescendantByName("Default_1")->SetActive(false);
                 entity->GetDescendantByName("Default_2")->SetActive(false);
                 entity->GetDescendantByName("Default_3")->SetActive(false);
-
-                // make the same come in through the window
-                m_default_light_directional->SetRotation(Quaternion::FromEulerAngles(30.0f, 180.0f, 0.0f));
-                m_default_light_directional->GetComponent<Light>()->SetIntensity(LightIntensity::sky_overcast_day);
 
                 // make the walls double sided
                 if (Renderable* renderable = entity->GetDescendantByName("Mesh_114")->GetComponent<Renderable>())
@@ -1131,7 +1140,7 @@ namespace spartan
 
         void create_subway_gi_test()
         {
-            create_sun(LightIntensity::black_hole, false); // add even if dark so that the atmospheric scattering and IBL updates accordingly
+            create_sun(false);
             create_camera();
             
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
@@ -1161,7 +1170,7 @@ namespace spartan
     void car_mark2()
     {
         create_camera();
-        create_sun();
+        create_sun(true);
         create_floor();
         create_damaged_helmet(Vector3(5.0f, 1.0f, 0.0f));
         create_material_ball(Vector3(8.0f, 1.0f, 0.0f));

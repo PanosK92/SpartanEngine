@@ -56,24 +56,6 @@ namespace spartan
             return 0.0f;
         }
 
-        LightIntensity get_sensible_intensity(const LightType type)
-        {
-            if (type == LightType::Directional)
-            {
-                return LightIntensity::sky_sunlight_noon;
-            }
-            else if (type == LightType::Point)
-            {
-                return LightIntensity::bulb_150_watt;
-            }
-            else if (type == LightType::Spot)
-            {
-                return LightIntensity::bulb_flashlight;
-            }
-
-            return LightIntensity::black_hole;
-        }
-
         Color get_sensible_color(const LightType type)
         {
             if (type == LightType::Directional)
@@ -106,7 +88,7 @@ namespace spartan
         m_matrix_projection.fill(Matrix::Identity);
 
         SetColor(get_sensible_color(m_light_type));
-        SetIntensity(get_sensible_intensity(m_light_type));
+        SetIntensity(LightIntensity::bulb_500_watt);
         SetRange(get_sensible_range(m_light_type));
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsTransparent);
@@ -117,7 +99,7 @@ namespace spartan
 
     void Light::OnTick()
     {
-        // update matrices and request filterting
+        // update matrices and request filtering
         bool update_matrices = false;
         if (GetEntity()->GetTimeSinceLastTransform() <= 0.25f) // I can't get this exactly at 0.0, fix it
         {
@@ -236,7 +218,6 @@ namespace spartan
 
         SetColor(get_sensible_color(m_light_type));
         SetRange(get_sensible_range(m_light_type));
-        SetIntensity(get_sensible_intensity(m_light_type));
 
         UpdateMatrices();
         World::Resolve();
@@ -286,23 +267,7 @@ namespace spartan
     {
         m_intensity = intensity;
 
-        if (intensity == LightIntensity::sky_sunlight_noon)
-        {
-            m_intensity_lumens_lux = 120000.0f;
-        }
-        else if (intensity == LightIntensity::sky_sunlight_morning_evening)
-        {
-            m_intensity_lumens_lux = 60000.0f;
-        }
-        else if (intensity == LightIntensity::sky_overcast_day)
-        {
-            m_intensity_lumens_lux = 20000.0f;
-        }
-        else if (intensity == LightIntensity::sky_twilight)
-        {
-            m_intensity_lumens_lux = 10000.0f;
-        }
-        else if (intensity == LightIntensity::bulb_stadium)
+        if (intensity == LightIntensity::bulb_stadium)
         {
             m_intensity_lumens_lux = 200000.0f;
         }

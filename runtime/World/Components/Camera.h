@@ -112,7 +112,7 @@ namespace spartan
 
             // the base exposure is very low for bright conditions
             // so we apply an aristic bias here, to make it look right
-            float exposure_bias = 400.0f;
+            float exposure_bias = 600.0f;
 
             return base_exposure * exposure_bias;
         }
