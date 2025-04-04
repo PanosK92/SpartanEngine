@@ -258,7 +258,6 @@ namespace spartan
             render_target(Renderer_RenderTarget::frame_output_2)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
-            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, format_standard,            RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
             render_target(Renderer_RenderTarget::outline)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
             render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::D32_Float,      RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_output");
         }
@@ -399,22 +398,8 @@ namespace spartan
         }
 
         // bloom
-        {
-            // downsample luminance
-            shader(Renderer_Shader::bloom_luminance_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::bloom_luminance_c)->AddDefine("LUMINANCE");
-            shader(Renderer_Shader::bloom_luminance_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
-
-            // upsample blend (with previous mip)
-            shader(Renderer_Shader::bloom_upsample_blend_mip_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::bloom_upsample_blend_mip_c)->AddDefine("UPSAMPLE_BLEND_MIP");
-            shader(Renderer_Shader::bloom_upsample_blend_mip_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
-
-            // upsample blend (with frame)
-            shader(Renderer_Shader::bloom_blend_frame_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::bloom_blend_frame_c)->AddDefine("BLEND_FRAME");
-            shader(Renderer_Shader::bloom_blend_frame_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
-        }
+        shader(Renderer_Shader::bloom_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::bloom_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
 
         // amd fidelityfx
         {
