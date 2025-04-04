@@ -33,9 +33,9 @@ float3 threshold(float3 color)
     float brightness    = max(color.r, max(color.g, color.b));
     float soft          = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
     soft                = clamp(soft, 0, 2 * BLOOM_SOFT_KNEE);
-    soft                = soft * soft / (4 * BLOOM_SOFT_KNEE + 1e-4);
+    soft                = soft * soft / (4 * BLOOM_SOFT_KNEE + FLT_MIN);
     float contribution  = max(soft, brightness - BLOOM_THRESHOLD);
-    contribution       /= max(brightness, 1e-4);
+    contribution       /= max(brightness, FLT_MIN);
     return color * contribution;
 }
 
@@ -103,7 +103,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 result        = lerp(high_mip, low_mip, blend_factor);
 
     // Soft clamp to prevent over-brightening
-    float max_value = max(max(result.r, result.g), result.b);
+    float max_value = max(max(result.r, result.g), result.b) + FLT_MIN;
     if (max_value > 1.0)
         result *= 1.0 / max_value;
 
