@@ -1842,7 +1842,7 @@ namespace spartan
         return nullptr;
     }
 
-    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data_initial, const char* name)
+    void RHI_Device::MemoryBufferCreate(void*& resource, const uint64_t size, uint32_t flags_usage, uint32_t flags_memory, const void* data, const char* name)
     {
         // buffer info
         VkBufferCreateInfo buffer_create_info = {};
@@ -1877,7 +1877,7 @@ namespace spartan
         );
 
         // if a pointer to the buffer data has been passed, map the buffer and copy over the data
-        if (data_initial)
+        if (data)
         {
             SP_ASSERT_MSG(is_mappable, "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag");
 
@@ -1888,7 +1888,7 @@ namespace spartan
 
             void* mapped_data = nullptr;
             SP_ASSERT_VK(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data));
-            memcpy(mapped_data, data_initial, size);
+            memcpy(mapped_data, data, size);
             SP_ASSERT_VK(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size));
             vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation);
         }
