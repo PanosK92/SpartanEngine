@@ -223,7 +223,7 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, const RHI_Buffer* instance)
+    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(vertex && vertex->GetRhiResource());
