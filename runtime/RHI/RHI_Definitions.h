@@ -358,7 +358,7 @@ namespace spartan
             case RHI_Format::Max:                   break;
         }
     
-        assert(false && "unsupported format");
+        assert(false && "unhandled rhi_format_to_bits_per_channel() case");
         return 0;
     }
 
@@ -396,7 +396,7 @@ namespace spartan
             case RHI_Format::Max:                   break;
         }
     
-        assert(false && "unsupported format");
+        assert(false && "unhandled rhi_to_format_channel_count() case");
         return 0;
     }
 
@@ -435,7 +435,7 @@ namespace spartan
             default:                               break;
         }
     
-        assert(false && "unsupported format");
+        assert(false && "unhandled rhi_format_to_string() case");
         return "";
     }
 
