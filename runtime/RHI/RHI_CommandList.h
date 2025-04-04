@@ -100,7 +100,7 @@ namespace spartan
         void SetCullMode(const RHI_CullMode cull_mode);
         
         // buffers
-        void SetBufferVertex(const RHI_Buffer* vertex, const RHI_Buffer* instance = nullptr);
+        void SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance = nullptr);
         void SetBufferIndex(const RHI_Buffer* buffer);
         void SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const;
         void SetBuffer(const Renderer_BindingsUav slot, RHI_Buffer* buffer) const { SetBuffer(static_cast<uint32_t>(slot), buffer); }

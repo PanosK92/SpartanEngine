@@ -76,9 +76,23 @@ struct sp_info
 #endif
 //=======================================================================
 
-//= WARNING WINDOW =================================================================
+//= WINDOWS ===================================================================================
 #define WIDE_STR_HELPER(x) L ## x
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
+
+#if defined(_WIN32)
+    #define SP_INFO_WINDOW(text_message)                                                      \
+    {                                                                                         \
+        MessageBeep(MB_ICONINFORMATION);                                                      \
+        HWND hwnd = GetConsoleWindow();                                                       \
+        MessageBoxW(hwnd, L##text_message, L"Info", MB_OK | MB_TOPMOST | MB_ICONINFORMATION); \
+    }
+#else
+    #define SP_INFO_WINDOW(text_message)    \
+    {                                       \
+        printf("Info: %s\n", text_message); \
+    }
+#endif
 
 #if defined(_WIN32)
     #define SP_WARNING_WINDOW(text_message)                                                  \
@@ -93,11 +107,7 @@ struct sp_info
         printf("Warning: %s\n", text_message); \
     }
 #endif
-//=================================================================================
 
-//================================================================================
-
-//= ERROR WINDOW =================================================================
 #if defined(_WIN32)
     #define SP_ERROR_WINDOW(text_message)                                                \
     {                                                                                    \
@@ -113,7 +123,7 @@ struct sp_info
         SP_DEBUG_BREAK();                    \
     }
 #endif
-//================================================================================
+//=============================================================================================
 
 //= STACKTRACE========================
 namespace spartan

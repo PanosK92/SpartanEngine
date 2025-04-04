@@ -1163,10 +1163,16 @@ namespace spartan
         );
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, const RHI_Buffer* instance)
+    void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(vertex && vertex->GetRhiResource());
+
+        // the instance buffer is optional but always part of the pipeline therefore it can't be null
+        if (!instance)
+        {
+            instance = Renderer::GetBuffer(Renderer_Buffer::DummyInstance);
+        }
     
         // prepare buffers and offsets arrays
         VkBuffer vertex_buffers[2] = {

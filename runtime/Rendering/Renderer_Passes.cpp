@@ -105,17 +105,6 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.
             }
 
-            // create sampling source for refraction
-            cmd_list_graphics->BeginTimeblock("create_refraction_ssr_source");
-            {
-                cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
-                Pass_Downscale(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::source_refraction), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
-
-                // todo: remove this, and find out why it doesn't properly transition and can cause a GPU crash
-                GetRenderTarget(Renderer_RenderTarget::source_refraction)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
-            }
-            cmd_list_graphics->EndTimeblock();
-
             // transparents
             if (m_transparents_present)
             {
@@ -128,11 +117,6 @@ namespace spartan
             // apply skysphere, ssr and global illumination
             Pass_Ssr(cmd_list_graphics);
             Pass_Light_ImageBased(cmd_list_graphics); 
-
-            // create sampling source for gi
-            cmd_list_graphics->BeginTimeblock("create_gi_source");
-            cmd_list_graphics->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_gi), false);
-            cmd_list_graphics->EndTimeblock();
 
             // render -> output resolution
             Pass_Upscale(cmd_list_graphics);
@@ -370,7 +354,7 @@ namespace spartan
                         cmd_list->PushConstants(m_pcb_pass_cpu);
     
                         // set buffers
-                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), GetBuffer(Renderer_Buffer::DummyInstance));
+                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
                         // draw
@@ -462,7 +446,7 @@ namespace spartan
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
                 // draw
-                cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), GetBuffer(Renderer_Buffer::DummyInstance));
+                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                 cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
                 cmd_list->DrawIndexed(
@@ -563,9 +547,7 @@ namespace spartan
 
                 // draw
                 {
-                    RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
-                    instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
                     if (renderable->HasInstancing())
@@ -687,9 +669,7 @@ namespace spartan
     
             // draw
             {
-                RHI_Buffer* instance_buffer = renderable->GetInstanceBuffer();
-                instance_buffer             = instance_buffer ? instance_buffer : GetBuffer(Renderer_Buffer::DummyInstance);
-                cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), instance_buffer);
+                cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                 cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
                 if (renderable->HasInstancing())
@@ -1067,6 +1047,15 @@ namespace spartan
 
             // render
             cmd_list->Dispatch(tex_out);
+
+            // create sampling source for refraction
+            {
+                cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
+                Pass_Downscale(cmd_list, GetRenderTarget(Renderer_RenderTarget::source_refraction), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
+
+                // todo: remove this, and find out why it doesn't properly transition and can cause a GPU crash
+                GetRenderTarget(Renderer_RenderTarget::source_refraction)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
         }
         cmd_list->EndTimeblock();
     }
@@ -1103,6 +1092,9 @@ namespace spartan
 
             // render
             cmd_list->Dispatch(tex_out);
+
+            // create sampling source for gi
+            cmd_list->Blit(tex_out, GetRenderTarget(Renderer_RenderTarget::source_gi), false);
         }
         cmd_list->EndTimeblock();
     }

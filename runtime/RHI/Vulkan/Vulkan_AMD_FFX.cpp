@@ -1593,6 +1593,7 @@ namespace spartan
     void RHI_AMD_FFX::Breadcrumbs_OnDeviceRemoved()
     {
         #ifdef _MSC_VER
+
         SP_ASSERT(breadcrumbs::context_created);
         lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
@@ -1609,6 +1610,8 @@ namespace spartan
         }
 
         FFX_SAFE_FREE(marker_status.pBuffer, free);
+
+        SP_INFO_WINDOW("A gpu crash report has been saved to 'breadcrumbs.txt'");
 
         #endif
     }
