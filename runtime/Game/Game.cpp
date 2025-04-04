@@ -986,7 +986,7 @@ namespace spartan
                 light->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
                 light->GetComponent<Light>()->SetLightType(LightType::Point);
                 light->GetComponent<Light>()->SetRange(120.0f);
-                light->GetComponent<Light>()->SetIntensity(LightIntensity::bulb_60_watt);
+                light->GetComponent<Light>()->SetIntensity(LightIntensity::bulb_500_watt);
                 light->GetComponent<Light>()->SetTemperature(4000.0f); // a bit white, what the emissive textures seem to try to emulate
 
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
