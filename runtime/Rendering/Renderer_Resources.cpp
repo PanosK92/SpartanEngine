@@ -81,7 +81,7 @@ namespace spartan
         buffer(Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    element_count * spd_uses_in_frame, &spd_counter_value, true, "spd_counter");
         buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                nullptr,            true, "materials");
         buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                nullptr,            true, "lights");
-        buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Matrix),                             1,                                 &identity,          false, "dummy_instance_buffer");
+        buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Matrix),                             1,                                 &identity,          true, "dummy_instance_buffer");
         buffer(Renderer_Buffer::Visibility)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                nullptr,            true, "visibility");
 
         buffer(Renderer_Buffer::AABBs) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Aabb)), rhi_max_array_size, nullptr, true, "aabbs");

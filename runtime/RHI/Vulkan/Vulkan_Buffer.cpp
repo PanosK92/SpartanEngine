@@ -58,7 +58,7 @@ namespace spartan
             if (m_mappable)
             {
                 uint32_t flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-                RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, flags_memory, nullptr, m_object_name.c_str());
+                RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT, flags_memory, data, m_object_name.c_str());
             }
             else
             {
