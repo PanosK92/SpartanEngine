@@ -1603,15 +1603,6 @@ namespace spartan
         shader                 = filter == Renderer_DownsampleFilter::Max ? Renderer_Shader::ffx_spd_max_c : shader;
         RHI_Shader* shader_c   = GetShader(shader);
 
-        // only needs to be set once, then after each use SPD resets it itself
-        static bool initialized = false;
-        if (!initialized)
-        { 
-            uint32_t counter_value = 0;
-            GetBuffer(Renderer_Buffer::SpdCounter)->Update(cmd_list, &counter_value);
-            initialized = true;
-        }
-
         cmd_list->BeginMarker("downscale");
         {
             // set pipeline state
@@ -1637,15 +1628,12 @@ namespace spartan
 
     void Renderer::Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire resources
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_cas_c);
-
         cmd_list->BeginTimeblock("sharpening");
         {
             // set pipeline state
             RHI_PipelineState pso;
             pso.name             = "sharpening";
-            pso.shaders[Compute] = shader_c;
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ffx_cas_c);
             cmd_list->SetPipelineState(pso);
             
             // set pass constants
