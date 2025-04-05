@@ -40,7 +40,7 @@ namespace spartan
 {
     namespace
     {
-        unordered_map<uint64_t, shared_ptr<Entity>> entities;
+        vector<shared_ptr<Entity>> entities;
         string name;
         string file_path;
         mutex entity_access_mutex;
@@ -50,9 +50,8 @@ namespace spartan
 
         void compute_bounding_box()
         {
-            for (auto& entity_pair : entities)
+            for (shared_ptr<Entity>& entity : entities)
             {
-                shared_ptr<Entity> entity = entity_pair.second;
                 if (entity->IsActive())
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
@@ -91,27 +90,27 @@ namespace spartan
             // start
             if (started)
             {
-                for (auto it : entities)
+                for (shared_ptr<Entity>& entity : entities)
                 {
-                    it.second->OnStart();
+                    entity->OnStart();
                 }
             }
 
             // stop
             if (stopped)
             {
-                for (auto it : entities)
+               for (shared_ptr<Entity>& entity : entities)
                 {
-                    it.second->OnStop();
+                    entity->OnStop();
                 }
             }
 
             // tick
-            for (auto it : entities)
+            for (shared_ptr<Entity>& entity : entities)
             {
-                if (it.second->IsActive())
+                if (entity->IsActive())
                 { 
-                    it.second->Tick();
+                    entity->Tick();
                 }
             }
 
@@ -262,9 +261,7 @@ namespace spartan
 
         shared_ptr<Entity> entity = make_shared<Entity>();
         entity->Initialize();
-        entities[entity->GetObjectId()] = entity;
-
-        bounding_box = BoundingBox::Undefined;
+        entities.push_back(entity);
 
         return entity;
     }
@@ -298,7 +295,7 @@ namespace spartan
             // remove entities using a single loop
             for (auto it = entities.begin(); it != entities.end(); )
             {
-                if (ids_to_remove.count(it->first) > 0)
+                if (ids_to_remove.count((*it)->GetObjectId()) > 0)
                 {
                     it = entities.erase(it);
                 }
@@ -324,11 +321,12 @@ namespace spartan
         lock_guard<mutex> lock(entity_access_mutex);
 
         vector<shared_ptr<Entity>> root_entities;
-        for (auto it : entities)
+
+        for (shared_ptr<Entity>& entity : entities)
         {
-            if (!it.second->HasParent())
+            if (!entity->HasParent())
             {
-                root_entities.emplace_back(it.second);
+                root_entities.emplace_back(entity);
             }
         }
 
@@ -338,16 +336,18 @@ namespace spartan
     const shared_ptr<Entity>& World::GetEntityById(const uint64_t id)
     {
         lock_guard<mutex> lock(entity_access_mutex);
-
-        auto it = entities.find(id);
-        if (it != entities.end())
-            return it->second;
-
+    
+        for (const auto& entity : entities)
+        {
+            if (entity && entity->GetObjectId() == id)
+                return entity;
+        }
+    
         static shared_ptr<Entity> empty;
         return empty;
     }
-
-    const unordered_map<uint64_t, shared_ptr<Entity>>& World::GetAllEntities()
+    
+    const vector<shared_ptr<Entity>>& World::GetAllEntities()
     {
         return entities;
     }

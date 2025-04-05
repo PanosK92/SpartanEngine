@@ -512,7 +512,7 @@ namespace spartan
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
     }
 
-    void Renderer::SetEntities(unordered_map<uint64_t, shared_ptr<Entity>>& entities)
+    void Renderer::SetEntities(vector<shared_ptr<Entity>>& entities)
     {
         lock_guard lock(m_mutex_renderables);
 
@@ -524,10 +524,8 @@ namespace spartan
         m_bindless_lights_dirty    = true;
 
         // build new state
-        for (auto it : entities)
+        for (shared_ptr<Entity>& entity : entities)
         {
-            shared_ptr<Entity>& entity = it.second;
-
             if (!entity->IsActive())
                 continue;
 

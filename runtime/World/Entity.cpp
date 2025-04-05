@@ -572,10 +572,9 @@ namespace spartan
         m_children.clear();
         m_children.shrink_to_fit();
 
-        const unordered_map<uint64_t, shared_ptr<Entity>>& entities = World::GetAllEntities();
-        for (auto it : entities)
+        const vector<shared_ptr<Entity>>& entities = World::GetAllEntities();
+        for (const shared_ptr<Entity>& possible_child : entities)
         {
-            shared_ptr<Entity> possible_child = it.second;
             if (!possible_child || !possible_child->HasParent() || possible_child->GetObjectId() == GetObjectId())
                 continue;
 
