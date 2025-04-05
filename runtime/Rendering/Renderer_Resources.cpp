@@ -83,9 +83,7 @@ namespace spartan
         buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size, nullptr,            true, "lights");
         buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Matrix),                             1,                  &identity,          true, "dummy_instance_buffer");
         buffer(Renderer_Buffer::Visibility)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size, nullptr,            true, "visibility");
-
-        buffer(Renderer_Buffer::AABBs) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Aabb)), rhi_max_array_size, nullptr, true, "aabbs");
-        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+        buffer(Renderer_Buffer::AABBs)              = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Aabb)),     rhi_max_array_size, nullptr,            true, "aabbs");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -106,19 +104,18 @@ namespace spartan
         float bias_slope_scaled = Light::GetBiasSlopeScaled();
         float line_width        = 3.0f;
 
-        // Solid_Transparent: The transparents are rendered at output resolution, without taa/jitter, therefore we need to bias them to avoid z-fighting from the opaque depth
-
         #define rasterizer_state(x) rasterizer_states[static_cast<uint8_t>(x)]
-        //                                                                                               fill mode,    depth clip enabled,  bias,       bias clamp,       slope scaled bias, line width
-        rasterizer_state(Renderer_RasterizerState::Solid)             = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  0.0f,             0.0f,       0.0f,              line_width);
-        rasterizer_state(Renderer_RasterizerState::Wireframe)         = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Wireframe, true,  0.0f,             0.0f,       0.0f,              line_width);
-        rasterizer_state(Renderer_RasterizerState::Light_point_spot)  = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  bias,             bias_clamp, bias_slope_scaled, line_width);
-        rasterizer_state(Renderer_RasterizerState::Light_directional) = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     false, bias * 0.1f,      bias_clamp, bias_slope_scaled, line_width);
+        //                                                                                               fill mode,    depth clip enabled,  bias,   bias clamp,       slope scaled bias, line width
+        rasterizer_state(Renderer_RasterizerState::Solid)             = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  0.0f,         0.0f,       0.0f,              line_width);
+        rasterizer_state(Renderer_RasterizerState::Wireframe)         = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Wireframe, true,  0.0f,         0.0f,       0.0f,              line_width);
+        rasterizer_state(Renderer_RasterizerState::Light_point_spot)  = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     true,  bias,         bias_clamp, bias_slope_scaled, line_width);
+        rasterizer_state(Renderer_RasterizerState::Light_directional) = make_shared<RHI_RasterizerState>(RHI_PolygonMode::Solid,     false, bias * 0.1f,  bias_clamp, bias_slope_scaled, line_width);
     }
 
     void Renderer::CreateBlendStates()
     {
         #define blend_state(x) blend_states[static_cast<uint8_t>(x)]
+
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
         blend_state(Renderer_BlendState::Off)      = make_shared<RHI_BlendState>(false);
         blend_state(Renderer_BlendState::Alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
@@ -167,7 +164,7 @@ namespace spartan
             }
         }
 
-        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
+        m_bindless_samplers_dirty = true;
     }
 
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)

@@ -87,7 +87,6 @@ namespace spartan
         static const math::Vector3& GetWind();
         static void SetWind(const math::Vector3& wind);
 
-        //= RESOLUTION/SIZE =============================================================================
         // viewport
         static const RHI_Viewport& GetViewport();
         static void SetViewport(float width, float height);
@@ -99,9 +98,8 @@ namespace spartan
         // resolution output
         static const math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
-        //===============================================================================================
-  
-        //= RESOURCES =========================================================================================================
+
+        // get entities
         static Camera* GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
         static std::vector<std::shared_ptr<Entity>> GetEntitiesLights();
@@ -123,7 +121,6 @@ namespace spartan
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
-        //=====================================================================================================================
 
     private:
         static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
@@ -188,15 +185,16 @@ namespace spartan
         static void OnFullScreenToggled();
         static void UpdateBuffers(RHI_CommandList* cmd_list);
 
+        // bindless
+        static void UpdateBindlessBuffers(RHI_CommandList* cmd_list);
+        static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);
+        static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
+        static void BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list);
+
         // misc
         static void AddLinesToBeRendered();
         static void SetGbufferTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
-
-        // bindless
-        static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);
-        static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
-        static void BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list);
 
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
@@ -211,5 +209,14 @@ namespace spartan
         static std::array<Renderer_DrawCall, renderer_max_entities> m_draw_calls;
         static uint32_t m_draw_call_count;
         static bool m_transparents_present;
+
+        // bindless
+        static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
+        static std::array<Sb_Light, rhi_max_array_size> m_bindless_lights;
+        static std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
+        static bool m_bindless_samplers_dirty;
+        static bool m_bindless_abbs_dirty;
+        static bool m_bindless_materials_dirty;
+        static bool m_bindless_lights_dirty;
     };
 }
