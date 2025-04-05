@@ -81,7 +81,7 @@ namespace spartan
 
         lock_guard<mutex> lock(entity_access_mutex);
 
-        // tick entities
+        if (!ProgressTracker::IsLoading())
         {
             // detect game toggling
             const bool started =  Engine::IsFlagSet(EngineMode::Playing) &&  was_in_editor_mode;
@@ -114,17 +114,17 @@ namespace spartan
                     it.second->Tick();
                 }
             }
-        }
 
-        // notify renderer
-        if (resolve && !ProgressTracker::IsLoading())
-        {
-            Renderer::SetEntities(entities);
-            resolve = false;
-            compute_bounding_box();
-        }
+            // notify renderer
+            if (resolve)
+            {
+                Renderer::SetEntities(entities);
+                resolve = false;
+                compute_bounding_box();
+            }
 
-        Game::Tick();
+            Game::Tick();
+        }
     }
 
     void World::Clear()
