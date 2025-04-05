@@ -249,7 +249,7 @@ namespace spartan
                 bool is_moving      = entity->GetTimeSinceLastTransform() <= 0.25f;
                 bool is_animated    = renderable->GetMaterial()->GetProperty(MaterialProperty::IsTree) > 0.0f;
                 bool is_directional = light->GetLightType() == LightType::Directional;
-                if (is_in_light && (is_directional || (is_moving && is_animated)))
+                if (is_in_light && (is_directional || is_moving || is_animated))
                 {
                     current_lights |= (1ULL << i); // assuming GetIndex() matches array index i
                 }
