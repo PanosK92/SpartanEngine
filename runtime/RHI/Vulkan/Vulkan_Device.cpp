@@ -1652,7 +1652,6 @@ namespace spartan
 
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
-        const  uint32_t frames_selflife            = 100;
         static uint32_t frames_equilibrium         = 0;
         static uint32_t objects_to_delete_previous = 0;
     
@@ -1669,7 +1668,7 @@ namespace spartan
             frames_equilibrium++;
 
             // if it’s been stable for frame_selflife frames, reset counter and delete
-            if (frames_equilibrium >= frames_selflife)
+            if (frames_equilibrium >= renderer_resource_frame_lifetime)
             {
                 frames_equilibrium = 0;
                 return true;

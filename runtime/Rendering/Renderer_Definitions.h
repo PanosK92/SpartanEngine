@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    constexpr uint32_t renderer_resource_frame_lifetime = 5;
+    constexpr uint32_t renderer_resource_frame_lifetime = 100;
     constexpr uint32_t renderer_max_entities            = 10000;
 
     enum class Renderer_Option : uint32_t

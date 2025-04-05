@@ -615,7 +615,6 @@ namespace spartan
                 }
 
                 // reset dynamic buffer offsets
-                GetBuffer(Renderer_Buffer::SpdCounter)->ResetOffset();
                 GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
             }
         }
