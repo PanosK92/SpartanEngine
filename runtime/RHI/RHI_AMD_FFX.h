@@ -31,11 +31,17 @@ namespace spartan
     class Camera;
     struct Cb_Frame;
 
-    enum class FidelityFX
+    enum class AMD_FFX_Pass
     {
         Fsr,
         BrixelizerGi,
         Sssr
+    };
+
+    enum class AMD_FFX_Marker
+    {
+        Pass,
+        Dispatch
     };
 
     class RHI_AMD_FFX
@@ -43,7 +49,7 @@ namespace spartan
     public:
         static void Initialize();
         static void Shutdown();
-        static void Shutdown(const FidelityFX fx);
+        static void Shutdown(const AMD_FFX_Pass pass);
         static void Tick(Cb_Frame* cb_frame);
         static void Resize(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
 
@@ -103,7 +109,7 @@ namespace spartan
         static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name);
         static void Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline);
         static void Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline);
-        static void Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name);
+        static void Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name);
         static void Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list);
         static void Breadcrumbs_OnDeviceRemoved();
     };

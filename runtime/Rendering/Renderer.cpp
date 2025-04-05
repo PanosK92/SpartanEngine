@@ -752,7 +752,7 @@ namespace spartan
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
                     }
 
-                    RHI_AMD_FFX::Shutdown(FidelityFX::Fsr);
+                    RHI_AMD_FFX::Shutdown(AMD_FFX_Pass::Fsr);
                 }
                 else if (value == static_cast<float>(Renderer_Upsampling::Fsr3))
                 {

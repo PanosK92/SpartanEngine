@@ -921,18 +921,18 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::Shutdown(const FidelityFX fx)
+    void RHI_AMD_FFX::Shutdown(const AMD_FFX_Pass pass)
     {
         #ifdef _MSC_VER
-        if (fx == FidelityFX::Sssr)
+        if (pass == AMD_FFX_Pass::Sssr)
         {
             sssr::context_destroy();
         }
-        else if (fx == FidelityFX::BrixelizerGi)
+        else if (pass == AMD_FFX_Pass::BrixelizerGi)
         {
             brixelizer_gi::context_destroy();
         }
-        else if (fx == FidelityFX::Fsr)
+        else if (pass == AMD_FFX_Pass::Fsr)
         {
             fsr3::context_destroy();
         }
@@ -1567,14 +1567,16 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
+    void RHI_AMD_FFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name)
     {
         #ifdef _MSC_VER
+
         SP_ASSERT(breadcrumbs::context_created);
         lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
         const FfxBreadcrumbsNameTag name_tag = { name, true };
-        SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), FFX_BREADCRUMBS_MARKER_PASS, &name_tag) == FFX_OK);
+        FfxBreadcrumbsMarkerType marker_type = marker == AMD_FFX_Marker::Pass ? FFX_BREADCRUMBS_MARKER_PASS : FFX_BREADCRUMBS_MARKER_DISPATCH;
+        SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), marker_type, &name_tag) == FFX_OK);
 
         #endif
     }
@@ -1582,6 +1584,7 @@ namespace spartan
     void RHI_AMD_FFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
         #ifdef _MSC_VER
+
         SP_ASSERT(breadcrumbs::context_created);
         lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
