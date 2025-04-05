@@ -860,7 +860,7 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::DrawIndexed, m_pso.name);
+            //RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::DrawIndexed, m_pso.name);
         }
 
         vkCmdDrawIndexed(
@@ -876,7 +876,7 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
+            //RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
         }
     }
 
@@ -888,14 +888,14 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::Dispatch, m_pso.name);
+            //RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::Dispatch, m_pso.name);
         }
 
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
+            //RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
         }
     }
 

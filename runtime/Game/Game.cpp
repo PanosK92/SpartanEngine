@@ -485,6 +485,9 @@ namespace spartan
         {
             const float render_distance_trees = 2000.0f;
             const float render_distance_grass = 1000.0f;
+            const uint32_t grass_blade_count  = 50'000'000;
+            const uint32_t tree_count         = 10000;
+            const uint32_t rock_count         = 10000;
 
             create_sun(true, Vector3(1.0f, 45.0f, 0.0f));
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
@@ -669,7 +672,7 @@ namespace spartan
                     // generate instances
                     {
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 10000, TerrainProp::Tree);
+                        terrain->GenerateTransforms(&instances, tree_count, TerrainProp::Tree);
                         
                         if (Entity* branches = entity->GetDescendantByName("tree_bark_0"))
                         {
@@ -703,7 +706,7 @@ namespace spartan
                     // generate instances
                     {
                         vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, 10000, TerrainProp::Tree);
+                        terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree);
                         
                         if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
                         {
@@ -765,7 +768,7 @@ namespace spartan
 
                     // generate instances
                     vector<Matrix> instances;
-                    terrain->GenerateTransforms(&instances, 50000000, TerrainProp::Grass);
+                    terrain->GenerateTransforms(&instances, grass_blade_count, TerrainProp::Grass);
                 
                     // add renderable component
                     Renderable* renderable = entity->AddComponent<Renderable>();
@@ -791,9 +794,9 @@ namespace spartan
             ThreadPool::AddTask([]()
             {
                 const Vector3 object_position = Vector3(-449.0260f, 15.0f, 359.2632f);
-                create_car(object_position);
-                create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
-                create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
+                //create_car(object_position);
+                //create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
+                //create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
                 //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
                 //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
             });
@@ -1232,9 +1235,6 @@ namespace spartan
 
     void Game::Tick()
     {
-        if (ProgressTracker::IsLoading())
-            return;
-
         // car
         if (m_default_car)
         {
@@ -1252,10 +1252,15 @@ namespace spartan
         
             // get some commonly used things
             bool inside_the_car             = m_default_physics_body_camera->GetChildrenCount() == 0;
-            AudioSource* audio_source_door  = m_default_car->GetChildByName("sound_door")->GetComponent<AudioSource>();
-            AudioSource* audio_source_start = m_default_car->GetChildByName("sound_start")->GetComponent<AudioSource>();
-            AudioSource* audio_source_idle  = m_default_car->GetChildByName("sound_idle")->GetComponent<AudioSource>();
-        
+            Entity* sound_door_entity       = m_default_car->GetChildByName("sound_door");
+            Entity* sound_start_entity      = m_default_car->GetChildByName("sound_start");
+            Entity* sound_idle_entity       = m_default_car->GetChildByName("sound_idle");
+            AudioSource* audio_source_door  = sound_door_entity  ? sound_door_entity->GetComponent<AudioSource>()  : nullptr;
+            AudioSource* audio_source_start = sound_start_entity ? sound_start_entity->GetComponent<AudioSource>() : nullptr;
+            AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
+            if (!audio_source_door || !audio_source_start || !audio_source_idle)
+                return;
+
             // enter/exit
             if (Input::GetKeyDown(KeyCode::E))
             {

@@ -1136,28 +1136,24 @@ namespace spartan
                                     instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
                                     if (instance_count == 0)
                                         continue;
-        
-                                    renderable->GetMaterial()->GetObjectId(); // 64-bit, called but not used here
-                
-                                    uint32_t lod_index             = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+
                                     Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
                                     draw_call.renderable           = renderable;
                                     draw_call.instance_group_index = group_index;
                                     draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
                                     draw_call.instance_start_index = instance_start_index;
                                     draw_call.instance_count       = instance_count;
-                                    draw_call.lod_index            = lod_index;
+                                    draw_call.lod_index            = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
                                     draw_call.is_occluder          = false;
                                 }
                             }
                         }
                         else if (renderable->IsVisible())
                         {
-                            uint32_t lod_index           = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
                             Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
                             draw_call.renderable         = renderable;
                             draw_call.distance_squared   = renderable->GetDistanceSquared();
-                            draw_call.lod_index          = lod_index;
+                            draw_call.lod_index          = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
                             draw_call.is_occluder        = false;
                         }
                     }
