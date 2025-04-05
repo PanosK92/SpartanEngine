@@ -1493,13 +1493,14 @@ namespace spartan
         #ifdef _MSC_VER
 
         SP_ASSERT(breadcrumbs::context_created);
+        SP_ASSERT(name != nullptr);
         lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
     
         // note #1: command lists need to register per frame
         // note #2: the map check is here in case because the same command lists can be re-used before frames start to be produced (e.g. during initialization)
         if (breadcrumbs::registered_cmd_lists.find(cmd_list->GetObjectId()) != breadcrumbs::registered_cmd_lists.end())
             return;
-    
+
         FfxBreadcrumbsCommandListDescription description = {};
         description.commandList                          = to_ffx_cmd_list(cmd_list);
         description.queueType                            = RHI_Device::GetQueueIndex(queue->GetType());
@@ -1572,10 +1573,20 @@ namespace spartan
         #ifdef _MSC_VER
 
         SP_ASSERT(breadcrumbs::context_created);
+        SP_ASSERT(name != nullptr);
         lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
+         FfxBreadcrumbsMarkerType marker_type = FFX_BREADCRUMBS_MARKER_PASS;
+         if (marker == AMD_FFX_Marker::Dispatch)
+         {
+             marker_type = FFX_BREADCRUMBS_MARKER_DISPATCH;
+         }
+         else if (marker == AMD_FFX_Marker::DrawIndexed)
+         {
+             marker_type = FFX_BREADCRUMBS_MARKER_DRAW_INDEXED;
+         }
+
         const FfxBreadcrumbsNameTag name_tag = { name, true };
-        FfxBreadcrumbsMarkerType marker_type = marker == AMD_FFX_Marker::Pass ? FFX_BREADCRUMBS_MARKER_PASS : FFX_BREADCRUMBS_MARKER_DISPATCH;
         SP_ASSERT(ffxBreadcrumbsBeginMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), marker_type, &name_tag) == FFX_OK);
 
         #endif

@@ -403,86 +403,86 @@ namespace spartan
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
         cmd_list->BeginTimeblock("occlusion");
-    
-        // get render targets for occluders and hi-z buffer
-        RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
-        RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
-    
-        // occluders
         {
-            // set pipeline state for depth-only rendering
-            RHI_PipelineState pso;
-            pso.name                             = "occluders";
-            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_hiz_v);
-            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-            pso.render_target_depth_texture      = tex_occluders;
-            pso.resolution_scale                 = true;
-            pso.clear_depth                      = 0.0f;
-            cmd_list->SetIgnoreClearValues(false);
-
-            bool pipeline_set = false;
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
-            {
-                const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                if (!draw_call.is_occluder)
-                    continue;
-
-                if (!pipeline_set)
-                {
-                    cmd_list->SetPipelineState(pso);
-                    pipeline_set = true;
-                }
-
-                // culling
-                Renderable* renderable = draw_call.renderable;
-                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
-                cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
-                cmd_list->SetCullMode(cull_mode);
+            // get render targets for occluders and hi-z buffer
+            RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
+            RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
     
-                // set pass constants
-                m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+            // occluders
+            {
+                // set pipeline state for depth-only rendering
+                RHI_PipelineState pso;
+                pso.name                             = "occluders";
+                pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_hiz_v);
+                pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+                pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
+                pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+                pso.render_target_depth_texture      = tex_occluders;
+                pso.resolution_scale                 = true;
+                pso.clear_depth                      = 0.0f;
+                cmd_list->SetIgnoreClearValues(false);
+
+                bool pipeline_set = false;
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    if (!draw_call.is_occluder)
+                        continue;
+
+                    if (!pipeline_set)
+                    {
+                        cmd_list->SetPipelineState(pso);
+                        pipeline_set = true;
+                    }
+
+                    // culling
+                    Renderable* renderable = draw_call.renderable;
+                    RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                    cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
+                    cmd_list->SetCullMode(cull_mode);
+    
+                    // set pass constants
+                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                    // draw
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+    
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(draw_call.lod_index),
+                        renderable->GetIndexOffset(draw_call.lod_index),
+                        renderable->GetVertexOffset(draw_call.lod_index)
+                    );
+                }
+            }
+    
+            // create mip chain
+            Pass_Blit(cmd_list, tex_occluders, tex_occluders_hiz);
+            Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
+    
+            // occlusion
+            {
+                // define pipeline state
+                RHI_PipelineState pso;
+                pso.name             = "occlusion";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::occlusion_c);
+    
+                cmd_list->SetPipelineState(pso);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
+
+                // set aabb count
+                m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                // draw
-                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
-                cmd_list->DrawIndexed(
-                    renderable->GetIndexCount(draw_call.lod_index),
-                    renderable->GetIndexOffset(draw_call.lod_index),
-                    renderable->GetVertexOffset(draw_call.lod_index)
-                );
+                // dispatch: ceil(aabb_count / 256) thread groups
+                uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
+                cmd_list->Dispatch(thread_group_count, 1, 1);
             }
-        }
-    
-        // create mip chain
-        Pass_Blit(cmd_list, tex_occluders, tex_occluders_hiz);
-        Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
-    
-        // occlusin
-        {
-            // define pipeline state
-            RHI_PipelineState pso;
-            pso.name             = "occlusion";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::occlusion_c);
-    
-            cmd_list->SetPipelineState(pso);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
 
-            // set aabb count
-            m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-            // dispatch: ceil(aabb_count / 256) thread groups
-            uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
-            cmd_list->Dispatch(thread_group_count, 1, 1);
+            // wait for the compute shader to finish
+            cmd_list->InsertBarrierBufferReadWrite(GetBuffer(Renderer_Buffer::Visibility));
         }
-
-        // wait for the compute shader to finish
-        cmd_list->InsertBarrierBufferReadWrite(GetBuffer(Renderer_Buffer::Visibility));
-    
         cmd_list->EndTimeblock();
     }
 
@@ -1101,18 +1101,15 @@ namespace spartan
 
     void Renderer::Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
-        // acquire resources
-        RHI_Shader* shader_c               = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
-        RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut);
-
         cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
         {
             // set pipeline state
             RHI_PipelineState pso;
             pso.name             = "light_integration_brdf_specular_lut";
-            pso.shaders[Compute] = shader_c;
+            pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
             cmd_list->SetPipelineState(pso);
 
+            RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
             cmd_list->Dispatch(tex_brdf_specular_lut);
         }

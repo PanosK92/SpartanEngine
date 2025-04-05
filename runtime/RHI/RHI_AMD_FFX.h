@@ -41,7 +41,8 @@ namespace spartan
     enum class AMD_FFX_Marker
     {
         Pass,
-        Dispatch
+        Dispatch,
+        DrawIndexed
     };
 
     class RHI_AMD_FFX

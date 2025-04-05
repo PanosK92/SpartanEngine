@@ -410,6 +410,7 @@ namespace spartan
 
             // name
             RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::CommandList, name);
+            m_object_name = name;
         }
 
         // semaphores
@@ -439,7 +440,7 @@ namespace spartan
         // enable breadcrumbs for this command list
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(this, queue, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
+            RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(this, queue, m_object_name.c_str());
         }
 
         // set states
@@ -857,6 +858,11 @@ namespace spartan
 
         PreDraw();
 
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::DrawIndexed, m_pso.name);
+        }
+
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
             index_count,                                  // indexCount
@@ -867,6 +873,11 @@ namespace spartan
         );
         Profiler::m_rhi_draw++;
         m_render_pass_draw_calls++;
+
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
+        }
     }
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
