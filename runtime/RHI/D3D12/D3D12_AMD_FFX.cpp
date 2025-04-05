@@ -44,7 +44,7 @@ namespace spartan
 
     }
 
-    void RHI_AMD_FFX::Shutdown(const FidelityFX fx)
+    void RHI_AMD_FFX::Shutdown(const AMD_FFX_Pass fx)
     {
 
     }
@@ -144,7 +144,7 @@ namespace spartan
 
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const char* name)
+    void RHI_AMD_FFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name)
     {
 
     }
