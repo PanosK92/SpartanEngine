@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // base shadow settings
 static const uint   g_shadow_sample_count            = 4;
 static const float  g_shadow_filter_size             = 4.0f;
-static const float  g_shadow_cascade_blend_threshold = 0.7f;
+static const float  g_shadow_cascade_blend_threshold = 0.8f;
 // penumbra shadow settings
 static const uint   g_penumbra_sample_count          = 8;
 static const float  g_penumbra_filter_size           = 128.0f;
@@ -140,28 +140,35 @@ float4 compute_shadow(Surface surface, Light light)
         }
         else // directional, spot
         {
-            uint slice_index      = 0;
-            float3 position_ndc   = world_to_ndc(position_world, light.transform[slice_index]);
-            float2 position_uv    = ndc_to_uv(position_ndc);
-            float3 sample_coords  = float3(position_uv.x, position_uv.y, slice_index);
-            float  receiver_depth = position_ndc.z;
-
-            shadow_result.a = vogel_depth(light, surface, sample_coords, receiver_depth);
-
+            // near cascade computation
+            const uint near_cascade = 0;
+            float3 near_ndc        = world_to_ndc(position_world, light.transform[near_cascade]);
+            float2 near_uv         = ndc_to_uv(near_ndc);
+            float3 near_sample     = float3(near_uv, near_cascade);
+            float  near_depth      = near_ndc.z;
+        
+            shadow_result.a = vogel_depth(light, surface, near_sample, near_depth);
+        
             if (shadow_result.a > 0.0f && light.has_shadows_transparent())
             {
-                shadow_result.rgb = vogel_color(light, surface, sample_coords);
+                shadow_result.rgb = vogel_color(light, surface, near_sample);
             }
-
-            // blend with the far cascade for directional lights
-            float cascade_blend_factor = saturate((max(abs(position_ndc.x), abs(position_ndc.y)) - g_shadow_cascade_blend_threshold) * 4.0f);
+        
+            // for directional lights, blend with the far cascade
             if (light.is_directional())
             {
-                slice_index      = 1;
-                position_ndc     = world_to_ndc(position_world, light.transform[slice_index]);
-                position_uv      = ndc_to_uv(position_ndc);
-                float shadow_far = vogel_depth(light, surface, float3(position_uv, slice_index), position_ndc.z);
-                shadow_result.a  = lerp(shadow_result.a, shadow_far, cascade_blend_factor);
+                float blend_input = max(abs(near_ndc.x), abs(near_ndc.y));
+                float cascade_blend_factor = smoothstep(g_shadow_cascade_blend_threshold, 1.0f, blend_input);
+                if (cascade_blend_factor > 0.0f)
+                {
+                    const uint far_cascade = 1;
+                    float3 far_ndc         = world_to_ndc(position_world, light.transform[far_cascade]);
+                    float2 far_uv          = ndc_to_uv(far_ndc);
+                    float  far_depth       = far_ndc.z;
+                    float  far_shadow      = vogel_depth(light, surface, float3(far_uv, far_cascade), far_depth);
+        
+                    shadow_result.a = lerp(shadow_result.a, far_shadow, cascade_blend_factor);
+                }
             }
         }
     }
