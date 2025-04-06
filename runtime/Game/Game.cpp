@@ -790,16 +790,8 @@ namespace spartan
                 }
             }
 
-            // car and a bunch of objects
-            ThreadPool::AddTask([]()
-            {
-                const Vector3 object_position = Vector3(-449.0260f, 15.0f, 359.2632f);
-                //create_car(object_position);
-                //create_metal_cube(object_position     + Vector3(-4.0f, 0.0f, 0.0f));
-                //create_material_ball(object_position  + Vector3(-8.0f, 0.0f, 0.0f));
-                //create_damaged_helmet(object_position + Vector3(-12.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
-                //create_flight_helmet(object_position  + Vector3(-16.0f, 0.0f, 0.0f)); // fixed a couple of NaNs coming from these (bullet related) - one more remains
-            });
+            const Vector3 object_position = Vector3(-449.0260f, 15.0f, 359.2632f);
+            create_car(object_position);
         }
 
         void create_sponza_4k()
@@ -1212,6 +1204,7 @@ namespace spartan
         create_damaged_helmet(Vector3(5.0f, 1.0f, 0.0f));
         create_material_ball(Vector3(8.0f, 1.0f, 0.0f));
         create_metal_cube(Vector3(0.0f, 2.0f, 0.0f));
+        create_flight_helmet(Vector3(-4.0f, 2.0f, 0.0f));
 
         PhysicsBody* physics_body = m_default_metal_cube->GetComponent<PhysicsBody>();
         physics_body->SetBoundingBox(Vector3(1.0f, 0.5f, 2.5f));
