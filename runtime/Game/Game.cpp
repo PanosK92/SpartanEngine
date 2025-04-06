@@ -483,11 +483,11 @@ namespace spartan
 
         void create_forest_car()
         {
-            const float render_distance_trees = 2000.0f;
-            const float render_distance_grass = 1000.0f;
+            const float render_distance_trees = 2'000.0f;
+            const float render_distance_grass = 1'000.0f;
             const uint32_t grass_blade_count  = 50'000'000;
-            const uint32_t tree_count         = 10000;
-            const uint32_t rock_count         = 10000;
+            const uint32_t tree_count         = 10'000;
+            const uint32_t rock_count         = 10'000;
 
             create_sun(true, Vector3(1.0f, 45.0f, 0.0f));
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));

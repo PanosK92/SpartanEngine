@@ -489,48 +489,57 @@ namespace spartan
 
     void Renderable::UpdateLodIndices()
     {
-        static const array<float, 4> lod_thresholds = { 0.6f, 0.4f, 0.2f, 0.1f }; // screen height percentage (4 thresholds for 5 LODs)
+        // note: objects can be close yet appear small in screen height due to shape, sphere projection avoids this by giving a more consistent size
+
+        // static thresholds for screen height ratio
+        static const array<float, 4> lod_thresholds = { 0.7f, 0.5f, 0.3f, 0.2f };
         const uint32_t lod_count                    = GetLodCount();
         const uint32_t max_lod                      = lod_count - 1;
         Camera* camera                              = Renderer::GetCamera();
-
-        // default to lowest lod if no camera
+    
+        // if no camera, use lowest detail lod for all
         if (!camera)
         {
             m_lod_indices.fill(max_lod);
             return;
         }
-
-        const RHI_Viewport& screen_size = Renderer::GetViewport();
-        const Vector3 camera_position   = camera->GetEntity()->GetPosition();
-
-        // lambda to compute lod index using camera's bounding box projection
+    
+        // get camera position and vertical field of view in radians
+        const Vector3 camera_position = camera->GetEntity()->GetPosition();
+        const float fov_y             = camera->GetFovVerticalRad();
+    
+        // lambda to compute lod index using sphere projection
         auto compute_lod_index = [&](const BoundingBox& box, bool is_visible, uint32_t index)
         {
-            // if not visible, use lowest detail
+            // if not visible, use lowest detail lod
             if (!is_visible)
             {
                 m_lod_indices[index] = max_lod;
                 return;
             }
-
-            // if camera intersects the box, use highest detail
-            if (box.Intersects(camera_position) != Intersection::Outside)
+    
+            // compute bounding sphere from aabb
+            Vector3 center = box.GetCenter();
+            float radius = box.GetExtents().Length(); // radius is length of extents vector
+    
+            // compute distance from camera to sphere center
+            Vector3 to_center = center - camera_position;
+            float distance = to_center.Length();
+    
+            // if camera is inside the sphere, use highest detail lod
+            if (distance < radius)
             {
                 m_lod_indices[index] = 0;
                 return;
             }
-
-            // project bounding box to screen space using camera function
-            Rectangle rectangle = camera->WorldToScreenCoordinates(box);
-
-            // compute screen height ratio
-            float height_in_screen_space = rectangle.bottom - rectangle.top;
-            float screen_height_ratio    = height_in_screen_space / screen_size.height;
-
-            // determine lod based on screen height ratio
-            uint32_t lod_index = max_lod; // default to lowest detail
-            for (uint32_t i = 0; i < lod_count - 1; i++) // iterate up to lod_count - 1
+    
+            // compute screen height ratio using sphere projection
+            float tan_fov_y_over_2    = tan(fov_y / 2.0f);
+            float screen_height_ratio = (radius / distance) / tan_fov_y_over_2;
+    
+            // determine lod index based on screen height ratio
+            uint32_t lod_index = max_lod;
+            for (uint32_t i = 0; i < lod_count - 1; i++)
             {
                 if (screen_height_ratio > lod_thresholds[i])
                 {
@@ -538,13 +547,10 @@ namespace spartan
                     break;
                 }
             }
-
-            // ensure lod_index is valid
-            SP_ASSERT(lod_index < lod_count);
+    
             m_lod_indices[index] = lod_index;
         };
-
-        // handle instanced and non-instanced cases
+    
         if (HasInstancing())
         {
             for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
