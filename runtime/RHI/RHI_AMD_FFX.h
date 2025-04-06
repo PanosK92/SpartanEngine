@@ -88,7 +88,7 @@ namespace spartan
             RHI_CommandList* cmd_list,
             const float resolution_scale,
             Cb_Frame* cb_frame,
-            std::vector<std::shared_ptr<Entity>>& entities,
+            const std::vector<std::shared_ptr<Entity>>& entities,
             RHI_Texture* tex_debug
         );
         static void BrixelizerGI_Dispatch(

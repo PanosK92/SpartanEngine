@@ -1145,13 +1145,13 @@ namespace spartan
         sssr::description_dispatch.varianceThreshold                    = 0.04f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
         sssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         sssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running
-        sssr::description_dispatch.mostDetailedMip                      = 0;     
+        sssr::description_dispatch.mostDetailedMip                      = 0;
         sssr::description_dispatch.temporalStabilityFactor              = 0.7f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         sssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         sssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
         sssr::description_dispatch.iblFactor                            = 0.0f;
-        sssr::description_dispatch.roughnessChannel                     = 0;     
-        sssr::description_dispatch.isRoughnessPerceptual                = true;  
+        sssr::description_dispatch.roughnessChannel                     = 0;
+        sssr::description_dispatch.isRoughnessPerceptual                = true;
         sssr::description_dispatch.roughnessThreshold                   = 0.8f;  // regions with a roughness value greater than this threshold won't spawn rays
 
         // set camera matrices
@@ -1172,7 +1172,7 @@ namespace spartan
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         Cb_Frame* cb_frame,
-        vector<shared_ptr<Entity>>& entities,
+        const vector<shared_ptr<Entity>>& entities,
         RHI_Texture* tex_debug
     )
     {
@@ -1186,11 +1186,14 @@ namespace spartan
             brixelizer_gi::entity_map.clear();
         
             // process entities
-            for (shared_ptr<Entity>& entity : entities)
+            for (const shared_ptr<Entity>& entity : entities)
             {
+                if (!entity->IsActive())
+                    continue;
+
                 // skip entities that won't contribute yet will kill performance
                 Renderable* renderable = entity->GetComponent<Renderable>();
-                if (renderable->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlasde) || renderable->GetMaterial()->IsTransparent())
+                if (!renderable || renderable->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlasde) || renderable->GetMaterial()->IsTransparent())
                     continue;
 
                 uint64_t entity_id                   = entity->GetObjectId();

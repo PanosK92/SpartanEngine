@@ -48,7 +48,8 @@ namespace spartan
         static void RemoveEntity(Entity* entity);
         static std::vector<std::shared_ptr<Entity>> GetRootEntities();
         static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
-        static const std::vector<std::shared_ptr<Entity>>& GetAllEntities();
+        static const std::vector<std::shared_ptr<Entity>>& GetEntities
+        ();
 
         // misc
         static void Clear();

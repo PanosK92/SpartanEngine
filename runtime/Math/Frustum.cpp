@@ -86,18 +86,11 @@ namespace spartan::math
 
     bool Frustum::IsVisible(const Vector3& center, const Vector3& extent, bool ignore_depth /*= false*/) const
     {
-        SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
-
-        // note: we don't do a sphere check as it introduces inaccuracies
-        // if the bounding box is close to the camera's near plane
-
         return CheckCube(center, extent, ignore_depth) != Intersection::Outside;
     }
 
     Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth /*= false*/) const
     {
-        SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
-
         Intersection result = Intersection::Inside;
         Plane plane_abs;
 

@@ -375,7 +375,7 @@ namespace spartan
         return empty;
     }
     
-    const vector<shared_ptr<Entity>>& World::GetAllEntities()
+    const vector<shared_ptr<Entity>>& World::GetEntities()
     {
         return entities;
     }

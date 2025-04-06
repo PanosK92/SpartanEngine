@@ -266,9 +266,9 @@ namespace spartan
                 return color;
             };
 
-            auto draw_bounding_boxes = [&get_color](const Renderer_Entity entity_type)
+            auto draw_bounding_boxes = [&get_color]()
             {
-                for (const auto& entity : GetEntities()[entity_type])
+                for (const shared_ptr<Entity>& entity : World::GetEntities())
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
@@ -277,9 +277,9 @@ namespace spartan
                 }
             };
             
-            auto draw_instance_group_bounding_boxes = [&get_color](const Renderer_Entity entity_type)
+            auto draw_instance_group_bounding_boxes = [&get_color]()
             {
-                for (const auto& entity : GetEntities()[entity_type])
+                for (const shared_ptr<Entity>& entity : World::GetEntities())
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
@@ -293,8 +293,8 @@ namespace spartan
                 }
             };
 
-            draw_bounding_boxes(Renderer_Entity::Mesh);
-            draw_instance_group_bounding_boxes(Renderer_Entity::Mesh);
+            draw_bounding_boxes();
+            draw_instance_group_bounding_boxes();
         }
     }
 }

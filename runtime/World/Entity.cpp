@@ -572,7 +572,7 @@ namespace spartan
         m_children.clear();
         m_children.shrink_to_fit();
 
-        const vector<shared_ptr<Entity>>& entities = World::GetAllEntities();
+        const vector<shared_ptr<Entity>>& entities = World::GetEntities();
         for (const shared_ptr<Entity>& possible_child : entities)
         {
             if (!possible_child || !possible_child->HasParent() || possible_child->GetObjectId() == GetObjectId())

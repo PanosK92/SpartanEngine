@@ -511,11 +511,6 @@ namespace spartan
             if (!entity->IsActive())
                 continue;
 
-            if (Renderable* renderable = entity->GetComponent<Renderable>())
-            {
-                m_renderables[Renderer_Entity::Mesh].emplace_back(entity);
-            }
-
             if (Light* light = entity->GetComponent<Light>())
             {
                 m_renderables[Renderer_Entity::Light].emplace_back(entity);
@@ -951,11 +946,11 @@ namespace spartan
             count += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture_type;
         };
     
-        auto update_entities = [update_material](vector<shared_ptr<Entity>>& entities)
+        auto update_entities = [update_material]()
         {
-            for (shared_ptr<Entity> entity : entities)
+            for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
-                if (entity)
+                if (entity->IsActive())
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
@@ -974,7 +969,7 @@ namespace spartan
             properties.fill(Sb_Material{});
             m_bindless_textures.fill(nullptr);
             unique_material_ids.clear();
-            update_entities(m_renderables[Renderer_Entity::Mesh]);
+            update_entities();
         }
     
         // gpu
@@ -1085,11 +1080,14 @@ namespace spartan
             {
                 m_draw_call_count = 0;
         
-                for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Mesh])
+                for (const shared_ptr<Entity>& entity : World::GetEntities())
                 {
+                    if (!entity->IsActive())
+                        continue;
+
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
-                        if (renderable->GetMaterial()->IsTransparent())
+                        if (renderable->GetMaterial() && renderable->GetMaterial()->IsTransparent())
                         {
                             m_transparents_present = true;
                         }

@@ -185,7 +185,6 @@ namespace spartan
         RHI_Shader* shader_v             = GetShader(Renderer_Shader::depth_light_v);
         RHI_Shader* shader_alpha_color_p = GetShader(Renderer_Shader::depth_light_alpha_color_p);
         auto& lights                     = m_renderables[Renderer_Entity::Light];
-        auto& renderables                = m_renderables[Renderer_Entity::Mesh];
     
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
     
@@ -203,8 +202,11 @@ namespace spartan
         fill(update_shadow_map, update_shadow_map + lights.size(), false);
     
         // compute update flags for lights based on moving renderables
-        for (auto& entity : renderables)
+        for (const shared_ptr<Entity>& entity : World::GetEntities())
         {
+            if (!entity->IsActive())
+                continue;
+
             Renderable* renderable = entity->GetComponent<Renderable>();
             if (!renderable)
                 continue;
@@ -296,7 +298,7 @@ namespace spartan
                 Entity* visible_renderables[MAX_RENDERABLES];
                 size_t visible_count = 0;
     
-                for (shared_ptr<Entity>& entity : renderables)
+                for (const shared_ptr<Entity>& entity : World::GetEntities())
                 {
                     Renderable* renderable = entity->GetComponent<Renderable>();
                     if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
@@ -631,7 +633,7 @@ namespace spartan
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Renderable* renderable             = draw_call.renderable;
             Material* material                 = renderable->GetMaterial();
-            if (material->IsTransparent() != is_transparent_pass)
+            if (!material || material->IsTransparent() != is_transparent_pass)
                 continue;
     
             // toggles
@@ -968,7 +970,7 @@ namespace spartan
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     &m_cb_frame_cpu,
-                    m_renderables[Renderer_Entity::Mesh],
+                    World::GetEntities(),
                     GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi) // use as debug output (if needed)
                 );
             }

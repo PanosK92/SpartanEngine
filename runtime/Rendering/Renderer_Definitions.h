@@ -237,7 +237,6 @@ namespace spartan
 
     enum class Renderer_Entity
     {
-        Mesh,
         Light,
         AudioSource
     };
