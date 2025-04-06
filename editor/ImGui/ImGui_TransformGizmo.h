@@ -71,7 +71,7 @@ namespace ImGui::TransformGizmo
         if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
             return;
 
-        spartan::Camera* camera = spartan::Renderer::GetCamera();
+        spartan::Camera* camera = spartan::World::GetCamera();
         if (!camera)
             return;
 

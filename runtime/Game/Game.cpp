@@ -1317,7 +1317,7 @@ namespace spartan
         // forest logic
         if (m_default_terrain)
         {
-            Camera*  camera  = Renderer::GetCamera();
+            Camera*  camera  = World::GetCamera();
             Terrain* terrain = m_default_terrain->GetComponent<Terrain>();
             if (!camera || !terrain)
                 return;

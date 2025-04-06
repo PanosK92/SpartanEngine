@@ -197,8 +197,8 @@ namespace spartan
 
         if (GetOption<bool>(Renderer_Option::PickingRay))
         {
-            Ray ray = GetCamera()->ComputePickingRay();
-            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
+            Ray ray = World::GetCamera()->ComputePickingRay();
+            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * World::GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
         if (GetOption<bool>(Renderer_Option::Lights))
@@ -206,7 +206,7 @@ namespace spartan
             auto& lights = GetEntities()[Renderer_Entity::Light];
             for (const auto& entity : lights)
             {
-                if (Camera* camera = GetCamera())
+                if (Camera* camera = World::GetCamera())
                 {
                     shared_ptr<Entity> entity_selected = camera->GetSelectedEntity();
                     if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())

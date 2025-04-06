@@ -433,7 +433,7 @@ namespace spartan
     {
         // matrices
         {
-            if (Camera* camera = GetCamera())
+            if (Camera* camera = World::GetCamera())
             {
                 if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
                 {
@@ -475,7 +475,7 @@ namespace spartan
         m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
         m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
         m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
-        if (Camera* camera = GetCamera())
+        if (Camera* camera = World::GetCamera())
         {
             m_cb_frame_cpu.view_projection_previous_unjittered =  m_cb_frame_cpu.view_projection_unjittered;
             m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
@@ -501,7 +501,7 @@ namespace spartan
         m_cb_frame_cpu.hdr_white_point             = GetOption<float>(Renderer_Option::WhitePoint);
         m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.directional_light_intensity = get_directional_light_intensity_lumens(m_renderables[Renderer_Entity::Light]);
-        m_cb_frame_cpu.camera_exposure             = GetCamera() ? GetCamera()->GetExposure() : 1.0f;
+        m_cb_frame_cpu.camera_exposure             = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
         // these must match what common_buffer.hlsl is reading
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
@@ -537,11 +537,6 @@ namespace spartan
             if (Light* light = entity->GetComponent<Light>())
             {
                 m_renderables[Renderer_Entity::Light].emplace_back(entity);
-            }
-
-            if (Camera* camera = entity->GetComponent<Camera>())
-            {
-                m_renderables[Renderer_Entity::Camera].emplace_back(entity);
             }
 
             if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
@@ -836,14 +831,6 @@ namespace spartan
     uint64_t Renderer::GetFrameNumber()
     {
         return frame_num;
-    }
-
-    Camera* Renderer::GetCamera()
-    {
-        if (m_renderables[Renderer_Entity::Camera].empty())
-            return nullptr;
-
-        return m_renderables[Renderer_Entity::Camera].front()->GetComponent<Camera>();
     }
 
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
@@ -1196,7 +1183,7 @@ namespace spartan
                 auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
                 {
                     // project aabb to screen space using camera function
-                    math::Rectangle rect_screen = GetCamera()->WorldToScreenCoordinates(aabb_world);
+                    math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
                 
                     // compute screen-space dimensions using rectangle's left, top, right, bottom
                     float width  = rect_screen.right - rect_screen.left;
@@ -1230,7 +1217,7 @@ namespace spartan
                     const BoundingBox& aabb_world = renderable->GetBoundingBox();
 
                     // this can cause all sorts of issues, so skip
-                    if (aabb_world.Contains(GetCamera()->GetEntity()->GetPosition()))
+                    if (aabb_world.Contains(World::GetCamera()->GetEntity()->GetPosition()))
                         continue;
 
                     // compute screen-space area and store it

@@ -100,7 +100,6 @@ namespace spartan
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
 
         // get entities
-        static Camera* GetCamera();
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
         static std::vector<std::shared_ptr<Entity>> GetEntitiesLights();
 

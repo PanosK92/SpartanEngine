@@ -239,7 +239,6 @@ namespace spartan
     {
         Mesh,
         Light,
-        Camera,
         AudioSource
     };
 

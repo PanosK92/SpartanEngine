@@ -140,7 +140,7 @@ namespace spartan
 
             if (m_is_3d)
             {
-                if (Camera* camera = Renderer::GetCamera())
+                if (Camera* camera = World::GetCamera())
                 {
                     Vector3 camera_position = camera->GetEntity()->GetPosition();
                     Vector3 sound_position  = GetEntity()->GetPosition();

@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
 #include "../World/Components/Camera.h"
+#include "../World/World.h"
 SP_WARNINGS_OFF
 #include <btBulletDynamicsCommon.h>
 #include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
@@ -307,7 +308,7 @@ namespace spartan
 
     void Physics::PickBody()
     {
-        if (Camera* camera = Renderer::GetCamera())
+        if (Camera* camera = World::GetCamera())
         {
             const Ray& picking_ray = camera->ComputePickingRay();
 
@@ -366,7 +367,7 @@ namespace spartan
 
     void Physics::MovePickedBody()
     {
-        if (Camera* camera = Renderer::GetCamera())
+        if (Camera* camera = World::GetCamera())
         {
             Ray picking_ray       = camera->ComputePickingRay();
             Vector3 ray_start     = picking_ray.GetStart();

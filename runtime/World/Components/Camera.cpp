@@ -628,7 +628,7 @@ namespace spartan
 
     void Camera::FocusOnSelectedEntity()
     {
-        if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity())
+        if (shared_ptr<Entity> entity = GetSelectedEntity())
         {
             SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetObjectName().c_str());
 

@@ -81,7 +81,7 @@ namespace spartan
             Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
         }
 
-        if (Camera* camera = GetCamera())
+        if (Camera* camera = World::GetCamera())
         {
             // opaques
             {
@@ -804,7 +804,7 @@ namespace spartan
                         break;
                     }
 
-                    math::Matrix view_projection = GetCamera()->GetViewProjectionMatrix();
+                    math::Matrix view_projection = World::GetCamera()->GetViewProjectionMatrix();
                     Vector4 p = {};
                     if (light->GetLightType() == LightType::Directional)
                     {
@@ -1414,7 +1414,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetAperture(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetAperture(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1443,7 +1443,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetShutterSpeed(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1471,7 +1471,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetAperture(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetAperture(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1500,7 +1500,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(GetCamera()->GetIso(), 0.0f, 0.0f);
+        m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetIso(), 0.0f, 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1525,7 +1525,7 @@ namespace spartan
         {
             RHI_AMD_FFX::FSR3_Dispatch(
                 cmd_list,
-                GetCamera(),
+                World::GetCamera(),
                 m_cb_frame_cpu.delta_time,
                 GetOption<float>(Renderer_Option::Sharpness),
                 1.0f,
@@ -1717,7 +1717,7 @@ namespace spartan
         RHI_Shader* shader_p = GetShader(Renderer_Shader::quad_p);
         auto& lights         = m_renderables[Renderer_Entity::Light];
         auto& audio_sources  = m_renderables[Renderer_Entity::AudioSource];
-        if ((lights.empty() && audio_sources.empty()) || !GetCamera())
+        if ((lights.empty() && audio_sources.empty()) || !World::GetCamera())
             return;
     
         cmd_list->BeginTimeblock("icons");
@@ -1726,9 +1726,9 @@ namespace spartan
             auto draw_icon = [&cmd_list](Entity* entity, RHI_Texture* texture)
             {
                 const Vector3 pos_world        = entity->GetPosition();
-                const Vector3 pos_world_camera = GetCamera()->GetEntity()->GetPosition();
+                const Vector3 pos_world_camera = World::GetCamera()->GetEntity()->GetPosition();
                 const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
-                const float v_dot_l            = Vector3::Dot(GetCamera()->GetEntity()->GetForward(), camera_to_light);
+                const float v_dot_l            = Vector3::Dot(World::GetCamera()->GetEntity()->GetForward(), camera_to_light);
     
                 // only draw if inside view
                 if (v_dot_l > 0.5f)
@@ -1759,9 +1759,9 @@ namespace spartan
             auto check_and_add = [&](Entity* entity, RHI_Texture* texture)
             {
                 const Vector3 pos_world        = entity->GetPosition();
-                const Vector3 pos_world_camera = GetCamera()->GetEntity()->GetPosition();
+                const Vector3 pos_world_camera = World::GetCamera()->GetEntity()->GetPosition();
                 const Vector3 camera_to_entity = (pos_world - pos_world_camera).Normalized();
-                const float v_dot_l            = Vector3::Dot(GetCamera()->GetEntity()->GetForward(), camera_to_entity);
+                const float v_dot_l            = Vector3::Dot(World::GetCamera()->GetEntity()->GetForward(), camera_to_entity);
                 if (v_dot_l > 0.5f && visible_count < MAX_ICONS)
                 {
                     visible_entities[visible_count++] = {entity, texture};
@@ -1841,7 +1841,7 @@ namespace spartan
         {
             // follow camera in world unit increments so that the grid appears stationary in relation to the camera
             const float grid_spacing       = 1.0f;
-            const Vector3& camera_position = GetCamera()->GetEntity()->GetPosition();
+            const Vector3& camera_position = World::GetCamera()->GetEntity()->GetPosition();
             const Vector3 translation      = Vector3(
                 floor(camera_position.x / grid_spacing) * grid_spacing,
                 0.0f,
@@ -1916,7 +1916,7 @@ namespace spartan
         RHI_Shader* shader_p = GetShader(Renderer_Shader::outline_p);
         RHI_Shader* shader_c = GetShader(Renderer_Shader::outline_c);
 
-        if (Camera* camera = Renderer::GetCamera())
+        if (Camera* camera = World::GetCamera())
         {
             if (shared_ptr<Entity> entity_selected = camera->GetSelectedEntity())
             {

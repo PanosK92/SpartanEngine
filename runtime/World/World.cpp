@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Core/ProgressTracker.h"
 #include "Components/Renderable.h"
+#include "Components/Camera.h"
 //==================================
 
 //= NAMESPACES ===============
@@ -47,6 +48,7 @@ namespace spartan
         bool resolve             = false;
         bool was_in_editor_mode  = false;
         BoundingBox bounding_box = BoundingBox::Undefined;
+        Entity* camera           = nullptr;
 
         void compute_bounding_box()
         {
@@ -117,6 +119,20 @@ namespace spartan
             // notify renderer
             if (resolve)
             {
+                // find camera
+                camera = nullptr;
+                for (shared_ptr<Entity>& entity : entities)
+                {
+                    if (entity->IsActive())
+                    {
+                        if (entity->GetComponent<Camera>())
+                        { 
+                            camera = entity.get();
+                            break;
+                        }
+                    }
+                }
+
                 Renderer::SetEntities(entities);
                 resolve = false;
                 compute_bounding_box();
@@ -370,5 +386,10 @@ namespace spartan
         }
 
         return bounding_box;
+    }
+
+    Camera* World::GetCamera()
+    {
+        return camera ? camera->GetComponent<Camera>() : nullptr;
     }
 }

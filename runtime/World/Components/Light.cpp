@@ -110,7 +110,7 @@ namespace spartan
         // update matrices for the directional light when the camera has moved
         if (m_light_type == LightType::Directional)
         { 
-            if (Camera* camera = Renderer::GetCamera())
+            if (Camera* camera = World::GetCamera())
             { 
                 update_matrices = (camera->GetEntity()->GetTimeSinceLastTransform() >= 0.25f) ? true : update_matrices;
             }
@@ -380,7 +380,7 @@ namespace spartan
     
         if (m_light_type == LightType::Directional)
         {
-            Camera* camera = Renderer::GetCamera();
+            Camera* camera = World::GetCamera();
             if (!camera)
                 return;
     
@@ -427,7 +427,7 @@ namespace spartan
         if (m_light_type == LightType::Directional)
         {
             // get camera
-            Camera* camera = Renderer::GetCamera();
+            Camera* camera = World::GetCamera();
             if (!camera)
                 return;
     

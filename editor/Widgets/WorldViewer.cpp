@@ -140,7 +140,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     if (!is_in_game_mode)
     { 
-        if (spartan::Camera* camera = spartan::Renderer::GetCamera())
+        if (spartan::Camera* camera = spartan::World::GetCamera())
         {
             if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
@@ -261,7 +261,7 @@ void WorldViewer::SetSelectedEntity(const std::shared_ptr<spartan::Entity> entit
 
     m_expand_to_selection = true;
 
-    if (spartan::Camera* camera = spartan::Renderer::GetCamera())
+    if (spartan::Camera* camera = spartan::World::GetCamera())
     {
         camera->SetSelectedEntity(entity);
     }
@@ -282,7 +282,7 @@ void WorldViewer::PopupContextMenu() const
 
     // Get selected entity
     shared_ptr<spartan::Entity> selected_entity = nullptr;
-    if (spartan::Camera* camera = spartan::Renderer::GetCamera())
+    if (spartan::Camera* camera = spartan::World::GetCamera())
     {
         selected_entity = camera->GetSelectedEntity();
     }
@@ -306,7 +306,7 @@ void WorldViewer::PopupContextMenu() const
 
     if (ImGui::MenuItem("Focus") && on_entity)
     {
-        spartan::Renderer::GetCamera()->FocusOnSelectedEntity();
+        spartan::World::GetCamera()->FocusOnSelectedEntity();
     }
 
     if (ImGui::MenuItem("Delete", "Delete") && on_entity)
@@ -414,7 +414,7 @@ void WorldViewer::PopupEntityRename() const
 
     if (ImGui::BeginPopup("##RenameEntity"))
     {
-        shared_ptr<spartan::Entity> selected_entity = spartan::Renderer::GetCamera()->GetSelectedEntity();
+        shared_ptr<spartan::Entity> selected_entity = spartan::World::GetCamera()->GetSelectedEntity();
         if (!selected_entity)
         {
             ImGui::CloseCurrentPopup();
@@ -443,7 +443,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (spartan::Input::GetKey(spartan::KeyCode::Delete))
     {
-        if (spartan::Camera* camera = spartan::Renderer::GetCamera())
+        if (spartan::Camera* camera = spartan::World::GetCamera())
         { 
             if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
@@ -501,7 +501,7 @@ spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
 {
     shared_ptr<spartan::Entity> entity = spartan::World::CreateEntity();
     
-    if (spartan::Camera* camera = spartan::Renderer::GetCamera())
+    if (spartan::Camera* camera = spartan::World::GetCamera())
     {
         if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {

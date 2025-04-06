@@ -437,7 +437,7 @@ namespace spartan
 
     void Renderable::UpdateFrustumAndDistanceCulling()
     {
-        if (Camera* camera = Renderer::GetCamera())
+        if (Camera* camera = World::GetCamera())
         {
             Vector3 camera_position = camera->GetEntity()->GetPosition();
     
@@ -501,7 +501,7 @@ namespace spartan
         };
         const uint32_t lod_count  = GetLodCount();
         const uint32_t max_lod    = lod_count - 1;
-        Camera* camera            = Renderer::GetCamera();
+        Camera* camera            = World::GetCamera();
     
         // if no camera, use lowest detail lod for all
         if (!camera)
