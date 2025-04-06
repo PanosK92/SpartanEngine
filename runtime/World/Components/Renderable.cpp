@@ -41,14 +41,14 @@ namespace spartan
     namespace grid_partitioning
     {
         // this namespace organizes 3D objects into a grid layout, grouping instances into grid cells
-        // it enables optimized rendering by allowing culling of non-visible chunks efficiently
+        // it enables optimized rendering by allowing culling of non-visible chunks
     
-        const uint32_t cell_size = 64;
+        const uint32_t cell_size = 64; // meters
     
         struct GridKey
         {
-            uint32_t x, y, z;
-    
+            int32_t x, y, z;
+        
             bool operator==(const GridKey& other) const
             {
                 return x == other.x && y == other.y && z == other.z;
@@ -59,17 +59,16 @@ namespace spartan
         {
             size_t operator()(const GridKey& k) const
             {
-                // interleave the bits of the x, y, and z coordinates
-                // this approach tends to maintain spatial locality better, as nearby
-                // coordinates will result in hash values that are also close to each other
-    
                 size_t result = 0;
-    
-                for (uint32_t i = 0; i < (sizeof(uint32_t) * 8); i++) // for each bit in the integers
+                uint32_t ux = static_cast<uint32_t>(k.x);
+                uint32_t uy = static_cast<uint32_t>(k.y);
+                uint32_t uz = static_cast<uint32_t>(k.z);
+                for (uint32_t i = 0; i < (sizeof(uint32_t) * 8); i++)
                 {
-                    result |= ((k.x & (1 << i)) << (2 * i)) | ((k.y & (1 << i)) << ((2 * i) + 1)) | ((k.z & (1 << i)) << ((2 * i) + 2));
+                    result |= ((ux & (1u << i)) << (2 * i)) |
+                              ((uy & (1u << i)) << (2 * i + 1)) |
+                              ((uz & (1u << i)) << (2 * i + 2));
                 }
-    
                 return result;
             }
     
@@ -77,9 +76,9 @@ namespace spartan
             {
                 return
                 {
-                    static_cast<uint32_t>(floor(position.x / static_cast<float>(cell_size))),
-                    static_cast<uint32_t>(floor(position.y / static_cast<float>(cell_size))),
-                    static_cast<uint32_t>(floor(position.z / static_cast<float>(cell_size)))
+                    static_cast<int32_t>(floor(position.x / static_cast<float>(cell_size))),
+                    static_cast<int32_t>(floor(position.y / static_cast<float>(cell_size))),
+                    static_cast<int32_t>(floor(position.z / static_cast<float>(cell_size)))
                 };
             }
         };
@@ -489,13 +488,20 @@ namespace spartan
 
     void Renderable::UpdateLodIndices()
     {
-        // note: objects can be close yet appear small in screen height due to shape, sphere projection avoids this by giving a more consistent size
-
-        // static thresholds for screen height ratio
-        static const array<float, 4> lod_thresholds = { 0.7f, 0.5f, 0.3f, 0.2f };
-        const uint32_t lod_count                    = GetLodCount();
-        const uint32_t max_lod                      = lod_count - 1;
-        Camera* camera                              = Renderer::GetCamera();
+        // note: using projected angle for LOD selection, which is more perceptually accurate
+        // than screen height ratio, for example it will be more consistent across different resolutions
+    
+        // static thresholds for projected angle (defined in degrees, converted to radians)
+        static const array<float, 4> lod_angle_thresholds =
+        {
+            60.0f * math::deg_to_rad,
+            40.0f * math::deg_to_rad,
+            20.0f * math::deg_to_rad,
+            10.0f * math::deg_to_rad 
+        };
+        const uint32_t lod_count  = GetLodCount();
+        const uint32_t max_lod    = lod_count - 1;
+        Camera* camera            = Renderer::GetCamera();
     
         // if no camera, use lowest detail lod for all
         if (!camera)
@@ -503,12 +509,9 @@ namespace spartan
             m_lod_indices.fill(max_lod);
             return;
         }
-    
-        // get camera position and vertical field of view in radians
+
+        // lambda to compute lod index using projected angle
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
-        const float fov_y             = camera->GetFovVerticalRad();
-    
-        // lambda to compute lod index using sphere projection
         auto compute_lod_index = [&](const BoundingBox& box, bool is_visible, uint32_t index)
         {
             // if not visible, use lowest detail lod
@@ -520,11 +523,11 @@ namespace spartan
     
             // compute bounding sphere from aabb
             Vector3 center = box.GetCenter();
-            float radius = box.GetExtents().Length(); // radius is length of extents vector
+            float radius   = box.GetExtents().Length(); // radius is length of extents vector
     
             // compute distance from camera to sphere center
             Vector3 to_center = center - camera_position;
-            float distance = to_center.Length();
+            float distance    = to_center.Length();
     
             // if camera is inside the sphere, use highest detail lod
             if (distance < radius)
@@ -533,15 +536,14 @@ namespace spartan
                 return;
             }
     
-            // compute screen height ratio using sphere projection
-            float tan_fov_y_over_2    = tan(fov_y / 2.0f);
-            float screen_height_ratio = (radius / distance) / tan_fov_y_over_2;
+            // compute projected angle (in radians) using the sphere
+            float projected_angle = 2.0f * atan(radius / distance);
     
-            // determine lod index based on screen height ratio
+            // determine lod index based on projected angle
             uint32_t lod_index = max_lod;
             for (uint32_t i = 0; i < lod_count - 1; i++)
             {
-                if (screen_height_ratio > lod_thresholds[i])
+                if (projected_angle > lod_angle_thresholds[i])
                 {
                     lod_index = i;
                     break;
