@@ -790,8 +790,7 @@ namespace spartan
                 }
             }
 
-            const Vector3 object_position = Vector3(-449.0260f, 15.0f, 359.2632f);
-            create_car(object_position);
+            create_car(Vector3(-449.0260f, 15.0f, 359.2632f));
         }
 
         void create_sponza_4k()

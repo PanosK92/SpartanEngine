@@ -310,9 +310,13 @@ namespace spartan
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
         WaitForValidResources();
-        BuildDrawCallsAndOccluders(cmd_list_graphics);
-        UpdateBuffers(cmd_list_graphics);
-        ProduceFrame(cmd_list_graphics, cmd_list_compute);
+
+        if (!World::IsLoading())
+        { 
+            BuildDrawCallsAndOccluders(cmd_list_graphics);
+            UpdateBuffers(cmd_list_graphics);
+            ProduceFrame(cmd_list_graphics, cmd_list_compute);
+        }
 
         // blit to back buffer when not in editor mode
         bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);

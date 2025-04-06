@@ -430,4 +430,9 @@ namespace spartan
     {
         return audio_source_count;
     }
+
+    bool World::IsLoading()
+    {
+        return ProgressTracker::IsLoading();
+    }
 }
