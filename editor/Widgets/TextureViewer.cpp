@@ -137,7 +137,7 @@ void TextureViewer::OnVisible()
         }
 
         // lights
-        for (shared_ptr<Entity>& entity : Renderer::GetEntitiesLights())
+        for (const shared_ptr<Entity>& entity : World::GetEntities())
         {
             if (Light* light = entity->GetComponent<Light>())
             {

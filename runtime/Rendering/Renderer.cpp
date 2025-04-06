@@ -63,16 +63,14 @@ namespace spartan
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_initialized_resources                = false;
     atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
-    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
-    mutex Renderer::m_mutex_renderables;
-    bool Renderer::m_transparents_present = false;
+    bool Renderer::m_transparents_present                         = false;
+    bool Renderer::m_bindless_samplers_dirty                      = true;
+    bool Renderer::m_bindless_abbs_dirty                          = true;
+    bool Renderer::m_bindless_materials_dirty                     = true;
+    bool Renderer::m_bindless_lights_dirty                        = true;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    bool Renderer::m_bindless_samplers_dirty  = true;
-    bool Renderer::m_bindless_abbs_dirty      = true;
-    bool Renderer::m_bindless_materials_dirty = true;
-    bool Renderer::m_bindless_lights_dirty    = true;
 
     namespace
     {
@@ -253,7 +251,6 @@ namespace spartan
         // events
         {
             // subscribe
-            SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,              SP_EVENT_HANDLER_STATIC(OnClear));
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
             SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_materials_dirty = true; ));
             SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_lights_dirty    = true; ));
@@ -272,7 +269,6 @@ namespace spartan
         {
             DestroyResources();
 
-            m_renderables.clear();
             swap_chain            = nullptr;
             m_lines_vertex_buffer = nullptr;
         }
@@ -496,31 +492,10 @@ namespace spartan
 
     void Renderer::SetEntities(vector<shared_ptr<Entity>>& entities)
     {
-        lock_guard lock(m_mutex_renderables);
-
-        // clear previous state
-        m_renderables.clear();
         m_draw_calls.fill(Renderer_DrawCall());
-        m_draw_call_count        = 0;
+        m_draw_call_count          = 0;
         m_bindless_materials_dirty = true;
         m_bindless_lights_dirty    = true;
-
-        // build new state
-        for (shared_ptr<Entity>& entity : entities)
-        {
-            if (!entity->IsActive())
-                continue;
-
-            if (Light* light = entity->GetComponent<Light>())
-            {
-                m_renderables[Renderer_Entity::Light].emplace_back(entity);
-            }
-
-            if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
-            {
-                m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
-            }
-        }
     }
 
     const Vector3& Renderer::GetWind()
@@ -531,11 +506,6 @@ namespace spartan
     void Renderer::SetWind(const math::Vector3& wind)
     {
         m_cb_frame_cpu.wind = wind;
-    }
-
-    void Renderer::OnClear()
-    {
-        m_renderables.clear();
     }
 
     void Renderer::OnFullScreenToggled()
@@ -810,16 +780,6 @@ namespace spartan
         return frame_num;
     }
 
-    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
-    {
-        return m_renderables;
-    }
-
-    vector<shared_ptr<Entity>> Renderer::GetEntitiesLights()
-    {
-        return m_renderables[Renderer_Entity::Light];
-    }
-    
     void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
     {
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
@@ -834,7 +794,6 @@ namespace spartan
         // materials and their textures
         if (m_bindless_materials_dirty)
         {
-            lock_guard lock(m_mutex_renderables);
             BindlessUpdateMaterialsParameters(cmd_list);
             RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
             m_bindless_materials_dirty = false;
@@ -843,7 +802,6 @@ namespace spartan
         // lights
         if (m_bindless_lights_dirty)
         {
-            lock_guard lock(m_mutex_renderables);
             BindlessUpdateLights(cmd_list);
             RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
             m_bindless_lights_dirty = false;
@@ -852,7 +810,6 @@ namespace spartan
         // bounding boxes
         if (m_bindless_abbs_dirty)
         {
-            lock_guard lock(m_mutex_renderables);
             BindlessUpdateOccludersAndOccludes(cmd_list);
             RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
             m_bindless_abbs_dirty = true; // world space bounding boxes always need to update
@@ -993,7 +950,7 @@ namespace spartan
             m_bindless_lights.fill(Sb_Light());
 
             // go through each light
-            for (shared_ptr<Entity>& entity : m_renderables[Renderer_Entity::Light])
+            for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
                 if (Light* light = entity->GetComponent<Light>())
                 {

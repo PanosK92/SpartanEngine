@@ -99,10 +99,6 @@ namespace spartan
         static const math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
 
-        // get entities
-        static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
-        static std::vector<std::shared_ptr<Entity>> GetEntitiesLights();
-
         // get all
         static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
@@ -180,7 +176,6 @@ namespace spartan
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip = rhi_all_mips);
 
         // event handlers
-        static void OnClear();
         static void OnFullScreenToggled();
         static void UpdateBuffers(RHI_CommandList* cmd_list);
 
@@ -196,7 +191,6 @@ namespace spartan
         static void DestroyResources();
 
         // misc
-        static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;

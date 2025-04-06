@@ -234,12 +234,6 @@ namespace spartan
         max
     };
 
-    enum class Renderer_Entity
-    {
-        Light,
-        AudioSource
-    };
-
     enum class Renderer_Sampler
     {
         Compare_depth,

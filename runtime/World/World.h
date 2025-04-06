@@ -59,5 +59,7 @@ namespace spartan
         static math::BoundingBox& GetBoundingBox();
         static Camera* GetCamera();
         static Light* GetDirectionalLight();
+        static uint32_t GetLightCount();
+        static uint32_t GetAudioSourceCount();
     };
 }

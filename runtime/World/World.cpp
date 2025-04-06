@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Renderable.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
+#include "Components/AudioSource.h"
 //==================================
 
 //= NAMESPACES ===============
@@ -46,11 +47,13 @@ namespace spartan
         string name;
         string file_path;
         mutex entity_access_mutex;
-        bool resolve             = false;
-        bool was_in_editor_mode  = false;
-        BoundingBox bounding_box = BoundingBox::Undefined;
-        Entity* camera           = nullptr;
-        Entity* light            = nullptr;
+        bool resolve                = false;
+        bool was_in_editor_mode     = false;
+        BoundingBox bounding_box    = BoundingBox::Undefined;
+        Entity* camera              = nullptr;
+        Entity* light               = nullptr;
+        uint32_t light_count        = 0;
+        uint32_t audio_source_count = 0;
 
         void compute_bounding_box()
         {
@@ -121,10 +124,12 @@ namespace spartan
             // notify renderer
             if (resolve)
             {
-                // find key entities
+                // track entities
                 {
-                    camera = nullptr;
-                    light  = nullptr;
+                    camera             = nullptr;
+                    light              = nullptr;
+                    light_count        = 0;
+                    audio_source_count = 0;
                     for (shared_ptr<Entity>& entity : entities)
                     {
                         if (entity->IsActive())
@@ -134,12 +139,18 @@ namespace spartan
                                 camera = entity.get();
                             }
 
-                            if (!light && entity->GetComponent<Light>())
+                            if (entity->GetComponent<Light>())
                             {
-                                if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
+                                if (!light && entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
                                 {
                                     light = entity.get();
                                 }
+                                light_count++;
+                            }
+
+                            if (entity->GetComponent<AudioSource>())
+                            {
+                                audio_source_count++;
                             }
                         }
                     }
@@ -408,5 +419,15 @@ namespace spartan
     Light* World::GetDirectionalLight()
     {
         return light ? light->GetComponent<Light>() : nullptr;
+    }
+
+    uint32_t World::GetLightCount()
+    {
+        return light_count;
+    }
+
+    uint32_t World::GetAudioSourceCount()
+    {
+        return audio_source_count;
     }
 }
