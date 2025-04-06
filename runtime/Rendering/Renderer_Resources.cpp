@@ -374,15 +374,6 @@ namespace spartan
             shader(Renderer_Shader::light_image_based_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_image_based.hlsl", async);
         }
 
-        // quad
-        {
-            shader(Renderer_Shader::quad_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::quad_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
-            shader(Renderer_Shader::quad_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "quad.hlsl", async);
-        }
-
         // blur
         {
             // gaussian
@@ -488,6 +479,10 @@ namespace spartan
         // occlusion
         shader(Renderer_Shader::occlusion_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::occlusion_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "occlusion.hlsl", async);
+
+        // icon
+        shader(Renderer_Shader::icon_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::icon_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "icon.hlsl", async);
     }
 
     void Renderer::CreateFonts()

@@ -162,8 +162,6 @@ namespace spartan
         depth_prepass_alpha_test_p,
         depth_light_v,
         depth_light_alpha_color_p,
-        quad_v,
-        quad_p,
         fxaa_c,
         film_grain_c,
         motion_blur_c,
@@ -199,6 +197,7 @@ namespace spartan
         ffx_spd_max_c,
         blit_c,
         occlusion_c,
+        icon_c,
         max
     };
     

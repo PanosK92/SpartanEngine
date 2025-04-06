@@ -1708,74 +1708,47 @@ namespace spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+   void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        // early exit if lights are disabled or engine is in playing mode
         if (!GetOption<bool>(Renderer_Option::Lights) || Engine::IsFlagSet(EngineMode::Playing))
             return;
     
-        // acquire resources
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v);
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::quad_p);
-        auto& lights         = m_renderables[Renderer_Entity::Light];
-        auto& audio_sources  = m_renderables[Renderer_Entity::AudioSource];
+        auto& lights        = m_renderables[Renderer_Entity::Light];
+        auto& audio_sources = m_renderables[Renderer_Entity::AudioSource];
         if ((lights.empty() && audio_sources.empty()) || !World::GetCamera())
             return;
     
         cmd_list->BeginTimeblock("icons");
         {
-            // define the draw_icon lambda
-            auto draw_icon = [&cmd_list](Entity* entity, RHI_Texture* texture)
+            // set pipeline state once
+            RHI_PipelineState pso;
+            pso.name                             = "icon";
+            pso.shaders[RHI_Shader_Type::Compute] = GetShader(Renderer_Shader::icon_c);
+            cmd_list->SetPipelineState(pso);
+    
+            // bind output texture
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+    
+            auto dispatch_icon = [&](Entity* entity, RHI_Texture* texture)
             {
-                const Vector3 pos_world        = entity->GetPosition();
-                const Vector3 pos_world_camera = World::GetCamera()->GetEntity()->GetPosition();
-                const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
-                const float v_dot_l            = Vector3::Dot(World::GetCamera()->GetEntity()->GetForward(), camera_to_light);
+                // push world position
+                Vector3 pos_world = entity->GetPosition();
+                m_pcb_pass_cpu.set_f3_value(pos_world.x, pos_world.y, pos_world.z);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                // only draw if inside view
-                if (v_dot_l > 0.5f)
-                {
-                    // compute transform
-                    const float distance                 = (pos_world_camera - pos_world).Length();
-                    const float scale                    = distance * 0.04f;
-                    Quaternion rotation_reorient_quad    = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
-                    Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera);
-                    Matrix transform                     = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
-                    m_pcb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection_unjittered;
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                // bind icon texture
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
     
-                    // draw rectangle
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-                    cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
-                    cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
-                    cmd_list->DrawIndexed(6);
-                }
-            };
-    
-            // static array for visible entities with a fixed size
-            constexpr size_t MAX_ICONS = 64;
-            pair<Entity*, RHI_Texture*> visible_entities[MAX_ICONS];
-            size_t visible_count = 0;
-    
-            // helper lambda to check visibility and add to the array
-            auto check_and_add = [&](Entity* entity, RHI_Texture* texture)
-            {
-                const Vector3 pos_world        = entity->GetPosition();
-                const Vector3 pos_world_camera = World::GetCamera()->GetEntity()->GetPosition();
-                const Vector3 camera_to_entity = (pos_world - pos_world_camera).Normalized();
-                const float v_dot_l            = Vector3::Dot(World::GetCamera()->GetEntity()->GetForward(), camera_to_entity);
-                if (v_dot_l > 0.5f && visible_count < MAX_ICONS)
-                {
-                    visible_entities[visible_count++] = {entity, texture};
-                }
+                 // dispatch for this icon (2x2 groups of 32x32 threads for 64x64 icon)
+                cmd_list->Dispatch(2, 2, 1);
             };
     
             // process audio sources
             for (auto& entity : audio_sources)
-            {
-                check_and_add(entity.get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source));
+            { 
+                dispatch_icon(entity.get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source));
             }
-    
+
             // process lights
             for (auto& entity : lights)
             {
@@ -1789,28 +1762,7 @@ namespace spartan
                     else if (light->GetLightType() == LightType::Spot)
                         texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
                 }
-                check_and_add(entity.get(), texture);
-            }
-    
-            // only set pipeline state and draw if there are visible entities
-            if (visible_count > 0)
-            {
-                // set pipeline state
-                RHI_PipelineState pso;
-                pso.name                             = "icons";
-                pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-                pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-                pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-                pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
-                pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-                pso.render_target_color_textures[0]  = tex_out;
-                cmd_list->SetPipelineState(pso);
-    
-                // draw visible entities
-                for (size_t i = 0; i < visible_count; ++i)
-                {
-                    draw_icon(visible_entities[i].first, visible_entities[i].second);
-                }
+                dispatch_icon(entity.get(), texture);
             }
         }
         cmd_list->EndTimeblock();
