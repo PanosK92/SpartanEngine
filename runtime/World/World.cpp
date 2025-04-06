@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ProgressTracker.h"
 #include "Components/Renderable.h"
 #include "Components/Camera.h"
+#include "Components/Light.h"
 //==================================
 
 //= NAMESPACES ===============
@@ -49,6 +50,7 @@ namespace spartan
         bool was_in_editor_mode  = false;
         BoundingBox bounding_box = BoundingBox::Undefined;
         Entity* camera           = nullptr;
+        Entity* light            = nullptr;
 
         void compute_bounding_box()
         {
@@ -119,16 +121,26 @@ namespace spartan
             // notify renderer
             if (resolve)
             {
-                // find camera
-                camera = nullptr;
-                for (shared_ptr<Entity>& entity : entities)
+                // find key entities
                 {
-                    if (entity->IsActive())
+                    camera = nullptr;
+                    light  = nullptr;
+                    for (shared_ptr<Entity>& entity : entities)
                     {
-                        if (entity->GetComponent<Camera>())
-                        { 
-                            camera = entity.get();
-                            break;
+                        if (entity->IsActive())
+                        {
+                            if (!camera && entity->GetComponent<Camera>())
+                            { 
+                                camera = entity.get();
+                            }
+
+                            if (!light && entity->GetComponent<Light>())
+                            {
+                                if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
+                                {
+                                    light = entity.get();
+                                }
+                            }
                         }
                     }
                 }
@@ -391,5 +403,10 @@ namespace spartan
     Camera* World::GetCamera()
     {
         return camera ? camera->GetComponent<Camera>() : nullptr;
+    }
+
+    Light* World::GetDirectionalLight()
+    {
+        return light ? light->GetComponent<Light>() : nullptr;
     }
 }

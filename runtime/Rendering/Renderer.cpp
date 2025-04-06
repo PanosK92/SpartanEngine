@@ -94,24 +94,6 @@ namespace spartan
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
 
-        float get_directional_light_intensity_lumens(const vector<shared_ptr<Entity>>& lights)
-        {
-            float intensity = 0.0f;
-            for (const shared_ptr<Entity>& entity : lights)
-            {
-                if (Light* light = entity->GetComponent<Light>())
-                {
-                    if (light->GetLightType() == LightType::Directional)
-                    {
-                        intensity = light->GetIntensityWatt();
-                        break;
-                    }
-                }
-            }
-
-            return intensity;
-        }
-
         void dynamic_resolution()
         {
             if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
@@ -500,7 +482,7 @@ namespace spartan
         m_cb_frame_cpu.hdr_max_nits                = Display::GetLuminanceMax();
         m_cb_frame_cpu.hdr_white_point             = GetOption<float>(Renderer_Option::WhitePoint);
         m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
-        m_cb_frame_cpu.directional_light_intensity = get_directional_light_intensity_lumens(m_renderables[Renderer_Entity::Light]);
+        m_cb_frame_cpu.directional_light_intensity = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetIntensityWatt() : 1.0f;
         m_cb_frame_cpu.camera_exposure             = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
         // these must match what common_buffer.hlsl is reading

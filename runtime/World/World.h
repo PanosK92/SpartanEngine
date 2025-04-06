@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Camera;
+    class Light;
 
     class World
     {
@@ -56,5 +57,6 @@ namespace spartan
         static const std::string& GetFilePath();
         static math::BoundingBox& GetBoundingBox();
         static Camera* GetCamera();
+        static Light* GetDirectionalLight();
     };
 }
