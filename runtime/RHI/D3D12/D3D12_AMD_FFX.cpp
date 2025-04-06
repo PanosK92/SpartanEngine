@@ -105,7 +105,7 @@ namespace spartan
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         Cb_Frame* cb_frame,
-        vector<shared_ptr<Entity>>& entities,
+        const vector<shared_ptr<Entity>>& entities,
         RHI_Texture* tex_debug
     )
     {
