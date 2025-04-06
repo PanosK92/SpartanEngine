@@ -413,6 +413,10 @@ namespace spartan
 
     Camera* World::GetCamera()
     {
+        // transform gizmo can access this if the user clicks on the viewport
+        if (IsLoading())
+            return nullptr;
+
         return camera ? camera->GetComponent<Camera>() : nullptr;
     }
 
