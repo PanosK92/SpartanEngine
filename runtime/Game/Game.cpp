@@ -863,12 +863,6 @@ namespace spartan
 
                 // disable back face culling and enable wind
                 {
-                    // these are the ropes and the metal rings that hold them
-                    if (Material* material = entity->GetDescendantByName("curtain_03_1")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::IsTree, 1.0f);
-                    }
-
                     // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
