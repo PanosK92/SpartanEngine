@@ -1,0 +1,94 @@
+FROM ubuntu:22.04 AS dependencies
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# Get all the necessary dependencies from the package manager
+RUN echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections &&\
+    echo 'tzdata tzdata/Zones/Europe select Paris' | debconf-set-selections &&\
+    apt-get update -y &&\
+    apt-get install -y wget &&\
+    wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | tee /etc/apt/trusted.gpg.d/lunarg.asc &&\
+    wget -qO /etc/apt/sources.list.d/lunarg-vulkan-1.4.304-jammy.list https://packages.lunarg.com/vulkan/1.4.304/lunarg-vulkan-1.4.304-jammy.list &&\
+    apt-get update -y &&\
+    mkdir -p /deps &&\
+    mkdir -p /install/include && mkdir /install/lib
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential pkg-config cmake python3 \
+    git unzip libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev vulkan-sdk libopencv-dev
+     #qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools 
+#RUN DEBIAN_FRONTEND=noninteractive apt install -y python3-sphinx cmake-curses-gui apt-file
+#RUN apt-file update
+#RUN apt install -y libspirv-cross-c-shared-dev libvulkan-dev
+
+# Download, build and install the compressonator library 
+WORKDIR /deps
+RUN git clone --recursive --depth=1 https://github.com/GPUOpen-Tools/Compressonator.git
+WORKDIR /deps/Compressonator/build/
+RUN  python3 fetch_dependencies.py
+WORKDIR /deps/Compressonator
+RUN cmake -DOPTION_ENABLE_ALL_APPS=OFF -DOPTION_BUILD_CMP_SDK=ON -DOPTION_CMP_OPENGL=OFF -DOPTION_CMP_QT=OFF -DOPTION_CMP_OPENCV=ON -DOPTION_BUILD_APPS_CMP_CLI=ON &&\
+    make -j 16 &&\
+    cp cmp_compressonatorlib/compressonator.h /install/include/compressonator.h &&\
+    cp lib/*.a /install/lib/
+
+## Download and install the DirectXShaderCompiler library 
+WORKDIR /deps
+RUN wget -nv https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/linux_dxc_2024_07_31.x86_64.tar.gz &&\
+    mkdir linux_dxc_2024_07_31
+WORKDIR /deps/linux_dxc_2024_07_31
+RUN tar xvf ../linux_dxc_2024_07_31.x86_64.tar.gz &&\
+    cp -r include/* /install/include/ &&\
+    cp lib/* /install/lib/
+
+## Download and install FreeImage
+###NIKOS COPY patches/freeimage.patch /deps/freeimage.patch
+###NIKOS RUN cd /deps &&\
+###NIKOS     wget https://sourceforge.net/projects/freeimage/files/Source%20Distribution/3.18.0/FreeImage3180.zip &&\
+###NIKOS     unzip FreeImage3180 &&\
+###NIKOS     cd FreeImage/ &&\
+###NIKOS     git apply ../freeimage.patch &&\
+###NIKOS     make -f Makefile.gnu libfreeimage-3.18.0.so -j16 &&\
+###NIKOS     cp libfreeimage-3.18.0.so /install/lib/libFreeImageLib.so &&\
+###NIKOS     mkdir /install/include/FreeImage &&\
+###NIKOS     cp Source/FreeImage.h Source/Utilities.h /install/include/FreeImage
+WORKDIR /deps
+RUN git clone --depth=1 https://github.com/danoli3/FreeImage.git
+WORKDIR /deps/FreeImage
+RUN mkdir cmake-build-debug &&\
+    cmake . -B cmake-build-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/install -DBUILD_SHARED_LIBS=ON &&\
+    cmake --build cmake-build-debug --config Debug --target install -j16 &&\
+    mkdir cmake-build-release &&\
+    cmake . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/install -DBUILD_SHARED_LIBS=ON &&\
+    cmake --build cmake-build-release --config Release --target install -j16 &&\
+    mkdir /install/include/FreeImage && mv /install/include/FreeImage.h /install/include/FreeImage/FreeImage.h
+
+
+# Clean up all the intermediate directories created for building and installing external dependencies
+#RUN apt-get purge -y --auto-remove wget build-essential pkg-config cmake python3 git unzip libxrandr-dev \
+#    libxinerama-dev libxcursor-dev libxi-dev vulkan-sdk libopencv-dev &&\
+RUN rm -rf /deps/
+#ENTRYPOINT ["sh", "-c", "cd /deps && bash"]
+
+
+FROM archlinux:latest
+
+RUN echo "alias ls='ls --color=auto'" > ~/.bashrc &&\
+    useradd --no-create-home --shell=/bin/false builder && usermod -L builder &&\
+    mkdir /work &&\
+    yes | pacman -Suy &&\
+    yes | pacman -S vim git base-devel clang gdb cmake ninja pkgconf \
+    assimp bullet directx-shader-compiler shaderc sdl2 renderdoc openimagedenoise
+# freetype2 python3 unzip p7zip-full\
+
+WORKDIR /work
+RUN git clone --depth=1 https://aur.archlinux.org/meshoptimizer.git &&\
+    chown -R builder meshoptimizer
+USER builder
+WORKDIR /work/meshoptimizer
+RUN makepkg .
+USER root
+WORKDIR /work/meshoptimizer
+RUN yes | pacman -U meshoptimizer-*.tar.zst &&\
+    rm -rf /work
+
+RUN mkdir /spartan-deps
+COPY --from=dependencies /install /spartan-deps
+ENTRYPOINT ["sh", "-c", "cd /spartan-deps && bash"]
