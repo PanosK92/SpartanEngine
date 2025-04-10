@@ -114,12 +114,9 @@ namespace spartan
 
             // day night cycle
             {
-                float time_of_day = World::GetTimeOfDay();
-                float sun_angle   = time_of_day * 360.0f;
-                
                 Quaternion rotation = Quaternion::FromAngleAxis(
-                    (sun_angle - 90.0f) * math::deg_to_rad, // angle in radians, -90° offset for horizon
-                    Vector3::Right                          // x-axis rotation (left to right)
+                    (World::GetTimeOfDay() * 360.0f - 90.0f) * math::deg_to_rad, // angle in radians, -90° offset for horizon
+                    Vector3::Right                                               // x-axis rotation (left to right)
                 );
 
                 GetEntity()->SetRotation(rotation);

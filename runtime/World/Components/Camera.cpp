@@ -61,7 +61,6 @@ namespace spartan
             SetFlag(CameraFlags::IsDirty, true);
         }
 
-        // DIRTY CHECK
         if (m_position != GetEntity()->GetPosition() || m_rotation != GetEntity()->GetRotation())
         {
             m_position = GetEntity()->GetPosition();

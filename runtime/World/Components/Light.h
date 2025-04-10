@@ -99,7 +99,7 @@ namespace spartan
         float GetIntensityWatt() const;
 
         // bias
-        static float GetBias()            { return -0.001f; }
+        static float GetBias()            { return -0.003f; }
         static float GetBiasSlopeScaled() { return -2.0f; }
 
         // range
