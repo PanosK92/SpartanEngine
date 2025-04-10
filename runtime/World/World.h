@@ -61,5 +61,6 @@ namespace spartan
         static uint32_t GetLightCount();
         static uint32_t GetAudioSourceCount();
         static bool IsLoading();
+        static float GetTimeOfDay(); // 0 = midnight, 0.5 = noon, 1.0 = next midnight
     };
 }

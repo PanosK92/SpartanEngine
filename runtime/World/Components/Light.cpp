@@ -101,18 +101,28 @@ namespace spartan
     {
         // update matrices and request filtering
         bool update_matrices = false;
-        if (GetEntity()->GetTimeSinceLastTransform() <= 0.25f) // I can't get this exactly at 0.0, fix it
+        if (GetEntity()->GetTimeSinceLastTransform() <= 0.1f)
         {
             m_filtering_needed = m_light_type == LightType::Directional;
-            update_matrices     = true;
+            update_matrices    = true;
         }
 
-        // update matrices for the directional light when the camera has moved
         if (m_light_type == LightType::Directional)
-        { 
-            if (Camera* camera = World::GetCamera())
-            { 
-                update_matrices = (camera->GetEntity()->GetTimeSinceLastTransform() >= 0.25f) ? true : update_matrices;
+        {
+            // the directional light follows the camera, and emulates day and night cycle, so we just always update
+            update_matrices = true;
+
+            // day night cycle
+            {
+                float time_of_day = World::GetTimeOfDay();
+                float sun_angle   = time_of_day * 360.0f;
+                
+                Quaternion rotation = Quaternion::FromAngleAxis(
+                    (sun_angle - 90.0f) * math::deg_to_rad, // angle in radians, -90° offset for horizon
+                    Vector3::Right                          // x-axis rotation (left to right)
+                );
+
+                GetEntity()->SetRotation(rotation);
             }
         }
 

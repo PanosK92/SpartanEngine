@@ -130,9 +130,6 @@ namespace spartan
 
     void Entity::Tick()
     {
-        if (!m_is_active)
-            return;
-
         for (shared_ptr<Component>& component : m_components)
         {
             if (component)
@@ -248,9 +245,6 @@ namespace spartan
                 }
             }
 
-            // Sometimes there are component dependencies, e.g. a collider that needs
-            // to set it's shape to a rigibody. So, it's important to first create all 
-            // the components (like above) and then deserialize them (like here).
             for (shared_ptr<Component>& component : m_components)
             {
                 if (component)
@@ -259,7 +253,6 @@ namespace spartan
                 }
             }
 
-            // set the transform's parent
             SetParent(parent);
         }
 
@@ -354,6 +347,9 @@ namespace spartan
             m_matrix = m_matrix_local;
         }
 
+        // mark update
+        m_time_since_last_transform_sec = 0.0f;
+
         // update children
         for (Entity* child : m_children)
         {
@@ -372,8 +368,6 @@ namespace spartan
             m_right    = GetRotation() * Vector3::Right;
             m_left     = -m_right;
         }
-
-        m_time_since_last_transform_sec = 0.0f;
     }
 
     void Entity::SetPosition(const Vector3& position)

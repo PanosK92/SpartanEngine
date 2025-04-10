@@ -83,86 +83,86 @@ namespace spartan
 
     void World::Tick()
     {
-        SP_PROFILE_CPU();
+        // loading can happen in the background
+        if (ProgressTracker::IsLoading())
+            return;
 
+        SP_PROFILE_CPU();
         lock_guard<mutex> lock(entity_access_mutex);
 
-        if (!ProgressTracker::IsLoading())
+        // detect game toggling
+        const bool started =  Engine::IsFlagSet(EngineMode::Playing) &&  was_in_editor_mode;
+        const bool stopped = !Engine::IsFlagSet(EngineMode::Playing) && !was_in_editor_mode;
+        was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Playing);
+        
+        // start
+        if (started)
         {
-            // detect game toggling
-            const bool started =  Engine::IsFlagSet(EngineMode::Playing) &&  was_in_editor_mode;
-            const bool stopped = !Engine::IsFlagSet(EngineMode::Playing) && !was_in_editor_mode;
-            was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Playing);
-
-            // start
-            if (started)
-            {
-                for (shared_ptr<Entity>& entity : entities)
-                {
-                    entity->OnStart();
-                }
-            }
-
-            // stop
-            if (stopped)
-            {
-               for (shared_ptr<Entity>& entity : entities)
-                {
-                    entity->OnStop();
-                }
-            }
-
-            // tick
             for (shared_ptr<Entity>& entity : entities)
             {
-                if (entity->IsActive())
-                { 
-                    entity->Tick();
-                }
+                entity->OnStart();
             }
-
-            // notify renderer
-            if (resolve)
+        }
+        
+        // stop
+        if (stopped)
+        {
+            for (shared_ptr<Entity>& entity : entities)
             {
-                // track entities
+                entity->OnStop();
+            }
+        }
+        
+        // tick
+        for (shared_ptr<Entity>& entity : entities)
+        {
+            if (entity->IsActive())
+            { 
+                entity->Tick();
+            }
+        }
+        
+        // notify renderer
+        if (resolve)
+        {
+            // track entities
+            {
+                camera             = nullptr;
+                light              = nullptr;
+                light_count        = 0;
+                audio_source_count = 0;
+                for (shared_ptr<Entity>& entity : entities)
                 {
-                    camera             = nullptr;
-                    light              = nullptr;
-                    light_count        = 0;
-                    audio_source_count = 0;
-                    for (shared_ptr<Entity>& entity : entities)
+                    if (entity->IsActive())
                     {
-                        if (entity->IsActive())
+                        if (!camera && entity->GetComponent<Camera>())
+                        { 
+                            camera = entity.get();
+                        }
+        
+                        if (entity->GetComponent<Light>())
                         {
-                            if (!camera && entity->GetComponent<Camera>())
-                            { 
-                                camera = entity.get();
-                            }
-
-                            if (entity->GetComponent<Light>())
+                            if (!light && entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
                             {
-                                if (!light && entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
-                                {
-                                    light = entity.get();
-                                }
-                                light_count++;
+                                light = entity.get();
                             }
-
-                            if (entity->GetComponent<AudioSource>())
-                            {
-                                audio_source_count++;
-                            }
+                            light_count++;
+                        }
+        
+                        if (entity->GetComponent<AudioSource>())
+                        {
+                            audio_source_count++;
                         }
                     }
                 }
-
-                Renderer::SetEntities(entities);
-                resolve = false;
-                compute_bounding_box();
             }
-
-            Game::Tick();
+        
+            Renderer::SetEntities(entities);
+            resolve = false;
+            compute_bounding_box();
         }
+        
+        Game::Tick();
     }
 
     void World::Clear()
@@ -438,5 +438,49 @@ namespace spartan
     bool World::IsLoading()
     {
         return ProgressTracker::IsLoading();
+    }
+
+    float World::GetTimeOfDay()
+    {
+        static float current_time    = 0.25f;  // start at 6 am
+        static float time_scale      = 300.0f; // 300x real time (1 second = 12 minutes)
+        static float last_delta_time = 0.0f;   // store last frame's delta time
+        static bool first_call       = true;   // track if this is the first call
+        static float control_time    = -1.0f;  // for setting specific time (<0 means no set)
+        static float control_scale   = -1.0f;  // for setting specific scale (<0 means no set)
+    
+        if (control_time >= 0.0f)
+        {
+            current_time = fmod(control_time, 1.0f);
+            control_time = -1.0f;
+        }
+
+        if (control_scale >= 0.0f)
+        {
+            time_scale    = control_scale;
+            control_scale = -1.0f;
+        }
+    
+        if (first_call)
+        {
+            first_call = false;
+            return current_time;
+        }
+    
+        // advance time
+        current_time += (last_delta_time * time_scale) / 86400.0f;
+        if (current_time >= 1.0f)
+        {
+            current_time -= 1.0f;
+        }
+        if (current_time < 0.0f)
+        {
+            current_time = 0.0f;
+        }
+    
+        // update delta time (replace with your actual delta time source)
+        last_delta_time = Timer::GetDeltaTimeSec();  // you need to provide this
+    
+        return current_time;
     }
 }
