@@ -126,7 +126,6 @@ struct Surface
 struct Light
 {
     // properties
-    uint   index;
     uint   flags;
     float3 color;
     float3 position;
@@ -235,9 +234,8 @@ struct Light
          return tex_light_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).rgb;
     }
 
-    void Build(float3 surface_position, float3 surface_normal)
+    void Build(uint index, Surface surface)
     {
-        index                 = (uint)pass_get_f3_value2().x;
         LightParameters light = light_parameters[index];
         flags                 = light.flags;
         transform             = light.transform;
@@ -248,25 +246,14 @@ struct Light
         far                   = light.range;
         angle                 = light.angle;
         forward               = is_point() ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
-        distance_to_pixel     = length(surface_position - position);
-        to_pixel              = compute_direction(position, surface_position);
-        n_dot_l               = saturate(dot(surface_normal, -to_pixel));
-        attenuation           = compute_attenuation(surface_position);
+        distance_to_pixel     = length(surface.position - position);
+        to_pixel              = compute_direction(position, surface.position);
+        n_dot_l               = saturate(dot(surface.normal, -to_pixel));
+        attenuation           = compute_attenuation(surface.position);
         resolution            = compute_resolution();
         texel_size            = 1.0f / resolution;
 
         radiance = color * intensity * attenuation * n_dot_l;
-    }
-
-    void Build(Surface surface)
-    {
-        Build(surface.position, surface.normal);
-    }
-
-    void Build()
-    {
-        Surface surface;
-        Build(surface.position, surface.normal);
     }
 };
 

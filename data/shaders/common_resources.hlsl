@@ -44,7 +44,7 @@ struct FrameBufferData
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
     
-    float directional_light_intensity;
+    float padding;
     float delta_time;
     uint frame;
     uint options;
@@ -64,7 +64,7 @@ struct FrameBufferData
     float resolution_scale;
     
     double time;
-    float2 padding;
+    float2 padding2;
 
     float3 wind;
     float gamma;

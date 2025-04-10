@@ -138,7 +138,8 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
 
     // get sun direction from light
     Light light;
-    light.Build();
+    Surface surface;
+    light.Build(0, surface);
     float3 sun_direction = -light.forward; // points from world to sun
 
     // compute atmosphere

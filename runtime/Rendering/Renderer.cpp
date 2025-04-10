@@ -137,19 +137,19 @@ namespace spartan
             m_options.clear();
             SetOption(Renderer_Option::WhitePoint,                  350.0f);
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);                                                 // non-zero values activate it and control the intensity
+            SetOption(Renderer_Option::Bloom,                       1.0f);                                                          // non-zero values activate it and control the intensity
             SetOption(Renderer_Option::MotionBlur,                  1.0f);
             SetOption(Renderer_Option::DepthOfField,                1.0f);
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
             SetOption(Renderer_Option::ScreenSpaceShadows,          static_cast<float>(Renderer_ScreenspaceShadow::Bend));
             SetOption(Renderer_Option::ScreenSpaceReflections,      RHI_Device::GetPrimaryPhysicalDevice()->IsAmd() ? 1.0f : 0.0f); // temp workaround until I fix ssr for nvidia
-            SetOption(Renderer_Option::GlobalIllumination,          0.0f);                                                 // disabled by default because it sucks - options are 0.25f - 25%, 0.5f - 50%, 0.75f - 75% and 1.0f - 100%)
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::ShadowResolution,            4096.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);                                                 // becomes the upsampler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         0.1f);                                                 // controls the intensity of the volumetric fog as well
-            SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                 // these is only a toggle for the volumetric fog
-            SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));       // this is using fsr 3 for taa
+            SetOption(Renderer_Option::GlobalIllumination,          0.0f);                                                          // disabled by default because it sucks - options are 0.25f - 25%, 0.5f - 50%, 0.75f - 75% and 1.0f - 100%)
+            SetOption(Renderer_Option::Anisotropy,                  16.0f);                                                         
+            SetOption(Renderer_Option::ShadowResolution,            4096.0f);                                                       
+            SetOption(Renderer_Option::Sharpness,                   0.0f);                                                          // becomes the upsampler's sharpness as well
+            SetOption(Renderer_Option::Fog,                         0.15f);                                                         // controls the intensity of the volumetric fog as well
+            SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                          // these is only a toggle for the volumetric fog
+            SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));                // this is using fsr 3 for taa
             SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);

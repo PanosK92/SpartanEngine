@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
     FOG - ATMOSPHERIC
 ------------------------------------------------------------------------------*/
-float3 got_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world, const float directional_light_intensity)
+float3 got_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world, const float light_intensity)
 {
     // parameters
     const float g_fog_radius     = 150.0f;  // how far away from the camera the fog starts
@@ -50,7 +50,7 @@ float3 got_fog_atmospheric(const float camera_to_pixel_length, const float pixel
     float final_fog_factor = fog_factor * height_factor;
     float fog_density      = pass_get_f3_value().y;
     
-    return final_fog_factor * fog_density * directional_light_intensity;
+    return final_fog_factor * fog_density;
 }
 
 /*------------------------------------------------------------------------------
