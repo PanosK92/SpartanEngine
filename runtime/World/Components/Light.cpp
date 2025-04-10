@@ -93,7 +93,7 @@ namespace spartan
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsTransparent);
         SetFlag(LightFlags::ShadowsScreenSpace);
-        SetFlag(LightFlags::DayNightCycle);
+        //SetFlag(LightFlags::DayNightCycle);
 
         m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
     }
