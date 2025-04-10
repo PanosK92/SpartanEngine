@@ -59,7 +59,6 @@ namespace spartan
                 case Renderer_Option::Wireframe:                   return "Wireframe";
                 case Renderer_Option::Bloom:                       return "Bloom";
                 case Renderer_Option::Fog:                         return "Fog";
-                case Renderer_Option::FogVolumetric:               return "FogVolumetric";
                 case Renderer_Option::ScreenSpaceAmbientOcclusion: return "ScreenSpaceAmbientOcclusion";
                 case Renderer_Option::ScreenSpaceShadows:          return "ScreenSpaceShadows";
                 case Renderer_Option::ScreenSpaceReflections:      return "ScreenSpaceReflections";

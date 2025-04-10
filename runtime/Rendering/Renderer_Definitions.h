@@ -43,7 +43,6 @@ namespace spartan
         Wireframe,
         Bloom,
         Fog,
-        FogVolumetric,
         ScreenSpaceAmbientOcclusion,
         ScreenSpaceShadows,
         ScreenSpaceReflections,

@@ -120,8 +120,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         // atmospheric
         float max_mip     = pass_get_f3_value().x;
+        float fog_density = pass_get_f3_value().y;
         float3 sky_color  = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
-        light_atmospheric = got_fog_atmospheric(distance_from_camera, surface.position.y) * sky_color;
+        light_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density * sky_color;
 
         // volumetric
         light_atmospheric += tex_light_volumetric[thread_id.xy].rgb; // already uses sky color

@@ -346,9 +346,6 @@ void RenderOptions::OnTickVisible()
                 //}
                 //ImGui::EndDisabled();
             }
-
-            // volumetric fog
-            option_check_box("Volumetric fog", Renderer_Option::FogVolumetric, "Requires a light with shadows enabled");
         }
 
         if (option("Anti-Aliasing"))

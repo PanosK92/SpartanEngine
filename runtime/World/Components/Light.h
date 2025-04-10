@@ -62,7 +62,8 @@ namespace spartan
         Shadows            = 1U << 0,
         ShadowsTransparent = 1U << 1,
         ShadowsScreenSpace = 1U << 2,
-        Volumetric         = 1U << 3
+        Volumetric         = 1U << 3,
+        DayNightCycle      = 1U << 4, // only affects directional lights
     };
 
     class Light : public Component

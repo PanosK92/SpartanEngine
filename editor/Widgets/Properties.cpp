@@ -342,6 +342,13 @@ void Properties::ShowLight(spartan::Light* light) const
             }
         }
 
+        if (light->GetLightType() == LightType::Directional)
+        {
+            bool day_night_cycle = light->GetFlag(spartan::LightFlags::DayNightCycle);
+            ImGui::Checkbox("Day/Night Cycle", &day_night_cycle);
+            light->SetFlag(spartan::LightFlags::DayNightCycle, day_night_cycle);
+        }
+
         // range
         if (light->GetLightType() != LightType::Directional)
         {
@@ -358,17 +365,17 @@ void Properties::ShowLight(spartan::Light* light) const
             ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f);
         }
 
-        //= MAP ===================================================================================================================
-        if (intensity != light->GetIntensityLumens())                     light->SetIntensity(intensity);
+        //= MAP ===================================================================================================
+        if (intensity != light->GetIntensityLumens())             light->SetIntensity(intensity);
         if (angle != light->GetAngle() * math::rad_to_deg * 0.5f) light->SetAngle(angle * math::deg_to_rad * 0.5f);
-        if (range != light->GetRange())                                   light->SetRange(range);
-        if (m_colorPicker_light->GetColor() != light->GetColor())         light->SetColor(m_colorPicker_light->GetColor());
-        if (temperature_kelvin != light->GetTemperature())                light->SetTemperature(temperature_kelvin);
+        if (range != light->GetRange())                           light->SetRange(range);
+        if (m_colorPicker_light->GetColor() != light->GetColor()) light->SetColor(m_colorPicker_light->GetColor());
+        if (temperature_kelvin != light->GetTemperature())        light->SetTemperature(temperature_kelvin);
         light->SetFlag(spartan::LightFlags::ShadowsTransparent, shadows_transparent);
         light->SetFlag(spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
         light->SetFlag(spartan::LightFlags::Volumetric, volumetric);
         light->SetFlag(spartan::LightFlags::Shadows, shadows);
-        //=========================================================================================================================
+        //=========================================================================================================
     }
     component_end();
 }

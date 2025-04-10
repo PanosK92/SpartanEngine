@@ -70,6 +70,25 @@ namespace spartan
         }
     }
 
+    namespace day_night_cycle
+    {
+        float current_time = 0.25f;  // start at 6 am
+        float time_scale   = 100.0f; // 100x real time
+
+        void tick()
+        {
+            current_time += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
+            if (current_time >= 1.0f)
+            {
+               current_time -= 1.0f;
+            }
+            if (current_time < 0.0f)
+            {
+                current_time = 0.0f;
+            }
+        }
+    }
+
     void World::Initialize()
     {
 
@@ -161,7 +180,8 @@ namespace spartan
             resolve = false;
             compute_bounding_box();
         }
-        
+
+        day_night_cycle::tick();
         Game::Tick();
     }
 
@@ -442,45 +462,6 @@ namespace spartan
 
     float World::GetTimeOfDay()
     {
-        static float current_time    = 0.25f;  // start at 6 am
-        static float time_scale      = 300.0f; // 300x real time (1 second = 12 minutes)
-        static float last_delta_time = 0.0f;   // store last frame's delta time
-        static bool first_call       = true;   // track if this is the first call
-        static float control_time    = -1.0f;  // for setting specific time (<0 means no set)
-        static float control_scale   = -1.0f;  // for setting specific scale (<0 means no set)
-    
-        if (control_time >= 0.0f)
-        {
-            current_time = fmod(control_time, 1.0f);
-            control_time = -1.0f;
-        }
-
-        if (control_scale >= 0.0f)
-        {
-            time_scale    = control_scale;
-            control_scale = -1.0f;
-        }
-    
-        if (first_call)
-        {
-            first_call = false;
-            return current_time;
-        }
-    
-        // advance time
-        current_time += (last_delta_time * time_scale) / 86400.0f;
-        if (current_time >= 1.0f)
-        {
-            current_time -= 1.0f;
-        }
-        if (current_time < 0.0f)
-        {
-            current_time = 0.0f;
-        }
-    
-        // update delta time (replace with your actual delta time source)
-        last_delta_time = Timer::GetDeltaTimeSec();  // you need to provide this
-    
-        return current_time;
+        return day_night_cycle::current_time;
     }
 }

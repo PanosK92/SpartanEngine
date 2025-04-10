@@ -147,8 +147,7 @@ namespace spartan
             SetOption(Renderer_Option::Anisotropy,                  16.0f);                                                         
             SetOption(Renderer_Option::ShadowResolution,            4096.0f);                                                       
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                                          // becomes the upsampler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         0.15f);                                                         // controls the intensity of the volumetric fog as well
-            SetOption(Renderer_Option::FogVolumetric,               1.0f);                                                          // these is only a toggle for the volumetric fog
+            SetOption(Renderer_Option::Fog,                         0.15f);                                                         // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));                // this is using fsr 3 for taa
             SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
@@ -695,7 +694,7 @@ namespace spartan
                     swap_chain->SetVsync(value == 1.0f);
                 }
             }
-            else if (option == Renderer_Option::FogVolumetric || option == Renderer_Option::ScreenSpaceShadows)
+            else if (option == Renderer_Option::ScreenSpaceShadows)
             {
                 SP_FIRE_EVENT(EventType::LightOnChanged);
             }
@@ -990,7 +989,7 @@ namespace spartan
                     m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
                     m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::ShadowsTransparent)  ? (1 << 4) : 0;
                     m_bindless_lights[count].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    m_bindless_lights[count].flags     |= (light->GetFlag(LightFlags::Volumetric) && GetOption<bool>(Renderer_Option::FogVolumetric)) ? (1 << 6) : 0;
+                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Volumetric)          ? (1 << 6) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
                     count++;

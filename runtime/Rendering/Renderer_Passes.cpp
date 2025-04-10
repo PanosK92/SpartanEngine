@@ -288,32 +288,32 @@ namespace spartan
                 renderable->SetPreviousLights(current_lights);
             }
     
-            // Iterate over pre-gathered lights
+            // iterate over pre-gathered lights
             for (size_t i = 0; i < light_count; ++i)
             {
                 Light* light = lights[i];
                 if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                     continue;
     
-                // Skip if no update is needed
+                // skip if no update is needed
                 if (!update_shadow_map[light->GetIndex()])
                     continue;
     
                 if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
                     continue;
     
-                // Set light-specific pso properties
+                // set light-specific pso properties
                 pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture     = light->GetDepthTexture();
                 pso.rasterizer_state                = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
     
-                // Iterate over cascades/faces
+                // iterate over cascades/faces
                 for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
                 {
                     pso.render_target_array_index = array_index;
                     cmd_list->SetIgnoreClearValues(is_transparent_pass);
     
-                    // Collect visible renderables to avoid wasted pso sets
+                    // collect visible renderables to avoid wasted pso sets
                     Entity* visible_renderables[MAX_RENDERABLES];
                     size_t visible_count = 0;
     
@@ -353,7 +353,7 @@ namespace spartan
                         }
                     }
     
-                    // Draw only if there are visible renderables
+                    // draw only if there are visible renderables
                     if (visible_count > 0)
                     {
                         for (size_t j = 0; j < visible_count; ++j)
@@ -362,23 +362,23 @@ namespace spartan
                             Renderable* renderable = entity->GetComponent<Renderable>();
                             Material* material     = renderable->GetMaterial();
     
-                            // Set per-renderable states
+                            // set per-renderable states
                             cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                             pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
                             cmd_list->SetPipelineState(pso);
     
-                            // Set push constants
+                            // set push constants
                             m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
                             m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                             m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
                             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                             cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                            // Set buffers
+                            // set buffers
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
-                            // Draw
+                            // draw
                             if (renderable->HasInstancing())
                             {
                                 for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)

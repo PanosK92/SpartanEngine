@@ -93,6 +93,7 @@ namespace spartan
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsTransparent);
         SetFlag(LightFlags::ShadowsScreenSpace);
+        SetFlag(LightFlags::DayNightCycle);
 
         m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
     }
@@ -113,6 +114,7 @@ namespace spartan
             update_matrices = true;
 
             // day night cycle
+            if (GetFlag(LightFlags::DayNightCycle))
             {
                 Quaternion rotation = Quaternion::FromAngleAxis(
                     (World::GetTimeOfDay() * 360.0f - 90.0f) * math::deg_to_rad, // angle in radians, -90° offset for horizon
