@@ -486,24 +486,28 @@ namespace
                 if (ImGui::Begin("World selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
                     ImGui::Text("Select the world you would like to load and click \"Ok\"");
-            
-                    // Calculate the maximum width of the world names
+                    ImGui::Text("WARNING: The worlds use evolving tech and might not be as stable as a released steam game");
+
+                    // calculate the maximum width of the world names
                     float max_width = 0.0f;
                     for (const char* name : world_names)
                     {
                         ImVec2 size = ImGui::CalcTextSize(name);
                         if (size.x > max_width)
+                        { 
                             max_width = size.x;
+                        }
                     }
-                    // Add padding for the list box frame (left and right)
+
+                    // add padding for the list box frame (left and right)
                     float padding = ImGui::GetStyle().FramePadding.x * 2;
                     ImGui::PushItemWidth(max_width + padding);
-            
-                    // List box with dynamic width
+
+                    // list box with dynamic width
                     ImGui::ListBox("##list_box", &world_index, world_names, IM_ARRAYSIZE(world_names), IM_ARRAYSIZE(world_names));
                     ImGui::PopItemWidth();
             
-                    // Button
+                    // button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
                         spartan::Game::Load(static_cast<spartan::DefaultWorld>(world_index));
