@@ -108,14 +108,12 @@ struct Surface
         roughness_alpha       = roughness * roughness;
 
         // ssao
-        occlusion = 1.0f;
         if (is_ssao_enabled())
         {
-            float2 uv_unscaled = (position_screen + 0.5f) / resolution_out;
-            occlusion          = tex_ssao.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp_border), uv_unscaled, 0.0f).r;
-            occlusion          = min(sample_material.a, occlusion); // combine occlusion with material occlusion
+            int2 coords = clamp(int2(position_screen), int2(0, 0), int2(resolution_out) - 1);
+            occlusion   = tex_ssao[coords].r;
+            occlusion   = min(sample_material.a, occlusion); // combine occlusion with material occlusion
         }
-
         position               = get_position(depth, uv);
         camera_to_pixel        = position - buffer_frame.camera_position.xyz;
         camera_to_pixel_length = length(camera_to_pixel);

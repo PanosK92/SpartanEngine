@@ -127,15 +127,14 @@ namespace spartan
         // misc
         lutIbl      = 13,
         environment = 14,
-        ssao        = 15,
-        tex         = 16,
-        tex2        = 17,
+        tex         = 15,
+        tex2        = 16,
 
         // bindless
-        bindless_material_textures    = 18,
-        bindless_material_parameteres = 19,
-        bindless_light_parameters     = 20,
-        bindless_aabbs                = 21,
+        bindless_material_textures    = 17,
+        bindless_material_parameteres = 18,
+        bindless_light_parameters     = 19,
+        bindless_aabbs                = 20,
     };
 
     enum class Renderer_BindingsUav
@@ -144,10 +143,11 @@ namespace spartan
         tex2              = 1,
         tex3              = 2,
         tex4              = 3,
-        tex_sss           = 4,
-        visibility        = 5,
-        sb_spd            = 6,
-        tex_spd           = 7,
+        tex_ssao          = 4,
+        tex_sss           = 5,
+        visibility        = 6,
+        sb_spd            = 7,
+        tex_spd           = 8,
     };
 
     enum class Renderer_Shader : uint8_t

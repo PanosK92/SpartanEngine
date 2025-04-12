@@ -1009,7 +1009,6 @@ namespace spartan
             create_camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
             create_sun(true);
             create_music();
-            create_floor();
 
             // the entire minecraft world is a single mesh so don't generate any lods
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))

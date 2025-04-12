@@ -244,7 +244,7 @@ namespace spartan
                     uint32_t depth = light->GetDepthTexture()->GetDepth();
                     bool affects_light = false;
     
-                    // Check visibility per cascade/face
+                    // check visibility per cascade/face
                     for (uint32_t array_index = 0; array_index < depth; ++array_index)
                     {
                         bool is_visible = false;
@@ -686,7 +686,7 @@ namespace spartan
         tex_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_material->SetLayout(RHI_Image_Layout::General, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // Pass_Sss() reads it as a srv
         cmd_list->InsertPendingBarrierGroup();
     
         cmd_list->EndTimeblock();
@@ -891,7 +891,7 @@ namespace spartan
 
                 // read from these
                 SetGbufferTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
     
                 // write to these
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  GetRenderTarget(Renderer_RenderTarget::light_diffuse));
@@ -1013,7 +1013,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::light_specular,   GetRenderTarget(Renderer_RenderTarget::light_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::light_volumetric, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,             GetRenderTarget(Renderer_RenderTarget::source_refraction));
-            cmd_list->SetTexture(Renderer_BindingsSrv::ssao,             GetRenderTarget(Renderer_RenderTarget::ssao));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao,         GetRenderTarget(Renderer_RenderTarget::ssao));
             cmd_list->SetTexture(Renderer_BindingsSrv::environment,      tex_skysphere); // for the sky
 
             // render
@@ -1049,7 +1049,7 @@ namespace spartan
             SetGbufferTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse_gi,  GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
             cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
-            cmd_list->SetTexture(Renderer_BindingsSrv::ssao,              GetRenderTarget(Renderer_RenderTarget::ssao));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao,          GetRenderTarget(Renderer_RenderTarget::ssao));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,              GetRenderTarget(Renderer_RenderTarget::ssr));
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,           GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
