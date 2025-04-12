@@ -309,9 +309,7 @@ namespace spartan
                 // set light-specific pso properties
                 pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture = light->GetDepthTexture();
-                pso.rasterizer_state = (light->GetLightType() == LightType::Directional) ?
-                    GetRasterizerState(Renderer_RasterizerState::Light_directional) :
-                    GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+                pso.rasterizer_state = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
     
                 // iterate over cascades/faces
                 for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
@@ -335,7 +333,14 @@ namespace spartan
     
                         // set per-renderable states
                         cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                        pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
+                         if (light->GetLightType() == LightType::Directional && array_index > 0)
+                        {
+                            pso.shaders[RHI_Shader_Type::Pixel] = nullptr; // no pixel shader for directional light cascades beyond index 0
+                        }
+                        else
+                        {
+                            pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
+                        }
                         cmd_list->SetPipelineState(pso);
     
                         // set push constants
