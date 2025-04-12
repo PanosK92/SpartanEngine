@@ -193,6 +193,7 @@ namespace spartan
         
         // clear
         entities.clear();
+        entities_lights.clear();
         name.clear();
         file_path.clear();
         

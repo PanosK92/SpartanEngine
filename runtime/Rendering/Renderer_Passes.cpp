@@ -179,154 +179,74 @@ namespace spartan
   
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
+        if (World::GetLightCount() == 0)
+            return;
+
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
         {
-            // Static array to store all lights (max 64)
-            static std::array<Light*, 64> lights = { nullptr };
-            static size_t light_count = 0;
-    
-            // Populate lights array at the start
-            light_count = 0;
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
-            {
-                Light* light = entity->GetComponent<Light>();
-                if (light && light_count < 64)
-                {
-                    lights[light_count++] = light;
-                }
-            }
-    
             // Set base pipeline state
             RHI_PipelineState pso;
-            pso.name                             = "shadow_maps";
+            pso.name                             = is_transparent_pass ? "shadow_maps_color" : "shadow_maps";
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_light_v);
             pso.blend_state                      = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha) : GetBlendState(Renderer_BlendState::Off);
             pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadEqual) : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
             pso.clear_depth                      = 0.0f;
             pso.clear_color[0]                   = Color::standard_white;
     
-            // Static array to track which lights need shadow map updates
-            constexpr size_t MAX_RENDERABLES = 1024; // maximum number of renderables per cascade/face
-            static std::array<bool, 64> update_shadow_map = { false };
+            // constants
+            constexpr size_t MAX_LIGHTS = 64;
+            constexpr size_t MAX_RENDERABLES = 1024;
     
-            // Compute update flags for lights based on moving renderables
+            // track which lights need updates and their visible renderables
+            static array<bool, MAX_LIGHTS> update_shadow_map = { false };
+            static array<array<Entity*, MAX_RENDERABLES>, MAX_LIGHTS * 6> visible_renderables_per_cascade = { nullptr }; // 6 for max cascades/faces (e.g., point light cubemap)
+            static array<array<size_t, MAX_LIGHTS>, 6> visible_counts = { 0 }; // count per cascade per light
+    
+            // reset arrays
+            fill(update_shadow_map.begin(), update_shadow_map.end(), false);
+            for (size_t i = 0; i < MAX_LIGHTS * 6; ++i)
+            {
+                fill(visible_renderables_per_cascade[i].begin(), visible_renderables_per_cascade[i].end(), nullptr);
+            }
+            fill(visible_counts.begin(), visible_counts.end(), array<size_t, MAX_LIGHTS>{0});
+    
+            // get light entities
+            const auto& light_entities = World::GetEntitiesLights();
+            size_t light_count = min(light_entities.size(), MAX_LIGHTS);
+    
+            // single loop to compute updates and collect renderables
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
                 if (!entity->IsActive())
                     continue;
-            
+    
                 Renderable* renderable = entity->GetComponent<Renderable>();
-                if (!renderable)
+                if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
                     continue;
-            
+    
+                Material* material = renderable->GetMaterial();
+                if (!material || material->IsTransparent() != is_transparent_pass)
+                    continue;
+    
                 uint64_t current_lights = 0;
                 uint32_t light_index    = 0;
     
-                // Inner loop using pre-gathered lights
-                for (size_t i = 0; i < light_count; ++i)
+                // check each light
+                for (size_t i = 0; i < light_count && i < light_entities.size(); ++i)
                 {
-                    Light* light = lights[i];
+                    Light* light = light_entities[i]->GetComponent<Light>();
                     if (!light->GetFlag(LightFlags::Shadows))
                         continue;
     
-                    bool is_in_light = false;
-                    uint32_t depth   = light->GetDepthTexture()->GetDepth(); // number of cascades/faces
-                    if (renderable->HasInstancing())
-                    {
-                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); ++group_index)
-                        {
-                            for (uint32_t array_index = 0; array_index < depth; ++array_index)
-                            {
-                                if (light->IsInViewFrustum(renderable, array_index, group_index))
-                                {
-                                    is_in_light = true;
-                                    break;
-                                }
-                            }
-                            if (is_in_light)
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        for (uint32_t array_index = 0; array_index < depth; ++array_index)
-                        {
-                            if (light->IsInViewFrustum(renderable, array_index))
-                            {
-                                is_in_light = true;
-                                break;
-                            }
-                        }
-                    }
-            
-                    bool is_moving      = entity->GetTimeSinceLastTransform() <= 0.25f;
-                    bool is_animated    = renderable->GetMaterial()->GetProperty(MaterialProperty::IsTree) > 0.0f;
-                    bool is_directional = light->GetLightType() == LightType::Directional;
-                    if (is_in_light && (is_directional || is_moving || is_animated))
-                    {
-                        current_lights |= (1ULL << light_index);
-                    }
-            
-                    light_index++;
-                }
-            
-                uint64_t previous_lights  = renderable->GetPreviousLights();
-                uint64_t lights_to_update = previous_lights | current_lights;
-                light_index               = 0;
-                for (size_t i = 0; i < light_count; ++i)
-                {
-                    Light* light = lights[i];
-                    if (!light->GetFlag(LightFlags::Shadows))
+                    if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
                         continue;
     
-                    if (lights_to_update & (1ULL << light_index))
+                    uint32_t depth = light->GetDepthTexture()->GetDepth();
+                    bool affects_light = false;
+    
+                    // Check visibility per cascade/face
+                    for (uint32_t array_index = 0; array_index < depth; ++array_index)
                     {
-                        update_shadow_map[light_index] = true;
-                    }
-                    light_index++;
-                }
-                renderable->SetPreviousLights(current_lights);
-            }
-    
-            // iterate over pre-gathered lights
-            for (size_t i = 0; i < light_count; ++i)
-            {
-                Light* light = lights[i];
-                if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
-                    continue;
-    
-                // skip if no update is needed
-                if (!update_shadow_map[light->GetIndex()])
-                    continue;
-    
-                if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
-                    continue;
-    
-                // set light-specific pso properties
-                pso.render_target_color_textures[0] = light->GetColorTexture();
-                pso.render_target_depth_texture     = light->GetDepthTexture();
-                pso.rasterizer_state                = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
-    
-                // iterate over cascades/faces
-                for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
-                {
-                    pso.render_target_array_index = array_index;
-                    cmd_list->SetIgnoreClearValues(is_transparent_pass);
-    
-                    // collect visible renderables to avoid wasted pso sets
-                    Entity* visible_renderables[MAX_RENDERABLES];
-                    size_t visible_count = 0;
-    
-                    for (const shared_ptr<Entity>& entity : World::GetEntities())
-                    {
-                        Renderable* renderable = entity->GetComponent<Renderable>();
-                        if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
-                            continue;
-    
-                        Material* material = renderable->GetMaterial();
-                        if (!material || material->IsTransparent() != is_transparent_pass)
-                            continue;
-    
                         bool is_visible = false;
                         if (renderable->HasInstancing())
                         {
@@ -347,72 +267,120 @@ namespace spartan
                             }
                         }
     
-                        if (is_visible && visible_count < MAX_RENDERABLES)
+                        if (is_visible)
                         {
-                            visible_renderables[visible_count++] = entity.get();
+                            affects_light = true;
+                            size_t cascade_slot = i * 6 + array_index; // Unique slot for light and cascade
+                            if (visible_counts[array_index][i] < MAX_RENDERABLES)
+                            {
+                                visible_renderables_per_cascade[cascade_slot][visible_counts[array_index][i]++] = entity.get();
+                            }
                         }
                     }
     
-                    // draw only if there are visible renderables
-                    if (visible_count > 0)
+                    bool is_moving      = entity->GetTimeSinceLastTransform() <= 0.25f;
+                    bool is_animated    = renderable->GetMaterial()->GetProperty(MaterialProperty::IsTree) > 0.0f;
+                    bool is_directional = light->GetLightType() == LightType::Directional;
+                    if (affects_light && (is_directional || is_moving || is_animated))
                     {
-                        for (size_t j = 0; j < visible_count; ++j)
+                        current_lights |= (1ULL << light_index);
+                        update_shadow_map[i] = true;
+                    }
+    
+                    light_index++;
+                }
+    
+                renderable->SetPreviousLights(current_lights);
+            }
+    
+            // render shadow maps using cached renderables
+            for (size_t i = 0; i < light_count && i < light_entities.size(); ++i)
+            {
+                Light* light = light_entities[i]->GetComponent<Light>();
+                if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
+                    continue;
+    
+                if (!update_shadow_map[i])
+                    continue;
+    
+                if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
+                    continue;
+    
+                // set light-specific pso properties
+                pso.render_target_color_textures[0] = light->GetColorTexture();
+                pso.render_target_depth_texture = light->GetDepthTexture();
+                pso.rasterizer_state = (light->GetLightType() == LightType::Directional) ?
+                    GetRasterizerState(Renderer_RasterizerState::Light_directional) :
+                    GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+    
+                // iterate over cascades/faces
+                for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
+                {
+                    pso.render_target_array_index = array_index;
+                    cmd_list->SetIgnoreClearValues(is_transparent_pass);
+    
+                    // use cached renderables
+                    size_t cascade_slot      = i * 6 + array_index;
+                    size_t visible_count     = visible_counts[array_index][i];
+                    auto& visible_renderables = visible_renderables_per_cascade[cascade_slot];
+                    if (visible_count == 0)
+                        continue;
+    
+                    // render cached renderables
+                    for (size_t j = 0; j < visible_count; ++j)
+                    {
+                        Entity* entity         = visible_renderables[j];
+                        Renderable* renderable = entity->GetComponent<Renderable>();
+                        Material* material     = renderable->GetMaterial();
+    
+                        // set per-renderable states
+                        cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                        pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ?
+                            GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
+                        cmd_list->SetPipelineState(pso);
+    
+                        // set push constants
+                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
+                        m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                        m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
+                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+                        cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                        // set buffers
+                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+    
+                        // draw
+                        if (renderable->HasInstancing())
                         {
-                            Entity* entity         = visible_renderables[j];
-                            Renderable* renderable = entity->GetComponent<Renderable>();
-                            Material* material     = renderable->GetMaterial();
-    
-                            // set per-renderable states
-                            cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                            pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
-                            cmd_list->SetPipelineState(pso);
-    
-                            // set push constants
-                            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
-                            m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
-                            m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
-                            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
-                            cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-                            // set buffers
-                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
-                            // draw
-                            if (renderable->HasInstancing())
+                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
-                                for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
-                                {
-                                    if (light->IsInViewFrustum(renderable, array_index, group_index))
-                                    {
-                                        uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
-                                        uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
-                                        instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
-                                        if (instance_count == 0)
-                                            continue;
-    
-                                        uint32_t lod_index = renderable->GetLodCount() - 1;
-    
-                                        cmd_list->DrawIndexed(
-                                            renderable->GetIndexCount(lod_index),
-                                            renderable->GetIndexOffset(lod_index),
-                                            renderable->GetVertexOffset(lod_index),
-                                            instance_start_index,
-                                            instance_count
-                                        );
-                                    }
-                                }
-                            }
-                            else
-                            {
+                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
+                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                if (instance_count == 0)
+                                    continue;
+                                
                                 uint32_t lod_index = renderable->GetLodCount() - 1;
-    
+                                
                                 cmd_list->DrawIndexed(
                                     renderable->GetIndexCount(lod_index),
                                     renderable->GetIndexOffset(lod_index),
-                                    renderable->GetVertexOffset(lod_index)
+                                    renderable->GetVertexOffset(lod_index),
+                                    instance_start_index,
+                                    instance_count
                                 );
                             }
+                        }
+                        else
+                        {
+                            uint32_t lod_index = renderable->GetLodCount() - 1;
+    
+                            cmd_list->DrawIndexed(
+                                renderable->GetIndexCount(lod_index),
+                                renderable->GetIndexOffset(lod_index),
+                                renderable->GetVertexOffset(lod_index)
+                            );
                         }
                     }
                 }
