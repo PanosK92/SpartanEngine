@@ -49,6 +49,7 @@ namespace spartan
         static std::vector<std::shared_ptr<Entity>> GetRootEntities();
         static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
         static const std::vector<std::shared_ptr<Entity>>& GetEntities();
+        static const std::vector<std::shared_ptr<Entity>>& GetEntitiesLights();
 
         // misc
         static void Clear();

@@ -44,6 +44,7 @@ namespace spartan
     namespace
     {
         vector<shared_ptr<Entity>> entities;
+        vector<shared_ptr<Entity>> entities_lights; // entities subset that contains only lights
         string name;
         string file_path;
         mutex entity_access_mutex;
@@ -52,7 +53,6 @@ namespace spartan
         BoundingBox bounding_box    = BoundingBox::Undefined;
         Entity* camera              = nullptr;
         Entity* light               = nullptr;
-        uint32_t light_count        = 0;
         uint32_t audio_source_count = 0;
 
         void compute_bounding_box()
@@ -148,8 +148,8 @@ namespace spartan
             {
                 camera             = nullptr;
                 light              = nullptr;
-                light_count        = 0;
                 audio_source_count = 0;
+                entities_lights.clear();
                 for (shared_ptr<Entity>& entity : entities)
                 {
                     if (entity->IsActive())
@@ -165,7 +165,8 @@ namespace spartan
                             {
                                 light = entity.get();
                             }
-                            light_count++;
+
+                            entities_lights.push_back(entity);
                         }
         
                         if (entity->GetComponent<AudioSource>())
@@ -411,6 +412,11 @@ namespace spartan
         return entities;
     }
 
+    const vector<shared_ptr<Entity>>& World::GetEntitiesLights()
+    {
+        return entities_lights;
+    }
+
     const string World::GetName()
     {
         return name;
@@ -447,7 +453,7 @@ namespace spartan
 
     uint32_t World::GetLightCount()
     {
-        return light_count;
+        return static_cast<uint32_t>(entities_lights.size());
     }
 
     uint32_t World::GetAudioSourceCount()
