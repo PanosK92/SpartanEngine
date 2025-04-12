@@ -431,8 +431,9 @@ namespace spartan
     
     void Light::ComputeProjectionMatrix()
     {
-        const float near_plane = 0.1f; // near plane for other light types
-    
+        const float near_plane  = 0.03f;   // near plane for other light types
+        const float depth_range = 1000.0f; // just an arbitrary value
+
         if (m_light_type == LightType::Directional)
         {
             // get camera
@@ -441,13 +442,11 @@ namespace spartan
                 return;
     
             // compute lateral extents for near cascade based on camera fov
-            float split_distance = 10.0f; // 10 meters
+            float split_distance = 15.0f;
             float height_at_d    = 2.0f * split_distance * tan(camera->GetFovVerticalRad() / 2.0f);
             float width_at_d     = height_at_d * camera->GetAspectRatio();
             float near_extent    = max(width_at_d, height_at_d) / 2.0f;
 
-            float depth_range = 1000.0f; // just an arbitrary value
-    
             // near cascade projection
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
                 -near_extent, near_extent,
@@ -455,8 +454,8 @@ namespace spartan
                 depth_range, 0.1f // reverse-Z: near = max, far = min
             );
     
-            // times the near extent, further than that, screen space shadows are more than enough
-            float far_extent = near_extent * 20.0f; 
+            // further than this, screen space shadows are more than enough
+            float far_extent = 100.0f;
     
             // far cascade projection
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(

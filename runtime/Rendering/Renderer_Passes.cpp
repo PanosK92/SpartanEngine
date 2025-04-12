@@ -320,8 +320,8 @@ namespace spartan
                     cmd_list->SetIgnoreClearValues(is_transparent_pass);
     
                     // use cached renderables
-                    size_t cascade_slot      = i * 6 + array_index;
-                    size_t visible_count     = visible_counts[array_index][i];
+                    size_t cascade_slot       = i * 6 + array_index;
+                    size_t visible_count      = visible_counts[array_index][i];
                     auto& visible_renderables = visible_renderables_per_cascade[cascade_slot];
                     if (visible_count == 0)
                         continue;
@@ -335,8 +335,7 @@ namespace spartan
     
                         // set per-renderable states
                         cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                        pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ?
-                            GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
+                        pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
                         cmd_list->SetPipelineState(pso);
     
                         // set push constants
@@ -1678,9 +1677,11 @@ namespace spartan
         cmd_list->EndMarker();
     }
 
-   void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Lights) || Engine::IsFlagSet(EngineMode::Playing) || World::GetLightCount() == 0 || World::GetAudioSourceCount() == 0)
+        bool no_lights        = !GetOption<bool>(Renderer_Option::Lights) && World::GetLightCount() == 0;
+        bool no_audio_sources = World::GetAudioSourceCount() == 0;
+        if (Engine::IsFlagSet(EngineMode::Playing) && no_lights && no_audio_sources)
             return;
     
         cmd_list->BeginTimeblock("icons");
