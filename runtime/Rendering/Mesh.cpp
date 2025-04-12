@@ -186,52 +186,58 @@ namespace spartan
             AddLod(vertices, indices, current_sub_mesh_index);
         }
     
-        // generate additional lods if requested
+        // generate additional LODs if requested
         if (generate_lods && !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
         {
-            // store the original index count
+            // store the original index count (for reference, but we'll base targets on previous LOD)
             size_t original_index_count = indices.size();
-    
-            // start with the original geometry for lod 1 onwards
+            
+            // start with the original geometry for LOD 1 onwards
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
             vector<uint32_t> prev_indices                 = indices;
-    
+            
             for (uint32_t lod_level = 1; lod_level < mesh_lod_count; lod_level++)
             {
-                // use the previous lod's geometry for simplification
+                // use the previous LOD's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
                 vector<uint32_t> lod_indices                 = prev_indices;
-    
-                // only simplify if the geometry is complex enough, this prevents collapsing into nothing
+            
+                // only simplify if the geometry is complex enough
                 if (lod_indices.size() > 64)
                 {
-                    // compute target index count based on original index count
+                    // compute target fraction based on LOD level
                     float t = static_cast<float>(lod_level) / static_cast<float>(mesh_lod_count);
                     if (m_lod_dropoff == MeshLodDropoff::Exponential)
                     {
                         t = pow(t, 2.0f);
                     }
-                    float target_fraction     = 1.0f - t;
-                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(original_index_count * target_fraction));
-    
+                    float target_fraction = 1.0f - t;
+                    
+                    // compute target index count based on the previous LOD's actual index count
+                    size_t target_index_count = max(static_cast<size_t>(3), 
+                                                   static_cast<size_t>(prev_indices.size() * target_fraction));
+            
                     // simplify geometry
                     geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
-    
-                    // add the simplified geometry as a new lod
+            
+                    // check if simplification reduced the index count; if not, stop
+                    if (lod_indices.size() >= prev_indices.size())
+                        break;
+            
+                    // Add the simplified geometry as a new LOD
                     AddLod(lod_vertices, lod_indices, current_sub_mesh_index);
-    
-                    // update previous geometry for the next iteration
+            
+                    // Update previous geometry for the next iteration
                     prev_vertices = move(lod_vertices);
                     prev_indices  = move(lod_indices);
                 }
                 else
                 {
-                    // if too simple to simplify further, stop generating lods
+                    // If too simple to simplify further, stop generating LODs
                     break;
                 }
             }
         }
-    
         // return the sub-mesh index if requested
         if (sub_mesh_index)
         {
