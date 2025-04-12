@@ -595,7 +595,7 @@ namespace spartan
     
         // set pipeline state
         RHI_PipelineState pso;
-        pso.name                             = "g_buffer";
+        pso.name                             = is_transparent_pass ? "g_buffer_transparent" : "g_buffer";
         pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::gbuffer_v);
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
@@ -874,7 +874,7 @@ namespace spartan
         {
             // set pipeline state
             RHI_PipelineState pso;
-            pso.name             = "light";
+            pso.name             = is_transparent_pass ? "light_transparent" : "light";
             pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
             cmd_list->SetPipelineState(pso);
     
@@ -885,43 +885,42 @@ namespace spartan
             // track light index for clearing (first light clears render targets)
             uint32_t light_index = 0;
     
-            // process all entities to find lights
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            // process all lights
+            for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
             {
-                if (Light* light = entity->GetComponent<Light>())
+                Light* light = entity->GetComponent<Light>();
+
+                // read from these
+                SetGbufferTextures(cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
+    
+                // write to these
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::light_specular));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3, GetRenderTarget(Renderer_RenderTarget::light_shadow));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
+    
+                // set shadow maps
                 {
-                    // read from these
-                    SetGbufferTextures(cmd_list);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
+                    RHI_Texture* tex_depth = light->GetFlag(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
+                    RHI_Texture* tex_color = light->GetFlag(LightFlags::ShadowsTransparent) ? light->GetColorTexture() : nullptr;
     
-                    // write to these
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex,  GetRenderTarget(Renderer_RenderTarget::light_diffuse));
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::light_specular));
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex3, GetRenderTarget(Renderer_RenderTarget::light_shadow));
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-    
-                    // set shadow maps
-                    {
-                        RHI_Texture* tex_depth = light->GetFlag(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
-                        RHI_Texture* tex_color = light->GetFlag(LightFlags::ShadowsTransparent) ? light->GetColorTexture() : nullptr;
-    
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_depth);
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);
-                    }
-    
-                    // push pass constants
-                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light_index++), 0.0f, 0.0f);
-                    m_pcb_pass_cpu.set_f3_value(
-                        GetOption<float>(Renderer_Option::Fog),
-                        GetOption<float>(Renderer_Option::ShadowResolution),
-                        static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount())
-                    );
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-                    // dispatch lighting computation
-                    cmd_list->Dispatch(GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+                    cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_depth);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);
                 }
+    
+                // push pass constants
+                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light_index++), 0.0f, 0.0f);
+                m_pcb_pass_cpu.set_f3_value(
+                    GetOption<float>(Renderer_Option::Fog),
+                    GetOption<float>(Renderer_Option::ShadowResolution),
+                    static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount())
+                );
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                // dispatch lighting computation
+                cmd_list->Dispatch(GetRenderTarget(Renderer_RenderTarget::light_diffuse));
             }
         }
         cmd_list->EndTimeblock();
