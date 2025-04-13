@@ -28,11 +28,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
-    const float intensity = 0.05f;
-    float3 light_color    = light.color * light.intensity * light.attenuation;
-    float sss_term        = saturate(dot(-light.to_pixel, surface.camera_to_pixel));
-    
-    return light_color * sss_term * surface.subsurface_scattering * surface.albedo * intensity;
+    float3 L = normalize(-light.to_pixel);          // to light
+    float3 V = normalize(-surface.camera_to_pixel); // to camera
+    float3 N = surface.normal;                      // surface normal
+
+    const float sss_exponent       = 1.0f; // sharpness of scattering
+    const float thickness_exponent = 1.0f; // edge enhancement
+    const float sss_strength       = surface.subsurface_scattering * 0.05f;
+
+    // scattering term: focused back-scattering
+    float sss_term = pow(max(0.0f, dot(L, -V)), sss_exponent);
+
+    // modulation: stronger near edges
+    float dot_N_V    = dot(N, V);
+    float modulation = pow(1.0f - dot_N_V, thickness_exponent);
+
+    // light contribution
+    float3 light_color = light.color * light.intensity * light.attenuation;
+
+    // combine
+    return light_color * sss_term * modulation * sss_strength * surface.albedo;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
