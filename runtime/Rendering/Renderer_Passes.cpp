@@ -141,7 +141,7 @@ namespace spartan
 
         Pass_Text(cmd_list_graphics, rt_output);
 
-        // perform early transitions (so they layouts are set with and the next frame doesn't have to wait)
+        // perform early transitions (so the next frame doesn't have to wait)
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
         GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);

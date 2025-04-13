@@ -121,11 +121,18 @@ namespace spartan
                     VK_ACCESS_2_HOST_WRITE_BIT
                 );
         
-            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                return make_tuple(
-                    VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_ACCESS_2_NONE
-                );
+           case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+                if (!is_destination_mask) {
+                    return make_tuple(
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                        VK_ACCESS_2_NONE
+                    );
+                } else {
+                    return make_tuple(
+                        VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+                        VK_ACCESS_2_NONE
+                    );
+                }
         
             case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
                 return make_tuple(
