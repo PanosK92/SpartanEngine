@@ -28,22 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
-    const float surface_thickness = 0.01f;
-
-    // compute backface lighting
-    float n_dot_l_backface = saturate(dot(surface.normal, light.to_pixel));
-    float3 light_radiance  = light.color * light.intensity * light.attenuation * surface.occlusion * n_dot_l_backface;
+    const float intensity = 0.05f;
+    float3 light_color    = light.color * light.intensity * light.attenuation;
+    float sss_term        = saturate(dot(-light.to_pixel, surface.camera_to_pixel));
     
-    // determine sss
-    float sss_strength = surface.subsurface_scattering * exp(-surface_thickness) * 7.0f;
-    float3 sss_color   = surface.albedo * light_radiance * sss_strength;
-
-    // fresnel effect using schlick's approximation to modulate final color
-    float3 F              = F_Schlick(surface.F0, get_f90(surface), angular_info.n_dot_v);
-    float3 diffuse_energy = compute_diffuse_energy(F, surface.metallic);
-    
-    // combine SSS color with fresnel effect
-    return sss_color * F * diffuse_energy;
+    return light_color * sss_term * surface.subsurface_scattering * surface.albedo * intensity;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
