@@ -312,7 +312,7 @@ namespace spartan
         if (!World::IsLoading())
         {
             BuildDrawCallsAndOccluders(cmd_list_graphics);
-            UpdateBuffers(cmd_list_graphics); // needs to happen BuildDrawCallsAndOccluders(), it needs the latest draw calls
+            UpdateBuffers(cmd_list_graphics); // needs to happen after BuildDrawCallsAndOccluders(), it needs the latest draw calls
             ProduceFrame(cmd_list_graphics, cmd_list_compute);
         }
 

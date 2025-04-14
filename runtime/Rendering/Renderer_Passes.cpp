@@ -171,6 +171,7 @@ namespace spartan
         {
             // set pipeline state
             RHI_PipelineState pso;
+            pso.name             = "variable_rate_shading";
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
