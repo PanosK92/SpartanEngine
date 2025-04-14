@@ -96,8 +96,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal), mip_count_environment, mip_count_environment);
     float4 specular_ssr                = tex2[thread_id.xy].rgba;
-    float3 diffuse_gi                  = tex_light_diffuse_gi[thread_id.xy].rgb;
-    float3 specular_gi                 = tex_light_specular_gi[thread_id.xy].rgb;
+    float3 diffuse_gi                  = tex_uav3[thread_id.xy].rgb;
+    float3 specular_gi                 = tex_uav4[thread_id.xy].rgb;
     float shadow_mask                  = tex[thread_id.xy].r;
 
     // modulate specular light source with their respective outcoming energy

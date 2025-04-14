@@ -106,35 +106,33 @@ namespace spartan
     enum class Renderer_BindingsSrv
     {
         // g-buffer
-        gbuffer_albedo         = 0,
-        gbuffer_normal         = 1,
-        gbuffer_material       = 2,
-        gbuffer_velocity       = 3,
-        gbuffer_depth          = 4,
+        gbuffer_albedo   = 0,
+        gbuffer_normal   = 1,
+        gbuffer_material = 2,
+        gbuffer_velocity = 3,
+        gbuffer_depth    = 4,
 
         // lighting
-        light_diffuse     = 5,
-        light_diffuse_gi  = 6,
-        light_specular    = 7,
-        light_specular_gi = 8,
-        light_shadow      = 9,
-        light_volumetric  = 10,
+        light_diffuse    = 5,
+        light_specular   = 6,
+        light_shadow     = 7,
+        light_volumetric = 8,
     
         // light depth/color maps
-        light_depth = 11,
-        light_color = 12,
+        light_depth = 9,
+        light_color = 10,
     
         // misc
-        lutIbl      = 13,
-        environment = 14,
-        tex         = 15,
-        tex2        = 16,
+        lutIbl      = 11,
+        environment = 12,
+        tex         = 13,
+        tex2        = 14,
 
         // bindless
-        bindless_material_textures    = 17,
-        bindless_material_parameteres = 18,
-        bindless_light_parameters     = 19,
-        bindless_aabbs                = 20,
+        bindless_material_textures    = 15,
+        bindless_material_parameteres = 16,
+        bindless_light_parameters     = 17,
+        bindless_aabbs                = 18,
     };
 
     enum class Renderer_BindingsUav

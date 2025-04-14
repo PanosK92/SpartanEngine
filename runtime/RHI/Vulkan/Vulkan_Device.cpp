@@ -156,7 +156,7 @@ namespace spartan
 
                 // some checks
                 {
-                    // if the driver hasn't been updated to the latest SDK, log a warning
+                    // if the driver hasn't been updated to the latest sdk, log a warning
                     if (sdk_version > driver_version)
                     {
                         string version_driver = version::to_string(driver_version);
@@ -1215,7 +1215,7 @@ namespace spartan
                     SP_ASSERT(support_robustness.nullDescriptor == VK_TRUE);
                     features_robustness.nullDescriptor = VK_TRUE;
 
-                    // My 6900 XT doesn't support this.
+                    // My 6900 XT doesn't support this even though vulkan 1.4 is "supported", classic AMD...
                     //SP_ASSERT(support_1_4.pushDescriptor == VK_TRUE);
                     //features_1_4.pushDescriptor = VK_TRUE;
                 }

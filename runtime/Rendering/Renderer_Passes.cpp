@@ -1052,15 +1052,15 @@ namespace spartan
 
             // set textures
             SetGbufferTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse_gi,  GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
-            cmd_list->SetTexture(Renderer_BindingsSrv::light_specular_gi, GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao,          GetRenderTarget(Renderer_RenderTarget::ssao));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,              GetRenderTarget(Renderer_RenderTarget::ssr));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,           GetRenderTarget(Renderer_RenderTarget::sss));
-            cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,            GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
-            cmd_list->SetTexture(Renderer_BindingsSrv::environment,       GetRenderTarget(Renderer_RenderTarget::skysphere));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,               GetRenderTarget(Renderer_RenderTarget::light_shadow));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,               tex_out);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,        GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4,        GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao,    GetRenderTarget(Renderer_RenderTarget::ssao));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,        GetRenderTarget(Renderer_RenderTarget::ssr));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,     GetRenderTarget(Renderer_RenderTarget::sss));
+            cmd_list->SetTexture(Renderer_BindingsSrv::lutIbl,      GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
+            cmd_list->SetTexture(Renderer_BindingsSrv::environment, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,         GetRenderTarget(Renderer_RenderTarget::light_shadow));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,         tex_out);
 
             // set pass constants
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
