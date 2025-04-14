@@ -65,6 +65,13 @@ namespace spartan
     {
         SP_PROFILE_CPU();
 
+        // early exit if one or more shader aren't ready
+        for (const auto& shader : GetShaders())
+        {
+            if (!shader || !shader->IsCompiled())
+                return;
+        }
+
         // acquire render targets
         RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);

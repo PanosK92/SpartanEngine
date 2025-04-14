@@ -1791,7 +1791,7 @@ namespace spartan
             uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_material_textures);
             descriptors::bindless::update(&material_textures[0], rhi_max_array_size, binding_slot, RHI_Device_Bindless_Resource::MaterialTextures, "material_textures");
 
-            binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_material_parameteres);
+            binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_material_parameters);
             descriptors::bindless::update(material_parameteres, 1, binding_slot, RHI_Device_Bindless_Resource::MaterialParameters, "material_parameters");
         }
 

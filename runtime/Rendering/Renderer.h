@@ -132,7 +132,6 @@ namespace spartan
         static void CreateStandardMeshes();
         static void CreateStandardTextures();
         static void CreateStandardMaterials();
-        static bool ResourcesLoaded();
 
         // passes - core
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute);

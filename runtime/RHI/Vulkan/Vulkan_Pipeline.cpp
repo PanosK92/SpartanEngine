@@ -100,10 +100,12 @@ namespace spartan
             array<void*, static_cast<size_t>(RHI_Device_Bindless_Resource::Max) + 1> layouts;
             {
                 layouts[0] = descriptor_set_layout->GetRhiResource();
-                
+                SP_ASSERT(layouts[0] != nullptr);
+
                 for (size_t i = 0; i < static_cast<size_t>(RHI_Device_Bindless_Resource::Max); i++)
                 {
                     layouts[i + 1] = RHI_Device::GetDescriptorSetLayout(static_cast<RHI_Device_Bindless_Resource>(i));
+                    SP_ASSERT(layouts[i + 1] != nullptr);
                 }
             }
 
