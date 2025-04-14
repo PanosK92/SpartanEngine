@@ -489,7 +489,7 @@ namespace spartan
             const uint32_t tree_count         = 10'000;
             const uint32_t rock_count         = 10'000;
 
-            create_sun(true, Vector3(1.0f, 45.0f, 0.0f));
+            create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
             create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
             Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot

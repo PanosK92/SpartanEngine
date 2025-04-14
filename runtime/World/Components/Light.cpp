@@ -73,6 +73,19 @@ namespace spartan
 
             return Color::light_direct_sunlight;
         }
+
+        const float near_plane   = 0.03f;
+        const float depth_range  = 1000.0f; // beyond that, screen space shadows are enough
+        float shadow_extent_near = 0.0f;
+        float shadow_extent_far  = 0.0f;
+        void update_shadow_extents()
+        {
+            const BoundingBox world_bounds = World::GetBoundingBox();
+            const float max_extent         = world_bounds.GetExtents().Abs().Max();
+        
+            shadow_extent_near = 32.0f; // small and precise
+            shadow_extent_far  = max(128.0f, max_extent * 0.7f); // large and blurry
+        }
     }
 
     Light::Light(Entity* entity) : Component(entity)
@@ -405,9 +418,8 @@ namespace spartan
             // snapping to reduce shadow shimmering
             if (texture_width > 0)
             {
-                BoundingBox world_bounds = World::GetBoundingBox();
-                float max_extent         = world_bounds.GetExtents().Abs().Max();
-                float extents[2]         = { max_extent * 0.1f, max_extent * 0.7f }; // near and far extents, beyond the far extend the screen space shadows are more than enough
+                update_shadow_extents();
+                float extents[2] = { shadow_extent_near, shadow_extent_far };
     
                 for (int i = 0; i < 2; i++)
                 {
@@ -431,37 +443,20 @@ namespace spartan
     
     void Light::ComputeProjectionMatrix()
     {
-        const float near_plane  = 0.03f;   // near plane for other light types
-        const float depth_range = 1000.0f; // just an arbitrary value
-
         if (m_light_type == LightType::Directional)
         {
-            // get camera
-            Camera* camera = World::GetCamera();
-            if (!camera)
-                return;
-    
-            // compute lateral extents for near cascade based on camera fov
-            float split_distance = 15.0f;
-            float height_at_d    = 2.0f * split_distance * tan(camera->GetFovVerticalRad() / 2.0f);
-            float width_at_d     = height_at_d * camera->GetAspectRatio();
-            float near_extent    = max(width_at_d, height_at_d) / 2.0f;
-
-            // near cascade projection
+            // create near cascade projection using world bounds extents
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -near_extent, near_extent,
-                -near_extent, near_extent,
-                depth_range, 0.1f // reverse-Z: near = max, far = min
+                -shadow_extent_near, shadow_extent_near,
+                -shadow_extent_near, shadow_extent_near,
+                depth_range, near_plane 
             );
     
-            // further than this, screen space shadows are more than enough
-            float far_extent = 100.0f;
-    
-            // far cascade projection
+            // create far cascade projection
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
-                -far_extent, far_extent,
-                -far_extent, far_extent,
-                depth_range, 0.1f // reverse-Z: near = max, far = min
+                -shadow_extent_far, shadow_extent_far,
+                -shadow_extent_far, shadow_extent_far,
+                depth_range, near_plane
             );
     
             // update frustums for each cascade
