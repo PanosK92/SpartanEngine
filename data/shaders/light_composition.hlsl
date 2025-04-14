@@ -96,8 +96,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // for the opaque pass, fill in the opaque pixels, and for the transparent pass, fill in the transparent pixels
     else if ((pass_is_opaque() && surface.is_opaque()) || (pass_is_transparent() && surface.is_transparent()))
     {
-        light_diffuse        = tex_light_diffuse[thread_id.xy].rgb;
-        light_specular       = tex_light_specular[thread_id.xy].rgb;
+        light_diffuse        = tex_uav2[thread_id.xy].rgb;
+        light_specular       = tex_uav3[thread_id.xy].rgb;
         light_emissive       = surface.emissive * surface.albedo * 10.0f;
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
@@ -125,7 +125,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         light_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density * sky_color;
 
         // volumetric
-        light_atmospheric += tex_light_volumetric[thread_id.xy].rgb; // already uses sky color
+        light_atmospheric += tex_uav4[thread_id.xy].rgb; // already uses sky color
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
