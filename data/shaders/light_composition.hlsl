@@ -89,7 +89,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // during the compute pass, fill in the sky pixels
     if (surface.is_sky() && pass_is_opaque())
     {
-        light_emissive       = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
+        light_emissive       = tex3.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         alpha                = 0.0f;
         distance_from_camera = FLT_MAX_16;
     }
@@ -121,7 +121,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // atmospheric
         float max_mip     = pass_get_f3_value().x;
         float fog_density = pass_get_f3_value().y;
-        float3 sky_color  = tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
+        float3 sky_color  = tex3.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
         light_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density * sky_color;
 
         // volumetric

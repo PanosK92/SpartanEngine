@@ -598,133 +598,80 @@ namespace spartan
         standard_material->SetTexture(MaterialTextureType::Color,        Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
     }
 
-    void Renderer::WaitForValidResources()
+    bool Renderer::ResourcesLoaded()
     {
-        while (true)
+        // Check rasterizer states
+        for (const auto& rs : rasterizer_states)
         {
-            bool all_ready = true;
-    
-            for (const auto& rs : rasterizer_states)
-            {
-                if (!rs)
-                {
-                    all_ready = false;
-                    break;
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& dss : depth_stencil_states)
-                {
-                    if (!dss)
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& bs : blend_states)
-                {
-                    if (!bs)
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& rt : render_targets)
-                {
-                    if (!rt)
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& shader : shaders)
-                {
-                    if (!shader || !shader->IsCompiled())
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& sampler : samplers)
-                {
-                    if (!sampler)
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& buffer : buffers)
-                {
-                    if (!buffer)
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& tex : standard_textures)
-                {
-                    if (!tex)
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready)
-            {
-                for (const auto& mesh : standard_meshes)
-                {
-                    if (!mesh)
-                    {
-                        all_ready = false;
-                        break;
-                    }
-                }
-            }
-    
-            if (all_ready && (!standard_font))
-            {
-                all_ready = false;
-            }
-    
-            if (all_ready && (!standard_material))
-            {
-                all_ready = false;
-            }
-    
-            if (all_ready)
-                break;
-    
-            // otherwise, wait a bit and check again
-            this_thread::sleep_for(std::chrono::milliseconds(16));
+            if (!rs)
+                return false;
         }
+    
+        // Check depth stencil states
+        for (const auto& dss : depth_stencil_states)
+        {
+            if (!dss)
+                return false;
+        }
+    
+        // Check blend states
+        for (const auto& bs : blend_states)
+        {
+            if (!bs)
+                return false;
+        }
+    
+        // Check render targets
+        for (const auto& rt : render_targets)
+        {
+            if (!rt)
+                return false;
+        }
+    
+        // Check shaders
+        for (const auto& shader : shaders)
+        {
+            if (!shader || !shader->IsCompiled())
+                return false;
+        }
+    
+        // Check samplers
+        for (const auto& sampler : samplers)
+        {
+            if (!sampler)
+                return false;
+        }
+    
+        // Check buffers
+        for (const auto& buffer : buffers)
+        {
+            if (!buffer)
+                return false;
+        }
+    
+        // Check standard textures
+        for (const auto& tex : standard_textures)
+        {
+            if (!tex)
+                return false;
+        }
+    
+        // Check standard meshes
+        for (const auto& mesh : standard_meshes)
+        {
+            if (!mesh)
+                return false;
+        }
+    
+        // Check standard font
+        if (!standard_font)
+            return false;
+    
+        // Check standard material
+        if (!standard_material)
+            return false;
+    
+        return true;
     }
 
     void Renderer::DestroyResources()

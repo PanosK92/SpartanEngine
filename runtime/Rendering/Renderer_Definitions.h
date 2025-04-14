@@ -117,10 +117,10 @@ namespace spartan
         light_color = 6,
     
         // misc
-        environment = 7,
-        tex         = 8,
-        tex2        = 9,
-        tex3        = 10,
+        tex  = 7,
+        tex2 = 8,
+        tex3 = 9,
+        tex4 = 10,
 
         // bindless
         bindless_material_textures    = 11,

@@ -195,7 +195,7 @@ float3 prefilter_environment(float2 uv)
             mip_sample = clamp(mip_sample, 0.0, float(mip_count - 1));
 
             // sample from the calculated mip level
-            float3 sample_color = tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_sample).rgb;
+            float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_sample).rgb;
 
             // apply tone mapping to reduce the impact of very bright spots (e.g. sun)
             sample_color = sample_color / (1.0 + luminance(sample_color));

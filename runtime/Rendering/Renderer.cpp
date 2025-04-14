@@ -308,9 +308,7 @@ namespace spartan
         cmd_list_graphics->Begin(queue_graphics);
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
-        WaitForValidResources();
-
-        if (!World::IsLoading())
+        if (!World::IsLoading() && ResourcesLoaded())
         { 
             BuildDrawCallsAndOccluders(cmd_list_graphics);
             UpdateBuffers(cmd_list_graphics);

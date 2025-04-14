@@ -39,7 +39,7 @@ float3 sample_environment(float2 uv, float mip_level, float mip_max)
         uv = float2(0.5, 0.5);
     }
     
-    return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
+    return tex4.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
 float get_blend_weight(float value, float smoothness)
