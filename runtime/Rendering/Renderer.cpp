@@ -308,10 +308,11 @@ namespace spartan
         cmd_list_graphics->Begin(queue_graphics);
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
-        UpdateBuffers(cmd_list_graphics);
+       
         if (!World::IsLoading())
         {
             BuildDrawCallsAndOccluders(cmd_list_graphics);
+            UpdateBuffers(cmd_list_graphics); // needs to happen BuildDrawCallsAndOccluders(), it needs the latest draw calls
             ProduceFrame(cmd_list_graphics, cmd_list_compute);
         }
 
@@ -1010,9 +1011,9 @@ namespace spartan
         // cpu
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
-            const Renderer_DrawCall& draw_call = m_draw_calls[i];
-            Renderable* renderable             = draw_call.renderable;
-            const BoundingBox& aabb            = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(draw_call.instance_group_index) : renderable->GetBoundingBox();
+            const Renderer_DrawCall& draw_call   = m_draw_calls[i];
+            Renderable* renderable               = draw_call.renderable;
+            const BoundingBox& aabb              = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(draw_call.instance_group_index) : renderable->GetBoundingBox();
             m_bindless_aabbs[count].min          = aabb.GetMin();
             m_bindless_aabbs[count].max          = aabb.GetMax();
             m_bindless_aabbs[count].is_occluder  = draw_call.is_occluder;
