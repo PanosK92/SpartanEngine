@@ -486,85 +486,85 @@ namespace spartan
         }
     }
 
-    void Renderable::UpdateLodIndices()
+   void Renderable::UpdateLodIndices()
+{
+    // note: using projected angle for LOD selection, which is more perceptually accurate
+    // than screen height ratio, for example it will be more consistent across different resolutions
+
+    // static thresholds for projected angle (defined in degrees, converted to radians)
+    static const array<float, 4> lod_angle_thresholds =
     {
-        // note: using projected angle for LOD selection, which is more perceptually accurate
-        // than screen height ratio, for example it will be more consistent across different resolutions
-    
-        // static thresholds for projected angle (defined in degrees, converted to radians)
-        static const array<float, 4> lod_angle_thresholds =
+        60.0f * math::deg_to_rad,
+        40.0f * math::deg_to_rad,
+        20.0f * math::deg_to_rad,
+        10.0f * math::deg_to_rad 
+    };
+    const uint32_t lod_count  = GetLodCount();
+    const uint32_t max_lod    = lod_count - 1;
+    Camera* camera            = World::GetCamera();
+
+    // if no camera, use lowest detail lod for all
+    if (!camera)
+    {
+        m_lod_indices.fill(max_lod);
+        return;
+    }
+
+    // lambda to compute lod index using projected angle
+    const Vector3 camera_position = camera->GetEntity()->GetPosition();
+    auto compute_lod_index = [&](const BoundingBox& box, bool is_visible, uint32_t index)
+    {
+        // if not visible, use lowest detail lod
+        if (!is_visible)
         {
-            60.0f * math::deg_to_rad,
-            40.0f * math::deg_to_rad,
-            20.0f * math::deg_to_rad,
-            10.0f * math::deg_to_rad 
-        };
-        const uint32_t lod_count  = GetLodCount();
-        const uint32_t max_lod    = lod_count - 1;
-        Camera* camera            = World::GetCamera();
-    
-        // if no camera, use lowest detail lod for all
-        if (!camera)
-        {
-            m_lod_indices.fill(max_lod);
+            m_lod_indices[index] = max_lod;
             return;
         }
 
-        // lambda to compute lod index using projected angle
-        const Vector3 camera_position = camera->GetEntity()->GetPosition();
-        auto compute_lod_index = [&](const BoundingBox& box, bool is_visible, uint32_t index)
+        // compute bounding sphere from aabb for radius
+        float radius = box.GetExtents().Length(); // radius is length of extents vector
+
+        // compute distance from camera to closest point on AABB
+        Vector3 closest_point = box.GetClosestPoint(camera_position);
+        Vector3 to_closest    = closest_point - camera_position;
+        float distance        = to_closest.Length();
+
+        // if camera is inside or very close to the AABB, use highest detail lod
+        if (box.Contains(camera_position) || distance < 10.0f)
         {
-            // if not visible, use lowest detail lod
-            if (!is_visible)
-            {
-                m_lod_indices[index] = max_lod;
-                return;
-            }
-    
-            // compute bounding sphere from aabb
-            Vector3 center = box.GetCenter();
-            float radius   = box.GetExtents().Length(); // radius is length of extents vector
-    
-            // compute distance from camera to sphere center
-            Vector3 to_center = center - camera_position;
-            float distance    = to_center.Length();
-    
-            // if camera is inside the sphere, use highest detail lod
-            if (distance < radius)
-            {
-                m_lod_indices[index] = 0;
-                return;
-            }
-    
-            // compute projected angle (in radians) using the sphere
-            float projected_angle = 2.0f * atan(radius / distance);
-    
-            // determine lod index based on projected angle
-            uint32_t lod_index = max_lod;
-            for (uint32_t i = 0; i < lod_count - 1; i++)
-            {
-                if (projected_angle > lod_angle_thresholds[i])
-                {
-                    lod_index = i;
-                    break;
-                }
-            }
-    
-            m_lod_indices[index] = lod_index;
-        };
-    
-        if (HasInstancing())
+            m_lod_indices[index] = 0;
+            return;
+        }
+
+        // compute projected angle (in radians) using the sphere approximation
+        float projected_angle = 2.0f * atan(radius / distance);
+
+        // determine lod index based on projected angle
+        uint32_t lod_index = max_lod;
+        for (uint32_t i = 0; i < lod_count - 1; i++)
         {
-            for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
+            if (projected_angle > lod_angle_thresholds[i])
             {
-                const BoundingBox& box = GetBoundingBoxInstanceGroup(group_index);
-                compute_lod_index(box, IsVisible(group_index), group_index);
+                lod_index = i;
+                break;
             }
         }
-        else
+
+        m_lod_indices[index] = lod_index;
+    };
+
+    if (HasInstancing())
+    {
+        for (uint32_t group_index = 0; group_index < GetInstanceGroupCount(); group_index++)
         {
-            const BoundingBox& box = GetBoundingBox();
-            compute_lod_index(box, IsVisible(), 0);
+            const BoundingBox& box = GetBoundingBoxInstanceGroup(group_index);
+            compute_lod_index(box, IsVisible(group_index), group_index);
         }
     }
+    else
+    {
+        const BoundingBox& box = GetBoundingBox();
+        compute_lod_index(box, IsVisible(), 0);
+    }
+}
 }
