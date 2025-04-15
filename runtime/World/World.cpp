@@ -73,7 +73,7 @@ namespace spartan
     namespace day_night_cycle
     {
         float current_time = 0.25f;  // start at 6 am
-        float time_scale   = 100.0f; // 100x real time
+        float time_scale   = 200.0f; // 200x real time
 
         void tick()
         {

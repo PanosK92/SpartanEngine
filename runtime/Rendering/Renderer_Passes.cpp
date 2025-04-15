@@ -49,11 +49,6 @@ namespace spartan
     array<Renderer_DrawCall, renderer_max_entities> Renderer::m_draw_calls;
     uint32_t Renderer::m_draw_call_count;
 
-    namespace
-    {
-        bool light_integration_brdf_specular_lut_completed = false;
-    }
-
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
@@ -76,21 +71,18 @@ namespace spartan
         RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
-        Pass_VariableRateShading(cmd_list_graphics);
-
-        // light integration
+        // brdf specular lut
+        static bool brdf_specular_lut_produced = false;
+        if (!brdf_specular_lut_produced)
         {
-            if (!light_integration_brdf_specular_lut_completed)
-            {
-                Pass_Light_Integration_BrdfSpecularLut(cmd_list_graphics);
-                light_integration_brdf_specular_lut_completed = true;
-            }
-
-            Pass_Light_Integration_EnvironmentPrefilter(cmd_list_graphics);
+            Pass_Light_Integration_BrdfSpecularLut(cmd_list_graphics);
+            brdf_specular_lut_produced = true;
         }
 
         if (Camera* camera = World::GetCamera())
         {
+            Pass_VariableRateShading(cmd_list_graphics);
+
             // opaques
             {
                 Pass_Occlusion(cmd_list_graphics);
@@ -853,26 +845,66 @@ namespace spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        Light* light_directional = World::GetDirectionalLight();
-        if (!light_directional)
+        Light* light = World::GetDirectionalLight();
+        if (!light)
             return;
-
+    
+        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere);
+    
         cmd_list->BeginTimeblock("skysphere");
         {
-            // set pipeline state
-            RHI_PipelineState pso_skysphere;
-            pso_skysphere.name             = "skysphere";
-            pso_skysphere.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
-            cmd_list->SetPipelineState(pso_skysphere);
-
-            // set pass constants
-            m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light_directional->GetIndex()), 0.0f, 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::skysphere));
-            cmd_list->Dispatch(GetRenderTarget(Renderer_RenderTarget::skysphere));
+            if (m_environment_mips_to_filter_count == 0)
+            {
+                // atmospheric scattering
+                {
+                    // set pipeline state
+                    RHI_PipelineState pso;
+                    pso.name             = "skysphere_atmospheric_scattering";
+                    pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
+                    cmd_list->SetPipelineState(pso);
+    
+                    // set pass constants
+                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment);
+                    cmd_list->Dispatch(tex_environment);
+                }
+    
+                m_environment_mips_to_filter_count = tex_environment->GetMipCount() - 1;
+            }
+    
+            // filtering
+            if (m_environment_mips_to_filter_count > 0)
+            {
+                uint32_t mip_count = tex_environment->GetMipCount();
+                uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
+                SP_ASSERT(mip_level != 0);
+    
+                // set pipeline state
+                RHI_PipelineState pso;
+                pso.name             = "skyspher_filter";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
+                cmd_list->SetPipelineState(pso);
+    
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_environment);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+    
+                // set pass constants
+                m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                const uint32_t thread_group_count = 8;
+                const uint32_t resolution_x       = tex_environment->GetWidth()  >> mip_level;
+                const uint32_t resolution_y       = tex_environment->GetHeight() >> mip_level;
+                cmd_list->Dispatch(
+                    static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count)),
+                    static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count))
+                );
+    
+                m_environment_mips_to_filter_count--;
+            }
         }
-
         cmd_list->EndTimeblock();
     }
 
@@ -1097,68 +1129,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
             cmd_list->Dispatch(tex_brdf_specular_lut);
         }
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Light_Integration_EnvironmentPrefilter(RHI_CommandList* cmd_list)
-    {
-        static bool is_filtering_in_progress = false;
-    
-        if (m_environment_mips_to_filter_count == 0 && !is_filtering_in_progress)
-        {
-            if (Light* light = World::GetDirectionalLight())
-            {
-                m_environment_mips_to_filter_count = GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount() - 1;
-                is_filtering_in_progress = true;
-            }
-        }
-    
-        if (m_environment_mips_to_filter_count < 1)
-        {
-            is_filtering_in_progress = false;
-            return;
-        }
-    
-        // acquire resources
-        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Shader* shader_c         = GetShader(Renderer_Shader::light_integration_environment_filter_c);
-    
-        cmd_list->BeginTimeblock("light_integration_environment_filter");
-        {
-            uint32_t mip_count = tex_environment->GetMipCount();
-            uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
-            SP_ASSERT(mip_level != 0);
-    
-            // generate mips as light_integration.hlsl expects them
-            if (mip_level == 0)
-            { 
-                Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
-            }
-    
-            // set pipeline state
-            RHI_PipelineState pso;
-            pso.name             = "light_integration_environment_filter";
-            pso.shaders[Compute] = shader_c;
-            cmd_list->SetPipelineState(pso);
-    
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_environment);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-    
-            // set pass constants
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-            const uint32_t thread_group_count = 8;
-            const uint32_t resolution_x       = tex_environment->GetWidth()  >> mip_level;
-            const uint32_t resolution_y       = tex_environment->GetHeight() >> mip_level;
-            cmd_list->Dispatch(
-                static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count)),
-                static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count))
-            );
-    
-            m_environment_mips_to_filter_count--;
-        }
-
         cmd_list->EndTimeblock();
     }
 
