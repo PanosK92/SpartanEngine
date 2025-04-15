@@ -74,8 +74,8 @@ namespace spartan
             return Color::light_direct_sunlight;
         }
 
-        const float near_plane   = 0.03f;
-        const float depth_range  = 1000.0f; // beyond that, screen space shadows are enough
+        const float near_plane   = 0.05f;
+        const float depth_range  = 2000.0f; // beyond that, screen space shadows are enough
         float shadow_extent_near = 0.0f;
         float shadow_extent_far  = 0.0f;
         void update_shadow_extents()

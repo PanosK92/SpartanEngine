@@ -86,14 +86,21 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
     for (uint i = 0; i < g_shadow_sample_count; i++)
     {
-        float2 filter_size  = light.texel_size * g_shadow_filter_size * penumbra;
-        float2 offset       = vogel_disk_sample(i, g_shadow_sample_count, temporal_angle) * filter_size;
-        shadow_factor      += light.compare_depth(sample_coords + float3(offset, 0.0f), receiver_depth);
-    } 
+        float2 filter_size = light.texel_size * g_shadow_filter_size * penumbra;
+        float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, temporal_angle) * filter_size;
+        float2 sample_uv   = sample_coords.xy + offset;
+
+        // compute validity (1.0 = in-bounds, 0.0 = out-of-bounds)
+        float is_valid = step(0.0f, sample_uv.x) * step(sample_uv.x, 1.0f) * 
+                         step(0.0f, sample_uv.y) * step(sample_uv.y, 1.0f);
+
+        // scale depth comparison by validity
+        float depth_sample = light.compare_depth(float3(sample_uv, sample_coords.z), receiver_depth);
+        shadow_factor += depth_sample + (1.0f - depth_sample) * (1.0f - is_valid);
+    }
 
     return shadow_factor * g_shadow_sample_reciprocal;
 }
-
 float3 vogel_color(Light light, Surface surface, float3 sample_coords)
 {
     float3 shadow_color   = 0.0f;
@@ -118,7 +125,7 @@ float4 compute_shadow(Surface surface, Light light)
     if (light.distance_to_pixel <= light.far)
     {
         // compute world position with normal offset bias to reduce shadow acne
-        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * light.texel_size.x * 16.0f;
+        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * 0.1f;
         float3 position_world     = surface.position + normal_offset_bias;
 
         if (light.is_point())
@@ -162,7 +169,7 @@ float4 compute_shadow(Surface surface, Light light)
                 if (cascade_blend_factor > 0.0f)
                 {
                     const uint far_cascade = 1;
-                    float3 far_ndc         = world_to_ndc(position_world, light.transform[far_cascade]);
+                    float3 far_ndc         = world_to_ndc(position_world + normal_offset_bias, light.transform[far_cascade]);
                     float2 far_uv          = ndc_to_uv(far_ndc);
                     float  far_depth       = far_ndc.z;
                     float  far_shadow      = vogel_depth(light, surface, float3(far_uv, far_cascade), far_depth);
