@@ -218,12 +218,20 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
 
         atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light.intensity;
     }
-    
 
     // artistic touches
     float3 sun_color  = sun::compute_color(view_direction, sun_direction);
     float3 star_color = stars::compute_color(uv, sun_direction);
 
+    // add moon
+    float3 moon_direction = -sun_direction;
+    float3 moon_color     = 0.0;
+    if (dot(moon_direction, up_direction) > 0)
+    {
+         float3 moon_disc = sun::compute_mie_scatter_color(view_direction, moon_direction, 0.001f, -0.997f);
+         moon_color = moon_disc * float3(0.5, 0.65, 1.0);
+    }
+
     // compose output
-    tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color, 1.0);
+    tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color + moon_color, 1.0);
 }

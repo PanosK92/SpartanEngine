@@ -857,13 +857,11 @@ namespace spartan
             {
                 // atmospheric scattering
                 {
-                    // set pipeline state
                     RHI_PipelineState pso;
                     pso.name             = "skysphere_atmospheric_scattering";
                     pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
                     cmd_list->SetPipelineState(pso);
     
-                    // set pass constants
                     m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
                     cmd_list->PushConstants(m_pcb_pass_cpu);
     
@@ -881,9 +879,8 @@ namespace spartan
                 uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
                 SP_ASSERT(mip_level != 0);
     
-                // set pipeline state
                 RHI_PipelineState pso;
-                pso.name             = "skyspher_filter";
+                pso.name             = "skysphere_filter";
                 pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
                 cmd_list->SetPipelineState(pso);
     

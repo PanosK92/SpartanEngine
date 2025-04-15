@@ -164,9 +164,9 @@ float3 prefilter_environment(float2 uv)
 
     for (uint i = 0; i < sample_count; i++)
     {
-        float2 Xi = fibonacci_spiral(i, sample_count);
-        float3 H = importance_sample_ggx(Xi, N, roughness);
-        float3 L = normalize(2.0 * dot(V, H) * H - V);
+        float2 Xi     = fibonacci_spiral(i, sample_count);
+        float3 H      = importance_sample_ggx(Xi, N, roughness);
+        float3 L      = normalize(2.0 * dot(V, H) * H - V);
         float n_dot_l = saturate(dot(N, L));
         float n_dot_h = saturate(dot(N, H));
         float h_dot_v = saturate(dot(H, V));
