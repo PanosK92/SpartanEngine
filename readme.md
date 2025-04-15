@@ -29,7 +29,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 **Forest**
 <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/>
-The Forest world is one of the most advanced open-source game engine worlds available. It features **50 million** procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans **9.4 km²**, covered in **10,000** trees and rocks, and includes a fully drivable, physics-based car.
+The Forest is the most advanced and demanding world. It features **50 million** procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans **9.4 km²**, covered in **10,000** trees and rocks, and includes a drivable car.
 
 **Some of the other worlds**
 | Sponza | Doom |
@@ -102,7 +102,7 @@ I regularly upload livestreams and podcasts on my YouTube channel, discussing Sp
 
 # Support
 
-I personally cover the costs for Dropbox hosting to ensure library and assets bandwidth is available. If you enjoy the ease of running a single script and having everything download, compile and work seamlessly, please consider [sponsoring](https://github.com/sponsors/PanosK92) to help keep it that way. Sponsoring directly is much more helpful than boosting the Discord server since boosts only benefit Discord, not the project. Your support goes directly into maintaining and improving everything.
+I cover the costs for Dropbox hosting to ensure library and assets bandwidth is available. If you enjoy the ease of running a single script and having everything download, compile and work seamlessly, please consider [sponsoring](https://github.com/sponsors/PanosK92) to help keep it that way. Sponsoring directly is much more helpful than boosting the Discord server since boosts only benefit Discord, not the project. Your support goes directly into maintaining and improving everything.
 
 # Interesting Facts & Use Cases  
 
