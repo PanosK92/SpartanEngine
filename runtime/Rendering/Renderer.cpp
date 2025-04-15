@@ -308,11 +308,15 @@ namespace spartan
         cmd_list_graphics->Begin(queue_graphics);
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
-       
         if (!World::IsLoading())
         {
             BuildDrawCallsAndOccluders(cmd_list_graphics);
-            UpdateBuffers(cmd_list_graphics); // needs to happen after BuildDrawCallsAndOccluders(), it needs the latest draw calls
+        }
+
+        UpdateBuffers(cmd_list_graphics); // needs to happen after BuildDrawCallsAndOccluders(), it needs the latest draw calls
+
+        if (!World::IsLoading())
+        {
             ProduceFrame(cmd_list_graphics, cmd_list_compute);
         }
 
@@ -793,7 +797,6 @@ namespace spartan
 
     void Renderer::UpdateBindlessBuffers(RHI_CommandList* cmd_list)
     {
-        // materials and their textures
         if (m_bindless_materials_dirty)
         {
             BindlessUpdateMaterialsParameters(cmd_list);
@@ -801,7 +804,6 @@ namespace spartan
             m_bindless_materials_dirty = false;
         }
         
-        // lights
         if (m_bindless_lights_dirty)
         {
             BindlessUpdateLights(cmd_list);
@@ -809,7 +811,6 @@ namespace spartan
             m_bindless_lights_dirty = false;
         }
         
-        // bounding boxes
         if (m_bindless_abbs_dirty)
         {
             BindlessUpdateOccludersAndOccludes(cmd_list);

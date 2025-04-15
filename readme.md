@@ -29,7 +29,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 **Forest**
 <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/>
-The Forest world is one of the most advanced open-source game engine worlds available. It features **5 million** procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans **9.4 km²**, covered in **10,000** trees, and includes a fully drivable, physics-based car with realistic tire friction, gearbox simulation, and an anti-roll bar system.
+The Forest world is one of the most advanced open-source game engine worlds available. It features **50 million** procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans **9.4 km²**, covered in **10,000** trees and rocks, and includes a fully drivable, physics-based car.
 
 **Some of the other worlds**
 | Sponza | Doom |

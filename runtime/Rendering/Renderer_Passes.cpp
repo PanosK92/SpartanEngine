@@ -65,7 +65,7 @@ namespace spartan
     {
         SP_PROFILE_CPU();
 
-        // early exit if one or more shader aren't ready
+        // early exit if one or more shaders aren't ready
         for (const auto& shader : GetShaders())
         {
             if (!shader || !shader->IsCompiled())

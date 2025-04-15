@@ -24,8 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float g_ao_radius    = 3.0f;
-static const float g_ao_intensity = 3.0f;
+static const float g_ao_radius    = 2.0f;
+static const float g_ao_intensity = 2.0f;
 static const float offsets[]      = { 0.0f, 0.5f, 0.25f, 0.75f };
 static const float rotations[]    = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
 
@@ -34,8 +34,8 @@ static const float ao_radius2        = g_ao_radius * g_ao_radius;
 static const float ao_negInvRadius2  = -1.0f / ao_radius2;
 
 // adaptive sampling constants
-static const uint g_directions = 5;
-static const uint g_steps      = 4;
+static const uint g_directions = 2;
+static const uint g_steps      = 2;
 
 float get_offset_non_temporal(uint2 screen_pos)
 {
