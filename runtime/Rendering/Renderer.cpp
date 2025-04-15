@@ -308,6 +308,8 @@ namespace spartan
         cmd_list_graphics->Begin(queue_graphics);
         //cmd_list_compute->Begin(queue_compute); // todo: async compute
 
+        m_draw_call_count = 0;
+
         if (!World::IsLoading())
         {
             BuildDrawCallsAndOccluders(cmd_list_graphics);
@@ -1037,9 +1039,7 @@ namespace spartan
         cmd_list->BeginTimeblock("build_draw_calls_and_occluders", false, false);
         {
             // build draw calls and sort them
-            {
-                m_draw_call_count = 0;
-        
+            {  
                 for (const shared_ptr<Entity>& entity : World::GetEntities())
                 {
                     if (!entity->IsActive())

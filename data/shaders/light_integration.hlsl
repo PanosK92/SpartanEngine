@@ -151,7 +151,7 @@ float3 prefilter_environment(float2 uv)
     uint mip_level        = pass_get_f3_value().x;
     uint mip_count        = pass_get_f3_value().y;
 
-    const uint sample_count = 16384 / max(mip_level, 1);
+    const uint sample_count = 512 / max(mip_level, 1);
     float roughness = (float)mip_level / (float)(mip_count - 1);
 
     // convert spherical uv to direction
