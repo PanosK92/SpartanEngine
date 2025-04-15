@@ -84,7 +84,7 @@ namespace spartan
             const float max_extent         = world_bounds.GetExtents().Abs().Max();
         
             shadow_extent_near = 32.0f; // small and precise
-            shadow_extent_far  = max(128.0f, max_extent * 0.7f); // large and blurry
+            shadow_extent_far  = max(128.0f, max_extent * 0.5f); // large and blurry - going too large can cause artifacts, a clamp would work better here
         }
     }
 
