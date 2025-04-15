@@ -106,19 +106,18 @@ namespace spartan
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsTransparent);
         SetFlag(LightFlags::ShadowsScreenSpace);
-        //SetFlag(LightFlags::DayNightCycle);
+        SetFlag(LightFlags::DayNightCycle);
 
         m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
     }
 
     void Light::OnTick()
     {
-        // update matrices and request filtering
+        // update matrices
         bool update_matrices = false;
         if (GetEntity()->GetTimeSinceLastTransform() <= 0.1f)
         {
-            m_filtering_needed = m_light_type == LightType::Directional;
-            update_matrices    = true;
+            update_matrices = true;
         }
 
         if (m_light_type == LightType::Directional)
@@ -226,7 +225,6 @@ namespace spartan
                 }
             }
 
-            m_filtering_needed = true;
             SP_FIRE_EVENT(EventType::LightOnChanged);
         }
     }
@@ -250,7 +248,6 @@ namespace spartan
         m_temperature_kelvin = temperature_kelvin;
         m_color_rgb          = Color(temperature_kelvin);
 
-        m_filtering_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -281,7 +278,6 @@ namespace spartan
         else if (rgb == Color::light_photo_flash)
             m_temperature_kelvin = 5500.0f;
 
-        m_filtering_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -322,7 +318,6 @@ namespace spartan
             m_intensity_lumens_lux = 0.0f;
         }
 
-        m_filtering_needed = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -330,7 +325,6 @@ namespace spartan
     {
         m_intensity_lumens_lux = lumens;
         m_intensity            = LightIntensity::custom;
-        m_filtering_needed     = true;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -372,18 +366,6 @@ namespace spartan
 
         m_angle_rad = angle;
         UpdateMatrices();
-    }
-
-    void Light::DisableFilterPending()
-    {
-        m_filtering_needed = false;
-    }
-
-    bool Light::IsFilteringPending() const
-    {
-        // if filtering needs to happen, wait for the light to be inactive for a few seconds, which means the user has stopped moving it
-        const float inactive_time = 1.0f;
-        return m_filtering_needed && (GetEntity()->GetTimeSinceLastTransform() >= inactive_time);
     }
 
     void Light::UpdateMatrices()

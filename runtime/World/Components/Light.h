@@ -126,10 +126,6 @@ namespace spartan
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
 
-        // filtering
-        void DisableFilterPending();
-        bool IsFilteringPending() const;
-
     private:
         void UpdateMatrices();
         void ComputeViewMatrix();
@@ -154,6 +150,5 @@ namespace spartan
         float m_range              = 32.0f;
         float m_angle_rad          = math::deg_to_rad * 30.0f;
         uint32_t m_index           = 0;
-        bool m_filtering_needed    = false;
     };
 }
