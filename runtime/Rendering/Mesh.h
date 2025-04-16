@@ -73,6 +73,7 @@ namespace spartan
     struct SubMesh
     {
         std::vector<MeshLod> lods; // list of LOD levels for this sub-mesh
+        bool is_solid = true;      // if false, it won't be used for occlusion culling (e.g. something with a gap)
     };
 
     class Mesh : public IResource
@@ -96,6 +97,7 @@ namespace spartan
         const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
         MeshLodDropoff GetLodDropoff() const                  { return m_lod_dropoff; }
         void SetLodDropoff(const MeshLodDropoff dropoff)      { m_lod_dropoff = dropoff; }
+        bool IsSolid(const uint32_t sub_mesh_index) const     { return m_sub_meshes[sub_mesh_index].is_solid; }
 
         // get counts
         uint32_t GetVertexCount() const;

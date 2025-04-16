@@ -457,6 +457,13 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                 ImGui::SameLine(column_pos_x);
                 ImGui::LabelText("##renderable_lod_index", to_string(renderable->GetLodIndex()).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
             }
+
+            // is solid
+            {
+                ImGui::Text("Solid");
+                ImGui::SameLine(column_pos_x);
+                ImGui::LabelText("##renderable_solid", to_string(renderable->IsSolid()).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+            }
         }
 
         // instancing

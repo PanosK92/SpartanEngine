@@ -36,6 +36,74 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        // determines if a sub-mesh is a solid occluder by casting rays from AABB face centers to the center
+        bool is_solid(Mesh& mesh, uint32_t sub_mesh_index)
+        {
+            // get aabb from the highest lod (lod 0)
+            const MeshLod& lod = mesh.GetSubMesh(sub_mesh_index).lods[0];
+            BoundingBox aabb   = lod.aabb;
+            Vector3 center     = aabb.GetCenter();
+
+            // define face centers of the AABB (six faces)
+            vector<Vector3> face_centers =
+            {
+                Vector3(aabb.GetMin().x, center.y, center.z), // Left face
+                Vector3(aabb.GetMax().x, center.y, center.z), // Right face
+                Vector3(center.x, aabb.GetMin().y, center.z), // Bottom face
+                Vector3(center.x, aabb.GetMax().y, center.z), // Top face
+                Vector3(center.x, center.y, aabb.GetMin().z), // Front face
+                Vector3(center.x, center.y, aabb.GetMax().z)  // Back face
+            };
+
+            // get mesh geometry (indices and vertices)
+            vector<uint32_t> indices;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            mesh.GetGeometry(sub_mesh_index, &indices, &vertices);
+            if (indices.empty() || vertices.empty())
+            {
+                SP_LOG_ERROR("Failed to retrieve mesh geometry for sub-mesh %u", sub_mesh_index);
+                return false;
+            }
+
+            // test rays from each face center to the AABB center
+            int intersect_count = 0;
+            for (const Vector3& face_center : face_centers)
+            {
+                // compute ray direction (from face center to AABB center)
+                Vector3 direction = center - face_center;
+                direction.Normalize();
+
+                // create a ray
+                Ray ray(face_center, direction);
+
+                // check for intersection with any triangle
+                bool intersects = false;
+                for (size_t i = 0; i < indices.size(); i += 3)
+                {
+                    Vector3 v0 = vertices[indices[i]].pos;
+                    Vector3 v1 = vertices[indices[i + 1]].pos;
+                    Vector3 v2 = vertices[indices[i + 2]].pos;
+
+                    float distance = ray.HitDistance(v0, v1, v2);
+                    if (distance != numeric_limits<float>::infinity())
+                    {
+                        intersects = true;
+                        break;
+                    }
+                }
+                if (intersects)
+                {
+                    intersect_count++;
+                }
+            }
+
+            // mesh is a solid occluder if most rays intersect
+            return intersect_count > 3;
+        }
+    }
+
     Mesh::Mesh() : IResource(ResourceType::Mesh)
     {
         m_flags = GetDefaultFlags();
@@ -184,6 +252,9 @@ namespace spartan
 
             // add the original geometry as lod 0
             AddLod(vertices, indices, current_sub_mesh_index);
+
+            // determine if it's solid
+            m_sub_meshes[current_sub_mesh_index].is_solid = is_solid(*this, current_sub_mesh_index);
         }
     
         // generate additional LODs if requested

@@ -1149,8 +1149,8 @@ namespace spartan
                     Renderable* renderable       = draw_call.renderable;
                     Material* material           = renderable->GetMaterial();
             
-                    // skip if material is null, transparent, or alpha-tested (unreliable occluders)
-                    if (!material || material->IsTransparent())
+                    // skip if material is null, transparent, or alpha-tested or non-solid (unreliable occluders)
+                    if (!material || material->IsTransparent() || !renderable->IsSolid())
                         continue;
             
                     // get bounding box

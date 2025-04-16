@@ -64,6 +64,7 @@ namespace spartan
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
         bool HasMesh() const { return m_mesh != nullptr; }
+        bool IsSolid() const;
 
         // bounding box
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const               { return m_instance_group_end_indices; }
