@@ -38,16 +38,23 @@ namespace spartan
 {
     namespace
     {
-        // determines if a sub-mesh is a solid occluder by casting rays from aabb face centers to the center
         bool is_solid(Mesh& mesh, uint32_t sub_mesh_index)
         {
-            // get aabb from the highest lod (lod 0)
             const MeshLod& lod = mesh.GetSubMesh(sub_mesh_index).lods[0];
             BoundingBox aabb   = lod.aabb;
             Vector3 center     = aabb.GetCenter();
-
-            // define face centers of the AABB (six faces)
-            vector<Vector3> face_centers =
+            constexpr float outward_offset = 1.0f;
+        
+            // define face normals
+            array<Vector3, 6> normals =
+            {
+                Vector3::Left, Vector3::Right,
+                Vector3::Down, Vector3::Up,
+                Vector3::Backward, Vector3::Forward
+            };
+        
+            // define unshifted face centers
+            array<Vector3, 6> face_centers =
             {
                 Vector3(aabb.GetMin().x, center.y, center.z), // left face
                 Vector3(aabb.GetMax().x, center.y, center.z), // right face
@@ -56,36 +63,34 @@ namespace spartan
                 Vector3(center.x, center.y, aabb.GetMin().z), // front face
                 Vector3(center.x, center.y, aabb.GetMax().z)  // back face
             };
+        
+            // offset face centers slightly outward to avoid being inside the mesh
+            for (size_t i = 0; i < face_centers.size(); ++i)
+            {
+                face_centers[i] += normals[i] * outward_offset;
+            }
 
-            // get mesh geometry (indices and vertices)
+            // get geometry
             vector<uint32_t> indices;
             vector<RHI_Vertex_PosTexNorTan> vertices;
             mesh.GetGeometry(sub_mesh_index, &indices, &vertices);
-            if (indices.empty() || vertices.empty())
-            {
-                SP_LOG_ERROR("Failed to retrieve mesh geometry for sub-mesh %u", sub_mesh_index);
-                return false;
-            }
 
-            // test rays from each face center to the aabb center
+            // shoot rays
             int intersect_count = 0;
             for (const Vector3& face_center : face_centers)
             {
-                // compute ray direction (from face center to aabb center)
                 Vector3 direction = center - face_center;
                 direction.Normalize();
-
-                // create a ray
+        
                 Ray ray(face_center, direction);
-
-                // check for intersection with any triangle
+        
                 bool intersects = false;
-                for (size_t i = 0; i < indices.size(); i += 3)
+                for (size_t j = 0; j < indices.size(); j += 3)
                 {
-                    Vector3 v0 = vertices[indices[i]].pos;
-                    Vector3 v1 = vertices[indices[i + 1]].pos;
-                    Vector3 v2 = vertices[indices[i + 2]].pos;
-
+                    const Vector3& v0 = vertices[indices[j + 0]].pos;
+                    const Vector3& v1 = vertices[indices[j + 1]].pos;
+                    const Vector3& v2 = vertices[indices[j + 2]].pos;
+        
                     float distance = ray.HitDistance(v0, v1, v2);
                     if (distance != numeric_limits<float>::infinity())
                     {
@@ -93,14 +98,15 @@ namespace spartan
                         break;
                     }
                 }
+        
                 if (intersects)
                 {
                     intersect_count++;
                 }
             }
 
-            // mesh is a solid occluder if most rays intersect
-            return intersect_count > 3;
+            // a pillar can get hit from 4 sides but top and bottom could have no faces
+            return intersect_count >= 4;
         }
     }
 
