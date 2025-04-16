@@ -38,7 +38,7 @@ namespace spartan
 {
     namespace
     {
-        // determines if a sub-mesh is a solid occluder by casting rays from AABB face centers to the center
+        // determines if a sub-mesh is a solid occluder by casting rays from aabb face centers to the center
         bool is_solid(Mesh& mesh, uint32_t sub_mesh_index)
         {
             // get aabb from the highest lod (lod 0)
@@ -49,12 +49,12 @@ namespace spartan
             // define face centers of the AABB (six faces)
             vector<Vector3> face_centers =
             {
-                Vector3(aabb.GetMin().x, center.y, center.z), // Left face
-                Vector3(aabb.GetMax().x, center.y, center.z), // Right face
-                Vector3(center.x, aabb.GetMin().y, center.z), // Bottom face
-                Vector3(center.x, aabb.GetMax().y, center.z), // Top face
-                Vector3(center.x, center.y, aabb.GetMin().z), // Front face
-                Vector3(center.x, center.y, aabb.GetMax().z)  // Back face
+                Vector3(aabb.GetMin().x, center.y, center.z), // left face
+                Vector3(aabb.GetMax().x, center.y, center.z), // right face
+                Vector3(center.x, aabb.GetMin().y, center.z), // bottom face
+                Vector3(center.x, aabb.GetMax().y, center.z), // top face
+                Vector3(center.x, center.y, aabb.GetMin().z), // front face
+                Vector3(center.x, center.y, aabb.GetMax().z)  // back face
             };
 
             // get mesh geometry (indices and vertices)
@@ -67,11 +67,11 @@ namespace spartan
                 return false;
             }
 
-            // test rays from each face center to the AABB center
+            // test rays from each face center to the aabb center
             int intersect_count = 0;
             for (const Vector3& face_center : face_centers)
             {
-                // compute ray direction (from face center to AABB center)
+                // compute ray direction (from face center to aabb center)
                 Vector3 direction = center - face_center;
                 direction.Normalize();
 

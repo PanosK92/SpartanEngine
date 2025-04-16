@@ -462,7 +462,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             {
                 ImGui::Text("Solid");
                 ImGui::SameLine(column_pos_x);
-                ImGui::LabelText("##renderable_solid", to_string(renderable->IsSolid()).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+                ImGui::LabelText("##renderable_solid", renderable->IsSolid() ? "True" : "False", ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
             }
         }
 
