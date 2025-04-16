@@ -315,32 +315,23 @@ namespace ImGui::RHI
                         {
                             // set texture and update texture viewer parameters
                             {
-                                bool m_channel_r           = false;
-                                bool m_channel_g           = false;
-                                bool m_channel_b           = false;
-                                bool m_channel_a           = false;
-                                bool m_gamma_correct       = false;
-                                bool m_pack                = false;
-                                bool m_boost               = false;
-                                bool m_abs                 = false;
-                                bool m_point_sampling      = false;
-                                float mip_and_array_packed = 0.0f;
+                                float mip_level            = 0.0f;
+                                float array_level          = 0.0f;
                                 bool is_texture_visualised = false;
                                 bool is_frame_texture      = false;
-
+                                
                                 if (RHI_Texture* texture = reinterpret_cast<RHI_Texture*>(pcmd->TextureId))
                                 {
                                     is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
-
+                                
                                     // during engine startup, some textures might be loading in different threads
                                     if (texture->GetResourceState() == ResourceState::PreparedForGpu)
                                     {
                                         // update texture viewer parameters
                                         is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                        int mip_level         = TextureViewer::GetMipLevel();
-                                        int array_level       = TextureViewer::GetArrayLevel();
-                                        mip_and_array_packed  = static_cast<float>(mip_level) + static_cast<float>(array_level) * 0.03125f; // 1/32 = 0.03125
-
+                                        mip_level = static_cast<float>(TextureViewer::GetMipLevel());
+                                        array_level = static_cast<float>(TextureViewer::GetArrayLevel());
+                                
                                         if (array_level > 0)
                                         {
                                             cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, texture);
@@ -349,26 +340,29 @@ namespace ImGui::RHI
                                         { 
                                             cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
                                         }
-
-                                        if (is_texture_visualised)
-                                        {
-                                            m_channel_r      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_R;
-                                            m_channel_g      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_G;
-                                            m_channel_b      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_B;
-                                            m_channel_a      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_A;
-                                            m_gamma_correct  = TextureViewer::GetVisualisationFlags() & Visualise_GammaCorrect;
-                                            m_pack           = TextureViewer::GetVisualisationFlags() & Visualise_Pack;
-                                            m_boost          = TextureViewer::GetVisualisationFlags() & Visualise_Boost;
-                                            m_abs            = TextureViewer::GetVisualisationFlags() & Visualise_Abs;
-                                            m_point_sampling = TextureViewer::GetVisualisationFlags() & Visualise_Sample_Point;
-                                        }
                                     }
                                 }
-
-                                rhi_resources->push_constant_buffer_pass.set_f4_value(m_channel_r, m_channel_g, m_channel_b, m_channel_a);
-                                rhi_resources->push_constant_buffer_pass.set_f3_value(m_gamma_correct, m_pack, m_boost);
-                                rhi_resources->push_constant_buffer_pass.set_f3_value2(m_abs, m_point_sampling, mip_and_array_packed);
-                                rhi_resources->push_constant_buffer_pass.set_is_transparent_and_material_index(is_texture_visualised, is_frame_texture ? 1 : 0);
+                                
+                                // pack booleans into uint bitfield
+                                uint32_t flags = 0;
+                                if (is_texture_visualised)
+                                {
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_R)    ? (1u << 0) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_G)    ? (1u << 1) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_B)    ? (1u << 2) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_A)    ? (1u << 3) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_GammaCorrect) ? (1u << 4) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Pack)         ? (1u << 5) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Boost)        ? (1u << 6) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Abs)          ? (1u << 7) : 0;
+                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Sample_Point) ? (1u << 8) : 0;
+                                }
+                                flags |= is_texture_visualised ? (1u << 9) : 0;
+                                flags |= is_frame_texture      ? (1u << 10) : 0;
+                                
+                                // store bitfield in m00 and mip/array levels in m23, m30
+                                rhi_resources->push_constant_buffer_pass.set_f3_value(*reinterpret_cast<float*>(&flags), 0.0f, 0.0f);
+                                rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
                             }
 
                             // compute transform matrix
