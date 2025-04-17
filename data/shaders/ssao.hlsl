@@ -24,18 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float g_ao_radius    = 2.0f;
-static const float g_ao_intensity = 2.0f;
-static const float offsets[]      = { 0.0f, 0.5f, 0.25f, 0.75f };
-static const float rotations[]    = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
-
-// derived constants
-static const float ao_radius2        = g_ao_radius * g_ao_radius;
-static const float ao_negInvRadius2  = -1.0f / ao_radius2;
-
-// adaptive sampling constants
-static const uint g_directions = 2;
-static const uint g_steps      = 2;
+static const float g_ao_radius      = 32.0f;
+static const float g_ao_intensity   = 1.0f;
+static const uint g_directions      = 4;
+static const uint g_steps           = 4;
+static const float ao_radius2       = g_ao_radius * g_ao_radius;
+static const float ao_negInvRadius2 = -1.0f / ao_radius2;
 
 float get_offset_non_temporal(uint2 screen_pos)
 {
@@ -43,58 +37,78 @@ float get_offset_non_temporal(uint2 screen_pos)
     return 0.25 * (float)((position.y - position.x) & 3);
 }
 
-float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 sample_position)
+float compute_horizon_occlusion(float3 origin_position, float3 origin_normal, float2 sample_uv, float2 resolution)
 {
-    float3 origin_to_sample = get_position_view_space(sample_position) - origin_position;
-    float distance2         = dot(origin_to_sample, origin_to_sample);
-    float occlusion         = dot(origin_normal, origin_to_sample) * rsqrt(distance2);
-    float falloff           = saturate(distance2 * ao_negInvRadius2 + 1.0f);
+    float3 sample_position = get_position_view_space(sample_uv);
+    float3 origin_to_sample = sample_position - origin_position;
+    float distance2 = dot(origin_to_sample, origin_to_sample);
+    
+    // early out if sample is too far
+    if (distance2 > ao_radius2)
+        return 0.0f;
 
-    return occlusion * falloff;
+    // normalize direction and compute cosine term
+    float3 direction = origin_to_sample * rsqrt(distance2);
+    float cos_horizon = max(0.0f, dot(origin_normal, direction));
+    
+    // falloff based on distance
+    float falloff = saturate(distance2 * ao_negInvRadius2 + 1.0f);
+    
+    // GTAO-inspired occlusion: cosine-weighted contribution
+    return cos_horizon * falloff;
 }
 
-float compute_ssao(uint2 pos, float2 resolution_out)
+float compute_gtao(uint2 pos, float2 resolution_out)
 {
-    const float2 origin_uv       = (pos + 0.5f) / resolution_out;
+    const float2 origin_uv = (pos + 0.5f) / resolution_out;
     const float3 origin_position = get_position_view_space(origin_uv);
-    const float3 origin_normal   = get_normal_view_space(origin_uv);
-    
+    const float3 origin_normal = get_normal_view_space(origin_uv);
+
+    // reuse your surface roughness if needed (optional)
     Surface surface;
     surface.Build(pos, resolution_out, true, false);
-    const float roughness = surface.roughness;
+    const float roughness = surface.roughness; // Could modulate intensity if desired
 
+    // GTAO parameters
     float ao_samples     = (float)(g_directions * g_steps);
     float ao_samples_rcp = 1.0f / ao_samples;
+    float2 texel_size    = 1.0f / resolution_out;
 
-    const float pixel_offset = max((g_ao_radius * resolution_out.x * 0.5f) / origin_position.z, (float)g_steps);
-    const float step_offset  = pixel_offset / float(g_steps + 1.0f);
+    // temporal noise for stability
+    const float noise_gradient_temporal = get_noise_interleaved_gradient(pos);
+    const float offset_spatial = get_offset_non_temporal(pos);
+    const float ray_offset = frac(offset_spatial + noise_gradient_temporal);
 
-    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos);
-    const float offset_spatial           = get_offset_non_temporal(pos);
-    const float offset_temporal          = offsets[buffer_frame.frame % 4];
-    const float offset_rotation_temporal = rotations[buffer_frame.frame % 6];
-    const float ray_offset               = frac(offset_spatial + offset_temporal) + (get_noise_random(origin_uv) * 2.0 - 1.0) * 0.25;
-
-    float2 texel_size = 1.0f / resolution_out;
-    float occlusion   = 0.0f;
+    float occlusion = 0.0f;
     [loop]
     for (uint direction_index = 0; direction_index < g_directions; direction_index++)
     {
-        float rotation_angle      = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * (PI2 / (float)g_directions);
-        float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * texel_size;
+        // distribute directions evenly across 2PI, with temporal noise
+        float rotation_angle = (direction_index + ray_offset) * (PI2 / (float)g_directions);
+        float2 direction = float2(cos(rotation_angle), sin(rotation_angle)) * texel_size;
 
+        // horizon-based sampling along each direction
         [loop]
         for (uint step_index = 0; step_index < g_steps; step_index++)
         {
-            float2 uv_offset       = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
-            uint2 sample_pos       = (origin_uv + uv_offset) * buffer_frame.resolution_render;
-            float sample_occlusion = compute_occlusion(origin_position, origin_normal, sample_pos);
+            // linear sampling along the direction
+            float step_size = g_ao_radius * ((step_index + 1.0f) / (float)g_steps);
+            float2 uv_offset = direction * step_size;
+            float2 sample_uv = origin_uv + uv_offset;
 
+            // ensure sample is within bounds
+            if (sample_uv.x < 0.0f || sample_uv.x > 1.0f || sample_uv.y < 0.0f || sample_uv.y > 1.0f)
+                continue;
+
+            // compute horizon occlusion
+            float sample_occlusion = compute_horizon_occlusion(origin_position, origin_normal, sample_uv, resolution_out);
             occlusion += sample_occlusion;
         }
     }
 
-    return 1.0f - saturate(occlusion * ao_samples_rcp * g_ao_intensity);
+    // normalize and apply intensity
+    float visibility = 1.0f - saturate(occlusion * ao_samples_rcp * g_ao_intensity);
+    return visibility;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -103,6 +117,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
 
-    float visibility      = compute_ssao(thread_id.xy, resolution_out);
+    // ensure thread is within bounds
+    if (thread_id.x >= resolution_out.x || thread_id.y >= resolution_out.y)
+        return;
+
+    float visibility = compute_gtao(thread_id.xy, resolution_out);
     tex_uav[thread_id.xy] = visibility;
 }
