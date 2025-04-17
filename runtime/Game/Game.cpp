@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Game.h"
 #include "../Game/Car.h"
-#include "../Physics/Physics.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
@@ -98,6 +97,7 @@ namespace spartan
             light->SetTemperature(2300.0f);
             light->SetFlag(LightFlags::Shadows, enabled);
             light->SetFlag(LightFlags::ShadowsTransparent, false);
+            light->SetFlag(LightFlags::DayNightCycle, false);
         }
 
         void create_floor()

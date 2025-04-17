@@ -182,7 +182,10 @@ namespace spartan
             compute_bounding_box();
         }
 
-        day_night_cycle::tick();
+        if (Engine::IsFlagSet(EngineMode::Playing))
+        { 
+            day_night_cycle::tick();
+        }
         Game::Tick();
     }
 
