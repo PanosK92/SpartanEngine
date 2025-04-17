@@ -43,13 +43,12 @@ namespace spartan
             const MeshLod& lod = mesh.GetSubMesh(sub_mesh_index).lods[0];
             BoundingBox aabb   = lod.aabb;
             Vector3 center     = aabb.GetCenter();
-            constexpr float outward_offset = 1.0f;
-        
+
             // define face normals
             array<Vector3, 6> normals =
             {
-                Vector3::Left, Vector3::Right,
-                Vector3::Down, Vector3::Up,
+                Vector3::Left,     Vector3::Right,
+                Vector3::Down,     Vector3::Up,
                 Vector3::Backward, Vector3::Forward
             };
         
@@ -64,10 +63,10 @@ namespace spartan
                 Vector3(center.x, center.y, aabb.GetMax().z)  // back face
             };
         
-            // offset face centers slightly outward to avoid being inside the mesh
+            // offset face centers slightly outward to avoid being on the mesh
             for (size_t i = 0; i < face_centers.size(); ++i)
             {
-                face_centers[i] += normals[i] * outward_offset;
+                face_centers[i] += normals[i];
             }
 
             // get geometry
