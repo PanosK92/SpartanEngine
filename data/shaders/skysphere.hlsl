@@ -130,8 +130,8 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
     float2 uv = (float2(thread_id.xy) + 0.5f) / resolution;
 
     // convert uv to view direction (spherical mapping for skysphere)
-    float phi             = uv.x * 2.0 * PI; // azimuth: 0 to 2π
-    float theta           = -uv.y * PI;      // zenith: 0 (top) to π (bottom)
+    float phi             = uv.x * PI2; // azimuth: 0 to 2π
+    float theta           = -uv.y * PI; // zenith: 0 (top) to π (bottom)
     float sin_theta       = sin(theta);
     float cos_theta       = cos(theta);
     float3 view_direction = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));

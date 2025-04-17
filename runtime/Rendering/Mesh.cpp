@@ -44,15 +44,15 @@ namespace spartan
             BoundingBox aabb   = lod.aabb;
             Vector3 center     = aabb.GetCenter();
 
-            // define face normals
-            array<Vector3, 6> normals =
+            // face normals
+            static array<Vector3, 6> normals =
             {
                 Vector3::Left,     Vector3::Right,
                 Vector3::Down,     Vector3::Up,
                 Vector3::Backward, Vector3::Forward
             };
         
-            // define unshifted face centers
+            // face centers
             array<Vector3, 6> face_centers =
             {
                 Vector3(aabb.GetMin().x, center.y, center.z), // left face
@@ -75,7 +75,7 @@ namespace spartan
             mesh.GetGeometry(sub_mesh_index, &indices, &vertices);
 
             // shoot rays
-            int intersect_count = 0;
+            uint32_t intersect_count = 0;
             for (const Vector3& face_center : face_centers)
             {
                 Vector3 direction = center - face_center;

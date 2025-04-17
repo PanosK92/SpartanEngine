@@ -850,56 +850,51 @@ namespace spartan
             return;
     
         RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        uint32_t mip_count = tex_environment->GetMipCount();
     
         cmd_list->BeginTimeblock("skysphere");
         {
-            if (m_environment_mips_to_filter_count == 0)
+            // 1. atmospheric scattering
             {
-                // atmospheric scattering
-                {
-                    RHI_PipelineState pso;
-                    pso.name             = "skysphere_atmospheric_scattering";
-                    pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
-                    cmd_list->SetPipelineState(pso);
+                RHI_PipelineState pso;
+                pso.name             = "skysphere_atmospheric_scattering";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
+                cmd_list->SetPipelineState(pso);
     
-                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment);
-                    cmd_list->Dispatch(tex_environment);
-                }
-    
-                m_environment_mips_to_filter_count = tex_environment->GetMipCount() - 1;
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment);
+                cmd_list->Dispatch(tex_environment);
             }
     
-            // filtering
-            if (m_environment_mips_to_filter_count > 0)
+            // 2. filter all mip levels (top half only, uv.y <= 0.5) to cover the visible upper hemisphere
+            // (zenith to horizon). The bottom half is below the horizon, invisible, and mostly black in the
+            // atmospheric scattering shader, so we skip it to reduce dispatch costs.
             {
-                uint32_t mip_count = tex_environment->GetMipCount();
-                uint32_t mip_level = mip_count - m_environment_mips_to_filter_count;
-                SP_ASSERT(mip_level != 0);
-    
                 RHI_PipelineState pso;
                 pso.name             = "skysphere_filter";
                 pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
                 cmd_list->SetPipelineState(pso);
-    
+            
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_environment);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
-    
-                // set pass constants
-                m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-    
+            
                 const uint32_t thread_group_count = 8;
-                const uint32_t resolution_x       = tex_environment->GetWidth()  >> mip_level;
-                const uint32_t resolution_y       = tex_environment->GetHeight() >> mip_level;
-                cmd_list->Dispatch(
-                    static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count)),
-                    static_cast<uint32_t>(ceil(static_cast<float>(resolution_y) / thread_group_count))
-                );
-    
-                m_environment_mips_to_filter_count--;
+                for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++)
+                {
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+            
+                    // Set pass constants
+                    m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(mip_count), 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+            
+                    const uint32_t resolution_x = tex_environment->GetWidth() >> mip_level;
+                    const uint32_t resolution_y = tex_environment->GetHeight() >> mip_level;
+                    cmd_list->Dispatch(
+                        static_cast<uint32_t>(ceil(static_cast<float>(resolution_x) / thread_group_count)),
+                        static_cast<uint32_t>(ceil(static_cast<float>(resolution_y / 2.0f) / thread_group_count)) // dispatch top half only
+                    );
+                }
             }
         }
         cmd_list->EndTimeblock();

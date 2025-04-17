@@ -62,7 +62,6 @@ namespace spartan
     bool wants_to_present                                         = false;
     uint32_t Renderer::m_resource_index                           = 0;
     atomic<bool> Renderer::m_initialized_resources                = false;
-    atomic<uint32_t> Renderer::m_environment_mips_to_filter_count = 0;
     bool Renderer::m_transparents_present                         = false;
     bool Renderer::m_bindless_samplers_dirty                      = true;
     bool Renderer::m_bindless_abbs_dirty                          = true;

@@ -145,14 +145,13 @@ float2 fibonacci_spiral(uint i, uint N)
 
 float3 prefilter_environment(float2 uv)
 {
-    float resolution      = 4096.0;
-    float base_resolution = 512.0;
-    float intensity_gain  = 2.5f;
-    uint mip_level        = pass_get_f3_value().x;
-    uint mip_count        = pass_get_f3_value().y;
-
-    const uint sample_count = 512 / max(mip_level, 1);
-    float roughness = (float)mip_level / (float)(mip_count - 1);
+    float resolution        = 2048.0;
+    float base_resolution   = 512.0;
+    float intensity_gain    = 2.5f;
+    uint mip_level          = pass_get_f3_value().x;
+    uint mip_count          = pass_get_f3_value().y;
+    const uint sample_count = 256 / max(mip_level, 1);
+    float roughness         = (float)mip_level / (float)(mip_count - 1);
 
     // convert spherical uv to direction
     float phi          = uv.x * 2.0 * PI;
