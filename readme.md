@@ -102,7 +102,7 @@ To get started, take a look at [game.cpp](https://github.com/PanosK92/SpartanEng
 <table>
   <tr>
     <td>
-      <img align="left" width="512" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/podcast.png"/>
+      <img align="left" width="512" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/refs/heads/master/.github/images/podcast.png"/>
     </td>
     <td>
       Join me as I explore the tech world and beyond, meeting the brightest minds across cutting-edge industries and uncovering their stories.<br><br>
