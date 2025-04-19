@@ -95,13 +95,23 @@ To get started, take a look at [game.cpp](https://github.com/PanosK92/SpartanEng
 
 # Media
 
-### Podcast
+# Podcast
 
-Join me as I explore the tech world and beyond, meeting the brightest minds across cutting-edge industries and uncovering their stories.
+# Podcast
 
-- <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/174/174883.png"/>Watch on [YouTube](https://youtu.be/OZRwCZhglsQ).
-
-- <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/174/174872.png"/>Listen on [Spotify](https://open.spotify.com/show/5F27nWKn9TZdClc5db9efY).
+<table>
+  <tr>
+    <td>
+      <img align="left" width="512" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/podcast.png"/>
+    </td>
+    <td>
+      Join me as I explore the tech world and beyond, meeting the brightest minds across cutting-edge industries and uncovering their stories.<br><br>
+      <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/174/174872.png"/>Listen on <a href="https://open.spotify.com/show/5F27nWKn9TZdClc5db9efY">Spotify</a>.<br>
+      <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/174/174883.png"/>Watch on <a href="https://youtu.be/OZRwCZhglsQ">YouTube</a>.
+    </td>
+  </tr>
+</table>
+<br clear="left"/>
 
 ### Engine Trailer
 
