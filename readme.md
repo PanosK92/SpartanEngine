@@ -93,13 +93,19 @@ While the engine is designed primarily for experienced game developers to experi
 
 To get started, take a look at [game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/runtime/Game/Game.cpp). This file contains all the logic for loading and setting up the default worlds within the engine, and it's a great place to understand the core structure of the engine.
 
-# YouTube
-I regularly upload livestreams and podcasts on my YouTube channel, discussing Spartan Engine and beyond.
-| Video: Livestream of FSR 2 integration | Video: The engine and the community |
-|:-:|:-:|
-|[![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M) | [![Image2](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/video_promo.png)](https://www.youtube.com/watch?v=TMZ0epSVwCk)
+# Media
 
+### Podcast
 
+Join me as I explore the tech world and beyond, meeting the brightest minds across cutting-edge industries and uncovering their stories.
+
+- <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/174/174883.png"/>Watch on [YouTube](https://youtu.be/OZRwCZhglsQ).
+
+- <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/174/174872.png"/>Listen on [Spotify](https://open.spotify.com/show/5F27nWKn9TZdClc5db9efY).
+
+### Engine Trailer
+
+[![Image2](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/video_promo.png)](https://www.youtube.com/watch?v=TMZ0epSVwCk)
 # Support
 
 I cover the costs for Dropbox hosting to ensure library and assets bandwidth is available. If you enjoy the ease of running a single script and having everything download, compile and work seamlessly, please consider [sponsoring](https://github.com/sponsors/PanosK92) to help keep it that way. Sponsoring directly is much more helpful than boosting the Discord server since boosts only benefit Discord, not the project. Your support goes directly into maintaining and improving everything.
