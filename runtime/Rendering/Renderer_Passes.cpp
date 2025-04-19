@@ -704,7 +704,6 @@ namespace spartan
 
         if (GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
         {
-            // define pipeline state
             RHI_PipelineState pso;
             pso.name             = "ssao";
             pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);

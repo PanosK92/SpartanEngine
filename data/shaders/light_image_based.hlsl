@@ -81,9 +81,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky())  // we don't want to do ibl on the sky itself
         return;
 
-    // sample bent normal and AO
-    float4 bent_normal = tex_ssao[thread_id.xy];
-    float ao           = bent_normal.a;
+    // sample AO
+    float ao = tex_ssao[thread_id.xy].r;
 
     // diffuse and specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
@@ -98,7 +97,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_count_environment        = pass_get_f3_value().x;
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
-    float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(bent_normal.rgb), mip_count_environment, mip_count_environment);
+    float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.normal.rgb), mip_count_environment, mip_count_environment);
     float4 specular_ssr                = tex2[thread_id.xy].rgba;
     float3 diffuse_gi                  = tex_uav3[thread_id.xy].rgb;
     float3 specular_gi                 = tex_uav4[thread_id.xy].rgb;

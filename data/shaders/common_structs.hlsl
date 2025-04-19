@@ -112,7 +112,7 @@ struct Surface
         if (is_ssao_enabled())
         {
             int2 coords = clamp(int2(position_screen), int2(0, 0), int2(resolution_out) - 1);
-            occlusion   = min(sample_material.a, tex_ssao[coords].a); // combine occlusion with material occlusion
+            occlusion   = min(sample_material.a, tex_ssao[coords].r); // combine occlusion with material occlusion
         }
 
         position               = get_position(depth, uv);
