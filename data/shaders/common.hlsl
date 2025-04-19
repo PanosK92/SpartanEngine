@@ -132,6 +132,11 @@ float2 world_to_uv(float3 x, bool is_position = true)
     return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
+float3 view_to_world(float3 x, bool is_position = true)
+{
+     return mul(float4(x, (float)is_position), buffer_frame.view_inverted).xyz;
+}
+
 float2 view_to_uv(float3 x, bool is_position = true)
 {
     float4 uv = mul(float4(x, (float)is_position), buffer_frame.projection);

@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========
-#include "Common.hlsl"
-//=====================
+//= INCLUDES =========
+#include "common.hlsl"
+//====================
 
 // A 4x4 box filter
 float4 Box_Filter(float2 uv, Texture2D tex, float2 texel_size)
