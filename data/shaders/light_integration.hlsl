@@ -179,6 +179,10 @@ float3 prefilter_environment(float2 uv)
             u       = fmod(u, 1.0);
             float v = 1.0 - (theta / PI);
 
+            // Skip samples in the bottom half (uv.y > 0.5), see Pass_Skysphere() in the Renderer to understand why
+            if (v > 0.5)
+                continue;
+            
             // PDF-based mip level selection
             float D          = distribution_ggx(n_dot_h, roughness);
             float pdf        = (D * n_dot_h / (4.0 * h_dot_v)) + 0.0001;

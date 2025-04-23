@@ -1368,7 +1368,7 @@ namespace spartan
             {
                 bool rest_mips_have_same_layout = true;
                 array<RHI_Image_Layout, rhi_max_mip_count> layouts = texture->GetLayouts();
-                for (uint32_t i = mip_start; i < mip_start + mip_count; i++)
+                for (uint32_t i = mip_start; i < mip_count; i++)
                 {
                     if (target_layout != layouts[i])
                     {

@@ -114,7 +114,7 @@ namespace spartan
             }
 
             SP_ASSERT_MSG(tiling != VK_IMAGE_TILING_MAX_ENUM, "The GPU doesn't support this format");
-            SP_ASSERT_MSG(tiling == VK_IMAGE_TILING_OPTIMAL, "This format doesn't support optimal tiling, switch to a more efficient format");
+            SP_ASSERT_MSG(tiling == VK_IMAGE_TILING_OPTIMAL,  "This format doesn't support optimal tiling, switch to a more efficient format");
 
             return tiling;
         }
@@ -236,13 +236,13 @@ namespace spartan
         vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
-            "VK_EXT_memory_budget",           // to obtain precise memory usage information from Vulkan Memory Allocator
-            "VK_KHR_fragment_shading_rate",   
-            "VK_EXT_hdr_metadata",            
-            "VK_EXT_robustness2",             
-            "VK_KHR_external_memory",         // to share images with Intel Open Image Denoise
-            #if defined(_WIN32)
-            "VK_KHR_external_memory_win32",   // external memory handle type, linux alternative: VK_KHR_external_memory_fd
+            "VK_EXT_memory_budget",         // to obtain precise memory usage information from Vulkan Memory Allocator
+            "VK_KHR_fragment_shading_rate", 
+            "VK_EXT_hdr_metadata",          
+            "VK_EXT_robustness2",           
+            "VK_KHR_external_memory",       // to share images with Intel Open Image Denoise
+            #if defined(_WIN32)             
+            "VK_KHR_external_memory_win32", // external memory handle type, linux alternative: VK_KHR_external_memory_fd
             #endif
             // AMD FidelityFX relies on "VK_KHR_get_memory_requirements2" because it explicitly calls the extension function
             // vkGetBufferMemoryRequirements2KHR instead of the core Vulkan 1.1+ function vkGetBufferMemoryRequirements2,
