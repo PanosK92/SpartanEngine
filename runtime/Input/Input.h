@@ -161,8 +161,7 @@ namespace spartan
         static std::array<bool, 107>& GetKeys();
         static uint32_t GetKeyIndexMouse();
         static uint32_t GetKeyIndexGamepad();
-        static void CheckGamepadState(uint32_t event_type, Controller* controller, ControllerType type_to_detect);
-        static float GetNormalizedAxisValue(void* controller, const uint32_t axis);
+        static void CheckDeviceState(void* event, Controller* controller);
 
         // keys
         static std::array<bool, 107> m_keys;

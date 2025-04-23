@@ -40,25 +40,59 @@ namespace spartan
         float steering    = 0.0f;
         float accelerator = 0.0f;
         float brake       = 0.0f;
+
+        float get_normalized_axis_value(const Controller& controller, uint32_t axis)
+        {
+            // initialize result
+            float normalized = 0.0f;
+        
+            // check if controller is a steering wheel
+            if (controller.type == ControllerType::SteeringWheel && controller.sdl_pointer)
+            {
+                // get raw axis value
+                Sint16 raw_value = SDL_GetJoystickAxis(static_cast<SDL_Joystick*>(controller.sdl_pointer), axis);
+        
+                // normalize based on axis type
+                if (axis == 0) // steering (axis 0)
+                {
+                    // normalize to [-1.0, 1.0], no deadzone
+                    normalized = static_cast<float>(raw_value) / 32768.0f;
+                }
+                else // pedals (axis 2 for gas, 3 for brake)
+                {
+                    // pedals go from 32767 (unpressed) to -32768 (pressed)
+                    // normalize to [0.0, 1.0]
+                    normalized = static_cast<float>(32767 - raw_value) / 65535.0f;
+                }
+            }
+        
+            return normalized;
+}
     }
 
     void Input::PollSteeringWheel()
     {
-        if (!steering_wheel.sdl_pointer)
+        // check if controller is connected and is a steering wheel
+        if (!steering_wheel.sdl_pointer || !steering_wheel.is_connected || steering_wheel.type != ControllerType::SteeringWheel)
+        {
+            steering    = 0.0f;
+            accelerator = 0.0f;
+            brake       = 0.0f;
             return;
-
-        steering    = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_GAMEPAD_AXIS_LEFTX);
-        accelerator = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
-        brake       = GetNormalizedAxisValue(steering_wheel.sdl_pointer, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
-
-        SP_LOG_INFO("Steering: %f, Accelerator: %f, Brake: %f", steering, accelerator, brake);
+        }
+    
+        // read joystick axes for my g29 steering wheel
+        steering    = get_normalized_axis_value(steering_wheel, 0); // axis 0: steering
+        accelerator = get_normalized_axis_value(steering_wheel, 2); // axis 2: gas pedal
+        brake       = get_normalized_axis_value(steering_wheel, 3); // axis 3: brake pedal
+    
+        SP_LOG_INFO("steering: %f, accelerator: %f, brake: %f", steering, accelerator, brake);
     }
 
     void Input::OnEventSteeringWheel(void* event)
     {
-        SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
-        uint32_t event_type  = sdl_event->type;
-        CheckGamepadState(event_type, &steering_wheel, ControllerType::SteeringWheel);
+        steering_wheel.type = ControllerType::SteeringWheel;
+        CheckDeviceState(event, &steering_wheel);
     }
 
     float Input::GetSteeringWheelSteering()

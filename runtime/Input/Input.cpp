@@ -98,94 +98,106 @@ namespace spartan
         return m_start_index_gamepad;
     }
 
-    void Input::CheckGamepadState(uint32_t event_type, Controller* controller, ControllerType type_to_detect)
+    void Input::CheckDeviceState(void* event, Controller* controller)
     {
-        // connected
-        if (!controller->is_connected && event_type == SDL_EVENT_GAMEPAD_ADDED)
+        // cast event to sdl_event
+        SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
+        uint32_t event_type  = sdl_event->type;
+    
+        // handle device connection
+        if (!controller->is_connected && (event_type == SDL_EVENT_GAMEPAD_ADDED || event_type == SDL_EVENT_JOYSTICK_ADDED))
         {
             int num_joysticks;
             SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
-            if (joysticks)
+            if (!joysticks)
             {
-                for (int i = 0; i < num_joysticks; i++)
+                SP_LOG_ERROR("failed to get joysticks: %s", SDL_GetError());
+                return;
+            }
+    
+            for (int i = 0; i < num_joysticks; i++)
+            {
+                SDL_JoystickID instance_id = joysticks[i];
+                SDL_Joystick* joystick = SDL_OpenJoystick(instance_id);
+                if (!joystick)
                 {
-                    SDL_JoystickID instance_id = joysticks[i];
-                    if (SDL_IsGamepad(instance_id))
+                    SP_LOG_ERROR("failed to open joystick %d: %s", instance_id, SDL_GetError());
+                    continue;
+                }
+    
+                // get device name and type
+                const char* name_ptr = SDL_GetJoystickName(joystick);
+                string name          = name_ptr ? name_ptr : "";
+                transform(name.begin(), name.end(), name.begin(), ::tolower);
+                SDL_JoystickType joystick_type = SDL_GetJoystickType(joystick);
+    
+                // determine if this is a wheel or gamepad
+                bool is_wheel                = (joystick_type == SDL_JOYSTICK_TYPE_WHEEL || name.find("wheel") != string::npos);
+                ControllerType detected_type = is_wheel ? ControllerType::SteeringWheel : ControllerType::Gamepad;
+    
+                // for gamepads, try to open as sdl_gamepad
+                if (detected_type == ControllerType::Gamepad && SDL_IsGamepad(instance_id))
+                {
+                    SDL_Gamepad* gamepad = SDL_OpenGamepad(instance_id);
+                    if (!gamepad)
                     {
-                        SDL_Gamepad* controller_candidate = SDL_OpenGamepad(instance_id);
-                        if (controller_candidate)
-                        {
-                            const char* name_ptr = SDL_GetGamepadName(controller_candidate);
-                            string name = name_ptr ? name_ptr : "";
-                            transform(name.begin(), name.end(), name.begin(), ::tolower);
+                        SP_LOG_ERROR("failed to open gamepad %d: %s", instance_id, SDL_GetError());
+                        SDL_CloseJoystick(joystick);
+                        continue;
+                    }
+
+                    // close joystick since we're using gamepad
+                    SDL_CloseJoystick(joystick);
+                    controller->sdl_pointer = gamepad;
+                }
+                else
+                {
+                    // for wheels, keep the joystick handle
+                    controller->sdl_pointer = joystick;
+                }
     
-                            bool is_wheel = name.find("wheel") != string::npos;
-                            
-                            // check if the controller type matches what we're looking for
-                            if ((type_to_detect == ControllerType::Gamepad && is_wheel) ||
-                                (type_to_detect == ControllerType::SteeringWheel && !is_wheel))
-                            {
-                                SDL_CloseGamepad(controller_candidate);
-                                continue;
-                            }
+                // set controller properties
+                controller->instance_id  = instance_id;
+                controller->is_connected = true;
+                controller->name         = name;
+                controller->type         = detected_type;
     
-                            controller->sdl_pointer  = controller_candidate;
-                            controller->instance_id  = instance_id;
-                            controller->is_connected = true;
-                            controller->name         = name;
+                SP_LOG_INFO("controller connected: \"%s\" (type: %s)", name.c_str(), is_wheel ? "steering wheel" : "gamepad");
+                break;
+            }
+            SDL_free(joysticks);
     
-                            SP_LOG_INFO("Controller connected \"%s\"", controller->name.c_str());
-                            break;
-                        }
-                        else
-                        {
-                            SP_LOG_ERROR("Failed to open gamepad: %s", SDL_GetError());
-                        }
+            // enable events for both gamepads and joysticks
+            SDL_SetGamepadEventsEnabled(true);
+            SDL_SetJoystickEventsEnabled(true);
+        }
+    
+        // handle device disconnection
+        if (controller->is_connected && (event_type == SDL_EVENT_GAMEPAD_REMOVED || event_type == SDL_EVENT_JOYSTICK_REMOVED))
+        {
+            SDL_JoystickID event_instance_id = (event_type == SDL_EVENT_GAMEPAD_REMOVED) ? sdl_event->gdevice.which : sdl_event->jdevice.which;
+            if (controller->instance_id == event_instance_id)
+            {
+                SP_LOG_INFO("controller disconnected: \"%s\"", controller->name.c_str());
+    
+                if (controller->sdl_pointer)
+                {
+                    if (controller->type == ControllerType::Gamepad)
+                    {
+                        SDL_CloseGamepad(static_cast<SDL_Gamepad*>(controller->sdl_pointer));
+                    }
+                    else
+                    {
+                        SDL_CloseJoystick(static_cast<SDL_Joystick*>(controller->sdl_pointer));
                     }
                 }
-                SDL_free(joysticks);
-            }
-            SDL_SetGamepadEventsEnabled(true);
-        }
     
-        // disconnected
-        if (controller->is_connected && event_type == SDL_EVENT_GAMEPAD_REMOVED)
-        {
-            SP_LOG_INFO("Controller disconnected \"%s\"", controller->name.c_str());
-            
-            if (controller->sdl_pointer)
-            {
-                SDL_CloseGamepad(static_cast<SDL_Gamepad*>(controller->sdl_pointer));
+                controller->sdl_pointer  = nullptr;
+                controller->instance_id  = 0;
+                controller->is_connected = false;
+                controller->name         = "";
+                controller->type         = ControllerType::Max;
             }
-            
-            controller->sdl_pointer  = nullptr;
-            controller->instance_id  = 0;
-            controller->is_connected = false;
-            controller->name         = "";
         }
-    }
-
-    float Input::GetNormalizedAxisValue(void* controller, const uint32_t axis)
-    {
-        int16_t value = SDL_GetGamepadAxis(static_cast<SDL_Gamepad*>(controller), static_cast<SDL_GamepadAxis>(axis));
-
-        // account for deadzone
-        static const uint16_t deadzone = 8000; // a good default as per SDL_Gamepad.h
-        if ((abs(value) - deadzone) < 0)
-        {
-            value = 0;
-        }
-        else
-        {
-            value -= value > 0 ? deadzone : -deadzone;
-        }
-
-        // compute range
-        const float range_negative = 32768.0f;
-        const float range_positive = 32767.0f;
-        float range = value < 0 ? range_negative : range_positive;
-
-        // normalize
-        return static_cast<float>(value) / (range - deadzone);
     }
 }

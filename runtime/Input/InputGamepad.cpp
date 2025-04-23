@@ -41,6 +41,40 @@ namespace spartan
         math::Vector2 controller_thumb_right = math::Vector2::Zero;
         float controller_trigger_left        = 0.0f;
         float controller_trigger_right       = 0.0f;
+
+        float get_normalized_axis_value(const Controller& controller, uint32_t axis)
+        {
+            // initialize result
+            float normalized = 0.0f;
+        
+            // check if controller is a gamepad
+            if (controller.type == ControllerType::Gamepad && controller.sdl_pointer)
+            {
+                // get raw axis value
+                int16_t value = SDL_GetGamepadAxis(static_cast<SDL_Gamepad*>(controller.sdl_pointer), static_cast<SDL_GamepadAxis>(axis));
+        
+                // account for deadzone
+                static const uint16_t deadzone = 8000; // a good default as per sdl_gamepad.h
+                if (abs(value) < deadzone)
+                {
+                    value = 0;
+                }
+                else
+                {
+                    value -= (value > 0) ? deadzone : -deadzone;
+                }
+        
+                // compute range
+                const float range_negative = 32768.0f;
+                const float range_positive = 32767.0f;
+                float range = (value < 0) ? range_negative : range_positive;
+        
+                // normalize to [-1.0, 1.0]
+                normalized = static_cast<float>(value) / (range - deadzone);
+            }
+        
+            return normalized;
+        }
     }
 
     void Input::PollGamepad()
@@ -51,12 +85,12 @@ namespace spartan
         SDL_Gamepad* sdl_gamepad = static_cast<SDL_Gamepad*>(gamepad.sdl_pointer);
     
         // analog inputs
-        controller_trigger_left  = GetNormalizedAxisValue(sdl_gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
-        controller_trigger_right = GetNormalizedAxisValue(sdl_gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
-        controller_thumb_left.x  = GetNormalizedAxisValue(sdl_gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX);
-        controller_thumb_left.y  = GetNormalizedAxisValue(sdl_gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY);
-        controller_thumb_right.x = GetNormalizedAxisValue(sdl_gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTX);
-        controller_thumb_right.y = GetNormalizedAxisValue(sdl_gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTY);
+        controller_trigger_left  = get_normalized_axis_value(gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
+        controller_trigger_right = get_normalized_axis_value(gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
+        controller_thumb_left.x  = get_normalized_axis_value(gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX);
+        controller_thumb_left.y  = get_normalized_axis_value(gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY);
+        controller_thumb_right.x = get_normalized_axis_value(gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTX);
+        controller_thumb_right.y = get_normalized_axis_value(gamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHTY);
     
         //button states
         m_keys[GetKeyIndexGamepad()]      = SDL_GetGamepadButton(sdl_gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP);
@@ -84,9 +118,8 @@ namespace spartan
 
     void Input::OnEventGamepad(void* event)
     {
-        SDL_Event* sdl_event = static_cast<SDL_Event*>(event);
-        uint32_t event_type  = sdl_event->type;
-        CheckGamepadState(event_type, &gamepad, ControllerType::Gamepad);
+        gamepad.type = ControllerType::Gamepad;
+        CheckDeviceState(event, &gamepad);
     }
 
     bool Input::GamepadVibrate(const float left_motor_speed, const float right_motor_speed)
