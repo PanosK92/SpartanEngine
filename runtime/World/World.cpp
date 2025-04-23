@@ -51,8 +51,8 @@ namespace spartan
         bool resolve                = false;
         bool was_in_editor_mode     = false;
         BoundingBox bounding_box    = BoundingBox::Undefined;
-        Entity* camera              = nullptr;
-        Entity* light               = nullptr;
+        shared_ptr<Entity> camera   = nullptr;
+        shared_ptr<Entity> light    = nullptr;
         uint32_t audio_source_count = 0;
 
         void compute_bounding_box()
@@ -156,14 +156,14 @@ namespace spartan
                     {
                         if (!camera && entity->GetComponent<Camera>())
                         { 
-                            camera = entity.get();
+                            camera = entity;
                         }
         
                         if (entity->GetComponent<Light>())
                         {
                             if (!light && entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
                             {
-                                light = entity.get();
+                                light = entity;
                             }
 
                             entities_lights.push_back(entity);
@@ -197,6 +197,8 @@ namespace spartan
         // clear
         entities.clear();
         entities_lights.clear();
+        camera = nullptr;
+        light  = nullptr;
         name.clear();
         file_path.clear();
         
@@ -443,10 +445,6 @@ namespace spartan
 
     Camera* World::GetCamera()
     {
-        // transform gizmo can access this if the user clicks on the viewport
-        if (IsLoading())
-            return nullptr;
-
         return camera ? camera->GetComponent<Camera>() : nullptr;
     }
 

@@ -86,7 +86,7 @@ namespace spartan
         accelerator = get_normalized_axis_value(steering_wheel, 2); // axis 2: gas pedal
         brake       = get_normalized_axis_value(steering_wheel, 3); // axis 3: brake pedal
     
-        SP_LOG_INFO("steering: %f, accelerator: %f, brake: %f", steering, accelerator, brake);
+        //SP_LOG_INFO("steering: %f, accelerator: %f, brake: %f", steering, accelerator, brake);
     }
 
     void Input::OnEventSteeringWheel(void* event)
