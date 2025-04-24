@@ -104,9 +104,9 @@ namespace spartan
         SetIntensity(LightIntensity::bulb_500_watt);
         SetRange(get_sensible_range(m_light_type));
         SetFlag(LightFlags::Shadows);
-        SetFlag(LightFlags::ShadowsTransparent);
         SetFlag(LightFlags::ShadowsScreenSpace);
         SetFlag(LightFlags::DayNightCycle);
+        SetFlag(LightFlags::ShadowDirty);
 
         m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
     }
@@ -372,6 +372,7 @@ namespace spartan
     {
         ComputeViewMatrix();
         ComputeProjectionMatrix();
+        SetFlag(LightFlags::ShadowDirty);
 
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }

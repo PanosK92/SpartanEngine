@@ -155,25 +155,15 @@ float2 ndc_to_uv(float3 x)
 
 float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, float far_plane)
 {
-    float3 ndc = 0.0f;
-
-    // normalize the light to vertex vector
+    // normalize light to vertex
     float d = length(light_to_vertex_view);
     light_to_vertex_view /= d;
 
-    // project onto paraboloid
-    ndc.xy = light_to_vertex_view.xy / (light_to_vertex_view.z + 1.0f);
+    float3 ndc = 0.0f;
+    ndc.xy     = light_to_vertex_view.xy / (light_to_vertex_view.z + 1.0f); // project
+    ndc.z      = (far_plane - d) / (far_plane - near_plane);                // reverse-z
+    ndc.z      *= sign(light_to_vertex_view.z); // handle negative z - behind near plane
 
-     // calculate depth
-    ndc.z = (far_plane - d) / (far_plane - near_plane); // reverse
-    ndc.z *= sign(light_to_vertex_view.z);              // negate if behind the light
-
-    // if the vertex is behind the light, clamp it to the edge of the circular paraboloid
-    //float is_valid       = step(0.0f, light_to_vertex_view.z);
-    //float radius_squared = dot(ndc.xy, ndc.xy);
-    //float clamped_radius = sqrt(clamp(radius_squared, 0.0f, 1.0f));
-    //ndc.xy               = is_valid * ndc.xy + (1.0f - is_valid) * (ndc.xy / clamped_radius);
-    
     return ndc;
 }
 
