@@ -202,16 +202,16 @@ namespace ImGui::RHI
         rhi_resources->buffer_index         = (rhi_resources->buffer_index + 1) % buffer_count;
         RHI_Buffer* vertex_buffer           = rhi_resources->vertex_buffers[buffer_index].get();
         RHI_Buffer* index_buffer            = rhi_resources->index_buffers[buffer_index].get();
-        RHI_Queue* queue                    = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
         RHI_CommandList* cmd_list           = Renderer::GetCommandListPresent();
 
-        // if that's a child window, update swapchain and give it a command list
+        uint64_t frame = Renderer::GetFrameNumber();
+
+        // if that's a child window, update it's swapchain and give it a command list
         if (!is_main_window)
         {
             swapchain->AcquireNextImage();
 
-            queue->NextCommandList();
-            window_data->cmd_list = queue->GetCommandList();
+            window_data->cmd_list = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
             cmd_list              = window_data->cmd_list;
 
             window_data->cmd_list->Begin();
@@ -307,13 +307,13 @@ namespace ImGui::RHI
                     {
                         // set scissor rectangle
                         {
-                            math::Rectangle scissor_rect;
-                            scissor_rect.left   = pcmd->ClipRect.x - draw_data->DisplayPos.x;
-                            scissor_rect.top    = pcmd->ClipRect.y - draw_data->DisplayPos.y;
-                            scissor_rect.right  = pcmd->ClipRect.z - draw_data->DisplayPos.x;
-                            scissor_rect.bottom = pcmd->ClipRect.w - draw_data->DisplayPos.y;
+                            math::Rectangle rectangle;
+                            rectangle.left   = pcmd->ClipRect.x - draw_data->DisplayPos.x;
+                            rectangle.top    = pcmd->ClipRect.y - draw_data->DisplayPos.y;
+                            rectangle.right  = pcmd->ClipRect.z - draw_data->DisplayPos.x;
+                            rectangle.bottom = pcmd->ClipRect.w - draw_data->DisplayPos.y;
 
-                            cmd_list->SetScissorRectangle(scissor_rect);
+                            cmd_list->SetScissorRectangle(rectangle);
                         }
 
                         // push pass/draw call constants
@@ -336,7 +336,7 @@ namespace ImGui::RHI
                                         is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
                                         if (is_texture_visualised)
                                         {
-                                            mip_level = static_cast<float>(TextureViewer::GetMipLevel());
+                                            mip_level   = static_cast<float>(TextureViewer::GetMipLevel());
                                             array_level = static_cast<float>(TextureViewer::GetArrayLevel());
                                         }
 

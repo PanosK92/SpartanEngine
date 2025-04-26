@@ -301,9 +301,9 @@ namespace spartan
             dynamic_resolution();
         }
 
-        // beging a the main/present command list
+        // begin a the main/present command list
         RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        m_cmd_list_present        = queue_graphics->GetCommandList();
+        m_cmd_list_present        = queue_graphics->NextCommandList();
         m_cmd_list_present->Begin();
 
         // build draw calls and determine occluders
@@ -320,8 +320,7 @@ namespace spartan
         if (!World::IsLoading())
         {
             // create a secondary command list, only used by the occlusion pass (just for now)
-            queue_graphics->NextCommandList();
-            RHI_CommandList* cmd_list_graphics_secondary = queue_graphics->GetCommandList();
+            RHI_CommandList* cmd_list_graphics_secondary = queue_graphics->NextCommandList();
 
             ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
         }

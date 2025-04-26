@@ -1226,7 +1226,7 @@ namespace spartan
             vkCmdBindVertexBuffers(
                 static_cast<VkCommandBuffer>(m_rhi_resource), // commandbuffer
                 0,                                            // firstbinding (start at slot 0)
-                binding_count,                                 // bindingcount (1 or 2)
+                binding_count,                                // bindingcount (1 or 2)
                 vertex_buffers,                               // pbuffers (array of buffers)
                 offsets                                       // poffsets (array of offsets)
             );

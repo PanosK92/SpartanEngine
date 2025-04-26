@@ -91,7 +91,7 @@ namespace spartan
         vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resource), nullptr);
     }
 
-    void RHI_Queue::NextCommandList()
+    RHI_CommandList* RHI_Queue::NextCommandList()
     {
         m_index++;
 
@@ -112,6 +112,8 @@ namespace spartan
             // reset
             SP_ASSERT_VK(vkResetCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resource), 0));
         }
+
+        return m_cmd_lists[m_index].get();
     }
 
     void RHI_Queue::Wait()
