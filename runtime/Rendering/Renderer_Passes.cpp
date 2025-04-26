@@ -79,7 +79,8 @@ namespace spartan
             brdf_specular_lut_produced = true;
         }
 
-        if (Camera* camera = World::GetCamera())
+        Camera* camera = World::GetCamera();
+        if (!World::IsLoading() && camera)
         {
             Pass_VariableRateShading(cmd_list_present);
 

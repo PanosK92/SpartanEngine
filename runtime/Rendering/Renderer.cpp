@@ -317,13 +317,8 @@ namespace spartan
         UpdateBuffers(m_cmd_list_present);
 
         // produce the actual frame (this is where all the passes are done)
-        if (!World::IsLoading())
-        {
-            // create a secondary command list, only used by the occlusion pass (just for now)
-            RHI_CommandList* cmd_list_graphics_secondary = queue_graphics->NextCommandList();
-
-            ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
-        }
+        RHI_CommandList* cmd_list_graphics_secondary = queue_graphics->NextCommandList();
+        ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
 
         // blit to back buffer when not in editor mode
         bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);

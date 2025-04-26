@@ -581,7 +581,7 @@ namespace spartan
                         return it->second;
                 }
 
-                // else register a new one
+                // else register a new one (they need VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
                 {
                     uint32_t index = 0;
 

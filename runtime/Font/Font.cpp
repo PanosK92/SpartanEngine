@@ -83,44 +83,54 @@ namespace spartan
 
     void Font::AddText(const string& text, const Vector2& position_screen_percentage)
     {
+        // Define a maximum vertex limit (e.g., 1,000,000 vertices)
+        const uint32_t max_vertices = 1000000; // Adjust based on memory constraints (e.g., 1M vertices ~ 20 MB for typical vertex size)
+    
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
         const float aspect_ratio    = viewport_width / viewport_height;
     
-        // adjust the screen percentage position to compensate for the aspect ratio
+        // Adjust the screen percentage position to compensate for the aspect ratio
         Vector2 adjusted_position_percentage;
         adjusted_position_percentage.x = position_screen_percentage.x / aspect_ratio;
         adjusted_position_percentage.y = position_screen_percentage.y;
     
-        // convert the adjusted screen percentage position to actual screen coordinates
+        // Convert the adjusted screen percentage position to actual screen coordinates
         Vector2 position;
         position.x = viewport_width  * adjusted_position_percentage.x;
         position.y = viewport_height * adjusted_position_percentage.y;
     
-        // make the origin be the top left corner
+        // Make the origin be the top left corner
         position.x -= 0.5f * viewport_width;
         position.y += 0.5f * viewport_height;
     
-        // don't yet understand why this is needed, but it corrects a slight y offset
+        // Adjust for slight y offset
         position.y -= m_char_max_height * 1.5f;
     
-        // set the cursor to the starting position
+        // Set the cursor to the starting position
         Vector2 cursor = position;
     
         uint32_t vertex_offset = static_cast<uint32_t>(m_vertices.size());
     
-        // generate vertices - draw each latter onto a quad
+        // Generate vertices - draw each letter onto a quad
         for (char character : text)
         {
+            // Check if adding this character would exceed the vertex limit
+            if (m_vertices.size() + 6 > max_vertices)
+            {
+                SP_LOG_WARNING("Text input too large, vertex limit (%u) reached. Truncating text.", max_vertices);
+                break; // Stop processing further characters
+            }
+    
             Glyph& glyph = m_glyphs[character];
     
-           if (character == ASCII_TAB)
+            if (character == ASCII_TAB)
             {
                 const float space_offset = static_cast<float>(m_glyphs[ASCII_SPACE].horizontal_advance);
                 const float tab_spacing  = space_offset * 4.0f;
-                float relative_x         = cursor.x - position.x;                                // distance from the starting position
-                float k                  = std::floor((relative_x + tab_spacing) / tab_spacing); // number of tab stops from position.x
-                float next_tab_stop      = position.x + k * tab_spacing;                         // next tab stop relative to position.x
+                float relative_x         = cursor.x - position.x;
+                float k                  = std::floor((relative_x + tab_spacing) / tab_spacing);
+                float next_tab_stop      = position.x + k * tab_spacing;
                 cursor.x                 = next_tab_stop;
             }
             else if (character == ASCII_NEW_LINE)
@@ -134,23 +144,23 @@ namespace spartan
             }
             else
             {
-                // first triangle in quad
+                // First triangle in quad
                 m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
                 m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom});
     
-                // second triangle in quad
+                // Second triangle in quad
                 m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_right, glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
     
-                // add indices for the two triangles (6 indices for 2 triangles)
+                // Add indices for the two triangles (6 indices for 2 triangles)
                 for (uint32_t i = 0; i < 6; ++i)
                 {
                     m_indices.push_back(vertex_offset + i);
                 }
     
-                // advance the cursor and vertex offset
+                // Advance the cursor and vertex offset
                 cursor.x      += glyph.horizontal_advance;
                 vertex_offset += 6;
             }
@@ -176,11 +186,11 @@ namespace spartan
             if (m_vertices.size() > m_buffers_vertex[m_buffer_index]->GetElementCount())
             {
                 m_buffers_vertex[m_buffer_index] = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Vertex,                  // type
-                    sizeof(m_vertices[0]),                    // stride
-                    static_cast<uint32_t>(m_vertices.size()), // element count
-                    m_vertices.data(),                        // data
-                    true,                                     // mappable
+                    RHI_Buffer_Type::Vertex,                                          // type
+                    static_cast<uint32_t>(m_vertices.size()) * sizeof(m_vertices[0]), // stride
+                    1,                                                                // element count
+                    m_vertices.data(),                                                // data
+                    true,                                                             // mappable
                     "font_vertex"
                 );
             }
@@ -188,11 +198,11 @@ namespace spartan
             if (m_indices.size() > m_buffers_index[m_buffer_index]->GetElementCount())
             {
                 m_buffers_index[m_buffer_index] = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Index,                  // type
-                    sizeof(m_indices[0]),                    // stride
-                    static_cast<uint32_t>(m_indices.size()), // element count
-                    m_indices.data(),                        // data
-                    true,                                    // mappable
+                    RHI_Buffer_Type::Index,                                         // type
+                    static_cast<uint32_t>(m_indices.size()) * sizeof(m_indices[0]), // stride
+                    1,                                                              // element count
+                    m_indices.data(),                                               // data
+                    true,                                                           // mappable
                     "font_index"
                 );
             }

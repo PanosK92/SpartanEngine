@@ -57,7 +57,7 @@ namespace spartan
             VkCommandPoolCreateInfo cmd_pool_info = {};
             cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             cmd_pool_info.queueFamilyIndex        = RHI_Device::GetQueueIndex(queue_type);
-            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
+            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // specifies that command buffers allocated from the pool will be short-lived
 
             // create the first one
             VkCommandPool cmd_pool = nullptr;
