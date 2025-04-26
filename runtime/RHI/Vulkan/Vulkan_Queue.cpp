@@ -110,7 +110,7 @@ namespace spartan
             }
 
             // reset
-            SP_ASSERT_VK(vkResetCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resource), 0));
+            //SP_ASSERT_VK(vkResetCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resource), 0));
         }
 
         return m_cmd_lists[m_index].get();

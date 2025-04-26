@@ -36,11 +36,11 @@ namespace spartan
         RHI_Queue(const RHI_Queue_Type queue_type, const char* name);
         ~RHI_Queue();
 
-        RHI_CommandList* NextCommandList();
         void Wait();
         void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline);
         void Present(void* swapchain, const uint32_t image_index, std::vector<RHI_SyncPrimitive*>& wait_semaphores);
-        RHI_Queue_Type GetType() const    { return m_type; }
+        RHI_CommandList* NextCommandList();
+        RHI_Queue_Type GetType() const { return m_type; }
 
     private:
         std::array<std::shared_ptr<RHI_CommandList>, 10> m_cmd_lists = { nullptr }; // more than enough for our needs
