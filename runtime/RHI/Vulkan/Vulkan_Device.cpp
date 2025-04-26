@@ -1492,12 +1492,6 @@ namespace spartan
         // Make sure to call vmaSetCurrentFrameIndex() every frame.
         // Budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation.
         vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, static_cast<uint32_t>(frame_count));
-
-        // queues
-        for (uint32_t i = 0; i < static_cast<uint32_t>(queues::regular.size()); i++)
-        {
-            queues::regular[i]->NextCommandList();
-        }
     }
 
     void RHI_Device::Destroy()
