@@ -398,7 +398,9 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
-        // quick and dirty introduction of a secondary command list, get it working first then worry about perfect syncrhonisation and architecture
+        return; // disable for now
+
+        // quick and dirty introduction of a secondary command list, get it working first then worry about perfect synch and architecture
 
         cmd_list->Begin();
 
@@ -488,7 +490,7 @@ namespace spartan
         cmd_list->Submit(0);
         cmd_list->WaitForExecution();
 
-        // update the draw calls with the visiblity results so all subsequent passes can use them
+        // update the draw calls with the visibility results so all subsequent passes can use them
         uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::Visibility)->GetMappedData());
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {

@@ -93,27 +93,17 @@ namespace spartan
 
     RHI_CommandList* RHI_Queue::NextCommandList()
     {
-        m_index++;
-
-        // reset if needed
-        if (m_index == static_cast<uint32_t>(m_cmd_lists.size()))
+        // increment and wrap around
+        m_index = (m_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
+    
+        // ensure the command list is idle
+        auto& cmd_list = m_cmd_lists[m_index];
+        if (cmd_list->GetState() != RHI_CommandListState::Idle)
         {
-            m_index  = 0;
-
-            // wait
-            for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists)
-            {
-                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-                {
-                    cmd_list->WaitForExecution();
-                }
-            }
-
-            // reset
-            //SP_ASSERT_VK(vkResetCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resource), 0));
+            cmd_list->WaitForExecution();
         }
 
-        return m_cmd_lists[m_index].get();
+        return cmd_list.get();
     }
 
     void RHI_Queue::Wait()
