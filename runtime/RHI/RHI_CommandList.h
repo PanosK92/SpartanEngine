@@ -57,11 +57,11 @@ namespace spartan
     class RHI_CommandList : public SpartanObject
     {
     public:
-        RHI_CommandList(void* cmd_pool, const char* name);
+        RHI_CommandList(RHI_Queue* queue, void* cmd_pool, const char* name);
         ~RHI_CommandList();
 
-        void Begin(const RHI_Queue* queue);
-        void Submit(RHI_Queue* queue, const uint64_t swapchain_id);
+        void Begin();
+        void Submit(const uint64_t swapchain_id);
         void WaitForExecution();
         void SetPipelineState(RHI_PipelineState& pso);
 
@@ -164,6 +164,7 @@ namespace spartan
         void* GetRhiResource() const                              { return m_rhi_resource; }
         const RHI_CommandListState GetState() const               { return m_state; }
         uint64_t GetSwapchainId() const                           { return m_swapchain_id; }
+        RHI_Queue* GetQueue() const                               { return m_queue; }
 
     private:
         void PreDraw();
@@ -190,6 +191,7 @@ namespace spartan
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;
         std::vector<ImageBarrierInfo> m_image_barriers;
+        RHI_Queue* m_queue = nullptr;
 
         // rhi resources
         void* m_rhi_resource                       = nullptr;

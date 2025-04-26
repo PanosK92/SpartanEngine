@@ -82,6 +82,7 @@ namespace spartan
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
         static void SetEntities(std::vector<std::shared_ptr<Entity>>& entities);
+        static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // wind
         static const math::Vector3& GetWind();
@@ -134,7 +135,7 @@ namespace spartan
         static void CreateStandardMaterials();
 
         // passes - core
-        static void ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute);
+        static void ProduceFrame(RHI_CommandList* cmd_list_frame, RHI_CommandList* cmd_list_graphics_secondary);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list);
@@ -199,6 +200,7 @@ namespace spartan
         static std::array<Renderer_DrawCall, renderer_max_entities> m_draw_calls;
         static uint32_t m_draw_call_count;
         static bool m_transparents_present;
+        static RHI_CommandList* m_cmd_list_present;
 
         // bindless
         static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;

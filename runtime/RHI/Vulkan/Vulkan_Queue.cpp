@@ -69,7 +69,7 @@ namespace spartan
         // command lists
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
         {
-            m_cmd_lists[i] = make_shared<RHI_CommandList>(m_rhi_resource, (("cmd_list_") + to_string(i)).c_str());
+            m_cmd_lists[i] = make_shared<RHI_CommandList>(this, m_rhi_resource, (("cmd_list_") + to_string(i)).c_str());
         }
     }
 

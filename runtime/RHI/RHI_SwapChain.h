@@ -60,7 +60,7 @@ namespace spartan
 
         // loop
         void AcquireNextImage();
-        void Present();
+        void Present(RHI_CommandList* cmd_list_frame);
 
         // properties
         uint32_t GetWidth() const       { return m_width; }

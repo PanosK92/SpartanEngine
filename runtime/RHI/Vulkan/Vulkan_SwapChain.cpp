@@ -495,19 +495,17 @@ namespace spartan
         }
     }
 
-    void RHI_SwapChain::Present()
+    void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
         SP_ASSERT(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source);
     
         m_wait_semaphores.clear();
-        RHI_Queue* queue = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-    
+
         // get semaphores from command lists
-        RHI_CommandList* cmd_list       = queue->GetCommandList();
-        bool presents_to_this_swapchain = cmd_list->GetSwapchainId() == m_object_id;
+        bool presents_to_this_swapchain = cmd_list_frame->GetSwapchainId() == m_object_id;
         if (presents_to_this_swapchain)
         {
-            RHI_SyncPrimitive* semaphore   = cmd_list->GetRenderingCompleteSemaphore();
+            RHI_SyncPrimitive* semaphore   = cmd_list_frame->GetRenderingCompleteSemaphore();
             semaphore->has_been_waited_for = true;
             m_wait_semaphores.emplace_back(semaphore);
         }
@@ -517,7 +515,7 @@ namespace spartan
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
     
         // present the current frame
-        queue->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
+        cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
     
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
         if (m_is_dirty)

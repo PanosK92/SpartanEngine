@@ -46,9 +46,9 @@ namespace spartan
         RHI_Queue_Type GetType() const    { return m_type; }
 
     private:
-        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists = { nullptr, nullptr };
-        void* m_rhi_resource                                        = nullptr;
-        std::atomic<uint32_t> m_index                               = 0;
-        RHI_Queue_Type m_type                                       = RHI_Queue_Type::Max;
+        std::array<std::shared_ptr<RHI_CommandList>, 10> m_cmd_lists = { nullptr }; // more than enough for our needs
+        void* m_rhi_resource                                         = nullptr;
+        std::atomic<uint32_t> m_index                                = 0;
+        RHI_Queue_Type m_type                                        = RHI_Queue_Type::Max;
     };
 }

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
+#include "../RHI/RHI_Device.h"
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_AMD_FFX.h"
 #include "../RHI/RHI_RasterizerState.h"
@@ -55,7 +56,7 @@ namespace spartan
         cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::SpdCounter));
     }
 
-    void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)
+    void Renderer::ProduceFrame(RHI_CommandList* cmd_list_present, RHI_CommandList* cmd_list_graphics_secondary)
     {
         SP_PROFILE_CPU();
 
@@ -74,78 +75,78 @@ namespace spartan
         static bool brdf_specular_lut_produced = false;
         if (!brdf_specular_lut_produced)
         {
-            Pass_Light_Integration_BrdfSpecularLut(cmd_list_graphics);
+            Pass_Light_Integration_BrdfSpecularLut(cmd_list_present);
             brdf_specular_lut_produced = true;
         }
 
         if (Camera* camera = World::GetCamera())
         {
-            Pass_VariableRateShading(cmd_list_graphics);
+            Pass_VariableRateShading(cmd_list_present);
 
             // opaques
             {
-                Pass_Occlusion(cmd_list_graphics);
-                Pass_Depth_Prepass(cmd_list_graphics);
+                Pass_Occlusion(cmd_list_graphics_secondary);
+                Pass_Depth_Prepass(cmd_list_present);
                 bool is_transparent = false;
-                Pass_GBuffer(cmd_list_graphics, is_transparent);
+                Pass_GBuffer(cmd_list_present, is_transparent);
 
                 // shadow maps
-                Pass_ShadowMaps(cmd_list_graphics, false);
+                Pass_ShadowMaps(cmd_list_present, false);
                 if (m_transparents_present)
                 {
-                    Pass_ShadowMaps(cmd_list_graphics, true);
+                    Pass_ShadowMaps(cmd_list_present, true);
                 }
 
-                Pass_Skysphere(cmd_list_graphics);
-                Pass_Sss(cmd_list_graphics);
-                Pass_Ssao(cmd_list_graphics);
-                Pass_Light(cmd_list_graphics, is_transparent);             // compute diffuse and specular buffers
-                Pass_Light_GlobalIllumination(cmd_list_graphics);          // compute global illumination
-                Pass_Light_Composition(cmd_list_graphics, is_transparent); // compose all light (diffuse, specular, etc.
+                Pass_Skysphere(cmd_list_present);
+                Pass_Sss(cmd_list_present);
+                Pass_Ssao(cmd_list_present);
+                Pass_Light(cmd_list_present, is_transparent);             // compute diffuse and specular buffers
+                Pass_Light_GlobalIllumination(cmd_list_present);          // compute global illumination
+                Pass_Light_Composition(cmd_list_present, is_transparent); // compose all light (diffuse, specular, etc.
             }
 
             // transparents
             if (m_transparents_present)
             {
                 bool is_transparent = true;
-                Pass_GBuffer(cmd_list_graphics, is_transparent);
-                Pass_Light(cmd_list_graphics, is_transparent);
-                Pass_Light_Composition(cmd_list_graphics, is_transparent);
+                Pass_GBuffer(cmd_list_present, is_transparent);
+                Pass_Light(cmd_list_present, is_transparent);
+                Pass_Light_Composition(cmd_list_present, is_transparent);
             }
 
             // apply skysphere, ssr and global illumination
-            Pass_Ssr(cmd_list_graphics);
-            Pass_Light_ImageBased(cmd_list_graphics); 
+            Pass_Ssr(cmd_list_present);
+            Pass_Light_ImageBased(cmd_list_present); 
 
             // render -> output resolution
-            Pass_Upscale(cmd_list_graphics);
+            Pass_Upscale(cmd_list_present);
 
             // post-process
             {
                 // game
-                Pass_PostProcess(cmd_list_graphics);
+                Pass_PostProcess(cmd_list_present);
 
                 // editor
-                Pass_Grid(cmd_list_graphics, rt_output);
-                Pass_Lines(cmd_list_graphics, rt_output);
-                Pass_Outline(cmd_list_graphics, rt_output);
-                Pass_Icons(cmd_list_graphics, rt_output);
+                Pass_Grid(cmd_list_present, rt_output);
+                Pass_Lines(cmd_list_present, rt_output);
+                Pass_Outline(cmd_list_present, rt_output);
+                Pass_Icons(cmd_list_present, rt_output);
             }
         }
         else
         {
-            cmd_list_graphics->ClearTexture(rt_output, Color::standard_black);
+            cmd_list_present->ClearTexture(rt_output, Color::standard_black);
         }
 
-        Pass_Text(cmd_list_graphics, rt_output);
+        Pass_Text(cmd_list_present, rt_output);
 
         // perform early transitions (so the next frame doesn't have to wait)
-        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics);
+        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
     }
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
@@ -397,10 +398,13 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
+        // quick and dirty introduction of a secondary command list, get it working first then worry about perfect syncrhonisation and architecture
+
+        cmd_list->Begin();
+
         cmd_list->BeginTimeblock("occlusion");
         {
             // get resources
-            RHI_Buffer* buffer_visibility  = GetBuffer(Renderer_Buffer::Visibility);
             RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
             RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
 
@@ -477,15 +481,20 @@ namespace spartan
                 uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
                 cmd_list->Dispatch(thread_group_count, 1, 1);
             }
-
-            uint32_t* visibility_data = static_cast<uint32_t*>(buffer_visibility->GetMappedData());
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
-            {
-                Renderer_DrawCall& draw_call = m_draw_calls[i];
-                //draw_call.renderable->SetVisible(visibility_data[i], draw_call.instance_group_index);
-            }
         }
         cmd_list->EndTimeblock();
+
+        // perform occlusion queries and wait for the results to be ready
+        cmd_list->Submit(0);
+        cmd_list->WaitForExecution();
+
+        // update the draw calls with the visiblity results so all subsequent passes can use them
+        uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::Visibility)->GetMappedData());
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        {
+            Renderer_DrawCall& draw_call = m_draw_calls[i];
+            draw_call.renderable->SetVisible(visibility_data[i], draw_call.instance_group_index);
+        }
     }
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)

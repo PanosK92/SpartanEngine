@@ -401,8 +401,10 @@ namespace spartan
         }
     }
 
-    RHI_CommandList::RHI_CommandList(void* cmd_pool, const char* name)
+    RHI_CommandList::RHI_CommandList(RHI_Queue* queue, void* cmd_pool, const char* name)
     {
+        m_queue = queue;
+
         // command buffer
         {
             // define
@@ -432,7 +434,7 @@ namespace spartan
         queries::shutdown(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
 
-    void RHI_CommandList::Begin(const RHI_Queue* queue)
+    void RHI_CommandList::Begin()
     {
         if (m_state == RHI_CommandListState::Recording)
         {
@@ -447,7 +449,7 @@ namespace spartan
         // enable breadcrumbs for this command list
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(this, queue, m_object_name.c_str());
+            RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(this, m_queue, m_object_name.c_str());
         }
 
         // set states
@@ -456,7 +458,7 @@ namespace spartan
         m_cull_mode = RHI_CullMode::Max;
 
         // set dynamic states
-        if (queue->GetType() == RHI_Queue_Type::Graphics)
+        if (m_queue->GetType() == RHI_Queue_Type::Graphics)
         {
             // cull mode
             SetCullMode(RHI_CullMode::Back);
@@ -471,7 +473,7 @@ namespace spartan
         }
 
         // queries
-        if (queue->GetType() != RHI_Queue_Type::Copy)
+        if (m_queue->GetType() != RHI_Queue_Type::Copy)
         {
             if (m_timestamp_index != 0)
             {
@@ -486,7 +488,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::Submit(RHI_Queue* queue, const uint64_t swapchain_id)
+    void RHI_CommandList::Submit(const uint64_t swapchain_id)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -500,7 +502,7 @@ namespace spartan
             m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
         }
 
-        queue->Submit(
+        m_queue->Submit(
             static_cast<VkCommandBuffer>(m_rhi_resource), // cmd buffer
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,            // wait flags
             m_rendering_complete_semaphore.get(),         // signal semaphore

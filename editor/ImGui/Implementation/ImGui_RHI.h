@@ -81,6 +81,7 @@ namespace ImGui::RHI
         {
             shared_ptr<ViewportRhiResources> viewport_rhi_resources;
             shared_ptr<RHI_SwapChain>        swapchain;
+            RHI_CommandList* cmd_list = nullptr;
         };
 
         // main window rhi resources
@@ -202,18 +203,22 @@ namespace ImGui::RHI
         RHI_Buffer* vertex_buffer           = rhi_resources->vertex_buffers[buffer_index].get();
         RHI_Buffer* index_buffer            = rhi_resources->index_buffers[buffer_index].get();
         RHI_Queue* queue                    = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+        RHI_CommandList* cmd_list           = Renderer::GetCommandListPresent();
 
-        // child windows need to be handled here
+        // if that's a child window, update swapchain and give it a command list
         if (!is_main_window)
         {
-            queue->NextCommandList();
             swapchain->AcquireNextImage();
-            queue->GetCommandList()->Begin(queue);
+
+            queue->NextCommandList();
+            window_data->cmd_list = queue->GetCommandList();
+            cmd_list              = window_data->cmd_list;
+
+            window_data->cmd_list->Begin();
         }
 
-        // for the main window, if the renderer is not ready, return
-        RHI_CommandList* cmd_list = queue->GetCommandList();
-        if (is_main_window && cmd_list->GetState() != RHI_CommandListState::Recording)
+        // when the engine splash screen is shown, the command list is not valid as the renderer is initializing
+        if (!cmd_list || cmd_list->GetState() != RHI_CommandListState::Recording)
             return;
 
         // update vertex and index buffers
@@ -400,7 +405,7 @@ namespace ImGui::RHI
 
         if (!is_main_window)
         {
-            cmd_list->Submit(queue, swapchain->GetObjectId());
+            cmd_list->Submit(swapchain->GetObjectId());
         }
     }
 
@@ -450,7 +455,7 @@ namespace ImGui::RHI
     void window_present(ImGuiViewport* viewport, void*)
     {
         WindowData* window = static_cast<WindowData*>(viewport->RendererUserData);
-        window->swapchain->Present();
+        window->swapchain->Present(window->cmd_list);
     }
 
     void initialize_platform_interface()

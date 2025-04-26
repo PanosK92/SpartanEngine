@@ -70,6 +70,7 @@ namespace spartan
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
+    RHI_CommandList* Renderer::m_cmd_list_present = nullptr;
 
     namespace
     {
@@ -284,10 +285,11 @@ namespace spartan
         if (Window::IsMinimized() || !m_initialized_resources)
             return;
 
+        // update swapchain
         wants_to_present = true;
         GetSwapChain()->AcquireNextImage();
 
-        // logic
+        // update logic
         {
             if (frame_num == 1)
             {
@@ -299,33 +301,36 @@ namespace spartan
             dynamic_resolution();
         }
 
-        // begin command lists
-        RHI_Queue* queue_graphics          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        RHI_Queue* queue_compute           = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
-        RHI_CommandList* cmd_list_graphics = queue_graphics->GetCommandList();
-        RHI_CommandList* cmd_list_compute  = queue_compute->GetCommandList();
-        cmd_list_graphics->Begin(queue_graphics);
-        //cmd_list_compute->Begin(queue_compute); // todo: async compute
+        // beging a the main/present command list
+        RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+        m_cmd_list_present        = queue_graphics->GetCommandList();
+        m_cmd_list_present->Begin();
 
+        // build draw calls and determine occluders
         m_draw_call_count = 0;
-
         if (!World::IsLoading())
         {
-            BuildDrawCallsAndOccluders(cmd_list_graphics);
+            BuildDrawCallsAndOccluders(m_cmd_list_present);
         }
 
-        UpdateBuffers(cmd_list_graphics); // needs to happen after BuildDrawCallsAndOccluders(), it needs the latest draw calls
+        // update GPU buffers (needs to happen after draw call and occluder building)
+        UpdateBuffers(m_cmd_list_present);
 
+        // produce the actual frame (this is where all the passes are done)
         if (!World::IsLoading())
         {
-            ProduceFrame(cmd_list_graphics, cmd_list_compute);
+            // create a secondary command list, only used by the occlusion pass (just for now)
+            queue_graphics->NextCommandList();
+            RHI_CommandList* cmd_list_graphics_secondary = queue_graphics->GetCommandList();
+
+            ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
         }
 
         // blit to back buffer when not in editor mode
         bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
         if (is_standalone)
         {
-            BlitToBackBuffer(cmd_list_graphics, GetRenderTarget(Renderer_RenderTarget::frame_output));
+            BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
 
         // present
@@ -760,17 +765,14 @@ namespace spartan
         if (!wants_to_present)
             return;
 
-        RHI_Queue* queue          = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        RHI_CommandList* cmd_list = queue->GetCommandList();
-
         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
         {
-            if (cmd_list->GetState() == RHI_CommandListState::Recording)
+            if (m_cmd_list_present->GetState() == RHI_CommandListState::Recording)
             {
-                cmd_list->Submit(queue, swap_chain->GetObjectId());
+                m_cmd_list_present->Submit(swap_chain->GetObjectId());
             }
             
-            swap_chain->Present();
+            swap_chain->Present(m_cmd_list_present);
         }
         Profiler::TimeBlockEnd();
 
