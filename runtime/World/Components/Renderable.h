@@ -90,10 +90,11 @@ namespace spartan
         void SetInstances(const std::vector<math::Matrix>& instances);
 
         // distance & visibility
-        float GetDistanceSquared(const uint32_t instance_group_index = 0) const { return m_distance_squared[instance_group_index]; }
-        float GetMaxRenderDistance() const                                      { return m_max_render_distance; }
-        void SetMaxRenderDistance(const float max_render_distance)              { m_max_render_distance = max_render_distance; }
-        bool IsVisible(const uint32_t instance_group_index = 0) const           { return m_is_visible[instance_group_index]; }
+        float GetDistanceSquared(const uint32_t instance_group_index = 0) const      { return m_distance_squared[instance_group_index]; }
+        float GetMaxRenderDistance() const                                           { return m_max_render_distance; }
+        void SetMaxRenderDistance(const float max_render_distance)                   { m_max_render_distance = max_render_distance; }
+        bool IsVisible(const uint32_t instance_group_index = 0) const                { return m_is_visible[instance_group_index]; }
+        void SetVisible(const bool visible, const uint32_t instance_group_index = 0) { m_is_visible[instance_group_index] = visible; }
 
         // flags
         bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }

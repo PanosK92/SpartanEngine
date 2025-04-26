@@ -148,7 +148,6 @@ namespace spartan
         tessellation_d,
         gbuffer_v,
         gbuffer_p,
-        depth_hiz_v,
         depth_prepass_v,
         depth_prepass_alpha_test_p,
         depth_light_v,

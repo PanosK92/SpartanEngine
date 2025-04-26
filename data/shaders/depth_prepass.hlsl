@@ -26,14 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex;
-
-    // hi-z occlusion culling (skipped if HIZ_DEPTH_PASS is defined)
-    #ifndef HIZ_DEPTH_PASS
-        vertex.position_clip = float4(0.0f, 0.0f, 0.0f, 0.0f); // degenerate position
-        uint aabb_index = (uint)pass_get_f3_value().z;
-        if (visibility[aabb_index] == 0)
-            return vertex;
-    #endif
     
     // to world space
     vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);

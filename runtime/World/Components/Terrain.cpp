@@ -925,14 +925,14 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
 
+        m_area_km2      = compute_terrain_area_km2(m_vertices);
+        m_is_generating = false;
+
         // clear everything but the height and placement data (they are used for physics and for placing foliage)
         m_vertices.clear();
         m_indices.clear();
         m_tile_vertices.clear();
         m_tile_indices.clear();
-
-        m_area_km2      = compute_terrain_area_km2(m_vertices);
-        m_is_generating = false;
     }
 
     void Terrain::Clear()

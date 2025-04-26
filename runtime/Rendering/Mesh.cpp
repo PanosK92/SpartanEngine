@@ -42,69 +42,81 @@ namespace spartan
         {
             const MeshLod& lod = mesh.GetSubMesh(sub_mesh_index).lods[0];
             BoundingBox aabb   = lod.aabb;
+            Vector3 min        = aabb.GetMin();
+            Vector3 max        = aabb.GetMax();
             Vector3 center     = aabb.GetCenter();
-
-            // face normals
+    
+            // Define ray start points (face centers) and their opposite targets
+            static array<Vector3, 6> start_points =
+            {
+                Vector3(min.x, center.y, center.z), // Left face
+                Vector3(max.x, center.y, center.z), // Right face
+                Vector3(center.x, min.y, center.z), // Bottom face
+                Vector3(center.x, max.y, center.z), // Top face
+                Vector3(center.x, center.y, min.z), // Front face
+                Vector3(center.x, center.y, max.z)  // Back face
+            };
+    
+            static array<Vector3, 6> end_points =
+            {
+                Vector3(max.x, center.y, center.z), // Opposite of left (right face)
+                Vector3(min.x, center.y, center.z), // Opposite of right (left face)
+                Vector3(center.x, max.y, center.z), // Opposite of bottom (top face)
+                Vector3(center.x, min.y, center.z), // Opposite of top (bottom face)
+                Vector3(center.x, center.y, max.z), // Opposite of front (back face)
+                Vector3(center.x, center.y, min.z)  // Opposite of back (front face)
+            };
+    
+            // Offset start points slightly outward to avoid starting on the mesh surface
             static array<Vector3, 6> normals =
             {
                 Vector3::Left,     Vector3::Right,
                 Vector3::Down,     Vector3::Up,
                 Vector3::Backward, Vector3::Forward
             };
-        
-            // face centers
-            array<Vector3, 6> face_centers =
+    
+            for (size_t i = 0; i < start_points.size(); ++i)
             {
-                Vector3(aabb.GetMin().x, center.y, center.z), // left face
-                Vector3(aabb.GetMax().x, center.y, center.z), // right face
-                Vector3(center.x, aabb.GetMin().y, center.z), // bottom face
-                Vector3(center.x, aabb.GetMax().y, center.z), // top face
-                Vector3(center.x, center.y, aabb.GetMin().z), // front face
-                Vector3(center.x, center.y, aabb.GetMax().z)  // back face
-            };
-        
-            // offset face centers slightly outward to avoid being on the mesh
-            for (size_t i = 0; i < face_centers.size(); ++i)
-            {
-                face_centers[i] += normals[i];
+                start_points[i] += normals[i] * 0.1f; // small offset to avoid surface
             }
-
+    
             // get geometry
             vector<uint32_t> indices;
             vector<RHI_Vertex_PosTexNorTan> vertices;
             mesh.GetGeometry(sub_mesh_index, &indices, &vertices);
-
+    
             // shoot rays
             uint32_t intersect_count = 0;
-            for (const Vector3& face_center : face_centers)
+            for (size_t i = 0; i < start_points.size(); ++i)
             {
-                Vector3 direction = center - face_center;
+                Vector3 direction = end_points[i] - start_points[i];
+                float distance_to_opposite = direction.Length();
                 direction.Normalize();
-        
-                Ray ray(face_center, direction);
-        
+    
+                Ray ray(start_points[i], direction);
+    
                 bool intersects = false;
                 for (size_t j = 0; j < indices.size(); j += 3)
                 {
                     const Vector3& v0 = vertices[indices[j + 0]].pos;
                     const Vector3& v1 = vertices[indices[j + 1]].pos;
                     const Vector3& v2 = vertices[indices[j + 2]].pos;
-        
-                    float distance = ray.HitDistance(v0, v1, v2);
-                    if (distance != numeric_limits<float>::infinity())
+    
+                    float hit_distance = ray.HitDistance(v0, v1, v2);
+                    if (hit_distance != numeric_limits<float>::infinity() && hit_distance <= distance_to_opposite)
                     {
                         intersects = true;
                         break;
                     }
                 }
-        
+    
                 if (intersects)
                 {
                     intersect_count++;
                 }
             }
-
-            // a pillar can get hit from 4 sides but top and bottom could have no faces
+    
+            // threshold: At least 4 rays must intersect for the mesh to be considered solid
             return intersect_count >= 4;
         }
     }
@@ -245,7 +257,7 @@ namespace spartan
         // create a sub-mesh
         SubMesh sub_mesh;
         uint32_t current_sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size());
-        m_sub_meshes.push_back(sub_mesh); // add it to the list so addlod() can access it
+        m_sub_meshes.push_back(sub_mesh); // add it to the list so AddLod() can access it
     
         // lod 0: original geometry
         {
@@ -314,6 +326,7 @@ namespace spartan
                 }
             }
         }
+
         // return the sub-mesh index if requested
         if (sub_mesh_index)
         {

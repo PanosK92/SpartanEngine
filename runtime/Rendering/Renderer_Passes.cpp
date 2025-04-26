@@ -53,7 +53,6 @@ namespace spartan
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
         cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::SpdCounter));
-        cmd_list->SetBuffer(Renderer_BindingsUav::visibility,   GetBuffer(Renderer_Buffer::Visibility));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics, RHI_CommandList* cmd_list_compute)
@@ -400,16 +399,17 @@ namespace spartan
     {
         cmd_list->BeginTimeblock("occlusion");
         {
-            // get render targets for occluders and hi-z buffer
+            // get resources
+            RHI_Buffer* buffer_visibility  = GetBuffer(Renderer_Buffer::Visibility);
             RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
             RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
-    
+
             // occluders
             {
                 // set pipeline state for depth-only rendering
                 RHI_PipelineState pso;
                 pso.name                             = "occluders";
-                pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_hiz_v);
+                pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v);
                 pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
                 pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
                 pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
@@ -470,14 +470,20 @@ namespace spartan
                 // set aabb count
                 m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
                 cmd_list->PushConstants(m_pcb_pass_cpu);
-    
+
+                cmd_list->SetBuffer(Renderer_BindingsUav::visibility, GetBuffer(Renderer_Buffer::Visibility));
+
                 // dispatch: ceil(aabb_count / 256) thread groups
                 uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
                 cmd_list->Dispatch(thread_group_count, 1, 1);
             }
 
-            // wait for the compute shader to finish
-            cmd_list->InsertBarrierBufferReadWrite(GetBuffer(Renderer_Buffer::Visibility));
+            uint32_t* visibility_data = static_cast<uint32_t*>(buffer_visibility->GetMappedData());
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                Renderer_DrawCall& draw_call = m_draw_calls[i];
+                //draw_call.renderable->SetVisible(visibility_data[i], draw_call.instance_group_index);
+            }
         }
         cmd_list->EndTimeblock();
     }
@@ -513,7 +519,7 @@ namespace spartan
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
                 Renderable* renderable             = draw_call.renderable;
                 Material* material                 = renderable->GetMaterial();
-                if (!material || material->IsTransparent())
+                if (!material || material->IsTransparent() || !renderable->IsVisible(draw_call.instance_group_index))
                     continue;
     
                 // toggles
@@ -627,7 +633,7 @@ namespace spartan
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Renderable* renderable             = draw_call.renderable;
             Material* material                 = renderable->GetMaterial();
-            if (!material || material->IsTransparent() != is_transparent_pass)
+            if (!material || material->IsTransparent() != is_transparent_pass || !renderable->IsVisible(draw_call.instance_group_index))
                 continue;
     
             // toggles

@@ -1084,7 +1084,7 @@ namespace spartan
                         }
                     }
                 }
-                
+
                 // sort by transparency, material id, and distance (front-to-back for opaque, back-to-front for transparent)
                 sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
                 {
@@ -1148,16 +1148,13 @@ namespace spartan
                     Renderable* renderable       = draw_call.renderable;
                     Material* material           = renderable->GetMaterial();
             
-                    // skip if material is null, transparent, or alpha-tested or non-solid (unreliable occluders)
-                    if (!material || material->IsTransparent() || !renderable->IsSolid())
+                    // skip any draw calls that have a mesh that you can see through (transparent, instanced, non-solid)
+                    bool is_solid = material->GetProperty(MaterialProperty::IsTerrain) || renderable->IsSolid(); // IsSolid() is still unreliable for some meshes, like terrain, temp hack
+                    if (!material || material->IsTransparent() || renderable->HasInstancing() || !is_solid)
                         continue;
             
                     // get bounding box
                     const BoundingBox& aabb_world = renderable->GetBoundingBox();
-
-                    // this can cause all sorts of issues, so skip
-                    if (aabb_world.Contains(World::GetCamera()->GetEntity()->GetPosition()))
-                        continue;
 
                     // compute screen-space area and store it
                     float screen_area = compute_screen_space_area(aabb_world);
@@ -1171,7 +1168,7 @@ namespace spartan
                 });
             
                 // select the top n occluders
-                const uint32_t max_occluders = 16;
+                const uint32_t max_occluders = 32;
                 uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
                 for (uint32_t i = 0; i < occluder_count; i++)
                 {

@@ -313,10 +313,6 @@ namespace spartan
 
         // depth
         {
-            shader(Renderer_Shader::depth_hiz_v) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::depth_hiz_v)->AddDefine("HIZ_DEPTH_PASS");
-            shader(Renderer_Shader::depth_hiz_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-
             shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 

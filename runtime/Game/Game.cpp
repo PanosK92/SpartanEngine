@@ -577,9 +577,7 @@ namespace spartan
                     material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",     2);
                     material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",  2);
                     material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png",  2);
-                    // we are not using the height maps of the sand and grass because their high frequency detail can be matched with vertices
-                    // however we'll enable tessellation for the material, if no height map is present, perlin noise will be used instead
-                    material->SetProperty(MaterialProperty::Tessellation, 1.0f);
+                    material->SetProperty(MaterialProperty::Tessellation, 0.0f);
                 }
                 
                 // generate a height field
