@@ -329,9 +329,12 @@ namespace ImGui::RHI
                                     {
                                         // update texture viewer parameters
                                         is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                        mip_level = static_cast<float>(TextureViewer::GetMipLevel());
-                                        array_level = static_cast<float>(TextureViewer::GetArrayLevel());
-                                
+                                        if (is_texture_visualised)
+                                        {
+                                            mip_level = static_cast<float>(TextureViewer::GetMipLevel());
+                                            array_level = static_cast<float>(TextureViewer::GetArrayLevel());
+                                        }
+
                                         if (array_level > 0)
                                         {
                                             cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, texture);
