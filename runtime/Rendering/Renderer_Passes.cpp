@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_Device.h"
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_AMD_FFX.h"
 #include "../RHI/RHI_RasterizerState.h"
@@ -79,8 +78,7 @@ namespace spartan
             brdf_specular_lut_produced = true;
         }
 
-        Camera* camera = World::GetCamera();
-        if (!World::IsLoading() && camera)
+        if (Camera* camera = World::GetCamera())
         {
             Pass_VariableRateShading(cmd_list_present);
 

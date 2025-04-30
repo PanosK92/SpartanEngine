@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ===========================
 #include "pch.h"
 #include "Renderer.h"
 #include "Material.h"
@@ -40,8 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
-#include "../World/Components/AudioSource.h"
-//==========================================
+#include "../Core/ProgressTracker.h"
+//======================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -307,11 +307,7 @@ namespace spartan
         m_cmd_list_present->Begin();
 
         // build draw calls and determine occluders
-        m_draw_call_count = 0;
-        if (!World::IsLoading())
-        {
-            BuildDrawCallsAndOccluders(m_cmd_list_present);
-        }
+        BuildDrawCallsAndOccluders(m_cmd_list_present);
 
         // update GPU buffers (needs to happen after draw call and occluder building)
         UpdateBuffers(m_cmd_list_present);
@@ -1031,6 +1027,11 @@ namespace spartan
 
     void Renderer::BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list)
     {
+        m_draw_call_count = 0;
+
+        if (ProgressTracker::IsLoading())
+            return;
+
         cmd_list->BeginTimeblock("build_draw_calls_and_occluders", false, false);
         {
             // build draw calls and sort them

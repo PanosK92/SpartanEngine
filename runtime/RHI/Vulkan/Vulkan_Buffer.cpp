@@ -49,12 +49,12 @@ namespace spartan
         // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT  -> mappable
         // VK_MEMORY_PROPERTY_HOST_COHERENT_BIT -> persistently mapped (flushless)
         // VK_BUFFER_USAGE_TRANSFER_DST_BIT     -> vkCmdUpdateBuffer()
-        // VK_BUFFER_USAGE_STORAGE_BUFFER_BIT   -> AMD FidelityFX Brizelizer GI
+
         if (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index || m_type == RHI_Buffer_Type::Instance)
         {
             bool vertex                     = m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Instance;
             VkBufferUsageFlags flags_usage  = vertex ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-            flags_usage                    |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; 
+            flags_usage                    |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // AMD FidelityFX Brizelizer GI
 
             if (m_mappable)
             {

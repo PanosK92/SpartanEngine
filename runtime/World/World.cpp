@@ -463,11 +463,6 @@ namespace spartan
         return audio_source_count;
     }
 
-    bool World::IsLoading()
-    {
-        return ProgressTracker::IsLoading();
-    }
-
     float World::GetTimeOfDay()
     {
         return day_night_cycle::current_time;
