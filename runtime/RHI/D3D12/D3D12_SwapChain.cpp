@@ -139,7 +139,7 @@ namespace spartan
         m_image_index = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
     }
     
-    void RHI_SwapChain::Present()
+    void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
         SP_ASSERT(m_rhi_swapchain != nullptr && "Can't present, the swapchain has not been initialised");
 

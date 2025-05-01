@@ -41,8 +41,8 @@ namespace spartan
 
     }
 
-    void RHI_Queue::NextCommandList()
+    RHI_CommandList* RHI_Queue::NextCommandList()
     {
-
+        return nullptr;
     }
 }

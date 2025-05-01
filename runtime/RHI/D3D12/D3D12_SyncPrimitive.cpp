@@ -44,9 +44,4 @@ namespace spartan
     {
 
     }
-
-    uint64_t RHI_SyncPrimitive::GetValue()
-    {
-        return 0;
-    }
 }

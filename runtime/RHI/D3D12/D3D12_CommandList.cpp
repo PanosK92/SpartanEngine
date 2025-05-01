@@ -39,7 +39,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    RHI_CommandList::RHI_CommandList(void* cmd_pool, const char* name)
+    RHI_CommandList::RHI_CommandList(RHI_Queue* queue, void* cmd_pool, const char* name)
     {
         SP_ASSERT(cmd_pool != nullptr);
 
@@ -68,7 +68,7 @@ namespace spartan
         d3d12_utility::release<ID3D12CommandQueue>(m_rhi_resource);
     }
 
-    void RHI_CommandList::Begin(const RHI_Queue* queue)
+    void RHI_CommandList::Begin()
     {
         // if the command list is in use, wait for it
         if (m_state == RHI_CommandListState::Submitted)
@@ -87,7 +87,7 @@ namespace spartan
         m_state = RHI_CommandListState::Recording;
     }
 
-    void RHI_CommandList::Submit(RHI_Queue* queue, const uint64_t swapchain_id)
+    void RHI_CommandList::Submit(const uint64_t swapchain_id)
     {
         // verify a few things
         SP_ASSERT(m_rhi_resource != nullptr);
