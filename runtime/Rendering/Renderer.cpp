@@ -59,18 +59,18 @@ namespace spartan
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
 
     // misc
-    bool wants_to_present                                         = false;
-    uint32_t Renderer::m_resource_index                           = 0;
-    atomic<bool> Renderer::m_initialized_resources                = false;
-    bool Renderer::m_transparents_present                         = false;
-    bool Renderer::m_bindless_samplers_dirty                      = true;
-    bool Renderer::m_bindless_abbs_dirty                          = true;
-    bool Renderer::m_bindless_materials_dirty                     = true;
-    bool Renderer::m_bindless_lights_dirty                        = true;
+    bool wants_to_present                          = false;
+    uint32_t Renderer::m_resource_index            = 0;
+    atomic<bool> Renderer::m_initialized_resources = false;
+    bool Renderer::m_transparents_present          = false;
+    bool Renderer::m_bindless_samplers_dirty       = true;
+    bool Renderer::m_bindless_abbs_dirty           = true;
+    bool Renderer::m_bindless_materials_dirty      = true;
+    bool Renderer::m_bindless_lights_dirty         = true;
+    RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    RHI_CommandList* Renderer::m_cmd_list_present = nullptr;
 
     namespace
     {
@@ -313,7 +313,7 @@ namespace spartan
         UpdateBuffers(m_cmd_list_present);
 
         // produce the actual frame (this is where all the passes are done)
-        RHI_CommandList* cmd_list_graphics_secondary = queue_graphics->NextCommandList();
+        RHI_CommandList* cmd_list_graphics_secondary = nullptr;//queue_graphics->NextCommandList();
         ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
 
         // blit to back buffer when not in editor mode

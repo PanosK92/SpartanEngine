@@ -84,7 +84,7 @@ namespace spartan
 
             // opaques
             {
-                Pass_Occlusion(cmd_list_graphics_secondary);
+                //Pass_Occlusion(cmd_list_graphics_secondary);
                 Pass_Depth_Prepass(cmd_list_present);
                 bool is_transparent = false;
                 Pass_GBuffer(cmd_list_present, is_transparent);
@@ -101,7 +101,7 @@ namespace spartan
                 Pass_Ssao(cmd_list_present);
                 Pass_Light(cmd_list_present, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_GlobalIllumination(cmd_list_present);          // compute global illumination
-                Pass_Light_Composition(cmd_list_present, is_transparent); // compose all light (diffuse, specular, etc.
+                Pass_Light_Composition(cmd_list_present, is_transparent); // compose all light (diffuse, specular, etc).
             }
 
             // transparents
@@ -115,7 +115,7 @@ namespace spartan
 
             // apply skysphere, ssr and global illumination
             Pass_Ssr(cmd_list_present);
-            Pass_Light_ImageBased(cmd_list_present); 
+            Pass_Light_ImageBased(cmd_list_present);
 
             // render -> output resolution
             Pass_Upscale(cmd_list_present);
@@ -670,7 +670,7 @@ namespace spartan
     
             // set pass constants
             {
-                Entity* entity = renderable->GetEntity();
+                Entity* entity           = renderable->GetEntity();
                 m_pcb_pass_cpu.transform = entity->GetMatrix();
                 m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());

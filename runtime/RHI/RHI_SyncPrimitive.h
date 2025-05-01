@@ -45,20 +45,15 @@ namespace spartan
         void Signal(const uint64_t value);
         bool IsSignaled();
         void Reset();
-
-        uint64_t GetValue();
-        uint64_t GetWaitValue() const           { return m_value_wait; }
-        void SetWaitValue(const uint64_t value) { m_value_wait = value; }
-        void* GetRhiResource()                  { return m_rhi_resource; }
+        uint64_t GetNextSignalValue() { return ++m_value; }
+        void* GetRhiResource()        { return m_rhi_resource; }
 
         // swapchain present wait tracking
         bool has_been_waited_for = true;
 
     private:
         RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
-        uint64_t m_value_wait         = 0;
-
-        // rhi
-        void* m_rhi_resource = nullptr;
+        uint64_t m_value              = 0;
+        void* m_rhi_resource          = nullptr;
     };
 }

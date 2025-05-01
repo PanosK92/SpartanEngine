@@ -38,7 +38,6 @@ namespace spartan
 {
     namespace
     {
-        atomic<uint64_t> timeline_value = 0;
         array<mutex, 3> mutexes;
 
         mutex& get_mutex(RHI_Queue* queue)
@@ -57,7 +56,8 @@ namespace spartan
             VkCommandPoolCreateInfo cmd_pool_info = {};
             cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             cmd_pool_info.queueFamilyIndex        = RHI_Device::GetQueueIndex(queue_type);
-            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // specifies that command buffers allocated from the pool will be short-lived
+            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |           // short-lived (reset or freed)
+                                                    VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // can be reset
 
             // create the first one
             VkCommandPool cmd_pool = nullptr;
@@ -139,8 +139,7 @@ namespace spartan
         semaphores[1].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
         semaphores[1].semaphore = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
         semaphores[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
-        semaphores[1].value     = ++timeline_value; // signal
-        semaphore_timeline->SetWaitValue(semaphores[1].value);
+        semaphores[1].value     = semaphore_timeline->GetNextSignalValue(); // signal
 
         // command buffer
         VkCommandBufferSubmitInfo cmd_buffer_info = {};

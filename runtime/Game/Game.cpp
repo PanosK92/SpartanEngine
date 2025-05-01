@@ -443,8 +443,8 @@ namespace spartan
                 entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh, true);
+                physics_body->SetMass(PhysicsBody::mass_auto);
             }
         }
 
@@ -458,8 +458,8 @@ namespace spartan
                 entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetMass(PhysicsBody::mass_auto);
                 physics_body->SetShapeType(PhysicsShape::Mesh);
+                physics_body->SetMass(PhysicsBody::mass_auto);
             }
         }
 
@@ -1173,7 +1173,7 @@ namespace spartan
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("subway");
                 entity->SetScale(Vector3(0.015f));
-
+                
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
