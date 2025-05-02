@@ -256,32 +256,21 @@ namespace spartan
         {
             auto get_color = [](Renderable* renderable)
             {
-                static const Color color_visible        = Color::standard_renderer_lines;
-                static const Color color_occluded       = Color(1.0f, 0.0f, 0.0f, 1.0f);
-                static const Color color_ignore_culling = Color(1.0f, 1.0f, 0.0f, 1.0f);
+                const Color color_visible  = Color::standard_renderer_lines;
+                const Color color_occluded = Color(1.0f, 0.0f, 0.0f, 1.0f);
 
-                Color color = color_visible;
-                color       = !renderable->IsVisible() ? color_occluded : color;
-
-                return color;
+                return renderable->IsVisible() ? color_visible : color_occluded;
             };
 
-            auto draw_bounding_boxes = [&get_color]()
+            for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
-                for (const shared_ptr<Entity>& entity : World::GetEntities())
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
-                    {
+                    if (!renderable->HasInstancing())
+                    { 
                         DrawBox(renderable->GetBoundingBox(), get_color(renderable));
                     }
-                }
-            };
-            
-            auto draw_instance_group_bounding_boxes = [&get_color]()
-            {
-                for (const shared_ptr<Entity>& entity : World::GetEntities())
-                {
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    else
                     {
                         uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
                         for (uint32_t group_index = 0; group_index < group_count; group_index++)
@@ -291,10 +280,7 @@ namespace spartan
                         }
                     }
                 }
-            };
-
-            draw_bounding_boxes();
-            draw_instance_group_bounding_boxes();
+            }
         }
     }
 }

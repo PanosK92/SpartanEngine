@@ -397,10 +397,7 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
-        return; // disable for now
-
         // quick and dirty introduction of a secondary command list, get it working first then worry about perfect synch and architecture
-
         cmd_list->Begin();
 
         cmd_list->BeginTimeblock("occlusion");
