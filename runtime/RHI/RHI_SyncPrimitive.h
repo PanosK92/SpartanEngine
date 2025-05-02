@@ -41,7 +41,7 @@ namespace spartan
         RHI_SyncPrimitive(const RHI_SyncPrimitive_Type type, const char* name = nullptr);
         ~RHI_SyncPrimitive();
 
-        void Wait(const uint64_t timeout_nanoseconds = 5000000000 /* 5 seconds */);
+        void Wait(const uint64_t timeout_nanoseconds);
         void Signal(const uint64_t value);
         bool IsSignaled();
         void Reset();

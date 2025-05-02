@@ -49,7 +49,8 @@ namespace spartan
         }
 
         // wait
-        m_rendering_complete_semaphore_timeline->Wait();
+        uint64_t timeout_nanoseconds = 60'000'000'000; // 60 seconds
+        m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds);
         m_state = RHI_CommandListState::Idle;
 
         if (log_wait_time)
