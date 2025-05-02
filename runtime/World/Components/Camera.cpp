@@ -427,8 +427,8 @@ namespace spartan
             m_first_person_rotation.y = clamp(m_first_person_rotation.y, -80.0f, 80.0f);
 
             // compute rotation
-            const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * deg_to_rad, Vector3::Up);
-            const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * deg_to_rad, Vector3::Right);
+            const Quaternion xQuaternion = Quaternion::FromAxisAngle(Vector3::Up, m_first_person_rotation.x * deg_to_rad);
+            const Quaternion yQuaternion = Quaternion::FromAxisAngle(Vector3::Right, m_first_person_rotation.y * deg_to_rad);
             const Quaternion rotation    = xQuaternion * yQuaternion;
 
             // rotate
@@ -502,7 +502,7 @@ namespace spartan
             }
 
             // translate for as long as there is speed
-             const bool is_grounded = m_physics_body_to_control->RayTraceIsGrounded();
+            const bool is_grounded = m_physics_body_to_control ? m_physics_body_to_control->RayTraceIsGrounded() : false;
             if (m_movement_speed != Vector3::Zero)
             {
                 if (m_physics_body_to_control)
@@ -573,7 +573,7 @@ namespace spartan
             // jump
             if (Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South))
             {
-                if (is_grounded)
+                if (is_grounded && m_physics_body_to_control)
                 {
                     m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
                 }

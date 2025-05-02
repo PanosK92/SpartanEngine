@@ -1666,9 +1666,8 @@ namespace spartan
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        bool no_lights        = !GetOption<bool>(Renderer_Option::Lights) && World::GetLightCount() == 0;
-        bool no_audio_sources = World::GetAudioSourceCount() == 0;
-        if (Engine::IsFlagSet(EngineMode::Playing) && no_lights && no_audio_sources)
+        bool no_icons = !GetOption<bool>(Renderer_Option::Lights) || World::GetLightCount() == 0 || World::GetAudioSourceCount() == 0;
+        if (Engine::IsFlagSet(EngineMode::Playing) || no_icons)
             return;
     
         cmd_list->BeginTimeblock("icons");

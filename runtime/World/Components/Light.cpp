@@ -128,9 +128,9 @@ namespace spartan
             // day night cycle
             if (GetFlag(LightFlags::DayNightCycle))
             {
-                Quaternion rotation = Quaternion::FromAngleAxis(
-                    (World::GetTimeOfDay() * 360.0f - 90.0f) * math::deg_to_rad, // angle in radians, -90° offset for horizon
-                    Vector3::Right                                               // x-axis rotation (left to right)
+                Quaternion rotation = Quaternion::FromAxisAngle(
+                    Vector3::Right,                                             // x-axis rotation (left to right)
+                    (World::GetTimeOfDay() * 360.0f - 90.0f) * math::deg_to_rad // angle in radians, -90° offset for horizon
                 );
 
                 GetEntity()->SetRotation(rotation);

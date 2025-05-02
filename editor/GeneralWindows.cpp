@@ -422,7 +422,7 @@ namespace
             "5. Living room (gi test, sunlight through window - moderate)",
             "6. Doom E1M1 (classic level recreation - light)",
             "7. Minecraft world (blocky aesthetic - light)",
-            "8. Car mark II (work in progress - ignore)"
+            "8. Gran Turismo brand central (labor of love - light)"
         };
 
         int world_index = 0;

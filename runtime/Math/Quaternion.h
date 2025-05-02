@@ -52,7 +52,7 @@ namespace spartan::math
         // Creates a new Quaternion from the specified axis and angle.
         // The angle in radians.
         // The axis of rotation.
-        static Quaternion FromAngleAxis(float angle, const Vector3& axis)
+        static Quaternion FromAxisAngle(const Vector3& axis, float angle)
         {
             const float half = angle * 0.5f;
             const float sin  = sinf(half);
@@ -140,7 +140,7 @@ namespace spartan::math
                     axis = Vector3::Up.Cross(normStart);
                 }
 
-                return FromAngleAxis(180.0f * deg_to_rad, axis);
+                return FromAxisAngle(axis, 180.0f * deg_to_rad);
             }
         }
 
