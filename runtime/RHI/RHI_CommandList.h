@@ -62,7 +62,7 @@ namespace spartan
 
         void Begin();
         void Submit(const uint64_t swapchain_id);
-        void WaitForExecution();
+        void WaitForExecution(const bool log_wait_time = false);
         void SetPipelineState(RHI_PipelineState& pso);
 
         // clear

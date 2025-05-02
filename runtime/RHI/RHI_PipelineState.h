@@ -54,7 +54,6 @@ namespace spartan
         uint32_t render_target_array_index         = 0;
         std::array<RHI_Shader*, static_cast<uint32_t>(RHI_Shader_Type::Max)> shaders = {};
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
-        bool depth_pass                            = false;
         //=================================================================================
 
         // dynamic properties, changing these will not create a new PSO

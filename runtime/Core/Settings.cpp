@@ -80,6 +80,7 @@ namespace spartan
                 case Renderer_Option::VariableRateShading:         return "VariableRateShading";
                 case Renderer_Option::ResolutionScale:             return "ResolutionScale";
                 case Renderer_Option::DynamicResolution:           return "DynamicResolution";
+                case Renderer_Option::Dithering:                   return "Dithering";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");

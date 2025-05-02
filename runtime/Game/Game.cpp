@@ -1308,11 +1308,11 @@ namespace spartan
 
     void Game::Tick()
     {
-        if (loaded_world == DefaultWorld::GranTurismo)
+        if (loaded_world == DefaultWorld::GranTurismo && Engine::IsFlagSet(EngineMode::Playing))
         {
             // slow rotation: rotate car around Y-axis (vertical)
             float rotation_speed = 0.25f; // degrees per second
-            float delta_time     = Timer::GetDeltaTimeSec(); // time since last frame (in seconds)
+            float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec()); // time since last frame (in seconds)
             float angle          = rotation_speed * delta_time; // incremental rotation
             Quaternion rotation  = Quaternion::FromAxisAngle(Vector3::Up, angle);
             default_car->Rotate(rotation);

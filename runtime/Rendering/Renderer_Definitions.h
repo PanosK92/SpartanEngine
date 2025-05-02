@@ -57,6 +57,7 @@ namespace spartan
         Tonemapping,
         Upsampling,
         Sharpness,
+        Dithering,
         Hdr,
         WhitePoint,
         Gamma,
@@ -188,6 +189,7 @@ namespace spartan
         blit_c,
         occlusion_c,
         icon_c,
+        dithering_c,
         max
     };
     

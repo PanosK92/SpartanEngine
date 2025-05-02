@@ -191,8 +191,7 @@ namespace spartan
             pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadEqual) : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
             pso.clear_depth                      = 0.0f;
             pso.clear_color[0]                   = Color::standard_white;
-            pso.depth_pass                       = false;
-    
+
             // constants
             constexpr size_t MAX_LIGHTS = 64;
             constexpr size_t MAX_RENDERABLES = 1024;
@@ -397,7 +396,6 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
-        // quick and dirty introduction of a secondary command list, get it working first then worry about perfect synch and architecture
         cmd_list->Begin();
 
         cmd_list->BeginTimeblock("occlusion");
@@ -484,7 +482,7 @@ namespace spartan
 
         // perform occlusion queries and wait for the results to be ready
         cmd_list->Submit(0);
-        cmd_list->WaitForExecution();
+        cmd_list->WaitForExecution(false);
 
         // update the draw calls with the visibility results so all subsequent passes can use them
         uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::Visibility)->GetMappedData());
@@ -1180,6 +1178,13 @@ namespace spartan
             Pass_Output(cmd_list, get_output_in, get_output_out);
         }
 
+        // dithering
+        if (GetOption<bool>(Renderer_Option::Dithering))
+        {
+            swap_output = !swap_output;
+            Pass_Dithering(cmd_list, get_output_in, get_output_out);
+        }
+
         // sharpening
         if (GetOption<bool>(Renderer_Option::Sharpness) && GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) != Renderer_Upsampling::Fsr3)
         {
@@ -1599,6 +1604,27 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
             
+            // render
+            cmd_list->Dispatch(tex_out);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Dithering(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        cmd_list->BeginTimeblock("dithering");
+        {
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name             = "dithering";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::dithering_c);
+            cmd_list->SetPipelineState(pso);
+            
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue_0));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+
             // render
             cmd_list->Dispatch(tex_out);
         }

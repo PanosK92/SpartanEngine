@@ -35,11 +35,10 @@ namespace spartan
 {
     namespace
     {
-        bool log_wait_time = false;
         time_point<high_resolution_clock> start_time;
     }
 
-    void RHI_CommandList::WaitForExecution()
+    void RHI_CommandList::WaitForExecution(const bool log_wait_time)
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "the command list hasn't been submitted, can't wait for it.");
 

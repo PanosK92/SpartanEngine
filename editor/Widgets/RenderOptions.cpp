@@ -382,20 +382,12 @@ void RenderOptions::OnTickVisible()
 
         if (option("Camera"))
         {
-            // bloom
             option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled", 0.01f);
-
-            // motion blur
             option_check_box("Motion blur (controlled by the camera's shutter speed)", Renderer_Option::MotionBlur);
-
-            // depth of field
             option_check_box("Depth of field (controlled by the camera's aperture)", Renderer_Option::DepthOfField);
-
-            // chromatic aberration
             option_check_box("Chromatic aberration (controlled by the camera's aperture)", Renderer_Option::ChromaticAberration, "Emulates the inability of old cameras to focus all colors in the same focal point");
-
-            // film grain
             option_check_box("Film grain", Renderer_Option::FilmGrain);
+            option_check_box("Dithering", Renderer_Option::Dithering);
         }
 
         if (option("World"))

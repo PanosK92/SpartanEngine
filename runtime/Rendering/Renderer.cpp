@@ -159,6 +159,7 @@ namespace spartan
             SetOption(Renderer_Option::Lights,                      1.0f);
             SetOption(Renderer_Option::Physics,                     0.0f);
             SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
+            SetOption(Renderer_Option::Dithering,                   0.0f);
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
 
             SetWind(Vector3(1.0f, 0.0f, 0.5f));

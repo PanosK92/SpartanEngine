@@ -481,6 +481,10 @@ namespace spartan
         // icon
         shader(Renderer_Shader::icon_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::icon_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "icon.hlsl", async);
+
+        // dithering
+        shader(Renderer_Shader::dithering_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::dithering_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "dithering.hlsl", async);
     }
 
     void Renderer::CreateFonts()
