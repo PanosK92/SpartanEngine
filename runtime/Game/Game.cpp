@@ -1305,10 +1305,25 @@ namespace spartan
             tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
             tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
 
+            // ambient audio
+            {
+                shared_ptr<Entity> entity = World::CreateEntity();
+                entity->SetObjectName("audio_hum_electric");
+
+                AudioSource* audio_source = entity->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\hum_electric.wav");
+                audio_source->SetLoop(true);
+                audio_source->SetVolume(0.25f);
+            }
+
             // camera
             {
                 Vector3 camera_position = Vector3(5.4084f, 1.5f, 4.7593f);
                 create_camera(camera_position);
+
+                AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
+                audio_source->SetPlayOnStart(false);
             }
 
             // point light
@@ -1497,6 +1512,21 @@ namespace spartan
 
     void Game::Tick()
     {
+        if (loaded_world == DefaultWorld::LiminalSpace && Engine::IsFlagSet(EngineMode::Playing))
+        {
+            // footsteps
+            AudioSource* audio_source = default_camera->GetChildByIndex(0)->GetComponent<AudioSource>();
+            Camera* camera            = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
+            if (camera->IsWalking() && !audio_source->IsPlaying())
+            {
+                audio_source->Play();
+            }
+            else if (!camera->IsWalking() && audio_source->IsPlaying())
+            {
+                audio_source->Stop();
+            }
+        }
+
         if (loaded_world == DefaultWorld::GranTurismo && Engine::IsFlagSet(EngineMode::Playing))
         {
             // slow rotation: rotate car around Y-axis (vertical)
