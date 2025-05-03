@@ -1226,7 +1226,6 @@ namespace spartan
             create_music("project\\music\\gran_turismo.wav");
             default_audio->GetComponent<AudioSource>()->SetPitch(1.9f); // why?
 
-            
             create_car(Vector3(0.0f, 0.08f, 0.0f), false);
 
             // camera
@@ -1289,6 +1288,97 @@ namespace spartan
             {
                 Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
                 Renderer::SetOption(Renderer_Option::Lights,             0.0f);
+            }
+        }
+
+        void create_liminal_space()
+        {
+            // room dimensions
+            const float room_width  = 20.0f;  // X-axis
+            const float room_depth  = 20.0f;  // Z-axis
+            const float room_height = 10.0f;  // Y-axis
+
+            // Shared material for all surfaces (floor, walls, ceiling)
+            shared_ptr<Material> tile_material = make_shared<Material>();
+            tile_material->SetResourceFilePath(string("project\\terrain\\material_floor_tile") + string(EXTENSION_MATERIAL));
+            tile_material->SetTexture(MaterialTextureType::Color,     "project\\materials\\tile_white\\albedo.png");
+            tile_material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\tile_white\\normal.png");
+            tile_material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\tile_white\\metallic.png");
+            tile_material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\tile_white\\roughness.png");
+            tile_material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\tile_white\\ao.png");
+            tile_material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None)); // Disable culling
+            tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
+            tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
+
+            // Point light
+            shared_ptr<Entity> point_light = World::CreateEntity();
+            {
+                point_light->SetObjectName("light_point");
+                point_light->SetPosition(Vector3(0.0f, room_height * 0.5f, 0.0f));
+        
+                Light* light = point_light->AddComponent<Light>();
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color::light_fluorescent_tube_light);
+                light->SetRange(40.0f);
+                light->SetIntensity(LightIntensity::bulb_500_watt);
+                light->SetFlag(LightFlags::ShadowsTransparent, false);
+                light->SetFlag(LightFlags::Volumetric, false);
+                light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+            }
+        
+            // Camera
+            {
+                Vector3 camera_position = Vector3(5.4084f, 1.2250f, 4.7593f);
+                create_camera(camera_position);
+                Vector3 direction = (point_light->GetPosition() - camera_position).Normalized();
+                default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
+            }
+
+            // Floor
+            {
+                shared_ptr<Entity> floor = World::CreateEntity();
+                floor->SetObjectName("floor");
+                floor->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                floor->SetScale(Vector3(room_width, 1.0f, room_depth));
+        
+                Renderable* renderable = floor->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Quad);
+                renderable->SetMaterial(tile_material);
+
+                PhysicsBody* physics_body = floor->AddComponent<PhysicsBody>();
+                physics_body->SetShapeType(PhysicsShape::Mesh);
+            }
+        
+            // Ceiling
+            {
+                shared_ptr<Entity> ceiling = World::CreateEntity();
+                ceiling->SetObjectName("ceiling");
+                ceiling->SetPosition(Vector3(0.0f, room_height, 0.0f));
+                ceiling->SetScale(Vector3(room_width, 1.0f, room_depth));
+                ceiling->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::deg_to_rad * 180.0f)); // Face downward
+        
+                Renderable* renderable = ceiling->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Quad);
+                renderable->SetMaterial(tile_material);
+
+                PhysicsBody* physics_body = ceiling->AddComponent<PhysicsBody>();
+                physics_body->SetShapeType(PhysicsShape::Mesh);
+            }
+        
+            // Wall 1 (Front, at negative Z)
+            {
+                shared_ptr<Entity> wall = World::CreateEntity();
+                wall->SetObjectName("wall_front");
+                wall->SetPosition(Vector3(0.0f, room_height / 2.0f, -room_depth / 2.0f));
+                wall->SetScale(Vector3(room_width, 1.0f, room_height));
+                wall->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f));
+        
+                Renderable* renderable = wall->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Quad);
+                renderable->SetMaterial(tile_material);
+  
+                PhysicsBody* physics_body = wall->AddComponent<PhysicsBody>();
+                physics_body->SetShapeType(PhysicsShape::Mesh);
             }
         }
     }
@@ -1497,15 +1587,16 @@ namespace spartan
 
             switch (default_world)
             {
-                case DefaultWorld::Forest:      create_forest_car();                 break;
-                case DefaultWorld::Doom:        create_doom_e1m1();                  break;
-                case DefaultWorld::Bistro:      create_bistro();                     break;
-                case DefaultWorld::Minecraft:   create_minecraft();                  break;
-                case DefaultWorld::LivingRoom:  create_living_room_gi_test();        break;
-                case DefaultWorld::Sponza:      create_sponza_4k();                  break;
-                case DefaultWorld::Subway:      create_subway_gi_test();             break;
-                case DefaultWorld::GranTurismo: create_gran_turismo_brand_central(); break;
-                default: SP_ASSERT_MSG(false, "Unhandled default world");            break;
+                case DefaultWorld::Forest:       create_forest_car();                 break;
+                case DefaultWorld::Doom:         create_doom_e1m1();                  break;
+                case DefaultWorld::Bistro:       create_bistro();                     break;
+                case DefaultWorld::Minecraft:    create_minecraft();                  break;
+                case DefaultWorld::LivingRoom:   create_living_room_gi_test();        break;
+                case DefaultWorld::Sponza:       create_sponza_4k();                  break;
+                case DefaultWorld::Subway:       create_subway_gi_test();             break;
+                case DefaultWorld::GranTurismo:  create_gran_turismo_brand_central(); break;
+                case DefaultWorld::LiminalSpace: create_liminal_space();              break;
+                default: SP_ASSERT_MSG(false, "Unhandled default world");             break;
             }
 
             ProgressTracker::SetGlobalLoadingState(false);

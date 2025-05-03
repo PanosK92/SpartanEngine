@@ -33,6 +33,7 @@ namespace spartan
         Doom,
         Minecraft,
         GranTurismo,
+        LiminalSpace,
         Max
     };
 
