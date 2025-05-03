@@ -1479,15 +1479,6 @@ namespace spartan
         { 
             void create()
             {
-                // modern random number generator (Mersenne Twister)
-                static std::mt19937 rng(std::random_device{}());
-                
-                // helper for random number generation (0 to max-1)
-                auto rand_int = [&](int max) {
-                    std::uniform_int_distribution<int> dist(0, max - 1);
-                    return dist(rng);
-                };
-            
                 // shared material for all surfaces (floor, walls, ceiling)
                 shared_ptr<Material> tile_material = make_shared<Material>();
                 tile_material->SetResourceFilePath(string("project\\terrain\\material_floor_tile") + string(EXTENSION_MATERIAL));
@@ -1504,7 +1495,7 @@ namespace spartan
                 {
                     shared_ptr<Entity> entity = World::CreateEntity();
                     entity->SetObjectName("audio_hum_electric");
-            
+                    
                     AudioSource* audio_source = entity->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\hum_electric.wav");
                     audio_source->SetLoop(true);
@@ -1514,7 +1505,7 @@ namespace spartan
                 // camera
                 {
                     create_camera(Vector3(5.4084f, 1.5f, 4.7593f));
-            
+                    
                     AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
                     audio_source->SetPlayOnStart(false);
@@ -1524,7 +1515,7 @@ namespace spartan
                 shared_ptr<Entity> point_light = World::CreateEntity();
                 {
                     point_light->SetObjectName("light_point");
-            
+                    
                     Light* light = point_light->AddComponent<Light>();
                     light->SetLightType(LightType::Point);
                     light->SetColor(Color::light_fluorescent_tube_light);
@@ -1534,7 +1525,7 @@ namespace spartan
                     light->SetFlag(LightFlags::Volumetric, false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                     light->SetFlag(LightFlags::Shadows, false);
-            
+                    
                     light->GetEntity()->SetParent(default_camera);
                 }
                 
@@ -1548,21 +1539,29 @@ namespace spartan
                 
                 // direction enum
                 enum class Direction { Front, Back, Left, Right, Max };
+            
+                // mersenne twister random number generator
+                mt19937 rng(random_device{}());
+                auto rand_int = [&](int max)
+                {
+                    uniform_int_distribution<int> dist(0, max - 1);
+                    return dist(rng);
+                };
                 
                 // lambda for creating surfaces
                 auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, shared_ptr<Entity> parent)
                 {
                     auto entity = World::CreateEntity();
-            
+                    
                     entity->SetObjectName(name);
                     entity->SetPosition(pos);
                     entity->SetScale(scale);
                     entity->SetParent(parent); // set parent to room entity
-            
+                    
                     auto renderable = entity->AddComponent<Renderable>();
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetMaterial(tile_material);
-            
+                    
                     auto physics_body = entity->AddComponent<PhysicsBody>();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                 };
@@ -1574,24 +1573,24 @@ namespace spartan
                     bool isFb         = (dir == Direction::Front || dir == Direction::Back);
                     float wall_pos    = (dir == Direction::Front || dir == Direction::Left) ? -0.5f : 0.5f;
                     wall_pos         *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
-                 
+                    
                     // top section (above door)
                     create_surface((base_name + "_top").c_str(),
                         Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
                         Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH),
                         parent);
-                 
+                    
                     // bottom sections
                     float dim    = isFb ? ROOM_WIDTH : ROOM_DEPTH;
                     float side_w = (dim - DOOR_WIDTH) / 2;
                     float l_pos  = isFb ? (-dim / 2 + side_w / 2) : (-dim / 2 + side_w / 2);
                     float r_pos  = isFb ? (dim / 2 - side_w / 2) : (dim / 2 - side_w / 2);
-                 
+                    
                     create_surface((base_name + "_left").c_str(),
                         Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
                         parent);
-                 
+                    
                     create_surface((base_name + "_right").c_str(),
                         Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
@@ -1605,18 +1604,18 @@ namespace spartan
                     auto room_entity = World::CreateEntity();
                     room_entity->SetObjectName("room_" + to_string(room_index));
                     room_entity->SetPosition(offset); // set room position
-            
+                    
                     // floor and ceiling
                     create_surface("floor", Vector3(0, 0, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
                     create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
-            
+                    
                     // wall configurations
                     struct WallConfig
                     {
                         Vector3 pos;
                         Vector3 scale;
                     };
-            
+                    
                     const WallConfig walls[] =
                     {
                         { Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // FRONT
@@ -1624,15 +1623,15 @@ namespace spartan
                         { Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }, // LEFT
                         { Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }   // RIGHT
                     };
-            
+                    
                     // create walls
                     for (int i = 0; i < 4; ++i)
                     {
                         Direction dir = static_cast<Direction>(i);
-            
+                        
                         if (dir == skip_dir)
                             continue;
-            
+                        
                         if (dir == door_dir)
                         {
                             create_door(dir, Vector3(0, 0, 0), room_entity);
@@ -1646,61 +1645,85 @@ namespace spartan
                 };
                 
                 // procedural generation
-                Vector3 offsets[NUM_ROOMS] = { Vector3(0.0f) }; // first room at origin
+                Vector3 offsets[NUM_ROOMS];
                 Direction doors[NUM_ROOMS];
-                doors[0] = static_cast<Direction>(rand_int(4)); // random first door
-                create_room(doors[0], Direction::Max, offsets[0], 0); // use Max for first room, no skip
+                int actual_rooms = 1; // track number of rooms generated, start with 1 for first room
+                
+                // generate a random path on a 2d grid
+                set<pair<int, int>> occupied;
+                vector<pair<int, int>> path(NUM_ROOMS);
+                path[0] = {0, 0}; // start at origin
+                occupied.insert({0, 0});
                 
                 for (int i = 1; i < NUM_ROOMS; ++i)
                 {
-                    Direction prev_door = doors[i - 1];
-                    Vector3 prev_offset = offsets[i - 1];
-                    Vector3 new_offset;
-                    Direction skip_dir = Direction::Max;
-            
-                    // calculate offset and skip direction based on previous door
-                    switch (prev_door)
+                    Direction available[4] = { Direction::Front, Direction::Back, Direction::Left, Direction::Right };
+                    int count = 4;
+                    
+                    // keep trying until we find a free spot
+                    while (count > 0)
                     {
-                        case Direction::Front:
-                            new_offset = prev_offset + Vector3(0, 0, -ROOM_DEPTH);
-                            skip_dir = Direction::Back;
+                        int pick = rand_int(count);
+                        Direction dir = available[pick];
+                        pair<int, int> next_pos = path[i - 1];
+                        
+                        // move in the chosen direction
+                        switch (dir)
+                        {
+                            case Direction::Front: next_pos.second -= 1; break;
+                            case Direction::Back: next_pos.second += 1; break;
+                            case Direction::Left: next_pos.first -= 1; break;
+                            case Direction::Right: next_pos.first += 1; break;
+                            default: SP_ASSERT(false); break;
+                        }
+                        
+                        // if position is free, use it
+                        if (occupied.find(next_pos) == occupied.end())
+                        {
+                            path[i] = next_pos;
+                            occupied.insert(next_pos);
+                            doors[i - 1] = dir; // door from previous room to this one
+                            actual_rooms++;
                             break;
-                        case Direction::Back:
-                            new_offset = prev_offset + Vector3(0, 0, ROOM_DEPTH);
-                            skip_dir = Direction::Front;
-                            break;
-                        case Direction::Left:
-                            new_offset = prev_offset + Vector3(-ROOM_WIDTH, 0, 0);
-                            skip_dir = Direction::Right;
-                            break;
-                        case Direction::Right:
-                            new_offset = prev_offset + Vector3(ROOM_WIDTH, 0, 0);
-                            skip_dir = Direction::Left;
-                            break;
-                        default:
-                            SP_ASSERT(false); // invalid previous door
-                            skip_dir = Direction::Front; // fallback
-                            new_offset = prev_offset; // avoid uninitialized
-                            break;
-                    }
-                    SP_ASSERT(skip_dir != Direction::Max);
-            
-                    // choose random door (excluding skip_dir)
-                    Direction available[3];
-                    int count = 0;
-                    for (int j = 0; j < 4; ++j)
-                    {
-                        Direction d = static_cast<Direction>(j);
-                        if (d != skip_dir)
-                        { 
-                            available[count++] = d;
+                        }
+                        // remove the direction we tried
+                        else
+                        {
+                            available[pick] = available[--count];
                         }
                     }
-                    SP_ASSERT(count == 3); // ensure exactly 3 directions available
-                    doors[i] = available[rand_int(count)]; // use count to bound random index
-                    offsets[i] = new_offset;
-            
-                    create_room(doors[i], skip_dir, new_offset, i);
+                    
+                    // if no directions work, stop
+                    if (count == 0)
+                    {
+                        break;
+                    }
+                }
+                
+                // set door for the last room (leads nowhere)
+                doors[actual_rooms - 1] = static_cast<Direction>(rand_int(4));
+                
+                // convert path to offsets and create rooms
+                for (int i = 0; i < actual_rooms; ++i)
+                {
+                    offsets[i] = Vector3(path[i].first * ROOM_WIDTH, 0, path[i].second * ROOM_DEPTH);
+                    
+                    // first room has no skip_dir, others skip the direction they came from
+                    Direction skip_dir = (i == 0) ? Direction::Max : Direction::Max;
+                    if (i > 0)
+                    {
+                        // determine skip_dir based on door from previous room
+                        switch (doors[i - 1])
+                        {
+                            case Direction::Front: skip_dir = Direction::Back; break;
+                            case Direction::Back: skip_dir = Direction::Front; break;
+                            case Direction::Left: skip_dir = Direction::Right; break;
+                            case Direction::Right: skip_dir = Direction::Left; break;
+                            default: SP_ASSERT(false); break;
+                        }
+                    }
+                    
+                    create_room(doors[i], skip_dir, offsets[i], i);
                 }
             }
 
