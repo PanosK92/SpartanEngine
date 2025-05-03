@@ -37,6 +37,8 @@ The Forest is the most advanced and demanding world. It features **50 million** 
 | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>The Sponza building, found in Dubrovnik, is showcased here with a true-to-life scale. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_doom.png"/><br>This is a simple scene with the soundtrack from E1M1 |
 | Bistro | Minecraft |
 | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_bistro.jpg"/><br>Amazon Lumberyard Bistro | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_minecraft.jpg"/><br>A good old minecraft world |
+| Liminal Space | Showroom |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_liminal.jpg"/><br>Shifts your frequency to a nearby reality | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_gran_turismo.jpg"/><br>Gran Turismo 7 Brand Central |
 
 # Features
 
