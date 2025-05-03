@@ -1230,7 +1230,7 @@ namespace spartan
 
             // camera
             {
-                Vector3 camera_position = Vector3(-5.9918f, 1.2250f, -10.2411f);
+                Vector3 camera_position = Vector3(-4.2244f, 1.2250f, -6.7316f);
                 create_camera(camera_position);
                 Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                 default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
@@ -1293,30 +1293,29 @@ namespace spartan
 
         void create_liminal_space()
         {
-            // room dimensions
-            const float room_width  = 20.0f;  // X-axis
-            const float room_depth  = 20.0f;  // Z-axis
-            const float room_height = 10.0f;  // Y-axis
-
-            // Shared material for all surfaces (floor, walls, ceiling)
+            // shared material for all surfaces (floor, walls, ceiling)
             shared_ptr<Material> tile_material = make_shared<Material>();
             tile_material->SetResourceFilePath(string("project\\terrain\\material_floor_tile") + string(EXTENSION_MATERIAL));
-            tile_material->SetTexture(MaterialTextureType::Color,     "project\\materials\\tile_white\\albedo.png");
-            tile_material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\tile_white\\normal.png");
-            tile_material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\tile_white\\metallic.png");
-            tile_material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\tile_white\\roughness.png");
-            tile_material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\tile_white\\ao.png");
-            tile_material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None)); // Disable culling
-            tile_material->SetProperty(MaterialProperty::WorldSpaceUv, 1.0f); // surface independent UVs
+            tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
+            tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
+            tile_material->SetTexture(MaterialTextureType::Metalness,    "project\\materials\\tile_white\\metallic.png");
+            tile_material->SetTexture(MaterialTextureType::Roughness,    "project\\materials\\tile_white\\roughness.png");
+            tile_material->SetTexture(MaterialTextureType::Occlusion,    "project\\materials\\tile_white\\ao.png");
+            tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f); // surface independent UVs
             tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
             tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
 
-            // Point light
+            // camera
+            {
+                Vector3 camera_position = Vector3(5.4084f, 1.5f, 4.7593f);
+                create_camera(camera_position);
+            }
+
+            // point light
             shared_ptr<Entity> point_light = World::CreateEntity();
             {
                 point_light->SetObjectName("light_point");
-                point_light->SetPosition(Vector3(0.0f, room_height * 0.5f, 0.0f));
-        
+
                 Light* light = point_light->AddComponent<Light>();
                 light->SetLightType(LightType::Point);
                 light->SetColor(Color::light_fluorescent_tube_light);
@@ -1325,61 +1324,160 @@ namespace spartan
                 light->SetFlag(LightFlags::ShadowsTransparent, false);
                 light->SetFlag(LightFlags::Volumetric, false);
                 light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-            }
-        
-            // Camera
-            {
-                Vector3 camera_position = Vector3(5.4084f, 1.2250f, 4.7593f);
-                create_camera(camera_position);
-                Vector3 direction = (point_light->GetPosition() - camera_position).Normalized();
-                default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
+                light->SetFlag(LightFlags::Shadows, false);
+
+                light->GetEntity()->SetParent(default_camera);
             }
 
-            // Floor
+            // constants
+            const float ROOM_WIDTH  = 20.0f;
+            const float ROOM_DEPTH  = 20.0f;
+            const float ROOM_HEIGHT = 10.0f;
+            const float DOOR_WIDTH  = 2.0f;
+            const float DOOR_HEIGHT = 5.0f;
+            const int NUM_ROOMS     = 10;
+
+            // direction enum
+            enum class Direction { FRONT, BACK, LEFT, RIGHT };
+
+            // helper for random number generation (0 to max-1)
+            auto rand_int = [](int max) { return rand() % max; };
+
+            // lambda for creating surfaces
+            auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale)
             {
-                shared_ptr<Entity> floor = World::CreateEntity();
-                floor->SetObjectName("floor");
-                floor->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                floor->SetScale(Vector3(room_width, 1.0f, room_depth));
-        
-                Renderable* renderable = floor->AddComponent<Renderable>();
-                renderable->SetMesh(MeshType::Quad);
+                auto entity = World::CreateEntity();
+
+                entity->SetObjectName(name);
+                entity->SetPosition(pos);
+                entity->SetScale(scale);
+
+                auto renderable = entity->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Cube);
                 renderable->SetMaterial(tile_material);
 
-                PhysicsBody* physics_body = floor->AddComponent<PhysicsBody>();
+                auto physics_body = entity->AddComponent<PhysicsBody>();
                 physics_body->SetShapeType(PhysicsShape::Mesh);
-            }
-        
-            // Ceiling
-            {
-                shared_ptr<Entity> ceiling = World::CreateEntity();
-                ceiling->SetObjectName("ceiling");
-                ceiling->SetPosition(Vector3(0.0f, room_height, 0.0f));
-                ceiling->SetScale(Vector3(room_width, 1.0f, room_depth));
-                ceiling->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::deg_to_rad * 180.0f)); // Face downward
-        
-                Renderable* renderable = ceiling->AddComponent<Renderable>();
-                renderable->SetMesh(MeshType::Quad);
-                renderable->SetMaterial(tile_material);
+            };
 
-                PhysicsBody* physics_body = ceiling->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh);
-            }
-        
-            // Wall 1 (Front, at negative Z)
+            // lambda for creating a door on a specified wall
+            auto create_door = [&](Direction dir, const Vector3& offset)
             {
-                shared_ptr<Entity> wall = World::CreateEntity();
-                wall->SetObjectName("wall_front");
-                wall->SetPosition(Vector3(0.0f, room_height / 2.0f, -room_depth / 2.0f));
-                wall->SetScale(Vector3(room_width, 1.0f, room_height));
-                wall->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f));
-        
-                Renderable* renderable = wall->AddComponent<Renderable>();
-                renderable->SetMesh(MeshType::Quad);
-                renderable->SetMaterial(tile_material);
-  
-                PhysicsBody* physics_body = wall->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh);
+                string base_name = "wall_" + to_string(static_cast<int>(dir) + 1);
+                bool isFb = (dir == Direction::FRONT || dir == Direction::BACK);
+                float wall_pos = (dir == Direction::FRONT || dir == Direction::LEFT) ? -0.5f : 0.5f;
+                wall_pos *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
+            
+                // top section (above door)
+                create_surface((base_name + "_top").c_str(),
+                    Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
+                    Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH));
+            
+                // bottom sections
+                float dim = isFb ? ROOM_WIDTH : ROOM_DEPTH;
+                float side_w = (dim - DOOR_WIDTH) / 2;
+                float l_pos = isFb ? (-dim / 2 + side_w / 2) : (-dim / 2 + side_w / 2);
+                float r_pos = isFb ? (dim / 2 - side_w / 2) : (dim / 2 - side_w / 2);
+            
+                create_surface((base_name + "_left").c_str(),
+                    Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
+                    Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
+            
+                create_surface((base_name + "_right").c_str(),
+                    Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
+                    Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
+            };
+
+            // lambda for creating a room
+            auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset)
+            {
+                // floor and ceiling
+                create_surface("floor", Vector3(0, 0, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
+                create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
+
+                // wall configurations
+                struct WallConfig
+                {
+                    Vector3 pos;
+                    Vector3 scale;
+                };
+
+                const WallConfig walls[] =
+                {
+                    { Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // FRONT
+                    { Vector3(0, ROOM_HEIGHT / 2, ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) },  // BACK
+                    { Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }, // LEFT
+                    { Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }   // RIGHT
+                };
+
+                // create walls
+                for (int i = 0; i < 4; ++i)
+                {
+                    Direction dir = static_cast<Direction>(i);
+
+                    if (dir == skip_dir)
+                        continue;
+
+                    if (dir == door_dir)
+                    {
+                        create_door(dir, offset);
+                    }
+                    else
+                    {
+                        string name = "wall_" + to_string(i + 1);
+                        create_surface(name.c_str(), walls[i].pos + offset, walls[i].scale);
+                    }
+                }
+            };
+
+            // procedural generation
+            Vector3 offsets[NUM_ROOMS] = { Vector3(0.0f) }; // first room at origin
+            Direction doors[NUM_ROOMS];
+            doors[0] = static_cast<Direction>(rand_int(4)); // random first door
+            create_room(doors[0], static_cast<Direction>(-1), offsets[0]);
+
+            for (int i = 1; i < NUM_ROOMS; ++i)
+            {
+                Direction prev_door = doors[i - 1];
+                Vector3 prev_offset = offsets[i - 1];
+                Vector3 new_offset;
+                Direction skip_dir;
+
+                // calculate offset and skip direction
+                switch (prev_door) {
+                    case Direction::FRONT:
+                        new_offset = prev_offset + Vector3(0, 0, -ROOM_DEPTH);
+                        skip_dir = Direction::BACK;
+                        break;
+                    case Direction::BACK:
+                        new_offset = prev_offset + Vector3(0, 0, ROOM_DEPTH);
+                        skip_dir = Direction::FRONT;
+                        break;
+                    case Direction::LEFT:
+                        new_offset = prev_offset + Vector3(-ROOM_WIDTH, 0, 0);
+                        skip_dir = Direction::RIGHT;
+                        break;
+                    case Direction::RIGHT:
+                        new_offset = prev_offset + Vector3(ROOM_WIDTH, 0, 0);
+                        skip_dir = Direction::LEFT;
+                        break;
+                }
+
+                // choose random door (excluding skip_dir)
+                Direction available[3];
+                int count = 0;
+                for (int j = 0; j < 4; ++j)
+                {
+                    Direction d = static_cast<Direction>(j);
+                    if (d != skip_dir)
+                    { 
+                        available[count++] = d;
+                    }
+                }
+                doors[i]   = available[rand_int(3)];
+                offsets[i] = new_offset;
+
+                create_room(doors[i], skip_dir, new_offset);
             }
         }
     }
