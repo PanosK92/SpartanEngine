@@ -98,9 +98,10 @@ struct MaterialParameters
     float ior;
     float subsurface_scattering;
     
-    float  sheen;
+    float sheen;
     float local_height;
-    float2 padding;
+    float world_space_uv;
+    float padding;
     
     float anisotropic;
     float anisotropic_rotation;

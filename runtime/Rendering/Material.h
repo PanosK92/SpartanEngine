@@ -75,6 +75,7 @@ namespace spartan
         CullMode,             // sets the culling mode based on RHI_CullMode enum values
         Gltf,                 // indicates if the material was imported from a glTF file
         Tessellation,         // indicates if the material is tessellated
+        WorldSpaceUv,         // indicates if the UV coordinates are in world space
         Max                   // total number of properties, used to size arrays
     };
 

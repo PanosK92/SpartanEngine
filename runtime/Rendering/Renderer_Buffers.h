@@ -173,7 +173,8 @@ namespace spartan
 
         float sheen;
         float local_height = 0.0f;
-        math::Vector2 alpha_tested;
+        float world_space_uv = 0.0f;
+        float padding;
 
         float anisotropic;
         float anisotropic_rotation;

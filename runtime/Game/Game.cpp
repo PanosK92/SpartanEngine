@@ -1307,6 +1307,7 @@ namespace spartan
             tile_material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\tile_white\\roughness.png");
             tile_material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\tile_white\\ao.png");
             tile_material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None)); // Disable culling
+            tile_material->SetProperty(MaterialProperty::WorldSpaceUv, 1.0f); // surface independent UVs
             tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
             tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
 

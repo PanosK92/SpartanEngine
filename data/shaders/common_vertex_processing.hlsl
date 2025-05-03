@@ -322,7 +322,6 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     // start building the vertex
     gbuffer_vertex vertex;
-    vertex.uv    = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
     vertex.color = float3(1.0f, 1.0f, 1.0f);
 
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
@@ -352,6 +351,16 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.position_previous = mul(input.position, transform_previous).xyz;
     vertex.normal            = normalize(mul(input.normal, (float3x3)transform));
     vertex.tangent           = normalize(mul(input.tangent, (float3x3)transform));
+
+    // compute (world-space) uv
+    float3 abs_normal = abs(vertex.normal); // absolute normal for weights
+    float3 weights    = abs_normal / (abs_normal.x + abs_normal.y + abs_normal.z + 0.0001f); // normalize weights, avoid division by zero
+    float2 uv_xy      = vertex.position.xy / material.tiling + material.offset;              // xy plane (walls facing Z)
+    float2 uv_xz      = vertex.position.xz / material.tiling + material.offset;              // xz plane (floor/ceiling)
+    float2 uv_yz      = vertex.position.yz / material.tiling + material.offset;              // yz plane (walls facing X)
+    float2 world_uv   = uv_xy * weights.z + uv_xz * weights.y + uv_yz * weights.x;
+    float2 mesh_uv    = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
+    vertex.uv         = lerp(mesh_uv, world_uv, material.world_space_uv);
 
     // vertex processing - world space
     vertex_processing::process_world_space(surface, vertex.position, vertex, input.position.xyz, transform, width_percent, height_percent, instance_id);
