@@ -32,7 +32,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 The Forest is the most advanced and demanding world. It features **50 million** procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans **9.4 km²**, covered in **10,000** trees and rocks, and includes a drivable car.
 
 **Some of the other worlds**
-| Sponza | Doom |
+| Sponza 4K | Doom |
 |:-:|:-:|
 | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>The Sponza building, found in Dubrovnik, is showcased here with a true-to-life scale. | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_doom.png"/><br>This is a simple scene with the soundtrack from E1M1 |
 | Bistro | Minecraft |

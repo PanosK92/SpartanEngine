@@ -421,8 +421,8 @@ namespace
             "4. Subway (gi test, no lights, only emissive textures - moderate)",
             "5. Living room (gi test, sunlight through window - moderate)",
             "6. Doom E1M1 (classic level recreation - light)",
-            "7. Minecraft world (blocky aesthetic - light)",
-            "8. Gran Turismo brand central (labor of love - light)",
+            "7. Minecraft (blocky aesthetic - light)",
+            "8. Showroom (Gran Turismo 7 brand central - light)",
             "9. Liminal Space (shifts your frequency to a nearby reality - light)",
         };
 
