@@ -52,7 +52,6 @@ namespace spartan
     {
         DefaultWorld loaded_world                    = DefaultWorld::Max;
         shared_ptr<Entity> default_floor             = nullptr;
-        shared_ptr<Entity> default_audio             = nullptr;
         shared_ptr<Entity> default_terrain           = nullptr;
         shared_ptr<Entity> default_car               = nullptr;
         Entity* default_car_window                   = nullptr;
@@ -62,17 +61,17 @@ namespace spartan
         shared_ptr<Entity> default_metal_cube        = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
-        void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
+        void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav", const float pitch = 1.0f)
         {
-            if (!soundtrack_file_path)
-                return;
+            SP_ASSERT(soundtrack_file_path);
 
-            default_audio = World::CreateEntity();
-            default_audio->SetObjectName("audio_source");
+            auto entity = World::CreateEntity();
+            entity->SetObjectName("music");
 
-            AudioSource* audio_source = default_audio->AddComponent<AudioSource>();
+            AudioSource* audio_source = entity->AddComponent<AudioSource>();
             audio_source->SetAudioClip(soundtrack_file_path);
             audio_source->SetLoop(true);
+            audio_source->SetPitch(pitch);
         }
 
         void create_sun(const bool enabled, const Vector3& rotation = Vector3::Infinity)
@@ -1373,8 +1372,7 @@ namespace spartan
             void create()
             {
                 // gran turismo 7 brand central music
-                create_music("project\\music\\gran_turismo.wav");
-                default_audio->GetComponent<AudioSource>()->SetPitch(1.9f); // why?
+                create_music("project\\music\\gran_turismo.wav", 1.9f);
 
                 car::create(Vector3(0.0f, 0.08f, 0.0f), false);
 
@@ -1434,16 +1432,17 @@ namespace spartan
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 }
 
-                // disable on-screen clutter
+                // adjust renderer options
                 {
                     Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
                     Renderer::SetOption(Renderer_Option::Lights,             0.0f);
+                    Renderer::SetOption(Renderer_Option::GlobalIllumination, 1.0f);
                 }
             }
 
             void tick()
             {
-                 // slow rotation: rotate car around Y-axis (vertical)
+                 // slow rotation: rotate car around y-axis (vertical)
                 float rotation_speed = 0.25f; // degrees per second
                 float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec()); // time since last frame (in seconds)
                 float angle          = rotation_speed * delta_time; // incremental rotation
@@ -1480,6 +1479,15 @@ namespace spartan
         { 
             void create()
             {
+                // modern random number generator (Mersenne Twister)
+                static std::mt19937 rng(std::random_device{}());
+                
+                // helper for random number generation (0 to max-1)
+                auto rand_int = [&](int max) {
+                    std::uniform_int_distribution<int> dist(0, max - 1);
+                    return dist(rng);
+                };
+            
                 // shared material for all surfaces (floor, walls, ceiling)
                 shared_ptr<Material> tile_material = make_shared<Material>();
                 tile_material->SetResourceFilePath(string("project\\terrain\\material_floor_tile") + string(EXTENSION_MATERIAL));
@@ -1491,118 +1499,124 @@ namespace spartan
                 tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f); // surface independent UVs
                 tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
                 tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
-    
+                
                 // ambient audio
                 {
                     shared_ptr<Entity> entity = World::CreateEntity();
                     entity->SetObjectName("audio_hum_electric");
-
+            
                     AudioSource* audio_source = entity->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\hum_electric.wav");
                     audio_source->SetLoop(true);
                     audio_source->SetVolume(0.25f);
                 }
-    
+                
                 // camera
                 {
                     create_camera(Vector3(5.4084f, 1.5f, 4.7593f));
-
+            
                     AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
                     audio_source->SetPlayOnStart(false);
                 }
-    
+                
                 // point light
                 shared_ptr<Entity> point_light = World::CreateEntity();
                 {
                     point_light->SetObjectName("light_point");
-
+            
                     Light* light = point_light->AddComponent<Light>();
                     light->SetLightType(LightType::Point);
                     light->SetColor(Color::light_fluorescent_tube_light);
-                    light->SetRange(40.0f);
+                    light->SetRange(30.0f);
                     light->SetIntensity(LightIntensity::bulb_500_watt);
                     light->SetFlag(LightFlags::ShadowsTransparent, false);
                     light->SetFlag(LightFlags::Volumetric, false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                     light->SetFlag(LightFlags::Shadows, false);
-
+            
                     light->GetEntity()->SetParent(default_camera);
                 }
-    
+                
                 // constants
                 const float ROOM_WIDTH  = 20.0f;
                 const float ROOM_DEPTH  = 20.0f;
                 const float ROOM_HEIGHT = 10.0f;
                 const float DOOR_WIDTH  = 2.0f;
                 const float DOOR_HEIGHT = 5.0f;
-                const int NUM_ROOMS     = 10;
-    
+                const int NUM_ROOMS     = 100;
+                
                 // direction enum
-                enum class Direction { FRONT, BACK, LEFT, RIGHT };
-    
-                // helper for random number generation (0 to max-1)
-                auto rand_int = [](int max) { return rand() % max; };
-    
+                enum class Direction { Front, Back, Left, Right, Max };
+                
                 // lambda for creating surfaces
-                auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale)
+                auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, shared_ptr<Entity> parent)
                 {
                     auto entity = World::CreateEntity();
-
+            
                     entity->SetObjectName(name);
                     entity->SetPosition(pos);
                     entity->SetScale(scale);
-
+                    entity->SetParent(parent); // set parent to room entity
+            
                     auto renderable = entity->AddComponent<Renderable>();
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetMaterial(tile_material);
-
+            
                     auto physics_body = entity->AddComponent<PhysicsBody>();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                 };
-    
+                
                 // lambda for creating a door on a specified wall
-                auto create_door = [&](Direction dir, const Vector3& offset)
+                auto create_door = [&](Direction dir, const Vector3& offset, shared_ptr<Entity> parent)
                 {
                     string base_name  = "wall_" + to_string(static_cast<int>(dir) + 1);
-                    bool isFb         = (dir == Direction::FRONT || dir == Direction::BACK);
-                    float wall_pos    = (dir == Direction::FRONT || dir == Direction::LEFT) ? -0.5f : 0.5f;
+                    bool isFb         = (dir == Direction::Front || dir == Direction::Back);
+                    float wall_pos    = (dir == Direction::Front || dir == Direction::Left) ? -0.5f : 0.5f;
                     wall_pos         *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
-                
+                 
                     // top section (above door)
                     create_surface((base_name + "_top").c_str(),
                         Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
-                        Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH));
-                
+                        Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH),
+                        parent);
+                 
                     // bottom sections
                     float dim    = isFb ? ROOM_WIDTH : ROOM_DEPTH;
                     float side_w = (dim - DOOR_WIDTH) / 2;
                     float l_pos  = isFb ? (-dim / 2 + side_w / 2) : (-dim / 2 + side_w / 2);
                     float r_pos  = isFb ? (dim / 2 - side_w / 2) : (dim / 2 - side_w / 2);
-                
+                 
                     create_surface((base_name + "_left").c_str(),
                         Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
-                        Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
-                
+                        Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
+                        parent);
+                 
                     create_surface((base_name + "_right").c_str(),
                         Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
-                        Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
+                        Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
+                        parent);
                 };
-    
+                
                 // lambda for creating a room
-                auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset)
+                auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset, int room_index)
                 {
+                    // create parent entity for the room
+                    auto room_entity = World::CreateEntity();
+                    room_entity->SetObjectName("room_" + to_string(room_index));
+                    room_entity->SetPosition(offset); // set room position
+            
                     // floor and ceiling
-                    create_surface("floor", Vector3(0, 0, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
-                    create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
-
+                    create_surface("floor", Vector3(0, 0, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
+                    create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
+            
                     // wall configurations
                     struct WallConfig
                     {
                         Vector3 pos;
                         Vector3 scale;
                     };
-
+            
                     const WallConfig walls[] =
                     {
                         { Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // FRONT
@@ -1610,61 +1624,67 @@ namespace spartan
                         { Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }, // LEFT
                         { Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }   // RIGHT
                     };
-
+            
                     // create walls
                     for (int i = 0; i < 4; ++i)
                     {
                         Direction dir = static_cast<Direction>(i);
-
+            
                         if (dir == skip_dir)
                             continue;
-
+            
                         if (dir == door_dir)
                         {
-                            create_door(dir, offset);
+                            create_door(dir, Vector3(0, 0, 0), room_entity);
                         }
                         else
                         {
                             string name = "wall_" + to_string(i + 1);
-                            create_surface(name.c_str(), walls[i].pos + offset, walls[i].scale);
+                            create_surface(name.c_str(), walls[i].pos, walls[i].scale, room_entity);
                         }
                     }
                 };
-    
+                
                 // procedural generation
                 Vector3 offsets[NUM_ROOMS] = { Vector3(0.0f) }; // first room at origin
                 Direction doors[NUM_ROOMS];
                 doors[0] = static_cast<Direction>(rand_int(4)); // random first door
-                create_room(doors[0], static_cast<Direction>(-1), offsets[0]);
-    
+                create_room(doors[0], Direction::Max, offsets[0], 0); // use Max for first room, no skip
+                
                 for (int i = 1; i < NUM_ROOMS; ++i)
                 {
                     Direction prev_door = doors[i - 1];
                     Vector3 prev_offset = offsets[i - 1];
                     Vector3 new_offset;
-                    Direction skip_dir;
-
-                    // calculate offset and skip direction
+                    Direction skip_dir = Direction::Max;
+            
+                    // calculate offset and skip direction based on previous door
                     switch (prev_door)
                     {
-                        case Direction::FRONT:
+                        case Direction::Front:
                             new_offset = prev_offset + Vector3(0, 0, -ROOM_DEPTH);
-                            skip_dir = Direction::BACK;
+                            skip_dir = Direction::Back;
                             break;
-                        case Direction::BACK:
+                        case Direction::Back:
                             new_offset = prev_offset + Vector3(0, 0, ROOM_DEPTH);
-                            skip_dir = Direction::FRONT;
+                            skip_dir = Direction::Front;
                             break;
-                        case Direction::LEFT:
+                        case Direction::Left:
                             new_offset = prev_offset + Vector3(-ROOM_WIDTH, 0, 0);
-                            skip_dir = Direction::RIGHT;
+                            skip_dir = Direction::Right;
                             break;
-                        case Direction::RIGHT:
+                        case Direction::Right:
                             new_offset = prev_offset + Vector3(ROOM_WIDTH, 0, 0);
-                            skip_dir = Direction::LEFT;
+                            skip_dir = Direction::Left;
+                            break;
+                        default:
+                            SP_ASSERT(false); // invalid previous door
+                            skip_dir = Direction::Front; // fallback
+                            new_offset = prev_offset; // avoid uninitialized
                             break;
                     }
-
+                    SP_ASSERT(skip_dir != Direction::Max);
+            
                     // choose random door (excluding skip_dir)
                     Direction available[3];
                     int count = 0;
@@ -1676,10 +1696,11 @@ namespace spartan
                             available[count++] = d;
                         }
                     }
-                    doors[i]   = available[rand_int(3)];
+                    SP_ASSERT(count == 3); // ensure exactly 3 directions available
+                    doors[i] = available[rand_int(count)]; // use count to bound random index
                     offsets[i] = new_offset;
-
-                    create_room(doors[i], skip_dir, new_offset);
+            
+                    create_room(doors[i], skip_dir, new_offset, i);
                 }
             }
 
@@ -1703,7 +1724,6 @@ namespace spartan
     void Game::Shutdown()
     {
         default_floor             = nullptr;
-        default_audio             = nullptr;
         default_camera            = nullptr;
         default_environment       = nullptr;
         default_light_directional = nullptr;

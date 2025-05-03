@@ -513,12 +513,8 @@ namespace spartan
             new_parent->AddChild(this);
         }
 
-        if ((parent && !new_parent) || (!parent && new_parent))
-        {
-            UpdateTransform();
-        }
-
         m_parent = new_parent_in;
+        UpdateTransform();
     }
 
     void Entity::AddChild(Entity* child)
