@@ -146,274 +146,6 @@ namespace spartan
             camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
         }
 
-        void create_car(const Vector3& position, bool physics = true)
-        {
-            const float car_scale   = 0.0180f;
-            const float wheel_scale = 0.3f;
-
-            // load full detail model (no vertex/index optimisations)
-            uint32_t mesh_flags = Mesh::GetDefaultFlags();
-            mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize); 
-            
-            if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf", mesh_flags))
-            {
-                shared_ptr<Entity> entity_car = mesh_car->GetRootEntity().lock();
-                entity_car->SetObjectName("geometry");
-                entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
-                entity_car->SetScale(Vector3(car_scale));
-            
-                // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
-                // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
-                default_car = World::CreateEntity();
-                default_car->SetObjectName("toyota_ae86_sprinter_trueno");
-                entity_car->SetParent(default_car);
-            
-                // body
-                {
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::Ior, 1.45f);
-                        }
-                    }
-                    
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::Roughness, 0.08f);
-                            material->SetProperty(MaterialProperty::Metalness, 0.15f);
-                            material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
-                        }
-                    }
-                    
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Mirror_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetColor(Color::standard_black);
-                            material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                        }
-                    }
-                    
-                    // plastic
-                    {
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            }
-                        }
-
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            }
-                        }
-                    }
-                }
-
-                // interior
-                {
-                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetTexture(MaterialTextureType::Roughness, nullptr);
-                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                    }
-
-                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                    }
-                }
-
-                // lights
-                {
-                    if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_glass);
-                        material->SetProperty(MaterialProperty::Roughness, 0.2f);
-                        material->SetTexture(MaterialTextureType::Emission, material->GetTexture(MaterialTextureType::Color));
-                    }
-
-                    // plastic covers
-                    if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                        material->SetColor(Color::material_tire);
-                    }
-                }
-
-                // add physics body
-                if (physics)
-                {
-                    PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
-                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
-                    physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
-                    physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
-                    physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                    physics_body->SetShapeType(PhysicsShape::Box);
-
-                    // disable car control (it's toggled via the gameplay code in Tick())
-                    physics_body->GetCar()->SetControlEnabled(false);
-
-                    // set the steering wheel to the physics body so that it can rotate it
-                    if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
-                    {
-                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
-                    }
-                }
-
-                // disable entities
-                if (physics)
-                {
-                    // disable all the wheels since they have weird rotations, we will add our own
-                    {
-                        entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
-                       
-
-                        entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
-                       
-
-                        entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
-                        
-
-                        entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
-                       
-                    }
-                }
-
-                // these have messed up rotations, fix later
-                entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
-                entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
-                entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
-                entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
-
-                // super hacky way to disable refraction
-                default_car_window = entity_car->GetDescendantByName("CarBody_Windows_0");
-                default_car_window->GetComponent<Renderable>()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.4f);
-
-                // set the position last so that transforms all the way down to the new wheels are updated
-                default_car->SetPosition(position);
-            }
-
-             // load our own wheel
-             if (physics)
-             { 
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
-                {
-                    shared_ptr<Entity> entity_wheel_root = mesh->GetRootEntity().lock();
-                    entity_wheel_root->SetScale(Vector3(wheel_scale));
-
-                    if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
-                    {
-                        // create material
-                        shared_ptr<Material> material = make_shared<Material>();
-                        material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
-                        material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
-
-                        // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                        const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
-                        material->SetResourceFilePath(file_path);
-
-                        // set material
-                        entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
-                    }
-
-                    // add the wheels to the body
-                    {
-                        PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
-
-                        shared_ptr<Entity> wheel = entity_wheel_root;
-                        wheel->SetObjectName("wheel_fl");
-                        wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
-
-                        wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_fr");
-                        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                        wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
-
-                        wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_rl");
-                        wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
-
-                        wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_rr");
-                        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                        wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
-                    }
-                }
-             }
-
-            // sounds
-            {
-                // start
-                {
-                    shared_ptr<Entity> sound = World::CreateEntity();
-                    sound->SetObjectName("sound_start");
-                    sound->SetParent(default_car);
-
-                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\car_start.wav");
-                    audio_source->SetLoop(false);
-                    audio_source->SetPlayOnStart(false);
-                }
-
-                // idle
-                {
-                    shared_ptr<Entity> sound = World::CreateEntity();
-                    sound->SetObjectName("sound_idle");
-                    sound->SetParent(default_car);
-
-                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\car_idle.wav");
-                    audio_source->SetLoop(true);
-                    audio_source->SetPlayOnStart(false);
-                }
-
-                // door
-                {
-                    shared_ptr<Entity> sound = World::CreateEntity();
-                    sound->SetObjectName("sound_door");
-                    sound->SetParent(default_car);
-
-                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\car_door.wav");
-                    audio_source->SetLoop(false);
-                    audio_source->SetPlayOnStart(false);
-                }
-            }
-        }
-
         void create_metal_cube(const Vector3& position)
         {
             // create entity
@@ -492,319 +224,6 @@ namespace spartan
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                 }
             }
-        }
-
-        void create_forest_car()
-        {
-            const float render_distance_trees = 2'000.0f;
-            const float render_distance_grass = 1'000.0f;
-            const uint32_t grass_blade_count  = 50'000'000;
-            const uint32_t tree_count         = 10'000;
-            const uint32_t rock_count         = 10'000;
-
-            create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
-            create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
-            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
-            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
-
-            // create
-            default_terrain = World::CreateEntity();
-            default_terrain->SetObjectName("terrain");
-
-            // sound
-            {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("audio");
-                entity->SetParent(default_terrain);
-
-                // footsteps grass
-                {
-                    shared_ptr<Entity> sound = World::CreateEntity();
-                    sound->SetObjectName("footsteps");
-                    sound->SetParent(entity);
-
-                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\footsteps_grass.wav");
-                    audio_source->SetPlayOnStart(false);
-                }
-
-                // forest and river sounds
-                {
-                    shared_ptr<Entity> sound = World::CreateEntity();
-                    sound->SetObjectName("forest_river");
-                    sound->SetParent(entity);
-
-                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\forest_river.wav");
-                    audio_source->SetLoop(true);
-                }
-
-                // wind
-                {
-                    shared_ptr<Entity> sound = World::CreateEntity();
-                    sound->SetObjectName("wind");
-                    sound->SetParent(entity);
-
-                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\wind.wav");
-                    audio_source->SetLoop(true);
-                }
-
-                // underwater
-                {
-                    shared_ptr<Entity> sound = World::CreateEntity();
-                    sound->SetObjectName("underwater");
-                    sound->SetParent(entity);
-
-                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\underwater.wav");
-                    audio_source->SetPlayOnStart(false);
-                }
-            }
-
-            // terrain
-            {
-                Terrain* terrain = default_terrain->AddComponent<Terrain>();
-
-                // add renderable component with a material
-                {
-                    shared_ptr<Material> material = terrain->GetMaterial();
-
-                    // set properties
-                    material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
-                    material->SetProperty(MaterialProperty::IsTerrain,      1.0f);
-                    material->SetProperty(MaterialProperty::TextureTilingX, 800.0f);
-                    material->SetProperty(MaterialProperty::TextureTilingY, 800.0f);
-
-                    // set textures
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\ground\\albedo.png",    0);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\ground\\normal.png",    0);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\ground\\roughness.png", 0);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\ground\\occlusion.png", 0);
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",     1);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",     1);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png",  1);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png",  1);
-                    material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\rock\\height.png",     1);
-                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",     2);
-                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",     2);
-                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",  2);
-                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png",  2);
-                    material->SetProperty(MaterialProperty::Tessellation, 0.0f);
-                }
-                
-                // generate a height field
-                shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\terrain\\height_map.png", RHI_Texture_KeepData);
-                terrain->SetHeightMap(height_map.get());
-                terrain->Generate();
-
-                // add physics so we can walk on it
-                PhysicsBody* physics_body = default_terrain->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Terrain);
-
-                // water
-                {
-                    // create root entity
-                    shared_ptr<Entity> water = World::CreateEntity();
-                    water->SetObjectName("water");
-                    water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                    water->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-
-                    // create material
-                    shared_ptr<Material> material = make_shared<Material>();
-                    {
-                        material->SetObjectName("material_water");
-                        material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
-                        material->SetProperty(MaterialProperty::Roughness,           0.0f);
-                        material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
-                        material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
-                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
-                        material->SetProperty(MaterialProperty::TextureTilingX,      400.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY,      400.0f);
-                        material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                        material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
-
-                        // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                        const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
-                        material->SetResourceFilePath(file_path);
-                    }
-
-                    // geometry
-                    {
-                        // generate grid
-                        const float extend                       = 4000.0f;
-                        const uint32_t grid_points_per_dimension = 64;
-                        vector<RHI_Vertex_PosTexNorTan> vertices;
-                        vector<uint32_t> indices;
-                        geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, extend);
-
-                        // split into tiles
-                        const uint32_t tile_count = 10; // 10x10 tiles
-                        vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
-                        vector<vector<uint32_t>> tiled_indices;
-                        spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices);
-
-                        for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
-                        {
-                            string name = "tile_" + to_string(tile_index);
-
-                            // create mesh if it doesn't exist
-                            shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
-                            mesh->SetObjectName(name);
-                            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                            mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
-                            mesh->CreateGpuBuffers();
-
-                            // create a child entity, add a renderable, and this mesh tile to it
-                            {
-                                shared_ptr<Entity> entity = World::CreateEntity();
-                                entity->SetObjectName(name);
-                                entity->SetParent(water);
-
-                                if (Renderable* renderable = entity->AddComponent<Renderable>())
-                                {
-                                    renderable->SetMesh(mesh.get());
-                                    renderable->SetMaterial(material);
-                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
-                uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_tree\\scene.gltf", flags))
-                {
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                    entity->SetObjectName("tree");
-                    entity->SetScale(1.0f);
-
-                    // generate instances
-                    {
-                        vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, tree_count, TerrainProp::Tree);
-                        
-                        if (Entity* branches = entity->GetDescendantByName("tree_bark_0"))
-                        {
-                            branches->GetComponent<Renderable>()->SetInstances(instances);
-                            branches->GetComponent<Renderable>()->SetMaxRenderDistance(render_distance_trees);
-                        }
-                        
-                        if (Entity* leaf = entity->GetDescendantByName("Plane.550_leaf_0"))
-                        {
-                            Renderable* renderable = leaf->GetComponent<Renderable>();
-                
-                            renderable->SetInstances(instances);
-                            renderable->SetMaxRenderDistance(render_distance_trees);
-                            renderable->GetMaterial()->SetProperty(MaterialProperty::IsTree, 1.0f);
-                            renderable->GetMaterial()->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                        }
-                        
-                        if (Entity* leaf = entity->GetDescendantByName("tree_bark for small bottom branch (circle)_0"))
-                        {
-                            leaf->SetActive(false);
-                        }
-                    }
-                }
-
-                // rock
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_rock\\rock.obj"))
-                {
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                    entity->SetObjectName("rock");
-                    entity->SetScale(0.7f);
-
-                    // generate instances
-                    {
-                        vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree);
-                        
-                        if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
-                        {
-                            Renderable* renderable = rock_entity->GetComponent<Renderable>();
-                            renderable->SetInstances(instances);
-                            renderable->SetMaxRenderDistance(render_distance_trees);
-                            renderable->SetFlag(RenderableFlags::CastsShadows, false); // small things are taken care of from screen space shadows
-
-                            // create material
-                            shared_ptr<Material> material = make_shared<Material>();
-                            {
-                                material->SetObjectName("rock");
-                                material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_rock\\albedo.jpg");
-                                material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_rock\\normal.jpg");
-                                material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\model_rock\\occlusion.jpg");
-                                material->SetProperty(MaterialProperty::Roughness,1.0f);
-                                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                                const string file_path = "project\\terrain\\rock_material" + string(EXTENSION_MATERIAL);
-                                material->SetResourceFilePath(file_path);
-                            }
-                            renderable->SetMaterial(material);
-                        }
-                    }
-                }
-
-                // grass
-                {
-                    // create entity
-                    shared_ptr<Entity> entity = World::CreateEntity();
-                    entity->SetObjectName("grass");
-                
-                    // create a mesh with a grass blade
-                    shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
-                    {
-                        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
-                        mesh->SetLodDropoff(MeshLodDropoff::Linear); // linear dropoff - more aggressive
-
-                        // create sub-mesh and add three lods for the grass blade
-                        uint32_t sub_mesh_index = 0;
-                    
-                        // lod 0: high quality grass blade (6 segments)
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 6); // high detail
-                            mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);      // add lod 0, no auto-lod generation
-                        }
-                    
-                        // lod 1: medium quality grass blade (2 segments)
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // medium detail
-                            mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
-                        }
-
-                        mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
-                        mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
-                    }
-
-                    // generate instances
-                    vector<Matrix> instances;
-                    terrain->GenerateTransforms(&instances, grass_blade_count, TerrainProp::Grass);
-                
-                    // add renderable component
-                    Renderable* renderable = entity->AddComponent<Renderable>();
-                    renderable->SetMesh(mesh.get());
-                    renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
-                    renderable->SetInstances(instances);
-                
-                    // create a material
-                    shared_ptr<Material> material = make_shared<Material>();
-                    material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
-                    material->SetProperty(MaterialProperty::IsGrassBlasde,        1.0f);
-                    material->SetProperty(MaterialProperty::Roughness,            0.5f);
-                    material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.8f);
-                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                    material->SetColor(Color::standard_white);
-                    renderable->SetMaterial(material);
-                
-                    renderable->SetMaxRenderDistance(render_distance_grass);
-                }
-            }
-
-            create_car(Vector3(-449.0260f, 15.0f, 359.2632f));
         }
 
         void create_sponza_4k()
@@ -1219,280 +638,1064 @@ namespace spartan
   
             //Renderer::SetOption(Renderer_Option::Physics, 1.0f);
         }
+    }
 
-        void create_gran_turismo_brand_central()
+    namespace car
+    {
+        void create(const Vector3& position, const bool physics)
         {
-            // gran turismo 7 brand central music
-            create_music("project\\music\\gran_turismo.wav");
-            default_audio->GetComponent<AudioSource>()->SetPitch(1.9f); // why?
+            const float car_scale   = 0.0180f;
+            const float wheel_scale = 0.3f;
 
-            create_car(Vector3(0.0f, 0.08f, 0.0f), false);
-
-            // camera
+            // load full detail model (no vertex/index optimisations)
+            uint32_t mesh_flags = Mesh::GetDefaultFlags();
+            mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize); 
+            
+            if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf", mesh_flags))
             {
-                Vector3 camera_position = Vector3(-4.2244f, 1.2250f, -6.7316f);
-                create_camera(camera_position);
-                Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
-                default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
+                shared_ptr<Entity> entity_car = mesh_car->GetRootEntity().lock();
+                entity_car->SetObjectName("geometry");
+                entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
+                entity_car->SetScale(Vector3(car_scale));
+            
+                // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
+                // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
+                default_car = World::CreateEntity();
+                default_car->SetObjectName("toyota_ae86_sprinter_trueno");
+                entity_car->SetParent(default_car);
+            
+                // body
+                {
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Ior, 1.45f);
+                        }
+                    }
+                    
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_aluminum);
+                            material->SetProperty(MaterialProperty::Roughness, 0.08f);
+                            material->SetProperty(MaterialProperty::Metalness, 0.15f);
+                            material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                        }
+                    }
+                    
+                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Mirror_0"))
+                    {
+                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetColor(Color::standard_black);
+                            material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                        }
+                    }
+                    
+                    // plastic
+                    {
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
+                        {
+                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                            {
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                            }
+                        }
+
+                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
+                        {
+                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                            {
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                            }
+                        }
+                    }
+                }
+
+                // interior
+                {
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetTexture(MaterialTextureType::Roughness, nullptr);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                    }
+
+                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                    }
+                }
+
+                // lights
+                {
+                    if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_glass);
+                        material->SetProperty(MaterialProperty::Roughness, 0.2f);
+                        material->SetTexture(MaterialTextureType::Emission, material->GetTexture(MaterialTextureType::Color));
+                    }
+
+                    // plastic covers
+                    if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.35f);
+                        material->SetColor(Color::material_tire);
+                    }
+                }
+
+                // add physics body
+                if (physics)
+                {
+                    PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
+                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
+                    physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
+                    physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
+                    physics_body->SetBodyType(PhysicsBodyType::Vehicle);
+                    physics_body->SetShapeType(PhysicsShape::Box);
+
+                    // disable car control (it's toggled via the gameplay code in Tick())
+                    physics_body->GetCar()->SetControlEnabled(false);
+
+                    // set the steering wheel to the physics body so that it can rotate it
+                    if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
+                    {
+                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
+                    }
+                }
+
+                // disable entities
+                if (physics)
+                {
+                    // disable all the wheels since they have weird rotations, we will add our own
+                    {
+                        entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
+                       
+
+                        entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
+                       
+
+                        entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
+                        
+
+                        entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
+                        entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
+                       
+                    }
+                }
+
+                // these have messed up rotations, fix later
+                entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
+                entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
+                entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
+                entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
+
+                // super hacky way to disable refraction
+                default_car_window = entity_car->GetDescendantByName("CarBody_Windows_0");
+                default_car_window->GetComponent<Renderable>()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.4f);
+
+                // set the position last so that transforms all the way down to the new wheels are updated
+                default_car->SetPosition(position);
             }
 
-            // floor
+             // load our own wheel
+             if (physics)
+             { 
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
+                {
+                    shared_ptr<Entity> entity_wheel_root = mesh->GetRootEntity().lock();
+                    entity_wheel_root->SetScale(Vector3(wheel_scale));
+
+                    if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
+                    {
+                        // create material
+                        shared_ptr<Material> material = make_shared<Material>();
+                        material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+                        material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
+
+                        // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                        const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
+                        material->SetResourceFilePath(file_path);
+
+                        // set material
+                        entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
+                    }
+
+                    // add the wheels to the body
+                    {
+                        PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
+
+                        shared_ptr<Entity> wheel = entity_wheel_root;
+                        wheel->SetObjectName("wheel_fl");
+                        wheel->SetParent(default_car);
+                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
+
+                        wheel = entity_wheel_root->Clone();
+                        wheel->SetObjectName("wheel_fr");
+                        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                        wheel->SetParent(default_car);
+                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
+
+                        wheel = entity_wheel_root->Clone();
+                        wheel->SetObjectName("wheel_rl");
+                        wheel->SetParent(default_car);
+                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
+
+                        wheel = entity_wheel_root->Clone();
+                        wheel->SetObjectName("wheel_rr");
+                        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
+                        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
+                        wheel->SetParent(default_car);
+                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
+                    }
+                }
+             }
+
+            // sounds
             {
-                create_floor();
+                // start
+                {
+                    shared_ptr<Entity> sound = World::CreateEntity();
+                    sound->SetObjectName("sound_start");
+                    sound->SetParent(default_car);
 
-                shared_ptr<Material> material = make_shared<Material>();
-                material->SetResourceFilePath(string("project\\terrain\\material_floor_shiny") + string(EXTENSION_MATERIAL));
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                    audio_source->SetAudioClip("project\\music\\car_start.wav");
+                    audio_source->SetLoop(false);
+                    audio_source->SetPlayOnStart(false);
+                }
 
-                material->SetProperty(MaterialProperty::ColorR,    0.5f);
-                material->SetProperty(MaterialProperty::ColorG,    0.5f);
-                material->SetProperty(MaterialProperty::ColorB,    0.5f);
-                material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                // idle
+                {
+                    shared_ptr<Entity> sound = World::CreateEntity();
+                    sound->SetObjectName("sound_idle");
+                    sound->SetParent(default_car);
 
-                default_floor->GetComponent<Renderable>()->SetMaterial(material);
-            }
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                    audio_source->SetAudioClip("project\\music\\car_idle.wav");
+                    audio_source->SetLoop(true);
+                    audio_source->SetPlayOnStart(false);
+                }
 
-            // point light 1
-            {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("light_point_1");
-                entity->SetPosition(Vector3(-5.0f, 7.5f, 5.0f));
+                // door
+                {
+                    shared_ptr<Entity> sound = World::CreateEntity();
+                    sound->SetObjectName("sound_door");
+                    sound->SetParent(default_car);
 
-                Light* light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_light_bulb);
-                light->SetRange(39.66f);
-                light->SetIntensity(LightIntensity::bulb_500_watt);
-                light->SetFlag(LightFlags::ShadowsTransparent, false);
-                light->SetFlag(LightFlags::Volumetric, false);
-                light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-            }
-
-            // point light 2
-            {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("light_point_2");
-                entity->SetPosition(Vector3(5.0f, 7.5f, -5.0f));
-
-                Light* light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_light_bulb);
-                light->SetRange(39.66f);
-                light->SetIntensity(LightIntensity::bulb_500_watt);
-                light->SetFlag(LightFlags::ShadowsTransparent, false);
-                light->SetFlag(LightFlags::Volumetric, false);
-                light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-            }
-
-            // disable on-screen clutter
-            {
-                Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
-                Renderer::SetOption(Renderer_Option::Lights,             0.0f);
+                    AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                    audio_source->SetAudioClip("project\\music\\car_door.wav");
+                    audio_source->SetLoop(false);
+                    audio_source->SetPlayOnStart(false);
+                }
             }
         }
 
-        void create_liminal_space()
+        void tick()
         {
-            // shared material for all surfaces (floor, walls, ceiling)
-            shared_ptr<Material> tile_material = make_shared<Material>();
-            tile_material->SetResourceFilePath(string("project\\terrain\\material_floor_tile") + string(EXTENSION_MATERIAL));
-            tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
-            tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
-            tile_material->SetTexture(MaterialTextureType::Metalness,    "project\\materials\\tile_white\\metallic.png");
-            tile_material->SetTexture(MaterialTextureType::Roughness,    "project\\materials\\tile_white\\roughness.png");
-            tile_material->SetTexture(MaterialTextureType::Occlusion,    "project\\materials\\tile_white\\ao.png");
-            tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f); // surface independent UVs
-            tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
-            tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
-
-            // ambient audio
+            // car
+            if (default_car)
             {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("audio_hum_electric");
-
-                AudioSource* audio_source = entity->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project\\music\\hum_electric.wav");
-                audio_source->SetLoop(true);
-                audio_source->SetVolume(0.25f);
-            }
-
-            // camera
-            {
-                Vector3 camera_position = Vector3(5.4084f, 1.5f, 4.7593f);
-                create_camera(camera_position);
-
-                AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
-                audio_source->SetPlayOnStart(false);
-            }
-
-            // point light
-            shared_ptr<Entity> point_light = World::CreateEntity();
-            {
-                point_light->SetObjectName("light_point");
-
-                Light* light = point_light->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_fluorescent_tube_light);
-                light->SetRange(40.0f);
-                light->SetIntensity(LightIntensity::bulb_500_watt);
-                light->SetFlag(LightFlags::ShadowsTransparent, false);
-                light->SetFlag(LightFlags::Volumetric, false);
-                light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                light->SetFlag(LightFlags::Shadows, false);
-
-                light->GetEntity()->SetParent(default_camera);
-            }
-
-            // constants
-            const float ROOM_WIDTH  = 20.0f;
-            const float ROOM_DEPTH  = 20.0f;
-            const float ROOM_HEIGHT = 10.0f;
-            const float DOOR_WIDTH  = 2.0f;
-            const float DOOR_HEIGHT = 5.0f;
-            const int NUM_ROOMS     = 10;
-
-            // direction enum
-            enum class Direction { FRONT, BACK, LEFT, RIGHT };
-
-            // helper for random number generation (0 to max-1)
-            auto rand_int = [](int max) { return rand() % max; };
-
-            // lambda for creating surfaces
-            auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale)
-            {
-                auto entity = World::CreateEntity();
-
-                entity->SetObjectName(name);
-                entity->SetPosition(pos);
-                entity->SetScale(scale);
-
-                auto renderable = entity->AddComponent<Renderable>();
-                renderable->SetMesh(MeshType::Cube);
-                renderable->SetMaterial(tile_material);
-
-                auto physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh);
-            };
-
-            // lambda for creating a door on a specified wall
-            auto create_door = [&](Direction dir, const Vector3& offset)
-            {
-                string base_name = "wall_" + to_string(static_cast<int>(dir) + 1);
-                bool isFb = (dir == Direction::FRONT || dir == Direction::BACK);
-                float wall_pos = (dir == Direction::FRONT || dir == Direction::LEFT) ? -0.5f : 0.5f;
-                wall_pos *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
-            
-                // top section (above door)
-                create_surface((base_name + "_top").c_str(),
-                    Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
-                    Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH));
-            
-                // bottom sections
-                float dim = isFb ? ROOM_WIDTH : ROOM_DEPTH;
-                float side_w = (dim - DOOR_WIDTH) / 2;
-                float l_pos = isFb ? (-dim / 2 + side_w / 2) : (-dim / 2 + side_w / 2);
-                float r_pos = isFb ? (dim / 2 - side_w / 2) : (dim / 2 - side_w / 2);
-            
-                create_surface((base_name + "_left").c_str(),
-                    Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
-                    Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
-            
-                create_surface((base_name + "_right").c_str(),
-                    Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
-                    Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
-            };
-
-            // lambda for creating a room
-            auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset)
-            {
-                // floor and ceiling
-                create_surface("floor", Vector3(0, 0, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
-                create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
-
-                // wall configurations
-                struct WallConfig
+                // car views
+                enum class CarView { Dashboard, Hood, Chase };
+                static CarView current_view = CarView::Dashboard;
+                
+                // camera positions for different views
+                static const Vector3 car_view_positions[] =
                 {
-                    Vector3 pos;
-                    Vector3 scale;
+                    Vector3(0.5f, 1.8f, -0.6f),  // dashboard
+                    Vector3(0.0f, 2.0f, 1.0f),   // hood
+                    Vector3(0.0f, 3.0f, -10.0f)  // chase
                 };
+            
+                // get some commonly used things
+                bool inside_the_car             = default_camera->GetChildrenCount() == 0;
+                Entity* sound_door_entity       = default_car->GetChildByName("sound_door");
+                Entity* sound_start_entity      = default_car->GetChildByName("sound_start");
+                Entity* sound_idle_entity       = default_car->GetChildByName("sound_idle");
+                AudioSource* audio_source_door  = sound_door_entity  ? sound_door_entity->GetComponent<AudioSource>()  : nullptr;
+                AudioSource* audio_source_start = sound_start_entity ? sound_start_entity->GetComponent<AudioSource>() : nullptr;
+                AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
+                if (!audio_source_door || !audio_source_start || !audio_source_idle)
+                    return;
 
-                const WallConfig walls[] =
+                // enter/exit
+                if (Input::GetKeyDown(KeyCode::E))
                 {
-                    { Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // FRONT
-                    { Vector3(0, ROOM_HEIGHT / 2, ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) },  // BACK
-                    { Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }, // LEFT
-                    { Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }   // RIGHT
-                };
-
-                // create walls
-                for (int i = 0; i < 4; ++i)
-                {
-                    Direction dir = static_cast<Direction>(i);
-
-                    if (dir == skip_dir)
-                        continue;
-
-                    if (dir == door_dir)
+                    Entity* camera = nullptr;
+                    if (!inside_the_car)
                     {
-                        create_door(dir, offset);
+                        camera = default_camera->GetChildByName("component_camera");
+                        camera->SetParent(default_car);
+                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                        camera->SetRotationLocal(Quaternion::Identity);
+            
+                        audio_source_start->Play();
+            
+                        inside_the_car = true;
                     }
                     else
                     {
-                        string name = "wall_" + to_string(i + 1);
-                        create_surface(name.c_str(), walls[i].pos + offset, walls[i].scale);
+                        camera = default_car->GetChildByName("component_camera");
+                        camera->SetParent(default_camera);
+                        camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
+                        camera->SetRotationLocal(Quaternion::Identity);
+            
+                        // place the camera on the left of the driver's door
+                        default_camera->GetComponent<PhysicsBody>()->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
+            
+                        audio_source_idle->Stop();
+            
+                        inside_the_car = false;
                     }
+            
+                    // enable/disable car/camera control
+                    camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
+                    default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
+            
+                    // play exit/enter sound
+                    audio_source_door->Play();
+            
+                    // disable/enable windshield
+                    default_car_window->SetActive(!inside_the_car);
                 }
-            };
-
-            // procedural generation
-            Vector3 offsets[NUM_ROOMS] = { Vector3(0.0f) }; // first room at origin
-            Direction doors[NUM_ROOMS];
-            doors[0] = static_cast<Direction>(rand_int(4)); // random first door
-            create_room(doors[0], static_cast<Direction>(-1), offsets[0]);
-
-            for (int i = 1; i < NUM_ROOMS; ++i)
-            {
-                Direction prev_door = doors[i - 1];
-                Vector3 prev_offset = offsets[i - 1];
-                Vector3 new_offset;
-                Direction skip_dir;
-
-                // calculate offset and skip direction
-                switch (prev_door) {
-                    case Direction::FRONT:
-                        new_offset = prev_offset + Vector3(0, 0, -ROOM_DEPTH);
-                        skip_dir = Direction::BACK;
-                        break;
-                    case Direction::BACK:
-                        new_offset = prev_offset + Vector3(0, 0, ROOM_DEPTH);
-                        skip_dir = Direction::FRONT;
-                        break;
-                    case Direction::LEFT:
-                        new_offset = prev_offset + Vector3(-ROOM_WIDTH, 0, 0);
-                        skip_dir = Direction::RIGHT;
-                        break;
-                    case Direction::RIGHT:
-                        new_offset = prev_offset + Vector3(ROOM_WIDTH, 0, 0);
-                        skip_dir = Direction::LEFT;
-                        break;
-                }
-
-                // choose random door (excluding skip_dir)
-                Direction available[3];
-                int count = 0;
-                for (int j = 0; j < 4; ++j)
+            
+                // change car view
+                if (Input::GetKeyDown(KeyCode::V))
                 {
-                    Direction d = static_cast<Direction>(j);
-                    if (d != skip_dir)
-                    { 
-                        available[count++] = d;
+                    if (inside_the_car)
+                    {
+                        if (Entity* camera = default_car->GetChildByName("component_camera"))
+                        {
+                            current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
+                            camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                        }
                     }
                 }
-                doors[i]   = available[rand_int(3)];
-                offsets[i] = new_offset;
 
-                create_room(doors[i], skip_dir, new_offset);
+                // osd
+                {
+                    Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, -0.96f));
+                }
+            }
+        }
+    }
+
+    namespace worlds
+    {
+        namespace forest
+        {
+            void create()
+            {
+                const float render_distance_trees = 2'000.0f;
+                const float render_distance_grass = 1'000.0f;
+                const uint32_t grass_blade_count  = 50'000'000;
+                const uint32_t tree_count         = 10'000;
+                const uint32_t rock_count         = 10'000;
+
+                create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
+                create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
+                Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+                Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
+
+                // create
+                default_terrain = World::CreateEntity();
+                default_terrain->SetObjectName("terrain");
+
+                // sound
+                {
+                    shared_ptr<Entity> entity = World::CreateEntity();
+                    entity->SetObjectName("audio");
+                    entity->SetParent(default_terrain);
+
+                    // footsteps grass
+                    {
+                        shared_ptr<Entity> sound = World::CreateEntity();
+                        sound->SetObjectName("footsteps");
+                        sound->SetParent(entity);
+
+                        AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                        audio_source->SetAudioClip("project\\music\\footsteps_grass.wav");
+                        audio_source->SetPlayOnStart(false);
+                    }
+
+                    // forest and river sounds
+                    {
+                        shared_ptr<Entity> sound = World::CreateEntity();
+                        sound->SetObjectName("forest_river");
+                        sound->SetParent(entity);
+
+                        AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                        audio_source->SetAudioClip("project\\music\\forest_river.wav");
+                        audio_source->SetLoop(true);
+                    }
+
+                    // wind
+                    {
+                        shared_ptr<Entity> sound = World::CreateEntity();
+                        sound->SetObjectName("wind");
+                        sound->SetParent(entity);
+
+                        AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                        audio_source->SetAudioClip("project\\music\\wind.wav");
+                        audio_source->SetLoop(true);
+                    }
+
+                    // underwater
+                    {
+                        shared_ptr<Entity> sound = World::CreateEntity();
+                        sound->SetObjectName("underwater");
+                        sound->SetParent(entity);
+
+                        AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                        audio_source->SetAudioClip("project\\music\\underwater.wav");
+                        audio_source->SetPlayOnStart(false);
+                    }
+                }
+
+                // terrain
+                {
+                    Terrain* terrain = default_terrain->AddComponent<Terrain>();
+
+                    // add renderable component with a material
+                    {
+                        shared_ptr<Material> material = terrain->GetMaterial();
+
+                        // set properties
+                        material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
+                        material->SetProperty(MaterialProperty::IsTerrain,      1.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX, 800.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY, 800.0f);
+
+                        // set textures
+                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\ground\\albedo.png",    0);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\ground\\normal.png",    0);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\ground\\roughness.png", 0);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\ground\\occlusion.png", 0);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",     1);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",     1);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png",  1);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png",  1);
+                        material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\rock\\height.png",     1);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",     2);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",     2);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",  2);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png",  2);
+                        material->SetProperty(MaterialProperty::Tessellation, 0.0f);
+                    }
+                    
+                    // generate a height field
+                    shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\terrain\\height_map.png", RHI_Texture_KeepData);
+                    terrain->SetHeightMap(height_map.get());
+                    terrain->Generate();
+
+                    // add physics so we can walk on it
+                    PhysicsBody* physics_body = default_terrain->AddComponent<PhysicsBody>();
+                    physics_body->SetShapeType(PhysicsShape::Terrain);
+
+                    // water
+                    {
+                        // create root entity
+                        shared_ptr<Entity> water = World::CreateEntity();
+                        water->SetObjectName("water");
+                        water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                        water->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+
+                        // create material
+                        shared_ptr<Material> material = make_shared<Material>();
+                        {
+                            material->SetObjectName("material_water");
+                            material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
+                            material->SetProperty(MaterialProperty::Roughness,           0.0f);
+                            material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
+                            material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
+                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
+                            material->SetProperty(MaterialProperty::TextureTilingX,      400.0f);
+                            material->SetProperty(MaterialProperty::TextureTilingY,      400.0f);
+                            material->SetProperty(MaterialProperty::IsWater,             1.0f);
+                            material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
+
+                            // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                            const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
+                            material->SetResourceFilePath(file_path);
+                        }
+
+                        // geometry
+                        {
+                            // generate grid
+                            const float extend                       = 4000.0f;
+                            const uint32_t grid_points_per_dimension = 64;
+                            vector<RHI_Vertex_PosTexNorTan> vertices;
+                            vector<uint32_t> indices;
+                            geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, extend);
+
+                            // split into tiles
+                            const uint32_t tile_count = 10; // 10x10 tiles
+                            vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
+                            vector<vector<uint32_t>> tiled_indices;
+                            spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices);
+
+                            for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
+                            {
+                                string name = "tile_" + to_string(tile_index);
+
+                                // create mesh if it doesn't exist
+                                shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                                mesh->SetObjectName(name);
+                                mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                                mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
+                                mesh->CreateGpuBuffers();
+
+                                // create a child entity, add a renderable, and this mesh tile to it
+                                {
+                                    shared_ptr<Entity> entity = World::CreateEntity();
+                                    entity->SetObjectName(name);
+                                    entity->SetParent(water);
+
+                                    if (Renderable* renderable = entity->AddComponent<Renderable>())
+                                    {
+                                        renderable->SetMesh(mesh.get());
+                                        renderable->SetMaterial(material);
+                                        renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
+                    uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_tree\\scene.gltf", flags))
+                    {
+                        shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                        entity->SetObjectName("tree");
+                        entity->SetScale(1.0f);
+
+                        // generate instances
+                        {
+                            vector<Matrix> instances;
+                            terrain->GenerateTransforms(&instances, tree_count, TerrainProp::Tree);
+                            
+                            if (Entity* branches = entity->GetDescendantByName("tree_bark_0"))
+                            {
+                                branches->GetComponent<Renderable>()->SetInstances(instances);
+                                branches->GetComponent<Renderable>()->SetMaxRenderDistance(render_distance_trees);
+                            }
+                            
+                            if (Entity* leaf = entity->GetDescendantByName("Plane.550_leaf_0"))
+                            {
+                                Renderable* renderable = leaf->GetComponent<Renderable>();
+                    
+                                renderable->SetInstances(instances);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                                renderable->GetMaterial()->SetProperty(MaterialProperty::IsTree, 1.0f);
+                                renderable->GetMaterial()->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                            }
+                            
+                            if (Entity* leaf = entity->GetDescendantByName("tree_bark for small bottom branch (circle)_0"))
+                            {
+                                leaf->SetActive(false);
+                            }
+                        }
+                    }
+
+                    // rock
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_rock\\rock.obj"))
+                    {
+                        shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                        entity->SetObjectName("rock");
+                        entity->SetScale(0.7f);
+
+                        // generate instances
+                        {
+                            vector<Matrix> instances;
+                            terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree);
+                            
+                            if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
+                            {
+                                Renderable* renderable = rock_entity->GetComponent<Renderable>();
+                                renderable->SetInstances(instances);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false); // small things are taken care of from screen space shadows
+
+                                // create material
+                                shared_ptr<Material> material = make_shared<Material>();
+                                {
+                                    material->SetObjectName("rock");
+                                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_rock\\albedo.jpg");
+                                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_rock\\normal.jpg");
+                                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\model_rock\\occlusion.jpg");
+                                    material->SetProperty(MaterialProperty::Roughness,1.0f);
+                                    // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                                    const string file_path = "project\\terrain\\rock_material" + string(EXTENSION_MATERIAL);
+                                    material->SetResourceFilePath(file_path);
+                                }
+                                renderable->SetMaterial(material);
+                            }
+                        }
+                    }
+
+                    // grass
+                    {
+                        // create entity
+                        shared_ptr<Entity> entity = World::CreateEntity();
+                        entity->SetObjectName("grass");
+                    
+                        // create a mesh with a grass blade
+                        shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                        {
+                            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
+                            mesh->SetLodDropoff(MeshLodDropoff::Linear); // linear dropoff - more aggressive
+
+                            // create sub-mesh and add three lods for the grass blade
+                            uint32_t sub_mesh_index = 0;
+                        
+                            // lod 0: high quality grass blade (6 segments)
+                            {
+                                vector<RHI_Vertex_PosTexNorTan> vertices;
+                                vector<uint32_t> indices;
+                                geometry_generation::generate_grass_blade(&vertices, &indices, 6); // high detail
+                                mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);      // add lod 0, no auto-lod generation
+                            }
+                        
+                            // lod 1: medium quality grass blade (2 segments)
+                            {
+                                vector<RHI_Vertex_PosTexNorTan> vertices;
+                                vector<uint32_t> indices;
+                                geometry_generation::generate_grass_blade(&vertices, &indices, 1); // medium detail
+                                mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
+                            }
+
+                            mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
+                            mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
+                        }
+
+                        // generate instances
+                        vector<Matrix> instances;
+                        terrain->GenerateTransforms(&instances, grass_blade_count, TerrainProp::Grass);
+                    
+                        // add renderable component
+                        Renderable* renderable = entity->AddComponent<Renderable>();
+                        renderable->SetMesh(mesh.get());
+                        renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
+                        renderable->SetInstances(instances);
+                    
+                        // create a material
+                        shared_ptr<Material> material = make_shared<Material>();
+                        material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
+                        material->SetProperty(MaterialProperty::IsGrassBlasde,        1.0f);
+                        material->SetProperty(MaterialProperty::Roughness,            0.5f);
+                        material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.8f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetColor(Color::standard_white);
+                        renderable->SetMaterial(material);
+                    
+                        renderable->SetMaxRenderDistance(render_distance_grass);
+                    }
+                }
+
+                car::create(Vector3(-449.0260f, 15.0f, 359.2632f), true);
+            }
+
+            void tick()
+            {
+                Camera*  camera  = World::GetCamera();
+                Terrain* terrain = default_terrain->GetComponent<Terrain>();
+                if (!camera || !terrain)
+                    return;
+
+                // sound
+                {
+                    bool is_below_water_level = camera->GetEntity()->GetPosition().y < 0.0f;
+
+                    // underwater
+                    {
+                        if (Entity* entity = default_terrain->GetDescendantByName("underwater"))
+                        {
+                            if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
+                            {
+                                if (is_below_water_level && !audio_source->IsPlaying())
+                                {
+                                    audio_source->Play();
+                                }
+                                else if (!is_below_water_level && audio_source->IsPlaying())
+                                {
+                                    audio_source->Stop();
+                                }
+                            }
+                        }
+                    }
+
+                    // footsteps
+                    if (!is_below_water_level)
+                    {
+                        if (Entity* entity = default_terrain->GetDescendantByName("footsteps"))
+                        {
+                            if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
+                            {
+                                if (camera->IsWalking() && !audio_source->IsPlaying())
+                                {
+                                    audio_source->Play();
+                                }
+                                else if (!camera->IsWalking() && audio_source->IsPlaying())
+                                {
+                                    audio_source->Stop();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        namespace gran_turismo
+        {
+            void create()
+            {
+                // gran turismo 7 brand central music
+                create_music("project\\music\\gran_turismo.wav");
+                default_audio->GetComponent<AudioSource>()->SetPitch(1.9f); // why?
+
+                car::create(Vector3(0.0f, 0.08f, 0.0f), false);
+
+                // camera
+                {
+                    Vector3 camera_position = Vector3(-4.2244f, 1.2250f, -6.7316f);
+                    create_camera(camera_position);
+                    Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
+                    default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
+                }
+
+                // floor
+                {
+                    create_floor();
+
+                    shared_ptr<Material> material = make_shared<Material>();
+                    material->SetResourceFilePath(string("project\\terrain\\material_floor_shiny") + string(EXTENSION_MATERIAL));
+
+                    material->SetProperty(MaterialProperty::ColorR,    0.5f);
+                    material->SetProperty(MaterialProperty::ColorG,    0.5f);
+                    material->SetProperty(MaterialProperty::ColorB,    0.5f);
+                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+
+                    default_floor->GetComponent<Renderable>()->SetMaterial(material);
+                }
+
+                // point light 1
+                {
+                    shared_ptr<Entity> entity = World::CreateEntity();
+                    entity->SetObjectName("light_point_1");
+                    entity->SetPosition(Vector3(-5.0f, 7.5f, 5.0f));
+
+                    Light* light = entity->AddComponent<Light>();
+                    light->SetLightType(LightType::Point);
+                    light->SetColor(Color::light_light_bulb);
+                    light->SetRange(39.66f);
+                    light->SetIntensity(LightIntensity::bulb_500_watt);
+                    light->SetFlag(LightFlags::ShadowsTransparent, false);
+                    light->SetFlag(LightFlags::Volumetric, false);
+                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                }
+
+                // point light 2
+                {
+                    shared_ptr<Entity> entity = World::CreateEntity();
+                    entity->SetObjectName("light_point_2");
+                    entity->SetPosition(Vector3(5.0f, 7.5f, -5.0f));
+
+                    Light* light = entity->AddComponent<Light>();
+                    light->SetLightType(LightType::Point);
+                    light->SetColor(Color::light_light_bulb);
+                    light->SetRange(39.66f);
+                    light->SetIntensity(LightIntensity::bulb_500_watt);
+                    light->SetFlag(LightFlags::ShadowsTransparent, false);
+                    light->SetFlag(LightFlags::Volumetric, false);
+                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                }
+
+                // disable on-screen clutter
+                {
+                    Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
+                    Renderer::SetOption(Renderer_Option::Lights,             0.0f);
+                }
+            }
+
+            void tick()
+            {
+                 // slow rotation: rotate car around Y-axis (vertical)
+                float rotation_speed = 0.25f; // degrees per second
+                float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec()); // time since last frame (in seconds)
+                float angle          = rotation_speed * delta_time; // incremental rotation
+                Quaternion rotation  = Quaternion::FromAxisAngle(Vector3::Up, angle);
+                default_car->Rotate(rotation);
+        
+                // helper function to format float with 1 decimal place
+                auto format_float = [](float value) -> string
+                {
+                    char buffer[16];
+                    snprintf(buffer, sizeof(buffer), "%.1f", value);
+                    return string(buffer);
+                };
+        
+                // draw text overlays at screen percentages
+                const float x = 0.05f;
+                Renderer::DrawString("Toyota AE86 Sprinter Trueno Zenki", Vector2(x, 0.0f));
+                Renderer::DrawString("Torque: " + format_float(149.0f) + " Nm", Vector2(x, -0.015f));
+                Renderer::DrawString("Weight: " + format_float(940.0f) + " kg", Vector2(x, -0.03f));
+                Renderer::DrawString("Power: " + format_float(95.0f) + " kW", Vector2(x, -0.045f));
+                Renderer::DrawString("Top Speed: " + format_float(185.0f) + " km/h", Vector2(x, -0.06f));
+                Renderer::DrawString("Engine: 1.6L Inline-4 DOHC", Vector2(x, -0.075f));
+                Renderer::DrawString("Drivetrain: RWD", Vector2(x, -0.09f));
+                Renderer::DrawString("0-100 km/h: " + format_float(8.5f) + " s", Vector2(x, -0.105f));
+                Renderer::DrawString("Power/Weight: " + format_float(101.1f) + " kW/ton", Vector2(x, -0.12f));
+                Renderer::DrawString("Production: 1983-1987", Vector2(x, -0.135f));
+                Renderer::DrawString("Drift Icon: Star of Initial D", Vector2(x, -0.15f));
+                Renderer::DrawString("The Toyota AE86 Sprinter Trueno, launched in 1983, is a lightweight, rear-wheel-drive icon of the 1980s.", Vector2(x, -0.94f));
+                Renderer::DrawString("Beloved for its balanced handling and affordability, it became a legend in drifting and motorsport, immortalized in car culture through media like Initial D.", Vector2(x, -0.955f));
+            }
+        }
+
+        namespace liminal_space
+        { 
+            void create()
+            {
+                // shared material for all surfaces (floor, walls, ceiling)
+                shared_ptr<Material> tile_material = make_shared<Material>();
+                tile_material->SetResourceFilePath(string("project\\terrain\\material_floor_tile") + string(EXTENSION_MATERIAL));
+                tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
+                tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
+                tile_material->SetTexture(MaterialTextureType::Metalness,    "project\\materials\\tile_white\\metallic.png");
+                tile_material->SetTexture(MaterialTextureType::Roughness,    "project\\materials\\tile_white\\roughness.png");
+                tile_material->SetTexture(MaterialTextureType::Occlusion,    "project\\materials\\tile_white\\ao.png");
+                tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f); // surface independent UVs
+                tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
+                tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
+    
+                // ambient audio
+                {
+                    shared_ptr<Entity> entity = World::CreateEntity();
+                    entity->SetObjectName("audio_hum_electric");
+
+                    AudioSource* audio_source = entity->AddComponent<AudioSource>();
+                    audio_source->SetAudioClip("project\\music\\hum_electric.wav");
+                    audio_source->SetLoop(true);
+                    audio_source->SetVolume(0.25f);
+                }
+    
+                // camera
+                {
+                    create_camera(Vector3(5.4084f, 1.5f, 4.7593f));
+
+                    AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
+                    audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
+                    audio_source->SetPlayOnStart(false);
+                }
+    
+                // point light
+                shared_ptr<Entity> point_light = World::CreateEntity();
+                {
+                    point_light->SetObjectName("light_point");
+
+                    Light* light = point_light->AddComponent<Light>();
+                    light->SetLightType(LightType::Point);
+                    light->SetColor(Color::light_fluorescent_tube_light);
+                    light->SetRange(40.0f);
+                    light->SetIntensity(LightIntensity::bulb_500_watt);
+                    light->SetFlag(LightFlags::ShadowsTransparent, false);
+                    light->SetFlag(LightFlags::Volumetric, false);
+                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                    light->SetFlag(LightFlags::Shadows, false);
+
+                    light->GetEntity()->SetParent(default_camera);
+                }
+    
+                // constants
+                const float ROOM_WIDTH  = 20.0f;
+                const float ROOM_DEPTH  = 20.0f;
+                const float ROOM_HEIGHT = 10.0f;
+                const float DOOR_WIDTH  = 2.0f;
+                const float DOOR_HEIGHT = 5.0f;
+                const int NUM_ROOMS     = 10;
+    
+                // direction enum
+                enum class Direction { FRONT, BACK, LEFT, RIGHT };
+    
+                // helper for random number generation (0 to max-1)
+                auto rand_int = [](int max) { return rand() % max; };
+    
+                // lambda for creating surfaces
+                auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale)
+                {
+                    auto entity = World::CreateEntity();
+
+                    entity->SetObjectName(name);
+                    entity->SetPosition(pos);
+                    entity->SetScale(scale);
+
+                    auto renderable = entity->AddComponent<Renderable>();
+                    renderable->SetMesh(MeshType::Cube);
+                    renderable->SetMaterial(tile_material);
+
+                    auto physics_body = entity->AddComponent<PhysicsBody>();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                };
+    
+                // lambda for creating a door on a specified wall
+                auto create_door = [&](Direction dir, const Vector3& offset)
+                {
+                    string base_name  = "wall_" + to_string(static_cast<int>(dir) + 1);
+                    bool isFb         = (dir == Direction::FRONT || dir == Direction::BACK);
+                    float wall_pos    = (dir == Direction::FRONT || dir == Direction::LEFT) ? -0.5f : 0.5f;
+                    wall_pos         *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
+                
+                    // top section (above door)
+                    create_surface((base_name + "_top").c_str(),
+                        Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
+                        Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH));
+                
+                    // bottom sections
+                    float dim    = isFb ? ROOM_WIDTH : ROOM_DEPTH;
+                    float side_w = (dim - DOOR_WIDTH) / 2;
+                    float l_pos  = isFb ? (-dim / 2 + side_w / 2) : (-dim / 2 + side_w / 2);
+                    float r_pos  = isFb ? (dim / 2 - side_w / 2) : (dim / 2 - side_w / 2);
+                
+                    create_surface((base_name + "_left").c_str(),
+                        Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
+                        Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
+                
+                    create_surface((base_name + "_right").c_str(),
+                        Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
+                        Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w));
+                };
+    
+                // lambda for creating a room
+                auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset)
+                {
+                    // floor and ceiling
+                    create_surface("floor", Vector3(0, 0, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
+                    create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0) + offset, Vector3(ROOM_WIDTH, 1, ROOM_DEPTH));
+
+                    // wall configurations
+                    struct WallConfig
+                    {
+                        Vector3 pos;
+                        Vector3 scale;
+                    };
+
+                    const WallConfig walls[] =
+                    {
+                        { Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // FRONT
+                        { Vector3(0, ROOM_HEIGHT / 2, ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) },  // BACK
+                        { Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }, // LEFT
+                        { Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }   // RIGHT
+                    };
+
+                    // create walls
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        Direction dir = static_cast<Direction>(i);
+
+                        if (dir == skip_dir)
+                            continue;
+
+                        if (dir == door_dir)
+                        {
+                            create_door(dir, offset);
+                        }
+                        else
+                        {
+                            string name = "wall_" + to_string(i + 1);
+                            create_surface(name.c_str(), walls[i].pos + offset, walls[i].scale);
+                        }
+                    }
+                };
+    
+                // procedural generation
+                Vector3 offsets[NUM_ROOMS] = { Vector3(0.0f) }; // first room at origin
+                Direction doors[NUM_ROOMS];
+                doors[0] = static_cast<Direction>(rand_int(4)); // random first door
+                create_room(doors[0], static_cast<Direction>(-1), offsets[0]);
+    
+                for (int i = 1; i < NUM_ROOMS; ++i)
+                {
+                    Direction prev_door = doors[i - 1];
+                    Vector3 prev_offset = offsets[i - 1];
+                    Vector3 new_offset;
+                    Direction skip_dir;
+
+                    // calculate offset and skip direction
+                    switch (prev_door)
+                    {
+                        case Direction::FRONT:
+                            new_offset = prev_offset + Vector3(0, 0, -ROOM_DEPTH);
+                            skip_dir = Direction::BACK;
+                            break;
+                        case Direction::BACK:
+                            new_offset = prev_offset + Vector3(0, 0, ROOM_DEPTH);
+                            skip_dir = Direction::FRONT;
+                            break;
+                        case Direction::LEFT:
+                            new_offset = prev_offset + Vector3(-ROOM_WIDTH, 0, 0);
+                            skip_dir = Direction::RIGHT;
+                            break;
+                        case Direction::RIGHT:
+                            new_offset = prev_offset + Vector3(ROOM_WIDTH, 0, 0);
+                            skip_dir = Direction::LEFT;
+                            break;
+                    }
+
+                    // choose random door (excluding skip_dir)
+                    Direction available[3];
+                    int count = 0;
+                    for (int j = 0; j < 4; ++j)
+                    {
+                        Direction d = static_cast<Direction>(j);
+                        if (d != skip_dir)
+                        { 
+                            available[count++] = d;
+                        }
+                    }
+                    doors[i]   = available[rand_int(3)];
+                    offsets[i] = new_offset;
+
+                    create_room(doors[i], skip_dir, new_offset);
+                }
+            }
+
+            void tick()
+            {
+                // footsteps
+                AudioSource* audio_source = default_camera->GetChildByIndex(0)->GetComponent<AudioSource>();
+                Camera* camera            = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
+                if (camera->IsWalking() && !audio_source->IsPlaying())
+                {
+                    audio_source->Play();
+                }
+                else if (!camera->IsWalking() && audio_source->IsPlaying())
+                {
+                    audio_source->Stop();
+                }
             }
         }
     }
@@ -1512,192 +1715,22 @@ namespace spartan
 
     void Game::Tick()
     {
-        if (loaded_world == DefaultWorld::LiminalSpace && Engine::IsFlagSet(EngineMode::Playing))
-        {
-            // footsteps
-            AudioSource* audio_source = default_camera->GetChildByIndex(0)->GetComponent<AudioSource>();
-            Camera* camera            = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
-            if (camera->IsWalking() && !audio_source->IsPlaying())
-            {
-                audio_source->Play();
-            }
-            else if (!camera->IsWalking() && audio_source->IsPlaying())
-            {
-                audio_source->Stop();
-            }
-        }
+        car::tick();
 
-        if (loaded_world == DefaultWorld::GranTurismo && Engine::IsFlagSet(EngineMode::Playing))
-        {
-            // slow rotation: rotate car around Y-axis (vertical)
-            float rotation_speed = 0.25f; // degrees per second
-            float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec()); // time since last frame (in seconds)
-            float angle          = rotation_speed * delta_time; // incremental rotation
-            Quaternion rotation  = Quaternion::FromAxisAngle(Vector3::Up, angle);
-            default_car->Rotate(rotation);
-        
-            // helper function to format float with 1 decimal place
-            auto format_float = [](float value) -> string
-            {
-                char buffer[16];
-                snprintf(buffer, sizeof(buffer), "%.1f", value);
-                return string(buffer);
-            };
-        
-            // draw text overlays at screen percentages
-            const float x = 0.05f;
-            Renderer::DrawString("Toyota AE86 Sprinter Trueno Zenki", Vector2(x, 0.0f));
-            Renderer::DrawString("Torque: " + format_float(149.0f) + " Nm", Vector2(x, -0.015f));
-            Renderer::DrawString("Weight: " + format_float(940.0f) + " kg", Vector2(x, -0.03f));
-            Renderer::DrawString("Power: " + format_float(95.0f) + " kW", Vector2(x, -0.045f));
-            Renderer::DrawString("Top Speed: " + format_float(185.0f) + " km/h", Vector2(x, -0.06f));
-            Renderer::DrawString("Engine: 1.6L Inline-4 DOHC", Vector2(x, -0.075f));
-            Renderer::DrawString("Drivetrain: RWD", Vector2(x, -0.09f));
-            Renderer::DrawString("0-100 km/h: " + format_float(8.5f) + " s", Vector2(x, -0.105f));
-            Renderer::DrawString("Power/Weight: " + format_float(101.1f) + " kW/ton", Vector2(x, -0.12f));
-            Renderer::DrawString("Production: 1983-1987", Vector2(x, -0.135f));
-            Renderer::DrawString("Drift Icon: Star of Initial D", Vector2(x, -0.15f));
-            Renderer::DrawString("The Toyota AE86 Sprinter Trueno, launched in 1983, is a lightweight, rear-wheel-drive icon of the 1980s.", Vector2(x, -0.94f));
-            Renderer::DrawString("Beloved for its balanced handling and affordability, it became a legend in drifting and motorsport, immortalized in car culture through media like Initial D.", Vector2(x, -0.955f));
-        
+        if (!Engine::IsFlagSet(EngineMode::Playing))
             return;
-        }
 
-        // car
-        if (default_car)
+        if (loaded_world == DefaultWorld::LiminalSpace)
         {
-            // car views
-            enum class CarView { Dashboard, Hood, Chase };
-            static CarView current_view = CarView::Dashboard;
-            
-            // camera positions for different views
-            static const Vector3 car_view_positions[] =
-            {
-                Vector3(0.5f, 1.8f, -0.6f),  // dashboard
-                Vector3(0.0f, 2.0f, 1.0f),   // hood
-                Vector3(0.0f, 3.0f, -10.0f)  // chase
-            };
-        
-            // get some commonly used things
-            bool inside_the_car             = default_camera->GetChildrenCount() == 0;
-            Entity* sound_door_entity       = default_car->GetChildByName("sound_door");
-            Entity* sound_start_entity      = default_car->GetChildByName("sound_start");
-            Entity* sound_idle_entity       = default_car->GetChildByName("sound_idle");
-            AudioSource* audio_source_door  = sound_door_entity  ? sound_door_entity->GetComponent<AudioSource>()  : nullptr;
-            AudioSource* audio_source_start = sound_start_entity ? sound_start_entity->GetComponent<AudioSource>() : nullptr;
-            AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
-            if (!audio_source_door || !audio_source_start || !audio_source_idle)
-                return;
-
-            // enter/exit
-            if (Input::GetKeyDown(KeyCode::E))
-            {
-                Entity* camera = nullptr;
-                if (!inside_the_car)
-                {
-                    camera = default_camera->GetChildByName("component_camera");
-                    camera->SetParent(default_car);
-                    camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
-                    camera->SetRotationLocal(Quaternion::Identity);
-        
-                    audio_source_start->Play();
-        
-                    inside_the_car = true;
-                }
-                else
-                {
-                    camera = default_car->GetChildByName("component_camera");
-                    camera->SetParent(default_camera);
-                    camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
-                    camera->SetRotationLocal(Quaternion::Identity);
-        
-                    // place the camera on the left of the driver's door
-                    default_camera->GetComponent<PhysicsBody>()->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
-        
-                    audio_source_idle->Stop();
-        
-                    inside_the_car = false;
-                }
-        
-                // enable/disable car/camera control
-                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
-                default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
-        
-                // play exit/enter sound
-                audio_source_door->Play();
-        
-                // disable/enable windshield
-                default_car_window->SetActive(!inside_the_car);
-            }
-        
-            // change car view
-            if (Input::GetKeyDown(KeyCode::V))
-            {
-                if (inside_the_car)
-                {
-                    if (Entity* camera = default_car->GetChildByName("component_camera"))
-                    {
-                        current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
-                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
-                    }
-                }
-            }
-
-            // osd
-            {
-                Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, -0.96f));
-            }
+           worlds::liminal_space::tick();
         }
-        
-        // forest logic
-        if (default_terrain)
+        else if (loaded_world == DefaultWorld::GranTurismo)
         {
-            Camera*  camera  = World::GetCamera();
-            Terrain* terrain = default_terrain->GetComponent<Terrain>();
-            if (!camera || !terrain)
-                return;
-
-            // sound
-            {
-                bool is_below_water_level = camera->GetEntity()->GetPosition().y < 0.0f;
-
-                // underwater
-                {
-                    if (Entity* entity = default_terrain->GetDescendantByName("underwater"))
-                    {
-                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
-                        {
-                            if (is_below_water_level && !audio_source->IsPlaying())
-                            {
-                                audio_source->Play();
-                            }
-                            else if (!is_below_water_level && audio_source->IsPlaying())
-                            {
-                                audio_source->Stop();
-                            }
-                        }
-                    }
-                }
-
-                // footsteps
-                if (!is_below_water_level)
-                {
-                    if (Entity* entity = default_terrain->GetDescendantByName("footsteps"))
-                    {
-                        if (AudioSource* audio_source = entity->GetComponent<AudioSource>())
-                        {
-                            if (camera->IsWalking() && !audio_source->IsPlaying())
-                            {
-                                audio_source->Play();
-                            }
-                            else if (!camera->IsWalking() && audio_source->IsPlaying())
-                            {
-                                audio_source->Stop();
-                            }
-                        }
-                    }
-                }
-            }
+            worlds::gran_turismo::tick();
+        }
+        else if (loaded_world == DefaultWorld::Forest)
+        {
+            worlds::forest::tick();
         }
     }
 
@@ -1716,16 +1749,16 @@ namespace spartan
 
             switch (default_world)
             {
-                case DefaultWorld::Forest:       create_forest_car();                 break;
-                case DefaultWorld::Doom:         create_doom_e1m1();                  break;
-                case DefaultWorld::Bistro:       create_bistro();                     break;
-                case DefaultWorld::Minecraft:    create_minecraft();                  break;
-                case DefaultWorld::LivingRoom:   create_living_room_gi_test();        break;
-                case DefaultWorld::Sponza:       create_sponza_4k();                  break;
-                case DefaultWorld::Subway:       create_subway_gi_test();             break;
-                case DefaultWorld::GranTurismo:  create_gran_turismo_brand_central(); break;
-                case DefaultWorld::LiminalSpace: create_liminal_space();              break;
-                default: SP_ASSERT_MSG(false, "Unhandled default world");             break;
+                case DefaultWorld::Forest:       worlds::forest::create();        break;
+                case DefaultWorld::Doom:         create_doom_e1m1();              break;
+                case DefaultWorld::Bistro:       create_bistro();                 break;
+                case DefaultWorld::Minecraft:    create_minecraft();              break;
+                case DefaultWorld::LivingRoom:   create_living_room_gi_test();    break;
+                case DefaultWorld::Sponza:       create_sponza_4k();              break;
+                case DefaultWorld::Subway:       create_subway_gi_test();         break;
+                case DefaultWorld::GranTurismo:  worlds::gran_turismo::create();  break;
+                case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
+                default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
             }
 
             ProgressTracker::SetGlobalLoadingState(false);
