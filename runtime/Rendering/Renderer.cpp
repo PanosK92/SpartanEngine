@@ -54,9 +54,10 @@ namespace spartan
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_pcb_pass_cpu;
 
-    // line rendering
+    // line and icon rendering
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
+    vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
     bool wants_to_present                          = false;
@@ -330,6 +331,12 @@ namespace spartan
             SubmitAndPresent();
         }
 
+        // clear per frame data
+        {
+            m_lines_vertices.clear();
+            m_icons.clear();
+        }
+
         frame_num++;
     }
 
@@ -576,6 +583,16 @@ namespace spartan
         if (shared_ptr<Font>& font = GetFont())
         {
             font->AddText(text, position_screen_percentage);
+        }
+    }
+
+    void Renderer::DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage)
+    {
+        Vector3 world_position = World::GetCamera()->ScreenToWorldCoordinates(position_screen_percentage, 0.5f);
+
+        if (icon)
+        {
+            m_icons.emplace_back(make_tuple(icon, world_position));
         }
     }
     

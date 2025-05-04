@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ThreadPool.h"
 #include "../Core/Debugging.h"
 #include "../Rendering/Renderer.h"
-#include "../Resource/ResourceCache.h"
 #include "../Display/Display.h"
 //====================================
 
@@ -504,8 +503,8 @@ namespace spartan
             );
         }
     
-        // Draw directly from the static buffer
-        Renderer::DrawString(string(metrics_buffer), math::Vector2(0.01f, 0.01f));
+        // draw directly from the static buffer
+        Renderer::DrawString(string(metrics_buffer), math::Vector2(0.005f, 0.02f));
     }
 
     ProfilerGranularity Profiler::GetGranularity()

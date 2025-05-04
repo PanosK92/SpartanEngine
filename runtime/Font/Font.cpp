@@ -81,45 +81,33 @@ namespace spartan
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
     }
 
-    void Font::AddText(const string& text, const Vector2& position_screen_percentage)
+    void Font::AddText(const std::string& text, const Vector2& position_screen_percentage)
     {
-        // Define a maximum vertex limit (e.g., 1,000,000 vertices)
-        const uint32_t max_vertices = 1000000; // Adjust based on memory constraints (e.g., 1M vertices ~ 20 MB for typical vertex size)
-    
+        // define a maximum vertex limit
+        const uint32_t max_vertices = 1000000;
+        uint32_t vertex_offset      = static_cast<uint32_t>(m_vertices.size());
+
         const float viewport_width  = Renderer::GetViewport().width;
         const float viewport_height = Renderer::GetViewport().height;
-        const float aspect_ratio    = viewport_width / viewport_height;
-    
-        // Adjust the screen percentage position to compensate for the aspect ratio
-        Vector2 adjusted_position_percentage;
-        adjusted_position_percentage.x = position_screen_percentage.x / aspect_ratio;
-        adjusted_position_percentage.y = position_screen_percentage.y;
-    
-        // Convert the adjusted screen percentage position to actual screen coordinates
+
+        // convert screen percentage to pixel coordinates
         Vector2 position;
-        position.x = viewport_width  * adjusted_position_percentage.x;
-        position.y = viewport_height * adjusted_position_percentage.y;
-    
-        // Make the origin be the top left corner
+        position.x = viewport_width  * position_screen_percentage.x;
+        position.y = viewport_height * (-position_screen_percentage.y); // flip y-axis to match the screen space coordinates (y is positive downwards in screen space)
+
+        // make the origin be the top left corner
         position.x -= 0.5f * viewport_width;
         position.y += 0.5f * viewport_height;
     
-        // Adjust for slight y offset
-        position.y -= m_char_max_height * 1.5f;
-    
-        // Set the cursor to the starting position
+        // generate vertices - draw each letter onto a quad
         Vector2 cursor = position;
-    
-        uint32_t vertex_offset = static_cast<uint32_t>(m_vertices.size());
-    
-        // Generate vertices - draw each letter onto a quad
         for (char character : text)
         {
-            // Check if adding this character would exceed the vertex limit
+            // check if adding this character would exceed the vertex limit
             if (m_vertices.size() + 6 > max_vertices)
             {
                 SP_LOG_WARNING("Text input too large, vertex limit (%u) reached. Truncating text.", max_vertices);
-                break; // Stop processing further characters
+                break;
             }
     
             Glyph& glyph = m_glyphs[character];
@@ -144,23 +132,23 @@ namespace spartan
             }
             else
             {
-                // First triangle in quad
+                // first triangle in quad
                 m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
                 m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_left,  glyph.uv_y_bottom});
     
-                // Second triangle in quad
+                // second triangle in quad
                 m_vertices.push_back({cursor.x + glyph.offset_x,               cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_left,  glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y,                0.0f, glyph.uv_x_right, glyph.uv_y_top});
                 m_vertices.push_back({cursor.x + glyph.offset_x + glyph.width, cursor.y + glyph.offset_y - glyph.height, 0.0f, glyph.uv_x_right, glyph.uv_y_bottom});
     
-                // Add indices for the two triangles (6 indices for 2 triangles)
+                // add indices for the two triangles
                 for (uint32_t i = 0; i < 6; ++i)
                 {
                     m_indices.push_back(vertex_offset + i);
                 }
     
-                // Advance the cursor and vertex offset
+                // advance the cursor and vertex offset
                 cursor.x      += glyph.horizontal_advance;
                 vertex_offset += 6;
             }

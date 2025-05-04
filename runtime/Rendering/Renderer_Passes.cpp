@@ -1692,57 +1692,82 @@ namespace spartan
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        bool no_icons = !GetOption<bool>(Renderer_Option::Lights) || World::GetLightCount() == 0 || World::GetAudioSourceCount() == 0;
-        if (Engine::IsFlagSet(EngineMode::Playing) || no_icons)
-            return;
-    
-        cmd_list->BeginTimeblock("icons");
-        {
-            // set pipeline state once
-            RHI_PipelineState pso;
-            pso.name                             = "icon";
-            pso.shaders[RHI_Shader_Type::Compute] = GetShader(Renderer_Shader::icon_c);
-            cmd_list->SetPipelineState(pso);
-    
-            // bind output texture
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-    
-            auto dispatch_icon = [&](Entity* entity, RHI_Texture* texture)
-            {
-                // push world position
-                Vector3 pos_world = entity->GetPosition();
-                m_pcb_pass_cpu.set_f3_value(pos_world.x, pos_world.y, pos_world.z);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-                // bind icon texture
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-    
-                // dispatch for this icon (2x2 groups of 32x32 threads for 64x64 icon)
-                cmd_list->Dispatch(2, 2, 1);
-            };
-    
-             // process all entities
+        // append icons from entities
+        if (!Engine::IsFlagSet(EngineMode::Playing))
+        { 
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
+                math::Vector3 pos_world = entity->GetPosition();
                 if (entity->GetComponent<AudioSource>())
                 {
-                    dispatch_icon(entity.get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source));
+                    // append audio source icon
+                    m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), pos_world));
                 }
                 else if (Light* light = entity->GetComponent<Light>())
                 {
-                    RHI_Texture* texture = nullptr;
-                    if (light->GetLightType() == LightType::Directional)
-                        texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
-                    else if (light->GetLightType() == LightType::Point)
-                        texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
-                    else if (light->GetLightType() == LightType::Spot)
-                        texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
-                    if (texture)
-                        dispatch_icon(entity.get(), texture);
+                    if (GetOption<bool>(Renderer_Option::Lights))
+                    {
+                        // append light icon based on type
+                        RHI_Texture* texture = nullptr;
+                        if (light->GetLightType() == LightType::Directional)
+                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
+                        else if (light->GetLightType() == LightType::Point)
+                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
+                        else if (light->GetLightType() == LightType::Spot)
+                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
+
+                        if (texture)
+                        {
+                            m_icons.emplace_back(make_tuple(texture, pos_world));
+                        }
+                    }
                 }
             }
         }
-        cmd_list->EndTimeblock();
+
+        if (!m_icons.empty())
+        { 
+            cmd_list->BeginTimeblock("icons");
+            {
+                // set pipeline state
+                RHI_PipelineState pso;
+                pso.name                              = "icon";
+                pso.shaders[RHI_Shader_Type::Compute] = GetShader(Renderer_Shader::icon_c);
+                cmd_list->SetPipelineState(pso);
+
+                // bind output texture
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+
+                // lambda to dispatch a single icon
+                auto dispatch_icon = [&](RHI_Texture* texture, const math::Vector3& pos_world)
+                {
+                     // set push constants: world position and texture dimensions
+                    m_pcb_pass_cpu.set_f3_value(pos_world.x, pos_world.y, pos_world.z);
+                    m_pcb_pass_cpu.set_f2_value(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    // bind icon texture
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
+
+                    // dispatch compute shader
+                    uint32_t thread_x = 32;
+                    uint32_t thread_y = 32;
+                    uint32_t groups_x = (texture->GetWidth() + thread_x - 1) / thread_x;  // ceil(width / thread_x)
+                    uint32_t groups_y = (texture->GetHeight() + thread_y - 1) / thread_y; // ceil(height / thread_y)
+                    cmd_list->Dispatch(groups_x, groups_y, 1);
+                };
+
+                // dispatch all icons in m_icons
+                for (const auto& [texture, pos_world] : m_icons)
+                {
+                    if (texture)
+                    {
+                        dispatch_icon(texture, pos_world);
+                    }
+                }
+            }
+            cmd_list->EndTimeblock();
+        }
     }
 
     void Renderer::Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
@@ -1833,8 +1858,6 @@ namespace spartan
 
             cmd_list->EndTimeblock();
         }
-
-        m_lines_vertices.clear();
     }
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)

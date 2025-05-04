@@ -48,14 +48,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-#define icon_x 64
-#define icon_y 64
 #define thread_x 32
 #define thread_y 32
 
 [numthreads(thread_x, thread_y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
+    // check if thread is within icon bounds
+    float2 icon_size = pass_get_f2_value(); // width, height
+    float icon_x     = icon_size.x;
+    float icon_y     = icon_size.y;
+    if (thread_id.x >= icon_x || thread_id.y >= icon_y)
+        return;
+    
     // visibility check
     float3 world_pos        = pass_get_f3_value();
     float3 camera_to_entity = normalize(world_pos - buffer_frame.camera_position.xyz);

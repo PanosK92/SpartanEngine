@@ -993,7 +993,7 @@ namespace spartan
 
                 // osd
                 {
-                    Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, -0.96f));
+                    Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, 0.98f));
                 }
             }
         }
@@ -1367,18 +1367,23 @@ namespace spartan
             }
         }
 
-        namespace gran_turismo
+        namespace showroom
         {
+            shared_ptr<RHI_Texture> icon_logo;
+
             void create()
             {
                 // gran turismo 7 brand central music
                 create_music("project\\music\\gran_turismo.wav", 1.9f);
 
+                // logo
+                icon_logo = make_shared<RHI_Texture>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\logo.png");
+
                 car::create(Vector3(0.0f, 0.08f, 0.0f), false);
 
                 // camera
                 {
-                    Vector3 camera_position = Vector3(-4.2244f, 1.2250f, -6.7316f);
+                    Vector3 camera_position = Vector3(-4.7317f, 1.2250f, -7.6135f);
                     create_camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
@@ -1456,22 +1461,33 @@ namespace spartan
                     snprintf(buffer, sizeof(buffer), "%.1f", value);
                     return string(buffer);
                 };
-        
-                // draw text overlays at screen percentages
-                const float x = 0.05f;
-                Renderer::DrawString("Toyota AE86 Sprinter Trueno Zenki", Vector2(x, 0.0f));
-                Renderer::DrawString("Torque: " + format_float(149.0f) + " Nm", Vector2(x, -0.015f));
-                Renderer::DrawString("Weight: " + format_float(940.0f) + " kg", Vector2(x, -0.03f));
-                Renderer::DrawString("Power: " + format_float(95.0f) + " kW", Vector2(x, -0.045f));
-                Renderer::DrawString("Top Speed: " + format_float(185.0f) + " km/h", Vector2(x, -0.06f));
-                Renderer::DrawString("Engine: 1.6L Inline-4 DOHC", Vector2(x, -0.075f));
-                Renderer::DrawString("Drivetrain: RWD", Vector2(x, -0.09f));
-                Renderer::DrawString("0-100 km/h: " + format_float(8.5f) + " s", Vector2(x, -0.105f));
-                Renderer::DrawString("Power/Weight: " + format_float(101.1f) + " kW/ton", Vector2(x, -0.12f));
-                Renderer::DrawString("Production: 1983-1987", Vector2(x, -0.135f));
-                Renderer::DrawString("Drift Icon: Star of Initial D", Vector2(x, -0.15f));
-                Renderer::DrawString("The Toyota AE86 Sprinter Trueno, launched in 1983, is a lightweight, rear-wheel-drive icon of the 1980s.", Vector2(x, -0.94f));
-                Renderer::DrawString("Beloved for its balanced handling and affordability, it became a legend in drifting and motorsport, immortalized in car culture through media like Initial D.", Vector2(x, -0.955f));
+
+              const float x       = 0.75f;
+              const float y       = 0.12f;
+              const float spacing = 0.02f;
+              
+              // car specs
+              Renderer::DrawString("Toyota AE86 Sprinter Trueno Zenki", Vector2(x, y));
+              Renderer::DrawString("Torque: " + format_float(149.0f) + " Nm", Vector2(x, y + spacing * 1));
+              Renderer::DrawString("Weight: " + format_float(940.0f) + " kg", Vector2(x, y + spacing * 2));
+              Renderer::DrawString("Power: " + format_float(95.0f) + " kW", Vector2(x, y + spacing * 3));
+              Renderer::DrawString("Top Speed: " + format_float(185.0f) + " km/h", Vector2(x, y + spacing * 4));
+              Renderer::DrawString("Engine: 1.6L Inline-4 DOHC", Vector2(x, y + spacing * 5));
+              Renderer::DrawString("Drivetrain: RWD", Vector2(x, y + spacing * 6));
+              Renderer::DrawString("0-100 km/h: " + format_float(8.5f) + " s", Vector2(x, y + spacing * 7));
+              Renderer::DrawString("Power/Weight: " + format_float(101.1f) + " kW/ton", Vector2(x, y + spacing * 8));
+              Renderer::DrawString("Production: 1983-1987", Vector2(x, y + spacing * 9));
+              Renderer::DrawString("Drift Icon: Star of Initial D", Vector2(x, y + spacing * 10));
+              
+              // description (with a gap)
+              Renderer::DrawString("The Toyota AE86 Sprinter Trueno, launched in 1983, is a lightweight", Vector2(x, y + spacing * 12));
+              Renderer::DrawString("rear-wheel-drive icon of the 1980s. Beloved for its balanced handling and", Vector2(x, y + spacing * 13));
+              Renderer::DrawString("affordability, it became a legend in drifting and motorsport, immortalized", Vector2(x, y + spacing * 14));
+              Renderer::DrawString("in car culture through media like Initial D.", Vector2(x, y + spacing * 15));
+
+              // logo - this is in pixels (not screen space coordinates unlike the text, need to make everything use one space)
+              Renderer::DrawIcon(icon_logo.get(), Vector2(400.0f, 300.0f));
+
             }
         }
 
@@ -1535,7 +1551,7 @@ namespace spartan
                 const float ROOM_HEIGHT = 10.0f;
                 const float DOOR_WIDTH  = 2.0f;
                 const float DOOR_HEIGHT = 5.0f;
-                const int NUM_ROOMS     = 100;
+                const int NUM_ROOMS     = 100; // might not reach this number if the path gets boxed in
                 
                 // direction enum
                 enum class Direction { Front, Back, Left, Right, Max };
@@ -1746,13 +1762,14 @@ namespace spartan
 
     void Game::Shutdown()
     {
-        default_floor             = nullptr;
-        default_camera            = nullptr;
-        default_environment       = nullptr;
-        default_light_directional = nullptr;
-        default_terrain           = nullptr;
-        default_car               = nullptr;
-        default_metal_cube        = nullptr;
+        default_floor               = nullptr;
+        default_camera              = nullptr;
+        default_environment         = nullptr;
+        default_light_directional   = nullptr;
+        default_terrain             = nullptr;
+        default_car                 = nullptr;
+        default_metal_cube          = nullptr;
+        worlds::showroom::icon_logo = nullptr;
         meshes.clear();
     }
 
@@ -1769,7 +1786,7 @@ namespace spartan
         }
         else if (loaded_world == DefaultWorld::GranTurismo)
         {
-            worlds::gran_turismo::tick();
+            worlds::showroom::tick();
         }
         else if (loaded_world == DefaultWorld::Forest)
         {
@@ -1799,7 +1816,7 @@ namespace spartan
                 case DefaultWorld::LivingRoom:   create_living_room_gi_test();    break;
                 case DefaultWorld::Sponza:       create_sponza_4k();              break;
                 case DefaultWorld::Subway:       create_subway_gi_test();         break;
-                case DefaultWorld::GranTurismo:  worlds::gran_turismo::create();  break;
+                case DefaultWorld::GranTurismo:  worlds::showroom::create();  break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
             }

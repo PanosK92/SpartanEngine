@@ -63,6 +63,7 @@ namespace spartan
         static void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines);
         static void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines);
         static void DrawString(const std::string& text, const math::Vector2& position_screen_percentage);
+        static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
         // options
         template<typename T>
@@ -195,6 +196,7 @@ namespace spartan
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;
         static std::vector<RHI_Vertex_PosCol> m_lines_vertices;
+        static std::vector<std::tuple<RHI_Texture*, math::Vector3>> m_icons;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_initialized_resources;
         static std::mutex m_mutex_renderables;
