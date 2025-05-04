@@ -650,7 +650,7 @@ namespace spartan
         return m_height_texture->GetHeight() * scale;
     }
 
-    void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop)
+    void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop, float offset_y)
     {
         bool rotate_match_surface_normal = false; // don't rotate to match the surface normal
         float max_slope                  = 0.0f;  // don't allow slope
@@ -660,7 +660,7 @@ namespace spartan
         if (terrain_prop == TerrainProp::Tree)
         {
             max_slope                   = 30.0f * math::deg_to_rad;
-            terrain_offset              = -2.0f; // push the tree slightly into the ground
+            terrain_offset              = offset_y; // push the tree slightly into the ground
             min_height                  = 6.0f;
         }
     
