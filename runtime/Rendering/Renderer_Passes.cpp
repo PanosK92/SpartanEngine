@@ -1751,6 +1751,10 @@ namespace spartan
                     uint32_t groups_x = (texture->GetWidth() + thread_x - 1) / thread_x;  // ceil(width / thread_x)
                     uint32_t groups_y = (texture->GetHeight() + thread_y - 1) / thread_y; // ceil(height / thread_y)
                     cmd_list->Dispatch(groups_x, groups_y, 1);
+
+                    // this is to avoid out of order UAV access and flickering overlapping icons
+                    // ideally, we batch all the icons in one buffer and do a single dispatch, but for now this works
+                    cmd_list->InsertBarrierTextureReadWrite(texture);
                 };
 
                 // dispatch all icons in m_icons
