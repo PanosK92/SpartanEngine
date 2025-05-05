@@ -292,16 +292,9 @@ namespace spartan
         GetSwapChain()->AcquireNextImage();
 
         // update logic
-        {
-            if (frame_num == 1)
-            {
-                SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
-            }
-
-            RHI_Device::Tick(frame_num);
-            RHI_AMD_FFX::Tick(&m_cb_frame_cpu);
-            dynamic_resolution();
-        }
+        RHI_Device::Tick(frame_num);
+        RHI_AMD_FFX::Tick(&m_cb_frame_cpu);
+        dynamic_resolution();
 
         // begin a the main/present command list
         RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
@@ -338,6 +331,11 @@ namespace spartan
         }
 
         frame_num++;
+
+        if (frame_num == 1)
+        {
+            SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
+        }
     }
 
     const RHI_Viewport& Renderer::GetViewport()

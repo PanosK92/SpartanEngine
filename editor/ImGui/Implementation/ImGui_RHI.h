@@ -194,6 +194,13 @@ namespace ImGui::RHI
 
     void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
+        // if the renderer is not initialized, don't do anything
+        // this is because pipeline layouts will be null and that's because
+        // Renderer::Tick() might not have fully run yet due to if (Window::IsMinimized() || !m_initialized_resources)
+        uint64_t frame = Renderer::GetFrameNumber();
+        if (frame < 1)
+            return;
+
         // get resources
         bool is_main_window                 = window_data == nullptr;
         ViewportRhiResources* rhi_resources = is_main_window ? &g_viewport_data : window_data->viewport_rhi_resources.get();
@@ -203,8 +210,6 @@ namespace ImGui::RHI
         RHI_Buffer* vertex_buffer           = rhi_resources->vertex_buffers[buffer_index].get();
         RHI_Buffer* index_buffer            = rhi_resources->index_buffers[buffer_index].get();
         RHI_CommandList* cmd_list           = Renderer::GetCommandListPresent();
-
-        uint64_t frame = Renderer::GetFrameNumber();
 
         // if that's a child window, update it's swapchain and give it a command list
         if (!is_main_window)
