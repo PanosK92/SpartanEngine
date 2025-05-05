@@ -48,6 +48,7 @@ struct gbuffer_vertex
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
     float3 color                  : COLOR;
+    uint instance_id              : INSTANCE_ID;
 };
 
 // remap a value from one range to another
@@ -292,8 +293,8 @@ struct vertex_processing
             // color
             {
                 //  gradient
-                float3 color_base = float3(0.05f, 0.2f, 0.01f); // darker green
-                float3 color_tip  = float3(0.5f, 0.5f, 0.1f);   // yellowish
+                float3 color_base = float3(0.1f, 0.25f, 0.05f); // muted dark green
+                float3 color_tip  = float3(0.3f, 0.35f, 0.15f); // subtle yellowish-green
                 vertex.color      = lerp(color_base, color_tip, smoothstep(0, 1, height_percent * 0.5f));
 
                 // snow

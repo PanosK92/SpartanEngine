@@ -1011,7 +1011,11 @@ namespace spartan
                 const uint32_t tree_count         = 10'000;
                 const uint32_t rock_count         = 10'000;
 
+                // sun/lighting/mood
                 create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
+                default_light_directional->GetComponent<Light>()->SetTemperature(1500.0f); // kelvin
+                default_light_directional->GetComponent<Light>()->SetIntensity(30000.0f);  // lux
+
                 create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
                 Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
@@ -1250,7 +1254,7 @@ namespace spartan
                         // generate instances
                         {
                             vector<Matrix> instances;
-                            terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree);
+                            terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree, -2.0f);
                             
                             if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
                             {

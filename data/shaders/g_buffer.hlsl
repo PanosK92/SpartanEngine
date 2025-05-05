@@ -29,7 +29,20 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
-static float4 sample_texture(float3 position, float3 normal, float2 uv, uint texture_index, Surface surface)
+// helper function to generate a pseudo-random float from instance ID
+float get_instance_variation(uint instance_id)
+{
+    // Simple hash based on instance ID
+    uint seed = instance_id * 16777619u;
+    seed = (seed ^ 61u) ^ (seed >> 16u);
+    seed *= 9u;
+    seed = seed ^ (seed >> 4u);
+    seed *= 0x27d4eb2du;
+    seed = seed ^ (seed >> 15u);
+    return float(seed) / 4294967295.0; // normalize to [0, 1]
+}
+
+static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface)
 {
     // parameters
     const float sand_offset  = 0.75f;
@@ -39,20 +52,20 @@ static float4 sample_texture(float3 position, float3 normal, float2 uv, uint tex
     const float speed_2      = 0.15;
 
     // things which are shared among branches
-    float snow_blend_factor = get_snow_blend_factor(position);
-    float4 base_color       = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv); // grass for the terrain
+    float snow_blend_factor = get_snow_blend_factor(vertex.position);
+    float4 base_color       = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv); // grass for the terrain
 
     float4 color = 0.0f;
     if (surface.is_terrain())
     {
-        float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
-        float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), uv);
+        float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
+        float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
 
         // compute slope and blend factors
-        float slope                = saturate(pow(saturate(dot(normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
-        float sand_blend_factor    = saturate(position.y / sand_offset);
+        float slope                = saturate(pow(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
+        float sand_blend_factor    = saturate(vertex.position.y / sand_offset);
         float sand_blend_threshold = sea_level + sand_offset;
-        float sand_factor          = saturate((position.y - sea_level) / (sand_blend_threshold - sea_level));
+        float sand_factor          = saturate((vertex.position.y - sea_level) / (sand_blend_threshold - sea_level));
         sand_blend_factor          = 1.0f - sand_factor;
 
         // compute the color
@@ -64,15 +77,42 @@ static float4 sample_texture(float3 position, float3 normal, float2 uv, uint tex
         // apply perlin noise color variation
         const float noise_scale         = 2.0f;
         const float variation_strength  = 0.25f;
-        float2 noise_uv                 = position.xz * noise_scale;
+        float2 noise_uv                 = vertex.position.xz * noise_scale;
         float noise_value               = get_noise_perlin(noise_uv);
         color.rgb                      *= (1.0f + noise_value * variation_strength);
     }
-    else // default
+    else // default (including trees)
     {
-        color             = base_color;
+        color = base_color;
+        
+        // Apply instance-based color variation for trees
+        const float variation_strength = 0.4f; // Distinct variation
+        float variation = get_instance_variation(vertex.instance_id);
+        
+        // Define variation colors (distinct with red/pink)
+        float3 greener = float3(0.05f, 0.4f, 0.03f);  // Richer green
+        float3 yellower = float3(0.45f, 0.4f, 0.15f); // Bolder yellow
+        float3 browner = float3(0.3f, 0.15f, 0.08f);  // Deeper brown
+        float3 pinker = float3(0.4f, 0.2f, 0.25f);    // Subtle red/pink for flowering effect
+        
+        // Blend based on variation value
+        float3 variation_color;
+        if (variation < 0.25f)
+            variation_color = greener;
+        else if (variation < 0.5f)
+            variation_color = yellower;
+        else if (variation < 0.75f)
+            variation_color = browner;
+        else
+            variation_color = pinker;
+        
+        // Apply variation only for trees using lerp
+        float tree_factor = surface.is_tree() ? 1.0f : 0.0f;
+        color.rgb = lerp(color.rgb, variation_color, variation_strength * tree_factor);
+        
+        // Apply snow
         float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
-        color             = lerp(color, snow_color, snow_blend_factor);
+        color = lerp(color, snow_color, snow_blend_factor);
     }
 
     return color;
@@ -81,7 +121,8 @@ static float4 sample_texture(float3 position, float3 normal, float2 uv, uint tex
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
-
+    vertex.instance_id    = instance_id;
+    
     // transform world space position to screen space
     Surface surface;
     surface.flags = GetMaterial().flags;
@@ -127,7 +168,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float4 albedo_sample = 1.0f;
         if (surface.has_texture_albedo())
         {
-            albedo_sample      = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_albedo, surface);
+            albedo_sample      = sample_texture(vertex, material_texture_index_albedo, surface);
             albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
             albedo            *= albedo_sample;
         }
@@ -151,7 +192,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_normal())
     {
         // get tangent space normal and apply the user defined intensity, then transform it to world space
-        float3 normal_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_normal, surface).xyz;
+        float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, surface).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a BC5 two channel normal map
@@ -165,7 +206,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     // occlusion, roughness, metalness, height sample
     {
-        float4 packed_sample  = sample_texture(vertex.position, vertex.normal, vertex.uv, material_texture_index_packed, surface);
+        float4 packed_sample  = sample_texture(vertex, material_texture_index_packed, surface);
         occlusion             = packed_sample.r;
         roughness            *= packed_sample.g;
         metalness            *= packed_sample.b;
