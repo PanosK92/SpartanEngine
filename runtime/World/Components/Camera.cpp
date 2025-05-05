@@ -336,247 +336,187 @@ namespace spartan
 
     void Camera::Input_FpsControl()
     {
-        static const float movement_speed_max = 5.0f;
-        static float movement_acceleration    = 1.0f;
-        static const float movement_drag      = 10.0f;
-        Vector3 movement_direction            = Vector3::Zero;
-        float delta_time                      = static_cast<float>(Timer::GetDeltaTimeSec());
-
-        // detect if fps control should be activated
+        static const float max_speed = 5.0f, acceleration = 1.0f, drag = 10.0f;
+        float delta_time             = static_cast<float>(Timer::GetDeltaTimeSec());
+        Vector3 movement_direction   = Vector3::Zero;
+    
+        // fps control activation
+        bool was_active             = GetFlag(CameraFlags::IsActivelyControlled);
+        bool is_actively_controlled = Input::GetKeyDown(KeyCode::Click_Right) && Input::GetMouseIsInViewport() || Input::GetKey(KeyCode::Click_Right) && was_active;
+        SetFlag(CameraFlags::IsActivelyControlled, is_actively_controlled);
+    
+        // cursor visibility
+        bool wants_cursor_hidden = GetFlag(CameraFlags::WantsCursorHidden);
+        if (is_actively_controlled && !wants_cursor_hidden)
         {
-            // initiate control only when the mouse is within the viewport
-            if (Input::GetKeyDown(KeyCode::Click_Right) && Input::GetMouseIsInViewport())
+            m_mouse_last_position = Input::GetMousePosition();
+            if (!Window::IsFullScreen())
             {
-                SetFlag(IsActivelyControlled, true);
+                Input::SetMouseCursorVisible(false);
             }
-
-            // maintain control as long as the right click is pressed and initial control has been given
-            SetFlag(IsActivelyControlled, Input::GetKey(KeyCode::Click_Right) && GetFlag(CameraFlags::IsActivelyControlled));
+            SetFlag(CameraFlags::WantsCursorHidden, true);
         }
-
-        // cursor visibility and position
+        else if (!is_actively_controlled && wants_cursor_hidden)
         {
-            // when right clicking and moving the mouse over the viewport (hide the mouse)
-            if (GetFlag(CameraFlags::IsActivelyControlled) && !GetFlag(CameraFlags::WantsCursorHidden))
+            Input::SetMousePosition(m_mouse_last_position);
+            if (!Window::IsFullScreen())
             {
-                m_mouse_last_position = Input::GetMousePosition();
-
-                if (!Window::IsFullScreen()) // change the mouse state only in editor mode
-                {
-                    Input::SetMouseCursorVisible(false);
-                }
-
-                SetFlag(CameraFlags::WantsCursorHidden, true);
+                Input::SetMouseCursorVisible(true);
             }
-            // when releasing the rick click, make the mouse visible and set it to the last visible position
-            else if (!GetFlag(CameraFlags::IsActivelyControlled) && GetFlag(CameraFlags::WantsCursorHidden))
-            {
-                Input::SetMousePosition(m_mouse_last_position);
-
-                if (!Window::IsFullScreen()) // change the mouse state only in editor mode
-                {
-                    Input::SetMouseCursorVisible(true);
-                }
-
-                SetFlag(CameraFlags::WantsCursorHidden, false);
-            }
+            SetFlag(CameraFlags::WantsCursorHidden, false);
         }
-
-        // mouse look
-        if (GetFlag(CameraFlags::IsActivelyControlled) || Input::IsGamepadConnected())
+    
+        // mouse look and movement
+        if (is_actively_controlled || Input::IsGamepadConnected())
         {
-            // wrap around left and right screen edges (to allow for infinite scrolling)
-            if (GetFlag(CameraFlags::IsActivelyControlled))
+            // mouse edge wrapping
+            if (is_actively_controlled)
             {
-                uint32_t edge_padding = 5;
-                Vector2 mouse_position = Input::GetMousePosition();
-                if (mouse_position.x >= Display::GetWidth() - edge_padding)
+                Vector2 mouse_pos = Input::GetMousePosition();
+                uint32_t edge = 5;
+                if (mouse_pos.x >= Display::GetWidth() - edge)
                 {
-                    mouse_position.x = static_cast<float>(edge_padding + 1);
-                    Input::SetMousePosition(mouse_position);
+                    Input::SetMousePosition(Vector2(static_cast<float>(edge + 1), mouse_pos.y));
                 }
-                else if (mouse_position.x <= edge_padding)
+                else if (mouse_pos.x <= edge)
                 {
-                    mouse_position.x = static_cast<float>(spartan::Display::GetWidth() - edge_padding - 1);
-                    Input::SetMousePosition(mouse_position);
+                    Input::SetMousePosition(Vector2(static_cast<float>(Display::GetWidth() - edge - 1), mouse_pos.y));
                 }
             }
-
-            // get camera rotation
-            if (GetFlag(CameraFlags::IsActivelyControlled))
+    
+            // rotation input
+            if (is_actively_controlled)
             {
-                m_first_person_rotation.x = GetEntity()->GetRotation().Yaw();
-                m_first_person_rotation.y = GetEntity()->GetRotation().Pitch();
-
-                // get mouse delta
-                const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
-
-                // lerp to it
-                m_mouse_smoothed = lerp(m_mouse_smoothed, mouse_delta, saturate(1.0f - m_mouse_smoothing));
-
-                // accumulate rotation
-                m_first_person_rotation += m_mouse_smoothed;
+                m_first_person_rotation.x  = GetEntity()->GetRotation().Yaw();
+                m_first_person_rotation.y  = GetEntity()->GetRotation().Pitch();
+                Vector2 mouse_delta        = Input::GetMouseDelta() * m_mouse_sensitivity;
+                m_mouse_smoothed           = lerp(m_mouse_smoothed, mouse_delta, saturate(1.0f - m_mouse_smoothing));
+                m_first_person_rotation   += m_mouse_smoothed;
             }
             else if (Input::IsGamepadConnected())
             {
                 m_first_person_rotation.x += Input::GetGamepadThumbStickRight().x;
                 m_first_person_rotation.y += Input::GetGamepadThumbStickRight().y;
             }
-
-            // clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock)
+    
+            // apply rotation
             m_first_person_rotation.y = clamp(m_first_person_rotation.y, -80.0f, 80.0f);
-
-            // compute rotation
-            const Quaternion xQuaternion = Quaternion::FromAxisAngle(Vector3::Up, m_first_person_rotation.x * deg_to_rad);
-            const Quaternion yQuaternion = Quaternion::FromAxisAngle(Vector3::Right, m_first_person_rotation.y * deg_to_rad);
-            const Quaternion rotation    = xQuaternion * yQuaternion;
-
-            // rotate
-            GetEntity()->SetRotationLocal(rotation);
-        }
-
-        // directional movement
-        if (GetFlag(CameraFlags::IsActivelyControlled) || Input::IsGamepadConnected())
-        {
-            if (GetFlag(CameraFlags::IsActivelyControlled))
+            Quaternion yaw            = Quaternion::FromAxisAngle(Vector3::Up, m_first_person_rotation.x * deg_to_rad);
+            Quaternion pitch          = Quaternion::FromAxisAngle(Vector3::Right, m_first_person_rotation.y * deg_to_rad);
+            GetEntity()->SetRotationLocal(yaw * pitch);
+    
+            // movement input
+            if (is_actively_controlled)
             {
-                if (Input::GetKey(KeyCode::W)) movement_direction += GetEntity()->GetForward();
-                if (Input::GetKey(KeyCode::S)) movement_direction += GetEntity()->GetBackward();
-                if (Input::GetKey(KeyCode::D)) movement_direction += GetEntity()->GetRight();
-                if (Input::GetKey(KeyCode::A)) movement_direction += GetEntity()->GetLeft(); 
-                if (Input::GetKey(KeyCode::Q)) movement_direction += Vector3::Up;    // world space
-                if (Input::GetKey(KeyCode::E)) movement_direction += Vector3::Down;  // world space
+                if (Input::GetKey(KeyCode::W))
+                {
+                    movement_direction += GetEntity()->GetForward();
+                }
+                if (Input::GetKey(KeyCode::S))
+                {
+                    movement_direction += GetEntity()->GetBackward();
+                }
+                if (Input::GetKey(KeyCode::D))
+                {
+                    movement_direction += GetEntity()->GetRight();
+                }
+                if (Input::GetKey(KeyCode::A))
+                {
+                    movement_direction += GetEntity()->GetLeft();
+                }
+                if (Input::GetKey(KeyCode::Q))
+                {
+                    movement_direction += Vector3::Up;
+                }
+                if (Input::GetKey(KeyCode::E))
+                {
+                    movement_direction += Vector3::Down;
+                }
             }
             else if (Input::IsGamepadConnected())
             {
                 movement_direction += GetEntity()->GetBackward() * Input::GetGamepadThumbStickLeft().y;
                 movement_direction += GetEntity()->GetRight()    * Input::GetGamepadThumbStickLeft().x;
-                movement_direction += GetEntity()->GetDown()     * Input::GetGamepadTriggerLeft();
-                movement_direction += GetEntity()->GetUp()       * Input::GetGamepadTriggerRight();
-                if (Input::GetGamepadTriggerRight()) movement_direction += Vector3::Up;   // world space
-                if (Input::GetGamepadTriggerLeft())  movement_direction += Vector3::Down; // world space
+                movement_direction += Vector3::Up                * Input::GetGamepadTriggerRight();
+                movement_direction += Vector3::Down              * Input::GetGamepadTriggerLeft();
             }
-
-            // when in game mode and controlling a physics based camera ignore the pitch
-            // this is so the view direction (forward) is never pointing towards the ground or sky
-            // cause movement to come a stop
+    
+            // flatten movement for physics in game mode
             if (m_physics_body_to_control && Engine::IsFlagSet(EngineMode::Playing))
             {
                 movement_direction.y = 0.0f;
             }
-
             movement_direction.Normalize();
         }
-
-        // wheel delta (used to adjust movement speed)
-        {
-            // accumulate
-            m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
-
-            // Clamp
-            float min = -movement_acceleration + 0.1f; // prevent it from negating or zeroing the acceleration, see translation calculation
-            float max =  movement_acceleration * 2.0f; // an empirically chosen max
-            m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, min, max);
-        }
-
+    
+        // speed adjustment
+        m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
+        m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
+    
         // translation
+        Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction;
+        if (Input::GetKey(KeyCode::Shift_Left))
         {
-            Vector3 translation = (movement_acceleration + m_movement_scroll_accumulator) * movement_direction;
-
-            // on shift, increase the translation (it's sprinting)
-            if (Input::GetKey(KeyCode::Shift_Left))
+            translation *= 3.0f;
+        }
+        m_movement_speed += translation * delta_time;
+        m_movement_speed *= clamp(1.0f - drag * delta_time, 0.1f, numeric_limits<float>::max());
+        if (m_movement_speed.Length() > max_speed)
+        {
+            m_movement_speed = m_movement_speed.Normalized() * max_speed;
+        }
+    
+        // apply movement
+        if (m_movement_speed != Vector3::Zero)
+        {
+            if (m_physics_body_to_control)
             {
-                translation *= 3.0f;
-            }
-
-            // accelerate
-            m_movement_speed += translation * delta_time;
-
-            // apply drag (the clamp is there because at big delta times (movement can become zero or negative/opposite)
-            m_movement_speed *= clamp(1.0f - movement_drag * delta_time, 0.1f, numeric_limits<float>::max());
-
-            // clamp it
-            if (m_movement_speed.Length() > movement_speed_max)
-            {
-                m_movement_speed = m_movement_speed.Normalized() * movement_speed_max;
-            }
-
-            // translate for as long as there is speed
-            const bool is_grounded = m_physics_body_to_control ? m_physics_body_to_control->RayTraceIsGrounded() : false;
-            if (m_movement_speed != Vector3::Zero)
-            {
-                if (m_physics_body_to_control)
+                bool is_grounded = m_physics_body_to_control->RayTraceIsGrounded();
+                if (Engine::IsFlagSet(EngineMode::Playing))
                 {
-                    if (Engine::IsFlagSet(EngineMode::Playing))
+                    bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
+                    if (is_grounded)
                     {
-                        const bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
-
-                        // walk
-                        if (is_grounded)
-                        {
-                            Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
-                            Vector3 velocity_new     = Vector3(m_movement_speed.x * 70.0f, velocity_current.y, m_movement_speed.z * 70.0f);
-                            m_physics_body_to_control->SetLinearVelocity(velocity_new);
-                        }
-
-                        // swim
-                        if (is_underwater)
-                        {
-                            // buoyancy
-                            {
-                                float water_density  = 1.03f;
-                                float object_density = 0.8f;
-                                float total_volume   = m_physics_body_to_control->GetCapsuleVolume();
-
-                                // calculate the submerged portion
-                                float submerged_height   = -GetEntity()->GetPosition().y;
-                                float total_height       = 1.8f;
-                                float submerged_fraction = min(max(submerged_height / total_height, 0.0f), 1.0f);
-
-                                // compute the displacement volume based on the submerged fraction
-                                float displacement_volume = total_volume * submerged_fraction * (object_density / water_density);
-                                Vector3 buoyancy_force    = -(water_density * m_physics_body_to_control->GetGravity() * displacement_volume);
-
-                                // compute drag factor
-                                float drag_coefficient  = 0.34f;
-                                float frontal_area      = pow(pi * m_physics_body_to_control->GetCapsuleRadius(), 2.0f);
-                                float linear_velocity_y = water_density * m_physics_body_to_control->GetLinearVelocity().y;
-                                float drag_force_y      = 0.5f * water_density * linear_velocity_y * linear_velocity_y * drag_coefficient;
-
-                                // making drag force opposite to the velocity direction
-                                if (linear_velocity_y > 0)
-                                {
-                                    drag_force_y = -drag_force_y;
-                                }
-
-                                m_physics_body_to_control->ApplyForce(buoyancy_force * 2500.0f, PhysicsForce::Constant);
-                                m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
-                            }
-
-                            // movement
-                            Vector3 velocity_current = m_physics_body_to_control->GetLinearVelocity();
-                            Vector3 velocity_new     = Vector3(m_movement_speed.x * 20.0f, velocity_current.y, m_movement_speed.z * 20.0f);
-                            m_physics_body_to_control->SetLinearVelocity(velocity_new);
-                        }
+                        Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
+                        m_physics_body_to_control->SetLinearVelocity(Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f));
                     }
-                    else
+                    if (is_underwater)
                     {
-                        m_physics_body_to_control->GetEntity()->Translate(m_movement_speed);
+                        // buoyancy
+                        float submerged_height   = -GetEntity()->GetPosition().y;
+                        float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
+                        float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
+                        Vector3 buoyancy         = -(1.03f * m_physics_body_to_control->GetGravity() * volume);
+                        m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
+    
+                        // drag
+                        float velocity_y = m_physics_body_to_control->GetLinearVelocity().y;
+                        float drag_force_y = 0.5f * 1.03f * velocity_y * velocity_y * 0.34f;
+                        if (velocity_y > 0)
+                        {
+                            drag_force_y = -drag_force_y;
+                        }
+                        m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
+    
+                        // swim
+                        Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
+                        m_physics_body_to_control->SetLinearVelocity(Vector3(m_movement_speed.x * 20.0f, velocity.y, m_movement_speed.z * 20.0f));
                     }
                 }
                 else
                 {
-                    GetEntity()->Translate(m_movement_speed);
+                    m_physics_body_to_control->GetEntity()->Translate(m_movement_speed);
                 }
-            }
-
-            // jump
-            if (Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South))
-            {
-                if (is_grounded && m_physics_body_to_control)
+    
+                // jump
+                if ((Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South)) && is_grounded)
                 {
                     m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
                 }
+            }
+            else
+            {
+                GetEntity()->Translate(m_movement_speed);
             }
         }
     }

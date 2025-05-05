@@ -1548,6 +1548,7 @@ namespace spartan
                 // camera
                 {
                     create_camera(Vector3(5.4084f, 1.5f, 4.7593f));
+                    //default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::BreathingAnimation, true);
                     
                     AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");

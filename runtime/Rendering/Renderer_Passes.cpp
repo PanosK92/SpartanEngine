@@ -1700,8 +1700,7 @@ namespace spartan
                 math::Vector3 pos_world = entity->GetPosition();
                 if (entity->GetComponent<AudioSource>())
                 {
-                    // append audio source icon
-                    m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), pos_world));
+                    m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
                 }
                 else if (Light* light = entity->GetComponent<Light>())
                 {
@@ -1718,7 +1717,7 @@ namespace spartan
 
                         if (texture)
                         {
-                            m_icons.emplace_back(make_tuple(texture, pos_world));
+                            m_icons.emplace_back(make_tuple(texture, entity->GetPosition()));
                         }
                     }
                 }
