@@ -34,7 +34,7 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
 
     const float sss_exponent       = 1.0f; // sharpness of scattering
     const float thickness_exponent = 1.0f; // edge enhancement
-    const float sss_strength       = surface.subsurface_scattering * 0.05f;
+    const float sss_strength       = surface.subsurface_scattering * 0.2f;
 
     // scattering term: focused back-scattering
     float sss_term = pow(max(0.0f, dot(L, -V)), sss_exponent);

@@ -1329,10 +1329,10 @@ namespace spartan
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsGrassBlasde,        1.0f);
-                        material->SetProperty(MaterialProperty::Roughness,            0.5f);
+                        material->SetProperty(MaterialProperty::Roughness,            1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
-                        material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.8f);
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.6f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.6f);
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
                     
