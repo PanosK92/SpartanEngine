@@ -80,7 +80,6 @@ namespace spartan
 
     private:
         void Create();
-        void Destroy();
 
         // main
         bool m_windowed                 = false;

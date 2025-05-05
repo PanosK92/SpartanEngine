@@ -207,8 +207,8 @@ namespace spartan
         Buffer,
         CommandList,
         CommandPool,
-        Texture,
-        TextureView,
+        Image,
+        ImageView,
         DescriptorSet,
         DescriptorSetLayout,
         Pipeline,
@@ -261,7 +261,7 @@ namespace spartan
 
     enum class RHI_Descriptor_Type
     {
-        Texture,
+        Image,
         TextureStorage,
         PushConstantBuffer,
         ConstantBuffer,

@@ -59,7 +59,7 @@ namespace spartan
         {
             // in case of a null texture (which is legal), don't skip it
             // set a checkerboard texture instead, this way if it's sampled (which is wrong), we'll see it
-            if (!descriptor.data && descriptor.type != RHI_Descriptor_Type::Texture)
+            if (!descriptor.data && descriptor.type != RHI_Descriptor_Type::Image)
                 continue;
 
             // the bindldess texture array has it's own descriptor
@@ -70,7 +70,7 @@ namespace spartan
             uint32_t descriptor_index_start = 0;
             uint32_t descriptor_cnt       = 1;
 
-            if (descriptor.type == RHI_Descriptor_Type::Texture || descriptor.type == RHI_Descriptor_Type::TextureStorage)
+            if (descriptor.type == RHI_Descriptor_Type::Image || descriptor.type == RHI_Descriptor_Type::TextureStorage)
             {
                 RHI_Texture* texture     = static_cast<RHI_Texture*>(descriptor.data);
                 const bool mip_specified = descriptor.mip != rhi_all_mips;
@@ -90,7 +90,7 @@ namespace spartan
                     // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
                     void* resource          = texture ? (mip_specified ? texture->GetRhiSrvMip(descriptor.mip) : texture->GetRhiSrv()) : nullptr;
                     RHI_Image_Layout layout = texture ? texture->GetLayout(mip_start) : RHI_Image_Layout::Max;
-                    if (descriptor.type == RHI_Descriptor_Type::Texture && descriptor.data == nullptr)
+                    if (descriptor.type == RHI_Descriptor_Type::Image && descriptor.data == nullptr)
                     {
                         resource = srv_fallback;
                         layout   = RHI_Image_Layout::Shader_Read;
@@ -111,7 +111,7 @@ namespace spartan
                         // get texture, if unable to do so, fallback to a checkerboard texture, so we can spot it by eye
                         void* resource          = texture ? texture->GetRhiSrvMip(mip_index) : nullptr;
                         RHI_Image_Layout layout = texture ? texture->GetLayout(mip_index) : RHI_Image_Layout::Max;
-                        if (descriptor.type == RHI_Descriptor_Type::Texture && descriptor.data == nullptr)
+                        if (descriptor.type == RHI_Descriptor_Type::Image && descriptor.data == nullptr)
                         {
                             resource = srv_fallback;
                             layout   = RHI_Image_Layout::Shader_Read;

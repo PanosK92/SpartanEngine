@@ -53,7 +53,7 @@ namespace spartan
             // this only matters for textures
             RHI_Image_Layout layout = RHI_Image_Layout::Max;
             layout                  = descriptor_type == RHI_Descriptor_Type::TextureStorage ? RHI_Image_Layout::General     : layout;
-            layout                  = descriptor_type == RHI_Descriptor_Type::Texture        ? RHI_Image_Layout::Shader_Read : layout;
+            layout                  = descriptor_type == RHI_Descriptor_Type::Image        ? RHI_Image_Layout::Shader_Read : layout;
 
             for (const Resource& resource : resources)
             {
@@ -209,7 +209,7 @@ namespace spartan
         const CompilerHLSL compiler = CompilerHLSL(ptr, size);
         ShaderResources resources   = compiler.get_shader_resources();
 
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,       RHI_Descriptor_Type::Texture,            shader_stage); // srv
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,       RHI_Descriptor_Type::Image,            shader_stage); // srv
         spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_images,        RHI_Descriptor_Type::TextureStorage,     shader_stage); // uav
         spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_buffers,       RHI_Descriptor_Type::StructuredBuffer,   shader_stage);
         spirv_resources_to_descriptors(compiler, m_descriptors, resources.uniform_buffers,       RHI_Descriptor_Type::ConstantBuffer,     shader_stage);

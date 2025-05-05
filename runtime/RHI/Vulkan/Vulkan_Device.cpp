@@ -1605,8 +1605,8 @@ namespace spartan
 
                 switch (resource_type)
                 {
-                    case RHI_Resource_Type::Texture:             MemoryTextureDestroy(resource);                                                                           break;
-                    case RHI_Resource_Type::TextureView:         vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Image:             MemoryTextureDestroy(resource);                                                                           break;
+                    case RHI_Resource_Type::ImageView:         vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
                     case RHI_Resource_Type::Sampler:             vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
                     case RHI_Resource_Type::Buffer:              MemoryBufferDestroy(resource);                                                                            break;
                     case RHI_Resource_Type::Shader:              vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
@@ -1620,7 +1620,7 @@ namespace spartan
                 }
 
                 // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
-                if (resource_type == RHI_Resource_Type::TextureView || resource_type == RHI_Resource_Type::Buffer)
+                if (resource_type == RHI_Resource_Type::ImageView || resource_type == RHI_Resource_Type::Buffer)
                 {
                     for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
                     {
@@ -1718,7 +1718,7 @@ namespace spartan
 
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
     {
-        if (descriptor.type == RHI_Descriptor_Type::Texture)
+        if (descriptor.type == RHI_Descriptor_Type::Image)
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
         if (descriptor.type == RHI_Descriptor_Type::TextureStorage)

@@ -130,18 +130,18 @@ namespace spartan
         {
             const char* name = texture->GetObjectName().c_str();
 
-            RHI_Device::SetResourceName(texture->GetRhiResource(), RHI_Resource_Type::Texture, name);
+            RHI_Device::SetResourceName(texture->GetRhiResource(), RHI_Resource_Type::Image, name);
 
             if (texture->IsSrv())
             {
-                RHI_Device::SetResourceName(texture->GetRhiSrv(), RHI_Resource_Type::TextureView, name);
+                RHI_Device::SetResourceName(texture->GetRhiSrv(), RHI_Resource_Type::ImageView, name);
             }
 
             if (texture->HasPerMipViews())
             {
                 for (uint32_t i = 0; i < texture->GetMipCount(); i++)
                 {
-                    RHI_Device::SetResourceName(texture->GetRhiSrvMip(i), RHI_Resource_Type::TextureView, name);
+                    RHI_Device::SetResourceName(texture->GetRhiSrvMip(i), RHI_Resource_Type::ImageView, name);
                 }
             }
         }
@@ -379,12 +379,12 @@ namespace spartan
     {
         // srv and uav
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_srv);
             m_rhi_srv = nullptr;
 
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_srv_mips[i]);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_srv_mips[i]);
                 m_rhi_srv_mips[i] = nullptr;
             }
         }
@@ -392,15 +392,15 @@ namespace spartan
         // rtv and dsv
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_dsv[i]);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_dsv[i]);
             m_rhi_dsv[i] = nullptr;
 
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::TextureView, m_rhi_rtv[i]);
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv[i]);
             m_rhi_rtv[i] = nullptr;
         }
 
         // rhi resource
-        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Texture, m_rhi_resource);
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Image, m_rhi_resource);
         m_rhi_resource = nullptr;
     }
 }

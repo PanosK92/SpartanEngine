@@ -291,7 +291,15 @@ namespace spartan
 
     RHI_SwapChain::~RHI_SwapChain()
     {
-        Destroy();
+        // destroy image views immediately
+        for (void*& image_view : m_rhi_rtv)
+        {
+            if (image_view)
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, image_view);
+                image_view = nullptr;
+            }
+        }
 
         if (m_rhi_swapchain)
         {
@@ -321,7 +329,9 @@ namespace spartan
         // ensure that the surface supports the requested format and color space
         VkColorSpaceKHR color_space = get_color_space(m_format);
         SP_ASSERT_MSG(is_format_and_color_space_supported(static_cast<VkSurfaceKHR>(m_rhi_surface), &m_format, color_space), "The surface doesn't support the requested format");
-    
+
+        RHI_Device::QueueWaitAll();
+
         // clamp size
         m_width  = clamp(m_width,  capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
         m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
@@ -341,7 +351,7 @@ namespace spartan
         create_info.compositeAlpha           = get_supported_composite_alpha_format(static_cast<VkSurfaceKHR>(m_rhi_surface));
         create_info.presentMode              = get_present_mode(static_cast<VkSurfaceKHR>(m_rhi_surface), m_present_mode);
         create_info.clipped                  = VK_TRUE;
-        create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain); 
+        create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain);
 
         // check for potential overlay interference
         if (is_process_running("RTSS.exe"))
@@ -365,6 +375,12 @@ namespace spartan
         // create new image views
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
+            // delete old one, if it exists
+            if (m_rhi_rtv[i])
+            { 
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv[i]);
+            }
+
             VkImageViewCreateInfo view_info = {};
             view_info.sType                 = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
             view_info.image                 = static_cast<VkImage>(m_rhi_rt[i]);
@@ -413,24 +429,7 @@ namespace spartan
             rhi_format_to_string(m_format),
             m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled"
         );
-    }
 
-    void RHI_SwapChain::Destroy()
-    {
-        RHI_Device::QueueWaitAll(); // ensure all queue operations are complete
-    
-        // destroy image views immediately
-        for (void*& image_view : m_rhi_rtv)
-        {
-            if (image_view)
-            {
-                vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(image_view), nullptr);
-                image_view = nullptr;
-            }
-        }
-    
-        m_image_acquired_semaphore.fill(nullptr); // reset semaphores (shared_ptr cleanup)
-    
         // reset indices
         m_image_index  = 0;
         m_buffer_index = 0;
@@ -446,7 +445,6 @@ namespace spartan
         m_width  = width;
         m_height = height;
 
-        Destroy();
         Create();
 
         SP_LOG_INFO("Resolution has been set to %dx%d", width, height);
@@ -520,7 +518,6 @@ namespace spartan
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
         if (m_is_dirty)
         {
-            Destroy();
             Create();
             m_is_dirty = false;
         }
