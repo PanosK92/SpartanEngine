@@ -748,9 +748,6 @@ namespace spartan
         { 
             cmd_list->BeginTimeblock("ssr");
             {
-                // fidelityfx sssr seems to be working with a gamma corrected final output of the previous frame, however I am not happy with the blit here
-                cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_output_2), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
-
                 RHI_AMD_FFX::SSSR_Dispatch(
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
