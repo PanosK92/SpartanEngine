@@ -1469,6 +1469,7 @@ namespace spartan
                     Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
                     Renderer::SetOption(Renderer_Option::Lights,             0.0f);
                     Renderer::SetOption(Renderer_Option::GlobalIllumination, 1.0f);
+                    Renderer::SetOption(Renderer_Option::Dithering,          1.0f);
                 }
             }
 
