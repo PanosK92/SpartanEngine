@@ -1414,6 +1414,7 @@ namespace spartan
                     create_camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
+                    default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::PhysicalBodyAnimation, false);
                 }
 
                 // floor
@@ -1548,9 +1549,8 @@ namespace spartan
                 
                 // camera
                 {
-                    create_camera(Vector3(5.4084f, 1.5f, 4.7593f));
-                    default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::PhysicalBodyAnimation, true);
-                    
+                    create_camera(Vector3(5.4084f, 1.8f, 4.7593f));
+
                     AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
                     audio_source->SetPlayOnStart(false);

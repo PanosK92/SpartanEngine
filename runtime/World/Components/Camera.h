@@ -175,7 +175,6 @@ namespace spartan
         math::Vector2 m_mouse_last_position          = math::Vector2::Zero;
         math::Vector3 m_movement_speed               = math::Vector3::Zero;
         float m_movement_scroll_accumulator          = 0.0f;
-        math::Vector2 m_first_person_rotation        = math::Vector2::Zero;
         float m_mouse_sensitivity                    = 0.2f;
         float m_mouse_smoothing                      = 0.5f;
         bool m_lerp_to_target_p                      = false;
