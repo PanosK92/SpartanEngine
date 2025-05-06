@@ -62,9 +62,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     
     // visibility check
-    float3 world_pos        = pass_get_f3_value();
-    float3 camera_to_entity = normalize(world_pos - buffer_frame.camera_position.xyz);
-    float v_dot_l           = dot(buffer_frame.camera_forward.xyz, camera_to_entity);
+    float3 world_pos         = pass_get_f3_value();
+    world_pos               += buffer_frame.camera_forward.xyz * 0.1f; // push forward to avoid having the icon at the camera, which when projected to screen space can be move eratically
+    float3 camera_to_entity  = normalize(world_pos - buffer_frame.camera_position.xyz);
+    float v_dot_l            = dot(buffer_frame.camera_forward.xyz, camera_to_entity);
     if (v_dot_l <= 0.5f)
         return;
 

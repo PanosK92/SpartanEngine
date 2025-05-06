@@ -1727,7 +1727,7 @@ namespace spartan
             {
                 // set pipeline state
                 RHI_PipelineState pso;
-                pso.name                              = "icon";
+                pso.name                              = "icons";
                 pso.shaders[RHI_Shader_Type::Compute] = GetShader(Renderer_Shader::icon_c);
                 cmd_list->SetPipelineState(pso);
 
