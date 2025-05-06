@@ -1380,7 +1380,6 @@ namespace spartan
 
               // logo - this is in pixels (not screen space coordinates unlike the text, need to make everything use one space)
               Renderer::DrawIcon(icon_logo.get(), Vector2(400.0f, 300.0f));
-
             }
         }
 
@@ -1399,7 +1398,16 @@ namespace spartan
                 tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f); // surface independent UVs
                 tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
                 tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
-                
+
+                // adjust renderer options
+                {
+                    Renderer::SetOption(Renderer_Option::PerformanceMetrics,  0.0f);
+                    Renderer::SetOption(Renderer_Option::Lights,              0.0f);
+                    Renderer::SetOption(Renderer_Option::GlobalIllumination,  0.0f);
+                    Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
+                    Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
+                }
+
                 // ambient audio
                 {
                     shared_ptr<Entity> entity = World::CreateEntity();

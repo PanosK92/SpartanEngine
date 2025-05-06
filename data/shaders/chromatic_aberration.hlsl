@@ -23,31 +23,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// empirically chosen to match how much the lens effect is visible in real world images
-static const float g_chromatic_aberration_intensity = 5.0f;
+static const float chromatic_amount  = 0.003f; // strength of chromatic aberration
+static const float distortion_amount = 0.1f;   // strength of lens distortion (positive for barrel, negative for pincushion)
 
+// compute shader entry point
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
+    // compute uv
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    float2 uv = thread_id.xy / resolution_out;
 
-    const float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
-    float camera_aperture = pass_get_f3_value().x;
-    float camera_error    = sqrt(1.0f / camera_aperture);
-    float intensity       = camera_error * g_chromatic_aberration_intensity;
-    float2 shift          = float2(intensity, -intensity);
+    // apply lens distortion with zoom to avoid edge artifacts
+    float2 center = float2(0.5, 0.5); // center of the texture
+    float2 delta  = uv - center;
+    float r       = length(delta);
 
-    // lens effect
-    shift.x *= abs(uv.x * 2.0f - 1.0f);
-    shift.y *= abs(uv.y * 2.0f - 1.0f);
+    // calculate zoom to keep distorted uvs within [0,1]
+    float max_r          = 0.707; // max distance from center (corner of unit square)
+    float max_distortion = 1.0 + distortion_amount * (max_r * max_r); // max distortion at edge
+    float zoom           = 1.0 / max_distortion; // scale uvs to counteract max distortion
 
-    // sample color
-    float3 color      = 0.0f;
-    float2 texel_size = 1.0f / resolution_out;
-    color.r           = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + (texel_size * shift), 0).r;
-    color.g           = tex[thread_id.xy].g;
-    color.b           = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv - (texel_size * shift), 0).b;
+    // apply distortion with zoom
+    float distortion_factor = 1.0 + distortion_amount * (r * r); // quadratic distortion
+    float2 distorted_uv     = center + delta * zoom * distortion_factor;
 
-    tex_uav[thread_id.xy] = float4(color, tex[thread_id.xy].a);
+    // chromatic aberration: sample each color channel with a slight offset
+    float2 offset = delta * chromatic_amount; // offset proportional to distance from center
+    float r_sample = tex.SampleLevel(samplers[sampler_bilinear_clamp], distorted_uv + offset, 0).r;
+    float g_sample = tex.SampleLevel(samplers[sampler_bilinear_clamp], distorted_uv, 0).g; // green uses no offset
+    float b_sample = tex.SampleLevel(samplers[sampler_bilinear_clamp], distorted_uv - offset, 0).b;
+
+    // combine the samples and write to output
+    tex_uav[thread_id.xy] = float4(r_sample, g_sample, b_sample, 1.0);
 }
