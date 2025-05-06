@@ -40,7 +40,7 @@ namespace spartan
         ImportCombineMeshes         = 1 << 2,
         PostProcessNormalizeScale   = 1 << 3,
         PostProcessOptimize         = 1 << 4,
-        PostProcessDontGenerateLods = 1 << 5
+        PostProcessDontGenerateLods = 1 << 5,
     };
 
     enum class MeshLodDropoff

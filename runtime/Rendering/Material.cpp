@@ -46,7 +46,7 @@ namespace spartan
             switch (material_property)
             {
                 case MaterialProperty::Optimized:            return "optimized";
-                case MaterialProperty::WorldHeight:     return "world_space_height";
+                case MaterialProperty::WorldHeight:          return "world_space_height";
                 case MaterialProperty::Clearcoat:            return "clearcoat";
                 case MaterialProperty::Clearcoat_Roughness:  return "clearcoat_roughness";
                 case MaterialProperty::Anisotropic:          return "anisotropic";
@@ -66,10 +66,11 @@ namespace spartan
                 case MaterialProperty::TextureTilingY:       return "texture_tiling_y";
                 case MaterialProperty::TextureOffsetX:       return "texture_offset_x";
                 case MaterialProperty::TextureOffsetY:       return "texture_offset_y";
-                case MaterialProperty::IsTerrain:    return "texture_slope_based";
-                case MaterialProperty::IsTree: return "vertex_animate_wind";
-                case MaterialProperty::IsWater:   return "vertex_animate_water";
+                case MaterialProperty::IsTerrain:            return "texture_slope_based";
+                case MaterialProperty::IsTree:               return "vertex_animate_wind";
+                case MaterialProperty::IsWater:              return "vertex_animate_water";
                 case MaterialProperty::CullMode:             return "cull_mode";
+                case MaterialProperty::NormalFromAlbedo:     return "normal_from_albedo";
                 case MaterialProperty::Max:                  return "max";
                 default:
                 {
@@ -121,6 +122,60 @@ namespace spartan
                 albedo[i + 3] = static_cast<byte>(alpha_combined * 255.0f);
             }
         }
+
+        void generate_normal_map_from_albedo(const vector<byte>& albedo_data, uint32_t width, uint32_t height, vector<byte>& normal_data)
+        {
+            // resize output to match input dimensions (RGBA)
+            normal_data.resize(width * height * 4);
+
+            // assume DirectX-style normal map (+Y is down)
+            const bool flip_y = true;
+
+            // convert albedo to grayscale and compute sobel filter
+            for (uint32_t y = 0; y < height; y++)
+            {
+                for (uint32_t x = 0; x < width; x++)
+                {
+                    // get neighboring pixels with wrapping
+                    int x0 = (x - 1 + width) % width;
+                    int x1 = (x + 1) % width;
+                    int y0 = (y - 1 + height) % height;
+                    int y1 = (y + 1) % height;
+
+                    // get grayscale values (average RGB)
+                    auto get_grayscale = [&](uint32_t px, uint32_t py)
+                    {
+                        uint32_t index = (py * width + px) * 4;
+                        float r = static_cast<float>(albedo_data[index + 0]) / 255.0f;
+                        float g = static_cast<float>(albedo_data[index + 1]) / 255.0f;
+                        float b = static_cast<float>(albedo_data[index + 2]) / 255.0f;
+                        return (r + g + b) / 3.0f;
+                    };
+
+                    // sobel filter for gradients
+                    // adjusted signs to ensure correct normal direction
+                    float gx = (get_grayscale(x1, y0) - get_grayscale(x0, y0)) +
+                               (2.0f * get_grayscale(x1, y) - 2.0f * get_grayscale(x0, y)) +
+                               (get_grayscale(x1, y1) - get_grayscale(x0, y1));
+
+                    float gy = (get_grayscale(x0, y1) - get_grayscale(x0, y0)) +
+                               (2.0f * get_grayscale(x, y1) - 2.0f * get_grayscale(x, y0)) +
+                               (get_grayscale(x1, y1) - get_grayscale(x1, y0));
+
+                    // compute normal (adjust Y direction based on convention)
+                    Vector3 normal(gx, flip_y ? -gy : gy, 1.0f);
+                    normal.Normalize();
+                    normal = (normal + Vector3::One) * 0.5f; // map to [0,1]
+
+                    // store in output
+                    uint32_t index = (y * width + x) * 4;
+                    normal_data[index + 0] = static_cast<byte>(normal.x * 255.0f); // R: X direction
+                    normal_data[index + 1] = static_cast<byte>(normal.y * 255.0f); // G: Y direction
+                    normal_data[index + 2] = static_cast<byte>(normal.z * 255.0f); // B: Z direction
+                    normal_data[index + 3] = static_cast<byte>(255); // A: full opacity
+                }
+            }
+        }
     }
 
     Material::Material() : IResource(ResourceType::Material)
@@ -128,16 +183,16 @@ namespace spartan
         m_textures.fill(nullptr);
         m_properties.fill(0.0f);
 
-        SetProperty(MaterialProperty::CullMode,         static_cast<float>(RHI_CullMode::Back));
-        SetProperty(MaterialProperty::ColorR,           1.0f);
-        SetProperty(MaterialProperty::ColorG,           1.0f);
-        SetProperty(MaterialProperty::ColorB,           1.0f);
-        SetProperty(MaterialProperty::ColorA,           1.0f);
-        SetProperty(MaterialProperty::Roughness,        1.0f);
-        SetProperty(MaterialProperty::TextureTilingX,   1.0f);
-        SetProperty(MaterialProperty::TextureTilingY,   1.0f);
-        SetProperty(MaterialProperty::WorldHeight, 1.0f);
-        SetProperty(MaterialProperty::Ior,              Material::EnumToIor(MaterialIor::Air));
+        SetProperty(MaterialProperty::ColorR,         1.0f);
+        SetProperty(MaterialProperty::ColorG,         1.0f);
+        SetProperty(MaterialProperty::ColorB,         1.0f);
+        SetProperty(MaterialProperty::ColorA,         1.0f);
+        SetProperty(MaterialProperty::Roughness,      1.0f);
+        SetProperty(MaterialProperty::TextureTilingX, 1.0f);
+        SetProperty(MaterialProperty::TextureTilingY, 1.0f);
+        SetProperty(MaterialProperty::WorldHeight,    1.0f);
+        SetProperty(MaterialProperty::Ior,            Material::EnumToIor(MaterialIor::Air));
+        SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
     }
 
     void Material::LoadFromFile(const std::string& file_path)
@@ -327,11 +382,63 @@ namespace spartan
         {
             // get textures
             RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color,     slot);
+            RHI_Texture* texture_normal     = GetTexture(MaterialTextureType::Normal,    slot);
             RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask, slot);
             RHI_Texture* texture_occlusion  = GetTexture(MaterialTextureType::Occlusion, slot);
             RHI_Texture* texture_roughness  = GetTexture(MaterialTextureType::Roughness, slot);
             RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness, slot);
             RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height,    slot);
+
+            // check for normal_from_albedo flag
+            if (GetProperty(MaterialProperty::NormalFromAlbedo) == 1.0f && texture_color && !texture_color->IsCompressedFormat())
+            {
+                // get albedo dimensions
+                uint32_t width     = texture_color->GetWidth();
+                uint32_t height    = texture_color->GetHeight();
+                uint32_t depth     = texture_color->GetDepth();
+                uint32_t mip_count = texture_color->GetMipCount();
+
+                // generate normal map name
+                string normal_name = "normal_from_" + texture_color->GetObjectName() + "_slot" + to_string(slot);
+
+                // check if normal map already exists
+                shared_ptr<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
+                if (!texture_normal_new)
+                {
+                    // create new normal texture
+                    texture_normal_new = make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        width,
+                        height,
+                        depth,
+                        mip_count,
+                        RHI_Format::R8G8B8A8_Unorm,
+                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                        normal_name.c_str()
+                    );
+
+                    // allocate mip
+                    texture_normal_new->AllocateMip();
+
+                    // generate normal map data
+                    vector<byte> normal_data;
+                    texture_packing::generate_normal_map_from_albedo(
+                        texture_color->GetMip(0, 0).bytes,
+                        width,
+                        height,
+                        normal_data
+                    );
+                    texture_normal_new->GetMip(0, 0).bytes = move(normal_data);
+
+                    // cache the new texture
+                    texture_normal_new->SetResourceFilePath(texture_color->GetObjectName() + "_normal_from_albedo.png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
+                    texture_normal_new = ResourceCache::Cache<RHI_Texture>(texture_normal_new);
+                }
+
+                // set the new normal texture
+                SetTexture(MaterialTextureType::Normal, texture_normal_new, slot);
+                texture_normal = texture_normal_new.get();
+            }
 
             RHI_Texture* reference_texture = texture_color      ? texture_color      :
                                              texture_alpha_mask ? texture_alpha_mask :

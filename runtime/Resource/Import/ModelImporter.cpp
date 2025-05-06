@@ -731,6 +731,12 @@ namespace spartan
             // convert it and add it to the model
             shared_ptr<Material> material = load_material(mesh, model_file_path, assimp_material);
 
+            // generate normal from albedo if no normal map is provided
+            //if (!material->HasTextureOfType(MaterialTextureType::Normal))
+            //{ 
+            //    material->SetProperty(MaterialProperty::NormalFromAlbedo, 1.0f);
+            //}
+
             // create a file path for this material (required for the material to be able to be cached by the resource cache)
             const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(model_file_path) + material->GetObjectName() + EXTENSION_MATERIAL;
             material->SetResourceFilePath(spartan_asset_path);

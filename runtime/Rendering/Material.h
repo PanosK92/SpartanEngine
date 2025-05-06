@@ -76,6 +76,7 @@ namespace spartan
         Gltf,                 // indicates if the material was imported from a glTF file
         Tessellation,         // indicates if the material is tessellated
         WorldSpaceUv,         // indicates if the UV coordinates are in world space
+        NormalFromAlbedo,     // indicates if the normal map is derived from the albedo texture
         Max                   // total number of properties, used to size arrays
     };
 
