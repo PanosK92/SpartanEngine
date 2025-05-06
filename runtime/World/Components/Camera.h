@@ -51,10 +51,11 @@ namespace spartan
         // x-axis movement: w, a, s, d
         // y-axis movement: q, e
         // mouse look: hold right click to enable
-        CanBeControlled      = 1U << 0,
-        IsActivelyControlled = 1U << 1,
-        WantsCursorHidden    = 1U << 2,
-        IsDirty              = 1U << 3
+        CanBeControlled       = 1U << 0,
+        IsControlled          = 1U << 1,
+        WantsCursorHidden     = 1U << 2,
+        IsDirty               = 1U << 3,
+        PhysicalBodyAnimation = 1U << 4, // head bob for walking, breathing etc.
     };
 
     class Camera : public Component
@@ -174,7 +175,6 @@ namespace spartan
         math::Vector2 m_mouse_last_position          = math::Vector2::Zero;
         math::Vector3 m_movement_speed               = math::Vector3::Zero;
         float m_movement_scroll_accumulator          = 0.0f;
-        math::Vector2 m_mouse_smoothed               = math::Vector2::Zero;
         math::Vector2 m_first_person_rotation        = math::Vector2::Zero;
         float m_mouse_sensitivity                    = 0.2f;
         float m_mouse_smoothing                      = 0.5f;
