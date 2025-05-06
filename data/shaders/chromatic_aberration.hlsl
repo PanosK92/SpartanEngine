@@ -23,13 +23,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float chromatic_amount  = 0.003f; // strength of chromatic aberration
-static const float distortion_amount = 0.1f;   // strength of lens distortion (positive for barrel, negative for pincushion)
+static const float base_chromatic_amount  = 0.0025; // base strength of chromatic aberration
+static const float base_distortion_amount = 0.1; // base strength of lens distortion (positive for barrel, negative for pincushion)
+static const float reference_fstop        = 4.0; // reference f-stop for baseline effect strength
 
 // compute shader entry point
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
+    // get camera aperture (f-stop)
+    float camera_aperture   = pass_get_f3_value().x;
+
+    // compute effect strength based on aperture
+    float aperture_scale    = reference_fstop / max(camera_aperture, 0.1); // avoid division by zero, wider aperture = stronger effect
+    float chromatic_amount  = base_chromatic_amount * aperture_scale;
+    float distortion_amount = base_distortion_amount * aperture_scale;
+
     // compute uv
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
