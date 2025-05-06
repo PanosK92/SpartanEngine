@@ -436,10 +436,7 @@ namespace spartan
 
     void RHI_CommandList::Begin()
     {
-        if (m_state == RHI_CommandListState::Recording)
-        {
-            SP_LOG_WARNING("Discarding all previously recorded commands as the command list is already in recording state...");
-        }
+        SP_ASSERT(m_state == RHI_CommandListState::Idle);
  
         // begin command buffer
         VkCommandBufferBeginInfo begin_info = {};

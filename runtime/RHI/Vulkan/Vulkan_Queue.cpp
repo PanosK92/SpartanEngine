@@ -93,15 +93,22 @@ namespace spartan
 
     RHI_CommandList* RHI_Queue::NextCommandList()
     {
-        // increment and wrap around
-        m_index = (m_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
-    
-        // ensure the command list is idle
+        m_index        = (m_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
         auto& cmd_list = m_cmd_lists[m_index];
-        if (cmd_list->GetState() != RHI_CommandListState::Idle)
+
+        // submit any pending work (toggling between fullscreen and windowed mode can leave work)
+        if (cmd_list->GetState() == RHI_CommandListState::Recording)
+        {
+           cmd_list->Submit(0);
+        }
+
+        // with enough command lists available, there is no wait time
+        if (cmd_list->GetState() == RHI_CommandListState::Submitted)
         {
             cmd_list->WaitForExecution();
         }
+
+        SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Idle);
 
         return cmd_list.get();
     }

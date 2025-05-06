@@ -60,7 +60,6 @@ namespace spartan
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
-    bool wants_to_present                          = false;
     uint32_t Renderer::m_resource_index            = 0;
     atomic<bool> Renderer::m_initialized_resources = false;
     bool Renderer::m_transparents_present          = false;
@@ -282,16 +281,8 @@ namespace spartan
 
     void Renderer::Tick()
     {
-        // don't waste cpu/gpu time if nothing can be seen
-        wants_to_present = false;
-        if (Window::IsMinimized() || !m_initialized_resources)
-            return;
-
-        // update swapchain
-        wants_to_present = true;
-        GetSwapChain()->AcquireNextImage();
-
         // update logic
+        GetSwapChain()->AcquireNextImage();
         RHI_Device::Tick(frame_num);
         RHI_AMD_FFX::Tick(&m_cb_frame_cpu);
         dynamic_resolution();
@@ -307,9 +298,12 @@ namespace spartan
         // update GPU buffers (needs to happen after draw call and occluder building)
         UpdateBuffers(m_cmd_list_present);
 
-        // produce the actual frame (this is where all the passes are done)
-        RHI_CommandList* cmd_list_graphics_secondary = nullptr;//queue_graphics->NextCommandList();
-        ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
+        // produce a frame (or not, if minimized), this is where the expensive work happens
+        if (!Window::IsMinimized() && m_initialized_resources)
+        { 
+            RHI_CommandList* cmd_list_graphics_secondary = nullptr;//queue_graphics->NextCommandList();
+            ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
+        }
 
         // blit to back buffer when not in editor mode
         bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
@@ -768,9 +762,6 @@ namespace spartan
 
     void Renderer::SubmitAndPresent()
     {
-        if (!wants_to_present)
-            return;
-
         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
         {
             if (m_cmd_list_present->GetState() == RHI_CommandListState::Recording)
@@ -781,8 +772,6 @@ namespace spartan
             swap_chain->Present(m_cmd_list_present);
         }
         Profiler::TimeBlockEnd();
-
-        wants_to_present = false;
     }
 
     RHI_Api_Type Renderer::GetRhiApiType()

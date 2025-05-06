@@ -457,6 +457,9 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
+        if (Window::IsMinimized())
+            return;
+
         // get next semaphore
         m_buffer_index                      = (m_buffer_index + 1) % m_buffer_count;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
@@ -495,6 +498,9 @@ namespace spartan
 
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
+        if (Window::IsMinimized())
+            return;
+
         SP_ASSERT(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source);
     
         m_wait_semaphores.clear();
