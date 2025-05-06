@@ -416,14 +416,13 @@ namespace
         const char* world_names[] =
         {
             "1. Open world forest with car (millions of Ghost of Tsushima grass blades - very demanding)",
-            "2. Sponza 4k (high-resolution textures & meshes - demanding)",
-            "3. Bistro interior & exterior (excessive draw calls - demanding)",
-            "4. Subway (gi test, no lights, only emissive textures - moderate)",
-            "5. Living room (gi test, sunlight through window - moderate)",
-            "6. Doom E1M1 (classic level recreation - light)",
-            "7. Minecraft (blocky aesthetic - light)",
-            "8. Showroom (Gran Turismo 7 brand central - light)",
-            "9. Liminal Space (shifts your frequency to a nearby reality - light)",
+            "2. Liminal Space (shifts your frequency to a nearby reality - light)",
+            "3. Showroom (Gran Turismo 7 brand central - light)",
+            "4. Sponza 4k (high-resolution textures & meshes - demanding)",
+            "5. Bistro interior & exterior (excessive draw calls - demanding)",
+            "6. Subway (gi test, no lights, only emissive textures - moderate)",
+            "7. Doom E1M1 (classic level recreation - light)",
+            "8. Minecraft (blocky aesthetic - light)"
         };
 
         int world_index = 0;

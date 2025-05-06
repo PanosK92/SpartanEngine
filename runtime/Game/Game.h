@@ -26,14 +26,13 @@ namespace spartan
     enum class DefaultWorld
     {
         Forest,
+        LiminalSpace,
+        GranTurismo,
         Sponza,
         Bistro,
         Subway,
-        LivingRoom,
         Doom,
         Minecraft,
-        GranTurismo,
-        LiminalSpace,
         Max
     };
 

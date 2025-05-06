@@ -455,142 +455,6 @@ namespace spartan
             }
         }
 
-        void create_living_room_gi_test()
-        {
-            create_camera(Vector3(3.6573f, 2.4959f, -15.6978f), Vector3(3.9999f, -12.1947f, 0.0f));
-            create_sun(true);
-            // make the sun come in through the window
-            default_light_directional->SetRotation(Quaternion::FromEulerAngles(30.0f, 180.0f, 0.0f));
-            create_music();
-
-            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
-            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\living_room\\living_room.obj"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("living_Room");
-                entity->SetPosition(Vector3(0.0f, 0.03f, 0.0f));
-                entity->SetScale(Vector3(2.5f, 2.5f, 2.5f));
-
-                // make the radiator metallic
-                if (Renderable* renderable = entity->GetDescendantByName("Mesh_93")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
-                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                    }
-                }
-
-                // make the vase/plate smoother
-                if (Renderable* renderable = entity->GetDescendantByName("Mesh_122")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                    }
-                }
-
-                // make the tv smoother
-                if (Renderable* renderable = entity->GetDescendantByName("Mesh_20")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                    }
-                }
-
-                // make the floor smoother
-                if (Renderable* renderable = entity->GetDescendantByName("Mesh_111")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                    }
-                }
-
-                // make the ceiling light thingy rough
-                if (Renderable* renderable = entity->GetDescendantByName("Mesh_41")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 1.0f);
-                    }
-                }
-
-                // disable window blinds
-                entity->GetDescendantByName("Default_1")->SetActive(false);
-                entity->GetDescendantByName("Default_2")->SetActive(false);
-                entity->GetDescendantByName("Default_3")->SetActive(false);
-
-                // make the walls double sided
-                if (Renderable* renderable = entity->GetDescendantByName("Mesh_114")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                    }
-                }
-
-                // make the ceiling double sided
-                if (Renderable* renderable = entity->GetDescendantByName("Mesh_110")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                    }
-                }
-
-                // make the windows double sided
-                if (Renderable* renderable = entity->GetDescendantByName("WhitePaint")->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                    }
-                }
-
-                // make the windows blinds double sided
-                {
-                    if (Renderable* renderable = entity->GetDescendantByName("Mesh_45")->GetComponent<Renderable>())
-                    {
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        }
-                    }
-                    if (Renderable* renderable = entity->GetDescendantByName("Mesh_55")->GetComponent<Renderable>())
-                    {
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        }
-                    }
-
-                    if (Renderable* renderable = entity->GetDescendantByName("Mesh_95")->GetComponent<Renderable>())
-                    {
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        }
-                    }
-                }
-
-               // enable physics for all meshes
-               vector<Entity*> entities;
-               entity->GetDescendants(&entities);
-               for (Entity* entity_it : entities)
-               {
-                   if (entity_it->GetComponent<Renderable>() != nullptr)
-                   {
-                       PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                       physics_body->SetShapeType(PhysicsShape::Mesh);
-                   }
-               }
-            }
-        }
-
         void create_subway_gi_test()
         {
             create_sun(false);
@@ -1842,10 +1706,9 @@ namespace spartan
                 case DefaultWorld::Doom:         create_doom_e1m1();              break;
                 case DefaultWorld::Bistro:       create_bistro();                 break;
                 case DefaultWorld::Minecraft:    create_minecraft();              break;
-                case DefaultWorld::LivingRoom:   create_living_room_gi_test();    break;
                 case DefaultWorld::Sponza:       create_sponza_4k();              break;
                 case DefaultWorld::Subway:       create_subway_gi_test();         break;
-                case DefaultWorld::GranTurismo:  worlds::showroom::create();  break;
+                case DefaultWorld::GranTurismo:  worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
             }
