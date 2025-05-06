@@ -1,4 +1,4 @@
-// Copyright 2015-2024 The Khronos Group Inc.
+// Copyright 2015-2025 The Khronos Group Inc.
 //
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
@@ -22,7 +22,9 @@ module;
 #include <vulkan/vulkan_hash.hpp>
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_shared.hpp>
-#include <vulkan/vulkan_to_string.hpp>
+#ifndef VULKAN_HPP_NO_TO_STRING
+#  include <vulkan/vulkan_to_string.hpp>
+#endif
 
 export module vulkan_hpp;
 
@@ -751,6 +753,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::DeviceDiagnosticsConfigFlagBitsNV;
   using VULKAN_HPP_NAMESPACE::DeviceDiagnosticsConfigFlagsNV;
 
+  //=== VK_QCOM_tile_shading ===
+  using VULKAN_HPP_NAMESPACE::TileShadingRenderPassFlagBitsQCOM;
+  using VULKAN_HPP_NAMESPACE::TileShadingRenderPassFlagsQCOM;
+
 #if defined( VK_USE_PLATFORM_METAL_EXT )
   //=== VK_EXT_metal_objects ===
   using VULKAN_HPP_NAMESPACE::ExportMetalObjectTypeFlagBitsEXT;
@@ -835,6 +841,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::MemoryDecompressionMethodFlagBitsNV;
   using VULKAN_HPP_NAMESPACE::MemoryDecompressionMethodFlagsNV;
 
+  //=== VK_NV_ray_tracing_linear_swept_spheres ===
+  using VULKAN_HPP_NAMESPACE::RayTracingLssIndexingModeNV;
+  using VULKAN_HPP_NAMESPACE::RayTracingLssPrimitiveEndCapsModeNV;
+
   //=== VK_EXT_subpass_merge_feedback ===
   using VULKAN_HPP_NAMESPACE::SubpassMergeStatusEXT;
 
@@ -867,6 +877,11 @@ export namespace VULKAN_HPP_NAMESPACE
   //=== VK_NV_ray_tracing_invocation_reorder ===
   using VULKAN_HPP_NAMESPACE::RayTracingInvocationReorderModeNV;
 
+  //=== VK_NV_cooperative_vector ===
+  using VULKAN_HPP_NAMESPACE::ComponentTypeKHR;
+  using VULKAN_HPP_NAMESPACE::ComponentTypeNV;
+  using VULKAN_HPP_NAMESPACE::CooperativeVectorMatrixLayoutNV;
+
   //=== VK_EXT_layer_settings ===
   using VULKAN_HPP_NAMESPACE::LayerSettingTypeEXT;
 
@@ -875,8 +890,6 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::OutOfBandQueueTypeNV;
 
   //=== VK_KHR_cooperative_matrix ===
-  using VULKAN_HPP_NAMESPACE::ComponentTypeKHR;
-  using VULKAN_HPP_NAMESPACE::ComponentTypeNV;
   using VULKAN_HPP_NAMESPACE::ScopeKHR;
   using VULKAN_HPP_NAMESPACE::ScopeNV;
 
@@ -911,6 +924,24 @@ export namespace VULKAN_HPP_NAMESPACE
   //=== VK_KHR_maintenance7 ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceLayeredApiKHR;
 
+  //=== VK_NV_cluster_acceleration_structure ===
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureAddressResolutionFlagBitsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureAddressResolutionFlagsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureClusterFlagBitsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureClusterFlagsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureGeometryFlagBitsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureGeometryFlagsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureIndexFormatFlagBitsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureIndexFormatFlagsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureOpModeNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureOpTypeNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureTypeNV;
+
+  //=== VK_NV_partitioned_acceleration_structure ===
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureInstanceFlagBitsNV;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureInstanceFlagsNV;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureOpTypeNV;
+
   //=== VK_EXT_device_generated_commands ===
   using VULKAN_HPP_NAMESPACE::IndirectCommandsInputModeFlagBitsEXT;
   using VULKAN_HPP_NAMESPACE::IndirectCommandsInputModeFlagsEXT;
@@ -918,6 +949,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::IndirectCommandsLayoutUsageFlagsEXT;
   using VULKAN_HPP_NAMESPACE::IndirectCommandsTokenTypeEXT;
   using VULKAN_HPP_NAMESPACE::IndirectExecutionSetInfoTypeEXT;
+
+  //=== VK_KHR_maintenance8 ===
+  using VULKAN_HPP_NAMESPACE::AccessFlagBits3KHR;
+  using VULKAN_HPP_NAMESPACE::AccessFlags3KHR;
 
   //=== VK_EXT_depth_clamp_control ===
   using VULKAN_HPP_NAMESPACE::DepthClampModeEXT;
@@ -1524,6 +1559,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::EXTShaderStencilExportExtensionName;
   using VULKAN_HPP_NAMESPACE::EXTShaderStencilExportSpecVersion;
 
+  //=== VK_KHR_shader_bfloat16 ===
+  using VULKAN_HPP_NAMESPACE::KHRShaderBfloat16ExtensionName;
+  using VULKAN_HPP_NAMESPACE::KHRShaderBfloat16SpecVersion;
+
   //=== VK_EXT_sample_locations ===
   using VULKAN_HPP_NAMESPACE::EXTSampleLocationsExtensionName;
   using VULKAN_HPP_NAMESPACE::EXTSampleLocationsSpecVersion;
@@ -2057,6 +2096,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::NVCudaKernelLaunchSpecVersion;
 #endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
+  //=== VK_QCOM_tile_shading ===
+  using VULKAN_HPP_NAMESPACE::QCOMTileShadingExtensionName;
+  using VULKAN_HPP_NAMESPACE::QCOMTileShadingSpecVersion;
+
   //=== VK_NV_low_latency ===
   using VULKAN_HPP_NAMESPACE::NVLowLatencyExtensionName;
   using VULKAN_HPP_NAMESPACE::NVLowLatencySpecVersion;
@@ -2367,6 +2410,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::NVDeviceGeneratedCommandsComputeExtensionName;
   using VULKAN_HPP_NAMESPACE::NVDeviceGeneratedCommandsComputeSpecVersion;
 
+  //=== VK_NV_ray_tracing_linear_swept_spheres ===
+  using VULKAN_HPP_NAMESPACE::NVRayTracingLinearSweptSpheresExtensionName;
+  using VULKAN_HPP_NAMESPACE::NVRayTracingLinearSweptSpheresSpecVersion;
+
   //=== VK_NV_linear_color_attachment ===
   using VULKAN_HPP_NAMESPACE::NVLinearColorAttachmentExtensionName;
   using VULKAN_HPP_NAMESPACE::NVLinearColorAttachmentSpecVersion;
@@ -2470,6 +2517,10 @@ export namespace VULKAN_HPP_NAMESPACE
   //=== VK_NV_ray_tracing_invocation_reorder ===
   using VULKAN_HPP_NAMESPACE::NVRayTracingInvocationReorderExtensionName;
   using VULKAN_HPP_NAMESPACE::NVRayTracingInvocationReorderSpecVersion;
+
+  //=== VK_NV_cooperative_vector ===
+  using VULKAN_HPP_NAMESPACE::NVCooperativeVectorExtensionName;
+  using VULKAN_HPP_NAMESPACE::NVCooperativeVectorSpecVersion;
 
   //=== VK_NV_extended_sparse_address_space ===
   using VULKAN_HPP_NAMESPACE::NVExtendedSparseAddressSpaceExtensionName;
@@ -2598,6 +2649,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::NVDescriptorPoolOverallocationExtensionName;
   using VULKAN_HPP_NAMESPACE::NVDescriptorPoolOverallocationSpecVersion;
 
+  //=== VK_QCOM_tile_memory_heap ===
+  using VULKAN_HPP_NAMESPACE::QCOMTileMemoryHeapExtensionName;
+  using VULKAN_HPP_NAMESPACE::QCOMTileMemoryHeapSpecVersion;
+
   //=== VK_NV_display_stereo ===
   using VULKAN_HPP_NAMESPACE::NVDisplayStereoExtensionName;
   using VULKAN_HPP_NAMESPACE::NVDisplayStereoSpecVersion;
@@ -2609,6 +2664,10 @@ export namespace VULKAN_HPP_NAMESPACE
   //=== VK_NV_raw_access_chains ===
   using VULKAN_HPP_NAMESPACE::NVRawAccessChainsExtensionName;
   using VULKAN_HPP_NAMESPACE::NVRawAccessChainsSpecVersion;
+
+  //=== VK_NV_external_compute_queue ===
+  using VULKAN_HPP_NAMESPACE::NVExternalComputeQueueExtensionName;
+  using VULKAN_HPP_NAMESPACE::NVExternalComputeQueueSpecVersion;
 
   //=== VK_KHR_shader_relaxed_extended_instruction ===
   using VULKAN_HPP_NAMESPACE::KHRShaderRelaxedExtendedInstructionExtensionName;
@@ -2634,9 +2693,22 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::NVRayTracingValidationExtensionName;
   using VULKAN_HPP_NAMESPACE::NVRayTracingValidationSpecVersion;
 
+  //=== VK_NV_cluster_acceleration_structure ===
+  using VULKAN_HPP_NAMESPACE::NVClusterAccelerationStructureExtensionName;
+  using VULKAN_HPP_NAMESPACE::NVClusterAccelerationStructureSpecVersion;
+
+  //=== VK_NV_partitioned_acceleration_structure ===
+  using VULKAN_HPP_NAMESPACE::NVPartitionedAccelerationStructureExtensionName;
+  using VULKAN_HPP_NAMESPACE::NVPartitionedAccelerationStructureSpecVersion;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructurePartitionIndexGlobalNV;
+
   //=== VK_EXT_device_generated_commands ===
   using VULKAN_HPP_NAMESPACE::EXTDeviceGeneratedCommandsExtensionName;
   using VULKAN_HPP_NAMESPACE::EXTDeviceGeneratedCommandsSpecVersion;
+
+  //=== VK_KHR_maintenance8 ===
+  using VULKAN_HPP_NAMESPACE::KHRMaintenance8ExtensionName;
+  using VULKAN_HPP_NAMESPACE::KHRMaintenance8SpecVersion;
 
   //=== VK_MESA_image_alignment_control ===
   using VULKAN_HPP_NAMESPACE::MESAImageAlignmentControlExtensionName;
@@ -2646,6 +2718,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::EXTDepthClampControlExtensionName;
   using VULKAN_HPP_NAMESPACE::EXTDepthClampControlSpecVersion;
 
+  //=== VK_KHR_video_maintenance2 ===
+  using VULKAN_HPP_NAMESPACE::KHRVideoMaintenance2ExtensionName;
+  using VULKAN_HPP_NAMESPACE::KHRVideoMaintenance2SpecVersion;
+
   //=== VK_HUAWEI_hdr_vivid ===
   using VULKAN_HPP_NAMESPACE::HUAWEIHdrVividExtensionName;
   using VULKAN_HPP_NAMESPACE::HUAWEIHdrVividSpecVersion;
@@ -2654,9 +2730,33 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::NVCooperativeMatrix2ExtensionName;
   using VULKAN_HPP_NAMESPACE::NVCooperativeMatrix2SpecVersion;
 
+  //=== VK_ARM_pipeline_opacity_micromap ===
+  using VULKAN_HPP_NAMESPACE::ARMPipelineOpacityMicromapExtensionName;
+  using VULKAN_HPP_NAMESPACE::ARMPipelineOpacityMicromapSpecVersion;
+
+#if defined( VK_USE_PLATFORM_METAL_EXT )
+  //=== VK_EXT_external_memory_metal ===
+  using VULKAN_HPP_NAMESPACE::EXTExternalMemoryMetalExtensionName;
+  using VULKAN_HPP_NAMESPACE::EXTExternalMemoryMetalSpecVersion;
+#endif /*VK_USE_PLATFORM_METAL_EXT*/
+
+  //=== VK_KHR_depth_clamp_zero_one ===
+  using VULKAN_HPP_NAMESPACE::KHRDepthClampZeroOneExtensionName;
+  using VULKAN_HPP_NAMESPACE::KHRDepthClampZeroOneSpecVersion;
+
   //=== VK_EXT_vertex_attribute_robustness ===
   using VULKAN_HPP_NAMESPACE::EXTVertexAttributeRobustnessExtensionName;
   using VULKAN_HPP_NAMESPACE::EXTVertexAttributeRobustnessSpecVersion;
+
+#if defined( VK_ENABLE_BETA_EXTENSIONS )
+  //=== VK_NV_present_metering ===
+  using VULKAN_HPP_NAMESPACE::NVPresentMeteringExtensionName;
+  using VULKAN_HPP_NAMESPACE::NVPresentMeteringSpecVersion;
+#endif /*VK_ENABLE_BETA_EXTENSIONS*/
+
+  //=== VK_EXT_fragment_density_map_offset ===
+  using VULKAN_HPP_NAMESPACE::EXTFragmentDensityMapOffsetExtensionName;
+  using VULKAN_HPP_NAMESPACE::EXTFragmentDensityMapOffsetSpecVersion;
 
   //========================
   //=== CONSTEXPR VALUEs ===
@@ -3647,6 +3747,9 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::AttachmentSampleCountInfoAMD;
   using VULKAN_HPP_NAMESPACE::AttachmentSampleCountInfoNV;
 
+  //=== VK_KHR_shader_bfloat16 ===
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceShaderBfloat16FeaturesKHR;
+
   //=== VK_EXT_sample_locations ===
   using VULKAN_HPP_NAMESPACE::AttachmentSampleLocationsEXT;
   using VULKAN_HPP_NAMESPACE::MultisamplePropertiesEXT;
@@ -4045,6 +4148,14 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceCudaKernelLaunchPropertiesNV;
 #endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
+  //=== VK_QCOM_tile_shading ===
+  using VULKAN_HPP_NAMESPACE::DispatchTileInfoQCOM;
+  using VULKAN_HPP_NAMESPACE::PerTileBeginInfoQCOM;
+  using VULKAN_HPP_NAMESPACE::PerTileEndInfoQCOM;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceTileShadingFeaturesQCOM;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceTileShadingPropertiesQCOM;
+  using VULKAN_HPP_NAMESPACE::RenderPassTileShadingCreateInfoQCOM;
+
   //=== VK_NV_low_latency ===
   using VULKAN_HPP_NAMESPACE::QueryLowLatencySupportNV;
 
@@ -4316,9 +4427,6 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::DescriptorSetLayoutHostMappingInfoVALVE;
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceDescriptorSetHostMappingFeaturesVALVE;
 
-  //=== VK_EXT_depth_clamp_zero_one ===
-  using VULKAN_HPP_NAMESPACE::PhysicalDeviceDepthClampZeroOneFeaturesEXT;
-
   //=== VK_EXT_non_seamless_cube_map ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceNonSeamlessCubeMapFeaturesEXT;
 
@@ -4328,11 +4436,6 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::RenderPassStripeBeginInfoARM;
   using VULKAN_HPP_NAMESPACE::RenderPassStripeInfoARM;
   using VULKAN_HPP_NAMESPACE::RenderPassStripeSubmitInfoARM;
-
-  //=== VK_QCOM_fragment_density_map_offset ===
-  using VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM;
-  using VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM;
-  using VULKAN_HPP_NAMESPACE::SubpassFragmentDensityMapOffsetEndInfoQCOM;
 
   //=== VK_NV_copy_memory_indirect ===
   using VULKAN_HPP_NAMESPACE::CopyMemoryIndirectCommandNV;
@@ -4350,6 +4453,11 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::ComputePipelineIndirectBufferInfoNV;
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV;
   using VULKAN_HPP_NAMESPACE::PipelineIndirectDeviceAddressInfoNV;
+
+  //=== VK_NV_ray_tracing_linear_swept_spheres ===
+  using VULKAN_HPP_NAMESPACE::AccelerationStructureGeometryLinearSweptSpheresDataNV;
+  using VULKAN_HPP_NAMESPACE::AccelerationStructureGeometrySpheresDataNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV;
 
   //=== VK_NV_linear_color_attachment ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceLinearColorAttachmentFeaturesNV;
@@ -4460,6 +4568,12 @@ export namespace VULKAN_HPP_NAMESPACE
   //=== VK_NV_ray_tracing_invocation_reorder ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingInvocationReorderFeaturesNV;
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingInvocationReorderPropertiesNV;
+
+  //=== VK_NV_cooperative_vector ===
+  using VULKAN_HPP_NAMESPACE::ConvertCooperativeVectorMatrixInfoNV;
+  using VULKAN_HPP_NAMESPACE::CooperativeVectorPropertiesNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceCooperativeVectorFeaturesNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceCooperativeVectorPropertiesNV;
 
   //=== VK_NV_extended_sparse_address_space ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceExtendedSparseAddressSpaceFeaturesNV;
@@ -4588,6 +4702,13 @@ export namespace VULKAN_HPP_NAMESPACE
   //=== VK_NV_descriptor_pool_overallocation ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceDescriptorPoolOverallocationFeaturesNV;
 
+  //=== VK_QCOM_tile_memory_heap ===
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceTileMemoryHeapFeaturesQCOM;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceTileMemoryHeapPropertiesQCOM;
+  using VULKAN_HPP_NAMESPACE::TileMemoryBindInfoQCOM;
+  using VULKAN_HPP_NAMESPACE::TileMemoryRequirementsQCOM;
+  using VULKAN_HPP_NAMESPACE::TileMemorySizeInfoQCOM;
+
   //=== VK_NV_display_stereo ===
   using VULKAN_HPP_NAMESPACE::DisplayModeStereoPropertiesNV;
   using VULKAN_HPP_NAMESPACE::DisplaySurfaceStereoCreateInfoNV;
@@ -4606,6 +4727,12 @@ export namespace VULKAN_HPP_NAMESPACE
 
   //=== VK_NV_raw_access_chains ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceRawAccessChainsFeaturesNV;
+
+  //=== VK_NV_external_compute_queue ===
+  using VULKAN_HPP_NAMESPACE::ExternalComputeQueueCreateInfoNV;
+  using VULKAN_HPP_NAMESPACE::ExternalComputeQueueDataParamsNV;
+  using VULKAN_HPP_NAMESPACE::ExternalComputeQueueDeviceCreateInfoNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceExternalComputeQueuePropertiesNV;
 
   //=== VK_KHR_shader_relaxed_extended_instruction ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR;
@@ -4628,6 +4755,36 @@ export namespace VULKAN_HPP_NAMESPACE
 
   //=== VK_NV_ray_tracing_validation ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingValidationFeaturesNV;
+
+  //=== VK_NV_cluster_acceleration_structure ===
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureBuildClustersBottomLevelInfoNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureBuildTriangleClusterInfoNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureClustersBottomLevelInputNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureCommandsInfoNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureInputInfoNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureInstantiateClusterInfoNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureMoveObjectsInfoNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureMoveObjectsInputNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureOpInputNV;
+  using VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureTriangleClusterInputNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceClusterAccelerationStructureFeaturesNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceClusterAccelerationStructurePropertiesNV;
+  using VULKAN_HPP_NAMESPACE::RayTracingPipelineClusterAccelerationStructureCreateInfoNV;
+  using VULKAN_HPP_NAMESPACE::StridedDeviceAddressNV;
+
+  //=== VK_NV_partitioned_acceleration_structure ===
+  using VULKAN_HPP_NAMESPACE::BuildPartitionedAccelerationStructureIndirectCommandNV;
+  using VULKAN_HPP_NAMESPACE::BuildPartitionedAccelerationStructureInfoNV;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureFlagsNV;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureInstancesInputNV;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureUpdateInstanceDataNV;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureWriteInstanceDataNV;
+  using VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureWritePartitionTranslationDataNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDevicePartitionedAccelerationStructureFeaturesNV;
+  using VULKAN_HPP_NAMESPACE::PhysicalDevicePartitionedAccelerationStructurePropertiesNV;
+  using VULKAN_HPP_NAMESPACE::WriteDescriptorSetPartitionedAccelerationStructureNV;
 
   //=== VK_EXT_device_generated_commands ===
   using VULKAN_HPP_NAMESPACE::BindIndexBufferIndirectCommandEXT;
@@ -4654,6 +4811,10 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::WriteIndirectExecutionSetPipelineEXT;
   using VULKAN_HPP_NAMESPACE::WriteIndirectExecutionSetShaderEXT;
 
+  //=== VK_KHR_maintenance8 ===
+  using VULKAN_HPP_NAMESPACE::MemoryBarrierAccessFlags3KHR;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceMaintenance8FeaturesKHR;
+
   //=== VK_MESA_image_alignment_control ===
   using VULKAN_HPP_NAMESPACE::ImageAlignmentControlCreateInfoMESA;
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceImageAlignmentControlFeaturesMESA;
@@ -4664,6 +4825,12 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceDepthClampControlFeaturesEXT;
   using VULKAN_HPP_NAMESPACE::PipelineViewportDepthClampControlCreateInfoEXT;
 
+  //=== VK_KHR_video_maintenance2 ===
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceVideoMaintenance2FeaturesKHR;
+  using VULKAN_HPP_NAMESPACE::VideoDecodeAV1InlineSessionParametersInfoKHR;
+  using VULKAN_HPP_NAMESPACE::VideoDecodeH264InlineSessionParametersInfoKHR;
+  using VULKAN_HPP_NAMESPACE::VideoDecodeH265InlineSessionParametersInfoKHR;
+
   //=== VK_HUAWEI_hdr_vivid ===
   using VULKAN_HPP_NAMESPACE::HdrVividDynamicMetadataHUAWEI;
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceHdrVividFeaturesHUAWEI;
@@ -4673,8 +4840,37 @@ export namespace VULKAN_HPP_NAMESPACE
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceCooperativeMatrix2FeaturesNV;
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceCooperativeMatrix2PropertiesNV;
 
+  //=== VK_ARM_pipeline_opacity_micromap ===
+  using VULKAN_HPP_NAMESPACE::PhysicalDevicePipelineOpacityMicromapFeaturesARM;
+
+#if defined( VK_USE_PLATFORM_METAL_EXT )
+  //=== VK_EXT_external_memory_metal ===
+  using VULKAN_HPP_NAMESPACE::ImportMemoryMetalHandleInfoEXT;
+  using VULKAN_HPP_NAMESPACE::MemoryGetMetalHandleInfoEXT;
+  using VULKAN_HPP_NAMESPACE::MemoryMetalHandlePropertiesEXT;
+#endif /*VK_USE_PLATFORM_METAL_EXT*/
+
+  //=== VK_KHR_depth_clamp_zero_one ===
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceDepthClampZeroOneFeaturesEXT;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceDepthClampZeroOneFeaturesKHR;
+
   //=== VK_EXT_vertex_attribute_robustness ===
   using VULKAN_HPP_NAMESPACE::PhysicalDeviceVertexAttributeRobustnessFeaturesEXT;
+
+#if defined( VK_ENABLE_BETA_EXTENSIONS )
+  //=== VK_NV_present_metering ===
+  using VULKAN_HPP_NAMESPACE::PhysicalDevicePresentMeteringFeaturesNV;
+  using VULKAN_HPP_NAMESPACE::SetPresentConfigNV;
+#endif /*VK_ENABLE_BETA_EXTENSIONS*/
+
+  //=== VK_EXT_fragment_density_map_offset ===
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetFeaturesEXT;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetPropertiesEXT;
+  using VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM;
+  using VULKAN_HPP_NAMESPACE::RenderingEndInfoEXT;
+  using VULKAN_HPP_NAMESPACE::RenderPassFragmentDensityMapOffsetEndInfoEXT;
+  using VULKAN_HPP_NAMESPACE::SubpassFragmentDensityMapOffsetEndInfoQCOM;
 
   //===============
   //=== HANDLEs ===
@@ -4781,6 +4977,9 @@ export namespace VULKAN_HPP_NAMESPACE
   //=== VK_KHR_pipeline_binary ===
   using VULKAN_HPP_NAMESPACE::PipelineBinaryKHR;
 
+  //=== VK_NV_external_compute_queue ===
+  using VULKAN_HPP_NAMESPACE::ExternalComputeQueueNV;
+
   //=== VK_EXT_device_generated_commands ===
   using VULKAN_HPP_NAMESPACE::IndirectCommandsLayoutEXT;
   using VULKAN_HPP_NAMESPACE::IndirectExecutionSetEXT;
@@ -4886,6 +5085,9 @@ export namespace VULKAN_HPP_NAMESPACE
 
   //=== VK_KHR_pipeline_binary ===
   using VULKAN_HPP_NAMESPACE::UniquePipelineBinaryKHR;
+
+  //=== VK_NV_external_compute_queue ===
+  using VULKAN_HPP_NAMESPACE::UniqueExternalComputeQueueNV;
 
   //=== VK_EXT_device_generated_commands ===
   using VULKAN_HPP_NAMESPACE::UniqueHandleTraits;
@@ -4997,6 +5199,9 @@ export namespace VULKAN_HPP_NAMESPACE
 
   //=== VK_KHR_pipeline_binary ===
   using VULKAN_HPP_NAMESPACE::SharedPipelineBinaryKHR;
+
+  //=== VK_NV_external_compute_queue ===
+  using VULKAN_HPP_NAMESPACE::SharedExternalComputeQueueNV;
 
   //=== VK_EXT_device_generated_commands ===
   using VULKAN_HPP_NAMESPACE::SharedHandleTraits;
@@ -5193,6 +5398,9 @@ export namespace VULKAN_HPP_NAMESPACE
     using VULKAN_HPP_RAII_NAMESPACE::PipelineBinaryKHR;
     using VULKAN_HPP_RAII_NAMESPACE::PipelineBinaryKHRs;
 
+    //=== VK_NV_external_compute_queue ===
+    using VULKAN_HPP_RAII_NAMESPACE::ExternalComputeQueueNV;
+
     //=== VK_EXT_device_generated_commands ===
     using VULKAN_HPP_RAII_NAMESPACE::IndirectCommandsLayoutEXT;
     using VULKAN_HPP_RAII_NAMESPACE::IndirectExecutionSetEXT;
@@ -5364,6 +5572,10 @@ export namespace std
   //=== VK_KHR_pipeline_binary ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PipelineBinaryKHR>;
+
+  //=== VK_NV_external_compute_queue ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ExternalComputeQueueNV>;
 
   //=== VK_EXT_device_generated_commands ===
   template <>
@@ -6627,6 +6839,10 @@ export namespace std
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::AttachmentSampleCountInfoAMD>;
 
+  //=== VK_KHR_shader_bfloat16 ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceShaderBfloat16FeaturesKHR>;
+
   //=== VK_EXT_sample_locations ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::SampleLocationEXT>;
@@ -7251,6 +7467,20 @@ export namespace std
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceCudaKernelLaunchPropertiesNV>;
 #endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
+  //=== VK_QCOM_tile_shading ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceTileShadingFeaturesQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceTileShadingPropertiesQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::RenderPassTileShadingCreateInfoQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PerTileBeginInfoQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PerTileEndInfoQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::DispatchTileInfoQCOM>;
+
   //=== VK_NV_low_latency ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::QueryLowLatencySupportNV>;
@@ -7671,10 +7901,6 @@ export namespace std
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::DescriptorSetLayoutHostMappingInfoVALVE>;
 
-  //=== VK_EXT_depth_clamp_zero_one ===
-  template <>
-  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceDepthClampZeroOneFeaturesEXT>;
-
   //=== VK_EXT_non_seamless_cube_map ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceNonSeamlessCubeMapFeaturesEXT>;
@@ -7690,14 +7916,6 @@ export namespace std
   struct hash<VULKAN_HPP_NAMESPACE::RenderPassStripeInfoARM>;
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::RenderPassStripeSubmitInfoARM>;
-
-  //=== VK_QCOM_fragment_density_map_offset ===
-  template <>
-  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM>;
-  template <>
-  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM>;
-  template <>
-  struct hash<VULKAN_HPP_NAMESPACE::SubpassFragmentDensityMapOffsetEndInfoQCOM>;
 
   //=== VK_NV_copy_memory_indirect ===
   template <>
@@ -7726,6 +7944,14 @@ export namespace std
   struct hash<VULKAN_HPP_NAMESPACE::PipelineIndirectDeviceAddressInfoNV>;
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::BindPipelineIndirectCommandNV>;
+
+  //=== VK_NV_ray_tracing_linear_swept_spheres ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::AccelerationStructureGeometryLinearSweptSpheresDataNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::AccelerationStructureGeometrySpheresDataNV>;
 
   //=== VK_NV_linear_color_attachment ===
   template <>
@@ -7906,6 +8132,20 @@ export namespace std
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingInvocationReorderPropertiesNV>;
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingInvocationReorderFeaturesNV>;
+
+  //=== VK_NV_cooperative_vector ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceCooperativeVectorPropertiesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceCooperativeVectorFeaturesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::CooperativeVectorPropertiesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ConvertCooperativeVectorMatrixInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::DeviceOrHostAddressKHR>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::DeviceOrHostAddressConstKHR>;
 
   //=== VK_NV_extended_sparse_address_space ===
   template <>
@@ -8099,6 +8339,18 @@ export namespace std
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceDescriptorPoolOverallocationFeaturesNV>;
 
+  //=== VK_QCOM_tile_memory_heap ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceTileMemoryHeapFeaturesQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceTileMemoryHeapPropertiesQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::TileMemoryRequirementsQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::TileMemoryBindInfoQCOM>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::TileMemorySizeInfoQCOM>;
+
   //=== VK_NV_display_stereo ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::DisplaySurfaceStereoCreateInfoNV>;
@@ -8131,6 +8383,16 @@ export namespace std
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceRawAccessChainsFeaturesNV>;
 
+  //=== VK_NV_external_compute_queue ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ExternalComputeQueueDeviceCreateInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ExternalComputeQueueCreateInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ExternalComputeQueueDataParamsNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceExternalComputeQueuePropertiesNV>;
+
   //=== VK_KHR_shader_relaxed_extended_instruction ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR>;
@@ -8162,6 +8424,62 @@ export namespace std
   //=== VK_NV_ray_tracing_validation ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceRayTracingValidationFeaturesNV>;
+
+  //=== VK_NV_cluster_acceleration_structure ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceClusterAccelerationStructureFeaturesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceClusterAccelerationStructurePropertiesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureClustersBottomLevelInputNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureTriangleClusterInputNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureMoveObjectsInputNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureOpInputNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureInputInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureCommandsInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::StridedDeviceAddressNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureGeometryIndexAndGeometryFlagsNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureMoveObjectsInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureBuildClustersBottomLevelInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureBuildTriangleClusterInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureBuildTriangleClusterTemplateInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ClusterAccelerationStructureInstantiateClusterInfoNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::RayTracingPipelineClusterAccelerationStructureCreateInfoNV>;
+
+  //=== VK_NV_partitioned_acceleration_structure ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDevicePartitionedAccelerationStructureFeaturesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDevicePartitionedAccelerationStructurePropertiesNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureFlagsNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::BuildPartitionedAccelerationStructureIndirectCommandNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureWriteInstanceDataNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureUpdateInstanceDataNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureWritePartitionTranslationDataNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::WriteDescriptorSetPartitionedAccelerationStructureNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PartitionedAccelerationStructureInstancesInputNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::BuildPartitionedAccelerationStructureInfoNV>;
 
   //=== VK_EXT_device_generated_commands ===
   template <>
@@ -8211,6 +8529,12 @@ export namespace std
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::WriteIndirectExecutionSetShaderEXT>;
 
+  //=== VK_KHR_maintenance8 ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceMaintenance8FeaturesKHR>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::MemoryBarrierAccessFlags3KHR>;
+
   //=== VK_MESA_image_alignment_control ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceImageAlignmentControlFeaturesMESA>;
@@ -8227,6 +8551,16 @@ export namespace std
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::DepthClampRangeEXT>;
 
+  //=== VK_KHR_video_maintenance2 ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceVideoMaintenance2FeaturesKHR>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::VideoDecodeH264InlineSessionParametersInfoKHR>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::VideoDecodeH265InlineSessionParametersInfoKHR>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::VideoDecodeAV1InlineSessionParametersInfoKHR>;
+
   //=== VK_HUAWEI_hdr_vivid ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceHdrVividFeaturesHUAWEI>;
@@ -8241,8 +8575,56 @@ export namespace std
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceCooperativeMatrix2PropertiesNV>;
 
+  //=== VK_ARM_pipeline_opacity_micromap ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDevicePipelineOpacityMicromapFeaturesARM>;
+
+#if defined( VK_USE_PLATFORM_METAL_EXT )
+  //=== VK_EXT_external_memory_metal ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::ImportMemoryMetalHandleInfoEXT>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::MemoryMetalHandlePropertiesEXT>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::MemoryGetMetalHandleInfoEXT>;
+#endif /*VK_USE_PLATFORM_METAL_EXT*/
+
+  //=== VK_KHR_depth_clamp_zero_one ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceDepthClampZeroOneFeaturesKHR>;
+
   //=== VK_EXT_vertex_attribute_robustness ===
   template <>
   struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceVertexAttributeRobustnessFeaturesEXT>;
 
+#if defined( VK_ENABLE_BETA_EXTENSIONS )
+  //=== VK_NV_present_metering ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::SetPresentConfigNV>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDevicePresentMeteringFeaturesNV>;
+#endif /*VK_ENABLE_BETA_EXTENSIONS*/
+
+  //=== VK_EXT_fragment_density_map_offset ===
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::RenderingEndInfoEXT>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetFeaturesEXT>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::PhysicalDeviceFragmentDensityMapOffsetPropertiesEXT>;
+  template <>
+  struct hash<VULKAN_HPP_NAMESPACE::RenderPassFragmentDensityMapOffsetEndInfoEXT>;
+
+  //=================================================================
+  //=== Required exports for VULKAN_HPP_NAMESPACE::StructureChain ===
+  //=================================================================
+
+#if !defined( VULKAN_HPP_DISABLE_ENHANCED_MODE )
+  using std::tuple_element;
+  using std::tuple_size;
+#endif
 }  // namespace std
+
+// This VkFlags type is used as part of a bitfield in some structure.
+// As it can't be mimicked by vk-data types, we need to export just that!!
+export using ::VkGeometryInstanceFlagsKHR;
