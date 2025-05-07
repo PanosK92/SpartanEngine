@@ -519,7 +519,6 @@ namespace spartan
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
                     cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
-
                     cmd_list->SetPipelineState(pso);
                 }
     

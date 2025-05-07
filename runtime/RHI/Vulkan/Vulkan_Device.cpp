@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
+#include "../../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -2110,6 +2111,7 @@ namespace spartan
         unique_lock<mutex> lock(queues::mutex_immediate_execution);
         queues::condition_variable_immediate_execution.wait(lock, [] { return !queues::is_immediate_executing; });
         queues::is_immediate_executing = true;
+        ProgressTracker::SetGlobalLoadingState(true);
 
         // get command pool
         queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
@@ -2127,6 +2129,7 @@ namespace spartan
         // signal that it's safe to proceed with the next ImmediateBegin()
         queues::is_immediate_executing = false;
         queues::condition_variable_immediate_execution.notify_one();
+         ProgressTracker::SetGlobalLoadingState(false);
     }
 
     // markers
