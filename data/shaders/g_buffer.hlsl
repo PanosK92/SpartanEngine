@@ -31,18 +31,18 @@ struct gbuffer
 
 float get_quantized_position_variation(float3 position)
 {
-    // quantize position to approximate tree root (e.g., round to nearest 5 meters)
+    // Quantize position to approximate tree root (e.g., round to nearest 5 meters)
     const float grid_size = 5.0f; // Adjust based on typical tree spacing
     float3 quantized_pos = floor(position / grid_size) * grid_size;
 
-    // simple hash based on quantized position
-    uint seed = uint(quantized_pos.x * 73856093.0) ^ uint(quantized_pos.z * 83492791.0);
+    // Simple hash based on quantized position
+    uint seed = uint(quantized_pos.x * 73856093.0) ^ uint(quantized_pos.z * 19349663.0);
     seed = (seed ^ 61u) ^ (seed >> 16u);
     seed *= 9u;
     seed = seed ^ (seed >> 4u);
     seed *= 0x27d4eb2du;
     seed = seed ^ (seed >> 15u);
-    return float(seed) / 4294967295.0; // normalize to [0, 1]
+    return float(seed) / 4294967295.0; // Normalize to [0, 1]
 }
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface)
