@@ -214,54 +214,76 @@ namespace spartan
             vector<VkVertexInputBindingDescription> vertex_input_binding_descs;
             vector<VkVertexInputAttributeDescription> vertex_attribute_descs;
             RHI_Shader* shader_vertex = m_state.shaders[RHI_Shader_Type::Vertex];
-            if (shader_vertex)
+            
+            if (shader_vertex && shader_vertex->GetInputLayout().get())
             {
-                vertex_input_binding_descs.push_back
-                ({
-                    0,
-                    shader_vertex ? shader_vertex->GetVertexSize() : 0,
-                    VK_VERTEX_INPUT_RATE_VERTEX
-                });
-
-                vertex_input_binding_descs.push_back
-                ({
-                    1,                            // binding
-                    sizeof(math::Matrix),         // stride
-                    VK_VERTEX_INPUT_RATE_INSTANCE // inputRate
-                });
-
-                if (RHI_InputLayout* input_layout = shader_vertex->GetInputLayout().get())
+                RHI_InputLayout* input_layout = shader_vertex->GetInputLayout().get();
+                const auto& attribute_descs = input_layout->GetAttributeDescriptions();
+            
+                // vertex buffer (binding 0) - for per-vertex attributes like position, uv, color, normal, tangent
+                bool has_vertex_attributes      = false;
+                bool is_geometry_pass_vertex = false;
+                for (const auto& desc : attribute_descs)
                 {
-                    vertex_attribute_descs.reserve(input_layout->GetAttributeDescriptions().size());
-                    for (const auto& desc : input_layout->GetAttributeDescriptions())
+                    // check for per-vertex attributes
+                    if (desc.name == "POSITION" || desc.name == "TEXCOORD" || desc.name == "COLOR" || desc.name == "NORMAL" || desc.name == "TANGENT")
                     {
-                        vertex_attribute_descs.push_back
-                        ({
-                            desc.location,                                   // location
-                            desc.binding,                                    // binding
-                            vulkan_format[rhi_format_to_index(desc.format)], // format
-                            desc.offset                                      // offset
-                        });
+                        has_vertex_attributes = true;
+
+                        // geometry pass vertices have normal or tangent
+                        if (desc.name == "NORMAL" || desc.name == "TANGENT")
+                        {
+                            is_geometry_pass_vertex = true;
+                        }
                     }
                 }
-
-                // instance buffer (it's always included in order to avoid permuations for pipelines and shaders)
+            
+                // add vertex buffer binding if there are per-vertex attributes
+                if (has_vertex_attributes)
                 {
-                    // update the attribute descriptions to pass the entire matrix
-                    // each row of the matrix is treated as a separate attribute
+                    vertex_input_binding_descs.push_back({
+                        0,                              // binding
+                        shader_vertex->GetVertexSize(), // stride
+                        VK_VERTEX_INPUT_RATE_VERTEX     // input rate
+                    });
+            
+                    // add attribute descriptions for per-vertex attributes
+                    for (const auto& desc : attribute_descs)
+                    {
+                        if (desc.name == "POSITION" || desc.name == "TEXCOORD" || desc.name == "COLOR" || desc.name == "NORMAL" || desc.name == "TANGENT")
+                        {
+                            vertex_attribute_descs.push_back({
+                                desc.location,                                   // location
+                                0,                                               // binding (vertex buffer)
+                                vulkan_format[rhi_format_to_index(desc.format)], // format
+                                desc.offset                                      // offset
+                            });
+                        }
+                    }
+                }
+            
+                // instance buffer (binding 1) - for instance transform (matrix) in geometry vertices
+                if (is_geometry_pass_vertex)
+                {
+                    vertex_input_binding_descs.push_back({
+                        1,                            // binding
+                        sizeof(math::Matrix),         // stride
+                        VK_VERTEX_INPUT_RATE_INSTANCE // input rate
+                    });
+            
+                    // add attribute descriptions for instance transform (4 rows of the matrix)
+                    uint32_t base_location = static_cast<uint32_t>(vertex_attribute_descs.size()); // next available location (e.g., 4)
                     for (uint32_t i = 0; i < 4; i++)
                     {
-                        vertex_attribute_descs.push_back
-                        ({
-                            static_cast<uint32_t>(vertex_attribute_descs.size()), // location, assuming the next available location
-                            1,                                                    // binding
-                            VK_FORMAT_R32G32B32A32_SFLOAT,                        // format, assuming 32-bit float components
-                            static_cast<uint32_t>(i * sizeof(math::Vector4))      // offset, assuming math::Vector4 is the type of each row
+                        vertex_attribute_descs.push_back({
+                            base_location + i,                               // location (e.g., 4, 5, 6, 7)
+                            1,                                               // binding (instance buffer)
+                            VK_FORMAT_R32G32B32A32_SFLOAT,                   // format (vec4 per row)
+                            static_cast<uint32_t>(i * sizeof(math::Vector4)) // offset
                         });
                     }
                 }
             }
-
             // vertex input state
             VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
             {
