@@ -538,21 +538,7 @@ namespace spartan
                 // step 2: pack occlusion, roughness, metalness, and height into a single texture
                 {
                     // generate unique name by hashing texture IDs
-                    string tex_name;
-                    {
-                        uint64_t hash = 0;
-                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_occlusion ? texture_occlusion->GetObjectId() : 0));
-                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_roughness ? texture_roughness->GetObjectId() : 0));
-                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_metalness ? texture_metalness->GetObjectId() : 0));
-                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(texture_height    ? texture_height->GetObjectId()    : 0));
-                        // dimensions are hashed to ensure we don't get a packed texture using the above textures but at a different resolution
-                        // however, if the texture IDs are the same, their resolution should be the same, this could suggest the we are shrinking them too early
-                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(reference_width));
-                        hash          = rhi_hash_combine(hash, static_cast<uint64_t>(reference_height));
-
-                        tex_name = "texture_packed_" + to_string(hash);
-                    }
-
+                    string tex_name = GetObjectName() + "_packed";
                     shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
                     if (!texture_packed)
                     {
@@ -575,7 +561,7 @@ namespace spartan
                         );
                         texture_packed->SetResourceFilePath(tex_name + ".png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
                         texture_packed->AllocateMip();
-                        
+
                         // create some default data to replace missing textures
                         const size_t texture_size = reference_width * reference_height * 4;
                         vector<byte> texture_one(texture_size, static_cast<byte>(255));

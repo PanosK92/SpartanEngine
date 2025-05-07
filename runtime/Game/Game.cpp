@@ -1407,9 +1407,9 @@ namespace spartan
                 {
                     entity_pool_light = mesh->GetRootEntity().lock();
                     entity_pool_light->SetObjectName("pool_light");
-                    entity_pool_light->SetScale(0.02f); // what looks good after it becomes a child of a wall
+                    entity_pool_light->SetScale(0.5f);                            // what looks good
                     entity_pool_light->SetPosition(Vector3(0.0f, 1000.0f, 0.0f)); // hide it as this specific light won't be used in the level (it will be the blueprint)
-                    entity_pool_light->GetChildByIndex(3)->SetActive(false); // there is an extra child that we don't need
+                    entity_pool_light->GetChildByIndex(3)->SetActive(false);      // there is an extra child that we don't need
 
                     // outer metallic ring
                     shared_ptr<Material> material_metal = make_shared<Material>();
@@ -1621,7 +1621,7 @@ namespace spartan
                     const WallConfig walls[] =
                     {
                         { Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // FRONT
-                        { Vector3(0, ROOM_HEIGHT / 2, ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) },  // BACK
+                        { Vector3(0, ROOM_HEIGHT / 2, ROOM_DEPTH / 2),  Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // BACK
                         { Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }, // LEFT
                         { Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }   // RIGHT
                     };
