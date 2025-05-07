@@ -159,12 +159,11 @@ namespace spartan
 
         // misc
         void RenderPassEnd();
-        void SetIgnoreClearValues(const bool ignore_clear_values) { m_ignore_clear_values = ignore_clear_values; }
-        RHI_SyncPrimitive* GetRenderingCompleteSemaphore()        { return m_rendering_complete_semaphore.get(); }
-        void* GetRhiResource() const                              { return m_rhi_resource; }
-        const RHI_CommandListState GetState() const               { return m_state; }
-        uint64_t GetSwapchainId() const                           { return m_swapchain_id; }
-        RHI_Queue* GetQueue() const                               { return m_queue; }
+        RHI_SyncPrimitive* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
+        void* GetRhiResource() const                       { return m_rhi_resource; }
+        const RHI_CommandListState GetState() const        { return m_state; }
+        uint64_t GetSwapchainId() const                    { return m_swapchain_id; }
+        RHI_Queue* GetQueue() const                        { return m_queue; }
 
     private:
         void PreDraw();
@@ -177,7 +176,6 @@ namespace spartan
         // misc
         uint64_t m_buffer_id_vertex                          = 0;
         uint64_t m_buffer_id_index                           = 0;
-        bool m_ignore_clear_values                           = false;
         uint64_t m_swapchain_id                              = 0;
         uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;

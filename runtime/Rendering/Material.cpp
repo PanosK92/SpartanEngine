@@ -537,16 +537,16 @@ namespace spartan
                 
                 // step 2: pack occlusion, roughness, metalness, and height into a single texture
                 {
+                    bool textures_are_compressed = (texture_occlusion  && texture_occlusion->IsCompressedFormat()) ||
+                                                   (texture_roughness  && texture_roughness->IsCompressedFormat()) ||
+                                                   (texture_metalness  && texture_metalness->IsCompressedFormat()) ||
+                                                   (texture_height     && texture_height->IsCompressedFormat());
+
                     // generate unique name by hashing texture IDs
                     string tex_name = GetObjectName() + "_packed";
                     shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
-                    if (!texture_packed)
+                    if (!texture_packed && !textures_are_compressed)
                     {
-                        bool textures_are_compressed = (texture_occlusion  && texture_occlusion->IsCompressedFormat()) ||
-                                                       (texture_roughness  && texture_roughness->IsCompressedFormat()) ||
-                                                       (texture_metalness  && texture_metalness->IsCompressedFormat()) ||
-                                                       (texture_height     && texture_height->IsCompressedFormat());
-
                         // create packed texture
                         texture_packed = make_shared<RHI_Texture>
                         (
@@ -570,7 +570,7 @@ namespace spartan
 
                         // determine metalness data based on texture and property
                         vector<byte> metalness_data = texture_zero; // default to zero
-                        if (texture_metalness && !texture_metalness->GetMip(0, 0).bytes.empty())
+                        if (texture_metalness)
                         {
                             metalness_data = texture_metalness->GetMip(0, 0).bytes; // use texture if available
                         }

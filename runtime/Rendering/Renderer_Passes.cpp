@@ -257,8 +257,8 @@ namespace spartan
     
                         if (is_visible)
                         {
-                            affects_light = true;
-                            size_t cascade_slot = i * 6 + array_index; // Unique slot for light and cascade
+                            affects_light       = true;
+                            size_t cascade_slot = i * 6 + array_index; // unique slot for light and cascade
                             if (visible_counts[array_index][i] < MAX_RENDERABLES)
                             {
                                 visible_renderables_per_cascade[cascade_slot][visible_counts[array_index][i]++] = entity.get();
@@ -272,8 +272,8 @@ namespace spartan
                     is_dirty      = light->GetLightType() == LightType::Directional                         ? true : is_dirty;
                     if (affects_light && is_dirty)
                     {
-                        current_lights |= (1ULL << light_index);
-                        update_shadow_map[i] = true;
+                        current_lights       |= (1ULL << light_index);
+                        update_shadow_map[i]  = true;
                         light->SetFlag(LightFlags::ShadowDirty, false);
                     }
     
@@ -293,7 +293,7 @@ namespace spartan
                 // set light-specific pso properties
                 pso.render_target_depth_texture = light->GetDepthTexture();
                 pso.rasterizer_state            = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
-    
+
                 // iterate over cascades/faces
                 for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
                 {
@@ -312,6 +312,8 @@ namespace spartan
                         Entity* entity         = visible_renderables[j];
                         Renderable* renderable = entity->GetComponent<Renderable>();
                         Material* material     = renderable->GetMaterial();
+                        if (!material || material->IsTransparent())
+                            continue;
     
                         // set per-renderable states
                         cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
@@ -397,7 +399,6 @@ namespace spartan
                 pso.render_target_depth_texture      = tex_occluders;
                 pso.resolution_scale                 = true;
                 pso.clear_depth                      = 0.0f;
-                cmd_list->SetIgnoreClearValues(false);
 
                 bool pipeline_set = false;
                 for (uint32_t i = 0; i < m_draw_call_count; i++)
@@ -498,7 +499,6 @@ namespace spartan
             pso.render_target_depth_texture      = tex_depth;
             pso.resolution_scale                 = true;
             pso.clear_depth                      = 0.0f;
-            cmd_list->SetIgnoreClearValues(false);
 
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
@@ -611,7 +611,6 @@ namespace spartan
         pso.clear_color[1]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
-        cmd_list->SetIgnoreClearValues(false);
     
         bool set_pipeline = true;
         for (uint32_t i = 0; i < m_draw_call_count; i++)
@@ -1862,7 +1861,6 @@ namespace spartan
                             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
                             pso.render_target_color_textures[0]  = tex_outline;
                             pso.clear_color[0]                   = Color::standard_transparent;
-                            cmd_list->SetIgnoreClearValues(false);
                             cmd_list->SetPipelineState(pso);
                         
                             // render
