@@ -23,15 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // note: golden ratio exists in the universe to maximize surface coverage, hence the use of it here
 
-// base shadow settings
 static const uint   g_shadow_sample_count            = 4;
 static const float  g_shadow_filter_size             = 4.0f;
 static const float  g_shadow_cascade_blend_threshold = 0.8f;
-// penumbra shadow settings
 static const uint   g_penumbra_sample_count          = 8;
 static const float  g_penumbra_filter_size           = 128.0f;
-// pre-calculated values                             
-static const float  g_pcf_filter_size                = (sqrt((float)g_shadow_sample_count) - 1.0f) / 2.0f;
 static const float  g_shadow_sample_reciprocal       = 1.0f / (float)g_shadow_sample_count;
 
 float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
@@ -104,7 +100,7 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
 float compute_shadow(Surface surface, Light light)
 {
-    float shadow_result = 1.0f; // default shadow value for fully lit (no shadow)
+    float shadow = 1.0f;
 
     // process only if the pixel is within the light's effective range
     if (light.distance_to_pixel <= light.far)
@@ -122,7 +118,7 @@ float compute_shadow(Surface surface, Light light)
             
             // sample shadow map
             float3 sample_coords = float3(ndc_to_uv(ndc.xy), slice_index);
-            shadow_result        = vogel_depth(light, surface, sample_coords, ndc.z);
+            shadow               = vogel_depth(light, surface, sample_coords, ndc.z);
         }
         else // directional, spot
         {
@@ -133,7 +129,7 @@ float compute_shadow(Surface surface, Light light)
             float3 near_sample     = float3(near_uv, near_cascade);
             float  near_depth      = near_ndc.z;
         
-            shadow_result = vogel_depth(light, surface, near_sample, near_depth);
+            shadow = vogel_depth(light, surface, near_sample, near_depth);
 
             // for directional lights, blend with the far cascade
             if (light.is_directional())
@@ -148,11 +144,11 @@ float compute_shadow(Surface surface, Light light)
                     float  far_depth       = far_ndc.z;
                     float  far_shadow      = vogel_depth(light, surface, float3(far_uv, far_cascade), far_depth);
         
-                    shadow_result = lerp(shadow_result, far_shadow, cascade_blend_factor);
+                    shadow = lerp(shadow, far_shadow, cascade_blend_factor);
                 }
             }
         }
     }
 
-    return shadow_result;
+    return shadow;
 }

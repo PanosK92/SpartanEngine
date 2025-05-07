@@ -79,25 +79,20 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (!surface.is_sky() && light.intensity > 0.0f)
     {
         // shadows
+        if (light.has_shadows())
         {
-            if (light.has_shadows())
-            {
-                // shadow maps
-                shadow = compute_shadow(surface, light);
+            // shadow maps
+            shadow = compute_shadow(surface, light);
             
-                // screen space shadows - for opaque objects
-                uint array_slice_index = light.get_array_index();
-                if (light.has_shadows_screen_space() && pass_is_opaque() && array_slice_index != -1)
-                {
-                    shadow = min(shadow, tex_uav_sss[int3(thread_id.xy, array_slice_index)].x);
-                }
+            // screen space shadows
+            uint array_slice_index = light.get_array_index();
+            if (light.has_shadows_screen_space() && array_slice_index != -1)
+            {
+                shadow = min(shadow, tex_uav_sss[int3(thread_id.xy, array_slice_index)].x);
             }
 
-            // ensure that the shadow is as transparent as the material
-            if (pass_is_transparent())
-            {
-                shadow = clamp(shadow, surface.alpha, 1.0f);
-            }
+            // adjust shadow based on the material transparency that it's being applied to
+            shadow = lerp(1.0f, shadow, surface.alpha);
 
             // modulate radiance with shadow
             light.radiance *= shadow;

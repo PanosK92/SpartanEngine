@@ -914,16 +914,14 @@ namespace spartan
             {
                 Light* light = entity->GetComponent<Light>();
 
-                // read from these
+                // set textures
                 SetGbufferTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
-                cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetFlag(LightFlags::Shadows) ? light->GetDepthTexture() : nullptr);
-
-                // write to these
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,  GetRenderTarget(Renderer_RenderTarget::light_diffuse));
-                cmd_list->SetTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::light_specular));
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3, GetRenderTarget(Renderer_RenderTarget::light_shadow));
-                cmd_list->SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao,    GetRenderTarget(Renderer_RenderTarget::ssao));
+                cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetDepthTexture());
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,         GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex2,        GetRenderTarget(Renderer_RenderTarget::light_specular));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3,        GetRenderTarget(Renderer_RenderTarget::light_shadow));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex4,        GetRenderTarget(Renderer_RenderTarget::light_volumetric));
 
                 // push pass constants
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);

@@ -65,7 +65,7 @@ struct Surface
     bool has_texture_emissive()   { return flags & uint(1U << 6);  }
     bool has_texture_occlusion()  { return flags & uint(1U << 7);  }
     bool is_terrain()             { return flags & uint(1U << 8);  }
-    bool is_tree()                { return flags & uint(1U << 9); }
+    bool is_tree()                { return flags & uint(1U << 9);  }
     bool is_grass_blade()         { return flags & uint(1U << 10); }
     bool is_water()               { return flags & uint(1U << 11); }
     bool is_tessellated()         { return flags & uint(1U << 12); }

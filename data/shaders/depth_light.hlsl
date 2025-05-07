@@ -43,7 +43,6 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         float3 ndc           = project_onto_paraboloid(vertex.position_clip.xyz, light.near, light.far);
         vertex.position_clip = float4(ndc, 1.0f);
     }
-    
 
     return vertex;
 }
