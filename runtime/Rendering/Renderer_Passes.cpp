@@ -697,7 +697,7 @@ namespace spartan
 
     void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
     {
-        static bool cleared = true;
+        static bool cleared = false;
         RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
 
         if (GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
@@ -726,7 +726,7 @@ namespace spartan
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
     {
-        static bool cleared = true;
+        static bool cleared = false;
 
         if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
         { 
