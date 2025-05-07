@@ -81,7 +81,7 @@ namespace spartan
         }
     }
 
-    namespace texture_packing
+    namespace texture_processing
     {
         void pack_occlusion_roughness_metalness_height(
             const vector<byte>& occlusion,
@@ -123,56 +123,121 @@ namespace spartan
             }
         }
 
-        void generate_normal_map_from_albedo(const vector<byte>& albedo_data, uint32_t width, uint32_t height, vector<byte>& normal_data)
+        void generate_normal_from_albedo(const vector<byte>& albedo_data, vector<byte>& normal_data, uint32_t width, uint32_t height, bool flip_y = true, float intensity = 4.0f)
         {
-            // resize output to match input dimensions (RGBA)
+            // validate inputs
+            SP_ASSERT_MSG(albedo_data.size() == width * height * 4, "Invalid albedo data size");
+            SP_ASSERT_MSG(intensity > 0.0f, "Intensity must be positive");
             normal_data.resize(width * height * 4);
-
-            // assume DirectX-style normal map (+Y is down)
-            const bool flip_y = true;
-
-            // convert albedo to grayscale and compute sobel filter
-            for (uint32_t y = 0; y < height; y++)
+        
+            // 5x5 sobel kernels for x and y gradients
+            const int sobel_x[5][5] =
             {
-                for (uint32_t x = 0; x < width; x++)
+                {-2, -1,  0,  1,  2},
+                {-3, -2,  0,  2,  3},
+                {-4, -3,  0,  3,  4},
+                {-3, -2,  0,  2,  3},
+                {-2, -1,  0,  1,  2}
+            };
+            const int sobel_y[5][5] =
+            {
+                {-2, -3, -4, -3, -2},
+                {-1, -2, -3, -2, -1},
+                { 0,  0,  0,  0,  0},
+                { 1,  2,  3,  2,  1},
+                { 2,  3,  4,  3,  2}
+            };
+        
+            // function to get perceptual luminance (grayscale)
+            auto get_grayscale = [&](uint32_t px, uint32_t py) -> float
+            {
+                uint32_t index = (py * width + px) * 4;
+                float r = static_cast<float>(to_integer<uint8_t>(albedo_data[index + 0])) / 255.0f;
+                float g = static_cast<float>(to_integer<uint8_t>(albedo_data[index + 1])) / 255.0f;
+                float b = static_cast<float>(to_integer<uint8_t>(albedo_data[index + 2])) / 255.0f;
+                // perceptual luminance (itu-r bt.709)
+                return 0.2126f * r + 0.7152f * g + 0.0722f * b;
+            };
+        
+            // temporary buffer for normal map before post-processing
+            vector<Vector3> temp_normals(width * height);
+        
+            // compute gradients and normals
+            for (uint32_t y = 0; y < height; ++y)
+            {
+                for (uint32_t x = 0; x < width; ++x)
                 {
-                    // get neighboring pixels with wrapping
-                    int x0 = (x - 1 + width) % width;
-                    int x1 = (x + 1) % width;
-                    int y0 = (y - 1 + height) % height;
-                    int y1 = (y + 1) % height;
-
-                    // get grayscale values (average RGB)
-                    auto get_grayscale = [&](uint32_t px, uint32_t py)
+                    float gx = 0.0f, gy = 0.0f;
+        
+                    // apply 5x5 sobel kernels
+                    for (int j = -2; j <= 2; ++j)
                     {
-                        uint32_t index = (py * width + px) * 4;
-                        float r = static_cast<float>(albedo_data[index + 0]) / 255.0f;
-                        float g = static_cast<float>(albedo_data[index + 1]) / 255.0f;
-                        float b = static_cast<float>(albedo_data[index + 2]) / 255.0f;
-                        return (r + g + b) / 3.0f;
-                    };
-
-                    // sobel filter for gradients
-                    // adjusted signs to ensure correct normal direction
-                    float gx = (get_grayscale(x1, y0) - get_grayscale(x0, y0)) +
-                               (2.0f * get_grayscale(x1, y) - 2.0f * get_grayscale(x0, y)) +
-                               (get_grayscale(x1, y1) - get_grayscale(x0, y1));
-
-                    float gy = (get_grayscale(x0, y1) - get_grayscale(x0, y0)) +
-                               (2.0f * get_grayscale(x, y1) - 2.0f * get_grayscale(x, y0)) +
-                               (get_grayscale(x1, y1) - get_grayscale(x1, y0));
-
-                    // compute normal (adjust Y direction based on convention)
+                        for (int i = -2; i <= 2; ++i)
+                        {
+                            int px = (x + i + width) % width;
+                            int py = (y + j + height) % height;
+                            float value = get_grayscale(px, py);
+                            gx += value * sobel_x[j + 2][i + 2];
+                            gy += value * sobel_y[j + 2][i + 2];
+                        }
+                    }
+        
+                    // normalize gradient magnitude and apply intensity
+                    float scale = 1.0f / 128.0f; // adjusted for 5x5 kernel
+                    gx *= scale * intensity;
+                    gy *= scale * intensity;
+        
+                    // compute normal (z = 1 for surface facing up)
                     Vector3 normal(gx, flip_y ? -gy : gy, 1.0f);
                     normal.Normalize();
-                    normal = (normal + Vector3::One) * 0.5f; // map to [0,1]
-
+        
+                    // store in temporary buffer
+                    temp_normals[y * width + x] = normal;
+                }
+            }
+        
+            // 3x3 gaussian kernel for smoothing
+            const float gaussian[3][3] =
+            {
+                {1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f},
+                {2.0f / 16.0f, 4.0f / 16.0f, 2.0f / 16.0f},
+                {1.0f / 16.0f, 2.0f / 16.0f, 1.0f / 16.0f}
+            };
+        
+            // apply gaussian blur and store final normals
+            for (uint32_t y = 0; y < height; ++y)
+            {
+                for (uint32_t x = 0; x < width; ++x)
+                {
+                    Vector3 blurred_normal(0.0f, 0.0f, 0.0f);
+        
+                    // apply gaussian blur
+                    for (int j = -1; j <= 1; ++j)
+                    {
+                        for (int i = -1; i <= 1; ++i)
+                        {
+                            int px = (x + i + width) % width;
+                            int py = (y + j + height) % height;
+                            Vector3 n = temp_normals[py * width + px];
+                            float weight = gaussian[j + 1][i + 1];
+                            blurred_normal.x += n.x * weight;
+                            blurred_normal.y += n.y * weight;
+                            blurred_normal.z += n.z * weight;
+                        }
+                    }
+        
+                    // re-normalize after blurring
+                    blurred_normal.Normalize();
+        
+                    // map to [0,1] for storage
+                    blurred_normal = (blurred_normal + Vector3::One) * 0.5f;
+        
                     // store in output
                     uint32_t index = (y * width + x) * 4;
-                    normal_data[index + 0] = static_cast<byte>(normal.x * 255.0f); // R: X direction
-                    normal_data[index + 1] = static_cast<byte>(normal.y * 255.0f); // G: Y direction
-                    normal_data[index + 2] = static_cast<byte>(normal.z * 255.0f); // B: Z direction
-                    normal_data[index + 3] = static_cast<byte>(255); // A: full opacity
+                    normal_data[index + 0] = static_cast<byte>(static_cast<uint8_t>(blurred_normal.x * 255.0f)); // r: x direction
+                    normal_data[index + 1] = static_cast<byte>(static_cast<uint8_t>(blurred_normal.y * 255.0f)); // g: y direction
+                    normal_data[index + 2] = static_cast<byte>(static_cast<uint8_t>(blurred_normal.z * 255.0f)); // b: z direction
+                    normal_data[index + 3] = static_cast<byte>(255); // a: full opacity
                 }
             }
         }
@@ -195,7 +260,7 @@ namespace spartan
         SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
     }
 
-    void Material::LoadFromFile(const std::string& file_path)
+    void Material::LoadFromFile(const string& file_path)
     {
         pugi::xml_document doc;
         if (!doc.load_file(file_path.c_str()))
@@ -422,11 +487,11 @@ namespace spartan
 
                     // generate normal map data
                     vector<byte> normal_data;
-                    texture_packing::generate_normal_map_from_albedo(
+                    texture_processing::generate_normal_from_albedo(
                         texture_color->GetMip(0, 0).bytes,
+                        normal_data,
                         width,
-                        height,
-                        normal_data
+                        height
                     );
                     texture_normal_new->GetMip(0, 0).bytes = move(normal_data);
 
@@ -465,7 +530,7 @@ namespace spartan
                     {
                         if (!texture_color->IsCompressedFormat() && !texture_alpha_mask->IsCompressedFormat())
                         {
-                            texture_packing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                            texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
                         }
                     }
                 }
@@ -518,7 +583,7 @@ namespace spartan
                         vector<byte> texture_half(texture_size, static_cast<byte>(127));
                         
                         // create packed data and fallback to default data when needed
-                        texture_packing::pack_occlusion_roughness_metalness_height
+                        texture_processing::pack_occlusion_roughness_metalness_height
                         (
                             (texture_occlusion && !texture_occlusion->GetMip(0, 0).bytes.empty()) ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
                             (texture_roughness && !texture_roughness->GetMip(0, 0).bytes.empty()) ? texture_roughness->GetMip(0, 0).bytes : texture_one,
@@ -678,12 +743,12 @@ namespace spartan
     {
         const float epsilon = 0.001f;
 
-        if (std::abs(ior - 1.0f)  < epsilon) return MaterialIor::Air;
-        if (std::abs(ior - 1.33f) < epsilon) return MaterialIor::Water;
-        if (std::abs(ior - 1.38f) < epsilon) return MaterialIor::Eyes;
-        if (std::abs(ior - 1.52f) < epsilon) return MaterialIor::Glass;
-        if (std::abs(ior - 1.76f) < epsilon) return MaterialIor::Sapphire;
-        if (std::abs(ior - 2.42f) < epsilon) return MaterialIor::Diamond;
+        if (abs(ior - 1.0f)  < epsilon) return MaterialIor::Air;
+        if (abs(ior - 1.33f) < epsilon) return MaterialIor::Water;
+        if (abs(ior - 1.38f) < epsilon) return MaterialIor::Eyes;
+        if (abs(ior - 1.52f) < epsilon) return MaterialIor::Glass;
+        if (abs(ior - 1.76f) < epsilon) return MaterialIor::Sapphire;
+        if (abs(ior - 2.42f) < epsilon) return MaterialIor::Diamond;
 
         return MaterialIor::Air;
     }
