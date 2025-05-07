@@ -353,7 +353,7 @@ namespace spartan
         create_info.clipped                  = VK_TRUE;
         create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain);
 
-        // check for potential overlay interference
+        // check for RivaTuner overlay interference, it adds bit flags without checking for compatability with existing ones (so it can break swapchains)
         if (is_process_running("RTSS.exe"))
         {
             SP_ERROR_WINDOW("RivaTuner is running and may crash the engine. Please close RivaTuner and restart the engine.");
@@ -520,7 +520,7 @@ namespace spartan
     
         // present the current frame
         cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
-    
+
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
         if (m_is_dirty)
         {

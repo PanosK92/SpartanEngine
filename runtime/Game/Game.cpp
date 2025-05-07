@@ -1311,7 +1311,7 @@ namespace spartan
                     light->SetRange(39.66f);
                     light->SetIntensity(LightIntensity::bulb_500_watt);
                     light->SetFlag(LightFlags::ShadowsTransparent, false);
-                    light->SetFlag(LightFlags::Volumetric, false);
+                    light->SetFlag(LightFlags::Volumetric,         false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 }
 

@@ -350,7 +350,7 @@ namespace spartan
         const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                             // specify action to log messages from validation layers
         const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };                  // specify types of messages to be reported by validation layers
         const VkBool32 setting_enable_message_limit   = VK_TRUE;                                                       // enable limiting of duplicate validation messages
-        const int32_t setting_duplicate_message_limit = 1;                                                             // set the limit for duplicate validation messages
+        const int32_t setting_duplicate_message_limit = 10;                                                            // set the limit for duplicate validation messages
         const char* setting_synchronization           = "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT"; // enable synchronization validation 
         const char* setting_best_practices            = "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT";             // enable best practices
         const char* setting_vendor_amd                = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD";                 // enable AMD-specific best practices
@@ -772,7 +772,7 @@ namespace spartan
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count }
             };
 
