@@ -400,7 +400,7 @@ namespace spartan
                 shared_ptr<Entity> light = World::CreateEntity();
                 light->SetObjectName("light_point");
                 light->SetPositionLocal(Vector3(2.2f, 4.0f, 3.2f));
-                light->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
+                light->AddComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
                 light->GetComponent<Light>()->SetLightType(LightType::Point);
                 light->GetComponent<Light>()->SetRange(120.0f);
                 light->GetComponent<Light>()->SetIntensity(LightIntensity::bulb_500_watt);
