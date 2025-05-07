@@ -556,6 +556,9 @@ namespace spartan
                             renderable->GetVertexOffset(draw_call.lod_index)
                         );
                     }
+
+                    // at this point, we don't want clear in case another render pass is implicitly started
+                    pso.clear_depth = rhi_depth_load;
                 }
             }
 
@@ -677,6 +680,9 @@ namespace spartan
                         renderable->GetVertexOffset(draw_call.lod_index)
                     );
                 }
+
+                // at this point, we don't want clear in case another render pass is implicitly started
+                pso.clear_depth = rhi_depth_load;
             }
         }
     
