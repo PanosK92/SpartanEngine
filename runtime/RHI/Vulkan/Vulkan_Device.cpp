@@ -767,12 +767,13 @@ namespace spartan
 
         void create_pool()
         {
-            static array<VkDescriptorPoolSize, 5> pool_sizes =
+            static array<VkDescriptorPoolSize, 6> pool_sizes =
             {
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count }
             };
 
@@ -1310,13 +1311,13 @@ namespace spartan
 
                 RHI_Device::PhysicalDeviceRegister(PhysicalDevice
                 (
-                    device_properties.apiVersion,          // api version
-                    device_properties.driverVersion,       // driver version
-                    device_properties.vendorID,            // vendor id
-                    type,                                  // type
-                    &device_properties.deviceName[0],      // name
-                    vram_size_bytes,                       // memory
-                    static_cast<void*>(device_physical)    // data
+                    device_properties.apiVersion,       // api version
+                    device_properties.driverVersion,    // driver version
+                    device_properties.vendorID,         // vendor id
+                    type,                               // type
+                    &device_properties.deviceName[0],   // name
+                    vram_size_bytes,                    // memory
+                    static_cast<void*>(device_physical) // data
                 ));
             }
         }

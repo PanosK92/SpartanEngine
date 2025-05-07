@@ -30,7 +30,9 @@ SP_WARNINGS_ON
 namespace spartan
 {
 /*
-Version: dxcompiler.dll: 1.8 - 1.8.2407.7 (416fab6b5); dxil.dll: 1.8(101.8.2407.12)
+OVERVIEW: HLSL Compiler for Windows
+
+Version: dxcompiler.dll: 1.8 - 1.8.2502.8 (b4711839e); dxil.dll: 1.8(1.8.2502.8)
 
 USAGE: dxc.exe [options] <inputs>
 
@@ -178,19 +180,29 @@ SPIR-V CodeGen Options:
                           Specify the target environment: vulkan1.0 (default), vulkan1.1, vulkan1.1spirv1.4, vulkan1.2, vulkan1.3, or universal1.5
   -fspv-use-legacy-buffer-matrix-order
                           Assume the legacy matrix order (row major) when accessing raw buffers (e.g., ByteAdddressBuffer)
+  -fspv-use-vulkan-memory-model
+                          Generates SPIR-V modules that use the Vulkan memory model instead of GLSL450.
   -fvk-auto-shift-bindings
                           Apply fvk-*-shift to resources without an explicit register assignment.
   -fvk-b-shift <shift> <space>
                           Specify Vulkan binding number shift for b-type register
+  -fvk-bind-counter-heap <binding> <set>
+                          Specify Vulkan binding number and set number for the counter heap.
   -fvk-bind-globals <binding> <set>
                           Specify Vulkan binding number and set number for the $Globals cbuffer
   -fvk-bind-register <type-number> <space> <binding> <set>
                           Specify Vulkan descriptor set and binding for a specific register
+  -fvk-bind-resource-heap <binding> <set>
+                          Specify Vulkan binding number and set number for the resource heap.
+  -fvk-bind-sampler-heap <binding> <set>
+                          Specify Vulkan binding number and set number for the sampler heap.
   -fvk-invert-y           Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
   -fvk-s-shift <shift> <space>
                           Specify Vulkan binding number shift for s-type register
   -fvk-support-nonzero-base-instance
                           Follow Vulkan spec to use gl_BaseInstance as the first vertex instance, which makes SV_InstanceID = gl_InstanceIndex - gl_BaseInstance (without this option, SV_InstanceID = gl_InstanceIndex)
+  -fvk-support-nonzero-base-vertex
+                          Follow Vulkan spec to use gl_BaseVertex as the first vertex, which makes SV_VertexID = gl_VertexIndex - gl_BaseVertex (without this option, SV_VertexID = gl_VertexIndex)
   -fvk-t-shift <shift> <space>
                           Specify Vulkan binding number shift for t-type register
   -fvk-u-shift <shift> <space>

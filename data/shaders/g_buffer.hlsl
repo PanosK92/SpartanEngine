@@ -173,8 +173,21 @@ gbuffer main_ps(gbuffer_vertex vertex)
             albedo            *= albedo_sample;
         }
 
-        // for some reason, if I just multiply I get random colors for non-grass blade pixels
-        albedo.rgb *= lerp(1.0, vertex.color, surface.is_grass_blade());
+        // grass blades are colored dynamically
+        if (surface.is_grass_blade())
+        {
+            //  gradient
+            float3 color_base = float3(0.1f, 0.25f, 0.05f); // muted dark green
+            float3 color_tip  = float3(0.3f, 0.35f, 0.15f); // subtle yellowish-green
+            float3 color      = lerp(color_base, color_tip, smoothstep(0, 1, vertex.height_percent * 0.5f));
+
+            // snow
+            float snow_blend_factor = get_snow_blend_factor(vertex.position);
+            color                   = lerp(color, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
+
+             // apply grass color to albedo
+             albedo.rgb *= color;
+        }
         
         // alpha testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
         albedo.a = lerp(albedo.a, 1.0f, step(albedo_sample.a, 1.0f) * pass_is_opaque());

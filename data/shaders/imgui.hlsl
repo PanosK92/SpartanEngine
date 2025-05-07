@@ -25,15 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct Vertex_Pos2dUvColor
 {
-    float2 position : POSITION0;
-    float2 uv       : TEXCOORD0;
-    float4 color    : COLOR0;
+    float2 position : POSITION;
+    float2 uv       : TEXCOORD;
+    float4 color    : COLOR;
 };
 
 struct vertex
 {
     float4 position : SV_POSITION;
-    float4 color    : COLOR0;
+    float4 color    : COLOR;
     float2 uv       : TEXCOORD;
 };
 
