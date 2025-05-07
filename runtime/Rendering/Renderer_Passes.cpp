@@ -287,10 +287,7 @@ namespace spartan
             for (size_t i = 0; i < light_count && i < light_entities.size(); ++i)
             {
                 Light* light = light_entities[i]->GetComponent<Light>();
-                if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
-                    continue;
-    
-                if (!update_shadow_map[i])
+                if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f || !update_shadow_map[i])
                     continue;
     
                 // set light-specific pso properties
@@ -318,7 +315,7 @@ namespace spartan
     
                         // set per-renderable states
                         cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                         if (light->GetLightType() == LightType::Directional && array_index > 0)
+                        if (light->GetLightType() == LightType::Directional && array_index > 0)
                         {
                             pso.shaders[RHI_Shader_Type::Pixel] = nullptr; // no pixel shader for directional light cascades beyond index 0
                         }
@@ -757,9 +754,6 @@ namespace spartan
 
     void Renderer::Pass_Sss(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::ScreenSpaceShadows))
-            return;
-
         // get resources
         RHI_Texture* tex_sss= GetRenderTarget(Renderer_RenderTarget::sss);
 

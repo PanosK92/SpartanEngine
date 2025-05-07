@@ -44,7 +44,6 @@ namespace spartan
         Bloom,
         Fog,
         ScreenSpaceAmbientOcclusion,
-        ScreenSpaceShadows,
         ScreenSpaceReflections,
         GlobalIllumination,
         MotionBlur,
@@ -66,13 +65,6 @@ namespace spartan
         ResolutionScale,
         DynamicResolution,
         Max
-    };
-
-    enum class Renderer_ScreenspaceShadow : uint32_t
-    {
-        Disabled,
-        Normal,
-        Bend
     };
 
     enum class Renderer_Antialiasing : uint32_t

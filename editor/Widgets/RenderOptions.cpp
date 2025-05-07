@@ -313,9 +313,6 @@ void RenderOptions::OnTickVisible()
             // ssao
             option_check_box("SSAO - Screen space ambient occlusion", Renderer_Option::ScreenSpaceAmbientOcclusion);
 
-            // sss
-            option_check_box("SSS - Screen space shadows", Renderer_Option::ScreenSpaceShadows, "Requires a light with shadows enabled");
-
             // gi
             {
                 // toggle

@@ -141,13 +141,12 @@ namespace spartan
             SetOption(Renderer_Option::MotionBlur,                  1.0f);
             SetOption(Renderer_Option::DepthOfField,                1.0f);
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
-            SetOption(Renderer_Option::ScreenSpaceShadows,          static_cast<float>(Renderer_ScreenspaceShadow::Bend));
             SetOption(Renderer_Option::ScreenSpaceReflections,      RHI_Device::GetPrimaryPhysicalDevice()->IsAmd() ? 1.0f : 0.0f); // temp workaround until I fix ssr for nvidia
             SetOption(Renderer_Option::GlobalIllumination,          0.0f);                                                          // disabled by default because it sucks - options are 0.25f - 25%, 0.5f - 50%, 0.75f - 75% and 1.0f - 100%)
             SetOption(Renderer_Option::Anisotropy,                  16.0f);                                                         
             SetOption(Renderer_Option::ShadowResolution,            4096.0f);                                                       
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                                          // becomes the upsampler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         5.0);                                                         // controls the intensity of the distance/height and volumetric fog, it's the particle density
+            SetOption(Renderer_Option::Fog,                         5.0);                                                           // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));                // this is using fsr 3 for taa
             SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
@@ -703,10 +702,6 @@ namespace spartan
                     swap_chain->SetVsync(value == 1.0f);
                 }
             }
-            else if (option == Renderer_Option::ScreenSpaceShadows)
-            {
-                SP_FIRE_EVENT(EventType::LightOnChanged);
-            }
             else if (option == Renderer_Option::PerformanceMetrics)
             {
                 static bool enabled = false;
@@ -990,7 +985,7 @@ namespace spartan
                     m_bindless_lights[count].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
                     m_bindless_lights[count].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
                     m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-                    m_bindless_lights[count].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 4) : 0;
+                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
                     m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
