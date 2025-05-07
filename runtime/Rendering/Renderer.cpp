@@ -795,25 +795,29 @@ namespace spartan
 
     void Renderer::UpdateBindlessBuffers(RHI_CommandList* cmd_list)
     {
-        if (m_bindless_materials_dirty)
-        {
-            BindlessUpdateMaterialsParameters(cmd_list);
-            RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
-            m_bindless_materials_dirty = false;
-        }
-        
-        if (m_bindless_lights_dirty)
-        {
-            BindlessUpdateLights(cmd_list);
-            RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
-            m_bindless_lights_dirty = false;
-        }
-        
-        if (m_bindless_abbs_dirty)
-        {
-            BindlessUpdateOccludersAndOccludes(cmd_list);
-            RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
-            m_bindless_abbs_dirty = true; // world space bounding boxes always need to update
+        bool initialize = GetFrameNumber() == 0;
+        if (initialize || !ProgressTracker::IsLoading())
+        { 
+            if (m_bindless_materials_dirty)
+            {
+                BindlessUpdateMaterialsParameters(cmd_list);
+                RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
+                m_bindless_materials_dirty = false;
+            }
+            
+            if (m_bindless_lights_dirty)
+            {
+                BindlessUpdateLights(cmd_list);
+                RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
+                m_bindless_lights_dirty = false;
+            }
+            
+            if (m_bindless_abbs_dirty)
+            {
+                BindlessUpdateOccludersAndOccludes(cmd_list);
+                RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+                m_bindless_abbs_dirty = true; // world space bounding boxes always need to update
+            }
         }
 
         if (m_bindless_samplers_dirty)
