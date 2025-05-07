@@ -1288,11 +1288,13 @@ namespace spartan
                     shared_ptr<Material> material = make_shared<Material>();
                     material->SetResourceFilePath(string("project\\terrain\\material_floor_shiny") + string(EXTENSION_MATERIAL));
 
-                    material->SetProperty(MaterialProperty::ColorR,    0.5f);
-                    material->SetProperty(MaterialProperty::ColorG,    0.5f);
-                    material->SetProperty(MaterialProperty::ColorB,    0.5f);
-                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    material->SetProperty(MaterialProperty::ColorR,              0.5f);
+                    material->SetProperty(MaterialProperty::ColorG,              0.5f);
+                    material->SetProperty(MaterialProperty::ColorB,              0.5f);
+                    material->SetProperty(MaterialProperty::Roughness,           0.0f);
+                    material->SetProperty(MaterialProperty::Metalness,           1.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
 
                     default_floor->GetComponent<Renderable>()->SetMaterial(material);
                 }
