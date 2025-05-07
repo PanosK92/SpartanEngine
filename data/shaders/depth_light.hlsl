@@ -48,13 +48,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     return vertex;
 }
 
-float4 main_ps(gbuffer_vertex vertex) : SV_Target0
+void main_ps(gbuffer_vertex vertex)
 {
     const bool has_albedo = pass_get_f3_value().x == 1.0f;
     float alpha_threshold = get_alpha_threshold(vertex.position); // distance based alpha threshold
 
     if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold)
         discard;
-
-    return GetMaterial().color; // colored transparent shadows
 }

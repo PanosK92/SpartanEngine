@@ -95,10 +95,10 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         float variation                = get_quantized_position_variation(vertex.position);
         
         // define variation colors (distinct with red/pink)
-        float3 greener  = float3(0.05f, 0.4f, 0.03f); // Richer green
-        float3 yellower = float3(0.45f, 0.4f, 0.15f); // Bolder yellow
-        float3 browner  = float3(0.3f, 0.15f, 0.08f); // Deeper brown
-        float3 pinker   = float3(0.4f, 0.2f, 0.25f);  // Subtle red/pink for flowering effect
+        float3 greener  = float3(0.05f, 0.4f, 0.03f); // richer green
+        float3 yellower = float3(0.45f, 0.4f, 0.15f); // bolder yellow
+        float3 browner  = float3(0.3f, 0.15f, 0.08f); // deeper brown
+        float3 pinker   = float3(0.4f, 0.2f, 0.25f);  // subtle red/pink for flowering effect
         
         // blend based on variation value using lerps
         float3 variation_color = greener; // start with greener
@@ -174,7 +174,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
         // height-based albedo modulation for all surfaces, using is_grass_blade as lerp factor
         {
-            // Neutral tint for non-grass surfaces
+            // beutral tint for non-grass surfaces
             float3 neutral_tint = float3(1.0f, 1.0f, 1.0f);
 
             // grass-specific gradient
@@ -188,7 +188,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
             float snow_blend_factor = get_snow_blend_factor(vertex.position);
             height_tint             = lerp(height_tint, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
 
-            // Apply height-based tint to albedo
+            // apply height-based tint to albedo
             albedo.rgb *= height_tint;
         }
         
@@ -211,7 +211,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, surface).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
-        // reconstruct z-component as this can be a BC5 two channel normal map
+        // reconstruct z-component as this can be a bc5 two channel normal map
         tangent_normal.z = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
     
         float normal_intensity     = saturate(max(0.012f, GetMaterial().normal));

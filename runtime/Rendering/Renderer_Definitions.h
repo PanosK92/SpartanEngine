@@ -113,21 +113,20 @@ namespace spartan
         gbuffer_velocity = 3,
         gbuffer_depth    = 4,
     
-        // light depth/color maps
+        // light depth
         light_depth = 5,
-        light_color = 6,
     
         // misc
-        tex  = 7,
-        tex2 = 8,
-        tex3 = 9,
-        tex4 = 10,
+        tex  = 6,
+        tex2 = 7,
+        tex3 = 8,
+        tex4 = 9,
 
         // bindless
-        bindless_material_textures   = 11,
-        bindless_material_parameters = 12,
-        bindless_light_parameters    = 13,
-        bindless_aabbs               = 14,
+        bindless_material_textures   = 10,
+        bindless_material_parameters = 11,
+        bindless_light_parameters    = 12,
+        bindless_aabbs               = 13,
     };
 
     enum class Renderer_BindingsUav

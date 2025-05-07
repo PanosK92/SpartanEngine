@@ -84,18 +84,11 @@ namespace spartan
 
             // opaques
             {
+                bool is_transparent = false;
                 //Pass_Occlusion(cmd_list_graphics_secondary);
                 Pass_Depth_Prepass(cmd_list_present);
-                bool is_transparent = false;
                 Pass_GBuffer(cmd_list_present, is_transparent);
-
-                // shadow maps
-                Pass_ShadowMaps(cmd_list_present, false);
-                if (m_transparents_present)
-                {
-                    Pass_ShadowMaps(cmd_list_present, true);
-                }
-
+                Pass_ShadowMaps(cmd_list_present);
                 Pass_Skysphere(cmd_list_present);
                 Pass_Sss(cmd_list_present);
                 Pass_Ssao(cmd_list_present);
@@ -176,21 +169,20 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
   
-    void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
+    void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list)
     {
         if (World::GetLightCount() == 0)
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps");
+        cmd_list->BeginTimeblock("shadow_maps");
         {
-            // Set base pipeline state
+            // define base pipeline state
             RHI_PipelineState pso;
-            pso.name                             = is_transparent_pass ? "shadow_maps_color" : "shadow_maps";
+            pso.name                             = "shadow_maps";
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_light_v);
-            pso.blend_state                      = is_transparent_pass ? GetBlendState(Renderer_BlendState::Alpha) : GetBlendState(Renderer_BlendState::Off);
-            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadEqual) : GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+            pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
             pso.clear_depth                      = 0.0f;
-            pso.clear_color[0]                   = Color::standard_white;
 
             // constants
             constexpr size_t MAX_LIGHTS = 64;
@@ -224,7 +216,7 @@ namespace spartan
                     continue;
     
                 Material* material = renderable->GetMaterial();
-                if (!material || material->IsTransparent() != is_transparent_pass)
+                if (!material || material->IsTransparent())
                     continue;
     
                 uint64_t current_lights = 0;
@@ -235,9 +227,6 @@ namespace spartan
                 {
                     Light* light = light_entities[i]->GetComponent<Light>();
                     if (!light->GetFlag(LightFlags::Shadows))
-                        continue;
-    
-                    if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
                         continue;
     
                     uint32_t depth = light->GetDepthTexture()->GetDepth();
@@ -304,20 +293,15 @@ namespace spartan
                 if (!update_shadow_map[i])
                     continue;
     
-                if (is_transparent_pass && !light->GetFlag(LightFlags::ShadowsTransparent))
-                    continue;
-    
                 // set light-specific pso properties
-                pso.render_target_color_textures[0] = light->GetColorTexture();
                 pso.render_target_depth_texture = light->GetDepthTexture();
-                pso.rasterizer_state = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+                pso.rasterizer_state            = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
     
                 // iterate over cascades/faces
                 for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
                 {
                     pso.render_target_array_index = array_index;
-                    cmd_list->SetIgnoreClearValues(is_transparent_pass);
-    
+
                     // use cached renderables
                     size_t cascade_slot       = i * 6 + array_index;
                     size_t visible_count      = visible_counts[array_index][i];
@@ -340,7 +324,7 @@ namespace spartan
                         }
                         else
                         {
-                            pso.shaders[RHI_Shader_Type::Pixel] = (material->IsAlphaTested() || is_transparent_pass) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
+                            pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
                         }
                         cmd_list->SetPipelineState(pso);
     
@@ -348,7 +332,7 @@ namespace spartan
                         m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
                         m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                         m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
-                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+                        m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                         cmd_list->PushConstants(m_pcb_pass_cpu);
     
                         // set buffers
@@ -940,22 +924,14 @@ namespace spartan
                 // read from these
                 SetGbufferTextures(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
-    
+                cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetFlag(LightFlags::Shadows) ? light->GetDepthTexture() : nullptr);
+
                 // write to these
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  GetRenderTarget(Renderer_RenderTarget::light_diffuse));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2, GetRenderTarget(Renderer_RenderTarget::light_specular));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3, GetRenderTarget(Renderer_RenderTarget::light_shadow));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex4, GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-    
-                // set shadow maps
-                {
-                    RHI_Texture* tex_depth = light->GetFlag(LightFlags::Shadows)            ? light->GetDepthTexture() : nullptr;
-                    RHI_Texture* tex_color = light->GetFlag(LightFlags::ShadowsTransparent) ? light->GetColorTexture() : nullptr;
-    
-                    cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_depth);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::light_color, tex_color);
-                }
-    
+
                 // push pass constants
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
                 m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light_index++), 0.0f, 0.0f);

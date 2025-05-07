@@ -619,7 +619,6 @@ namespace spartan
 
                 // disable shadows (to avoid tanking the framerate)
                 light->SetFlag(LightFlags::Shadows, false);
-                light->SetFlag(LightFlags::ShadowsTransparent, false);
                 light->SetFlag(LightFlags::Volumetric, false);
 
                 // local transform

@@ -990,9 +990,8 @@ namespace spartan
                     m_bindless_lights[count].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
                     m_bindless_lights[count].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
                     m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::ShadowsTransparent)  ? (1 << 4) : 0;
-                    m_bindless_lights[count].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 5) : 0;
-                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Volumetric)          ? (1 << 6) : 0;
+                    m_bindless_lights[count].flags     |= (light->GetFlag(LightFlags::ShadowsScreenSpace) && GetOption<bool>(Renderer_Option::ScreenSpaceShadows)) ? (1 << 4) : 0;
+                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
                     // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
 
                     count++;

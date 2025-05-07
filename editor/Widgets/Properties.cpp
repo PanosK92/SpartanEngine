@@ -243,18 +243,17 @@ void Properties::ShowLight(spartan::Light* light) const
 
     if (component_begin("Light", IconType::Component_Light, light))
     {
-        //= REFLECT ============================================================================
+        //= REFLECT ==========================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
         float angle                 = light->GetAngle() * math::rad_to_deg * 2.0f;
         bool shadows                = light->GetFlag(spartan::LightFlags::Shadows);
-        bool shadows_transparent    = light->GetFlag(spartan::LightFlags::ShadowsTransparent);
         bool shadows_screen_space   = light->GetFlag(spartan::LightFlags::ShadowsScreenSpace);
         bool volumetric             = light->GetFlag(spartan::LightFlags::Volumetric);
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
-        //======================================================================================
+        //====================================================================================
 
         // type
         ImGui::Text("Type");
@@ -326,11 +325,6 @@ void Properties::ShowLight(spartan::Light* light) const
             if (shadows)
             {
                 // transparent shadows
-                ImGui::Text("Transparent Shadows");
-                ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
-                ImGuiSp::tooltip("Allows transparent objects to cast colored translucent shadows");
-
-                // transparent shadows
                 ImGui::Text("Screen Space Shadows");
                 ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
                 ImGuiSp::tooltip("Screen space shadows from Days Gone - PS4");
@@ -371,7 +365,6 @@ void Properties::ShowLight(spartan::Light* light) const
         if (range != light->GetRange())                           light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor()) light->SetColor(m_colorPicker_light->GetColor());
         if (temperature_kelvin != light->GetTemperature())        light->SetTemperature(temperature_kelvin);
-        light->SetFlag(spartan::LightFlags::ShadowsTransparent, shadows_transparent);
         light->SetFlag(spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
         light->SetFlag(spartan::LightFlags::Volumetric, volumetric);
         light->SetFlag(spartan::LightFlags::Shadows, shadows);

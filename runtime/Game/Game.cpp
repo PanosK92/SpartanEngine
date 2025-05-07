@@ -97,7 +97,6 @@ namespace spartan
 
             light->SetTemperature(2300.0f);
             light->SetFlag(LightFlags::Shadows, enabled);
-            light->SetFlag(LightFlags::ShadowsTransparent, false);
             light->SetFlag(LightFlags::DayNightCycle, false);
         }
 
@@ -244,7 +243,6 @@ namespace spartan
                 light->SetColor(Color::light_light_bulb);
                 light->SetRange(39.66f);
                 light->SetIntensity(LightIntensity::bulb_500_watt);
-                light->SetFlag(LightFlags::ShadowsTransparent, false);
                 light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
             }
 
@@ -402,7 +400,6 @@ namespace spartan
                 shared_ptr<Entity> light = World::CreateEntity();
                 light->SetObjectName("light_point");
                 light->SetPositionLocal(Vector3(2.2f, 4.0f, 3.2f));
-                light->AddComponent<Light>()->SetFlag(LightFlags::ShadowsTransparent, false);
                 light->GetComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
                 light->GetComponent<Light>()->SetLightType(LightType::Point);
                 light->GetComponent<Light>()->SetRange(120.0f);
@@ -1310,7 +1307,6 @@ namespace spartan
                     light->SetColor(Color::light_light_bulb);
                     light->SetRange(39.66f);
                     light->SetIntensity(LightIntensity::bulb_500_watt);
-                    light->SetFlag(LightFlags::ShadowsTransparent, false);
                     light->SetFlag(LightFlags::Volumetric,         false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 }
@@ -1326,7 +1322,6 @@ namespace spartan
                     light->SetColor(Color::light_light_bulb);
                     light->SetRange(39.66f);
                     light->SetIntensity(LightIntensity::bulb_500_watt);
-                    light->SetFlag(LightFlags::ShadowsTransparent, false);
                     light->SetFlag(LightFlags::Volumetric, false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 }
@@ -1440,7 +1435,6 @@ namespace spartan
                         light->SetRange(15.0f);         // 15 meters, suitable for pool illumination in water
                         light->SetFlag(LightFlags::Shadows,            false);
                         light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                        light->SetFlag(LightFlags::ShadowsTransparent, false);
                     }
                 }
 
@@ -1483,7 +1477,6 @@ namespace spartan
                     light->SetColor(Color::light_fluorescent_tube_light);
                     light->SetRange(30.0f);
                     light->SetIntensity(LightIntensity::bulb_500_watt);
-                    light->SetFlag(LightFlags::ShadowsTransparent, false);
                     light->SetFlag(LightFlags::Volumetric, false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                     light->SetFlag(LightFlags::Shadows, false);

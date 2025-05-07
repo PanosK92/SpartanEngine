@@ -144,19 +144,18 @@ Texture2D tex_depth    : register(t4);
 
 // shadow maps
 Texture2DArray tex_light_depth : register(t5);
-Texture2DArray tex_light_color : register(t6);
 
 // misc
-Texture2D tex  : register(t7);
-Texture2D tex2 : register(t8);
-Texture2D tex3 : register(t9);
-Texture2D tex4 : register(t10);
+Texture2D tex  : register(t6);
+Texture2D tex2 : register(t7);
+Texture2D tex3 : register(t8);
+Texture2D tex4 : register(t9);
 
 // bindless arrays
-Texture2D material_textures[]                            : register(t11, space1);
-StructuredBuffer<MaterialParameters> material_parameters : register(t12, space2);
-StructuredBuffer<LightParameters> light_parameters       : register(t13, space3);
-StructuredBuffer<aabb> aabbs                             : register(t14, space4);
+Texture2D material_textures[]                            : register(t10, space1);
+StructuredBuffer<MaterialParameters> material_parameters : register(t11, space2);
+StructuredBuffer<LightParameters> light_parameters       : register(t12, space3);
+StructuredBuffer<aabb> aabbs                             : register(t13, space4);
 SamplerComparisonState samplers_comparison[]             : register(s0,  space5);
 SamplerState samplers[]                                  : register(s1,  space6);
 

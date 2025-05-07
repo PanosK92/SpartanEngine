@@ -101,25 +101,10 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
     return shadow_factor * g_shadow_sample_reciprocal;
 }
-float3 vogel_color(Light light, Surface surface, float3 sample_coords)
+
+float compute_shadow(Surface surface, Light light)
 {
-    float3 shadow_color   = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(surface.pos);
-    float temporal_angle  = temporal_offset * PI2;
-
-    for (uint i = 0; i < g_shadow_sample_count; i++)
-    {
-        float2 filter_size = light.texel_size * g_shadow_filter_size;
-        float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, temporal_angle) * filter_size;
-        shadow_color       += light.sample_color(sample_coords + float3(offset, 0.0f));
-    } 
-
-    return shadow_color * g_shadow_sample_reciprocal;
-}
-
-float4 compute_shadow(Surface surface, Light light)
-{
-    float4 shadow_result = 1.0f; // default shadow value for fully lit (no shadow)
+    float shadow_result = 1.0f; // default shadow value for fully lit (no shadow)
 
     // process only if the pixel is within the light's effective range
     if (light.distance_to_pixel <= light.far)
@@ -137,13 +122,7 @@ float4 compute_shadow(Surface surface, Light light)
             
             // sample shadow map
             float3 sample_coords = float3(ndc_to_uv(ndc.xy), slice_index);
-            shadow_result.a      = vogel_depth(light, surface, sample_coords, ndc.z);
-
-            // handle transparent shadows if necessary
-            if (shadow_result.a > 0.0f && light.has_shadows_transparent())
-            {
-                shadow_result.rgb = vogel_color(light, surface, sample_coords);
-            }
+            shadow_result        = vogel_depth(light, surface, sample_coords, ndc.z);
         }
         else // directional, spot
         {
@@ -154,13 +133,8 @@ float4 compute_shadow(Surface surface, Light light)
             float3 near_sample     = float3(near_uv, near_cascade);
             float  near_depth      = near_ndc.z;
         
-            shadow_result.a = vogel_depth(light, surface, near_sample, near_depth);
-        
-            if (shadow_result.a > 0.0f && light.has_shadows_transparent())
-            {
-                shadow_result.rgb = vogel_color(light, surface, near_sample);
-            }
-        
+            shadow_result = vogel_depth(light, surface, near_sample, near_depth);
+
             // for directional lights, blend with the far cascade
             if (light.is_directional())
             {
@@ -174,7 +148,7 @@ float4 compute_shadow(Surface surface, Light light)
                     float  far_depth       = far_ndc.z;
                     float  far_shadow      = vogel_depth(light, surface, float3(far_uv, far_cascade), far_depth);
         
-                    shadow_result.a = lerp(shadow_result.a, far_shadow, cascade_blend_factor);
+                    shadow_result = lerp(shadow_result, far_shadow, cascade_blend_factor);
                 }
             }
         }

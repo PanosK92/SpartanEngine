@@ -146,9 +146,8 @@ struct Light
     bool is_point()                 { return flags & uint(1U << 1); }
     bool is_spot()                  { return flags & uint(1U << 2); }
     bool has_shadows()              { return flags & uint(1U << 3); }
-    bool has_shadows_transparent()  { return flags & uint(1U << 4); }
-    bool has_shadows_screen_space() { return flags & uint(1U << 5); }
-    bool is_volumetric()            { return flags & uint(1U << 6); }
+    bool has_shadows_screen_space() { return flags & uint(1U << 4); }
+    bool is_volumetric()            { return flags & uint(1U << 5); }
     uint get_array_index()          { return (uint)pass_get_f3_value2().y; }
 
     float compute_attenuation_distance(const float3 surface_position)
@@ -228,11 +227,6 @@ struct Light
          return tex_light_depth.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).r;
     }
     
-    float3 sample_color(float3 uv)
-    {
-         return tex_light_color.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).rgb;
-    }
-
     void Build(uint index, Surface surface)
     {
         LightParameters light = light_parameters[index];

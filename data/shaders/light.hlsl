@@ -70,7 +70,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     uint light_index = pass_get_f3_value2().x;
     light.Build(light_index, surface);
 
-    float4 shadow           = 1.0f;
+    float shadow            = 1.0f;
     float3 light_diffuse    = 0.0f;
     float3 light_specular   = 0.0f;
     float3 volumetric_fog   = 0.0f;
@@ -89,19 +89,19 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 uint array_slice_index = light.get_array_index();
                 if (light.has_shadows_screen_space() && pass_is_opaque() && array_slice_index != -1)
                 {
-                    shadow.a = min(shadow.a, tex_uav_sss[int3(thread_id.xy, array_slice_index)].x);
+                    shadow = min(shadow, tex_uav_sss[int3(thread_id.xy, array_slice_index)].x);
                 }
             }
 
             // ensure that the shadow is as transparent as the material
             if (pass_is_transparent())
             {
-                shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
+                shadow = clamp(shadow, surface.alpha, 1.0f);
             }
-        }
 
-        // compute final radiance
-        light.radiance *= shadow.rgb * shadow.a;
+            // modulate radiance with shadow
+            light.radiance *= shadow;
+        }
 
         // reflectance equation(s)
         {
@@ -158,6 +158,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float shadow_value     = lerp(tex_uav3[thread_id.xy].r, 1.0f, 1.0f - accumulate);
     tex_uav[thread_id.xy]  = tex_uav[thread_id.xy]  * accumulate + float4(light_diffuse  * light.radiance + light_subsurface, 0.0f) * surface.alpha * surface.occlusion; /* diffuse    - clears to zero*/
     tex_uav2[thread_id.xy] = tex_uav2[thread_id.xy] * accumulate + float4(light_specular * light.radiance, 0.0f) * surface.alpha;                                        /* specular   - clears to zero*/
-    tex_uav3[thread_id.xy] = saturate(shadow_value - (1.0f - shadow.a));                                                                                                 /* shadow     - clears to one*/
+    tex_uav3[thread_id.xy] = saturate(shadow_value - (1.0f - shadow));                                                                                                   /* shadow     - clears to one*/
     tex_uav4[thread_id.xy] = tex_uav4[thread_id.xy] * accumulate + float4(volumetric_fog, 1.0f);                                                                         /* volumetric - clears to zero*/
 }

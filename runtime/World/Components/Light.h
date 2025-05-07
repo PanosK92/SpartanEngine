@@ -60,11 +60,10 @@ namespace spartan
     enum LightFlags : uint32_t
     {
         Shadows            = 1U << 0,
-        ShadowsTransparent = 1U << 1,
-        ShadowsScreenSpace = 1U << 2,
-        Volumetric         = 1U << 3,
-        DayNightCycle      = 1U << 4, // only affects directional lights
-        ShadowDirty        = 1U << 5,
+        ShadowsScreenSpace = 1U << 1,
+        Volumetric         = 1U << 2,
+        DayNightCycle      = 1U << 3, // only affects directional lights
+        ShadowDirty        = 1U << 4,
     };
 
     class Light : public Component
@@ -118,7 +117,6 @@ namespace spartan
 
         // textures
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
-        RHI_Texture* GetColorTexture() const { return m_texture_color.get(); }
 
         // frustum
         bool IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index = 0) const;
@@ -137,7 +135,6 @@ namespace spartan
         float m_intensity_lumens_lux = 2600.0f;
 
         // shadows
-        std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
         std::array<math::Frustum, 2> m_frustums;
         std::array<math::Matrix, 2> m_matrix_view;

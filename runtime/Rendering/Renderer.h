@@ -138,7 +138,7 @@ namespace spartan
         // passes - core
         static void ProduceFrame(RHI_CommandList* cmd_list_frame, RHI_CommandList* cmd_list_graphics_secondary);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
-        static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        static void Pass_ShadowMaps(RHI_CommandList* cmd_list);
         static void BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list);
         static void Pass_Occlusion(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);

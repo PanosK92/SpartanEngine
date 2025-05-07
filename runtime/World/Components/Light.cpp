@@ -163,15 +163,6 @@ namespace spartan
             {
                 m_texture_depth = nullptr;
             }
-
-            if ((GetFlag(LightFlags::ShadowsTransparent) && !m_texture_depth) || resolution_dirty)
-            {
-                m_texture_color = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_color, flags, "light_color");
-            }
-            else if (!GetFlag(LightFlags::ShadowsTransparent) && m_texture_color)
-            {
-                m_texture_color = nullptr;
-            }
         }
     }
 
@@ -220,7 +211,6 @@ namespace spartan
                 if (flag & LightFlags::Shadows)
                 {
                     m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsScreenSpace);
-                    m_flags &= ~static_cast<uint32_t>(LightFlags::ShadowsTransparent);
                     m_flags &= ~static_cast<uint32_t>(LightFlags::Volumetric);
                 }
             }
