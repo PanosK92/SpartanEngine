@@ -29,17 +29,22 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
-// helper function to generate a pseudo-random float from instance ID
-float get_instance_variation(uint instance_id)
+float get_quantized_position_variation(float3 position)
 {
-    // Simple hash based on instance ID
-    uint seed = instance_id * 16777619u;
+    // Quantize position to approximate tree root (e.g., round to nearest 5 meters)
+    const float grid_size = 5.0f; // Adjust based on typical tree spacing
+    float3 quantized_pos = floor(position / grid_size) * grid_size;
+
+    // Simple hash based on quantized position
+    uint seed = uint(quantized_pos.x * 73856093.0) ^
+                uint(quantized_pos.y * 19349663.0) ^
+                uint(quantized_pos.z * 83492791.0);
     seed = (seed ^ 61u) ^ (seed >> 16u);
     seed *= 9u;
     seed = seed ^ (seed >> 4u);
     seed *= 0x27d4eb2du;
     seed = seed ^ (seed >> 15u);
-    return float(seed) / 4294967295.0; // normalize to [0, 1]
+    return float(seed) / 4294967295.0; // Normalize to [0, 1]
 }
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface)
@@ -85,34 +90,29 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     {
         color = base_color;
         
-        // Apply instance-based color variation for trees
+        // apply instance-based color variation for trees
         const float variation_strength = 0.4f; // Distinct variation
-        float variation = get_instance_variation(vertex.instance_id);
+        float variation                = get_quantized_position_variation(vertex.position);
         
-        // Define variation colors (distinct with red/pink)
-        float3 greener = float3(0.05f, 0.4f, 0.03f);  // Richer green
+        // define variation colors (distinct with red/pink)
+        float3 greener  = float3(0.05f, 0.4f, 0.03f); // Richer green
         float3 yellower = float3(0.45f, 0.4f, 0.15f); // Bolder yellow
-        float3 browner = float3(0.3f, 0.15f, 0.08f);  // Deeper brown
-        float3 pinker = float3(0.4f, 0.2f, 0.25f);    // Subtle red/pink for flowering effect
+        float3 browner  = float3(0.3f, 0.15f, 0.08f); // Deeper brown
+        float3 pinker   = float3(0.4f, 0.2f, 0.25f);  // Subtle red/pink for flowering effect
         
-        // Blend based on variation value
-        float3 variation_color;
-        if (variation < 0.25f)
-            variation_color = greener;
-        else if (variation < 0.5f)
-            variation_color = yellower;
-        else if (variation < 0.75f)
-            variation_color = browner;
-        else
-            variation_color = pinker;
-        
-        // Apply variation only for trees using lerp
+        // blend based on variation value using lerps
+        float3 variation_color = greener; // start with greener
+        variation_color        = lerp(variation_color, yellower, step(0.25f, variation)); // transition to yellower at 0.25
+        variation_color        = lerp(variation_color, browner,  step(0.5f, variation));  // transition to browner at 0.5
+        variation_color        = lerp(variation_color, pinker,   step(0.75f, variation)); // Ttransition to pinker at 0.75
+
+        // apply variation only for trees using lerp
         float tree_factor = surface.is_tree() ? 1.0f : 0.0f;
-        color.rgb = lerp(color.rgb, variation_color, variation_strength * tree_factor);
+        color.rgb         = lerp(color.rgb, variation_color, variation_strength * tree_factor);
         
-        // Apply snow
+        // apply snow
         float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
-        color = lerp(color, snow_color, snow_blend_factor);
+        color             = lerp(color, snow_color, snow_blend_factor);
     }
 
     return color;
@@ -121,8 +121,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
-    vertex.instance_id    = instance_id;
-    
+
     // transform world space position to screen space
     Surface surface;
     surface.flags = GetMaterial().flags;
@@ -173,20 +172,24 @@ gbuffer main_ps(gbuffer_vertex vertex)
             albedo            *= albedo_sample;
         }
 
-        // grass blades are colored dynamically
-        if (surface.is_grass_blade())
+        // height-based albedo modulation for all surfaces, using is_grass_blade as lerp factor
         {
-            //  gradient
-            float3 color_base = float3(0.1f, 0.25f, 0.05f); // muted dark green
-            float3 color_tip  = float3(0.3f, 0.35f, 0.15f); // subtle yellowish-green
-            float3 color      = lerp(color_base, color_tip, smoothstep(0, 1, vertex.height_percent * 0.5f));
+            // Neutral tint for non-grass surfaces
+            float3 neutral_tint = float3(1.0f, 1.0f, 1.0f);
 
-            // snow
+            // grass-specific gradient
+            const float3 grass_base = float3(0.1f, 0.25f, 0.05f); // muted dark green
+            const float3 grass_tip  = float3(0.3f, 0.35f, 0.15f); // subtle yellowish-green
+            const float3 grass_tint = lerp(grass_base, grass_tip, smoothstep(0, 1, vertex.height_percent * 0.5f));
+            float is_grass_factor   = surface.is_grass_blade() ? 1.0f : 0.0f;
+            float3 height_tint      = lerp(neutral_tint, grass_tint, is_grass_factor);
+
+            // snow blending
             float snow_blend_factor = get_snow_blend_factor(vertex.position);
-            color                   = lerp(color, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
+            height_tint             = lerp(height_tint, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
 
-             // apply grass color to albedo
-             albedo.rgb *= color;
+            // Apply height-based tint to albedo
+            albedo.rgb *= height_tint;
         }
         
         // alpha testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1

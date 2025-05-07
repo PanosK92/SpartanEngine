@@ -48,7 +48,6 @@ struct gbuffer_vertex
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
     float height_percent          : HEIGHT_PERCENT;
-    uint instance_id              : INSTANCE_ID;
 }; 
 
 // remap a value from one range to another
@@ -423,7 +422,6 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent           * bary_coords.y + patch[2].tangent           * bary_coords.z);
     vertex.uv                = patch[0].uv                * bary_coords.x + patch[1].uv                * bary_coords.y + patch[2].uv                * bary_coords.z;
     vertex.height_percent    = patch[0].height_percent    * bary_coords.x + patch[1].height_percent    * bary_coords.y + patch[2].height_percent    * bary_coords.z; // pass through to avoid the compile optimizing out
-    vertex.instance_id       = patch[0].instance_id       * bary_coords.x + patch[1].instance_id       * bary_coords.y + patch[2].instance_id       * bary_coords.z; // pass through to avoid the compile optimizing out
     
     // calculate fade factor based on actual distance from camera
     float3 vec_to_vertex      = vertex.position.xyz - buffer_frame.camera_position;
