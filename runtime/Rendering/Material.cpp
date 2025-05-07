@@ -581,13 +581,24 @@ namespace spartan
                         vector<byte> texture_one(texture_size, static_cast<byte>(255));
                         vector<byte> texture_zero(texture_size, static_cast<byte>(0));
                         vector<byte> texture_half(texture_size, static_cast<byte>(127));
-                        
+
+                        // determine metalness data based on texture and property
+                        vector<byte> metalness_data = texture_zero; // default to zero
+                        if (texture_metalness && !texture_metalness->GetMip(0, 0).bytes.empty())
+                        {
+                            metalness_data = texture_metalness->GetMip(0, 0).bytes; // use texture if available
+                        }
+                        else if (GetProperty(MaterialProperty::Metalness) != 0.0f)
+                        {
+                            metalness_data = texture_one; // use all ones if Metalness property is non-zero and no texture
+                        }
+
                         // create packed data and fallback to default data when needed
                         texture_processing::pack_occlusion_roughness_metalness_height
                         (
                             (texture_occlusion && !texture_occlusion->GetMip(0, 0).bytes.empty()) ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
                             (texture_roughness && !texture_roughness->GetMip(0, 0).bytes.empty()) ? texture_roughness->GetMip(0, 0).bytes : texture_one,
-                            (texture_metalness && !texture_metalness->GetMip(0, 0).bytes.empty()) ? texture_metalness->GetMip(0, 0).bytes : texture_zero,
+                            metalness_data,
                             (texture_height    && !texture_height->GetMip(0, 0).bytes.empty())    ? texture_height->GetMip(0, 0).bytes    : texture_half,
                             GetProperty(MaterialProperty::Gltf) == 1.0f,
                             texture_packed->GetMip(0, 0).bytes
