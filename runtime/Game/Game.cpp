@@ -874,7 +874,7 @@ namespace spartan
 
                 // sun/lighting/mood
                 create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
-                default_light_directional->GetComponent<Light>()->SetTemperature(2000.0f); // kelvin
+                default_light_directional->GetComponent<Light>()->SetTemperature(6000.0f); // kelvin
                 default_light_directional->GetComponent<Light>()->SetIntensity(50000.0f);  // lux
 
                 create_camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
