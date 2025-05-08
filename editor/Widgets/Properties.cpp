@@ -864,9 +864,9 @@ void Properties::ShowMaterial(Material* material) const
             material->SetProperty(MaterialProperty::Tessellation, tessellation ? 1.0f : 0.0f);
 
             // wind animation
-            bool wind_animation = material->GetProperty(MaterialProperty::IsTree) != 0.0f;
+            bool wind_animation = material->GetProperty(MaterialProperty::WindAnimation) != 0.0f;
             ImGui::Checkbox("Wind animation", &wind_animation);
-            material->SetProperty(MaterialProperty::IsTree, wind_animation ? 1.0f : 0.0f);
+            material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
         }
 
         //= MAP ===============================================================================

@@ -295,22 +295,22 @@ namespace spartan
                     // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::IsTree,   1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::IsTree,   1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
 
                      // this is fabric
                     if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::IsTree,   1.0f);
+                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                     }
                 }
             }
@@ -325,8 +325,8 @@ namespace spartan
 
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
                 {
-                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                    material->SetProperty(MaterialProperty::IsTree,   1.0f);
+                    material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                 }
             }
         }
@@ -1073,7 +1073,7 @@ namespace spartan
                                     material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\model_tree\\Twig_Base_Material_2.png");
                                     material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\model_tree\\Twig_Normal.png");
                                     material->SetTexture(MaterialTextureType::AlphaMask,          "project\\terrain\\model_tree\\Twig_Opacity_Map.jpg");
-                                    material->SetProperty(MaterialProperty::IsTree,               1.0f);
+                                    material->SetProperty(MaterialProperty::WindAnimation,     1.0f);
                                     material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                                     // create a file path for this material (required for the material to be able to be cached by the resource cache)
                                     material->SetResourceFilePath("project\\terrain\\tree_leaf_material" + string(EXTENSION_MATERIAL));
@@ -1200,8 +1200,6 @@ namespace spartan
                         renderable->SetMaxRenderDistance(render_distance_grass);
                     }
                 }
-
-                car::create(Vector3(-449.0260f, 15.0f, 359.2632f), true);
             }
 
             void tick()

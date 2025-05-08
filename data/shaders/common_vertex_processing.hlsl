@@ -288,12 +288,12 @@ struct vertex_processing
             vertex.tangent       = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
         }
         
-        if (surface.is_tree() && !surface.is_grass_blade())
+        if (surface.has_wind_animation() && !surface.is_grass_blade()) // grass has it's own wind (need to unify)
         {
             position_world = vegetation::apply_wind(instance_id, position_world, vertex.height_percent, wind, time);
         }
 
-        if (surface.is_tree() || surface.is_grass_blade())
+        if (surface.has_wind_animation() || surface.is_grass_blade())
         {
             position_world = vegetation::apply_player_bend(position_world, vertex.height_percent);
         }

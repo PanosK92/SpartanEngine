@@ -73,8 +73,6 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         // compute the color
         float4 terrain    = lerp(tex_rock, color, slope);
         color             = lerp(terrain, tex_sand, sand_blend_factor);
-        float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
-        color             = lerp(color, snow_color, snow_blend_factor);
         
         // apply perlin noise color variation
         const float noise_scale         = 2.0f;
@@ -83,7 +81,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         float noise_value               = get_noise_perlin(noise_uv);
         color.rgb                      *= (1.0f + noise_value * variation_strength);
     }
-    else // default (including trees)
+    else if (surface.color_from_position()) // vegetation typically uses color variance
     {
         // apply position color variation for trees
         float variation = get_quantized_position_variation(vertex.position);
@@ -95,19 +93,15 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         float3 pinker   = float3(0.4f, 0.2f, 0.25f);  // subtle red/pink for flowering effect
         
         // blend based on variation value using lerps
-        float3 variation_color = greener; // start with greener
-        variation_color        = lerp(variation_color, yellower, step(0.25f, variation)); // transition to yellower at 0.25
-        variation_color        = lerp(variation_color, browner,  step(0.5f,  variation)); // transition to browner at 0.5
-        variation_color        = lerp(variation_color, pinker,   step(0.75f, variation)); // Ttransition to pinker at 0.75
-
-        // apply variation only for trees using lerp
-        float tree_factor = surface.is_tree() ? 1.0f : 0.0f;
-        color.rgb         = lerp(color.rgb, variation_color, tree_factor);
-        
-        // apply snow
-        float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
-        color             = lerp(color, snow_color, snow_blend_factor);
+        float3 color = greener; // start with greener
+        color        = lerp(color, yellower, step(0.25f, variation)); // transition to yellower at 0.25
+        color        = lerp(color, browner,  step(0.5f,  variation)); // transition to browner at 0.5
+        color        = lerp(color, pinker,   step(0.75f, variation)); // Ttransition to pinker at 0.75
     }
+
+    // apply snow
+    const float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
+    color                   = lerp(color, snow_color, snow_blend_factor);
 
     return color;
 }
@@ -243,4 +237,3 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     return g_buffer;
 }
-
