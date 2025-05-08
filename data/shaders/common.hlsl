@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_COMMON
 
 //= INCLUDES ====================
-#include "common_terrain.hlsl"
 #include "common_resources.hlsl"
 #include "common_colorspace.hlsl"
 //===============================
@@ -559,6 +558,7 @@ float get_alpha_threshold(float3 position_world)
 
 //= INCLUDES ===========================
 #include "common_structs.hlsl"
+#include "common_terrain.hlsl"
 #include "common_vertex_processing.hlsl"
 //======================================
 

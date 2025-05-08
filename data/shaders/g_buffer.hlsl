@@ -49,9 +49,8 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     const float speed_1      = 0.2;
     const float speed_2      = 0.15;
 
-    // things which are shared among branches
-    float snow_blend_factor = get_snow_blend_factor(vertex.position);
-    float4 color            = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv); // grass for the terrain
+    // base texture color
+    float4 color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
 
     if (surface.is_terrain())
     {
@@ -155,13 +154,13 @@ gbuffer main_ps(gbuffer_vertex vertex)
         // height based color
         {
             // local space height, for the grass blades
-            const float3 grass_base = float3(0.0f, 0.05f, 0.005f); // darker base
-            const float3 grass_tip  = float3(0.04f, 0.25f, 0.025f); // darker tip
-            const float3 grass_tint  = lerp(grass_base, grass_tip, smoothstep(0, 1, vertex.height_percent * 0.5f));
+            const float3 grass_base  = float3(0.0f, 0.05f, 0.005f);  // darker base - emulate occlusion
+            const float3 grass_tip   = float3(0.02f, 0.15f, 0.015f); // darker tip
+            const float3 grass_tint  = lerp(grass_base, grass_tip, smoothstep(0, 1, vertex.height_percent));
             albedo.rgb               = lerp(albedo.rgb, grass_tint, (float)surface.is_grass_blade());
 
             // world space height, for everything
-            float snow_blend_factor = get_snow_blend_factor(vertex.position);
+            float snow_blend_factor = get_snow_blend_factor(vertex.position, vertex.normal);
             albedo.rgb              = lerp(albedo.rgb, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
         }
         
