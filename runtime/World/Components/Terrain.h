@@ -62,8 +62,13 @@ namespace spartan
 
         float GetArea() const     { return m_area_km2; }
 
+        // generate
         void Generate();
         void GenerateTransforms(std::vector<math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop, float offset_y = 0.0f);
+
+        // io
+        void SaveToFile(const char* file_path);
+        void LoadFromFile(const char* file_path);
 
         uint32_t GetVertexCount() const         { return m_vertex_count; }
         uint32_t GetIndexCount() const          { return m_index_count; }

@@ -42,6 +42,14 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace parameters
+    {
+        const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f; // this is an axiom of the engine
+        const uint32_t scale                = 3;         // the scale factor to upscale the height map by
+        const uint32_t smoothing_iterations = 0;         // the number of height map neighboring pixel averaging - useful if you are reading the height map with a scale of 1 (no bilinear interpolation)
+        const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
+    }
+
     namespace perlin_noise
     {
         // permutation table (256 values, typically used in Perlin noise for randomness)
@@ -269,11 +277,6 @@ namespace spartan
 
     namespace
     {
-        const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f; // this is an axiom of the engine
-        const uint32_t scale                = 3;         // the scale factor to upscale the height map by
-        const uint32_t smoothing_iterations = 0;         // the number of height map neighboring pixel averaging - useful if you are reading the height map with a scale of 1 (no bilinear interpolation)
-        const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
-
         float compute_terrain_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices)
         {
             if (vertices.empty())
@@ -311,7 +314,7 @@ namespace spartan
             return area_km2;
         }
 
-        void get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y, const uint32_t scale)
+        void get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
             SP_ASSERT(height_data.size() > 0);
@@ -338,13 +341,13 @@ namespace spartan
             }
         
             // second pass: upscale the height map by bilinearly interpolating the height values (parallelized)
-            if (scale > 1)
+            if (parameters::scale > 1)
             {
                 // get the dimensions of the original texture
                 uint32_t width  = height_texture->GetWidth();
                 uint32_t height = height_texture->GetHeight();
-                uint32_t upscaled_width  = scale * width;
-                uint32_t upscaled_height = scale * height;
+                uint32_t upscaled_width  = parameters::scale * width;
+                uint32_t upscaled_height = parameters::scale * height;
         
                 // create a new vector for the upscaled height map
                 vector<float> upscaled_height_data(upscaled_width * upscaled_height);
@@ -357,7 +360,7 @@ namespace spartan
                 };
         
                 // parallel upscaling of the height map
-                auto upscale_pixel = [&upscaled_height_data, &get_height, width, height, upscaled_width, upscaled_height, scale](uint32_t start_index, uint32_t end_index)
+                auto upscale_pixel = [&upscaled_height_data, &get_height, width, height, upscaled_width, upscaled_height](uint32_t start_index, uint32_t end_index)
                 {
                     for (uint32_t index = start_index; index < end_index; index++)
                     {
@@ -406,10 +409,10 @@ namespace spartan
         
             // third pass: smooth out the height map values, this will reduce hard terrain edges
             {
-                const uint32_t width  = height_texture->GetWidth() * scale;
-                const uint32_t height = height_texture->GetHeight()  * scale;
+                const uint32_t width  = height_texture->GetWidth()  * parameters::scale;
+                const uint32_t height = height_texture->GetHeight() * parameters::scale;
         
-                for (uint32_t iteration = 0; iteration < smoothing_iterations; iteration++)
+                for (uint32_t iteration = 0; iteration < parameters::smoothing_iterations; iteration++)
                 {
                     vector<float> smoothed_height_data = height_data_out; // create a copy to store the smoothed data
         
@@ -642,12 +645,12 @@ namespace spartan
 
     uint32_t Terrain::GetWidth() const
     {
-        return m_height_texture->GetWidth() * scale;
+        return m_height_texture->GetWidth() * parameters::scale;
     }
 
     uint32_t Terrain::GetHeight() const
     {
-        return m_height_texture->GetHeight() * scale;
+        return m_height_texture->GetHeight() * parameters::scale;
     }
 
     void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop, float offset_y)
@@ -674,17 +677,137 @@ namespace spartan
         *transforms = placement::find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
     }
 
-    void Terrain::Generate()
+    void Terrain::SaveToFile(const char* file_path)
     {
-        if (m_is_generating)
+        // open file for writing
+        ofstream file(file_path, ios::binary);
+        if (!file.is_open())
         {
-            SP_LOG_WARNING("Terrain is already being generated, please wait...");
+            SP_LOG_ERROR("failed to open file for writing: %s", file_path);
             return;
         }
     
+        // write all sizes first
+        uint32_t width            = GetWidth();
+        uint32_t height           = GetHeight();
+        uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
+        uint32_t vertex_count     = static_cast<uint32_t>(m_vertices.size());
+        uint32_t index_count      = static_cast<uint32_t>(m_indices.size());
+        uint32_t tile_count       = static_cast<uint32_t>(m_tile_vertices.size());
+        uint32_t placement_count  = static_cast<uint32_t>(placement::triangle_data.size());
+    
+        file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&height_data_size), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&placement_count), sizeof(uint32_t));
+    
+        // write vector data
+        file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
+        file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
+        file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
+    
+        // write tile data
+        for (uint32_t i = 0; i < tile_count; i++)
+        {
+            uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
+            uint32_t index_size = static_cast<uint32_t>(m_tile_indices[i].size());
+            file.write(reinterpret_cast<const char*>(&vertex_size), sizeof(uint32_t));
+            file.write(reinterpret_cast<const char*>(&index_size), sizeof(uint32_t));
+            file.write(reinterpret_cast<const char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
+            file.write(reinterpret_cast<const char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
+        }
+    
+        file.close();
+    
+        // log save operation
+        SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
+                    file_path, width, height, height_data_size, vertex_count, index_count, tile_count);
+    }
+    
+    void Terrain::LoadFromFile(const char* file_path)
+    {
+        // open file for reading
+        ifstream file(file_path, ios::binary);
+        if (!file.is_open())
+            return;
+    
+        // read all sizes first
+        uint32_t width            = 0;
+        uint32_t height           = 0;
+        uint32_t height_data_size = 0;
+        uint32_t vertex_count     = 0;
+        uint32_t index_count      = 0;
+        uint32_t tile_count       = 0;
+        uint32_t placement_count  = 0;
+    
+        file.read(reinterpret_cast<char*>(&width), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&height), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&placement_count), sizeof(uint32_t));
+    
+        // sanity check
+        if (tile_count > 10000) // adjust as needed
+        {
+            SP_LOG_ERROR("invalid tile_count (%u) read from file, aborting load", tile_count);
+            file.close();
+            return;
+        }
+    
+        // resize vectors based on saved sizes
+        m_height_data.resize(height_data_size);
+        m_vertices.resize(vertex_count);
+        m_indices.resize(index_count);
+        m_tile_vertices.resize(tile_count);
+        m_tile_indices.resize(tile_count);
+        placement::triangle_data.resize(placement_count);
+    
+        // read vector data
+        file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
+        file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
+        file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
+    
+        // read tile data
+        for (uint32_t i = 0; i < tile_count; i++)
+        {
+            uint32_t vertex_size, index_size;
+            file.read(reinterpret_cast<char*>(&vertex_size), sizeof(uint32_t));
+            file.read(reinterpret_cast<char*>(&index_size), sizeof(uint32_t));
+    
+            m_tile_vertices[i].resize(vertex_size);
+            m_tile_indices[i].resize(index_size);
+    
+            file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
+            file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
+        }
+    
+        file.close();
+    
+        // log load operation
+        SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
+                    file_path, width, height, height_data_size, vertex_count, index_count, tile_count);
+    }
+    
+    void Terrain::Generate()
+    {
+        // check if already generating
+        if (m_is_generating)
+        {
+            SP_LOG_WARNING("terrain is already being generated, please wait...");
+            return;
+        }
+    
+        // check if height texture is assigned
         if (!m_height_texture)
         {
-            SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain");
+            SP_LOG_WARNING("you need to assign a height map before trying to generate a terrain");
             return;
         }
     
@@ -692,7 +815,7 @@ namespace spartan
     
         // start progress tracking
         uint32_t job_count = 9;
-        ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "Generating terrain...");
+        ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
     
         uint32_t width  = 0;
         uint32_t height = 0;
@@ -700,102 +823,51 @@ namespace spartan
     
         // define cache file path
         const string cache_file = "terrain_cache.bin";
-        bool loaded_from_cache = false;
+        bool loaded_from_cache  = false;
     
-        // check if cache exists and load it
+        // try to load from cache
         {
-            ifstream file(cache_file, ios::binary);
-            if (file.is_open())
+            LoadFromFile(cache_file.c_str());
+            if (!m_vertices.empty())
             {
-                // read all sizes first
-                uint32_t height_data_size = 0;
-                uint32_t vertex_count     = 0;
-                uint32_t index_count      = 0;
-                uint32_t tile_count       = 0;
-                uint32_t placement_count  = 0;
+                loaded_from_cache = true;
+                width             = GetWidth();
+                height            = GetHeight();
     
-                file.read(reinterpret_cast<char*>(&width), sizeof(uint32_t));
-                file.read(reinterpret_cast<char*>(&height), sizeof(uint32_t));
-                file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
-                file.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
-                file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
-                file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
-                file.read(reinterpret_cast<char*>(&placement_count), sizeof(uint32_t));
-    
-                // Sanity check
-                if (tile_count > 10000) // Adjust as needed
+                // skip to step 8
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache, skipping to mesh creation...");
+                for (uint32_t i = 0; i < 8; i++)
                 {
-                    SP_LOG_ERROR("Invalid tile_count (%u) read from cache, aborting load", tile_count);
-                    file.close();
-                }
-                else
-                {
-                    // resize vectors based on saved sizes
-                    m_height_data.resize(height_data_size);
-                    m_vertices.resize(vertex_count);
-                    m_indices.resize(index_count);
-                    m_tile_vertices.resize(tile_count);
-                    m_tile_indices.resize(tile_count);
-                    placement::triangle_data.resize(placement_count);
-    
-                    // read vector data
-                    file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
-                    file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
-                    file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
-                    file.read(reinterpret_cast<char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
-    
-                    // read tile data
-                    for (uint32_t i = 0; i < tile_count; i++)
-                    {
-                        uint32_t vertex_size, index_size;
-                        file.read(reinterpret_cast<char*>(&vertex_size), sizeof(uint32_t));
-                        file.read(reinterpret_cast<char*>(&index_size), sizeof(uint32_t));
-    
-                        m_tile_vertices[i].resize(vertex_size);
-                        m_tile_indices[i].resize(index_size);
-    
-                        file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
-                        file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
-                    }
-    
-                    file.close();
-                    loaded_from_cache = true;
-    
-                    SP_LOG_INFO("Loaded cache: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u", width, height, height_data_size, vertex_count, index_count, tile_count);
-    
-                    // skip to step 8
-                    ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Loaded from cache, skipping to mesh creation...");
-                    for (uint32_t i = 0; i < 8; i++)
-                    { 
-                        ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-                    }
+                    ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
                 }
             }
         }
     
         if (!loaded_from_cache)
         {
+            SP_LOG_INFO("Terrain not found, generating from scratch...");
+
             // 1. process height map
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Process height map...");
-                get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y, scale);
-                width  = GetWidth();
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("process height map...");
+                get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y);
+                width = GetWidth();
                 height = GetHeight();
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
             // 2. add perlin noise
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Adding Perlin noise...");
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("adding perlin noise...");
                 const float frequency = 0.1f;
                 const float amplitude = 1.0f;
                 perlin_noise::add(m_height_data, width, height, frequency, amplitude);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 3. compute positions 
+            // 3. compute positions
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating positions...");
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating positions...");
                 positions.resize(width * height);
                 generate_positions(positions, m_height_data, width, height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
@@ -803,7 +875,7 @@ namespace spartan
     
             // 4. compute vertices and indices
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating vertices and indices...");
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating vertices and indices...");
                 m_vertices.resize(width * height);
                 m_indices.resize(width * height * 6);
                 generate_vertices_and_indices(m_vertices, m_indices, positions, width, height);
@@ -812,76 +884,33 @@ namespace spartan
     
             // 5. compute normals and tangents
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Generating normals...");
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
                 generate_normals(m_indices, m_vertices, width, height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
             // 6. optimize geometry
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Optimizing geometry...");
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("optimizing geometry...");
                 spartan::geometry_processing::optimize(m_vertices, m_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
-
-            // 7. Compute triangle data for placement
+    
+            // 7. compute triangle data for placement
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Computing triangle data for placement...");
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
                 placement::compute_triangle_data(m_vertices, m_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
             // 8. split into tiles
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Splitting into tiles...");
-                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices);
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
+                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, parameters::tile_count, m_tile_vertices, m_tile_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
     
-                // write to cache file
-                ofstream file(cache_file, ios::binary);
-                if (file.is_open())
-                {
-                    // write all sizes first
-                    uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
-                    uint32_t vertex_count     = static_cast<uint32_t>(m_vertices.size());
-                    uint32_t index_count      = static_cast<uint32_t>(m_indices.size());
-                    uint32_t tile_count       = static_cast<uint32_t>(m_tile_vertices.size());
-                    uint32_t placement_count  = static_cast<uint32_t>(placement::triangle_data.size());
-    
-                    file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
-                    file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
-                    file.write(reinterpret_cast<const char*>(&height_data_size), sizeof(uint32_t));
-                    file.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
-                    file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
-                    file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
-                    file.write(reinterpret_cast<const char*>(&placement_count), sizeof(uint32_t));
-    
-                    // write vector data
-                    file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
-                    file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
-                    file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
-                    file.write(reinterpret_cast<const char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
-    
-                    // write tile data
-                    for (uint32_t i = 0; i < tile_count; i++)
-                    {
-                        uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
-                        uint32_t index_size = static_cast<uint32_t>(m_tile_indices[i].size());
-                        file.write(reinterpret_cast<const char*>(&vertex_size), sizeof(uint32_t));
-                        file.write(reinterpret_cast<const char*>(&index_size), sizeof(uint32_t));
-                        file.write(reinterpret_cast<const char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
-                        file.write(reinterpret_cast<const char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
-                    }
-    
-                    file.close();
-    
-                    SP_LOG_INFO("Wrote cache: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
-                                width, height, height_data_size, vertex_count, index_count, tile_count);
-                }
-                else
-                {
-                    SP_LOG_ERROR("Failed to write terrain cache file");
-                }
+                // save to cache file
+                SaveToFile(cache_file.c_str());
             }
         }
     
@@ -890,28 +919,28 @@ namespace spartan
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
-
+    
         // 9. create a mesh for each tile
         {
-            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("Creating GPU mesh...");
-
+            ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
+    
             m_mesh = make_shared<Mesh>();
             m_mesh->SetObjectName("terrain_mesh");
             m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // the geometry was optimized at step 6, don't do it again
-
-            // accumulte geometry from all tiles
+    
+            // accumulate geometry from all tiles
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {
                 // update with geometry
                 uint32_t sub_mesh_index = 0;
                 m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
-
+    
                 // create a child entity, add a renderable, and this mesh tile to it
                 {
                     shared_ptr<Entity> entity = World::CreateEntity();
                     entity->SetObjectName("tile_" + to_string(tile_index));
                     entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
-
+    
                     if (Renderable* renderable = entity->AddComponent<Renderable>())
                     {
                         renderable->SetMesh(m_mesh.get(), sub_mesh_index);
@@ -919,15 +948,15 @@ namespace spartan
                     }
                 }
             }
-
+    
             m_mesh->CreateGpuBuffers();
-
+    
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
-
-        m_area_km2      = compute_terrain_area_km2(m_vertices);
+    
+        m_area_km2 = compute_terrain_area_km2(m_vertices);
         m_is_generating = false;
-
+    
         // clear everything but the height and placement data (they are used for physics and for placing foliage)
         m_vertices.clear();
         m_indices.clear();
