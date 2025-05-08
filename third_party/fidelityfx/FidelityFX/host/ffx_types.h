@@ -355,6 +355,7 @@ typedef enum FfxResourceStates {
     FFX_RESOURCE_STATE_INDIRECT_ARGUMENT    = (1 << 6), ///< Indicates a resource is in the state to be used as an indirect command argument
     FFX_RESOURCE_STATE_PRESENT              = (1 << 7), ///< Indicates a resource is in the state to be used to present to the swap chain
     FFX_RESOURCE_STATE_RENDER_TARGET        = (1 << 8), ///< Indicates a resource is in the state to be used as render target
+    FFX_RESOURCE_STATE_DEPTH_ATTACHEMENT    = (1 << 9), ///< Indicates a resource is in the state to be used as depth attachment
 } FfxResourceStates;
 
 /// An enumeration of surface dimensions.
@@ -504,6 +505,8 @@ typedef enum FfxBarrierType
     FFX_BARRIER_TYPE_TRANSITION = 0,
     FFX_BARRIER_TYPE_UAV,
 } FfxBarrierType;
+
+typedef void (*ffxMessageCallback)(uint32_t type, const wchar_t* message);
 
 /// An enumeration for message types that can be passed
 ///

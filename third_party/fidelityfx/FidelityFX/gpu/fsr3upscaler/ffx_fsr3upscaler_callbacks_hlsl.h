@@ -77,6 +77,10 @@ cbuffer cbFSR3Upscaler : FFX_FSR3UPSCALER_DECLARE_CB(FSR3UPSCALER_BIND_CB_FSR3UP
     FfxFloat32    fFrameIndex;
 
     FfxFloat32    fVelocityFactor;
+    FfxFloat32    fReactivenessScale;
+    FfxFloat32    fShadingChangeScale;
+    FfxFloat32    fAccumulationAddedPerFrame;
+    FfxFloat32    fMinDisocclusionAccumulation;
 };
 
 #define FFX_FSR3UPSCALER_CONSTANT_BUFFER_1_SIZE (sizeof(cbFSR3Upscaler) / 4)  // Number of 32-bit values. This must be kept in sync with the cbFSR3Upscaler size.
@@ -175,6 +179,16 @@ FfxFloat32 FrameIndex()
 FfxFloat32 VelocityFactor()
 {
     return fVelocityFactor;
+}
+
+FfxFloat32 AccumulationAddedPerFrame()
+{
+    return fAccumulationAddedPerFrame;
+}
+
+FfxFloat32 MinDisocclusionAccumulation()
+{
+    return fMinDisocclusionAccumulation;
 }
 
 #endif // #if defined(FSR3UPSCALER_BIND_CB_FSR3UPSCALER)
@@ -367,7 +381,7 @@ Texture2D<FfxFloat32> r_reactive_mask : FFX_FSR3UPSCALER_DECLARE_SRV(FSR3UPSCALE
 
 FfxFloat32 LoadReactiveMask(FfxUInt32x2 iPxPos)
 {
-    return r_reactive_mask[iPxPos];
+    return r_reactive_mask[iPxPos] * fReactivenessScale;
 }
 
 FfxInt32x2 GetReactiveMaskResourceDimensions()
@@ -381,7 +395,7 @@ FfxInt32x2 GetReactiveMaskResourceDimensions()
 
 FfxFloat32 SampleReactiveMask(FfxFloat32x2 fUV)
 {
-    return r_reactive_mask.SampleLevel(s_LinearClamp, fUV, 0).x;
+    return r_reactive_mask.SampleLevel(s_LinearClamp, fUV, 0).x * fReactivenessScale;
 }
 #endif
 
@@ -536,12 +550,12 @@ Texture2D<FfxFloat32> r_shading_change : FFX_FSR3UPSCALER_DECLARE_SRV(FSR3UPSCAL
 
 FfxFloat32 LoadShadingChange(FfxUInt32x2 iPxPos)
 {
-    return r_shading_change[iPxPos];
+    return r_shading_change[iPxPos] * fShadingChangeScale;
 }
 
 FfxFloat32 SampleShadingChange(FfxFloat32x2 fUV)
 {
-    return r_shading_change.SampleLevel(s_LinearClamp, fUV, 0);
+    return r_shading_change.SampleLevel(s_LinearClamp, fUV, 0) * fShadingChangeScale;
 }
 #endif
 

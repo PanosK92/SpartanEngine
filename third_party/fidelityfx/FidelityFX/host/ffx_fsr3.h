@@ -35,15 +35,15 @@
 /// @ingroup FSR3
 #define FFX_FSR3_VERSION_MAJOR      (3)
 
-/// FidelityFX Super Resolution 0 minor version.
+/// FidelityFX Super Resolution 3 minor version.
 ///
 /// @ingroup FSR3
 #define FFX_FSR3_VERSION_MINOR      (1)
 
-/// FidelityFX Super Resolution 0 patch version.
+/// FidelityFX Super Resolution 3 patch version.
 ///
 /// @ingroup FSR3
-#define FFX_FSR3_VERSION_PATCH      (3)
+#define FFX_FSR3_VERSION_PATCH      (4)
 
 /// FidelityFX Super Resolution 3 context count
 ///

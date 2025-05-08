@@ -61,6 +61,10 @@
         FfxFloat32    fFrameIndex;
 
         FfxFloat32    fVelocityFactor;
+        FfxFloat32    fReactivenessScale;
+        FfxFloat32    fShadingChangeScale;
+        FfxFloat32    fAccumulationAddedPerFrame;
+        FfxFloat32    fMinDisocclusionAccumulation;
 	} cbFSR3Upscaler;
 
 
@@ -157,6 +161,16 @@ FfxFloat32 FrameIndex()
 FfxFloat32 VelocityFactor()
 {
     return cbFSR3Upscaler.fVelocityFactor;
+}
+
+FfxFloat32 AccumulationAddedPerFrame()
+{
+    return cbFSR3Upscaler.fAccumulationAddedPerFrame;
+}
+
+FfxFloat32 MinDisocclusionAccumulation()
+{
+    return cbFSR3Upscaler.fMinDisocclusionAccumulation;
 }
 
 #endif // #if defined(FSR3UPSCALER_BIND_CB_FSR3UPSCALER)
@@ -302,7 +316,7 @@ layout (set = 0, binding = FSR3UPSCALER_BIND_SRV_REACTIVE_MASK) uniform texture2
 
 FfxFloat32 LoadReactiveMask(FfxInt32x2 iPxPos)
 {
-	return texelFetch(r_reactive_mask, FfxInt32x2(iPxPos), 0).r;
+	return texelFetch(r_reactive_mask, FfxInt32x2(iPxPos), 0).r * cbFSR3Upscaler.fReactivenessScale;
 }
 
 FfxInt32x2 GetReactiveMaskResourceDimensions()
@@ -312,7 +326,7 @@ FfxInt32x2 GetReactiveMaskResourceDimensions()
 
 FfxFloat32 SampleReactiveMask(FfxFloat32x2 fUV)
 {
-	return textureLod(sampler2D(r_reactive_mask, s_LinearClamp), fUV, 0.0).x;
+	return textureLod(sampler2D(r_reactive_mask, s_LinearClamp), fUV, 0.0).x * cbFSR3Upscaler.fReactivenessScale;
 }
 #endif
 
@@ -463,12 +477,12 @@ layout(set = 0, binding = FSR3UPSCALER_BIND_SRV_SHADING_CHANGE) uniform texture2
 
 FfxFloat32 LoadShadingChange(FfxInt32x2 iPxPos)
 {
-    return texelFetch(r_shading_change, iPxPos, 0).x;
+    return texelFetch(r_shading_change, iPxPos, 0).x * cbFSR3Upscaler.fShadingChangeScale;
 }
 
 FfxFloat32 SampleShadingChange(FfxFloat32x2 fUV)
 {
-    return textureLod(sampler2D(r_shading_change, s_LinearClamp), fUV, 0.0).x;
+    return textureLod(sampler2D(r_shading_change, s_LinearClamp), fUV, 0.0).x * cbFSR3Upscaler.fShadingChangeScale;
 }
 #endif
 

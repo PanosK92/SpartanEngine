@@ -46,12 +46,12 @@ void RectifyHistory(
     FFX_PARAMETER_INOUT AccumulationPassData data
 )
 {
-    const FfxFloat32 fVecolityFactor = ffxSaturate(params.f4KVelocity / 20.0f);
+    const FfxFloat32 f4kVelocityFactor = ffxSaturate(params.f4KVelocity / 20.0f);
     const FfxFloat32 fDistanceFactor        = ffxSaturate(0.75f - params.fFarthestDepthInMeters / 20.0f);
     const FfxFloat32 fAccumulationFactor    = 1.0f - params.fAccumulation;
     const FfxFloat32 fReactiveFactor        = ffxPow(params.fReactiveMask, 1.0f / 2.0f);
     const FfxFloat32 fShadingChangeFactor   = params.fShadingChange;
-    const FfxFloat32 fBoxScaleT             = ffxMax(fVecolityFactor, ffxMax(fDistanceFactor, ffxMax(fAccumulationFactor, ffxMax(fReactiveFactor, fShadingChangeFactor))));
+    const FfxFloat32 fBoxScaleT             = ffxMax(f4kVelocityFactor, ffxMax(fDistanceFactor, ffxMax(fAccumulationFactor, ffxMax(fReactiveFactor, fShadingChangeFactor))));
     
     const FfxFloat32   fBoxScale     = ffxLerp(3.0f, 1.0f, fBoxScaleT);
     const FfxFloat32x3 fScaledBoxVec = data.clippingBox.boxVec * FfxFloat32x3(1.7f, 1.0f, 1.0f) * fBoxScale;

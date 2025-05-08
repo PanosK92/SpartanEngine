@@ -44,7 +44,7 @@
 /// FidelityFX Breadcrumbs patch version.
 ///
 /// @ingroup ffxBreadcrumbs
-#define FFX_BREADCRUMBS_VERSION_PATCH      (0)
+#define FFX_BREADCRUMBS_VERSION_PATCH      (1)
 
 /// FidelityFX Breadcrumbs context count
 /// 

@@ -52,8 +52,8 @@ void computeGameFieldMvs(FfxInt32x2 iPxPos)
     const FfxUInt32 uHighPriorityFactorPrimary = getPriorityFactorFromViewSpaceDepth(fViewSpaceDepth);
 
     // pixel position in current frame + Game Motion Vector -> pixel position in previous frame
-    FfxFloat32x3 prevBackbufferCol = SamplePreviousBackbuffer(fUvInInterpolationRect+ fGameMotionVector * fUvLetterBoxScale).xyz; // returns previous backbuffer color of current frame pixel position in previous frame
-    FfxFloat32x3 curBackbufferCol  = SampleCurrentBackbuffer(fUvInInterpolationRect).xyz; // returns current backbuffer color at current frame pixel position
+    FfxFloat32x3 prevBackbufferCol = SamplePreviousBackbuffer(fUvInInterpolationRect+ fGameMotionVector * fUvLetterBoxScale).xyz; //returns color of current frame's pixel in previous frame buffer
+    FfxFloat32x3 curBackbufferCol  = SampleCurrentBackbuffer(fUvInInterpolationRect).xyz; // returns color of current frame's pixel in current frame buffer
     FfxFloat32   prevLuma          = 0.001f + RawRGBToLuminance(prevBackbufferCol);
     FfxFloat32   currLuma          = 0.001f + RawRGBToLuminance(curBackbufferCol);
 

@@ -43,7 +43,7 @@
 /// FidelityFX Super Resolution 3 patch version.
 ///
 /// @ingroup ffxFsr3Upscaler
-#define FFX_FSR3UPSCALER_VERSION_PATCH      (3)
+#define FFX_FSR3UPSCALER_VERSION_PATCH      (4)
 
 /// FidelityFX Super Resolution 3 context count
 /// 
@@ -175,7 +175,11 @@ typedef enum FfxFsr3UpscalerDispatchFlags
 
 typedef enum FfxFsr3UpscalerConfigureKey
 {
-    FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR = 0 //Override constant buffer fVelocityFactor (from 1.0f at context creation) to floating point value casted from void * valuePtr. Value of 0.0f can improve temporal stability of bright pixels. Value is clamped to [0.0f, 1.0f].
+    FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR = 0, //Override constant buffer fVelocityFactor. The float value is casted from void * ptr. Value of 0.0f can improve temporal stability of bright pixels. Default value is 1.0f. Value is clamped to [0.0f, 1.0f].
+    FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FREACTIVENESSSCALE = 1, //Override constant buffer fReactivenessScale. The float value is casted from void * ptr. Meant for development purpose to test if writing a larger value to reactive mask, reduces ghosting. Default value is 1.0f. Value is clamped to [0.0f, +infinity].
+    FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FSHADINGCHANGESCALE =2, //Override fShadingChangeScale. Increasing this scales fsr3.1 computed shading change value at read to have higher reactiveness. Default value is 1.0f. Value is clamped to [0.0f, +infinity].
+    FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FACCUMULATIONADDEDPERFRAME = 3, // Override constant buffer fAccumulationAddedPerFrame. Corresponds to amount of accumulation added per frame at pixel coordinate where disocclusion occured or when reactive mask value is > 0.0f. Decreasing this and drawing the ghosting object (IE no mv) to reactive mask with value close to 1.0f can decrease temporal ghosting. Decreasing this value could result in more thin feature pixels flickering. Default value is 0.333. Value is clamped to [0.0f, 1.0f].
+    FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FMINDISOCCLUSIONACCUMULATION = 4, //Override constant buffer fMinDisocclusionAccumulation. Increasing this value may reduce white pixel temporal flickering around swaying thin objects that are disoccluding one another often. Too high value may increase ghosting. Default value is -0.333. A sufficiently negative value means for pixel coordinate at frame N that is disoccluded, add fAccumulationAddedPerFrame starting at frame N+2. Default value is -0.333. Value is clamped to [-1.0f, 1.0f].
 } FfxFsr3UpscalerConfigureKey;
 
 /// A structure encapsulating the parameters for dispatching the various passes
@@ -572,6 +576,16 @@ FFX_API FfxVersionNumber ffxFsr3UpscalerGetEffectVersion();
 ///
 /// @ingroup ffxFsr3Upscaler
 FFX_API FfxErrorCode ffxFsr3UpscalerSetConstant(FfxFsr3UpscalerContext* context, FfxFsr3UpscalerConfigureKey key, void* valuePtr);
+
+/// Set global debug message settings
+///
+/// @param [in] fpMessage                A <c><i>ffxMessageCallback</i></ci>
+/// @param [in] debugLevel               An unsigned integer. Unimplemented.
+/// @retval
+/// FFX_OK                               The operation completed successfully.
+///
+/// @ingroup FRAMEINTERPOLATION
+FFX_API FfxErrorCode ffxFsr3UpscalerSetGlobalDebugMessage(ffxMessageCallback fpMessage, uint32_t debugLevel);
 
 #if defined(__cplusplus)
 }

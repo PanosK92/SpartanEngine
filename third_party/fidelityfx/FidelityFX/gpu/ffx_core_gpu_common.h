@@ -2652,7 +2652,7 @@ FfxFloat32x3 ffxSrgbFromLinear(FfxFloat32x3 value)
 /// @ingroup GPUCore
 FfxFloat32 ffxLinearFromSrgb(FfxFloat32 value)
 {
-    FfxFloat32x3 j = FfxFloat32x3(0.04045 / 12.92, 1.0 / 12.92, 2.4);
+    FfxFloat32x3 j = FfxFloat32x3(0.04045, 1.0 / 12.92, 2.4);
     FfxFloat32x2 k = FfxFloat32x2(1.0 / 1.055, 0.055 / 1.055);
     return ffxZeroOneSelect(ffxZeroOneIsSigned(value - j.x), value * j.y, pow(value * k.x + k.y, j.z));
 }
@@ -2669,7 +2669,7 @@ FfxFloat32 ffxLinearFromSrgb(FfxFloat32 value)
 /// @ingroup GPUCore
 FfxFloat32x2 ffxLinearFromSrgb(FfxFloat32x2 value)
 {
-    FfxFloat32x3 j = FfxFloat32x3(0.04045 / 12.92, 1.0 / 12.92, 2.4);
+    FfxFloat32x3 j = FfxFloat32x3(0.04045, 1.0 / 12.92, 2.4);
     FfxFloat32x2 k = FfxFloat32x2(1.0 / 1.055, 0.055 / 1.055);
     return ffxZeroOneSelect(ffxZeroOneIsSigned(value - j.xx), value * j.yy, pow(value * k.xx + k.yy, j.zz));
 }
@@ -2686,7 +2686,7 @@ FfxFloat32x2 ffxLinearFromSrgb(FfxFloat32x2 value)
 /// @ingroup GPUCore
 FfxFloat32x3 ffxLinearFromSrgb(FfxFloat32x3 value)
 {
-    FfxFloat32x3 j = FfxFloat32x3(0.04045 / 12.92, 1.0 / 12.92, 2.4);
+    FfxFloat32x3 j = FfxFloat32x3(0.04045, 1.0 / 12.92, 2.4);
     FfxFloat32x2 k = FfxFloat32x2(1.0 / 1.055, 0.055 / 1.055);
     return ffxZeroOneSelect(ffxZeroOneIsSigned(value - j.xxx), value * j.yyy, pow(value * k.xxx + k.yyy, j.zzz));
 }

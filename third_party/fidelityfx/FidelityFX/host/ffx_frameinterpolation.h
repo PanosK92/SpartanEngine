@@ -40,7 +40,7 @@
 /// FidelityFX Frameinterpolation patch version.
 ///
 /// @ingroup FRAMEINTERPOLATIONFRAMEINTERPOLATION
-#define FFX_FRAMEINTERPOLATION_VERSION_PATCH      (2)
+#define FFX_FRAMEINTERPOLATION_VERSION_PATCH      (3)
 
 /// FidelityFX Frame Interpolation context count
 ///
@@ -107,10 +107,11 @@ typedef enum FfxFrameInterpolationInitializationFlagBits {
     FFX_FRAMEINTERPOLATION_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS = (1<<4), ///< A bit indicating if the motion vectors are rendered at display resolution.
     FFX_FRAMEINTERPOLATION_ENABLE_JITTER_MOTION_VECTORS             = (1<<5),
     FFX_FRAMEINTERPOLATION_ENABLE_ASYNC_SUPPORT                     = (1<<6),
+    FFX_FRAMEINTERPOLATION_ENABLE_DEBUG_CHECKING                    = (1<<7), ///< A bit indicating that the runtime should check some API values and report issues.
 } FfxFrameInterpolationInitializationFlagBits;
 
 /// A structure encapsulating the parameters required to initialize
-/// FidelityFX Frameinterpolation upscaling.
+/// FidelityFX Frameinterpolation.
 ///
 /// @ingroup FRAMEINTERPOLATION
 typedef struct FfxFrameInterpolationContextDescription {
@@ -223,6 +224,12 @@ typedef struct FfxFrameInterpolationPrepareDescription
     FfxResource         dilatedDepth;                       ///< The dilated depth buffer data
     FfxResource         dilatedMotionVectors;               ///< The dilated motion vector data
     FfxResource         reconstructedPrevDepth;             ///< The reconstructed depth buffer data
+
+    FfxFloat32x3        cameraPosition;             ///< The camera position in world space
+    FfxFloat32x3        cameraUp;                   ///< The camera up normalized vector in world space.
+    FfxFloat32x3        cameraRight;                ///< The camera right normalized vector in world space.
+    FfxFloat32x3        cameraForward;              ///< The camera forward normalized vector in world space.
+
 } FfxFrameInterpolationPrepareDescription;
 
 FFX_API FfxErrorCode ffxFrameInterpolationPrepare(FfxFrameInterpolationContext* context, const FfxFrameInterpolationPrepareDescription* params);
@@ -233,6 +240,8 @@ typedef enum FfxFrameInterpolationDispatchFlags
     FFX_FRAMEINTERPOLATION_DISPATCH_DRAW_DEBUG_RESET_INDICATORS = (1 << 1),  ///< A bit indicating that the debug reset indicators will be drawn to the generated output.
     FFX_FRAMEINTERPOLATION_DISPATCH_DRAW_DEBUG_VIEW             = (1 << 2),  ///< A bit indicating that the interpolated output resource will contain debug views with relevant information.
     FFX_FRAMEINTERPOLATION_DISPATCH_DRAW_DEBUG_PACING_LINES     = (1 << 3),  ///< A bit indicating that the debug pacing lines will be drawn to the generated output.
+    FFX_FRAMEINTERPOLATION_DISPATCH_RESERVED_1 = (1 << 4),
+    FFX_FRAMEINTERPOLATION_DISPATCH_RESERVED_2 = (1 << 5), 
 } FfxFrameInterpolationDispatchFlags;
 
 typedef struct FfxFrameInterpolationDispatchDescription {
@@ -293,6 +302,14 @@ FFX_API FfxErrorCode ffxFrameInterpolationContextDestroy(FfxFrameInterpolationCo
 ///
 /// @ingroup FRAMEINTERPOLATION
 FFX_API FfxVersionNumber ffxFrameInterpolationGetEffectVersion();
+
+/// Set global debug message settings
+///
+/// @retval
+/// FFX_OK                              The operation completed successfully.
+///
+/// @ingroup FRAMEINTERPOLATION
+FFX_API FfxErrorCode ffxFrameInterpolationSetGlobalDebugMessage(ffxMessageCallback fpMessage, uint32_t debugLevel);
 
 #if defined(__cplusplus)
 }

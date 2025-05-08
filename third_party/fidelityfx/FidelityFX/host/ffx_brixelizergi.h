@@ -45,7 +45,7 @@
 /// FidelityFX Brixelizer GI patch version.
 ///
 /// @ingroup ffxBrixgi
-#define FFX_BRIXELIZER_GI_VERSION_PATCH (0)
+#define FFX_BRIXELIZER_GI_VERSION_PATCH (1)
 
 /// The size of the context specified in 32bit values.
 ///

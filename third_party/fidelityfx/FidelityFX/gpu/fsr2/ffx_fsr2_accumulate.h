@@ -66,8 +66,8 @@ void RectifyHistory(
 {
     FfxFloat32 fScaleFactorInfluence = ffxMin(20.0f, ffxPow(FfxFloat32(1.0f / length(DownscaleFactor().x * DownscaleFactor().y)), 3.0f));
 
-    const FfxFloat32 fVecolityFactor = ffxSaturate(params.fHrVelocity / 20.0f);
-    const FfxFloat32 fBoxScaleT = ffxMax(params.fDepthClipFactor, ffxMax(params.fAccumulationMask, fVecolityFactor));
+    const FfxFloat32 fHrVelocityFactor = ffxSaturate(params.fHrVelocity / 20.0f);
+    const FfxFloat32 fBoxScaleT = ffxMax(params.fDepthClipFactor, ffxMax(params.fAccumulationMask, fHrVelocityFactor));
     FfxFloat32 fBoxScale = ffxLerp(fScaleFactorInfluence, 1.0f, fBoxScaleT);
 
     FfxFloat32x3 fScaledBoxVec = clippingBox.boxVec * fBoxScale;

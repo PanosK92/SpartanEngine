@@ -43,7 +43,7 @@
 /// FidelityFX Super Resolution 2 patch version.
 ///
 /// @ingroup ffxFsr2
-#define FFX_FSR2_VERSION_PATCH      (2)
+#define FFX_FSR2_VERSION_PATCH      (3)
 
 /// FidelityFX Super Resolution 2 context count
 /// 
@@ -525,6 +525,15 @@ FFX_API bool ffxFsr2ResourceIsNull(FfxResource resource);
 /// @ingroup ffxFsr2
 FFX_API FfxVersionNumber ffxFsr2GetEffectVersion();
 
+/// Set global debug message settings
+///
+/// @param [in] fpMessage                A <c><i>ffxMessageCallback</i></ci>
+/// @param [in] debugLevel               An unsigned integer. Unimplemented.
+/// @retval
+/// FFX_OK                               The operation completed successfully.
+///
+/// @ingroup FRAMEINTERPOLATION
+FFX_API FfxErrorCode ffxFsr2SetGlobalDebugMessage(ffxMessageCallback fpMessage, uint32_t debugLevel);
 #if defined(__cplusplus)
 }
 #endif // #if defined(__cplusplus)

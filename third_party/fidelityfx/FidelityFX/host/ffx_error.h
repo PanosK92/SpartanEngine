@@ -56,6 +56,7 @@ typedef enum FfxErrorCodes {
     FFX_ERROR_BACKEND_API_ERROR       = 0x8000000d,  ///< The operation failed because the backend API returned an error code.
     FFX_ERROR_INSUFFICIENT_MEMORY     = 0x8000000e,  ///< The operation failed because there was not enough memory.
     FFX_ERROR_INVALID_VERSION         = 0x8000000f,  ///< The operation failed because the wrong backend was linked.
+    FFX_ERROR_ACCESS_DENIED           = 0x80000010,  ///< The operation failed because access to the resource was denied.
 
 }FfxErrorCodes;
 

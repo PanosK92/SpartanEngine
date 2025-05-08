@@ -25,6 +25,7 @@
 #include <FidelityFX/host/ffx_assert.h>
 #include <FidelityFX/host/ffx_types.h>
 #include <FidelityFX/host/ffx_error.h>
+#include <FidelityFX/host/ffx_message.h>
 
 #if defined(__cplusplus)
 #define FFX_CPU
@@ -56,7 +57,7 @@ FFX_FORWARD_DECLARE(FfxInterface);
 /// FidelityFX SDK patch version.
 ///
 /// @ingroup FfxInterface
-#define FFX_SDK_VERSION_PATCH (2)
+#define FFX_SDK_VERSION_PATCH (4)
 
 /// Macro to pack a FidelityFX SDK version id together.
 ///

@@ -2895,7 +2895,7 @@ FfxFloat16x3 ffxLinearFromGammaHalf(FfxFloat16x3 c, FfxFloat16 x)
 /// @ingroup GPUCore
 FfxFloat16 ffxLinearFromSrgbHalf(FfxFloat16 c)
 {
-    FfxFloat16x3 j = FfxFloat16x3(0.04045 / 12.92, 1.0 / 12.92, 2.4);
+    FfxFloat16x3 j = FfxFloat16x3(0.04045, 1.0 / 12.92, 2.4);
     FfxFloat16x2 k = FfxFloat16x2(1.0 / 1.055, 0.055 / 1.055);
     return ffxZeroOneSelectHalf(ffxZeroOneIsSignedHalf(c - j.x), c * j.y, pow(c * k.x + k.y, j.z));
 }
@@ -2912,7 +2912,7 @@ FfxFloat16 ffxLinearFromSrgbHalf(FfxFloat16 c)
 /// @ingroup GPUCore
 FfxFloat16x2 ffxLinearFromSrgbHalf(FfxFloat16x2 c)
 {
-    FfxFloat16x3 j = FfxFloat16x3(0.04045 / 12.92, 1.0 / 12.92, 2.4);
+    FfxFloat16x3 j = FfxFloat16x3(0.04045, 1.0 / 12.92, 2.4);
     FfxFloat16x2 k = FfxFloat16x2(1.0 / 1.055, 0.055 / 1.055);
     return ffxZeroOneSelectHalf(ffxZeroOneIsSignedHalf(c - j.xx), c * j.yy, pow(c * k.xx + k.yy, j.zz));
 }
@@ -2929,7 +2929,7 @@ FfxFloat16x2 ffxLinearFromSrgbHalf(FfxFloat16x2 c)
 /// @ingroup GPUCore
 FfxFloat16x3 ffxLinearFromSrgbHalf(FfxFloat16x3 c)
 {
-    FfxFloat16x3 j = FfxFloat16x3(0.04045 / 12.92, 1.0 / 12.92, 2.4);
+    FfxFloat16x3 j = FfxFloat16x3(0.04045, 1.0 / 12.92, 2.4);
     FfxFloat16x2 k = FfxFloat16x2(1.0 / 1.055, 0.055 / 1.055);
     return ffxZeroOneSelectHalf(ffxZeroOneIsSignedHalf(c - j.xxx), c * j.yyy, pow(c * k.xxx + k.yyy, j.zzz));
 }
