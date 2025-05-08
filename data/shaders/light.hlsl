@@ -86,7 +86,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             
             // screen space shadows
             uint array_slice_index = light.get_array_index();
-            if (light.has_shadows_screen_space() && array_slice_index != -1)
+            if (light.has_shadows_screen_space() && array_slice_index != -1 && surface.is_opaque())
             {
                 shadow = min(shadow, tex_uav_sss[int3(thread_id.xy, array_slice_index)].x);
             }

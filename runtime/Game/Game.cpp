@@ -874,8 +874,8 @@ namespace spartan
 
                 // sun/lighting/mood
                 create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
-                default_light_directional->GetComponent<Light>()->SetTemperature(1500.0f); // kelvin
-                default_light_directional->GetComponent<Light>()->SetIntensity(30000.0f);  // lux
+                default_light_directional->GetComponent<Light>()->SetTemperature(2000.0f); // kelvin
+                default_light_directional->GetComponent<Light>()->SetIntensity(50000.0f);  // lux
 
                 create_camera(Vector3(-458.0084f, 8.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
@@ -1193,8 +1193,8 @@ namespace spartan
                         material->SetProperty(MaterialProperty::IsGrassBlasde,        1.0f);
                         material->SetProperty(MaterialProperty::Roughness,            1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
-                        material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.4f);
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.3f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.5f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.5f);
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
                     
