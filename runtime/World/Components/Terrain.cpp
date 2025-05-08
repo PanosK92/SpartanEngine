@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../World.h"
 #include "../../RHI/RHI_Texture.h"
-#include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
 #include "../../Rendering/Material.h"
@@ -370,8 +369,8 @@ namespace spartan
                 // Clamp coordinates to valid range
                 uint32_t x0 = static_cast<uint32_t>(max(0.0f, min(x, static_cast<float>(width - 1))));
                 uint32_t y0 = static_cast<uint32_t>(max(0.0f, min(y, static_cast<float>(height - 1))));
-                uint32_t x1 = min<uint32_t>(x0 + 1, width - 1);
-                uint32_t y1 = min<uint32_t>(y0 + 1, height - 1);
+                uint32_t x1 = min<uint32_t>(x0 + 1, width - 1U);
+                uint32_t y1 = min<uint32_t>(y0 + 1, height - 1U);
 
                 // Bilinear interpolation for height
                 float fx = x - static_cast<float>(x0);

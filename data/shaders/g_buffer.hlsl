@@ -77,7 +77,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     }
     else if (surface.color_variation_from_instance()) // vegetation typically uses color variance
     {
-        const float variation_strength = 0.4f;                       // distinct variation
+        const float variation_strength = 0.2f;                       // kind of visible variation
         const float3 greener           = float3(0.05f, 0.4f, 0.03f); // richer green
         const float3 yellower          = float3(0.45f, 0.4f, 0.15f); // bolder yellow
         const float3 browner           = float3(0.3f, 0.15f, 0.08f); // deeper brown

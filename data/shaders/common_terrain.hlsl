@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 static const float sea_level  = 0.0f;
-static const float snow_level = 75.0f;
+static const float snow_level = 100.0f;
 
 static float get_snow_blend_factor(float3 position_world, float3 normal_world)
 {

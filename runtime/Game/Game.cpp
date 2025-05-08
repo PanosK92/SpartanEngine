@@ -869,15 +869,15 @@ namespace spartan
                 const float render_distance_trees = 2'000.0f;
                 const float render_distance_grass = 1'000.0f;
                 const uint32_t grass_blade_count  = 33'000'000; // above this point you can get driver instability and GPU crashes, we should have a small GPU buffer that contains only a portion of them
-                const uint32_t tree_count         = 10'000;
-                const uint32_t rock_count         = 10'000;
+                const uint32_t tree_count         = 5'000;      // too many are actually distracting (because naturally occupy too much screen space)
+                const uint32_t rock_count         = 10'000;     // these are small and on the ground, we can have more
 
                 // sun/lighting/mood
                 create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
                 default_light_directional->GetComponent<Light>()->SetTemperature(2000.0f); // kelvin
                 default_light_directional->GetComponent<Light>()->SetIntensity(50000.0f);  // lux
 
-                create_camera(Vector3(-458.0084f, 14.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
+                create_camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
                 Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 
