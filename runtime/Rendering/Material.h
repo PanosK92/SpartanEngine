@@ -46,39 +46,39 @@ namespace spartan
 
     enum class MaterialProperty
     {
-        Optimized,            // indicates if the material has been optimized (textures packed and compressed)
-        WorldHeight,          // height of the mesh to which the material is applied
-        WorldWidth,           // width of the mesh to which the material is applied
-        Clearcoat,            // additional specular layer on top of the base specular
-        Clearcoat_Roughness,  // roughness level of the clearcoat layer
-        Anisotropic,          // controls the anisotropy level of specular reflections
-        AnisotropicRotation,  // adjusts the anisotropy direction, with 1.0 being a full rotation
-        Sheen,                // adds a soft, velvet-like reflection at edges
-        ColorR,               // red component of the material color
-        ColorG,               // green component of the material color
-        ColorB,               // blue component of the material color
-        ColorA,               // alpha (transparency) component of the material color
-        Roughness,            // controls the roughness aspect of the surface reflection
-        Metalness,            // defines the surface as dielectric or metallic
-        Normal,               // normal map texture for simulating surface details
-        Height,               // height map texture for surface tessellation
-        Ior,                  // index of refraction for the material
-        SubsurfaceScattering, // simulates light passing through translucent materials
-        TextureTilingX,       // tiling factor of the texture along the X-axis
-        TextureTilingY,       // tiling factor of the texture along the Y-axis
-        TextureOffsetX,       // offset of the texture along the X-axis
-        TextureOffsetY,       // offset of the texture along the Y-axis
-        IsTerrain,            // applies texture mapping based on the mesh slope
-        WindAnimation,     // offsets vertices based on wind direction and strength
-        ColorFromPosition,    // sets vertex color based on world position 
-        IsGrassBlasde,        // applies grass blade specific enchantments
-        IsWater,              // applies vertex-based animation to simulate water flow
-        CullMode,             // sets the culling mode based on RHI_CullMode enum values
-        Gltf,                 // indicates if the material was imported from a glTF file
-        Tessellation,         // indicates if the material is tessellated
-        WorldSpaceUv,         // indicates if the UV coordinates are in world space
-        NormalFromAlbedo,     // indicates if the normal map is derived from the albedo texture
-        Max                   // total number of properties, used to size arrays
+        Optimized,                  // indicates if the material has been optimized (textures packed and compressed)
+        WorldHeight,                // height of the mesh to which the material is applied
+        WorldWidth,                 // width of the mesh to which the material is applied
+        Clearcoat,                  // additional specular layer on top of the base specular
+        Clearcoat_Roughness,        // roughness level of the clearcoat layer
+        Anisotropic,                // controls the anisotropy level of specular reflections
+        AnisotropicRotation,        // adjusts the anisotropy direction, with 1.0 being a full rotation
+        Sheen,                      // adds a soft, velvet-like reflection at edges
+        ColorR,                     // red component of the material color
+        ColorG,                     // green component of the material color
+        ColorB,                     // blue component of the material color
+        ColorA,                     // alpha (transparency) component of the material color
+        Roughness,                  // controls the roughness aspect of the surface reflection
+        Metalness,                  // defines the surface as dielectric or metallic
+        Normal,                     // normal map texture for simulating surface details
+        Height,                     // height map texture for surface tessellation
+        Ior,                        // index of refraction for the material
+        SubsurfaceScattering,       // simulates light passing through translucent materials
+        TextureTilingX,             // tiling factor of the texture along the X-axis
+        TextureTilingY,             // tiling factor of the texture along the Y-axis
+        TextureOffsetX,             // offset of the texture along the X-axis
+        TextureOffsetY,             // offset of the texture along the Y-axis
+        IsTerrain,                  // applies texture mapping based on the mesh slope
+        WindAnimation,              // offsets vertices based on wind direction and strength
+        ColorVariationFromInstance, // applies a color variation based on the instance ID
+        IsGrassBlasde,              // applies grass blade specific enchantments
+        IsWater,                    // applies vertex-based animation to simulate water flow
+        CullMode,                   // sets the culling mode based on RHI_CullMode enum values
+        Gltf,                       // indicates if the material was imported from a glTF file
+        Tessellation,               // indicates if the material is tessellated
+        WorldSpaceUv,               // indicates if the UV coordinates are in world space
+        NormalFromAlbedo,           // indicates if the normal map is derived from the albedo texture
+        Max                         // total number of properties, used to size arrays
     };
 
     enum class MaterialIor

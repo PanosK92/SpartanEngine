@@ -866,20 +866,20 @@ namespace spartan
                 properties[count].world_space_uv        = material->GetProperty(MaterialProperty::WorldSpaceUv);
 
                 // flags
-                properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)    ? (1U << 0)  : 0;
-                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Normal)    ? (1U << 1)  : 0;
-                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Color)     ? (1U << 2)  : 0;
-                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Roughness) ? (1U << 3)  : 0;
-                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Metalness) ? (1U << 4)  : 0;
-                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::AlphaMask) ? (1U << 5)  : 0;
-                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Emission)  ? (1U << 6)  : 0;
-                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Occlusion) ? (1U << 7)  : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::IsTerrain)         ? (1U << 8)  : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::WindAnimation)     ? (1U << 9)  : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::ColorFromPosition) ? (1U << 10) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::IsGrassBlasde)     ? (1U << 11) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)           ? (1U << 12) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)      ? (1U << 13) : 0;
+                properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Normal)             ? (1U << 1)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Color)              ? (1U << 2)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Roughness)          ? (1U << 3)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Metalness)          ? (1U << 4)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::AlphaMask)          ? (1U << 5)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Emission)           ? (1U << 6)  : 0;
+                properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Occlusion)          ? (1U << 7)  : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsTerrain)                  ? (1U << 8)  : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::WindAnimation)              ? (1U << 9)  : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::ColorVariationFromInstance) ? (1U << 10) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsGrassBlasde)              ? (1U << 11) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)                    ? (1U << 12) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 13) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
     

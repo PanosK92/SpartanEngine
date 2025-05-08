@@ -48,6 +48,7 @@ struct gbuffer_vertex
     float3 tangent                : TANGENT_WORLD;
     float2 uv                     : TEXCOORD;
     float height_percent          : HEIGHT_PERCENT;
+    uint instance_id              : INSTANCE_ID;
 }; 
 
 // remap a value from one range to another
@@ -308,7 +309,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     // start building the vertex
     gbuffer_vertex vertex;
-
+    vertex.instance_id = instance_id;
+    
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
     float3 position_transform = extract_position(transform); // bottom-left of the grass blade
     float width_percent       = (input.position.xyz.x) / GetMaterial().local_width;

@@ -1073,7 +1073,8 @@ namespace spartan
                                     material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\model_tree\\Twig_Base_Material_2.png");
                                     material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\model_tree\\Twig_Normal.png");
                                     material->SetTexture(MaterialTextureType::AlphaMask,          "project\\terrain\\model_tree\\Twig_Opacity_Map.jpg");
-                                    material->SetProperty(MaterialProperty::WindAnimation,     1.0f);
+                                    material->SetProperty(MaterialProperty::WindAnimation,        1.0f);
+                                    material->SetProperty(MaterialProperty::ColorVariationFromInstance,    1.0f);
                                     material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                                     // create a file path for this material (required for the material to be able to be cached by the resource cache)
                                     material->SetResourceFilePath("project\\terrain\\tree_leaf_material" + string(EXTENSION_MATERIAL));
@@ -1192,8 +1193,8 @@ namespace spartan
                         material->SetProperty(MaterialProperty::IsGrassBlasde,        1.0f);
                         material->SetProperty(MaterialProperty::Roughness,            1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
-                        material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.6f);
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.6f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.4f);
+                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.3f);
                         material->SetColor(Color::standard_white);
                         renderable->SetMaterial(material);
                     

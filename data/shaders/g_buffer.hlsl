@@ -29,20 +29,15 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
-float get_quantized_position_variation(float3 position)
+float hash_instance_id(uint instance_id)
 {
-    // Quantize position to approximate tree root (e.g., round to nearest 5 meters)
-    const float grid_size = 5.0f; // Adjust based on typical tree spacing
-    float3 quantized_pos = floor(position / grid_size) * grid_size;
-
-    // Simple hash based on quantized position
-    uint seed = uint(quantized_pos.x * 73856093.0) ^ uint(quantized_pos.z * 19349663.0);
+    uint seed = instance_id * 16777619u;
     seed = (seed ^ 61u) ^ (seed >> 16u);
     seed *= 9u;
     seed = seed ^ (seed >> 4u);
     seed *= 0x27d4eb2du;
     seed = seed ^ (seed >> 15u);
-    return float(seed) / 4294967295.0; // Normalize to [0, 1]
+    return float(seed) / 4294967295.0; // normalize
 }
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface)
@@ -81,27 +76,24 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         float noise_value               = get_noise_perlin(noise_uv);
         color.rgb                      *= (1.0f + noise_value * variation_strength);
     }
-    else if (surface.color_from_position()) // vegetation typically uses color variance
+    else if (surface.color_variation_from_instance()) // vegetation typically uses color variance
     {
-        // apply position color variation for trees
-        float variation = get_quantized_position_variation(vertex.position);
-        
-        // define variation colors (distinct with red/pink)
-        float3 greener  = float3(0.05f, 0.4f, 0.03f); // richer green
-        float3 yellower = float3(0.45f, 0.4f, 0.15f); // bolder yellow
-        float3 browner  = float3(0.3f, 0.15f, 0.08f); // deeper brown
-        float3 pinker   = float3(0.4f, 0.2f, 0.25f);  // subtle red/pink for flowering effect
+        const float variation_strength = 0.4f;                       // distinct variation
+        const float3 greener           = float3(0.05f, 0.4f, 0.03f); // richer green
+        const float3 yellower          = float3(0.45f, 0.4f, 0.15f); // bolder yellow
+        const float3 browner           = float3(0.3f, 0.15f, 0.08f); // deeper brown
+        const float3 pinker            = float3(0.4f, 0.2f, 0.25f);  // subtle red/pink for flowering effect
         
         // blend based on variation value using lerps
-        float3 color = greener; // start with greener
-        color        = lerp(color, yellower, step(0.25f, variation)); // transition to yellower at 0.25
-        color        = lerp(color, browner,  step(0.5f,  variation)); // transition to browner at 0.5
-        color        = lerp(color, pinker,   step(0.75f, variation)); // Ttransition to pinker at 0.75
-    }
+        float variation                = hash_instance_id(vertex.instance_id);
+        float3 variation_color         = greener;                                                  // start with greener
+        variation_color                = lerp(variation_color , yellower, step(0.25f, variation)); // transition to yellower at 0.25
+        variation_color                = lerp(variation_color , browner,  step(0.5f,  variation)); // transition to browner at 0.5
+        variation_color                = lerp(variation_color , pinker,   step(0.75f, variation)); // transition to pinker at 0.75
 
-    // apply snow
-    const float4 snow_color = float4(0.95f, 0.95f, 0.95f, 1.0f);
-    color                   = lerp(color, snow_color, snow_blend_factor);
+        // apply
+        color.rgb = lerp(color.rgb, variation_color, variation_strength);
+    }
 
     return color;
 }
@@ -160,22 +152,19 @@ gbuffer main_ps(gbuffer_vertex vertex)
             albedo            *= albedo_sample;
         }
 
-        // height-based albedo modulation for all surfaces, using is_grass_blade as lerp factor
+        // height based color
         {
-            // beutral tint for non-grass surfaces
-            float3 neutral_tint = float3(1.0f, 1.0f, 1.0f);
-
-            // grass-specific gradient
+            // local space height, for the grass blades
             const float3 grass_base = float3(0.1f, 0.25f, 0.05f); // muted dark green
             const float3 grass_tip  = float3(0.3f, 0.35f, 0.15f); // subtle yellowish-green
             const float3 grass_tint = lerp(grass_base, grass_tip, smoothstep(0, 1, vertex.height_percent * 0.5f));
-            float3 height_tint      = lerp(neutral_tint, grass_tint, (float)surface.is_grass_blade());
+            float3 height_tint      = lerp(float3(1.0f, 1.0f, 1.0f), grass_tint, (float) surface.is_grass_blade());
 
-            // snow blending
+            // world space height, for everything
             float snow_blend_factor = get_snow_blend_factor(vertex.position);
             height_tint             = lerp(height_tint, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
 
-            // apply height-based tint to albedo
+            // apply
             albedo.rgb *= height_tint;
         }
         

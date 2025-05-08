@@ -45,34 +45,34 @@ namespace spartan
         {
             switch (material_property)
             {
-                case MaterialProperty::Optimized:            return "optimized";
-                case MaterialProperty::WorldHeight:          return "world_space_height";
-                case MaterialProperty::Clearcoat:            return "clearcoat";
-                case MaterialProperty::Clearcoat_Roughness:  return "clearcoat_roughness";
-                case MaterialProperty::Anisotropic:          return "anisotropic";
-                case MaterialProperty::AnisotropicRotation:  return "anisotropic_rotation";
-                case MaterialProperty::Sheen:                return "sheen";
-                case MaterialProperty::ColorR:               return "color_r";
-                case MaterialProperty::ColorG:               return "color_g";
-                case MaterialProperty::ColorB:               return "color_b";
-                case MaterialProperty::ColorA:               return "color_a";
-                case MaterialProperty::Ior:                  return "ior";
-                case MaterialProperty::Roughness:            return "roughness";
-                case MaterialProperty::Metalness:            return "metalness";
-                case MaterialProperty::Normal:               return "normal";
-                case MaterialProperty::Height:               return "height";
-                case MaterialProperty::SubsurfaceScattering: return "subsurface_scattering";
-                case MaterialProperty::TextureTilingX:       return "texture_tiling_x";
-                case MaterialProperty::TextureTilingY:       return "texture_tiling_y";
-                case MaterialProperty::TextureOffsetX:       return "texture_offset_x";
-                case MaterialProperty::TextureOffsetY:       return "texture_offset_y";
-                case MaterialProperty::IsTerrain:            return "texture_slope_based";
-                case MaterialProperty::WindAnimation:        return "wind_animation";
-                case MaterialProperty::ColorFromPosition:    return "color_from_position";
-                case MaterialProperty::IsWater:              return "vertex_animate_water";
-                case MaterialProperty::CullMode:             return "cull_mode";
-                case MaterialProperty::NormalFromAlbedo:     return "normal_from_albedo";
-                case MaterialProperty::Max:                  return "max";
+                case MaterialProperty::Optimized:                  return "optimized";
+                case MaterialProperty::WorldHeight:                return "world_space_height";
+                case MaterialProperty::Clearcoat:                  return "clearcoat";
+                case MaterialProperty::Clearcoat_Roughness:        return "clearcoat_roughness";
+                case MaterialProperty::Anisotropic:                return "anisotropic";
+                case MaterialProperty::AnisotropicRotation:        return "anisotropic_rotation";
+                case MaterialProperty::Sheen:                      return "sheen";
+                case MaterialProperty::ColorR:                     return "color_r";
+                case MaterialProperty::ColorG:                     return "color_g";
+                case MaterialProperty::ColorB:                     return "color_b";
+                case MaterialProperty::ColorA:                     return "color_a";
+                case MaterialProperty::Ior:                        return "ior";
+                case MaterialProperty::Roughness:                  return "roughness";
+                case MaterialProperty::Metalness:                  return "metalness";
+                case MaterialProperty::Normal:                     return "normal";
+                case MaterialProperty::Height:                     return "height";
+                case MaterialProperty::SubsurfaceScattering:       return "subsurface_scattering";
+                case MaterialProperty::TextureTilingX:             return "texture_tiling_x";
+                case MaterialProperty::TextureTilingY:             return "texture_tiling_y";
+                case MaterialProperty::TextureOffsetX:             return "texture_offset_x";
+                case MaterialProperty::TextureOffsetY:             return "texture_offset_y";
+                case MaterialProperty::IsTerrain:                  return "texture_slope_based";
+                case MaterialProperty::WindAnimation:              return "wind_animation";
+                case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
+                case MaterialProperty::IsWater:                    return "vertex_animate_water";
+                case MaterialProperty::CullMode:                   return "cull_mode";
+                case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
+                case MaterialProperty::Max:                        return "max";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Unknown material property");
