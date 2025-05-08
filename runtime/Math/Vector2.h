@@ -140,6 +140,28 @@ namespace spartan::math
         static inline float Distance(const Vector2& a, const Vector2& b) { return (b - a).Length(); }
         static inline float DistanceSquared(const Vector2& a, const Vector2& b) { return (b - a).LengthSquared(); }
 
+        void Normalize()
+        {
+            float length = Length();
+            if (length > 0.0001f) // Avoid division by zero
+            {
+                x /= length;
+                y /= length;
+            }
+            else
+            {
+                x = 0.0f;
+                y = 0.0f;
+            }
+        }
+
+        [[nodiscard]] Vector2 Normalized() const
+        {
+            Vector2 result = *this;
+            result.Normalize();
+            return result;
+        }
+
         bool operator==(const Vector2& b) const
         {
             return x == b.x && y == b.y;

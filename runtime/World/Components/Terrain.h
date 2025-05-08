@@ -79,8 +79,8 @@ namespace spartan
     private:
         void Clear();
 
-        float m_min_y                     = -35.0f; // sea level is 0.0
-        float m_max_y                     = 120.0f;
+        float m_min_y                     = -40.0f; // sea level is 0.0
+        float m_max_y                     = 150.0f;
         float m_area_km2                  = 0.0f;
         std::atomic<bool> m_is_generating = false;
         uint32_t m_height_samples         = 0;

@@ -24,15 +24,13 @@ static const float snow_level = 75.0f;
 
 static float get_snow_blend_factor(float3 position_world, float3 normal_world)
 {
-    const float snow_level = 75.0f;         // base snow level
-    const float snow_blend_speed = 0.15f;   // transition sharpness
-    const float max_blend_factor = 0.8f;    // cap to preserve base texture
-    const float noise_scale = 0.1f;         // noise frequency for terrain/vegetation
-    const float noise_strength = 20.0f;     // height variation for snow level
-    const float slope_threshold = 0.7f;     // ~45 degrees, snow diminishes
-    const float slope_factor = 0.4f;        // snow reduction on steep slopes
-    const float wind_influence = 0.5f;      // wind effect strength
-    const float edge_jitter = 0.15f;        // subtle edge variation
+    const float snow_blend_speed = 0.15f; // transition sharpness
+    const float noise_scale      = 0.2f;  // noise frequency for terrain/vegetation
+    const float noise_strength   = 20.0f; // height variation for snow level
+    const float slope_threshold  = 0.5f;  // ~45 degrees, snow diminishes
+    const float slope_factor     = 0.1f;  // snow reduction on steep slopes
+    const float wind_influence   = 0.5f;  // wind effect strength
+    const float edge_jitter      = 0.15f; // subtle edge variation
 
     // calculate height-based snow distance
     float distance_to_snow = position_world.y - snow_level;
@@ -64,9 +62,6 @@ static float get_snow_blend_factor(float3 position_world, float3 normal_world)
     // add subtle noise for edge variation
     float edge_noise   = get_noise_perlin(noise_coords + float2(5.0f, 5.0f)); // offset noise
     snow_blend_factor *= lerp(1.0f - edge_jitter, 1.0f, edge_noise); // slight intensity variation
-
-    // cap to preserve base texture
-    snow_blend_factor = min(snow_blend_factor, max_blend_factor);
 
     return snow_blend_factor;
 }

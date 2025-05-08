@@ -50,114 +50,7 @@ namespace spartan
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
     }
 
-    namespace perlin_noise
-    {
-        // permutation table (256 values, typically used in Perlin noise for randomness)
-        static unsigned char p[512] = {
-            151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
-            8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
-            35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,
-            134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,
-            55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,
-            18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,
-            226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,
-            17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,
-            155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,
-            218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,
-            249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,
-            127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,
-            61,156,180,
-            // duplicate the array for wrapping (common practice in Perlin noise)
-            151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
-            8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
-            35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,
-            134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,
-            55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,
-            18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,
-            226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,
-            17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,
-            155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,
-            218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,
-            249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,
-            127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,
-            61,156,180
-        };
-    
-        // fade function for smooth interpolation (6t^5 - 15t^4 + 10t^3)
-        inline float fade(float t)
-        {
-            return t * t * t * (t * (t * 6 - 15) + 10);
-        }
-    
-        // linear interpolation
-        inline float lerp(float a, float b, float t)
-        {
-            return a + t * (b - a);
-        }
-    
-        // gradient function: computes dot product between gradient vector and distance vector
-        inline float grad(int hash, float x, float y)
-        {
-            int h = hash & 15;           // Take lower 4 bits of hash
-            float u = h < 8 ? x : y;     // If h < 8, use x, else use y
-            float v = h < 4 ? y : (h == 12 || h == 14 ? x : 0); // Select v based on hash
-            return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v); // Dot product
-        }
-    
-        // 2d perlin noise function
-        float noise(float x, float y)
-        {
-            // gind unit grid cell containing point
-            int X = static_cast<int>(floor(x)) & 255;
-            int Y = static_cast<int>(floor(y)) & 255;
-    
-            // get relative coordinates within the cell
-            x -= floor(x);
-            y -= floor(y);
-    
-            // compute fade curves for smooth interpolation
-            float u = fade(x);
-            float v = fade(y);
-    
-            // hash coordinates of the 4 corners of the grid cell
-            int aa = p[p[X] + Y];         // bottom-left
-            int ab = p[p[X] + Y + 1];     // top-left
-            int ba = p[p[X + 1] + Y];     // bottom-right
-            int bb = p[p[X + 1] + Y + 1]; // top-right
-    
-            // compute gradients and interpolate
-            float g1 = grad(aa, x, y);           // bottom-left gradient
-            float g2 = grad(ba, x - 1, y);       // bottom-right gradient
-            float x1 = lerp(g1, g2, u);          // interpolate along x (bottom edge)
-            
-            float g3 = grad(ab, x, y - 1);       // top-left gradient
-            float g4 = grad(bb, x - 1, y - 1);   // top-right gradient
-            float x2 = lerp(g3, g4, u);          // interpolate along x (top edge)
-    
-            // interpolate along y and return noise value in range [-1, 1]
-            return lerp(x1, x2, v);
-        }
-
-        void add(vector<float>& height_data, uint32_t width, uint32_t height, float frequency, float amplitude)
-        {
-            auto add_noise = [&height_data, width, height, frequency, amplitude](uint32_t start_index, uint32_t end_index)
-            {
-                for (uint32_t index = start_index; index < end_index; ++index)
-                {
-                    uint32_t i                  = index % width;
-                    uint32_t j                  = index / width;
-                    float x                     = static_cast<float>(i) - width * 0.5f;
-                    float z                     = static_cast<float>(j) - height * 0.5f;
-                    float noise_value           = noise(x * frequency, z * frequency);
-                    height_data[j * width + i] += noise_value * amplitude;
-                }
-            };
-
-            ThreadPool::ParallelLoop(add_noise, width * height);
-        }
-    }
-
-    namespace placement
+    namespace
     {
         struct TriangleData
         {
@@ -273,10 +166,7 @@ namespace spartan
         
             return transforms;
         }
-    }
 
-    namespace
-    {
         float compute_terrain_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices)
         {
             if (vertices.empty())
@@ -452,6 +342,139 @@ namespace spartan
                     height_data_out = smoothed_height_data;
                 }
             }
+        }
+
+        void apply_hydraulic_erosion(vector<float>& height_data, uint32_t width, uint32_t height)
+        { 
+            const uint32_t droplet_count         = 50000;
+            const float erosion_strength         = 1.0f; 
+            const float deposition_strength      = 0.5f; 
+            const float sediment_capacity_factor = 10.0f;
+            const float min_slope                = 0.01f;
+            const uint32_t max_lifetime          = 50;   
+            const float inertia                  = 0.05f;
+            const float gravity                  = 8.0f; 
+
+            // Random number generation for droplet placement and movement
+            thread_local mt19937 generator(random_device{}());
+            uniform_real_distribution<float> random_float(0.0f, 1.0f);
+            uniform_int_distribution<uint32_t> random_index(0, width * height - 1);
+
+            // Temporary buffer to store height changes (to avoid race conditions)
+            vector<float> height_changes(width * height, 0.0f);
+            mutex height_changes_mutex;
+
+            // Helper function to get height and gradient at a position
+            auto get_height_and_gradient = [&](float x, float y, float& height, Vector2& gradient)
+            {
+                // Clamp coordinates to valid range
+                uint32_t x0 = static_cast<uint32_t>(max(0.0f, min(x, static_cast<float>(width - 1))));
+                uint32_t y0 = static_cast<uint32_t>(max(0.0f, min(y, static_cast<float>(height - 1))));
+                uint32_t x1 = min<uint32_t>(x0 + 1, width - 1);
+                uint32_t y1 = min<uint32_t>(y0 + 1, height - 1);
+
+                // Bilinear interpolation for height
+                float fx = x - static_cast<float>(x0);
+                float fy = y - static_cast<float>(y0);
+                float h00 = height_data[y0 * width + x0];
+                float h10 = height_data[y0 * width + x1];
+                float h01 = height_data[y1 * width + x0];
+                float h11 = height_data[y1 * width + x1];
+                height = (1.0f - fx) * (1.0f - fy) * h00 + fx * (1.0f - fy) * h10 +
+                         (1.0f - fx) * fy * h01 + fx * fy * h11;
+
+                // Compute gradients using finite differences
+                gradient.x = (h10 - h00 + h11 - h01) * 0.5f;
+                gradient.y = (h01 - h00 + h11 - h10) * 0.5f;
+            };
+
+            // Parallel droplet simulation
+            auto simulate_droplet_batch = [&](uint32_t start, uint32_t end)
+            {
+                vector<float> local_height_changes(width * height, 0.0f);
+
+                for (uint32_t i = start; i < end; i++)
+                {
+                    // Initialize droplet
+                    Vector2 pos(random_float(generator) * (width - 1), random_float(generator) * (height - 1));
+                    Vector2 dir(0.0f, 0.0f);
+                    float speed = 0.0f;
+                    float sediment = 0.0f;
+                    uint32_t lifetime = 0;
+
+                    while (lifetime < max_lifetime)
+                    {
+                        // Get current height and gradient
+                        float height;
+                        Vector2 gradient;
+                        get_height_and_gradient(pos.x, pos.y, height, gradient);
+
+                        // Update direction with inertia and gradient
+                        dir = dir * inertia - gradient * (1.0f - inertia);
+                        if (dir.LengthSquared() > 0.0f)
+                            dir.Normalize();
+
+                        // Update speed based on slope
+                        float slope = gradient.Length();
+                        speed = sqrt(max(0.0f, speed * speed + gravity * slope));
+
+                        // Move droplet
+                        Vector2 new_pos = pos + dir * speed;
+                        if (new_pos.x < 0.0f || new_pos.x >= width - 1 || new_pos.y < 0.0f || new_pos.y >= height - 1)
+                            break;
+
+                        // Compute sediment capacity
+                        float capacity = max(min_slope, slope) * speed * sediment_capacity_factor;
+
+                        // Erode or deposit based on sediment capacity
+                        float sediment_change = sediment - capacity;
+                        float erode_amount = min(erosion_strength * slope, -sediment_change);
+                        float deposit_amount = min(deposition_strength * sediment_change, sediment);
+
+                        // Update sediment
+                        sediment += erode_amount - deposit_amount;
+
+                        // Apply height change at current position
+                        uint32_t x0 = static_cast<uint32_t>(pos.x);
+                        uint32_t y0 = static_cast<uint32_t>(pos.y);
+                        if (x0 < width && y0 < height)
+                        {
+                            local_height_changes[y0 * width + x0] -= erode_amount;
+                            local_height_changes[y0 * width + x0] += deposit_amount;
+                        }
+
+                        // Move to new position
+                        pos = new_pos;
+                        lifetime++;
+
+                        // Stop if speed is too low
+                        if (speed < 0.01f)
+                            break;
+                    }
+                }
+
+                // Merge local height changes into global buffer
+                lock_guard<mutex> lock(height_changes_mutex);
+                for (uint32_t i = 0; i < width * height; i++)
+                {
+                    height_changes[i] += local_height_changes[i];
+                }
+            };
+
+            // Run droplet simulation in parallel
+            ThreadPool::ParallelLoop(simulate_droplet_batch, droplet_count);
+
+            // Apply height changes to height_data
+            auto apply_height_changes = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    height_data[i] += height_changes[i];
+                    // Clamp height to valid range
+                    height_data[i] = clamp(height_data[i], -1000.0f, 1000.0f);
+                }
+            };
+            ThreadPool::ParallelLoop(apply_height_changes, width * height);
         }
 
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
@@ -674,7 +697,7 @@ namespace spartan
             min_height                  = 0.5f;
         }
     
-        *transforms = placement::find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
+        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
     }
 
     void Terrain::SaveToFile(const char* file_path)
@@ -694,7 +717,7 @@ namespace spartan
         uint32_t vertex_count     = static_cast<uint32_t>(m_vertices.size());
         uint32_t index_count      = static_cast<uint32_t>(m_indices.size());
         uint32_t tile_count       = static_cast<uint32_t>(m_tile_vertices.size());
-        uint32_t placement_count  = static_cast<uint32_t>(placement::triangle_data.size());
+        uint32_t placement_count  = static_cast<uint32_t>(triangle_data.size());
     
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
@@ -708,7 +731,7 @@ namespace spartan
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
+        file.write(reinterpret_cast<const char*>(triangle_data.data()), placement_count * sizeof(TriangleData));
     
         // write tile data
         for (uint32_t i = 0; i < tile_count; i++)
@@ -766,13 +789,13 @@ namespace spartan
         m_indices.resize(index_count);
         m_tile_vertices.resize(tile_count);
         m_tile_indices.resize(tile_count);
-        placement::triangle_data.resize(placement_count);
+        triangle_data.resize(placement_count);
     
         // read vector data
         file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(placement::triangle_data.data()), placement_count * sizeof(placement::TriangleData));
+        file.read(reinterpret_cast<char*>(triangle_data.data()), placement_count * sizeof(TriangleData));
     
         // read tile data
         for (uint32_t i = 0; i < tile_count; i++)
@@ -814,7 +837,7 @@ namespace spartan
         m_is_generating = true;
     
         // start progress tracking
-        uint32_t job_count = 9;
+        uint32_t job_count = 8;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
     
         uint32_t width  = 0;
@@ -834,9 +857,9 @@ namespace spartan
                 width             = GetWidth();
                 height            = GetHeight();
     
-                // skip to step 8
+                // skip to step 9
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache, skipping to mesh creation...");
-                for (uint32_t i = 0; i < 8; i++)
+                for (uint32_t i = 0; i < job_count - 1; i++)
                 {
                     ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
                 }
@@ -855,16 +878,14 @@ namespace spartan
                 height = GetHeight();
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
-    
-            // 2. add perlin noise
+
+           // 2. Apply hydraulic erosion
             {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("adding perlin noise...");
-                const float frequency = 0.1f;
-                const float amplitude = 1.0f;
-                perlin_noise::add(m_height_data, width, height, frequency, amplitude);
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic erosion...");
+                apply_hydraulic_erosion(m_height_data, width, height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
-    
+
             // 3. compute positions
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating positions...");
@@ -888,22 +909,15 @@ namespace spartan
                 generate_normals(m_indices, m_vertices, width, height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
-    
-            // 6. optimize geometry
-            {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("optimizing geometry...");
-                spartan::geometry_processing::optimize(m_vertices, m_indices);
-                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            }
-    
-            // 7. compute triangle data for placement
+
+            // 6. compute triangle data for placement
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
-                placement::compute_triangle_data(m_vertices, m_indices);
+                compute_triangle_data(m_vertices, m_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 8. split into tiles
+            // 7. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
                 spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, parameters::tile_count, m_tile_vertices, m_tile_indices);
