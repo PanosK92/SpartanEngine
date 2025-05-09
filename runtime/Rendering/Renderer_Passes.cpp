@@ -52,7 +52,6 @@ namespace spartan
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
-        cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,       GetBuffer(Renderer_Buffer::SpdCounter));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_present, RHI_CommandList* cmd_list_graphics_secondary)
@@ -1545,9 +1544,10 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     tex, mip_start, 1);                    // starting mip
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count); // following mips
+            // set resources
+            cmd_list->SetBuffer(Renderer_BindingsUav::sb_spd,   GetBuffer(Renderer_Buffer::SpdCounter)); // atomic counter
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     tex, mip_start, 1);                      // starting mip
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_spd, tex, mip_start + 1, output_mip_count);   // following mips
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);

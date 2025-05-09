@@ -343,36 +343,36 @@ namespace spartan
             }
         }
 
-        void apply_hydraulic_erosion(vector<float>& height_data, uint32_t width, uint32_t height)
+        void apply_hydraulic_erosion(vector<float>& height_data, uint32_t width, uint32_t height, float min_height, float max_height)
         { 
-            const uint32_t droplet_count         = 50000;
-            const float erosion_strength         = 1.0f; 
-            const float deposition_strength      = 0.5f; 
-            const float sediment_capacity_factor = 10.0f;
-            const float min_slope                = 0.01f;
-            const uint32_t max_lifetime          = 50;   
-            const float inertia                  = 0.05f;
-            const float gravity                  = 8.0f; 
+            const uint32_t droplet_count         = 500'000; // number of water droplets simulating erosion
+            const float erosion_strength         = 0.05f;   // rate at which droplets remove terrain material
+            const float deposition_strength      = 0.02f;   // rate at which droplets deposit carried sediment
+            const float sediment_capacity_factor = 3.0f;    // scales droplet's ability to carry sediment
+            const float min_slope                = 0.003f;  // minimum slope for erosion on flat terrain
+            const uint32_t max_lifetime          = 50;      // maximum steps a droplet travels
+            const float inertia                  = 0.2f;    // droplet's tendency to retain previous direction
+            const float gravity                  = 2.0f;    // accelerates droplet based on slope
 
-            // Random number generation for droplet placement and movement
+            // random number generation for droplet placement and movement
             thread_local mt19937 generator(random_device{}());
             uniform_real_distribution<float> random_float(0.0f, 1.0f);
             uniform_int_distribution<uint32_t> random_index(0, width * height - 1);
 
-            // Temporary buffer to store height changes (to avoid race conditions)
+            // temporary buffer to store height changes (to avoid race conditions)
             vector<float> height_changes(width * height, 0.0f);
             mutex height_changes_mutex;
 
-            // Helper function to get height and gradient at a position
+            // helper function to get height and gradient at a position
             auto get_height_and_gradient = [&](float x, float y, float& height, Vector2& gradient)
             {
-                // Clamp coordinates to valid range
+                // clamp coordinates to valid range
                 uint32_t x0 = static_cast<uint32_t>(max(0.0f, min(x, static_cast<float>(width - 1))));
                 uint32_t y0 = static_cast<uint32_t>(max(0.0f, min(y, static_cast<float>(height - 1))));
-                uint32_t x1 = min<uint32_t>(x0 + 1, width - 1U);
+                uint32_t x1 = min<uint32_t>(x0 + 1, width  - 1U);
                 uint32_t y1 = min<uint32_t>(y0 + 1, height - 1U);
 
-                // Bilinear interpolation for height
+                // bilinear interpolation for height
                 float fx = x - static_cast<float>(x0);
                 float fy = y - static_cast<float>(y0);
                 float h00 = height_data[y0 * width + x0];
@@ -382,19 +382,19 @@ namespace spartan
                 height = (1.0f - fx) * (1.0f - fy) * h00 + fx * (1.0f - fy) * h10 +
                          (1.0f - fx) * fy * h01 + fx * fy * h11;
 
-                // Compute gradients using finite differences
+                // compute gradients using finite differences
                 gradient.x = (h10 - h00 + h11 - h01) * 0.5f;
                 gradient.y = (h01 - h00 + h11 - h10) * 0.5f;
             };
 
-            // Parallel droplet simulation
+            // parallel droplet simulation
             auto simulate_droplet_batch = [&](uint32_t start, uint32_t end)
             {
                 vector<float> local_height_changes(width * height, 0.0f);
 
                 for (uint32_t i = start; i < end; i++)
                 {
-                    // Initialize droplet
+                    // initialize droplet
                     Vector2 pos(random_float(generator) * (width - 1), random_float(generator) * (height - 1));
                     Vector2 dir(0.0f, 0.0f);
                     float speed = 0.0f;
@@ -403,37 +403,37 @@ namespace spartan
 
                     while (lifetime < max_lifetime)
                     {
-                        // Get current height and gradient
+                        // get current height and gradient
                         float height;
                         Vector2 gradient;
                         get_height_and_gradient(pos.x, pos.y, height, gradient);
 
-                        // Update direction with inertia and gradient
+                        // update direction with inertia and gradient
                         dir = dir * inertia - gradient * (1.0f - inertia);
                         if (dir.LengthSquared() > 0.0f)
                             dir.Normalize();
 
-                        // Update speed based on slope
+                        // update speed based on slope
                         float slope = gradient.Length();
                         speed = sqrt(max(0.0f, speed * speed + gravity * slope));
 
-                        // Move droplet
+                        // move droplet
                         Vector2 new_pos = pos + dir * speed;
                         if (new_pos.x < 0.0f || new_pos.x >= width - 1 || new_pos.y < 0.0f || new_pos.y >= height - 1)
                             break;
 
-                        // Compute sediment capacity
+                        // compute sediment capacity
                         float capacity = max(min_slope, slope) * speed * sediment_capacity_factor;
 
-                        // Erode or deposit based on sediment capacity
+                        // erode or deposit based on sediment capacity
                         float sediment_change = sediment - capacity;
-                        float erode_amount = min(erosion_strength * slope, -sediment_change);
-                        float deposit_amount = min(deposition_strength * sediment_change, sediment);
+                        float erode_amount    = min(erosion_strength * slope, -sediment_change);
+                        float deposit_amount  = min(deposition_strength * sediment_change, sediment);
 
-                        // Update sediment
+                        // update sediment
                         sediment += erode_amount - deposit_amount;
 
-                        // Apply height change at current position
+                        // apply height change at current position
                         uint32_t x0 = static_cast<uint32_t>(pos.x);
                         uint32_t y0 = static_cast<uint32_t>(pos.y);
                         if (x0 < width && y0 < height)
@@ -442,38 +442,32 @@ namespace spartan
                             local_height_changes[y0 * width + x0] += deposit_amount;
                         }
 
-                        // Move to new position
+                        // move to new position
                         pos = new_pos;
                         lifetime++;
 
-                        // Stop if speed is too low
+                        // stop if speed is too low
                         if (speed < 0.01f)
                             break;
                     }
                 }
 
-                // Merge local height changes into global buffer
+                // merge local height changes into global buffer
                 lock_guard<mutex> lock(height_changes_mutex);
                 for (uint32_t i = 0; i < width * height; i++)
                 {
-                    height_changes[i] += local_height_changes[i];
+                    height_changes[i] = clamp(height_changes[i] + local_height_changes[i], min_height, max_height);
                 }
             };
 
-            // Run droplet simulation in parallel
+            // run droplet simulation in parallel
             ThreadPool::ParallelLoop(simulate_droplet_batch, droplet_count);
 
-            // Apply height changes to height_data
-            auto apply_height_changes = [&](uint32_t start, uint32_t end)
+            // apply height changes to height_data
+            for (uint32_t i = 0; i < height_data.size(); i++)
             {
-                for (uint32_t i = start; i < end; i++)
-                {
-                    height_data[i] += height_changes[i];
-                    // Clamp height to valid range
-                    height_data[i] = clamp(height_data[i], -1000.0f, 1000.0f);
-                }
-            };
-            ThreadPool::ParallelLoop(apply_height_changes, width * height);
+                height_data[i] += height_changes[i];
+            }
         }
 
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
@@ -873,7 +867,7 @@ namespace spartan
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("process height map...");
                 get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y);
-                width = GetWidth();
+                width  = GetWidth();
                 height = GetHeight();
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
@@ -881,7 +875,7 @@ namespace spartan
            // 2. Apply hydraulic erosion
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic erosion...");
-                apply_hydraulic_erosion(m_height_data, width, height);
+                apply_hydraulic_erosion(m_height_data, width, height, m_min_y, m_max_y);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
@@ -967,7 +961,7 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
-        m_area_km2 = compute_terrain_area_km2(m_vertices);
+        m_area_km2      = compute_terrain_area_km2(m_vertices);
         m_is_generating = false;
     
         // clear everything but the height and placement data (they are used for physics and for placing foliage)
