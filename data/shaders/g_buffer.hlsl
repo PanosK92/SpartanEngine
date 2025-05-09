@@ -42,22 +42,17 @@ float hash_instance_id(uint instance_id)
 
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface)
 {
-    // parameters
-    const float sand_offset  = 0.75f;
-    const float2 direction_1 = float2(1.0, 0.5);
-    const float2 direction_2 = float2(-0.5, 1.0);
-    const float speed_1      = 0.2;
-    const float speed_2      = 0.15;
-
-    // base texture color
+    // sample base texture
     float4 color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
 
     if (surface.is_terrain())
     {
+        // for the terrain, sample 2 more textures, rock and sand
         float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
         float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
 
         // compute slope and blend factors
+        const float sand_offset    = 0.75f;
         float slope                = saturate(pow(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
         float sand_blend_factor    = saturate(vertex.position.y / sand_offset);
         float sand_blend_threshold = sea_level + sand_offset;
@@ -65,8 +60,8 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         sand_blend_factor          = 1.0f - sand_factor;
 
         // compute the color
-        float4 terrain    = lerp(tex_rock, color, slope);
-        color             = lerp(terrain, tex_sand, sand_blend_factor);
+        float4 terrain = lerp(tex_rock, color, slope);
+        color          = lerp(terrain, tex_sand, sand_blend_factor);
         
         // apply perlin noise color variation
         const float noise_scale         = 2.0f;
@@ -84,11 +79,11 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         const float3 pinker            = float3(0.4f, 0.2f, 0.25f);  // subtle red/pink for flowering effect
         
         // blend based on variation value using lerps
-        float variation                = hash_instance_id(vertex.instance_id);
-        float3 variation_color         = greener;                                                  // start with greener
-        variation_color                = lerp(variation_color , yellower, step(0.25f, variation)); // transition to yellower at 0.25
-        variation_color                = lerp(variation_color , browner,  step(0.5f,  variation)); // transition to browner at 0.5
-        variation_color                = lerp(variation_color , pinker,   step(0.75f, variation)); // transition to pinker at 0.75
+        float variation         = hash_instance_id(vertex.instance_id);
+        float3 variation_color  = greener;                                                  // start with greener
+        variation_color         = lerp(variation_color , yellower, step(0.25f, variation)); // transition to yellower at 0.25
+        variation_color         = lerp(variation_color , browner,  step(0.5f,  variation)); // transition to browner at 0.5
+        variation_color         = lerp(variation_color , pinker,   step(0.75f, variation)); // transition to pinker at 0.75
 
         // apply
         color.rgb = lerp(color.rgb, variation_color, variation_strength);
@@ -127,6 +122,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     Surface surface;
     surface.flags = material.flags;
 
+
     // velocity
     {
         // convert to ndc
@@ -139,6 +135,14 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
         // compute the velocity
         velocity = position_ndc_current - position_ndc_previous;
+    }
+
+    // compute animated uv for water
+    {
+        const float2 direction  = float2(1.0, 0.5);
+        const float speed       = 0.2;
+        float2 uv_offset        = direction * speed * (float)buffer_frame.time * surface.is_water();
+        vertex.uv              += uv_offset; 
     }
 
     // albedo

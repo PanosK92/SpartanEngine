@@ -988,10 +988,10 @@ namespace spartan
                             material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
                             material->SetProperty(MaterialProperty::Roughness,           0.0f);
                             material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
-                            material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
-                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
-                            material->SetProperty(MaterialProperty::TextureTilingX,      400.0f);
-                            material->SetProperty(MaterialProperty::TextureTilingY,      400.0f);
+                            material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
+                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
+                            material->SetProperty(MaterialProperty::TextureTilingX,      1000.0f);
+                            material->SetProperty(MaterialProperty::TextureTilingY,      1000.0f);
                             material->SetProperty(MaterialProperty::IsWater,             1.0f);
                             material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
 
