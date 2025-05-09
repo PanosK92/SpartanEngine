@@ -27,11 +27,11 @@ RUNTIME_DIR          = "../" .. RUNTIME_PROJECT_NAME
 LIBRARY_DIR          = "../third_party/libraries"
 OBJ_DIR              = "../binaries/obj"
 TARGET_DIR           = "../binaries"
-API_CPP_DEFINE		 = ""
+API_CPP_DEFINE       = ""
 ARG_API_GRAPHICS     = _ARGS[1]
 
 API_INCLUDES = {
-    vulkan_windows = {
+	  vulkan_windows = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
         "../third_party/fidelityfx"
@@ -185,7 +185,7 @@ function runtime_project_configuration()
 
         -- Source to ignore
         removefiles(API_EXCLUDES[ARG_API_GRAPHICS])
-        
+
         -- Precompiled header
         pchheader "pch.h"
         pchsource "../runtime/Core/pch.cpp"
@@ -210,32 +210,42 @@ function runtime_project_configuration()
             includedirs { "/usr/include/bullet" }
             includedirs { "/usr/include/freetype2" }
             includedirs { "/usr/include/renderdoc" }
+            includedirs { "../third_party/free_image" }
+            includedirs { "../third_party/linux/include" }
         end
-
         includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
 
         -- Libraries
-        libdirs (LIBRARY_DIR)
+        if os.target() == "windows" then
+            libdirs (LIBRARY_DIR)
+        else
+            libdirs ("../third_party/linux/lib")
+        end
 
-        -- "Release"
-        filter "configurations:release"
-            debugdir (TARGET_DIR)
-            targetdir (TARGET_DIR)
+        debugdir (TARGET_DIR)
+        targetdir (TARGET_DIR)
+        if os.target() == "linux" then
             links { "dxcompiler" }
             links { "assimp" }
-            links { "FreeImageLib" }
+            links { "FreeImage" }
             links { "freetype" }
-            links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
-            links { "SDL3" }
-            links { "Compressonator_MT" }
-            links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
-            links { "meshoptimizer" }
-            links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
-            
+        end
+        -- "Release"
+        filter "configurations:release"
+            if os.target() == "windows" then
+                links { "dxcompiler" }
+                links { "assimp" }
+                links { "FreeImageLib" }
+                links { "freetype" }
+                links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
+                links { "SDL3" }
+                links { "Compressonator_MT" }
+                links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
+                links { "meshoptimizer" }
+                links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
+            end
         -- "Debug"
         filter "configurations:debug"
-            debugdir (TARGET_DIR)
-            targetdir (TARGET_DIR)
             if os.target() == "windows" then
                 links { "dxcompiler" }
                 links { "assimp_debug" }
@@ -247,15 +257,6 @@ function runtime_project_configuration()
                 links { "OpenImageDenoise_debug" , "OpenImageDenoise_core_debug", "OpenImageDenoise_utils_debug" }
                 links { "meshoptimizer_debug" }
                 links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
-            else
-                links { "dxcompiler" }
-                links { "assimp" }
-                links { "FreeImageLib" }
-                links { "freetype" }
-                links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
-                links { "SDL3" }
-                links { "Compressonator_MT" }
-                links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
             end
 end
 
@@ -305,27 +306,39 @@ function editor_project_configuration()
         end
 
         -- Libraries
-        libdirs (LIBRARY_DIR)
+        if os.target() == "windows" then
+            libdirs (LIBRARY_DIR)
+        else
+            libdirs ("../third_party/linux/lib")
+        end
+        targetdir (TARGET_DIR)
+        debugdir (TARGET_DIR)
 
+        if os.target() == "linux" then
+            links { "FreeImage" }
+            links { "freetype" }
+            links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
+            links { "OpenImageDenoise"}
+            links { "freetype" }
+            links { "SDL3" }
+            links { "meshoptimizer" }
+            links { "vulkan" }
+            links { "spirv-cross-core", "spirv-cross-c", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl" }
+            links { "CMP_Compressonator", "CMP_Core", "CMP_Core_SSE", "CMP_Common", "CMP_Core_AVX", "CMP_Core_AVX512" }
+        end
         -- "Release"
         filter "configurations:release"
             targetname ( EXECUTABLE_NAME )
-            targetdir (TARGET_DIR)
-            debugdir (TARGET_DIR)
-            links { "freetype" }
-            links { "SDL3" }
-
+            if os.target() == "windows" then
+                links { "freetype" }
+                links { "SDL3" }
+            end
         -- "Debug"
         filter "configurations:debug"
             targetname ( EXECUTABLE_NAME .. "_debug" )
-            targetdir (TARGET_DIR)
-            debugdir (TARGET_DIR)
             if os.target() == "windows" then
                 links { "freetype_debug" }
                 links { "SDL3_debug" }
-            else
-                links { "freetype" }
-                links { "SDL3" }
             end
 end
 

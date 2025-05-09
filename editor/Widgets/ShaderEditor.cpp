@@ -86,7 +86,12 @@ void ShaderEditor::ShowShaderSource()
                         {
                             memset(m_buffer, 0, kBufferSize);
                             const std::string& source = sources[i];
+                            #ifdef _MSC_VER
                             strncpy_s(m_buffer, kBufferSize, source.c_str(), source.size() < kBufferSize ? source.size() : kBufferSize - 1);
+                            #else
+                            strncpy(m_buffer, source.c_str(), source.size() < kBufferSize ? source.size() : kBufferSize - 1);
+                            m_buffer[kBufferSize - 1] = '\0'; // Ensure null-termination
+                            #endif
                             m_index_displayed = i;
                         }
 

@@ -71,13 +71,17 @@ def download_file(url, destination, expected_hash):
         return
 
 def extract_archive(archive_path, destination_path):
+    is_windows = os.name == "nt"
     # Check if 7z.exe exists locally
-    current_dir_7z  = Path("7z.exe")
+    current_dir_7z  = Path("7z.exe" if is_windows else "7z")
     if current_dir_7z.exists():
         seven_zip_exe = current_dir_7z
     else:
         # define the path where 7z.exe should be if not in the current directory
-        seven_zip_exe = Path("build_scripts") / "7z.exe"
+        if is_windows:
+            seven_zip_exe = Path("build_scripts") / "7z.exe"
+        else:
+            seven_zip_exe = Path("/usr/bin/7z")
         seven_zip_exe = seven_zip_exe.resolve()
 
     # check if the 7z executable exists
