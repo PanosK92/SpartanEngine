@@ -221,7 +221,7 @@ namespace spartan
                 {
                     for (uint32_t pixel = start_pixel; pixel < end_pixel; pixel++)
                     {
-                        uint32_t byte_index = pixel * bytes_per_pixel;
+                        uint32_t byte_index    = pixel * bytes_per_pixel;
                         float normalized_value = static_cast<float>(height_data[byte_index]) / 255.0f;
                         height_data_out[pixel] = min_y + normalized_value * (max_y - min_y);
                     }

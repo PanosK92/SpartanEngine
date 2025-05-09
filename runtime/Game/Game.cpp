@@ -977,7 +977,7 @@ namespace spartan
                         // create root entity
                         shared_ptr<Entity> water = World::CreateEntity();
                         water->SetObjectName("water");
-                        water->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                        water->SetPosition(Vector3(0.0f, -0.2f, 0.0f)); // push a bit below sea level (0.0f) to show some sand
                         water->SetScale(Vector3(1.0f, 1.0f, 1.0f));
 
                         // create material
@@ -985,6 +985,7 @@ namespace spartan
                         {
                             material->SetObjectName("material_water");
                             material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
+                            material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
                             material->SetProperty(MaterialProperty::Roughness,           0.0f);
                             material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
                             material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
