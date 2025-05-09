@@ -1,25 +1,4 @@
-﻿/*
-Copyright(c) 2016-2025 Panos Karabelas
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-copies of the Software, and to permit persons to whom the Software is furnished
-to do so, subject to the following conditions :
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-//= includes =========
+﻿//= includes =========
 #include "common.hlsl"
 //====================
 
@@ -32,13 +11,13 @@ static const float h_rayleigh        = 7994.0;                           // rayl
 static const float h_mie             = 1200.0;                           // mie scale height in meters
 static const float3 beta_rayleigh    = float3(5.8e-6, 13.5e-6, 33.1e-6); // rayleigh scattering coefficients (m^-1)
 static const float3 beta_mie         = float3(2e-5, 2e-5, 2e-5);         // mie scattering coefficients (m^-1)
-static const float g_mie             = 0.8;                              // mie phase asymmetry factor (forward scattering)
+static const float g_mie             = 0.8;                              // mie phase asymmetry factor
 static const int num_view_samples    = 6;                                // samples along view ray
 static const int num_sun_samples     = 6;                                // samples along sun ray
 
 struct sun
 {
-    static float3 compute_mie_scatter_color(float3 view_direction, float3 sun_direction, float mie, float mie_g)
+    static float3 compute_mie_scatter_color(float3 view_direction, float3 sun_direction, float mie, float mie_g, float3 light_color)
     {
         float eye_cos  = -dot(view_direction, sun_direction);
         float mie_g2   = mie_g * mie_g;
@@ -46,16 +25,16 @@ struct sun
         temp           = smoothstep(0.0, 0.01f, temp) * temp;   
         float eye_cos2 = eye_cos * eye_cos;
         
-        return mie * (1.5 * ((1.0 - mie_g2) / (2.0 + mie_g2)) * (1.0 + eye_cos2) / temp);
+        return mie * (1.5 * ((1.0 - mie_g2) / (2.0 + mie_g2)) * (1.0 + eye_cos2) / temp) * light_color;
     }
 
-    static float3 compute_color(float3 view_dir, float3 sun_dir)
+    static float3 compute_color(float3 view_dir, float3 sun_dir, float3 light_color)
     {
         float sun_elevation      = saturate(dot(sun_dir, up_direction) + 1.0);
         float mie                = lerp(0.01f, 0.04f, sun_elevation);
         float mie_g              = lerp(-0.9f, -0.6f, sun_elevation);
-        float3 directional_light = compute_mie_scatter_color(view_dir, sun_dir, mie, mie_g) * 0.3f;
-        float3 sun_disc          = compute_mie_scatter_color(view_dir, sun_dir, 0.001f, -0.998f);
+        float3 directional_light = compute_mie_scatter_color(view_dir, sun_dir, mie, mie_g, light_color) * 0.3f;
+        float3 sun_disc          = compute_mie_scatter_color(view_dir, sun_dir, 0.001f, -0.998f, light_color);
         float fade_out_factor    = saturate(sun_elevation * 10.0f);
         
         return (directional_light + sun_disc) * fade_out_factor;
@@ -79,18 +58,13 @@ struct stars
         float brightness = 0.0;
         if (is_night)
         {
-            // create
             float2 star_uv = uv * 100.0f;
             float2 hash    = hash22(star_uv);
             brightness     = step(0.999f, hash.x);
-
-            // twinkle
-            float twinkle  = 0.5f + 0.5f * sin((float) buffer_frame.time * 2.0 + hash.y * 6.28318f);
+            float twinkle  = 0.5f + 0.5f * sin((float)buffer_frame.time * 2.0 + hash.y * 6.28318f);
             brightness    *= twinkle;
-    
-            // fade in
-            float star_factor  = saturate(-sun_elevation * 10.0f);
-            brightness        *= star_factor;
+            float star_factor = saturate(-sun_elevation * 10.0f);
+            brightness   *= star_factor;
         }
         
         return float3(brightness, brightness, brightness);
@@ -108,8 +82,8 @@ float intersect_sphere(float3 origin, float3 direction, float3 center, float rad
         return -1.0;
         
     float sqrt_disc = sqrt(discriminant);
-    float t1        = -b - sqrt_disc; // near intersection
-    float t2        = -b + sqrt_disc; // far intersection
+    float t1        = -b - sqrt_disc;
+    float t2        = -b + sqrt_disc;
     
     if (t2 > 0)
         return t2;
@@ -130,17 +104,18 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
     float2 uv = (float2(thread_id.xy) + 0.5f) / resolution;
 
     // convert uv to view direction (spherical mapping for skysphere)
-    float phi             = uv.x * PI2; // azimuth: 0 to 2π
-    float theta           = -uv.y * PI; // zenith: 0 (top) to π (bottom)
+    float phi             = uv.x * PI2;
+    float theta           = -uv.y * PI;
     float sin_theta       = sin(theta);
     float cos_theta       = cos(theta);
     float3 view_direction = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
 
-    // get sun direction from light
+    // get sun direction and color from light
     Light light;
     Surface surface;
-    light.Build(0, surface);
-    float3 sun_direction = -light.forward; // points from world to sun
+    light.Build(0, surface); // index 0 for the directional light
+    float3 sun_direction = -light.forward;
+    float3 light_color   = light.color; // use the light's color (derived from temperature)
 
     // compute atmosphere
     float3 atmosphere_color = 0.0f;
@@ -148,7 +123,7 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
         float t_max = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
         if (t_max < 0)
         {
-            tex_uav[thread_id.xy] = float4(atmosphere_color, 1.0f); // no intersection
+            tex_uav[thread_id.xy] = float4(atmosphere_color, 1.0f);
             return;
         }
 
@@ -169,20 +144,18 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
             float density_mie      = exp(-height / h_mie);
             float3 t_view          = exp(-optical_depth_view);
 
-            // check if the sun is occluded by the earth
             float s_earth = intersect_sphere(position, sun_direction, earth_center, earth_radius);
             float3 t_sun;
             if (s_earth > 0)
             {
-                t_sun = 0.0; // sun is blocked by the earth, no light reaches this point
+                t_sun = 0.0; // sun is blocked by the earth
             }
             else
             {
-                // sun is visible, compute transmission through the atmosphere
                 float s_max = intersect_sphere(position, sun_direction, earth_center, earth_radius + atmosphere_height);
                 if (s_max < 0)
                 {
-                    t_sun = 0.0; // ray doesn’t intersect atmosphere (shouldn’t happen here)
+                    t_sun = 0.0;
                 }
                 else
                 {
@@ -216,11 +189,12 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
             optical_depth_view += (density_rayleigh * beta_rayleigh + density_mie * beta_mie) * ds;
         }
 
-        atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light.intensity;
+        // scale scattering by light color and intensity
+        atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light_color * light.intensity;
     }
 
     // artistic touches
-    float3 sun_color  = sun::compute_color(view_direction, sun_direction);
+    float3 sun_color  = sun::compute_color(view_direction, sun_direction, light_color);
     float3 star_color = stars::compute_color(uv, sun_direction);
 
     // add moon
@@ -228,8 +202,8 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
     float3 moon_color     = 0.0;
     if (dot(moon_direction, up_direction) > 0)
     {
-         float3 moon_disc = sun::compute_mie_scatter_color(view_direction, moon_direction, 0.001f, -0.997f);
-         moon_color = moon_disc * float3(0.5, 0.65, 1.0);
+        float3 moon_disc = sun::compute_mie_scatter_color(view_direction, moon_direction, 0.001f, -0.997f, light_color);
+        moon_color = moon_disc * float3(0.5, 0.65, 1.0); // retain tint for lunar albedo
     }
 
     // compose output

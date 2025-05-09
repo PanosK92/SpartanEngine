@@ -93,8 +93,8 @@ namespace spartan
         const Color& GetColor() const { return m_color_rgb; }
 
         // intensity
-        void SetIntensity(const float lumens);
-        void SetIntensity(const LightIntensity lumens);
+        void SetIntensity(const float lumens_lux);
+        void SetIntensity(const LightIntensity intensity);
         float GetIntensityLumens() const    { return m_intensity_lumens_lux; }
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt() const;
@@ -143,7 +143,7 @@ namespace spartan
         // misc
         uint32_t m_flags           = 0;
         LightType m_light_type     = LightType::Max;
-        Color m_color_rgb          = Color::standard_black;;
+        Color m_color_rgb          = Color::standard_black;
         float m_temperature_kelvin = 0.0f;
         float m_range              = 32.0f;
         float m_angle_rad          = math::deg_to_rad * 30.0f;

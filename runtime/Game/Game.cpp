@@ -92,10 +92,8 @@ namespace spartan
             }
 
             // intensity
-            const float max_lux = 120000.0f; // max lux (during noon) - the rotation will scale it down in the shader
-            light->SetIntensity(enabled ? max_lux * 0.5f : 0.0f);
-
-            light->SetTemperature(2300.0f);
+            light->SetTemperature(5500.0f);                  // kelvin
+            light->SetIntensity(enabled ? 70'000.0f : 0.0f); // lux
             light->SetFlag(LightFlags::Shadows, enabled);
             light->SetFlag(LightFlags::DayNightCycle, false);
         }
@@ -874,8 +872,6 @@ namespace spartan
 
                 // sun/lighting/mood
                 create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
-                default_light_directional->GetComponent<Light>()->SetTemperature(6000.0f); // kelvin
-                default_light_directional->GetComponent<Light>()->SetIntensity(50000.0f);  // lux
 
                 create_camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);

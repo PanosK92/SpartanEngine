@@ -60,7 +60,7 @@ namespace spartan
         {
             if (type == LightType::Directional)
             {
-                return Color::light_sky_sunrise;
+                return Color::light_sky_clear;
             }
             else if (type == LightType::Point)
             {
@@ -105,7 +105,6 @@ namespace spartan
         SetRange(get_sensible_range(m_light_type));
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsScreenSpace);
-        SetFlag(LightFlags::DayNightCycle);
         SetFlag(LightFlags::ShadowDirty);
 
         m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
@@ -311,9 +310,9 @@ namespace spartan
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
-    void Light::SetIntensity(const float lumens)
+    void Light::SetIntensity(const float lumens_lux)
     {
-        m_intensity_lumens_lux = lumens;
+        m_intensity_lumens_lux = lumens_lux;
         m_intensity            = LightIntensity::custom;
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
@@ -336,7 +335,6 @@ namespace spartan
         
         return intensity;
     }
-
 
     void Light::SetRange(float range)
     {
