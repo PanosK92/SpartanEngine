@@ -738,7 +738,6 @@ namespace spartan
             FfxBreadcrumbsContext context         = {};
             array<uint32_t, 3> gpu_queue_indices  = {};
             unordered_map<uint64_t, bool> registered_cmd_lists;
-            mutex breadcrumbs_mutex;
 
             void context_destroy()
             {
@@ -763,13 +762,13 @@ namespace spartan
 
                      FfxBreadcrumbsContextDescription context_description = {};
                      context_description.backendInterface                 = ffx_interface;
-                     context_description.maxMarkersPerMemoryBlock         = 3;
+                     context_description.maxMarkersPerMemoryBlock         = 100;
                      context_description.usedGpuQueuesCount               = static_cast<uint32_t>(gpu_queue_indices.size());
                      context_description.pUsedGpuQueues                   = gpu_queue_indices.data();
                      context_description.allocCallbacks.fpAlloc           = malloc;
                      context_description.allocCallbacks.fpRealloc         = realloc;
                      context_description.allocCallbacks.fpFree            = free;
-                     context_description.frameHistoryLength               = 64; // should be more than enough 
+                     context_description.frameHistoryLength               = 2;
                      context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
                                                                             FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
                                                                             FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
@@ -1497,8 +1496,7 @@ namespace spartan
 
         SP_ASSERT(breadcrumbs::context_created);
         SP_ASSERT(name != nullptr);
-        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
-    
+
         // note #1: command lists need to register per frame
         // note #2: the map check is here in case because the same command lists can be re-used before frames start to be produced (e.g. during initialization)
         if (breadcrumbs::registered_cmd_lists.find(cmd_list->GetObjectId()) != breadcrumbs::registered_cmd_lists.end())
@@ -1522,7 +1520,6 @@ namespace spartan
         #ifdef _MSC_VER
         // note: pipelines need to register only once
         SP_ASSERT(breadcrumbs::context_created);
-        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
         FfxBreadcrumbsPipelineStateDescription description = {};
         description.pipeline                               = to_ffx_pipeline(pipeline);
@@ -1564,7 +1561,6 @@ namespace spartan
     {
         #ifdef _MSC_VER
         SP_ASSERT(breadcrumbs::context_created);
-        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
         SP_ASSERT(ffxBreadcrumbsSetPipeline(&breadcrumbs::context, to_ffx_cmd_list(cmd_list), to_ffx_pipeline(pipeline)) == FFX_OK);
 
@@ -1577,7 +1573,6 @@ namespace spartan
 
         SP_ASSERT(breadcrumbs::context_created);
         SP_ASSERT(name != nullptr);
-        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
          FfxBreadcrumbsMarkerType marker_type = FFX_BREADCRUMBS_MARKER_PASS;
          if (marker == AMD_FFX_Marker::Dispatch)
@@ -1600,7 +1595,6 @@ namespace spartan
         #ifdef _MSC_VER
 
         SP_ASSERT(breadcrumbs::context_created);
-        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
         SP_ASSERT(ffxBreadcrumbsEndMarker(&breadcrumbs::context, to_ffx_cmd_list(cmd_list)) == FFX_OK);
 
@@ -1612,7 +1606,6 @@ namespace spartan
         #ifdef _MSC_VER
 
         SP_ASSERT(breadcrumbs::context_created);
-        lock_guard<mutex> guard(breadcrumbs::breadcrumbs_mutex);
 
         FfxBreadcrumbsMarkersStatus marker_status = {};
         SP_ASSERT(ffxBreadcrumbsPrintStatus(&breadcrumbs::context, &marker_status) == FFX_OK);
