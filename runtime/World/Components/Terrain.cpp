@@ -43,9 +43,10 @@ namespace spartan
 {
     namespace parameters
     {
-        const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f; // this is an axiom of the engine
-        const uint32_t scale                = 3;         // the scale factor to upscale the height map by
-        const uint32_t smoothing_iterations = 0;         // the number of height map neighboring pixel averaging - useful if you are reading the height map with a scale of 1 (no bilinear interpolation)
+        const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
+        const uint32_t smoothing_iterations = 1;         // the number of height map neighboring pixel averaging
+        const uint32_t density              = 1;         // multiplier for height map grid density
+        const uint32_t scale                = 3;         // scale factor for physical terrain dimensions
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
     }
 
@@ -203,6 +204,7 @@ namespace spartan
             return area_km2;
         }
 
+        // extracts height values from a texture and applies optional smoothing
         void get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
@@ -229,77 +231,10 @@ namespace spartan
                 ThreadPool::ParallelLoop(map_height, pixel_count);
             }
         
-            // second pass: upscale the height map by bilinearly interpolating the height values (parallelized)
-            if (parameters::scale > 1)
+            // second pass: smooth out the height map values, this will reduce hard terrain edges
             {
-                // get the dimensions of the original texture
-                uint32_t width  = height_texture->GetWidth();
-                uint32_t height = height_texture->GetHeight();
-                uint32_t upscaled_width  = parameters::scale * width;
-                uint32_t upscaled_height = parameters::scale * height;
-        
-                // create a new vector for the upscaled height map
-                vector<float> upscaled_height_data(upscaled_width * upscaled_height);
-        
-                // helper function to safely access height values with clamping
-                auto get_height = [&](uint32_t i, uint32_t j) {
-                    i = min(i, width - 1);
-                    j = min(j, height - 1);
-                    return height_data_out[j * width + i];
-                };
-        
-                // parallel upscaling of the height map
-                auto upscale_pixel = [&upscaled_height_data, &get_height, width, height, upscaled_width, upscaled_height](uint32_t start_index, uint32_t end_index)
-                {
-                    for (uint32_t index = start_index; index < end_index; index++)
-                    {
-                        uint32_t x = index % upscaled_width;
-                        uint32_t y = index / upscaled_width;
-        
-                        // compute texture coordinates (u, v) in the range [0, 1]
-                        float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(upscaled_width);
-                        float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(upscaled_height);
-        
-                        // map to original texture pixel coordinates
-                        float i_float = u * static_cast<float>(width);
-                        float j_float = v * static_cast<float>(height);
-        
-                        // determine the four surrounding pixel indices
-                        uint32_t i0 = static_cast<uint32_t>(floor(i_float));
-                        uint32_t i1 = min(i0 + 1, width - 1);
-                        uint32_t j0 = static_cast<uint32_t>(floor(j_float));
-                        uint32_t j1 = min(j0 + 1, height - 1);
-        
-                        // compute interpolation weights
-                        float frac_i = i_float - static_cast<float>(i0);
-                        float frac_j = j_float - static_cast<float>(j0);
-        
-                        // get the four height values
-                        float val00 = get_height(i0, j0); // top-left
-                        float val10 = get_height(i1, j0); // top-right
-                        float val01 = get_height(i0, j1); // bottom-left
-                        float val11 = get_height(i1, j1); // bottom-right
-        
-                        // perform bilinear interpolation
-                        float interpolated = (1.0f - frac_i) * (1.0f - frac_j) * val00 +
-                                             frac_i * (1.0f - frac_j) * val10 +
-                                             (1.0f - frac_i) * frac_j * val01 +
-                                             frac_i * frac_j * val11;
-        
-                        // store the interpolated value
-                        upscaled_height_data[y * upscaled_width + x] = interpolated;
-                    }
-                };
-                ThreadPool::ParallelLoop(upscale_pixel, upscaled_width * upscaled_height);
-        
-                // replace the original height data with the upscaled data
-                height_data_out = move(upscaled_height_data);
-            }
-        
-            // third pass: smooth out the height map values, this will reduce hard terrain edges
-            {
-                const uint32_t width  = height_texture->GetWidth()  * parameters::scale;
-                const uint32_t height = height_texture->GetHeight() * parameters::scale;
+                const uint32_t width  = height_texture->GetWidth();
+                const uint32_t height = height_texture->GetHeight();
         
                 for (uint32_t iteration = 0; iteration < parameters::smoothing_iterations; iteration++)
                 {
@@ -343,26 +278,95 @@ namespace spartan
             }
         }
 
+        // increases the grid density of the height map using bilinear interpolation
+        void densify_height_map(vector<float>& height_data, uint32_t width, uint32_t height, uint32_t density)
+        {
+            if (density <= 1)
+                return; // no density increase needed
+        
+            // compute dense grid dimensions
+            uint32_t dense_width  = density * (width - 1) + 1;
+            uint32_t dense_height = density * (height - 1) + 1;
+        
+            // create new height map with denser grid
+            vector<float> dense_height_data(dense_width * dense_height);
+        
+            // helper function to get height at integer coordinates
+            auto get_height = [&height_data, width, height](uint32_t x, uint32_t y) -> float
+            {
+                x = min(x, width - 1);
+                y = min(y, height - 1);
+                return height_data[y * width + x];
+            };
+        
+            // parallel computation of dense grid
+            auto compute_dense_pixel = [&dense_height_data, &get_height, width, height, dense_width, dense_height, density](uint32_t start_index, uint32_t end_index)
+            {
+                for (uint32_t index = start_index; index < end_index; index++)
+                {
+                    uint32_t x = index % dense_width;
+                    uint32_t y = index / dense_width;
+        
+                    // map to original height map coordinates (0 to width-1, 0 to height-1)
+                    float u = static_cast<float>(x) / static_cast<float>(density);
+                    float v = static_cast<float>(y) / static_cast<float>(density);
+        
+                    // integer and fractional parts for interpolation
+                    uint32_t x0 = static_cast<uint32_t>(floor(u));
+                    uint32_t x1 = min(x0 + 1, width - 1);
+                    uint32_t y0 = static_cast<uint32_t>(floor(v));
+                    uint32_t y1 = min(y0 + 1, height - 1);
+                    float dx    = u - static_cast<float>(x0);
+                    float dy    = v - static_cast<float>(y0);
+        
+                    // get heights at the four corners
+                    float h00 = get_height(x0, y0);
+                    float h10 = get_height(x1, y0);
+                    float h01 = get_height(x0, y1);
+                    float h11 = get_height(x1, y1);
+        
+                    // perform bilinear interpolation
+                    float height = (1.0f - dx) * (1.0f - dy) * h00 +
+                                   dx * (1.0f - dy) * h10 +
+                                   (1.0f - dx) * dy * h01 +
+                                   dx * dy * h11;
+        
+                    dense_height_data[y * dense_width + x] = height;
+                }
+            };
+        
+            ThreadPool::ParallelLoop(compute_dense_pixel, dense_width * dense_height);
+        
+            // replace original height data with denser grid
+            height_data = move(dense_height_data);
+        }
+
+        // applies hydraulic erosion to the height map by simulating water droplets
         void apply_hydraulic_erosion(vector<float>& height_data, uint32_t width, uint32_t height, float min_height, float max_height)
         { 
-            const uint32_t droplet_count         = 500'000; // number of water droplets simulating erosion
-            const float erosion_strength         = 0.05f;   // rate at which droplets remove terrain material
-            const float deposition_strength      = 0.02f;   // rate at which droplets deposit carried sediment
-            const float sediment_capacity_factor = 3.0f;    // scales droplet's ability to carry sediment
-            const float min_slope                = 0.003f;  // minimum slope for erosion on flat terrain
-            const uint32_t max_lifetime          = 50;      // maximum steps a droplet travels
-            const float inertia                  = 0.2f;    // droplet's tendency to retain previous direction
-            const float gravity                  = 2.0f;    // accelerates droplet based on slope
-
+            // parameters adjusted for density
+            uint32_t density = parameters::density;
+            uint32_t base_width = (width - 1) / density + 1;
+            float grid_spacing = static_cast<float>(base_width - 1) * parameters::scale / static_cast<float>(width - 1);
+            uint32_t droplet_count         = 500'000 * density * density; // scale with density^2
+            float erosion_strength         = 0.05f * density;             // scale with density
+            float deposition_strength      = 0.02f * density;             // scale with density
+            float sediment_capacity_factor = 3.0f;
+            float min_slope                = 0.003f / density;            // reduce min slope for finer grid
+            uint32_t max_lifetime          = 50;
+            float inertia                  = 0.2f;
+            float gravity                  = 2.0f;
+            float max_speed                = 5.0f;                       // limit droplet speed
+        
             // random number generation for droplet placement and movement
             thread_local mt19937 generator(random_device{}());
             uniform_real_distribution<float> random_float(0.0f, 1.0f);
             uniform_int_distribution<uint32_t> random_index(0, width * height - 1);
-
+        
             // temporary buffer to store height changes (to avoid race conditions)
             vector<float> height_changes(width * height, 0.0f);
             mutex height_changes_mutex;
-
+        
             // helper function to get height and gradient at a position
             auto get_height_and_gradient = [&](float x, float y, float& height, Vector2& gradient)
             {
@@ -371,7 +375,7 @@ namespace spartan
                 uint32_t y0 = static_cast<uint32_t>(max(0.0f, min(y, static_cast<float>(height - 1))));
                 uint32_t x1 = min<uint32_t>(x0 + 1, width  - 1U);
                 uint32_t y1 = min<uint32_t>(y0 + 1, height - 1U);
-
+        
                 // bilinear interpolation for height
                 float fx = x - static_cast<float>(x0);
                 float fy = y - static_cast<float>(y0);
@@ -381,17 +385,17 @@ namespace spartan
                 float h11 = height_data[y1 * width + x1];
                 height = (1.0f - fx) * (1.0f - fy) * h00 + fx * (1.0f - fy) * h10 +
                          (1.0f - fx) * fy * h01 + fx * fy * h11;
-
-                // compute gradients using finite differences
-                gradient.x = (h10 - h00 + h11 - h01) * 0.5f;
-                gradient.y = (h01 - h00 + h11 - h10) * 0.5f;
+        
+                // compute gradients using finite differences, scaled by grid spacing
+                gradient.x = (h10 - h00 + h11 - h01) * 0.5f / grid_spacing;
+                gradient.y = (h01 - h00 + h11 - h10) * 0.5f / grid_spacing;
             };
-
+        
             // parallel droplet simulation
             auto simulate_droplet_batch = [&](uint32_t start, uint32_t end)
             {
                 vector<float> local_height_changes(width * height, 0.0f);
-
+        
                 for (uint32_t i = start; i < end; i++)
                 {
                     // initialize droplet
@@ -400,76 +404,87 @@ namespace spartan
                     float speed = 0.0f;
                     float sediment = 0.0f;
                     uint32_t lifetime = 0;
-
+        
                     while (lifetime < max_lifetime)
                     {
                         // get current height and gradient
                         float height;
                         Vector2 gradient;
                         get_height_and_gradient(pos.x, pos.y, height, gradient);
-
+        
                         // update direction with inertia and gradient
                         dir = dir * inertia - gradient * (1.0f - inertia);
                         if (dir.LengthSquared() > 0.0f)
                             dir.Normalize();
-
+        
                         // update speed based on slope
                         float slope = gradient.Length();
                         speed = sqrt(max(0.0f, speed * speed + gravity * slope));
-
+                        speed = min(speed, max_speed); // cap speed to prevent large jumps
+        
                         // move droplet
                         Vector2 new_pos = pos + dir * speed;
-                        if (new_pos.x < 0.0f || new_pos.x >= width - 1 || new_pos.y < 0.0f || new_pos.y >= height - 1)
-                            break;
-
+        
                         // compute sediment capacity
                         float capacity = max(min_slope, slope) * speed * sediment_capacity_factor;
-
+        
                         // erode or deposit based on sediment capacity
                         float sediment_change = sediment - capacity;
                         float erode_amount    = min(erosion_strength * slope, -sediment_change);
                         float deposit_amount  = min(deposition_strength * sediment_change, sediment);
-
+        
                         // update sediment
                         sediment += erode_amount - deposit_amount;
-
+        
                         // apply height change at current position
-                        uint32_t x0 = static_cast<uint32_t>(pos.x);
-                        uint32_t y0 = static_cast<uint32_t>(pos.y);
-                        if (x0 < width && y0 < height)
+                        uint32_t x0 = static_cast<uint32_t>(max(0.0f, min(pos.x, static_cast<float>(width - 1))));
+                        uint32_t y0 = static_cast<uint32_t>(max(0.0f, min(pos.y, static_cast<float>(height - 1))));
+                        local_height_changes[y0 * width + x0] -= erode_amount;
+                        local_height_changes[y0 * width + x0] += deposit_amount;
+        
+                        // debug log to track indices and changes
+                        if (i == 0 && lifetime == 0)
                         {
-                            local_height_changes[y0 * width + x0] -= erode_amount;
-                            local_height_changes[y0 * width + x0] += deposit_amount;
+                            SP_LOG_INFO("droplet 0, step 0: x0=%u, y0=%u, erode=%f, deposit=%f", x0, y0, erode_amount, deposit_amount);
                         }
-
+        
                         // move to new position
                         pos = new_pos;
                         lifetime++;
-
+        
                         // stop if speed is too low
                         if (speed < 0.01f)
                             break;
                     }
                 }
-
+        
                 // merge local height changes into global buffer
                 lock_guard<mutex> lock(height_changes_mutex);
                 for (uint32_t i = 0; i < width * height; i++)
                 {
-                    height_changes[i] = clamp(height_changes[i] + local_height_changes[i], min_height, max_height);
+                    height_changes[i] += local_height_changes[i];
                 }
             };
-
+        
             // run droplet simulation in parallel
             ThreadPool::ParallelLoop(simulate_droplet_batch, droplet_count);
-
-            // apply height changes to height_data
+        
+            // apply height changes to height_data with clamping
             for (uint32_t i = 0; i < height_data.size(); i++)
             {
-                height_data[i] += height_changes[i];
+                height_data[i] = clamp(height_data[i] + height_changes[i], min_height, max_height);
             }
+        
+            // log to verify changes
+            float max_change = 0.0f;
+            for (float change : height_changes)
+            {
+                max_change = max(max_change, abs(change));
+            }
+            SP_LOG_INFO("hydraulic erosion applied, max height change: %f", max_change);
         }
 
+        // generates position vectors from height map data, scaling physical dimensions
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
@@ -477,28 +492,43 @@ namespace spartan
             // pre-allocate positions vector
             positions.resize(width * height);
         
+            // compute base dimensions (before density)
+            uint32_t base_width  = (width - 1) / parameters::density + 1;
+            uint32_t base_height = (height - 1) / parameters::density + 1;
+        
+            // apply scale to physical dimensions
+            float extent_x = static_cast<float>(base_width - 1) * parameters::scale;
+            float extent_z = static_cast<float>(base_height - 1) * parameters::scale;
+        
+            // scale coordinates to match physical dimensions
+            float scale_x  = extent_x / static_cast<float>(width - 1);
+            float scale_z  = extent_z / static_cast<float>(height - 1);
+            float offset_x = extent_x / 2.0f;
+            float offset_z = extent_z / 2.0f;
+        
             // parallel generation of positions
-            auto generate_position_range = [&positions, &height_map, width, height](uint32_t start_index, uint32_t end_index)
+            auto generate_position_range = [&positions, &height_map, width, height, scale_x, scale_z, offset_x, offset_z](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t index = start_index; index < end_index; index++)
                 {
-                    // convert flat index to x,y coordinates
                     uint32_t x = index % width;
                     uint32_t y = index / width;
         
-                    // center on the x and z axis
-                    float centered_x = static_cast<float>(x) - width * 0.5f;
-                    float centered_z = static_cast<float>(y) - height * 0.5f;
+                    // scale coordinates
+                    float scaled_x = static_cast<float>(x) * scale_x;
+                    float scaled_z = static_cast<float>(y) * scale_z;
+        
+                    // center on x and z axes
+                    float centered_x = scaled_x - offset_x;
+                    float centered_z = scaled_z - offset_z;
         
                     // get height from height_map
                     float height_value = height_map[index];
         
-                    // assign position (no mutex needed since each index is unique)
                     positions[index] = Vector3(centered_x, height_value, centered_z);
                 }
             };
         
-            // calculate total number of positions and run parallel loop
             uint32_t total_positions = width * height;
             ThreadPool::ParallelLoop(generate_position_range, total_positions);
         }
@@ -661,12 +691,14 @@ namespace spartan
 
     uint32_t Terrain::GetWidth() const
     {
-        return m_height_texture->GetWidth() * parameters::scale;
+        uint32_t base_width = m_height_texture ? m_height_texture->GetWidth() * parameters::scale : 0;
+        return base_width ? parameters::density * (base_width - 1) + 1 : 0;
     }
 
     uint32_t Terrain::GetHeight() const
     {
-        return m_height_texture->GetHeight() * parameters::scale;
+        uint32_t base_height = m_height_texture ? m_height_texture->GetHeight() * parameters::scale : 0;
+        return base_height ? parameters::density * (base_height - 1) + 1 : 0;
     }
 
     void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop, float offset_y)
@@ -847,10 +879,6 @@ namespace spartan
             if (!m_vertices.empty())
             {
                 loaded_from_cache = true;
-                width             = GetWidth();
-                height            = GetHeight();
-    
-                // skip to step 9
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("loaded from cache, skipping to mesh creation...");
                 for (uint32_t i = 0; i < job_count - 1; i++)
                 {
@@ -862,47 +890,60 @@ namespace spartan
         if (!loaded_from_cache)
         {
             SP_LOG_INFO("Terrain not found, generating from scratch...");
-
+    
             // 1. process height map
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("process height map...");
                 get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y);
-                width  = GetWidth();
-                height = GetHeight();
+                width  = m_height_texture->GetWidth();
+                height = m_height_texture->GetHeight();
+    
+                // increase grid density
+                densify_height_map(m_height_data, width, height, parameters::density);
+                uint32_t dense_width  = parameters::density * (width - 1) + 1;
+                uint32_t dense_height = parameters::density * (height - 1) + 1;
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
-
-           // 2. Apply hydraulic erosion
+    
+            // 2. apply hydraulic erosion
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic erosion...");
-                apply_hydraulic_erosion(m_height_data, width, height, m_min_y, m_max_y);
+                uint32_t dense_width  = parameters::density * (width - 1) + 1;
+                uint32_t dense_height = parameters::density * (height - 1) + 1;
+                //apply_hydraulic_erosion(m_height_data, dense_width, dense_height, m_min_y, m_max_y);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
-
+    
             // 3. compute positions
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating positions...");
-                positions.resize(width * height);
-                generate_positions(positions, m_height_data, width, height);
+                uint32_t dense_width  = parameters::density * (width - 1) + 1;
+                uint32_t dense_height = parameters::density * (height - 1) + 1;
+                positions.resize(dense_width * dense_height);
+                generate_positions(positions, m_height_data, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
             // 4. compute vertices and indices
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating vertices and indices...");
-                m_vertices.resize(width * height);
-                m_indices.resize(width * height * 6);
-                generate_vertices_and_indices(m_vertices, m_indices, positions, width, height);
+                uint32_t dense_width  = parameters::density * (width - 1) + 1;
+                uint32_t dense_height = parameters::density * (height - 1) + 1;
+                m_vertices.resize(dense_width * dense_height);
+                m_indices.resize((dense_width - 1) * (dense_height - 1) * 6);
+                generate_vertices_and_indices(m_vertices, m_indices, positions, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
             // 5. compute normals and tangents
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
-                generate_normals(m_indices, m_vertices, width, height);
+                uint32_t dense_width  = parameters::density * (width - 1) + 1;
+                uint32_t dense_height = parameters::density * (height - 1) + 1;
+                generate_normals(m_indices, m_vertices, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
-
+    
             // 6. compute triangle data for placement
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
@@ -915,14 +956,14 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
                 spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, parameters::tile_count, m_tile_vertices, m_tile_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-    
-                // save to cache file
                 SaveToFile(cache_file.c_str());
             }
         }
     
         // initialize members
-        m_height_samples = width * height;
+        uint32_t dense_width  = parameters::density * (width - 1) + 1;
+        uint32_t dense_height = parameters::density * (height - 1) + 1;
+        m_height_samples = dense_width * dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
@@ -930,41 +971,32 @@ namespace spartan
         // 9. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
-    
             m_mesh = make_shared<Mesh>();
             m_mesh->SetObjectName("terrain_mesh");
-            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // the geometry was optimized at step 6, don't do it again
+            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
     
-            // accumulate geometry from all tiles
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {
-                // update with geometry
                 uint32_t sub_mesh_index = 0;
                 m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
-    
-                // create a child entity, add a renderable, and this mesh tile to it
+                shared_ptr<Entity> entity = World::CreateEntity();
+                entity->SetObjectName("tile_" + to_string(tile_index));
+                entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
+                if (Renderable* renderable = entity->AddComponent<Renderable>())
                 {
-                    shared_ptr<Entity> entity = World::CreateEntity();
-                    entity->SetObjectName("tile_" + to_string(tile_index));
-                    entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
-    
-                    if (Renderable* renderable = entity->AddComponent<Renderable>())
-                    {
-                        renderable->SetMesh(m_mesh.get(), sub_mesh_index);
-                        renderable->SetMaterial(m_material);
-                    }
+                    renderable->SetMesh(m_mesh.get(), sub_mesh_index);
+                    renderable->SetMaterial(m_material);
                 }
             }
     
             m_mesh->CreateGpuBuffers();
-    
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
         m_area_km2      = compute_terrain_area_km2(m_vertices);
         m_is_generating = false;
     
-        // clear everything but the height and placement data (they are used for physics and for placing foliage)
+        // clear everything but height and placement data
         m_vertices.clear();
         m_indices.clear();
         m_tile_vertices.clear();
