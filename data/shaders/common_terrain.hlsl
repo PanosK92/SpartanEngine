@@ -28,7 +28,7 @@ static float get_snow_blend_factor(float3 position_world, float3 normal_world)
     const float noise_scale      = 0.2f;  // noise frequency for terrain/vegetation
     const float noise_strength   = 20.0f; // height variation for snow level
     const float slope_threshold  = 0.5f;  // ~45 degrees, snow diminishes
-    const float slope_factor     = 0.1f;  // snow reduction on steep slopes
+    const float slope_factor     = 0.2f;  // snow reduction on steep slopes
     const float wind_influence   = 0.5f;  // wind effect strength
     const float edge_jitter      = 0.15f; // subtle edge variation
 

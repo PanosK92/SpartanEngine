@@ -50,43 +50,34 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         // for the terrain, sample 2 more textures, rock and sand
         float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
         float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
-
+        
         // compute slope and blend factors
-        const float sand_offset    = 0.75f;
-        float slope                = saturate(pow(saturate(dot(vertex.normal, float3(0.0f, 1.0f, 0.0f)) - -0.25f), 24.0f));
-        float sand_blend_factor    = saturate(vertex.position.y / sand_offset);
-        float sand_blend_threshold = sea_level + sand_offset;
-        float sand_factor          = saturate((vertex.position.y - sea_level) / (sand_blend_threshold - sea_level));
-        sand_blend_factor          = 1.0f - sand_factor;
+        const float sand_offset = 0.75f;
+        const float rock_angle  = 45.0f * DEG_TO_RAD;
+        float cos_slope         = dot(vertex.normal, float3(0, 1, 0));
+        float slope             = saturate((cos(rock_angle) - cos_slope) / cos(rock_angle));
+        float sand_factor       = saturate((vertex.position.y - sea_level) / sand_offset);
 
         // compute the color
-        float4 terrain = lerp(tex_rock, color, slope);
-        color          = lerp(terrain, tex_sand, sand_blend_factor);
-        
-        // apply perlin noise color variation
-        const float noise_scale         = 2.0f;
-        const float variation_strength  = 0.25f;
-        float2 noise_uv                 = vertex.position.xz * noise_scale;
-        float noise_value               = get_noise_perlin(noise_uv);
-        color.rgb                      *= (1.0f + noise_value * variation_strength);
+        float4 terrain = lerp(tex_rock, color, 1.0f - slope);
+        color          = lerp(terrain, tex_sand, 1.0f - sand_factor);
     }
-    else if (surface.color_variation_from_instance()) // vegetation typically uses color variance
+    
+    // vegetation typically uses color variance
     {
         const float variation_strength = 0.2f;                       // kind of visible variation
         const float3 greener           = float3(0.05f, 0.4f, 0.03f); // richer green
         const float3 yellower          = float3(0.45f, 0.4f, 0.15f); // bolder yellow
         const float3 browner           = float3(0.3f, 0.15f, 0.08f); // deeper brown
-        const float3 pinker            = float3(0.4f, 0.2f, 0.25f);  // subtle red/pink for flowering effect
         
         // blend based on variation value using lerps
-        float variation         = hash_instance_id(vertex.instance_id);
-        float3 variation_color  = greener;                                                  // start with greener
-        variation_color         = lerp(variation_color , yellower, step(0.25f, variation)); // transition to yellower at 0.25
-        variation_color         = lerp(variation_color , browner,  step(0.5f,  variation)); // transition to browner at 0.5
-        variation_color         = lerp(variation_color , pinker,   step(0.75f, variation)); // transition to pinker at 0.75
+        float variation        = hash_instance_id(vertex.instance_id);
+        float3 variation_color = greener;                                                 // start with greener
+        variation_color        = lerp(variation_color, yellower, step(0.25f, variation)); // transition to yellower at 0.25
+        variation_color        = lerp(variation_color, browner, step(0.5f, variation));   // transition to browner at 0.5
 
         // apply
-        color.rgb = lerp(color.rgb, variation_color, variation_strength);
+        color.rgb = lerp(color.rgb, variation_color, variation_strength * (float)surface.color_variation_from_instance());
     }
 
     return color;
