@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
+#include "../../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include "meshoptimizer/meshoptimizer.h"
 SP_WARNINGS_ON
@@ -37,7 +38,7 @@ namespace spartan::geometry_processing
         if (registered)
             return;
 
-         // always give credit where credit is due
+         // give credit where credit is due
         const int major = MESHOPTIMIZER_VERSION / 1000;
         const int minor = (MESHOPTIMIZER_VERSION % 1000) / 10;
         const int rev   = MESHOPTIMIZER_VERSION % 10;
@@ -206,152 +207,92 @@ namespace spartan::geometry_processing
     }
 
     static void split_surface_into_tiles(
-        const std::vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, const std::vector<uint32_t>& terrain_indices,
+        const std::vector<RHI_Vertex_PosTexNorTan>& terrain_vertices,
+        const std::vector<uint32_t>& terrain_indices,
         const uint32_t tile_count,
-        std::vector<std::vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices, std::vector<std::vector<uint32_t>>& tiled_indices
+        std::vector<std::vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
+        std::vector<std::vector<uint32_t>>& tiled_indices
     )
     {
-        // initialize min and max values for terrain bounds
+        // find terrain bounds
         float min_x = std::numeric_limits<float>::max();
         float max_x = std::numeric_limits<float>::lowest();
         float min_z = std::numeric_limits<float>::max();
         float max_z = std::numeric_limits<float>::lowest();
-    
-        // iterate over all vertices to find the minimum and maximum x and z values
-        for (const RHI_Vertex_PosTexNorTan& vertex : terrain_vertices)
+        for (const auto& vertex : terrain_vertices)
         {
-            // compare and store the minimum and maximum x coordinates
-            if (vertex.pos[0] < min_x) min_x = vertex.pos[0];
-            if (vertex.pos[0] > max_x) max_x = vertex.pos[0];
-    
-            // compare and store the minimum and maximum z coordinates
-            if (vertex.pos[2] < min_z) min_z = vertex.pos[2];
-            if (vertex.pos[2] > max_z) max_z = vertex.pos[2];
+            min_x = std::min(min_x, vertex.pos[0]);
+            max_x = std::max(max_x, vertex.pos[0]);
+            min_z = std::min(min_z, vertex.pos[2]);
+            max_z = std::max(max_z, vertex.pos[2]);
         }
     
-        // calculate dimensions
+        // calculate tile dimensions
         float terrain_width = max_x - min_x;
         float terrain_depth = max_z - min_z;
         float tile_width    = terrain_width / static_cast<float>(tile_count);
         float tile_depth    = terrain_depth / static_cast<float>(tile_count);
+
+        // initialize output containers and mutexes
+        const uint32_t total_tiles = tile_count * tile_count;
+        tiled_vertices.resize(total_tiles);
+        tiled_indices.resize(total_tiles);
+        std::vector<std::unordered_map<uint32_t, uint32_t>> global_to_local_indices(total_tiles);
+        std::vector<std::mutex> tile_mutexes(total_tiles);
     
-        // initialize tiled vertices and indices
-        tiled_vertices.resize(tile_count * tile_count);
-        tiled_indices.resize(tile_count * tile_count);
+        // calculate number of triangles
+        uint32_t triangle_count = static_cast<uint32_t>(terrain_indices.size()) / 3;
     
-        // create a mapping for each tile to track vertex global indices to their new local indices
-        std::vector<std::unordered_map<uint32_t, uint32_t>> global_to_local_indices(tile_count * tile_count);
-    
-        // assign vertices to tiles and track their indices
-        for (uint32_t global_index = 0; global_index < terrain_vertices.size(); ++global_index)
+        // parallel processing of triangles
+        auto process_triangles = [&terrain_vertices, &terrain_indices, tile_count, min_x, min_z, tile_width, tile_depth, &tiled_vertices, &tiled_indices, &global_to_local_indices, &tile_mutexes](uint32_t start_tri, uint32_t end_tri)
         {
-            const RHI_Vertex_PosTexNorTan& vertex = terrain_vertices[global_index];
-    
-            uint32_t tile_x = static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width);
-            uint32_t tile_z = static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth);
-            tile_x          = std::min(tile_x, tile_count - 1);
-            tile_z          = std::min(tile_z, tile_count - 1);
-    
-            // convert the 2D tile coordinates into a single index for the 1D output array
-            uint32_t tile_index = tile_z * tile_count + tile_x;
-    
-            // add vertex to the appropriate tile
-            tiled_vertices[tile_index].push_back(vertex);
-    
-            // track the local index of this vertex in the tile
-            uint32_t local_index = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
-            global_to_local_indices[tile_index][global_index] = local_index;
-        }
-    
-        auto add_shared_vertex = [tile_count](
-            uint32_t tile_x, uint32_t tile_z, uint32_t global_index,
-            const std::vector<RHI_Vertex_PosTexNorTan>&terrain_vertices, std::vector<std::vector<RHI_Vertex_PosTexNorTan>>&tiled_vertices,
-            std::vector<std::unordered_map<uint32_t, uint32_t>>&global_to_local_indices, std::vector<std::vector<uint32_t>>&tiled_indices)
-        {
-            // check if tile_x and tile_z are within the valid range
-            if (tile_x >= tile_count || tile_z >= tile_count)
-                return; // out of valid tile range, do nothing
-    
-            uint32_t tile_count = static_cast<uint32_t>(sqrt(tiled_vertices.size())); // assuming square number of tiles
-            uint32_t tile_index = tile_z * tile_count + tile_x;
-            const RHI_Vertex_PosTexNorTan& vertex = terrain_vertices[global_index];
-    
-            // add the vertex if it doesn't exist in the tile
-            if (global_to_local_indices[tile_index].find(global_index) == global_to_local_indices[tile_index].end())
+            for (uint32_t tri = start_tri; tri < end_tri; ++tri)
             {
-                tiled_vertices[tile_index].push_back(vertex);
-                uint32_t local_index = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
-                global_to_local_indices[tile_index][global_index] = local_index;
+                // get starting index of the triangle
+                uint32_t i = tri * 3;
+    
+                // assign triangle to tile based on first vertex
+                const auto& vertex  = terrain_vertices[terrain_indices[i]];
+                uint32_t tile_x     = std::min(static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width), tile_count - 1);
+                uint32_t tile_z     = std::min(static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth), tile_count - 1);
+                uint32_t tile_index = tile_z * tile_count + tile_x;
+    
+                // lock the tile to prevent concurrent access
+                std::lock_guard<std::mutex> lock(tile_mutexes[tile_index]);
+    
+                // add all three vertices to the tile
+                auto& map = global_to_local_indices[tile_index];
+                for (uint32_t j = 0; j < 3; ++j)
+                {
+                    uint32_t global_idx = terrain_indices[i + j];
+                    uint32_t local_idx;
+                    auto it = map.find(global_idx);
+                    if (it != map.end())
+                    {
+                        local_idx = it->second;
+                    }
+                    else
+                    {
+                        tiled_vertices[tile_index].push_back(terrain_vertices[global_idx]);
+                        local_idx = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
+                        map[global_idx] = local_idx;
+                    }
+                    tiled_indices[tile_index].push_back(local_idx);
+                }
             }
         };
     
-        // adjust and assign indices to tiles
-        for (uint32_t global_index = 0; global_index < terrain_indices.size(); global_index += 3)
+        // execute parallel loop over triangles
+        ThreadPool::ParallelLoop(process_triangles, triangle_count);
+    
+        // clean up empty tiles
+        for (uint32_t i = 0; i < total_tiles; ++i)
         {
-            // find the tile for the first vertex of the triangle
-            const RHI_Vertex_PosTexNorTan& vertex = terrain_vertices[terrain_indices[global_index]];
-            uint32_t tile_x                       = static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width);
-            uint32_t tile_z                       = static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth);
-            tile_x                                = std::min(tile_x, tile_count - 1);
-            tile_z                                = std::min(tile_z, tile_count - 1);
-            uint32_t tile_index                   = tile_z * tile_count + tile_x;
-    
-            // add all vertices of the triangle to the current tile
-            for (uint32_t j = 0; j < 3; ++j)
+            if (tiled_vertices[i].empty())
             {
-                uint32_t current_global_index = terrain_indices[global_index + j];
-                const RHI_Vertex_PosTexNorTan& current_vertex = terrain_vertices[current_global_index];
-                uint32_t local_index;
-    
-                // check if the vertex index already exists in the local index map for the current tile
-                auto it = global_to_local_indices[tile_index].find(current_global_index);
-                if (it != global_to_local_indices[tile_index].end())
-                {
-                    local_index = it->second;
-                }
-                else
-                {
-                    // If the vertex is not already in the tile, add it and update the index map
-                    tiled_vertices[tile_index].push_back(current_vertex);
-                    local_index = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
-                    global_to_local_indices[tile_index][current_global_index] = local_index;
-                }
-                tiled_indices[tile_index].push_back(local_index);
-            }
-    
-            // check for shared edges and corners
-            for (uint32_t j = 0; j < 3; ++j)
-            {
-                // for each vertex of the triangle, check if it's on a shared edge
-                uint32_t current_global_index = terrain_indices[global_index + j];
-                const RHI_Vertex_PosTexNorTan& current_vertex = terrain_vertices[current_global_index];
-    
-                // calculate the local tile coordinates again
-                tile_x = static_cast<uint32_t>((current_vertex.pos[0] - min_x) / tile_width);
-                tile_z = static_cast<uint32_t>((current_vertex.pos[2] - min_z) / tile_depth);
-    
-                // determine if the vertex is on an edge or corner
-                bool is_on_horizontal_edge = fmod(current_vertex.pos[0] - min_x, tile_width) <= std::numeric_limits<float>::epsilon() && tile_x > 0;
-                bool is_on_vertical_edge   = fmod(current_vertex.pos[2] - min_z, tile_depth) <= std::numeric_limits<float>::epsilon() && tile_z > 0;
-    
-                // add the vertex to the shared edges/corners tiles if needed
-                if (is_on_horizontal_edge)
-                {
-                    // add to tile on the left
-                    add_shared_vertex(tile_x - 1, tile_z, current_global_index, terrain_vertices, tiled_vertices, global_to_local_indices, tiled_indices);
-                }
-    
-                if (is_on_vertical_edge)
-                {
-                    // add to tile below
-                    add_shared_vertex(tile_x, tile_z - 1, current_global_index, terrain_vertices, tiled_vertices, global_to_local_indices, tiled_indices);
-                }
-    
-                if (is_on_horizontal_edge && is_on_vertical_edge)
-                {
-                    // add to the diagonal tile (bottom left)
-                    add_shared_vertex(tile_x - 1, tile_z - 1, current_global_index, terrain_vertices, tiled_vertices, global_to_local_indices, tiled_indices);
-                }
+                tiled_vertices[i].clear();
+                tiled_indices[i].clear();
+                global_to_local_indices[i].clear();
             }
         }
     }

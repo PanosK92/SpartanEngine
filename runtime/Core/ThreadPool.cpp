@@ -189,13 +189,13 @@ namespace spartan
 
     void ThreadPool::Flush(bool remove_queued /*= false*/)
     {
-        // Clear any queued tasks
+        // clear any queued tasks
         if (remove_queued)
         {
             tasks.clear();
         }
 
-        // If so, wait for them
+        // wait for any tasks to complete
         while (AreTasksRunning())
         {
             this_thread::sleep_for(chrono::milliseconds(16));
