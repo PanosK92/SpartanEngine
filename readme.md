@@ -29,7 +29,7 @@ Upon launching the engine, you'll be greeted with a selection of default worlds 
 
 **Forest**
 <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_forest.jpg"/>
-The Forest is the most advanced and demanding world. It features **50 million** procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans **9.4 km²**, covered in **10,000** trees and rocks, and includes a drivable car.
+The Forest is the most advanced and demanding worlds. It features **50 million** procedurally generated grass blades, fully simulated and inspired by **Ghost of Tsushima**. The world spans **9.4 km²**, covered in **10,000** trees and rocks, and includes a drivable car.
 
 **Some of the other worlds**
 | Sponza 4K | Doom |

@@ -46,6 +46,8 @@ SP_WARNINGS_OFF
 #include <FidelityFX/host/ffx_brixelizer.h>
 #include <FidelityFX/host/ffx_brixelizergi.h>
 #include <FidelityFX/host/ffx_breadcrumbs.h>
+#include <xess/xess.h>
+#include <xess/xess_vk.h>
 #endif
 SP_WARNINGS_ON
 //=============================================
@@ -58,6 +60,14 @@ using namespace std;
 namespace spartan
 {
     #ifdef _WIN32
+    namespace intel
+    {
+        void initialize()
+        {
+
+        }
+    }
+
     namespace
     {
         // shared among all contexts
@@ -782,12 +792,13 @@ namespace spartan
             }
         }
     }
+
     #endif 
 
     void RHI_VendorTechnology::Initialize()
     {
     #ifdef _WIN32
-        // register FidelityFX version
+        // register amd
         {
             string ffx_version = to_string(FFX_SDK_VERSION_MAJOR) + "." +
                                  to_string(FFX_SDK_VERSION_MINOR) + "." +
@@ -795,6 +806,15 @@ namespace spartan
             
             Settings::RegisterThirdPartyLib("AMD FidelityFX", ffx_version, "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK");
         }
+
+        // register intel
+        {
+            xess_version_t version;
+            SP_ASSERT(xessGetVersion(&version) == XESS_RESULT_SUCCESS);
+            string xess_version = to_string(version.major) + "." + to_string(version.minor) + "." + to_string(version.patch);
+            Settings::RegisterThirdPartyLib("Intel XeSS", xess_version, "https://github.com/intel/xess");
+        }
+
         // ffx interface
         {
             // all used contexts need to be accounted for here
