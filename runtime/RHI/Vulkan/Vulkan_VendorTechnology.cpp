@@ -62,9 +62,82 @@ namespace spartan
     #ifdef _WIN32
     namespace intel
     {
-        void initialize()
-        {
+        xess_context_handle_t context = nullptr;
 
+        void context_destroy()
+        {
+            if (context)
+            {
+                xessDestroyContext(context);
+                context = nullptr;
+            }
+        }
+
+        void context_create()
+        {
+            context_destroy();
+            SP_ASSERT(xessVKCreateContext(RHI_Context::instance, RHI_Context::device_physical, RHI_Context::device, &context) == xess_result_t::XESS_RESULT_SUCCESS);
+        }
+
+        xess_quality_settings_t get_quality(const Vector2& resolution_render, const Vector2& resolution_output)
+        {
+            // Ccalculate the scaling factor (render resolution area / output resolution area)
+            float render_area  = resolution_render.x * resolution_render.y;
+            float output_area  = resolution_output.x * resolution_output.y;
+            float scale_factor = render_area / output_area;
+
+            // Approximate scaling factors for XeSS quality settings
+            // Based on typical XeSS scaling ratios (these are approximate and may vary slightly)
+            struct QualitySetting
+            {
+                xess_quality_settings_t quality;
+                float scale_factor;
+            };
+
+            const QualitySetting quality_settings[] = {
+                { XESS_QUALITY_SETTING_ULTRA_PERFORMANCE, 0.25f },  // ~50% per dimension (0.5 * 0.5)
+                { XESS_QUALITY_SETTING_PERFORMANCE, 0.36f },        // ~60% per dimension (0.6 * 0.6)
+                { XESS_QUALITY_SETTING_BALANCED, 0.49f },           // ~70% per dimension (0.7 * 0.7)
+                { XESS_QUALITY_SETTING_QUALITY, 0.64f },            // ~80% per dimension (0.8 * 0.8)
+                { XESS_QUALITY_SETTING_ULTRA_QUALITY, 0.81f },      // ~90% per dimension (0.9 * 0.9)
+                { XESS_QUALITY_SETTING_ULTRA_QUALITY_PLUS, 0.91f }, // ~95% per dimension (0.95 * 0.95)
+                { XESS_QUALITY_SETTING_AA, 1.0f }                   // 100% (no upscaling)
+            };
+
+            // find the quality setting with the closest scale factor
+            xess_quality_settings_t closest_quality = XESS_QUALITY_SETTING_BALANCED; // default fallback
+            float min_difference                    = numeric_limits<float>::max();
+
+            for (const auto& setting : quality_settings)
+            {
+                float difference = abs(scale_factor - setting.scale_factor);
+                if (difference < min_difference)
+                {
+                    min_difference  = difference;
+                    closest_quality = setting.quality;
+                }
+            }
+
+            return closest_quality;
+        }
+
+        xess_vk_image_view_info to_xess_image_view(RHI_Texture* texture)
+        {
+            xess_vk_image_view_info info          = {};
+            info.image                            = static_cast<VkImage>(texture->GetRhiResource()); 
+            info.imageView                        = static_cast<VkImageView>(texture->GetRhiSrv());
+            info.subresourceRange                 = {};
+            info.subresourceRange.aspectMask      = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+            info.subresourceRange.aspectMask     |= texture->IsStencilFormat() ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
+            info.subresourceRange.baseMipLevel    = 0;
+            info.subresourceRange.levelCount      = texture->GetMipCount();
+            info.subresourceRange.baseArrayLayer  = 0;
+            info.subresourceRange.layerCount      = texture->GetType() == RHI_Texture_Type::Type2DArray || texture->GetType() == RHI_Texture_Type::TypeCube ? texture->GetDepth() : 1;
+            info.format                           = vulkan_format[static_cast<uint32_t>(texture->GetFormat())];
+            info.width                            = texture->GetWidth();
+            info.height                           = texture->GetHeight();
+        
+            return info;
         }
     }
 
@@ -385,7 +458,7 @@ namespace spartan
                 }
             }
 
-            void create_context()
+            void context_create()
             {
                 context_destroy();
 
@@ -793,7 +866,7 @@ namespace spartan
         }
     }
 
-    #endif 
+    #endif
 
     void RHI_VendorTechnology::Initialize()
     {
@@ -836,7 +909,15 @@ namespace spartan
             SP_ASSERT(ffxGetInterfaceVK(&ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, max_contexts)== FFX_OK);
         }
 
-        breadcrumbs::context_create();
+        // breadcrumbs
+        {
+            breadcrumbs::context_create();
+        }
+
+        // xess
+        {
+            intel::context_create();
+        }
 
         // assets
         {
@@ -1021,7 +1102,7 @@ namespace spartan
         {
             if (resolution_render_changed || resolution_output_changed)
             { 
-                fsr3::create_context();
+                fsr3::context_create();
             }
 
             if (resolution_render_changed)
@@ -1029,8 +1110,65 @@ namespace spartan
                 sssr::context_create();
                 brixelizer_gi::context_create();
             }
+
+            // xess
+            {
+                // calculate the scaling factor (render resolution area / output resolution area)
+                float render_area  = resolution_render.x * resolution_render.y;
+                float output_area  = resolution_output.x * resolution_output.y;
+                float scale_factor = render_area / output_area;
+
+                xess_vk_init_params_t init_params = {};
+                init_params.outputResolution.x    = static_cast<uint32_t>(resolution_output.x);
+                init_params.outputResolution.y    = static_cast<uint32_t>(resolution_output.y);
+                init_params.qualitySetting        = intel::get_quality(resolution_render, resolution_output);
+                init_params.initFlags             = XESS_INIT_FLAG_INVERTED_DEPTH;
+                init_params.creationNodeMask      = 1;
+                init_params.visibleNodeMask       = 1;
+                init_params.tempBufferHeap        = VK_NULL_HANDLE;
+                init_params.bufferHeapOffset      = 0;
+                init_params.tempTextureHeap       = VK_NULL_HANDLE;
+                init_params.textureHeapOffset     = 0;
+                init_params.pipelineCache         = VK_NULL_HANDLE;
+
+                SP_ASSERT(xessVKInit(intel::context, &init_params) == xess_result_t::XESS_RESULT_SUCCESS);
+            }
         }
     #endif
+    }
+
+    void RHI_VendorTechnology::XeSS_Dispatch(
+        RHI_CommandList* cmd_list,
+        const bool reset_history,
+        const float exposure,
+        const float resolution_scale,
+        RHI_Texture* tex_color,
+        RHI_Texture* tex_depth,
+        RHI_Texture* tex_velocity,
+        RHI_Texture* tex_output
+    )
+    {
+        xess_vk_execute_params_t params   = {};
+        params.colorTexture               = intel::to_xess_image_view(tex_color);
+        params.depthTexture               = intel::to_xess_image_view(tex_depth);
+        params.velocityTexture            = intel::to_xess_image_view(tex_velocity);
+        params.outputTexture              = intel::to_xess_image_view(tex_output);
+        params.exposureScaleTexture       = { nullptr, 0, 0 };
+        params.responsivePixelMaskTexture = { nullptr, 0, 0 };
+        params.jitterOffsetX              = 0.0f;
+        params.jitterOffsetY              = 0.0f;
+        params.exposureScale              = exposure != 0.0f ? exposure : 1.0f;
+        params.resetHistory               = reset_history;
+        params.inputWidth                 = static_cast<uint32_t>(tex_color->GetWidth() * resolution_scale);
+        params.inputHeight                = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
+        params.inputColorBase             = { 0, 0 };
+        params.inputMotionVectorBase      = { 0, 0 };
+        params.inputDepthBase             = { 0, 0 };
+        params.inputResponsiveMaskBase    = { 0, 0 };
+        params.outputColorBase            = { 0, 0 };
+        params.reserved0                  = { 0, 0 };
+
+        SP_ASSERT(xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &params) == XESS_RESULT_SUCCESS);
     }
 
     void RHI_VendorTechnology::FSR3_ResetHistory()

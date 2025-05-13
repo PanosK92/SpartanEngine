@@ -1451,30 +1451,34 @@ namespace spartan
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
         cmd_list->BeginTimeblock("upscale");
-
-        if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3)
         {
-            RHI_VendorTechnology::FSR3_Dispatch(
-                cmd_list,
-                World::GetCamera(),
-                m_cb_frame_cpu.delta_time,
-                GetOption<float>(Renderer_Option::Sharpness),
-                1.0f,
-                GetOption<float>(Renderer_Option::ResolutionScale),
-                tex_in,
-                GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
-                GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
-                tex_out
-            );
-        }
-        else // no upscale or linear upscale
-        {
-            cmd_list->Blit(tex_in, tex_out, false, GetOption<float>(Renderer_Option::ResolutionScale));
-        }
+            if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3)
+            {
+                RHI_VendorTechnology::FSR3_Dispatch(
+                    cmd_list,
+                    World::GetCamera(),
+                    m_cb_frame_cpu.delta_time,
+                    GetOption<float>(Renderer_Option::Sharpness),
+                    1.0f,
+                    GetOption<float>(Renderer_Option::ResolutionScale),
+                    tex_in,
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
+                    tex_out
+                );
+            }
+            else if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::XeSS)
+            {
 
-        // used for refraction by the transparent passes, so generate mips to emulate roughness
-        Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
+            }
+            else // no upscale or linear upscale
+            {
+                cmd_list->Blit(tex_in, tex_out, false, GetOption<float>(Renderer_Option::ResolutionScale));
+            }
 
+            // used for refraction by the transparent passes, so generate mips to emulate roughness
+            Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
+        }
         cmd_list->EndTimeblock();
     }
 

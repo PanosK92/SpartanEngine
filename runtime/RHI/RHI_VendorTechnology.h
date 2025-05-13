@@ -54,6 +54,18 @@ namespace spartan
         static void Tick(Cb_Frame* cb_frame);
         static void Resize(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
 
+        // xess
+        static void XeSS_Dispatch(
+            RHI_CommandList* cmd_list,
+            const bool reset_history,
+            const float exposure,
+            const float resolution_scale,
+            RHI_Texture* tex_color,
+            RHI_Texture* tex_depth,
+            RHI_Texture* tex_velocity,
+            RHI_Texture* tex_output
+        );
+
         // fsr 3
         static void FSR3_ResetHistory();
         static void FSR3_GenerateJitterSample(float* x, float* y);

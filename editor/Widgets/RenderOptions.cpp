@@ -259,7 +259,8 @@ void RenderOptions::OnTickVisible()
                 static vector<string> upsampling_modes =
                 {
                     "Linear",
-                    "FSR 3"
+                    "FSR 3",
+                    "XeSS 2"
                 };
 
                 bool is_upsampling = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;

@@ -249,7 +249,8 @@ namespace spartan
             // vkGetBufferMemoryRequirements2KHR instead of the core Vulkan 1.1+ function vkGetBufferMemoryRequirements2,
             // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
             "VK_KHR_synchronization2", 
-            "VK_KHR_get_memory_requirements2"
+            "VK_KHR_get_memory_requirements2",
+            "VK_EXT_mutable_descriptor_type" // Added for XeSS mutable descriptor support
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -1075,12 +1076,13 @@ namespace spartan
 
     namespace device_features
     {
-        VkPhysicalDeviceFeatures2 features                          = {};
-        VkPhysicalDeviceRobustness2FeaturesEXT features_robustness  = {};
-        VkPhysicalDeviceVulkan14Features features_1_4               = {};
-        VkPhysicalDeviceVulkan13Features features_1_3               = {};
-        VkPhysicalDeviceVulkan12Features features_1_2               = {};
-        VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs = {};
+        VkPhysicalDeviceFeatures2 features                                           = {};
+        VkPhysicalDeviceRobustness2FeaturesEXT features_robustness                   = {};
+        VkPhysicalDeviceVulkan14Features features_1_4                                = {};
+        VkPhysicalDeviceVulkan13Features features_1_3                                = {};
+        VkPhysicalDeviceVulkan12Features features_1_2                                = {};
+        VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs                  = {};
+        VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT features_mutable_descriptor = {};
 
         void detect(bool* is_shading_rate_supported)
         {
@@ -1099,9 +1101,12 @@ namespace spartan
             
             features_1_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
             features_1_4.pNext = &features_1_3;
+
+            features_mutable_descriptor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
+            features_mutable_descriptor.pNext = &features_1_4;
             
             features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            features.pNext = &features_1_4;
+            features.pNext = &features_mutable_descriptor;
 
             // detect which features are supported
             VkPhysicalDeviceFragmentShadingRateFeaturesKHR support_vrs = {};
@@ -1122,10 +1127,14 @@ namespace spartan
             VkPhysicalDeviceVulkan14Features support_1_4 = {};
             support_1_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
             support_1_4.pNext = &support_1_3;
+
+            VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT support_mutable_descriptor = {};
+            support_mutable_descriptor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
+            support_mutable_descriptor.pNext = &support_1_4;
             
             VkPhysicalDeviceFeatures2 support = {};
             support.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            support.pNext = &support_1_4;
+            support.pNext = &support_mutable_descriptor;
             
             vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &support);
 
@@ -1253,6 +1262,18 @@ namespace spartan
                     {
                         features_1_3.subgroupSizeControl = VK_TRUE;
                     }
+                }
+
+                // xess
+                {
+                    SP_ASSERT(support_1_2.shaderInt8 == VK_TRUE);
+                    features_1_2.shaderInt8 = VK_TRUE;
+
+                    SP_ASSERT(support_1_3.shaderIntegerDotProduct == VK_TRUE);
+                    features_1_3.shaderIntegerDotProduct = VK_TRUE;
+
+                    SP_ASSERT(support_mutable_descriptor.mutableDescriptorType == VK_TRUE);
+                    features_mutable_descriptor.mutableDescriptorType = VK_TRUE;
                 }
 
                 // directx shader compiler spir-v output automatically enables certain capabilities
