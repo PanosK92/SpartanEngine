@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
-#include "../../Core/ThreadPool.h"
+#include "../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #include "meshoptimizer/meshoptimizer.h"
 SP_WARNINGS_ON
