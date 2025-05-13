@@ -1133,7 +1133,7 @@ namespace spartan
                 init_params.pipelineCache         = VK_NULL_HANDLE;
                 
                 SP_ASSERT(xessVKInit(intel::context, &init_params) == xess_result_t::XESS_RESULT_SUCCESS);
-                SP_ASSERT( xessSetVelocityScale(intel::context, -1.0f, -1.0f) == xess_result_t::XESS_RESULT_SUCCESS);
+                SP_ASSERT(xessSetVelocityScale(intel::context, -1.0f, -1.0f) == xess_result_t::XESS_RESULT_SUCCESS);
             }
         }
     #endif
@@ -1182,13 +1182,13 @@ namespace spartan
         auto jitter = halton_points[halton_index];
     
         // write scaled jitter for projection matrix
-        *x = jitter.first / static_cast<float>(common::resolution_render_width);   // [-0.5/width*2, 0.5/width*2]
-        *y = jitter.second / static_cast<float>(common::resolution_render_height); // [0.5/height*2, -0.5/height*2]
+        *x =  2.0f * jitter.first / static_cast<float>(common::resolution_render_width);
+        *y = -2.0f * jitter.second / static_cast<float>(common::resolution_render_height);
     
-        // store pixel-space jitter for xess_dispatch
-        intel::jitter.x = jitter.first;   // [-0.5, 0.5]
-        intel::jitter.y = -jitter.second; // [0.5, -0.5]
-    
+        // this is for xessVKExecute which expects [-0.5, 0.5] jitter
+        intel::jitter.x = jitter.first;
+        intel::jitter.y = -jitter.second;
+
         // advance to the next sample, cycling back to 0
         halton_index = (halton_index + 1) % halton_points.size();
     }
