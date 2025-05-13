@@ -491,14 +491,6 @@ namespace spartan
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
     }
 
-    void Renderer::SetEntities(vector<shared_ptr<Entity>>& entities)
-    {
-        m_draw_calls.fill(Renderer_DrawCall());
-        m_draw_call_count          = 0;
-        m_bindless_materials_dirty = true;
-        m_bindless_lights_dirty    = true;
-    }
-
     const Vector3& Renderer::GetWind()
     {
         return m_cb_frame_cpu.wind;
@@ -759,11 +751,8 @@ namespace spartan
     {
         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
         {
-            if (m_cmd_list_present->GetState() == RHI_CommandListState::Recording)
-            {
-                m_cmd_list_present->Submit(swap_chain->GetObjectId());
-            }
-            
+            swap_chain->SetLayout(RHI_Image_Layout::Present_Source, m_cmd_list_present);
+            m_cmd_list_present->Submit(swap_chain->GetObjectId());
             swap_chain->Present(m_cmd_list_present);
         }
         Profiler::TimeBlockEnd();
@@ -1127,7 +1116,7 @@ namespace spartan
                     math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
                 
                     // compute screen-space dimensions using rectangle's left, top, right, bottom
-                    float width  = rect_screen.right - rect_screen.left;
+                    float width  = rect_screen.right  - rect_screen.left;
                     float height = rect_screen.bottom - rect_screen.top;
                 
                     // compute area and ensure it's non-negative
@@ -1170,7 +1159,7 @@ namespace spartan
                 });
             
                 // select the top n occluders
-                const uint32_t max_occluders = 32;
+                const uint32_t max_occluders = 8;
                 uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
                 for (uint32_t i = 0; i < occluder_count; i++)
                 {

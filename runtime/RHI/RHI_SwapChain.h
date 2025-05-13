@@ -91,7 +91,6 @@ namespace spartan
 
         // misc
         bool m_is_dirty                                      = false;
-        uint32_t m_buffer_index                              = 0;
         uint32_t m_image_index                               = 0;
         void* m_sdl_window                                   = nullptr;
         std::array<RHI_Image_Layout, buffer_count> m_layouts = { RHI_Image_Layout::Max };

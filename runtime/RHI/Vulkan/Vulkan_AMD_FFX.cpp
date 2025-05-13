@@ -1610,8 +1610,8 @@ namespace spartan
         FfxBreadcrumbsMarkersStatus marker_status = {};
         SP_ASSERT(ffxBreadcrumbsPrintStatus(&breadcrumbs::context, &marker_status) == FFX_OK);
 
-        ofstream fout("breadcrumbs.txt", ios::binary);
-        SP_ASSERT_MSG(fout.good(), "Failed to create breadcrumbs.txt");
+        ofstream fout("gpu_crash.txt", ios::binary);
+        SP_ASSERT_MSG(fout.good(), "Failed to create gpu_crash.txt");
 
         if (fout.good())
         {
@@ -1621,7 +1621,7 @@ namespace spartan
 
         FFX_SAFE_FREE(marker_status.pBuffer, free);
 
-        SP_INFO_WINDOW("A gpu crash report has been saved to 'breadcrumbs.txt'");
+        SP_INFO_WINDOW("A gpu crash report has been saved to 'gpu_crash.txt'");
 
         #endif
     }

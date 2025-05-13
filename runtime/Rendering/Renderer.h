@@ -82,7 +82,6 @@ namespace spartan
         static uint64_t GetFrameNumber();
         static RHI_Api_Type GetRhiApiType();
         static void Screenshot(const std::string& file_path);
-        static void SetEntities(std::vector<std::shared_ptr<Entity>>& entities);
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // wind

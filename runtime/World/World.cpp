@@ -55,9 +55,14 @@ namespace spartan
         shared_ptr<Entity> light    = nullptr;
         uint32_t audio_source_count = 0;
 
+        // this is for the renderer to access safely (thread and resource lifetime safe)
+        mutex renderer_entities_mutex;
+        vector<shared_ptr<Entity>> renderer_entities;
+        vector<shared_ptr<Entity>> renderer_entities_lights;
+
         void compute_bounding_box()
         {
-            for (shared_ptr<Entity>& entity : entities)
+            for (shared_ptr<Entity>& entity : renderer_entities)
             {
                 if (entity->IsActive())
                 {
@@ -67,6 +72,13 @@ namespace spartan
                     }
                 }
             }
+        }
+
+        void update_renderer_entities()
+        {
+            lock_guard<mutex> lock(renderer_entities_mutex);
+            renderer_entities        = entities;
+            renderer_entities_lights = entities_lights;
         }
     }
 
@@ -141,7 +153,6 @@ namespace spartan
             }
         }
         
-        // notify renderer
         if (resolve)
         {
             // track entities
@@ -176,10 +187,10 @@ namespace spartan
                     }
                 }
             }
-        
-            Renderer::SetEntities(entities);
-            resolve = false;
+
+            update_renderer_entities();
             compute_bounding_box();
+            resolve = false;
         }
 
         if (Engine::IsFlagSet(EngineMode::Playing))
@@ -415,7 +426,7 @@ namespace spartan
     
     const vector<shared_ptr<Entity>>& World::GetEntities()
     {
-        return entities;
+        return renderer_entities;
     }
 
     const vector<shared_ptr<Entity>>& World::GetEntitiesLights()

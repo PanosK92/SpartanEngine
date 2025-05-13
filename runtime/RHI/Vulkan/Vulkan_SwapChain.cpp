@@ -430,9 +430,7 @@ namespace spartan
             m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled"
         );
 
-        // reset indices
-        m_image_index  = 0;
-        m_buffer_index = 0;
+        m_image_index = 0;
     }
 
     void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -459,16 +457,16 @@ namespace spartan
     {
         if (Window::IsMinimized())
             return;
-
-        // get next semaphore
-        m_buffer_index                      = (m_buffer_index + 1) % m_buffer_count;
-        RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
-
-        // VK_NOT_READY can happen if the swapchain is not ready yet, possible during window events
-        // it can happen often on some GPUs/drivers and less and on others, regardless, it has to be handled
+    
+        // use a temporary semaphore for acquisition
+        static uint32_t semaphore_index = 0;
+        RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
+    
+        // vk_not_ready can happen if the swapchain is not ready yet, possible during window events
+        // it can happen often on some gpus/drivers and less and on others, regardless, it has to be handled
         uint32_t retry_count     = 0;
         const uint32_t retry_max = 10;
-
+    
         while (retry_count < retry_max)
         {
             VkResult result = vkAcquireNextImageKHR(
@@ -479,9 +477,12 @@ namespace spartan
                 nullptr,
                 &m_image_index
             );
-    
+        
             if (result == VK_SUCCESS)
             {
+                // swap semaphores to associate the signaled semaphore with m_image_index
+                swap(m_image_acquired_semaphore[semaphore_index], m_image_acquired_semaphore[m_image_index]);
+                semaphore_index = (semaphore_index + 1) % m_buffer_count; // rotate to next semaphore
                 return;
             }
             else if (result == VK_NOT_READY)
@@ -495,7 +496,7 @@ namespace spartan
             }
         }
     }
-
+    
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
         if (Window::IsMinimized())
@@ -515,7 +516,7 @@ namespace spartan
         }
     
         // get semaphore from vkAcquireNextImageKHR
-        RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_buffer_index].get();
+        RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_image_index].get();
         m_wait_semaphores.emplace_back(image_acquired_semaphore);
     
         // present the current frame

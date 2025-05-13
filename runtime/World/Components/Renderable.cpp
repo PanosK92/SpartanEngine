@@ -110,11 +110,11 @@ namespace spartan
 
     Renderable::Renderable(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,         Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,            uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,             Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh,     BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,  bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,          Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,             uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,              Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh, BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -496,7 +496,7 @@ namespace spartan
         // note: using projected angle for LOD selection, which is more perceptually accurate
         // than screen height ratio, for example it will be more consistent across different resolutions
     
-        // static thresholds for projected angle (defined in degrees, converted to radians)
+        // thresholds for projected angle (defined in degrees, converted to radians)
         static const array<float, 4> lod_angle_thresholds =
         {
             30.0f * math::deg_to_rad,
@@ -543,8 +543,6 @@ namespace spartan
     
             // compute projected angle (in radians) using the sphere approximation
             float projected_angle = 2.0f * atan(radius / distance);
-
-            //SP_LOG_INFO("Projected angle: %f, distance: %f, radius: %f", projected_angle * math::rad_to_deg, distance, radius);
 
             // determine lod index based on projected angle
             uint32_t lod_index = max_lod;
