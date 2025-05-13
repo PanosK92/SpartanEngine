@@ -1469,7 +1469,16 @@ namespace spartan
             }
             else if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::XeSS)
             {
-
+                 RHI_VendorTechnology::XeSS_Dispatch(
+                    cmd_list,
+                    false,
+                    1.0f,
+                    GetOption<float>(Renderer_Option::ResolutionScale),
+                    tex_in,
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
+                    GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
+                    tex_out
+                );
             }
             else // no upscale or linear upscale
             {

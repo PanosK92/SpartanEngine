@@ -250,7 +250,7 @@ namespace spartan
             // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
             "VK_KHR_synchronization2", 
             "VK_KHR_get_memory_requirements2",
-            "VK_EXT_mutable_descriptor_type" // Added for XeSS mutable descriptor support
+            "VK_EXT_mutable_descriptor_type", // Added for XeSS mutable descriptor support
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -1082,7 +1082,7 @@ namespace spartan
         VkPhysicalDeviceVulkan13Features features_1_3                                = {};
         VkPhysicalDeviceVulkan12Features features_1_2                                = {};
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs                  = {};
-        VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT features_mutable_descriptor = {};
+        VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT features_mutable_descriptor = {}; // xess
 
         void detect(bool* is_shading_rate_supported)
         {
@@ -1271,6 +1271,9 @@ namespace spartan
 
                     SP_ASSERT(support_1_3.shaderIntegerDotProduct == VK_TRUE);
                     features_1_3.shaderIntegerDotProduct = VK_TRUE;
+
+                    SP_ASSERT(support_1_2.scalarBlockLayout == VK_TRUE);
+                    features_1_2.scalarBlockLayout = VK_TRUE;
 
                     SP_ASSERT(support_mutable_descriptor.mutableDescriptorType == VK_TRUE);
                     features_mutable_descriptor.mutableDescriptorType = VK_TRUE;

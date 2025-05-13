@@ -55,6 +55,7 @@ namespace spartan
         static void Resize(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
 
         // xess
+        static void XeSS_GenerateJitterSample(float* x, float* y);
         static void XeSS_Dispatch(
             RHI_CommandList* cmd_list,
             const bool reset_history,

@@ -148,7 +148,7 @@ namespace spartan
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                                          // becomes the upsampler's sharpness as well
             SetOption(Renderer_Option::Fog,                         4.0);                                                           // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));                // this is using fsr 3 for taa
-            SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));                 // deault to XeSS 2 which is superior to FSR 3
+            SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::XeSS));                 // deault to XeSS 2 which is superior to FSR 3
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);
             SetOption(Renderer_Option::Vsync,                       0.0f);
@@ -440,9 +440,17 @@ namespace spartan
 
         // generate jitter sample in case FSR (which also does TAA) is enabled
         Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
-        if (upsampling_mode == Renderer_Upsampling::Fsr3 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
+        if (GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
         {
-            RHI_VendorTechnology::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+            if (upsampling_mode == Renderer_Upsampling::Fsr3)
+            { 
+                RHI_VendorTechnology::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+            }
+            else if (upsampling_mode == Renderer_Upsampling::XeSS)
+            { 
+                RHI_VendorTechnology::XeSS_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+            }
+
             m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
         }
         else

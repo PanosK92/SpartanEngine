@@ -60,9 +60,18 @@ using namespace std;
 namespace spartan
 {
     #ifdef _WIN32
+    namespace common
+    {
+        uint32_t resolution_render_width  = 0;
+        uint32_t resolution_render_height = 0;
+        uint32_t resolution_output_width  = 0;
+        uint32_t resolution_output_height = 0;
+    }
+
     namespace intel
     {
         xess_context_handle_t context = nullptr;
+        Vector2 jitter;
 
         void context_destroy()
         {
@@ -130,9 +139,9 @@ namespace spartan
             info.subresourceRange.aspectMask      = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
             info.subresourceRange.aspectMask     |= texture->IsStencilFormat() ? VK_IMAGE_ASPECT_STENCIL_BIT : 0;
             info.subresourceRange.baseMipLevel    = 0;
-            info.subresourceRange.levelCount      = texture->GetMipCount();
+            info.subresourceRange.levelCount      = 1;
             info.subresourceRange.baseArrayLayer  = 0;
-            info.subresourceRange.layerCount      = texture->GetType() == RHI_Texture_Type::Type2DArray || texture->GetType() == RHI_Texture_Type::TypeCube ? texture->GetDepth() : 1;
+            info.subresourceRange.layerCount      = 1;
             info.format                           = vulkan_format[static_cast<uint32_t>(texture->GetFormat())];
             info.width                            = texture->GetWidth();
             info.height                           = texture->GetHeight();
@@ -154,10 +163,6 @@ namespace spartan
         Matrix projection_inverted             = Matrix::Identity;
         Matrix view_projection_previous        = Matrix::Identity;
         Matrix view_projection_inverted        = Matrix::Identity;
-        uint32_t resolution_render_width       = 0;
-        uint32_t resolution_render_height      = 0;
-        uint32_t resolution_output_width       = 0;
-        uint32_t resolution_output_height      = 0;
         shared_ptr<RHI_Texture> texture_skybox = nullptr;
 
         void ffx_message_callback(FfxMsgType type, const wchar_t* message)
@@ -463,10 +468,10 @@ namespace spartan
                 context_destroy();
 
                 // description
-                description_context.maxRenderSize.width    = resolution_render_width;
-                description_context.maxRenderSize.height   = resolution_render_height;
-                description_context.maxUpscaleSize.width   = resolution_output_width;
-                description_context.maxUpscaleSize.height  = resolution_output_height;
+                description_context.maxRenderSize.width    = common::resolution_render_width;
+                description_context.maxRenderSize.height   = common::resolution_render_height;
+                description_context.maxUpscaleSize.width   = common::resolution_output_width;
+                description_context.maxUpscaleSize.height  = common::resolution_output_height;
                 description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
                 description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
                 #ifdef DEBUG
@@ -550,8 +555,8 @@ namespace spartan
             {
                 context_destroy();
 
-                description_context.renderSize.width           = resolution_render_width;
-                description_context.renderSize.height          = resolution_render_height;
+                description_context.renderSize.width           = common::resolution_render_width;
+                description_context.renderSize.height          = common::resolution_render_height;
                 description_context.normalsHistoryBufferFormat = to_ffx_format(RHI_Format::R16G16B16A16_Float);
                 description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
                 description_context.backendInterface           = ffx_interface;
@@ -796,8 +801,8 @@ namespace spartan
                 // context gi
                 {
                     description_context_gi.internalResolution = internal_resolution;
-                    description_context_gi.displaySize.width  = resolution_render_width;
-                    description_context_gi.displaySize.height = resolution_render_height;
+                    description_context_gi.displaySize.width  = common::resolution_render_width;
+                    description_context_gi.displaySize.height = common::resolution_render_height;
                     description_context_gi.flags              = FfxBrixelizerGIFlags::FFX_BRIXELIZER_GI_FLAG_DEPTH_INVERTED;
                     description_context_gi.backendInterface   = ffx_interface;
                     
@@ -807,8 +812,8 @@ namespace spartan
                 // resources
                 {
                     uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-                    texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, resolution_render_width, resolution_render_height, 1, 1, RHI_Format::D32_Float, flags, "ffx_deoth_previous");
-                    texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, resolution_render_width, resolution_render_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
+                    texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, common::resolution_render_width, common::resolution_render_height, 1, 1, RHI_Format::D32_Float, flags, "ffx_deoth_previous");
+                    texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, common::resolution_render_width, common::resolution_render_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
                 }
                 
                 context_created = true;
@@ -912,11 +917,6 @@ namespace spartan
         // breadcrumbs
         {
             breadcrumbs::context_create();
-        }
-
-        // xess
-        {
-            intel::context_create();
         }
 
         // assets
@@ -1090,13 +1090,13 @@ namespace spartan
     #ifdef _WIN32
         RHI_Device::QueueWaitAll();
 
-        bool resolution_render_changed = resolution_render.x != resolution_render_width  || resolution_render.y != resolution_render_height;
-        bool resolution_output_changed = resolution_output.x != resolution_output_width  || resolution_output.y != resolution_output_height;
+        bool resolution_render_changed = resolution_render.x != common::resolution_render_width  || resolution_render.y != common::resolution_render_height;
+        bool resolution_output_changed = resolution_output.x != common::resolution_output_width  || resolution_output.y != common::resolution_output_height;
 
-        resolution_render_width  = static_cast<uint32_t>(resolution_render.x);
-        resolution_render_height = static_cast<uint32_t>(resolution_render.y);
-        resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
-        resolution_output_height = static_cast<uint32_t>(resolution_output.y);
+        common::resolution_render_width  = static_cast<uint32_t>(resolution_render.x);
+        common::resolution_render_height = static_cast<uint32_t>(resolution_render.y);
+        common::resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
+        common::resolution_output_height = static_cast<uint32_t>(resolution_output.y);
 
         // re-create resolution dependent contexts
         {
@@ -1113,28 +1113,84 @@ namespace spartan
 
             // xess
             {
-                // calculate the scaling factor (render resolution area / output resolution area)
-                float render_area  = resolution_render.x * resolution_render.y;
-                float output_area  = resolution_output.x * resolution_output.y;
-                float scale_factor = render_area / output_area;
+                intel::context_create();
+
+                uint32_t extension_count;
+                const char* const* extensions;
+                auto status = xessVKGetRequiredDeviceExtensions(RHI_Context::instance, RHI_Context::device_physical, &extension_count, &extensions);
 
                 xess_vk_init_params_t init_params = {};
                 init_params.outputResolution.x    = static_cast<uint32_t>(resolution_output.x);
                 init_params.outputResolution.y    = static_cast<uint32_t>(resolution_output.y);
                 init_params.qualitySetting        = intel::get_quality(resolution_render, resolution_output);
-                init_params.initFlags             = XESS_INIT_FLAG_INVERTED_DEPTH;
-                init_params.creationNodeMask      = 1;
-                init_params.visibleNodeMask       = 1;
+                init_params.initFlags             = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH;
+                init_params.creationNodeMask      = 0;
+                init_params.visibleNodeMask       = 0;
                 init_params.tempBufferHeap        = VK_NULL_HANDLE;
                 init_params.bufferHeapOffset      = 0;
                 init_params.tempTextureHeap       = VK_NULL_HANDLE;
                 init_params.textureHeapOffset     = 0;
                 init_params.pipelineCache         = VK_NULL_HANDLE;
-
+                
                 SP_ASSERT(xessVKInit(intel::context, &init_params) == xess_result_t::XESS_RESULT_SUCCESS);
+                SP_ASSERT( xessSetVelocityScale(intel::context, -1.0f, -1.0f) == xess_result_t::XESS_RESULT_SUCCESS);
             }
         }
     #endif
+    }
+
+    void RHI_VendorTechnology::XeSS_GenerateJitterSample(float* x, float* y)
+    {
+        // generate a single halton value for a given base and index
+        auto GetCorput = [](std::uint32_t index, std::uint32_t base) -> float
+        {
+            float result = 0.0f;
+            float bk = 1.0f;
+            while (index > 0)
+            {
+                bk /= static_cast<float>(base);
+                result += static_cast<float>(index % base) * bk;
+                index /= base;
+            }
+            return result;
+        };
+    
+        // static storage for halton points and index
+        static std::vector<std::pair<float, float>> halton_points;
+        static size_t halton_index = 0;
+    
+        // generate 32 halton points (bases 2 and 3, start index 1) if not already done
+        if (halton_points.empty())
+        {
+            constexpr std::uint32_t base_x = 2;
+            constexpr std::uint32_t base_y = 3;
+            constexpr std::uint32_t start_index = 1;
+            constexpr std::uint32_t count = 32;
+            constexpr float offset_x = 0.0f;
+            constexpr float offset_y = 0.0f;
+            halton_points.reserve(count);
+            for (std::uint32_t i = start_index; i < start_index + count; ++i)
+            {
+                // generate x and y in [0, 1], shift to [-0.5, 0.5] for pixel space
+                float jitter_x = GetCorput(i, base_x) - 0.5f;
+                float jitter_y = GetCorput(i, base_y) - 0.5f;
+                halton_points.emplace_back(jitter_x, jitter_y);
+            }
+        }
+    
+        // get the current jitter sample (pixel space, [-0.5, 0.5])
+        auto jitter = halton_points[halton_index];
+    
+        // write scaled jitter for projection matrix
+        *x = jitter.first / static_cast<float>(common::resolution_render_width);   // [-0.5/width*2, 0.5/width*2]
+        *y = jitter.second / static_cast<float>(common::resolution_render_height); // [0.5/height*2, -0.5/height*2]
+    
+        // store pixel-space jitter for xess_dispatch
+        intel::jitter.x = jitter.first;   // [-0.5, 0.5]
+        intel::jitter.y = -jitter.second; // [0.5, -0.5]
+    
+        // advance to the next sample, cycling back to 0
+        halton_index = (halton_index + 1) % halton_points.size();
     }
 
     void RHI_VendorTechnology::XeSS_Dispatch(
@@ -1148,6 +1204,13 @@ namespace spartan
         RHI_Texture* tex_output
     )
     {
+    #ifdef _WIN32
+        tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
+        cmd_list->InsertPendingBarrierGroup();
+
         xess_vk_execute_params_t params   = {};
         params.colorTexture               = intel::to_xess_image_view(tex_color);
         params.depthTexture               = intel::to_xess_image_view(tex_depth);
@@ -1155,9 +1218,9 @@ namespace spartan
         params.outputTexture              = intel::to_xess_image_view(tex_output);
         params.exposureScaleTexture       = { nullptr, 0, 0 };
         params.responsivePixelMaskTexture = { nullptr, 0, 0 };
-        params.jitterOffsetX              = 0.0f;
-        params.jitterOffsetY              = 0.0f;
-        params.exposureScale              = exposure != 0.0f ? exposure : 1.0f;
+        params.jitterOffsetX              = intel::jitter.x;
+        params.jitterOffsetY              = intel::jitter.y;
+        params.exposureScale              = exposure;
         params.resetHistory               = reset_history;
         params.inputWidth                 = static_cast<uint32_t>(tex_color->GetWidth() * resolution_scale);
         params.inputHeight                = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
@@ -1168,7 +1231,9 @@ namespace spartan
         params.outputColorBase            = { 0, 0 };
         params.reserved0                  = { 0, 0 };
 
-        SP_ASSERT(xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &params) == XESS_RESULT_SUCCESS);
+        _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &params);
+        SP_ASSERT(result == XESS_RESULT_SUCCESS);
+    #endif
     }
 
     void RHI_VendorTechnology::FSR3_ResetHistory()
@@ -1193,7 +1258,6 @@ namespace spartan
         FfxErrorCode result = ffxFsr3GetJitterOffset(&fsr3::description_dispatch.jitterOffset.x, &fsr3::description_dispatch.jitterOffset.y, fsr3::jitter_index, jitter_phase_count);
         SP_ASSERT(result == FFX_OK);
 
-        // adjust the jitter offset for the projection matrix, based on the function comments
         *x =  2.0f * fsr3::description_dispatch.jitterOffset.x / resolution_render_x;
         *y = -2.0f * fsr3::description_dispatch.jitterOffset.y / resolution_render_y;
     #endif
