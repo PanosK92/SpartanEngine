@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================================
 #include "pch.h"
-#include "../RHI_AMD_FFX.h"
+#include "../RHI_VendorTechnology.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Texture.h"
@@ -784,7 +784,7 @@ namespace spartan
     }
     #endif 
 
-    void RHI_AMD_FFX::Initialize()
+    void RHI_VendorTechnology::Initialize()
     {
     #ifdef _WIN32
         // register FidelityFX version
@@ -891,7 +891,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::Shutdown()
+    void RHI_VendorTechnology::Shutdown()
     {
     #ifdef _WIN32
         fsr3::context_destroy();
@@ -920,7 +920,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::Shutdown(const AMD_FFX_Pass pass)
+    void RHI_VendorTechnology::Shutdown(const AMD_FFX_Pass pass)
     {
         #ifdef _MSC_VER
         if (pass == AMD_FFX_Pass::Sssr)
@@ -938,7 +938,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Tick(Cb_Frame* cb_frame)
+    void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame)
     {
     #ifdef _WIN32
         // matrices - ffx is right-handed
@@ -984,7 +984,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
+    void RHI_VendorTechnology::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _WIN32
         RHI_Device::QueueWaitAll();
@@ -1013,14 +1013,14 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::FSR3_ResetHistory()
+    void RHI_VendorTechnology::FSR3_ResetHistory()
     {
     #ifdef _WIN32
         fsr3::description_dispatch.reset = true;
     #endif
     }
 
-    void RHI_AMD_FFX::FSR3_GenerateJitterSample(float* x, float* y)
+    void RHI_VendorTechnology::FSR3_GenerateJitterSample(float* x, float* y)
     {
     #ifdef _WIN32
         // get jitter phase count
@@ -1041,7 +1041,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::FSR3_Dispatch
+    void RHI_VendorTechnology::FSR3_Dispatch
     (
         RHI_CommandList* cmd_list,
         Camera* camera,
@@ -1098,7 +1098,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::SSSR_Dispatch(
+    void RHI_VendorTechnology::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         RHI_Texture* tex_color,
@@ -1167,7 +1167,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::BrixelizerGI_Update(
+    void RHI_VendorTechnology::BrixelizerGI_Update(
         RHI_CommandList* cmd_list,
         const float resolution_scale,
         Cb_Frame* cb_frame,
@@ -1349,7 +1349,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::BrixelizerGI_Dispatch(
+    void RHI_VendorTechnology::BrixelizerGI_Dispatch(
         RHI_CommandList* cmd_list,
         Cb_Frame* cb_frame,
         RHI_Texture* tex_frame,
@@ -1462,7 +1462,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_AMD_FFX::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
+    void RHI_VendorTechnology::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
     {
         #ifdef _MSC_VER
         if (resolution_percentage == 0.25f)
@@ -1490,7 +1490,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
+    void RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
         #ifdef _MSC_VER
 
@@ -1515,7 +1515,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
+    void RHI_VendorTechnology::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
     {
         #ifdef _MSC_VER
         // note: pipelines need to register only once
@@ -1557,7 +1557,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
+    void RHI_VendorTechnology::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
     {
         #ifdef _MSC_VER
         SP_ASSERT(breadcrumbs::context_created);
@@ -1567,7 +1567,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name)
+    void RHI_VendorTechnology::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name)
     {
         #ifdef _MSC_VER
 
@@ -1590,7 +1590,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
+    void RHI_VendorTechnology::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
     {
         #ifdef _MSC_VER
 
@@ -1601,7 +1601,7 @@ namespace spartan
         #endif
     }
 
-    void RHI_AMD_FFX::Breadcrumbs_OnDeviceRemoved()
+    void RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved()
     {
         #ifdef _MSC_VER
 

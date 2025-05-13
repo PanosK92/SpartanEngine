@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ===============================
 #include "pch.h"
 #include "Renderer.h"
 #include "../Profiling/Profiler.h"
@@ -31,13 +31,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../Rendering/Material.h"
-#include "../RHI/RHI_AMD_FFX.h"
+#include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 #include "../RHI/RHI_OpenImageDenoise.h"
 SP_WARNINGS_ON
-//======================================
+//==========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -732,7 +732,7 @@ namespace spartan
         { 
             cmd_list->BeginTimeblock("ssr");
             {
-                RHI_AMD_FFX::SSSR_Dispatch(
+                RHI_VendorTechnology::SSSR_Dispatch(
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     GetRenderTarget(Renderer_RenderTarget::source_refraction),
@@ -954,7 +954,7 @@ namespace spartan
 
             // update
             {
-                RHI_AMD_FFX::BrixelizerGI_Update(
+                RHI_VendorTechnology::BrixelizerGI_Update(
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     &m_cb_frame_cpu,
@@ -977,7 +977,7 @@ namespace spartan
                     GetStandardTexture(Renderer_StandardTexture::Noise_blue_7)
                 };
 
-                RHI_AMD_FFX::BrixelizerGI_Dispatch(
+                RHI_VendorTechnology::BrixelizerGI_Dispatch(
                     cmd_list,
                     &m_cb_frame_cpu,
                     GetRenderTarget(Renderer_RenderTarget::source_gi),
@@ -1454,7 +1454,7 @@ namespace spartan
 
         if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3)
         {
-            RHI_AMD_FFX::FSR3_Dispatch(
+            RHI_VendorTechnology::FSR3_Dispatch(
                 cmd_list,
                 World::GetCamera(),
                 m_cb_frame_cpu.delta_time,

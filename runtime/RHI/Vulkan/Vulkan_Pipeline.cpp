@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
-#include "../RHI_AMD_FFX.h"
+#include "../RHI_VendorTechnology.h"
 #include "../Core/Debugging.h"
 //=====================================
 
@@ -483,7 +483,7 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         { 
-            RHI_AMD_FFX::Breadcrumbs_RegisterPipeline(this);
+            RHI_VendorTechnology::Breadcrumbs_RegisterPipeline(this);
         }
     }
     

@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
 #ifdef _MSC_VER
-#include "../RHI/RHI_AMD_FFX.h"
+#include "../RHI/RHI_VendorTechnology.h"
 #endif
 //========================================
 
@@ -272,7 +272,7 @@ namespace spartan
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 2048, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "skysphere");
         }
 
-        RHI_AMD_FFX::Resize(GetResolutionRender(), GetResolutionOutput());
+        RHI_VendorTechnology::Resize(GetResolutionRender(), GetResolutionOutput());
     }
 
     void Renderer::CreateShaders()

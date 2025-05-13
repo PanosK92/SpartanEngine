@@ -45,7 +45,7 @@ namespace spartan
         DrawIndexed
     };
 
-    class RHI_AMD_FFX
+    class RHI_VendorTechnology
     {
     public:
         static void Initialize();

@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
-#include "../RHI_AMD_FFX.h"
+#include "../RHI_VendorTechnology.h"
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
@@ -446,7 +446,7 @@ namespace spartan
         // enable breadcrumbs for this command list
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_RegisterCommandList(this, m_queue, m_object_name.c_str());
+            RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(this, m_queue, m_object_name.c_str());
         }
 
         // set states
@@ -563,7 +563,7 @@ namespace spartan
 
             if (Debugging::IsBreadcrumbsEnabled())
             { 
-                RHI_AMD_FFX::Breadcrumbs_SetPipelineState(this, m_pipeline);
+                RHI_VendorTechnology::Breadcrumbs_SetPipelineState(this, m_pipeline);
             }
         }
 
@@ -1412,7 +1412,7 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::Pass, name);
+            RHI_VendorTechnology::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::Pass, name);
         }
     }
 
@@ -1425,7 +1425,7 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
+            RHI_VendorTechnology::Breadcrumbs_MarkerEnd(this);
         }
     }
     
