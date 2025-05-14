@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../Rendering/Renderer_Buffers.h"
 #include "../Rendering/Material.h"
+#include "../Rendering/Renderer.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
 #include "../World/Entity.h"
@@ -72,8 +73,8 @@ namespace spartan
     {
         xess_context_handle_t context         = nullptr;
         Vector2 jitter                        = Vector2::Zero;
-        const float responsive_mask_value_max = 0.0f;
-        const float exposure_scale            = 0.1f;
+        const float responsive_mask_value_max = 0.05f;
+        const float exposure_scale            = 0.05f;
         xess_quality_settings_t quality       = XESS_QUALITY_SETTING_BALANCED;
 
         void context_destroy()
@@ -1248,8 +1249,8 @@ namespace spartan
         params.depthTexture               = intel::to_xess_image_view(tex_depth);
         params.velocityTexture            = intel::to_xess_image_view(tex_velocity);
         params.outputTexture              = intel::to_xess_image_view(tex_output);
-        params.exposureScaleTexture       = { nullptr, 0, 0 };
-        params.responsivePixelMaskTexture = { nullptr, 0, 0 };
+        params.exposureScaleTexture       = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)); // neutrilise and control via float
+        params.responsivePixelMaskTexture = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::White)); // neutrilise and control via float
         params.jitterOffsetX              = intel::jitter.x;
         params.jitterOffsetY              = intel::jitter.y;
         params.exposureScale              = intel::exposure_scale;

@@ -582,6 +582,47 @@ namespace spartan
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
             standard_texture(Renderer_StandardTexture::Foam)         = make_shared<RHI_Texture>(dir_texture + "foam.jpg");
         }
+
+        // black and white
+        {
+            // black texture (1x1 pixel, rgba = 0,0,0,255)
+            std::vector<RHI_Texture_Mip> black_mips = {
+                RHI_Texture_Mip{std::vector<std::byte>{std::byte{0}, std::byte{0}, std::byte{0}, std::byte{255}}} // single pixel: r=0, g=0, b=0, a=255
+            };
+            std::vector<RHI_Texture_Slice> black_data = {
+                RHI_Texture_Slice{black_mips}
+            };
+            standard_texture(Renderer_StandardTexture::Black) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,          // type
+                1,                                 // width
+                1,                                 // height
+                1,                                 // depth
+                1,                                 // mip_count
+                RHI_Format::R8G8B8A8_Unorm,        // format
+                RHI_Texture_Srv | RHI_Texture_Uav, // flags
+                "black_texture",                   // name
+                black_data                         // data
+            );
+        
+            // white texture (1x1 pixel, rgba = 255,255,255,255)
+            std::vector<RHI_Texture_Mip> white_mips = {
+                RHI_Texture_Mip{std::vector<std::byte>{std::byte{255}, std::byte{255}, std::byte{255}, std::byte{255}}} // single pixel: r=255, g=255, b=255, a=255
+            };
+            std::vector<RHI_Texture_Slice> white_data = {
+                RHI_Texture_Slice{white_mips}
+            };
+            standard_texture(Renderer_StandardTexture::White) = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,          // type
+                1,                                 // width
+                1,                                 // height
+                1,                                 // depth
+                1,                                 // mip_count
+                RHI_Format::R8G8B8A8_Unorm,        // format
+                RHI_Texture_Srv | RHI_Texture_Uav, // flags
+                "white_texture",                   // name
+                white_data                         // data
+            );
+        }
     }
 
     void Renderer::CreateStandardMaterials()

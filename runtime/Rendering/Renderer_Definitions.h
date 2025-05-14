@@ -260,6 +260,8 @@ namespace spartan
         Gizmo_light_spot,
         Gizmo_audio_source,
         Foam,
+        Black,
+        White,
         Max
     };
 
