@@ -59,7 +59,7 @@ The Forest is the most advanced and demanding worlds. It features **50 million**
 - Screen space reflections (FidelityFX SSSR).
 - Variable rate shading.
 - Dynamic resolution scaling.
-- Upscaling (FidelityFX FSR 3.1).
+- Upscaling (XeSS 2 & FSR 3).
 - Temporal anti-aliasing.
 - Breadcrumbs for tracing GPU crashes on AMD (FidelityFX Breadcrumbs).
 - Advanced shadow features with penumbra and colored translucency.
