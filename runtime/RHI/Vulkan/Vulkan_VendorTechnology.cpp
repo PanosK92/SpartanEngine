@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright(c) 2016-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -70,8 +70,11 @@ namespace spartan
 
     namespace intel
     {
-        xess_context_handle_t context = nullptr;
-        Vector2 jitter;
+        xess_context_handle_t context         = nullptr;
+        Vector2 jitter                        = Vector2::Zero;
+        const float responsive_mask_value_max = 0.0f;
+        const float exposure_scale            = 0.1f;
+        xess_quality_settings_t quality       = XESS_QUALITY_SETTING_BALANCED;
 
         void context_destroy()
         {
@@ -114,20 +117,49 @@ namespace spartan
             };
 
             // find the quality setting with the closest scale factor
-            xess_quality_settings_t closest_quality = XESS_QUALITY_SETTING_BALANCED; // default fallback
-            float min_difference                    = numeric_limits<float>::max();
+            quality = XESS_QUALITY_SETTING_BALANCED; // default fallback
+            float min_difference = numeric_limits<float>::max();
 
             for (const auto& setting : quality_settings)
             {
                 float difference = abs(scale_factor - setting.scale_factor);
                 if (difference < min_difference)
                 {
-                    min_difference  = difference;
-                    closest_quality = setting.quality;
+                    min_difference = difference;
+                    quality        = setting.quality;
                 }
             }
 
-            return closest_quality;
+            return quality;
+        }
+
+        uint32_t get_sample_count()
+        {
+            uint32_t count = 32;
+            switch (quality)
+            {
+                case XESS_QUALITY_SETTING_ULTRA_QUALITY_PLUS: // 1.3x scaling
+                case XESS_QUALITY_SETTING_ULTRA_QUALITY:      // 1.3x
+                    count = 32;                               // 8 * (1/1.3)^2 ≈ 8 * 0.5917 ≈ 4.73, use 32 for stability
+                    break;
+                case XESS_QUALITY_SETTING_QUALITY:            // 1.5x
+                    count = 32;                               // 8 * (1/1.5)^2 ≈ 8 * 0.4444 ≈ 3.56, use 32
+                    break;
+                case XESS_QUALITY_SETTING_BALANCED:           // 1.7x
+                    count = 48;                               // 8 * (1/1.7)^2 ≈ 8 * 0.3460 ≈ 2.77, use 48
+                    break;
+                case XESS_QUALITY_SETTING_PERFORMANCE:        // 2.0x
+                    count = 64;                               // 8 * (1/2.0)^2 ≈ 8 * 0.25 = 2, use 64 (guide suggests up to 72)
+                    break;
+                case XESS_QUALITY_SETTING_ULTRA_PERFORMANCE:  // 3.0x
+                    count = 72;                               // 8 * (1/3.0)^2 ≈ 8 * 0.1111 ≈ 0.89, use 72 for max stability
+                    break;
+                case XESS_QUALITY_SETTING_AA:                 // 1.0x
+                    count = 16;                               // No upscaling, minimal samples needed
+                    break;
+            }
+
+            return count;
         }
 
         xess_vk_image_view_info to_xess_image_view(RHI_Texture* texture)
@@ -1134,6 +1166,7 @@ namespace spartan
                 
                 SP_ASSERT(xessVKInit(intel::context, &init_params) == xess_result_t::XESS_RESULT_SUCCESS);
                 SP_ASSERT(xessSetVelocityScale(intel::context, -1.0f, -1.0f) == xess_result_t::XESS_RESULT_SUCCESS);
+                SP_ASSERT(xessSetMaxResponsiveMaskValue(intel::context, intel::responsive_mask_value_max) == xess_result_t::XESS_RESULT_SUCCESS);
             }
         }
     #endif
@@ -1142,7 +1175,7 @@ namespace spartan
     void RHI_VendorTechnology::XeSS_GenerateJitterSample(float* x, float* y)
     {
         // generate a single halton value for a given base and index
-        auto GetCorput = [](std::uint32_t index, std::uint32_t base) -> float
+        auto get_corput = [](std::uint32_t index, std::uint32_t base) -> float
         {
             float result = 0.0f;
             float bk = 1.0f;
@@ -1162,18 +1195,18 @@ namespace spartan
         // generate 32 halton points (bases 2 and 3, start index 1) if not already done
         if (halton_points.empty())
         {
-            constexpr std::uint32_t base_x      = 2;
-            constexpr std::uint32_t base_y      = 3;
-            constexpr std::uint32_t start_index = 1;
-            constexpr std::uint32_t count       = 32;
-            constexpr float offset_x            = 0.0f;
-            constexpr float offset_y            = 0.0f;
+            std::uint32_t base_x      = 2;
+            std::uint32_t base_y      = 3;
+            std::uint32_t start_index = 1;
+            std::uint32_t count       = intel::get_sample_count();
+            float offset_x            = 0.0f;
+            float offset_y            = 0.0f;
             halton_points.reserve(count);
             for (std::uint32_t i = start_index; i < start_index + count; ++i)
             {
                 // generate x and y in [0, 1], shift to [-0.5, 0.5] for pixel space
-                float jitter_x = GetCorput(i, base_x) - 0.5f;
-                float jitter_y = GetCorput(i, base_y) - 0.5f;
+                float jitter_x = get_corput(i, base_x) - 0.5f;
+                float jitter_y = get_corput(i, base_y) - 0.5f;
                 halton_points.emplace_back(jitter_x, jitter_y);
             }
         }
@@ -1196,7 +1229,6 @@ namespace spartan
     void RHI_VendorTechnology::XeSS_Dispatch(
         RHI_CommandList* cmd_list,
         const bool reset_history,
-        const float exposure,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
@@ -1220,7 +1252,7 @@ namespace spartan
         params.responsivePixelMaskTexture = { nullptr, 0, 0 };
         params.jitterOffsetX              = intel::jitter.x;
         params.jitterOffsetY              = intel::jitter.y;
-        params.exposureScale              = exposure;
+        params.exposureScale              = intel::exposure_scale;
         params.resetHistory               = reset_history;
         params.inputWidth                 = static_cast<uint32_t>(tex_color->GetWidth() * resolution_scale);
         params.inputHeight                = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
@@ -1269,7 +1301,6 @@ namespace spartan
         Camera* camera,
         const float delta_time_sec,
         const float sharpness,
-        const float exposure,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
@@ -1305,7 +1336,7 @@ namespace spartan
             fsr3::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant parameter
             fsr3::description_dispatch.sharpness              = sharpness;
             fsr3::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;  // seconds to milliseconds
-            fsr3::description_dispatch.preExposure            = exposure;                  // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+            fsr3::description_dispatch.preExposure            = 1.0f;                      // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
             fsr3::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
             fsr3::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
             fsr3::description_dispatch.cameraNear             = camera->GetFarPlane();     // far as near because we are using reverse-z

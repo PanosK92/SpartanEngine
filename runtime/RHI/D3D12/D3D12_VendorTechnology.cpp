@@ -77,7 +77,6 @@ namespace spartan
     void RHI_VendorTechnology::XeSS_Dispatch(
         RHI_CommandList* cmd_list,
         const bool reset_history,
-        const float exposure,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
@@ -94,7 +93,6 @@ namespace spartan
         Camera* camera,
         const float delta_time_sec,
         const float sharpness,
-        const float exposure,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,

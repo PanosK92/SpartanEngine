@@ -1459,7 +1459,6 @@ namespace spartan
                     World::GetCamera(),
                     m_cb_frame_cpu.delta_time,
                     GetOption<float>(Renderer_Option::Sharpness),
-                    1.0f,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     tex_in,
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
@@ -1472,7 +1471,6 @@ namespace spartan
                  RHI_VendorTechnology::XeSS_Dispatch(
                     cmd_list,
                     false,
-                    1.0f,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     tex_in,
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
