@@ -1162,12 +1162,12 @@ namespace spartan
         // generate 32 halton points (bases 2 and 3, start index 1) if not already done
         if (halton_points.empty())
         {
-            constexpr std::uint32_t base_x = 2;
-            constexpr std::uint32_t base_y = 3;
+            constexpr std::uint32_t base_x      = 2;
+            constexpr std::uint32_t base_y      = 3;
             constexpr std::uint32_t start_index = 1;
-            constexpr std::uint32_t count = 32;
-            constexpr float offset_x = 0.0f;
-            constexpr float offset_y = 0.0f;
+            constexpr std::uint32_t count       = 32;
+            constexpr float offset_x            = 0.0f;
+            constexpr float offset_y            = 0.0f;
             halton_points.reserve(count);
             for (std::uint32_t i = start_index; i < start_index + count; ++i)
             {
@@ -1180,14 +1180,14 @@ namespace spartan
     
         // get the current jitter sample (pixel space, [-0.5, 0.5])
         auto jitter = halton_points[halton_index];
-    
-        // write scaled jitter for projection matrix
-        *x =  2.0f * jitter.first / static_cast<float>(common::resolution_render_width);
-        *y = -2.0f * jitter.second / static_cast<float>(common::resolution_render_height);
-    
+
         // this is for xessVKExecute which expects [-0.5, 0.5] jitter
         intel::jitter.x = jitter.first;
-        intel::jitter.y = -jitter.second;
+        intel::jitter.y = jitter.second;
+
+        // write scaled jitter for projection matrix
+        *x = 2.0f * jitter.first  / static_cast<float>(common::resolution_render_width);
+        *y = 2.0f * jitter.second / static_cast<float>(common::resolution_render_height);
 
         // advance to the next sample, cycling back to 0
         halton_index = (halton_index + 1) % halton_points.size();
@@ -1358,8 +1358,8 @@ namespace spartan
         sssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
 
         // set sssr specific parameters
-        sssr::description_dispatch.motionVectorScale.x                  = 1.0f;  // expects [-0.5, 0.5] range
-        sssr::description_dispatch.motionVectorScale.y                  = -1.0f; // expects [-0.5, 0.5] range, +Y as top-down
+        sssr::description_dispatch.motionVectorScale.x                  = 1.0f; // expects [-0.5, 0.5] range
+        sssr::description_dispatch.motionVectorScale.y                  = 1.0f; // expects [-0.5, 0.5] range, +Y as top-down
         sssr::description_dispatch.normalUnPackMul                      = 1.0f;
         sssr::description_dispatch.normalUnPackAdd                      = 0.0f;
         sssr::description_dispatch.depthBufferThickness                 = 0.2f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
