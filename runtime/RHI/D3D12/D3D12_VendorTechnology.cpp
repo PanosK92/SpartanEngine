@@ -64,6 +64,11 @@ namespace spartan
 
     }
 
+    void RHI_VendorTechnology::ResetHistory()
+    {
+        
+    }
+
     void RHI_VendorTechnology::XeSS_GenerateJitterSample(float* x, float* y)
     {
 
@@ -71,7 +76,6 @@ namespace spartan
 
     void RHI_VendorTechnology::XeSS_Dispatch(
         RHI_CommandList* cmd_list,
-        const bool reset_history,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,

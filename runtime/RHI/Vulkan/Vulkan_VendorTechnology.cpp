@@ -67,6 +67,7 @@ namespace spartan
         uint32_t resolution_render_height = 0;
         uint32_t resolution_output_width  = 0;
         uint32_t resolution_output_height = 0;
+        bool reset_history                = false;
     }
 
     namespace intel
@@ -1150,6 +1151,11 @@ namespace spartan
     #endif
     }
 
+    void RHI_VendorTechnology::ResetHistory()
+    {
+        common::reset_history = true;
+    }
+
     void RHI_VendorTechnology::XeSS_GenerateJitterSample(float* x, float* y)
     {
         // generate a single halton value for a given base and index
@@ -1206,7 +1212,6 @@ namespace spartan
 
     void RHI_VendorTechnology::XeSS_Dispatch(
         RHI_CommandList* cmd_list,
-        const bool reset_history,
         const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
@@ -1230,7 +1235,6 @@ namespace spartan
         intel::params_execute.jitterOffsetX              = intel::jitter.x;
         intel::params_execute.jitterOffsetY              = intel::jitter.y;
         intel::params_execute.exposureScale              = intel::exposure_scale;
-        intel::params_execute.resetHistory               = reset_history;
         intel::params_execute.inputWidth                 = static_cast<uint32_t>(tex_color->GetWidth() * resolution_scale);
         intel::params_execute.inputHeight                = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
         intel::params_execute.inputColorBase             = { 0, 0 };
@@ -1240,15 +1244,11 @@ namespace spartan
         intel::params_execute.outputColorBase            = { 0, 0 };
         intel::params_execute.reserved0                  = { 0, 0 };
 
+        intel::params_execute.resetHistory = common::reset_history;
+        common::reset_history              = false;
+
         _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &intel::params_execute);
         SP_ASSERT(result == XESS_RESULT_SUCCESS);
-    #endif
-    }
-
-    void RHI_VendorTechnology::FSR3_ResetHistory()
-    {
-    #ifdef _WIN32
-        fsr3::description_dispatch.reset = true;
     #endif
     }
 
@@ -1318,6 +1318,9 @@ namespace spartan
             fsr3::description_dispatch.cameraFar              = camera->GetNearPlane();    // near as far because we are using reverse-z
             fsr3::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
 
+            // reset history
+            fsr3::description_dispatch.reset = common::reset_history;
+            common::reset_history = false;
 
             // dispatch
             SP_ASSERT(ffxFsr3UpscalerContextDispatch(&fsr3::context, &fsr3::description_dispatch) == FFX_OK);

@@ -1470,7 +1470,6 @@ namespace spartan
             {
                  RHI_VendorTechnology::XeSS_Dispatch(
                     cmd_list,
-                    false,
                     GetOption<float>(Renderer_Option::ResolutionScale),
                     tex_in,
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),

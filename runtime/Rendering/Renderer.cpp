@@ -646,21 +646,20 @@ namespace spartan
             // antialiasing
             if (option == Renderer_Option::Antialiasing)
             {
-                bool taa_enabled = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
-                bool fsr_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3;
+                bool taa_enabled        = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
+                bool upsampling_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3 || GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::XeSS;
 
                 if (taa_enabled)
                 {
-                    if (!fsr_enabled)
+                    if (!upsampling_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Fsr3);
-                        RHI_VendorTechnology::FSR3_ResetHistory();
+                        RHI_VendorTechnology::ResetHistory();
                     }
                 }
                 else
                 {
-                    // implicitly disable FSR since it's doing TAA
-                    if (fsr_enabled)
+                    if (upsampling_enabled)
                     {
                         m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Linear);
                     }
@@ -678,12 +677,12 @@ namespace spartan
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
                     }
                 }
-                else if (value == static_cast<float>(Renderer_Upsampling::Fsr3))
+                else // fsr or xess
                 {
                     if (!taa_enabled)
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
-                        RHI_VendorTechnology::FSR3_ResetHistory();
+                        RHI_VendorTechnology::ResetHistory();
                     }
                 }
             }
