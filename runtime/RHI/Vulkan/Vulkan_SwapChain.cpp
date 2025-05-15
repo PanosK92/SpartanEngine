@@ -504,23 +504,7 @@ namespace spartan
 
         SP_ASSERT(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source);
     
-        m_wait_semaphores.clear();
-
-        // get semaphores from command lists
-        bool presents_to_this_swapchain = cmd_list_frame->GetSwapchainId() == m_object_id;
-        if (presents_to_this_swapchain)
-        {
-            RHI_SyncPrimitive* semaphore   = cmd_list_frame->GetRenderingCompleteSemaphore();
-            semaphore->has_been_waited_for = true;
-            m_wait_semaphores.emplace_back(semaphore);
-        }
-    
-        // get semaphore from vkAcquireNextImageKHR
-        RHI_SyncPrimitive* image_acquired_semaphore = m_image_acquired_semaphore[m_image_index].get();
-        m_wait_semaphores.emplace_back(image_acquired_semaphore);
-    
-        // present the current frame
-        cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, m_wait_semaphores);
+        cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, cmd_list_frame->GetRenderingCompleteSemaphore());
 
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
         if (m_is_dirty)

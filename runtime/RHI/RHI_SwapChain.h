@@ -74,6 +74,9 @@ namespace spartan
         RHI_Image_Layout GetLayout() const;
         void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
 
+        // misc
+        RHI_SyncPrimitive* GetImageAcquiredSemaphore() const { return m_image_acquired_semaphore[m_image_index].get(); }
+
         static const uint8_t buffer_count  = 2;
         static const RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
         static const RHI_Format format_hdr = RHI_Format::R10G10B10A2_Unorm;
@@ -95,7 +98,6 @@ namespace spartan
         void* m_sdl_window                                   = nullptr;
         std::array<RHI_Image_Layout, buffer_count> m_layouts = { RHI_Image_Layout::Max };
         std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_semaphore;
-        std::vector<RHI_SyncPrimitive*> m_wait_semaphores;
 
         // rhi
         void* m_rhi_swapchain                     = nullptr;

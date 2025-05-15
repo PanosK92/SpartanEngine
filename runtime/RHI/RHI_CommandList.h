@@ -61,7 +61,7 @@ namespace spartan
         ~RHI_CommandList();
 
         void Begin();
-        void Submit(const uint64_t swapchain_id);
+        void Submit(RHI_SyncPrimitive* semaphore_wait);
         void WaitForExecution(const bool log_wait_time = false);
         void SetPipelineState(RHI_PipelineState& pso);
 
@@ -162,7 +162,6 @@ namespace spartan
         RHI_SyncPrimitive* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
         void* GetRhiResource() const                       { return m_rhi_resource; }
         const RHI_CommandListState GetState() const        { return m_state; }
-        uint64_t GetSwapchainId() const                    { return m_swapchain_id; }
         RHI_Queue* GetQueue() const                        { return m_queue; }
 
     private:
@@ -176,7 +175,6 @@ namespace spartan
         // misc
         uint64_t m_buffer_id_vertex                          = 0;
         uint64_t m_buffer_id_index                           = 0;
-        uint64_t m_swapchain_id                              = 0;
         uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;

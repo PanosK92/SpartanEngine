@@ -485,7 +485,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::Submit(const uint64_t swapchain_id)
+    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -502,14 +502,13 @@ namespace spartan
         m_queue->Submit(
             static_cast<VkCommandBuffer>(m_rhi_resource), // cmd buffer
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,            // wait flags
+            semaphore_wait,                               // wait semaphore
             m_rendering_complete_semaphore.get(),         // signal semaphore
             m_rendering_complete_semaphore_timeline.get() // signal semaphore
         );
 
         m_rendering_complete_semaphore->has_been_waited_for = false;
-
-        m_swapchain_id = swapchain_id;
-        m_state        = RHI_CommandListState::Submitted;
+        m_state                                             = RHI_CommandListState::Submitted;
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)

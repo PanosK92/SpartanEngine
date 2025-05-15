@@ -139,7 +139,7 @@ namespace spartan
         SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));
     }
 
-    void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline)
+    void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal)
     {
         // when loading textures (other threads) the queue will be used to submit data for staging
         unique_lock<mutex> lock;
@@ -148,19 +148,29 @@ namespace spartan
             lock = unique_lock<mutex>(get_mutex(this));
         }
 
-        VkSemaphoreSubmitInfo semaphores[2] = {};
+        VkSemaphoreSubmitInfo semaphores_list_wait[1] = {};
+        {
+            // semaphore binary
+            semaphores_list_wait[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+            semaphores_list_wait[0].semaphore = semaphore_wait ? static_cast<VkSemaphore>(semaphore_wait->GetRhiResource()) : nullptr;
+            semaphores_list_wait[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+            semaphores_list_wait[0].value     = 0; // ignored for binary semaphores
+        }
 
-        // semaphore binary
-        semaphores[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        semaphores[0].semaphore = static_cast<VkSemaphore>(semaphore->GetRhiResource());
-        semaphores[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
-        semaphores[0].value     = 0; // ignored for binary semaphores
+        VkSemaphoreSubmitInfo semaphores_list_signal[2] = {};
+        {
+            // semaphore binary
+            semaphores_list_signal[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+            semaphores_list_signal[0].semaphore = static_cast<VkSemaphore>(semaphore_signal->GetRhiResource());
+            semaphores_list_signal[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+            semaphores_list_signal[0].value     = 0; // ignored for binary semaphores
 
-        // semaphore timeline
-        semaphores[1].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-        semaphores[1].semaphore = static_cast<VkSemaphore>(semaphore_timeline->GetRhiResource());
-        semaphores[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
-        semaphores[1].value     = semaphore_timeline->GetNextSignalValue(); // signal
+            // semaphore timeline
+            semaphores_list_signal[1].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+            semaphores_list_signal[1].semaphore = static_cast<VkSemaphore>(semaphore_timeline_signal->GetRhiResource());
+            semaphores_list_signal[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+            semaphores_list_signal[1].value     = semaphore_timeline_signal->GetNextSignalValue(); // signal
+        }
 
         // command buffer
         VkCommandBufferSubmitInfo cmd_buffer_info = {};
@@ -171,10 +181,10 @@ namespace spartan
         {
             VkSubmitInfo2 submit_info            = {};
             submit_info.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-            submit_info.waitSemaphoreInfoCount   = 0;
-            submit_info.pWaitSemaphoreInfos      = nullptr;
+            submit_info.waitSemaphoreInfoCount   = semaphore_wait ? 1 : 0;
+            submit_info.pWaitSemaphoreInfos      = semaphores_list_wait;
             submit_info.signalSemaphoreInfoCount = 2;
-            submit_info.pSignalSemaphoreInfos    = semaphores;
+            submit_info.pSignalSemaphoreInfos    = semaphores_list_signal;
             submit_info.commandBufferInfoCount   = 1;
             submit_info.pCommandBufferInfos      = &cmd_buffer_info;
 
@@ -194,7 +204,7 @@ namespace spartan
         }
     }
 
-    void RHI_Queue::Present(void* swapchain, const uint32_t image_index, vector<RHI_SyncPrimitive*>& wait_semaphores)
+    void RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
     {
         // when loading textures (other threads) the queue will be used to submit data for staging
         unique_lock<mutex> lock;
@@ -204,16 +214,12 @@ namespace spartan
         }
 
         // get semaphore vulkan resources
-        array<VkSemaphore, 3> vk_wait_semaphores = { nullptr };
-        uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
-        for (uint32_t i = 0; i < semaphore_count; i++)
-        {
-            vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetRhiResource());
-        }
+        array<VkSemaphore, 1> vk_wait_semaphores = { nullptr };
+        vk_wait_semaphores[0] = static_cast<VkSemaphore>(semaphore_wait->GetRhiResource());
 
         VkPresentInfoKHR present_info   = {};
         present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        present_info.waitSemaphoreCount = semaphore_count;
+        present_info.waitSemaphoreCount = 1;
         present_info.pWaitSemaphores    = vk_wait_semaphores.data();
         present_info.swapchainCount     = 1;
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
