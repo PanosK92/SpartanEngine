@@ -153,7 +153,7 @@ namespace spartan
         // semaphore binary
         semaphores[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
         semaphores[0].semaphore = static_cast<VkSemaphore>(semaphore->GetRhiResource());
-        semaphores[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+        semaphores[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
         semaphores[0].value     = 0; // ignored for binary semaphores
 
         // semaphore timeline
