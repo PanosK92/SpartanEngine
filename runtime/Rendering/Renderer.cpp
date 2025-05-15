@@ -398,6 +398,7 @@ namespace spartan
 
         if (recreate_resources)
         {
+            RHI_Device::QueueWaitAll();
             CreateRenderTargets(false, true, true);
             CreateSamplers();
         }
@@ -676,8 +677,6 @@ namespace spartan
                     {
                         m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
                     }
-
-                    RHI_VendorTechnology::Shutdown(AMD_FFX_Pass::Fsr);
                 }
                 else if (value == static_cast<float>(Renderer_Upsampling::Fsr3))
                 {
@@ -759,9 +758,12 @@ namespace spartan
     {
         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
         {
-            swap_chain->SetLayout(RHI_Image_Layout::Present_Source, m_cmd_list_present);
-            m_cmd_list_present->Submit(swap_chain->GetObjectId());
-            swap_chain->Present(m_cmd_list_present);
+            if (m_cmd_list_present->GetState() == RHI_CommandListState::Recording)
+            {
+                swap_chain->SetLayout(RHI_Image_Layout::Present_Source, m_cmd_list_present);
+                m_cmd_list_present->Submit(swap_chain->GetObjectId());
+                swap_chain->Present(m_cmd_list_present);
+            }
         }
         Profiler::TimeBlockEnd();
     }

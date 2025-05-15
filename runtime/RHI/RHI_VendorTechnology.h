@@ -31,13 +31,6 @@ namespace spartan
     class Camera;
     struct Cb_Frame;
 
-    enum class AMD_FFX_Pass
-    {
-        Fsr,
-        BrixelizerGi,
-        Sssr
-    };
-
     enum class AMD_FFX_Marker
     {
         Pass,
@@ -50,7 +43,6 @@ namespace spartan
     public:
         static void Initialize();
         static void Shutdown();
-        static void Shutdown(const AMD_FFX_Pass pass);
         static void Tick(Cb_Frame* cb_frame);
         static void Resize(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
 

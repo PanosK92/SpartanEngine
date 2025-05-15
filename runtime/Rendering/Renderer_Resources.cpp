@@ -202,7 +202,7 @@ namespace spartan
 
             // sources
             {
-                render_target(Renderer_RenderTarget::source_gi)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1,                    format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,                           "source_gi");
+                render_target(Renderer_RenderTarget::source_gi)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1,                    format_standard, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,                           "source_gi");
                 render_target(Renderer_RenderTarget::source_refraction) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, compute_mip_count(1), format_standard, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "source_refraction_ssr");
             }
 

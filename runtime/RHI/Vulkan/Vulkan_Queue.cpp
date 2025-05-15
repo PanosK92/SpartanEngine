@@ -115,11 +115,25 @@ namespace spartan
 
     void RHI_Queue::Wait()
     {
-        // when loading textures (other threads) the queue will be used to submit data for staging
+        // ensure single-threaded access
         unique_lock<mutex> lock;
         if (ProgressTracker::IsLoading())
         {
             lock = unique_lock<mutex>(get_mutex(this));
+        }
+
+        // ensure all command lists are either Idle or Submitted
+        for (auto& cmd_list : m_cmd_lists)
+        {
+            if (cmd_list->GetState() == RHI_CommandListState::Recording)
+            {
+                cmd_list->Submit(0); // submit any recording command lists
+            }
+
+            if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+            {
+                cmd_list->WaitForExecution(); // wait for submitted command lists to complete
+            }
         }
 
         SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));

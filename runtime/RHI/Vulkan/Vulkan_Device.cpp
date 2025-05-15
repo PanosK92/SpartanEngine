@@ -1603,6 +1603,7 @@ namespace spartan
         for (uint32_t i = 0; i < 2; i++)
         {
             queues::regular[i]->Wait();
+            queues::immediate[i]->Wait();
         }
     }
 

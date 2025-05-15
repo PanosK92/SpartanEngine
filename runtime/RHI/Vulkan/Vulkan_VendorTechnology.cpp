@@ -1054,24 +1054,6 @@ namespace spartan
     #endif
     }
 
-    void RHI_VendorTechnology::Shutdown(const AMD_FFX_Pass pass)
-    {
-        #ifdef _MSC_VER
-        if (pass == AMD_FFX_Pass::Sssr)
-        {
-            sssr::context_destroy();
-        }
-        else if (pass == AMD_FFX_Pass::BrixelizerGi)
-        {
-            brixelizer_gi::context_destroy();
-        }
-        else if (pass == AMD_FFX_Pass::Fsr)
-        {
-            fsr3::context_destroy();
-        }
-        #endif
-    }
-
     void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame)
     {
     #ifdef _WIN32
@@ -1121,8 +1103,6 @@ namespace spartan
     void RHI_VendorTechnology::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
     {
     #ifdef _WIN32
-        RHI_Device::QueueWaitAll();
-
         bool resolution_render_changed = resolution_render.x != common::resolution_render_width  || resolution_render.y != common::resolution_render_height;
         bool resolution_output_changed = resolution_output.x != common::resolution_output_width  || resolution_output.y != common::resolution_output_height;
 
