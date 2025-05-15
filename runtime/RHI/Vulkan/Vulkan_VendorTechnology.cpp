@@ -1203,8 +1203,8 @@ namespace spartan
         intel::jitter.y = jitter.second;
 
         // write scaled jitter for projection matrix
-        *x = 2.0f * jitter.first  / static_cast<float>(common::resolution_render_width);
-        *y = 2.0f * jitter.second / static_cast<float>(common::resolution_render_height);
+        *x =  2.0f * jitter.first  / static_cast<float>(common::resolution_render_width);
+        *y = -2.0f * jitter.second / static_cast<float>(common::resolution_render_height);
 
         // advance to the next sample, cycling back to 0
         halton_index = (halton_index + 1) % halton_points.size();
