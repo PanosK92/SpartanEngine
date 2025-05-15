@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    class RHI_CommandList;
+
     enum class RHI_SyncPrimitive_Type
     {
         Fence,

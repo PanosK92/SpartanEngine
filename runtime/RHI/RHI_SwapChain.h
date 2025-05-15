@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <memory>
-#include <vector>
 #include <array>
 #include "RHI_Definitions.h"
 #include "../Core/SpartanObject.h"
