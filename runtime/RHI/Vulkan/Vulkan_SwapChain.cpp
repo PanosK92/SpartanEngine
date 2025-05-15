@@ -291,7 +291,6 @@ namespace spartan
 
     RHI_SwapChain::~RHI_SwapChain()
     {
-        // destroy image views immediately
         for (void*& image_view : m_rhi_rtv)
         {
             if (image_view)
@@ -305,6 +304,7 @@ namespace spartan
         {
             vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
         }
+
         if (m_rhi_surface)
         {
             vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(m_rhi_surface), nullptr);
@@ -353,7 +353,7 @@ namespace spartan
         create_info.clipped                  = VK_TRUE;
         create_info.oldSwapchain             = static_cast<VkSwapchainKHR>(m_rhi_swapchain);
 
-        // check for RivaTuner overlay interference, it adds bit flags without checking for compatability with existing ones (so it can break swapchains)
+        // check for RivaTuner overlay interference, it adds bit flags without checking for compatibility with existing ones (so it can break stuff)
         if (is_process_running("RTSS.exe"))
         {
             SP_ERROR_WINDOW("RivaTuner is running and may crash the engine. Please close RivaTuner and restart the engine.");

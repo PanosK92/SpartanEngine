@@ -44,11 +44,6 @@ namespace spartan
 
     }
 
-    void RHI_VendorTechnology::Shutdown(const AMD_FFX_Pass fx)
-    {
-
-    }
-
     void RHI_VendorTechnology::FSR3_ResetHistory()
     {
 
