@@ -465,7 +465,11 @@ namespace spartan
         // ensure the semaphore is free; with enough semaphores, waits are rare as command lists typically complete before reuse
         if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
         {
-            cmd_list->WaitForExecution();
+            if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+            { 
+                cmd_list->WaitForExecution();
+            }
+            SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Idle);
         }
  
         // vk_not_ready can happen if the swapchain is not ready yet, possible during window events
