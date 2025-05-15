@@ -866,7 +866,7 @@ namespace spartan
             {
                 const float render_distance_trees = 2'000.0f;
                 const float render_distance_grass = 1'000.0f;
-                const uint32_t grass_blade_count  = 33'000'000; // above this point you can get driver instability and GPU crashes, we should have a small GPU buffer that contains only a portion of them
+                const uint32_t grass_blade_count  = 33'000'000; // above this point validation layer will complain about the size of the buffer
                 const uint32_t tree_count         = 5'000;      // too many are actually distracting (because naturally occupy too much screen space)
                 const uint32_t rock_count         = 10'000;     // these are small and on the ground, we can have more
 

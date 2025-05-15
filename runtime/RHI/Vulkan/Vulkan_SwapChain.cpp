@@ -458,11 +458,11 @@ namespace spartan
         if (Window::IsMinimized())
             return;
     
-        // use a temporary semaphore for acquisition
+        // get semaphore
         static uint32_t semaphore_index     = 0;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
 
-        // ensure the semaphore is not in use (however, with enough semaphores, we'll almost never cycle back to a semaphore that needs to wait)
+        // ensure the semaphore is free; with enough semaphores, waits are rare as command lists typically complete before reuse
         if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
         {
             cmd_list->WaitForExecution();

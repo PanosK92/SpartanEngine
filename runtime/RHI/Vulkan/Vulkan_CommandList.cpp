@@ -1191,7 +1191,6 @@ namespace spartan
     void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(vertex && vertex->GetRhiResource());
 
         // the instance buffer is optional but always part of the pipeline therefore it can't be null
         if (!instance)
@@ -1202,28 +1201,22 @@ namespace spartan
         // prepare buffers and offsets arrays
         VkBuffer vertex_buffers[2] = {
     
-            static_cast<VkBuffer>(vertex->GetRhiResource()), // slot 0: vertex buffer
-            VK_NULL_HANDLE                                   // slot 1: instance buffer (default to null)
+            static_cast<VkBuffer>(vertex->GetRhiResource()),  // slot 0: vertex buffer
+            static_cast<VkBuffer>(instance->GetRhiResource()) // slot 1: instance buffer
         };
+        SP_ASSERT(vertex_buffers[0] != nullptr && vertex_buffers[1] != nullptr);
+
         VkDeviceSize offsets[2] = { 0, 0 };
-    
-        // determine binding count based on instance buffer presence
-        uint32_t binding_count = 1; // default to 1 (vertex only)
-        if (instance && instance->GetRhiResource())
-        {
-            vertex_buffers[1] = static_cast<VkBuffer>(instance->GetRhiResource());
-            binding_count      = 2; // include instance buffer
-        }
     
         // check if vertex buffer id has changed to trigger binding
         if (m_buffer_id_vertex != vertex->GetObjectId())
         {
             vkCmdBindVertexBuffers(
                 static_cast<VkCommandBuffer>(m_rhi_resource), // commandbuffer
-                0,                                            // firstbinding (start at slot 0)
-                binding_count,                                // bindingcount (1 or 2)
-                vertex_buffers,                               // pbuffers (array of buffers)
-                offsets                                       // poffsets (array of offsets)
+                0,                                            // firstbinding
+                2,                                            // bindingcount
+                vertex_buffers,                               // pbuffers
+                offsets                                       // poffsets
             );
     
             // update cached vertex buffer id
