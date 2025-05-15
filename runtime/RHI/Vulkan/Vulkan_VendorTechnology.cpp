@@ -71,50 +71,31 @@ namespace spartan
 
     namespace intel
     {
-        xess_context_handle_t context         = nullptr;
-        Vector2 jitter                        = Vector2::Zero;
-        const float responsive_mask_value_max = 0.05f;
-        const float exposure_scale            = 0.05f;
-        xess_quality_settings_t quality       = XESS_QUALITY_SETTING_BALANCED;
+        xess_context_handle_t context           = nullptr;
+        xess_vk_init_params_t params_init       = {};
+        xess_vk_execute_params_t params_execute = {};
+        Vector2 jitter                          = Vector2::Zero;
+        const float responsive_mask_value_max   = 0.05f;
+        const float exposure_scale              = 0.05f;
+        xess_quality_settings_t quality         = XESS_QUALITY_SETTING_BALANCED;
 
-        void context_destroy()
+        xess_quality_settings_t get_quality(const float scale_factor)
         {
-            if (context)
-            {
-                xessDestroyContext(context);
-                context = nullptr;
-            }
-        }
-
-        void context_create()
-        {
-            context_destroy();
-            SP_ASSERT(xessVKCreateContext(RHI_Context::instance, RHI_Context::device_physical, RHI_Context::device, &context) == xess_result_t::XESS_RESULT_SUCCESS);
-        }
-
-        xess_quality_settings_t get_quality(const Vector2& resolution_render, const Vector2& resolution_output)
-        {
-            // Ccalculate the scaling factor (render resolution area / output resolution area)
-            float render_area  = resolution_render.x * resolution_render.y;
-            float output_area  = resolution_output.x * resolution_output.y;
-            float scale_factor = render_area / output_area;
-
-            // Approximate scaling factors for XeSS quality settings
-            // Based on typical XeSS scaling ratios (these are approximate and may vary slightly)
             struct QualitySetting
             {
                 xess_quality_settings_t quality;
                 float scale_factor;
             };
 
-            const QualitySetting quality_settings[] = {
-                { XESS_QUALITY_SETTING_ULTRA_PERFORMANCE, 0.25f },  // ~50% per dimension (0.5 * 0.5)
-                { XESS_QUALITY_SETTING_PERFORMANCE, 0.36f },        // ~60% per dimension (0.6 * 0.6)
-                { XESS_QUALITY_SETTING_BALANCED, 0.49f },           // ~70% per dimension (0.7 * 0.7)
-                { XESS_QUALITY_SETTING_QUALITY, 0.64f },            // ~80% per dimension (0.8 * 0.8)
-                { XESS_QUALITY_SETTING_ULTRA_QUALITY, 0.81f },      // ~90% per dimension (0.9 * 0.9)
+            const QualitySetting quality_settings[] =
+            {
+                { XESS_QUALITY_SETTING_ULTRA_PERFORMANCE,  0.25f }, // ~50% per dimension (0.5 * 0.5)
+                { XESS_QUALITY_SETTING_PERFORMANCE,        0.36f }, // ~60% per dimension (0.6 * 0.6)
+                { XESS_QUALITY_SETTING_BALANCED,           0.49f }, // ~70% per dimension (0.7 * 0.7)
+                { XESS_QUALITY_SETTING_QUALITY,            0.64f }, // ~80% per dimension (0.8 * 0.8)
+                { XESS_QUALITY_SETTING_ULTRA_QUALITY,      0.81f }, // ~90% per dimension (0.9 * 0.9)
                 { XESS_QUALITY_SETTING_ULTRA_QUALITY_PLUS, 0.91f }, // ~95% per dimension (0.95 * 0.95)
-                { XESS_QUALITY_SETTING_AA, 1.0f }                   // 100% (no upscaling)
+                { XESS_QUALITY_SETTING_AA,                 1.0f  }  // 100% (no upscaling)
             };
 
             // find the quality setting with the closest scale factor
@@ -133,6 +114,46 @@ namespace spartan
 
             return quality;
         }
+
+        void context_destroy()
+        {
+            if (context)
+            {
+                xessDestroyContext(context);
+                context = nullptr;
+            }
+        }
+
+        void context_create()
+        {
+            // create
+            context_destroy();
+            SP_ASSERT(xessVKCreateContext(RHI_Context::instance, RHI_Context::device_physical, RHI_Context::device, &context) == xess_result_t::XESS_RESULT_SUCCESS);
+
+            // calculate the scaling factor
+            uint32_t render_area = common::resolution_render_width * common::resolution_render_height;
+            uint32_t output_area = common::resolution_output_width * common::resolution_output_height;
+            float scale_factor   = static_cast<float>(render_area) / static_cast<float>(output_area);
+
+            // initialize
+            intel::params_init.outputResolution.x = common::resolution_output_width;
+            intel::params_init.outputResolution.y = common::resolution_output_height;
+            intel::params_init.qualitySetting     = intel::get_quality(scale_factor);
+            intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH;
+            intel::params_init.creationNodeMask   = 0;
+            intel::params_init.visibleNodeMask    = 0;
+            intel::params_init.tempBufferHeap     = VK_NULL_HANDLE;
+            intel::params_init.bufferHeapOffset   = 0;
+            intel::params_init.tempTextureHeap    = VK_NULL_HANDLE;
+            intel::params_init.textureHeapOffset  = 0;
+            intel::params_init.pipelineCache      = VK_NULL_HANDLE;
+            SP_ASSERT(xessVKInit(intel::context, &intel::params_init) == xess_result_t::XESS_RESULT_SUCCESS);
+
+            // configure
+            SP_ASSERT(xessSetVelocityScale(intel::context, -1.0f, -1.0f) == xess_result_t::XESS_RESULT_SUCCESS);
+            SP_ASSERT(xessSetMaxResponsiveMaskValue(intel::context, intel::responsive_mask_value_max) == xess_result_t::XESS_RESULT_SUCCESS);
+        }
+
 
         uint32_t get_sample_count()
         {
@@ -1113,41 +1134,17 @@ namespace spartan
 
         // re-create resolution dependent contexts
         {
-            if (resolution_render_changed || resolution_output_changed)
-            { 
-                fsr3::context_create();
-            }
-
             if (resolution_render_changed)
             {
                 sssr::context_create();
                 brixelizer_gi::context_create();
             }
 
-            // xess
+            // todo: make these mutually exlusive
+            if ((resolution_render_changed || resolution_output_changed)) 
             {
+                fsr3::context_create();
                 intel::context_create();
-
-                uint32_t extension_count;
-                const char* const* extensions;
-                auto status = xessVKGetRequiredDeviceExtensions(RHI_Context::instance, RHI_Context::device_physical, &extension_count, &extensions);
-
-                xess_vk_init_params_t init_params = {};
-                init_params.outputResolution.x    = static_cast<uint32_t>(resolution_output.x);
-                init_params.outputResolution.y    = static_cast<uint32_t>(resolution_output.y);
-                init_params.qualitySetting        = intel::get_quality(resolution_render, resolution_output);
-                init_params.initFlags             = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH;
-                init_params.creationNodeMask      = 0;
-                init_params.visibleNodeMask       = 0;
-                init_params.tempBufferHeap        = VK_NULL_HANDLE;
-                init_params.bufferHeapOffset      = 0;
-                init_params.tempTextureHeap       = VK_NULL_HANDLE;
-                init_params.textureHeapOffset     = 0;
-                init_params.pipelineCache         = VK_NULL_HANDLE;
-                
-                SP_ASSERT(xessVKInit(intel::context, &init_params) == xess_result_t::XESS_RESULT_SUCCESS);
-                SP_ASSERT(xessSetVelocityScale(intel::context, -1.0f, -1.0f) == xess_result_t::XESS_RESULT_SUCCESS);
-                SP_ASSERT(xessSetMaxResponsiveMaskValue(intel::context, intel::responsive_mask_value_max) == xess_result_t::XESS_RESULT_SUCCESS);
             }
         }
     #endif
@@ -1224,27 +1221,26 @@ namespace spartan
         tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->InsertPendingBarrierGroup();
 
-        xess_vk_execute_params_t params   = {};
-        params.colorTexture               = intel::to_xess_image_view(tex_color);
-        params.depthTexture               = intel::to_xess_image_view(tex_depth);
-        params.velocityTexture            = intel::to_xess_image_view(tex_velocity);
-        params.outputTexture              = intel::to_xess_image_view(tex_output);
-        params.exposureScaleTexture       = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)); // neutrilise and control via float
-        params.responsivePixelMaskTexture = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::White)); // neutrilise and control via float
-        params.jitterOffsetX              = intel::jitter.x;
-        params.jitterOffsetY              = intel::jitter.y;
-        params.exposureScale              = intel::exposure_scale;
-        params.resetHistory               = reset_history;
-        params.inputWidth                 = static_cast<uint32_t>(tex_color->GetWidth() * resolution_scale);
-        params.inputHeight                = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
-        params.inputColorBase             = { 0, 0 };
-        params.inputMotionVectorBase      = { 0, 0 };
-        params.inputDepthBase             = { 0, 0 };
-        params.inputResponsiveMaskBase    = { 0, 0 };
-        params.outputColorBase            = { 0, 0 };
-        params.reserved0                  = { 0, 0 };
+        intel::params_execute.colorTexture               = intel::to_xess_image_view(tex_color);
+        intel::params_execute.depthTexture               = intel::to_xess_image_view(tex_depth);
+        intel::params_execute.velocityTexture            = intel::to_xess_image_view(tex_velocity);
+        intel::params_execute.outputTexture              = intel::to_xess_image_view(tex_output);
+        intel::params_execute.exposureScaleTexture       = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)); // neutralize and control via float
+        intel::params_execute.responsivePixelMaskTexture = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::White)); // neutralize and control via float
+        intel::params_execute.jitterOffsetX              = intel::jitter.x;
+        intel::params_execute.jitterOffsetY              = intel::jitter.y;
+        intel::params_execute.exposureScale              = intel::exposure_scale;
+        intel::params_execute.resetHistory               = reset_history;
+        intel::params_execute.inputWidth                 = static_cast<uint32_t>(tex_color->GetWidth() * resolution_scale);
+        intel::params_execute.inputHeight                = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
+        intel::params_execute.inputColorBase             = { 0, 0 };
+        intel::params_execute.inputMotionVectorBase      = { 0, 0 };
+        intel::params_execute.inputDepthBase             = { 0, 0 };
+        intel::params_execute.inputResponsiveMaskBase    = { 0, 0 };
+        intel::params_execute.outputColorBase            = { 0, 0 };
+        intel::params_execute.reserved0                  = { 0, 0 };
 
-        _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &params);
+        _xess_result_t result = xessVKExecute(intel::context, static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &intel::params_execute);
         SP_ASSERT(result == XESS_RESULT_SUCCESS);
     #endif
     }
@@ -1290,9 +1286,7 @@ namespace spartan
     )
     {
     #ifdef _WIN32
-        SP_ASSERT(fsr3::context_created);
-
-        // output is displayed in the viewport, so add a barrier to ensure any work is done before writting to it
+        // output is displayed in the viewport, so add a barrier to ensure any work is done before writing to it
         cmd_list->InsertBarrierTextureReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
 
