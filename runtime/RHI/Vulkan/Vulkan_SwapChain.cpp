@@ -409,8 +409,8 @@ namespace spartan
             RHI_Device::CmdImmediateSubmit(cmd_list);
         }
     
-        // recreate semaphores
-        for (uint32_t i = 0; i < m_buffer_count; i++)
+        // sync primitives
+        for (uint32_t i = 0; i < static_cast<uint32_t>( m_image_acquired_semaphore.size()); i++)
         {
             m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_" + to_string(i)).c_str());
         }
@@ -461,7 +461,13 @@ namespace spartan
         // use a temporary semaphore for acquisition
         static uint32_t semaphore_index     = 0;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
-    
+
+        // ensure the semaphore is not in use (however, with enough semaphores, we'll almost never cycle back to a semaphore that needs to wait)
+        if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
+        {
+            cmd_list->WaitForExecution(true);
+        }
+ 
         // vk_not_ready can happen if the swapchain is not ready yet, possible during window events
         // it can happen often on some gpus/drivers and less and on others, regardless, it has to be handled
         uint32_t retry_count     = 0;
@@ -480,9 +486,9 @@ namespace spartan
         
             if (result == VK_SUCCESS)
             {
-                // swap semaphores to associate the signaled semaphore with m_image_index
-                swap(m_image_acquired_semaphore[semaphore_index], m_image_acquired_semaphore[m_image_index]);
-                semaphore_index = (semaphore_index + 1) % m_buffer_count; // rotate to next semaphore
+                // associate the semaphore with the acquired image index
+                m_image_acquired_semaphore[m_image_index] = m_image_acquired_semaphore[semaphore_index];
+                semaphore_index = (semaphore_index + 1) % m_image_acquired_semaphore.size(); // rotate through all semaphores
                 return;
             }
             else if (result == VK_NOT_READY)

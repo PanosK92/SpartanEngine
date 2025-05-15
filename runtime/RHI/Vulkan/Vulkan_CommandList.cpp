@@ -507,6 +507,11 @@ namespace spartan
             m_rendering_complete_semaphore_timeline.get() // signal semaphore
         );
 
+        if (semaphore_wait)
+        {
+            semaphore_wait->SetUserCmdList(this);
+        }
+
         m_rendering_complete_semaphore->has_been_waited_for = false;
         m_state                                             = RHI_CommandListState::Submitted;
     }

@@ -97,7 +97,7 @@ namespace spartan
         uint32_t m_image_index                               = 0;
         void* m_sdl_window                                   = nullptr;
         std::array<RHI_Image_Layout, buffer_count> m_layouts = { RHI_Image_Layout::Max };
-        std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_semaphore;
+        std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count * 2> m_image_acquired_semaphore;
 
         // rhi
         void* m_rhi_swapchain                     = nullptr;

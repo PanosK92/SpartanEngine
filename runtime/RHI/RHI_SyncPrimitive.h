@@ -48,12 +48,17 @@ namespace spartan
         uint64_t GetNextSignalValue() { return ++m_value; }
         void* GetRhiResource()        { return m_rhi_resource; }
 
+        // signaler command list
+        void SetUserCmdList(RHI_CommandList* cmd_list) { m_user_cmd_list = cmd_list; }
+        RHI_CommandList* GetUserCmdList() const        { return m_user_cmd_list; }
+
         // swapchain present wait tracking
         bool has_been_waited_for = true;
 
     private:
-        RHI_SyncPrimitive_Type m_type = RHI_SyncPrimitive_Type::Max;
-        uint64_t m_value              = 0;
-        void* m_rhi_resource          = nullptr;
+        RHI_CommandList* m_user_cmd_list = nullptr;
+        RHI_SyncPrimitive_Type m_type       = RHI_SyncPrimitive_Type::Max;
+        uint64_t m_value                    = 0;
+        void* m_rhi_resource                = nullptr;
     };
 }
