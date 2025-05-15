@@ -28,7 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Queue.h"
 #include "../Display/Display.h"
+#ifdef _WIN32
 #include <tlhelp32.h>
+#endif
 SP_WARNINGS_OFF
 #include <SDL3/SDL_vulkan.h>
 SP_WARNINGS_ON

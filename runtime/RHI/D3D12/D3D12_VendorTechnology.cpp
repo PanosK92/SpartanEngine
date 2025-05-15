@@ -44,11 +44,6 @@ namespace spartan
 
     }
 
-    void RHI_VendorTechnology::FSR3_ResetHistory()
-    {
-
-    }
-
     void RHI_VendorTechnology::FSR3_GenerateJitterSample(float* x, float* y)
     {
 
