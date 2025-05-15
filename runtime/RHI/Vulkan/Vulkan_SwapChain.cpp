@@ -459,7 +459,7 @@ namespace spartan
             return;
     
         // use a temporary semaphore for acquisition
-        static uint32_t semaphore_index = 0;
+        static uint32_t semaphore_index     = 0;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
     
         // vk_not_ready can happen if the swapchain is not ready yet, possible during window events

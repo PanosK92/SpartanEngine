@@ -87,12 +87,10 @@ namespace spartan
         m_state = RHI_CommandListState::Recording;
     }
 
-    void RHI_CommandList::Submit(const uint64_t swapchain_id)
+    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait)
     {
-        // verify a few things
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
         SP_ASSERT_MSG(SUCCEEDED(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Close()), "Failed to end command list");
     }
 

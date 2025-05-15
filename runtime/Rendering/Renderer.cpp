@@ -281,7 +281,7 @@ namespace spartan
     void Renderer::Tick()
     {
         // update logic
-        GetSwapChain()->AcquireNextImage();
+        swap_chain->AcquireNextImage();
         RHI_Device::Tick(frame_num);
         RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
         dynamic_resolution();
