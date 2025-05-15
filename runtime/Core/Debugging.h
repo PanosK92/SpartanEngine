@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2025 Panos Karabelas
+Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,9 +36,9 @@ namespace spartan
         static bool IsBreadcrumbsEnabled()           { return m_breadcrumbs_enabled; }
 
     private:
-        inline static bool m_validation_layer_enabled        = false; // enables Vulkan diagnostic layers, incurs significant per-draw CPU performance overhead
-        inline static bool m_gpu_assisted_validation_enabled = false; // performs GPU-based validation with substantial CPU and GPU performance impact
-        inline static bool m_logging_to_file_enabled         = false; // writes diagnostic logs to disk, causes high CPU overhead due to file I/O operations
+        inline static bool m_validation_layer_enabled        = true; // enables Vulkan diagnostic layers, incurs significant per-draw CPU performance overhead
+        inline static bool m_gpu_assisted_validation_enabled = true; // performs GPU-based validation with substantial CPU and GPU performance impact
+        inline static bool m_logging_to_file_enabled         = true; // writes diagnostic logs to disk, causes high CPU overhead due to file I/O operations
         inline static bool m_breadcrumbs_enabled             = false; // tracks GPU crash information in breadcrumbs.txt, minimal overhead (AMD GPUs only) - crashes in debug mode - outputs unreliable data in release mode - issue reported to AMD
         inline static bool m_renderdoc_enabled               = false; // integrates RenderDoc graphics debugging, introduces high CPU overhead from API wrapping
         inline static bool m_gpu_marking_enabled             = true;  // enables GPU resource marking with negligible performance cost
