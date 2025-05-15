@@ -233,23 +233,42 @@ namespace spartan
 
     void Mesh::AddLod(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t sub_mesh_index)
     {
-        lock_guard lock(m_mutex);
-        SP_ASSERT(sub_mesh_index < m_sub_meshes.size());
+        // validate input
+        SP_ASSERT_MSG(sub_mesh_index < m_sub_meshes.size(), "Invalid sub-mesh index");
+        SP_ASSERT_MSG(!vertices.empty(),                    "Vertex array is empty");
+        SP_ASSERT_MSG(!indices.empty(),                     "Index array is empty");
+        SP_ASSERT_MSG(indices.size() % 3 == 0,              "Index count is not a multiple of 3 (required for triangles)");
 
-        // build lod
+        // lod
         MeshLod lod;
-        lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
-        lod.vertex_count  = static_cast<uint32_t>(vertices.size());
-        lod.index_offset  = static_cast<uint32_t>(m_indices.size());
-        lod.index_count   = static_cast<uint32_t>(indices.size());
-        lod.aabb          = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-    
-        // append geometry to mesh buffers
-        m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
-        m_indices.insert(m_indices.end(), indices.begin(), indices.end());
+        {
+            // build
+            lod.vertex_offset = static_cast<uint32_t>(m_vertices.size());
+            lod.vertex_count  = static_cast<uint32_t>(vertices.size());
+            lod.index_offset  = static_cast<uint32_t>(m_indices.size());
+            lod.index_count   = static_cast<uint32_t>(indices.size());
+            lod.aabb          = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
 
-        // add lod to the specified sub-mesh
-        m_sub_meshes[sub_mesh_index].lods.push_back(lod);
+            // validate
+            for (uint32_t index : indices)
+            {
+                SP_ASSERT_MSG(index < lod.vertex_count, "Index exceeds vertex count");
+            }
+            SP_ASSERT_MSG(lod.vertex_offset + lod.vertex_count <= std::numeric_limits<uint32_t>::max(), "Vertex buffer overflow");
+            SP_ASSERT_MSG(lod.index_offset  + lod.index_count  <= std::numeric_limits<uint32_t>::max(), "Index buffer overflow");
+        }
+
+        // append geometry
+        {
+            lock_guard lock(m_mutex);
+
+            // append geometry to mesh buffers
+            m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
+            m_indices.insert(m_indices.end(), indices.begin(), indices.end());
+
+            // add lod to the specified sub-mesh
+            m_sub_meshes[sub_mesh_index].lods.push_back(lod);
+        }
     }
 
     void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index)

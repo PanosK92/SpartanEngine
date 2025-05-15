@@ -421,19 +421,6 @@ namespace spartan
                 void* p_user_data
             )
             {
-                // ignore some messages
-                {
-                    // occlusion queries
-                    if (p_callback_data->messageIdNumber == 0xd39be754)
-                    {
-                        // Validation Warning:
-                        // [BestPractices - QueryPool - Unavailable] Object 0 :
-                        // handle = 0x980b0000000002e, name = query_pool_occlusion, type = VK_OBJECT_TYPE_QUERY_POOL; | MessageID = 0xd39be754 | vkGetQueryPoolResults() :
-                        // QueryPool VkQueryPool 0x980b0000000002e[query_pool_occlusion] and query 0 : vkCmdBeginQuery() was never called.
-                        return VK_FALSE;
-                    }
-                }
-
                 string msg = "Vulkan: " + string(p_callback_data->pMessage);
 
                 if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
