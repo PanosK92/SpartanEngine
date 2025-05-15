@@ -465,7 +465,7 @@ namespace spartan
         // ensure the semaphore is not in use (however, with enough semaphores, we'll almost never cycle back to a semaphore that needs to wait)
         if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
         {
-            cmd_list->WaitForExecution(true);
+            cmd_list->WaitForExecution();
         }
  
         // vk_not_ready can happen if the swapchain is not ready yet, possible during window events
