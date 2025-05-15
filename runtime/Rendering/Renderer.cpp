@@ -1057,19 +1057,19 @@ namespace spartan
                             {
                                 if (renderable->IsVisible(group_index))
                                 {
-                                    uint32_t instance_start_index  = renderable->GetInstanceGroupStartIndex(group_index);
+                                    uint32_t instance_index  = renderable->GetInstanceGroupStartIndex(group_index);
                                     uint32_t instance_count        = renderable->GetInstanceGroupCount(group_index);
                                     uint32_t total_instance_count  = renderable->GetInstanceCount();
-                                    instance_count                 = min(instance_count, total_instance_count - instance_start_index);
+                                    instance_count                 = min(instance_count, total_instance_count - instance_index);
                                     RHI_Buffer* instance_buffer    = renderable->GetInstanceBuffer();
                                     uint32_t buffer_instance_count = instance_buffer ? instance_buffer->GetElementCount() : 0;
 
                                     // validate draw call (critical as anything wrong can cause GPU crashes)
-                                    SP_ASSERT_MSG(instance_start_index < total_instance_count,                    "instance start index exceeds total instance count");
-                                    SP_ASSERT_MSG(instance_count > 0,                                             "instance count is zero after clamping");
-                                    SP_ASSERT_MSG(instance_start_index + instance_count <= total_instance_count,  "instance range exceeds total instance count");
-                                    SP_ASSERT_MSG(instance_start_index < buffer_instance_count,                   "instance start index exceeds instance buffer capacity");
-                                    SP_ASSERT_MSG(instance_start_index + instance_count <= buffer_instance_count, "instance range exceeds instance buffer capacity");
+                                    SP_ASSERT_MSG(instance_index < total_instance_count,                    "instance start index exceeds total instance count");
+                                    SP_ASSERT_MSG(instance_count > 0,                                       "instance count is zero after clamping");
+                                    SP_ASSERT_MSG(instance_index + instance_count <= total_instance_count,  "instance range exceeds total instance count");
+                                    SP_ASSERT_MSG(instance_index < buffer_instance_count,                   "instance start index exceeds instance buffer capacity");
+                                    SP_ASSERT_MSG(instance_index + instance_count <= buffer_instance_count, "instance range exceeds instance buffer capacity");
 
                                     if (instance_count == 0)
                                         continue;
@@ -1078,7 +1078,7 @@ namespace spartan
                                     draw_call.renderable           = renderable;
                                     draw_call.instance_group_index = group_index;
                                     draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                                    draw_call.instance_start_index = instance_start_index;
+                                    draw_call.instance_index       = instance_index;
                                     draw_call.instance_count       = instance_count;
                                     draw_call.lod_index            = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
                                     draw_call.is_occluder          = false;

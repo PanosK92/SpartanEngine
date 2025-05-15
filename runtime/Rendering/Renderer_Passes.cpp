@@ -342,9 +342,9 @@ namespace spartan
                         {
                             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
-                                uint32_t instance_start_index = renderable->GetInstanceGroupStartIndex(group_index);
+                                uint32_t instance_index = renderable->GetInstanceGroupStartIndex(group_index);
                                 uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
-                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_start_index);
+                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_index);
                                 if (instance_count == 0)
                                     continue;
                                 
@@ -354,7 +354,7 @@ namespace spartan
                                     renderable->GetIndexCount(lod_index),
                                     renderable->GetIndexOffset(lod_index),
                                     renderable->GetVertexOffset(lod_index),
-                                    instance_start_index,
+                                    instance_index,
                                     instance_count
                                 );
                             }
@@ -542,7 +542,7 @@ namespace spartan
                             renderable->GetIndexCount(draw_call.lod_index),
                             renderable->GetIndexOffset(draw_call.lod_index),
                             renderable->GetVertexOffset(draw_call.lod_index),
-                            draw_call.instance_start_index,
+                            draw_call.instance_index,
                             draw_call.instance_count
                         );
                     }
@@ -666,7 +666,7 @@ namespace spartan
                         renderable->GetIndexCount(draw_call.lod_index),
                         renderable->GetIndexOffset(draw_call.lod_index),
                         renderable->GetVertexOffset(draw_call.lod_index),
-                        draw_call.instance_start_index,
+                        draw_call.instance_index,
                         draw_call.instance_count
                     );
                 }

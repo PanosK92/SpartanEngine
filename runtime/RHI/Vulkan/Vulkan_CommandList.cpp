@@ -856,7 +856,7 @@ namespace spartan
         m_render_pass_draw_calls++;
     }
 
-    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_index, const uint32_t instance_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -873,7 +873,7 @@ namespace spartan
             instance_count,                               // instanceCount
             index_offset,                                 // firstIndex
             vertex_offset,                                // vertexOffset
-            instance_start_index                          // firstInstance
+            instance_index                                // firstInstance
         );
         Profiler::m_rhi_draw++;
         m_render_pass_draw_calls++;

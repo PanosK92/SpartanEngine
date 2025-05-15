@@ -302,7 +302,7 @@ namespace spartan
     {
         Renderable* renderable;        // pointer to the renderable object
         uint32_t instance_group_index; // index of the instance group (used if instanced)
-        uint32_t instance_start_index; // starting index in the instance buffer (used if instanced)
+        uint32_t instance_index;       // starting index in the instance buffer (used if instanced)
         uint32_t instance_count;       // number of instances to draw (used if instanced)
         uint32_t lod_index;            // level of detail index for the mesh
         float distance_squared;        // distance for sorting or other purposes

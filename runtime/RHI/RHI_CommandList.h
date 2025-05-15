@@ -76,7 +76,7 @@ namespace spartan
 
         // draw
         void Draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
-        void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_start_index = 0, const uint32_t instance_count = 1);
+        void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
 
         // dispatch
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
