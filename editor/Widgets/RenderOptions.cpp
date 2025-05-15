@@ -284,8 +284,8 @@ void RenderOptions::OnTickVisible()
 
         if (option("Output"))
         {
-            option_value("Gamma", Renderer_Option::Gamma);
             option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
+            option_value("Gamma", Renderer_Option::Gamma);
 
             bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
 
@@ -296,13 +296,11 @@ void RenderOptions::OnTickVisible()
 
             // tone mapping
             static vector<string> tonemapping_options = { "ACES", "Nautilus ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
-            ImGui::BeginDisabled(hdr_enabled);
             uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
             if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
             {
                 Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
             }
-            ImGui::EndDisabled();
         }
 
 

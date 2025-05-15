@@ -113,30 +113,31 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // apply exposure
     color.rgb *= buffer_frame.camera_exposure;
 
-    if (buffer_frame.hdr_enabled == 0.0f) // SDR
+    // best used for sdr
+    switch (tone_mapping)
     {
-        switch (tone_mapping)
-        {
-            case 0:
-                color.rgb = aces(color.rgb);
-                break;
-            case 1:
-                color.rgb = nautilus(color.rgb);
-                break;
-            case 2:
-                color.rgb = reinhard(color.rgb);
-                break;
-            case 3:
-                color.rgb = uncharted_2(color.rgb);
-                break;
-            case 4:
-                color.rgb = matrix_movie(color.rgb);
-                break;
-        }
+        case 0:
+            color.rgb = aces(color.rgb);
+            break;
+        case 1:
+            color.rgb = nautilus(color.rgb);
+            break;
+        case 2:
+            color.rgb = reinhard(color.rgb);
+            break;
+        case 3:
+            color.rgb = uncharted_2(color.rgb);
+            break;
+        case 4:
+            color.rgb = matrix_movie(color.rgb);
+            break;
+    }
 
+    if (buffer_frame.hdr_enabled == 0.0f) // sdr
+    {
         color.rgb  = linear_to_srgb(color.rgb);
     }
-    else // HDR
+    else // hdr
     {
         color.rgb  = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
     }
