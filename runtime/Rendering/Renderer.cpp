@@ -243,7 +243,7 @@ namespace spartan
 
             if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
             {
-                SP_WARNING_WINDOW("The GPU does not meet the minimum requirements for running the engine. The engine may not perform fast and/or function correctly.");
+                SP_WARNING_WINDOW("The GPU does not meet the minimum requirements for running the engine. The engine might be missing features and it won't perform as expected.");
             }
         }
 
@@ -398,7 +398,12 @@ namespace spartan
 
         if (recreate_resources)
         {
-            RHI_Device::QueueWaitAll();
+            // if frames are in-flight, wait for them to finish before resizing
+            if (m_cb_frame_cpu.frame > 1)
+            {
+                RHI_Device::QueueWaitAll();
+            }
+
             CreateRenderTargets(false, true, true);
             CreateSamplers();
         }

@@ -127,6 +127,9 @@ namespace spartan
 
         void context_create()
         {
+            if (!RHI_Device::PropertyIsXessSupported())
+                return;
+
             // create
             context_destroy();
             SP_ASSERT(xessVKCreateContext(RHI_Context::instance, RHI_Context::device_physical, RHI_Context::device, &context) == xess_result_t::XESS_RESULT_SUCCESS);

@@ -250,7 +250,7 @@ namespace spartan
             // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
             "VK_KHR_synchronization2", 
             "VK_KHR_get_memory_requirements2",
-            "VK_EXT_mutable_descriptor_type", // Added for XeSS mutable descriptor support
+            "VK_EXT_mutable_descriptor_type", // added for XeSS mutable descriptor support
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -1135,6 +1135,10 @@ namespace spartan
                     // support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
                     features_vrs.attachmentFragmentShadingRate = VK_TRUE;
                 }
+                else
+                {
+                    support_robustness.pNext = features_vrs.pNext; // remove from chain
+                }
 
                 // misc
                 {
@@ -1259,6 +1263,10 @@ namespace spartan
                     { 
                         features_mutable_descriptor.mutableDescriptorType = VK_TRUE;
                         *is_xess_supported = true;
+                    }
+                    else
+                    {
+                        features.pNext = features.pNext; // remove from chain
                     }
                 }
 
@@ -1586,7 +1594,6 @@ namespace spartan
         for (uint32_t i = 0; i < 2; i++)
         {
             queues::regular[i]->Wait();
-            queues::immediate[i]->Wait();
         }
     }
 
