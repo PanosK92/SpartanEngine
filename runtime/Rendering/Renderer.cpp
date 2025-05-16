@@ -620,7 +620,7 @@ namespace spartan
                 {
                     if (!Display::GetHdr())
                     { 
-                        SP_LOG_INFO("This display doesn't support HDR");
+                        SP_LOG_WARNING("This display doesn't support HDR");
                         return;
                     }
                 }
@@ -631,7 +631,18 @@ namespace spartan
                 {
                     if (!RHI_Device::PropertyIsShadingRateSupported())
                     { 
-                        SP_LOG_INFO("This GPU doesn't support variable rate shading");
+                        SP_LOG_WARNING("This GPU doesn't support variable rate shading");
+                        return;
+                    }
+                }
+            }
+            else if (option == Renderer_Option::Upsampling)
+            {
+                if (value == static_cast<float>(Renderer_Upsampling::XeSS))
+                {
+                    if (!RHI_Device::PropertyIsXessSupported())
+                    { 
+                        SP_LOG_WARNING("This GPU doesn't support XeSS");
                         return;
                     }
                 }

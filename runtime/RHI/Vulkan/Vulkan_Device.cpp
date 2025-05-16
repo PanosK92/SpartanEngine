@@ -1071,7 +1071,7 @@ namespace spartan
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs                  = {};
         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT features_mutable_descriptor = {}; // xess
 
-        void detect(bool* is_shading_rate_supported)
+        void detect(bool* is_shading_rate_supported, bool* is_xess_supported)
         {
             // features that will be enabled
             features_vrs.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
@@ -1128,19 +1128,12 @@ namespace spartan
             // check if certain features are supported and enable them
             {
                 // variable shading rate
-                if (is_shading_rate_supported)
-                { 
-                    *is_shading_rate_supported = support_vrs.attachmentFragmentShadingRate == VK_TRUE;
-                    if (*is_shading_rate_supported)
-                    {
-                        // enable this feature conditionally (no assert) as older GPUs like NV 1080 and Radeon RX Vega do not support it.
-                        // support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
-                        features_vrs.attachmentFragmentShadingRate = VK_TRUE;
-                    }
-                    else
-                    {
-                        features_robustness.pNext = nullptr; // remove VRS from the chain
-                    }
+                *is_shading_rate_supported = support_vrs.attachmentFragmentShadingRate == VK_TRUE;
+                if (*is_shading_rate_supported)
+                {
+                    // enable this feature conditionally (no assert) as older GPUs like NV 1080 and Radeon RX Vega do not support it.
+                    // support details: https://vulkan.gpuinfo.org/listdevicescoverage.php?platform=windows&extension=VK_KHR_fragment_shading_rate
+                    features_vrs.attachmentFragmentShadingRate = VK_TRUE;
                 }
 
                 // misc
@@ -1228,6 +1221,10 @@ namespace spartan
                     SP_ASSERT(support_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
                     features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
+                    // wave64
+                    SP_ASSERT(support_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
+                    features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
+
                     // float16 - If supported, fsr will opt for it, so don't assert.
                     if (support_1_2.shaderFloat16 == VK_TRUE)
                     {
@@ -1239,10 +1236,6 @@ namespace spartan
                     {
                         features.features.shaderInt16 = VK_TRUE;
                     }
-
-                    // wave64
-                    SP_ASSERT(support_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
-                    features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
 
                     // wave64 - If supported, fsr will opt for it, so don't assert
                     if (support_1_3.subgroupSizeControl == VK_TRUE)
@@ -1262,8 +1255,11 @@ namespace spartan
                     SP_ASSERT(support_1_2.scalarBlockLayout == VK_TRUE);
                     features_1_2.scalarBlockLayout = VK_TRUE;
 
-                    SP_ASSERT(support_mutable_descriptor.mutableDescriptorType == VK_TRUE);
-                    features_mutable_descriptor.mutableDescriptorType = VK_TRUE;
+                    if (support_mutable_descriptor.mutableDescriptorType == VK_TRUE)
+                    { 
+                        features_mutable_descriptor.mutableDescriptorType = VK_TRUE;
+                        *is_xess_supported = true;
+                    }
                 }
 
                 // directx shader compiler spir-v output automatically enables certain capabilities
@@ -1453,7 +1449,7 @@ namespace spartan
                 }
             }
   
-            device_features::detect(&m_is_shading_rate_supported);
+            device_features::detect(&m_is_shading_rate_supported, &m_xess_supported);
 
             // create
             {

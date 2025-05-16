@@ -244,11 +244,7 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
             }
 
-            ImGui::BeginDisabled(!spartan::RHI_Device::PropertyIsShadingRateSupported());
-            { 
-                option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
-            }
-            ImGui::EndDisabled();
+            option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying pixel shading detail");
             option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "GPU load driven resolution scale");
             ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution));
             option_value("Resolution scale", Renderer_Option::ResolutionScale, "Adjusts the percentage of the render resolution", 0.01f);

@@ -45,6 +45,7 @@ namespace spartan
     uint32_t RHI_Device::m_max_shading_rate_texel_size_y        = 0;
     uint64_t RHI_Device::m_optimal_buffer_copy_offset_alignment = 0;
     bool RHI_Device::m_is_shading_rate_supported                = false;
+    bool RHI_Device::m_xess_supported                           = false;
 
     // misc
     bool RHI_Device::m_wide_lines                 = false;
@@ -61,7 +62,7 @@ namespace spartan
 
         physical_devices.emplace(iter, physical_device);
 
-        // sort devices by memory, in an ascending order. The type order will be maintained.
+        // sort devices by memory, in an ascending order, the type order will be maintained
         sort(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
         {
             return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
