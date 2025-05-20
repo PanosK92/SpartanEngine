@@ -398,11 +398,10 @@ namespace spartan
         {
             for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                cmd_list->InsertBarrierTexture(
+                cmd_list->InsertBarrier(
                     m_rhi_rt[i],
                     VK_IMAGE_ASPECT_COLOR_BIT,
                     0, 1, 1,
-                    RHI_Image_Layout::Max,
                     RHI_Image_Layout::Attachment,
                     false
                 );

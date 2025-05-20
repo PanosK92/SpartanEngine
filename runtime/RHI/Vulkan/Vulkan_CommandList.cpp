@@ -614,7 +614,7 @@ namespace spartan
             if (swapchain)
             {
                 // transition to the appropriate layout
-                InsertBarrierTexture(swapchain->GetRhiRt(), RHI_Image_Layout::Attachment);
+                InsertBarrier(swapchain->GetRhiRt(), RHI_Image_Layout::Attachment);
 
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -1025,7 +1025,7 @@ namespace spartan
 
         // transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
-        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Transfer_Destination);
+        InsertBarrier(destination->GetRhiRt(), RHI_Image_Layout::Transfer_Destination);
 
         // deduce filter
         bool width_equal  = source->GetWidth() == destination->GetWidth();
@@ -1043,7 +1043,7 @@ namespace spartan
 
         // transition to the initial layouts
         source->SetLayout(source_layout_initial, this);
-        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Present_Source);
+        InsertBarrier(destination->GetRhiRt(), RHI_Image_Layout::Present_Source);
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -1127,7 +1127,7 @@ namespace spartan
         // Transition to blit appropriate layouts
         RHI_Image_Layout layout_initial_source = source->GetLayout(0);
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
-        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Transfer_Destination);
+        InsertBarrier(destination->GetRhiRt(), RHI_Image_Layout::Transfer_Destination);
 
         // Blit
         vkCmdCopyImage(
@@ -1139,7 +1139,7 @@ namespace spartan
 
         // Transition to the initial layout
         source->SetLayout(layout_initial_source, this);
-        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Present_Source);
+        InsertBarrier(destination->GetRhiRt(), RHI_Image_Layout::Present_Source);
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -1646,19 +1646,19 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::InsertBarrierTexture(
+    void RHI_CommandList::InsertBarrier(
         void* image,
         const uint32_t aspect_mask,
         const uint32_t mip_index,
         const uint32_t mip_range,
         const uint32_t array_length,
-        const RHI_Image_Layout layout_old,
         const RHI_Image_Layout layout_new,
         const bool is_depth
     )
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
+        RHI_Image_Layout layout_old = image_barrier::get_layout(image);
         if (!m_render_pass_active)
         {
             bool immediate_barrier = layout_old == RHI_Image_Layout::Max                  ||
@@ -1688,25 +1688,25 @@ namespace spartan
         image_barrier::layouts[image] = layout_new;
     }
 
-    void RHI_CommandList::InsertBarrierTexture(void* image, const RHI_Image_Layout layout_new)
+    void RHI_CommandList::InsertBarrier(void* image, const RHI_Image_Layout layout_new)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        InsertBarrierTexture(image, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1, image_barrier::get_layout(image), layout_new, false);
+        InsertBarrier(image, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1, layout_new, false);
     }
 
-    void RHI_CommandList::InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_new)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new, texture->IsDsv());
+        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_new, texture->IsDsv());
     }
 
-    void RHI_CommandList::InsertBarrierTextureReadWrite(RHI_Texture* texture)
+    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
+        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->IsDsv());
     }
 
-    void RHI_CommandList::InsertBarrierBufferReadWrite(RHI_Buffer* buffer)
+    void RHI_CommandList::InsertBarrierReadWrite(RHI_Buffer* buffer)
     {
         VkBufferMemoryBarrier2 barrier = {};
         barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;

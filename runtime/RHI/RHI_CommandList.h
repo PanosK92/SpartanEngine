@@ -142,20 +142,19 @@ namespace spartan
         void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
 
         // memory barriers
-        void InsertBarrierTexture(
+        void InsertBarrier(
             void* image,
             const uint32_t aspect_mask,
             const uint32_t mip_index,
             const uint32_t mip_range,
             const uint32_t array_length,
-            const RHI_Image_Layout layout_old,
             const RHI_Image_Layout layout_new,
             const bool is_depth
         );
-        void InsertBarrierTexture(void* image, const RHI_Image_Layout layout_new);
-        void InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
-        void InsertBarrierTextureReadWrite(RHI_Texture* texture);
-        void InsertBarrierBufferReadWrite(RHI_Buffer* buffer);
+        void InsertBarrier(void* image, const RHI_Image_Layout layout_new);
+        void InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_new);
+        void InsertBarrierReadWrite(RHI_Texture* texture);
+        void InsertBarrierReadWrite(RHI_Buffer* buffer);
         void InsertPendingBarrierGroup();
 
         // misc

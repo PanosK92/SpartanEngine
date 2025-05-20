@@ -1287,7 +1287,7 @@ namespace spartan
     {
     #ifdef _WIN32
         // output is displayed in the viewport, so add a barrier to ensure any work is done before writing to it
-        cmd_list->InsertBarrierTextureReadWrite(tex_output);
+        cmd_list->InsertBarrierReadWrite(tex_output);
         cmd_list->InsertPendingBarrierGroup();
 
         // upscale
