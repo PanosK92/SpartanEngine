@@ -526,22 +526,6 @@ namespace spartan
         }
     }
 
-    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
-    {
-        if (m_layouts[m_image_index] == layout)
-            return;
-
-        cmd_list->InsertBarrier(
-            m_rhi_rt[m_image_index],
-            VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
-            m_layouts[m_image_index],
-            layout,
-            false
-        );
-
-        m_layouts[m_image_index] = layout;
-    }
-
     void RHI_SwapChain::SetHdr(const bool enabled)
     {
         if (enabled)
@@ -572,6 +556,22 @@ namespace spartan
     {
         // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
         return m_present_mode == RHI_Present_Mode::Fifo;
+    }
+
+    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
+    {
+        if (m_layouts[m_image_index] == layout)
+            return;
+
+        cmd_list->InsertBarrier(
+            m_rhi_rt[m_image_index],
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
+            m_layouts[m_image_index],
+            layout,
+            false
+        );
+
+        m_layouts[m_image_index] = layout;
     }
 
     RHI_Image_Layout RHI_SwapChain::GetLayout() const

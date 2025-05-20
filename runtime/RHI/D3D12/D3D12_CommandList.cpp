@@ -367,18 +367,21 @@ namespace spartan
 
     }
 
-    void RHI_CommandList::InsertBarrier(void* image, const uint32_t aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_new, const bool is_depth )
+    void RHI_CommandList::InsertBarrier(
+        void* image,
+        const uint32_t aspect_mask,
+        const uint32_t mip_index,
+        const uint32_t mip_range,
+        const uint32_t array_length,
+        const RHI_Image_Layout layout_old,
+        const RHI_Image_Layout layout_new,
+        const bool is_depth
+    )
     {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
     }
 
-    void RHI_CommandList::InsertBarrier(void* image, const RHI_Image_Layout layout_new)
-    {
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-    }
-
-
-    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_new)
+    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
     {
 
     }
