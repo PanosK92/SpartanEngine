@@ -96,6 +96,13 @@ namespace spartan
 
     namespace image_barrier
     {
+        unordered_map<void*, RHI_Image_Layout> layouts;
+        RHI_Image_Layout get_layout(void* image)
+        {
+            auto it = layouts.find(image);
+            return it != layouts.end() ? it->second : RHI_Image_Layout::Max;
+        }
+
         tuple<VkPipelineStageFlags2, VkAccessFlags2> get_layout_sync_info(const VkImageLayout layout, const bool is_destination_mask, const bool is_depth, const RHI_PipelineState& pso)
         {   
             switch (layout)
@@ -607,12 +614,12 @@ namespace spartan
             if (swapchain)
             {
                 // transition to the appropriate layout
-                swapchain->SetLayout(RHI_Image_Layout::Attachment, this);
+                InsertBarrierTexture(swapchain->GetRhiRt(), RHI_Image_Layout::Attachment);
 
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                 color_attachment.imageView                 = static_cast<VkImageView>(swapchain->GetRhiRtv());
-                color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(swapchain->GetLayout())];
+                color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(image_barrier::get_layout(swapchain->GetRhiRt()))];
                 color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -1017,8 +1024,8 @@ namespace spartan
         RHI_Image_Layout source_layout_initial = source->GetLayout(0);
 
         // transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::Transfer_Source,           this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
+        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Transfer_Destination);
 
         // deduce filter
         bool width_equal  = source->GetWidth() == destination->GetWidth();
@@ -1036,7 +1043,7 @@ namespace spartan
 
         // transition to the initial layouts
         source->SetLayout(source_layout_initial, this);
-        destination->SetLayout(RHI_Image_Layout::Present_Source, this);
+        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Present_Source);
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -1120,7 +1127,7 @@ namespace spartan
         // Transition to blit appropriate layouts
         RHI_Image_Layout layout_initial_source = source->GetLayout(0);
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
+        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Transfer_Destination);
 
         // Blit
         vkCmdCopyImage(
@@ -1132,7 +1139,7 @@ namespace spartan
 
         // Transition to the initial layout
         source->SetLayout(layout_initial_source, this);
-        destination->SetLayout(RHI_Image_Layout::Present_Source, this);
+        InsertBarrierTexture(destination->GetRhiRt(), RHI_Image_Layout::Present_Source);
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -1676,6 +1683,15 @@ namespace spartan
         RenderPassEnd();
         vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
+
+        // keep track of layouts changes
+        image_barrier::layouts[image] = layout_new;
+    }
+
+    void RHI_CommandList::InsertBarrierTexture(void* image, const RHI_Image_Layout layout_new)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        InsertBarrierTexture(image, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1, image_barrier::get_layout(image), layout_new, false);
     }
 
     void RHI_CommandList::InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)

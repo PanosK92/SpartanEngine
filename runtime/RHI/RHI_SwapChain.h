@@ -69,10 +69,6 @@ namespace spartan
         void* GetRhiRt() const          { return m_rhi_rt[m_image_index]; }
         void* GetRhiRtv() const         { return m_rhi_rtv[m_image_index]; }
 
-        // layout
-        RHI_Image_Layout GetLayout() const;
-        void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
-
         // misc
         RHI_SyncPrimitive* GetImageAcquiredSemaphore() const { return m_image_acquired_semaphore[m_image_index].get(); }
 
@@ -92,10 +88,9 @@ namespace spartan
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
         // misc
-        bool m_is_dirty                                      = false;
-        uint32_t m_image_index                               = 0;
-        void* m_sdl_window                                   = nullptr;
-        std::array<RHI_Image_Layout, buffer_count> m_layouts = { RHI_Image_Layout::Max };
+        bool m_is_dirty        = false;
+        uint32_t m_image_index = 0;
+        void* m_sdl_window     = nullptr;
         std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count * 2> m_image_acquired_semaphore;
 
         // rhi

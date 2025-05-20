@@ -410,7 +410,7 @@ namespace ImGui::RHI
 
         if (!is_main_window)
         {
-            swapchain->SetLayout(RHI_Image_Layout::Present_Source, cmd_list);
+            cmd_list->InsertBarrierTexture(swapchain->GetRhiRt(), RHI_Image_Layout::Present_Source);
             cmd_list->Submit(swapchain->GetImageAcquiredSemaphore());
         }
     }
