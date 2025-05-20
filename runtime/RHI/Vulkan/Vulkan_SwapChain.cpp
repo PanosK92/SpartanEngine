@@ -405,6 +405,7 @@ namespace spartan
                     RHI_Image_Layout::Attachment,
                     false
                 );
+                m_layouts[i] = RHI_Image_Layout::Attachment;
             }
             RHI_Device::CmdImmediateSubmit(cmd_list);
         }
@@ -512,6 +513,8 @@ namespace spartan
         if (Window::IsMinimized())
             return;
 
+        SP_ASSERT(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source);
+    
         cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, cmd_list_frame->GetRenderingCompleteSemaphore());
 
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
@@ -520,6 +523,22 @@ namespace spartan
             Create();
             m_is_dirty = false;
         }
+    }
+
+    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
+    {
+        if (m_layouts[m_image_index] == layout)
+            return;
+
+        cmd_list->InsertBarrierTexture(
+            m_rhi_rt[m_image_index],
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
+            m_layouts[m_image_index],
+            layout,
+            false
+        );
+
+        m_layouts[m_image_index] = layout;
     }
 
     void RHI_SwapChain::SetHdr(const bool enabled)
@@ -552,5 +571,10 @@ namespace spartan
     {
         // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that
         return m_present_mode == RHI_Present_Mode::Fifo;
+    }
+
+    RHI_Image_Layout RHI_SwapChain::GetLayout() const
+    {
+        return m_layouts[m_image_index];
     }
 }

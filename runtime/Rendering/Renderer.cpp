@@ -775,7 +775,7 @@ namespace spartan
         {
             if (m_cmd_list_present->GetState() == RHI_CommandListState::Recording)
             {
-                m_cmd_list_present->InsertBarrier(swap_chain->GetRhiRt(), RHI_Image_Layout::Present_Source);
+                swap_chain->SetLayout(RHI_Image_Layout::Present_Source, m_cmd_list_present);
                 m_cmd_list_present->Submit(swap_chain->GetImageAcquiredSemaphore());
                 swap_chain->Present(m_cmd_list_present);
             }
