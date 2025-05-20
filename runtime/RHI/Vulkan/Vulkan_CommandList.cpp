@@ -1639,7 +1639,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::InsertBarrierTexture(
+    void RHI_CommandList::InsertBarrier(
         void* image,
         const uint32_t aspect_mask,
         const uint32_t mip_index,
@@ -1678,19 +1678,19 @@ namespace spartan
         Profiler::m_rhi_pipeline_barriers++;
     }
 
-    void RHI_CommandList::InsertBarrierTexture(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new, texture->IsDsv());
+        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new, texture->IsDsv());
     }
 
-    void RHI_CommandList::InsertBarrierTextureReadWrite(RHI_Texture* texture)
+    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
-        InsertBarrierTexture(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
+        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
     }
 
-    void RHI_CommandList::InsertBarrierBufferReadWrite(RHI_Buffer* buffer)
+    void RHI_CommandList::InsertBarrierReadWrite(RHI_Buffer* buffer)
     {
         VkBufferMemoryBarrier2 barrier = {};
         barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;

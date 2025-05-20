@@ -234,7 +234,7 @@ namespace spartan
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
 
                 // insert memory barrier
-                cmd_list->InsertBarrier(texture, 0, texture->GetMipCount(), texture->GetDepth(), layout);
+                cmd_list->InsertBarrier(texture, 0, texture->GetMipCount(), texture->GetDepth(), texture->GetLayout(0), layout);
 
                 // copy the staging buffer to the image
                 vkCmdCopyBufferToImage(
@@ -306,6 +306,7 @@ namespace spartan
                 0,            // mip start
                 m_mip_count,  // mip count
                 array_length, // array length
+                m_layout[0],
                 target_layout
             );
         
