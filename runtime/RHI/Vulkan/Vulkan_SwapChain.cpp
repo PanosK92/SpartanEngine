@@ -400,11 +400,10 @@ namespace spartan
             {
                  cmd_list->InsertBarrier(
                     m_rhi_rt[i],
-                    VK_IMAGE_ASPECT_COLOR_BIT,
+                    m_format,
                     0, 1, 1,
                     RHI_Image_Layout::Max,
-                    RHI_Image_Layout::Attachment,
-                    false
+                    RHI_Image_Layout::Attachment
                 );
                 m_layouts[i] = RHI_Image_Layout::Attachment;
             }
@@ -565,10 +564,10 @@ namespace spartan
 
         cmd_list->InsertBarrier(
             m_rhi_rt[m_image_index],
-            VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
+            m_format,
+            0, 1, 1,
             m_layouts[m_image_index],
-            layout,
-            false
+            layout
         );
 
         m_layouts[m_image_index] = layout;

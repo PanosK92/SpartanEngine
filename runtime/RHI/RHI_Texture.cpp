@@ -495,7 +495,7 @@ namespace spartan
             }
 
             // transition
-            cmd_list->InsertBarrier(this, mip_index, mip_range, m_depth, m_layout[mip_index], new_layout);
+            cmd_list->InsertBarrier(m_rhi_resource, m_format, mip_index, mip_range, m_depth, m_layout[mip_index], new_layout);
         }
 
         // update layout

@@ -1287,23 +1287,23 @@ namespace spartan
     {
     #ifdef _WIN32
         // output is displayed in the viewport, so add a barrier to ensure any work is done before writing to it
-        cmd_list->InsertBarrierReadWrite(tex_output);
+        cmd_list->InsertBarrier(tex_output->GetRhiResource(), tex_output->GetFormat(), 0, 1, 1, tex_output->GetLayout(0), tex_output->GetLayout(0));
         cmd_list->InsertPendingBarrierGroup();
 
         // upscale
         {
             // set resources (no need for the transparency or reactive masks as we do them later, full res)
             amd::uscaler::description_dispatch.commandList                   = amd::to_cmd_list(cmd_list);
-            amd::uscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                     L"fsr3_color");
-            amd::uscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                     L"fsr3_depth");
-            amd::uscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                  L"fsr3_velocity");
-            amd::uscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                       L"fsr3_exposure");
-            amd::uscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                       L"fsr3_reactive");
-            amd::uscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                       L"fsr3_transaprency_and_composition");
+            amd::uscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                        L"fsr3_color");
+            amd::uscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                        L"fsr3_depth");
+            amd::uscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                     L"fsr3_velocity");
+            amd::uscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                          L"fsr3_exposure");
+            amd::uscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                          L"fsr3_reactive");
+            amd::uscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                          L"fsr3_transaprency_and_composition");
             amd::uscaler::description_dispatch.dilatedDepth                  = amd::to_resource(amd::uscaler::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
             amd::uscaler::description_dispatch.dilatedMotionVectors          = amd::to_resource(amd::uscaler::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
             amd::uscaler::description_dispatch.reconstructedPrevNearestDepth = amd::to_resource(amd::uscaler::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
-            amd::uscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                    L"fsr3_output");
+            amd::uscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                       L"fsr3_output");
 
             // configure
             amd::uscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;

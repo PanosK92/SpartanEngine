@@ -69,28 +69,18 @@ namespace spartan
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         };
 
-        uint32_t get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
+        uint32_t get_aspect_mask(const RHI_Format format)
         {
-            uint32_t aspect_mask = 0;
-
-            if (texture->IsColorFormat())
+            switch (format)
             {
-                aspect_mask |= VK_IMAGE_ASPECT_COLOR_BIT;
+            case RHI_Format::D32_Float_S8X24_Uint:
+                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            case RHI_Format::D16_Unorm:
+            case RHI_Format::D32_Float:
+                return VK_IMAGE_ASPECT_DEPTH_BIT;
+            default:
+                return VK_IMAGE_ASPECT_COLOR_BIT;
             }
-            else
-            {
-                if (texture->IsDepthFormat() && !only_stencil)
-                {
-                    aspect_mask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-                }
-
-                if (texture->IsStencilFormat() && !only_depth)
-                {
-                    aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-                }
-            }
-
-            return aspect_mask;
         }
     }
 
@@ -934,13 +924,13 @@ namespace spartan
             blit_region.srcSubresource.mipLevel       = mip_index;
             blit_region.srcSubresource.baseArrayLayer = 0;
             blit_region.srcSubresource.layerCount     = 1;
-            blit_region.srcSubresource.aspectMask     = get_aspect_mask(source);
+            blit_region.srcSubresource.aspectMask     = get_aspect_mask(source->GetFormat());
             blit_region.srcOffsets[0]                 = { 0, 0, 0 };
             blit_region.srcOffsets[1]                 = source_blit_size;
             blit_region.dstSubresource.mipLevel       = mip_index;
             blit_region.dstSubresource.baseArrayLayer = 0;
             blit_region.dstSubresource.layerCount     = 1;
-            blit_region.dstSubresource.aspectMask     = get_aspect_mask(destination);
+            blit_region.dstSubresource.aspectMask     = get_aspect_mask(destination->GetFormat());
             blit_region.dstOffsets[0]                 = { 0, 0, 0 };
             blit_region.dstOffsets[1]                 = destination_blit_size;
         }
@@ -1003,7 +993,7 @@ namespace spartan
         blit_region.srcSubresource.mipLevel       = 0;
         blit_region.srcSubresource.baseArrayLayer = 0;
         blit_region.srcSubresource.layerCount     = 1;
-        blit_region.srcSubresource.aspectMask     = get_aspect_mask(source);
+        blit_region.srcSubresource.aspectMask     = get_aspect_mask(source->GetFormat());
         blit_region.srcOffsets[0]                 = { 0, 0, 0 };
         blit_region.srcOffsets[1]                 = source_blit_size;
         blit_region.dstSubresource.mipLevel       = 0;
@@ -1641,16 +1631,19 @@ namespace spartan
 
     void RHI_CommandList::InsertBarrier(
         void* image,
-        const uint32_t aspect_mask,
+        const RHI_Format format,
         const uint32_t mip_index,
         const uint32_t mip_range,
         const uint32_t array_length,
         const RHI_Image_Layout layout_old,
-        const RHI_Image_Layout layout_new,
-        const bool is_depth
+        const RHI_Image_Layout layout_new
     )
     {
+        SP_ASSERT(image != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        bool is_depth        = format == RHI_Format::D16_Unorm || format == RHI_Format::D32_Float || format == RHI_Format::D32_Float_S8X24_Uint;
+        uint32_t aspect_mask = get_aspect_mask(format);
 
         if (!m_render_pass_active)
         {
@@ -1678,18 +1671,6 @@ namespace spartan
         Profiler::m_rhi_pipeline_barriers++;
     }
 
-    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
-    {
-        SP_ASSERT(texture != nullptr);
-        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new, texture->IsDsv());
-    }
-
-    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture)
-    {
-        SP_ASSERT(texture != nullptr);
-        InsertBarrier(texture->GetRhiResource(), get_aspect_mask(texture), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0), texture->IsDsv());
-    }
-
     void RHI_CommandList::InsertBarrierReadWrite(RHI_Buffer* buffer)
     {
         VkBufferMemoryBarrier2 barrier = {};
@@ -1714,7 +1695,7 @@ namespace spartan
     {
         if (!m_image_barriers.empty())
         {
-            array<VkImageMemoryBarrier2, 16> vk_barriers;
+            array<VkImageMemoryBarrier2, 32> vk_barriers;
             for (uint32_t i = 0; i < static_cast<uint32_t>(m_image_barriers.size()); i++)
             {
                 const ImageBarrierInfo& barrier = m_image_barriers[i];

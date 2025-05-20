@@ -1736,7 +1736,7 @@ namespace spartan
 
                     // this is to avoid out of order UAV access and flickering overlapping icons
                     // ideally, we batch all the icons in one buffer and do a single dispatch, but for now this works
-                    cmd_list->InsertBarrierReadWrite(texture);
+                    cmd_list->InsertBarrier(texture->GetRhiResource(), texture->GetFormat(), 0, 1, 1, texture->GetLayout(0), texture->GetLayout(0));
                 };
 
                 // dispatch all icons in m_icons
