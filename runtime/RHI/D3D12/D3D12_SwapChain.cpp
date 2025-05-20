@@ -141,7 +141,7 @@ namespace spartan
     
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
-        SP_ASSERT(m_rhi_swapchain != nullptr && "Can't present, the swapchain has not been initialised");
+        SP_ASSERT(m_rhi_swapchain != nullptr && "Can't present, the swapchain has not been initialized");
 
         // Present parameters
         const bool tearing_allowed = m_present_mode == RHI_Present_Mode::Immediate;
@@ -153,11 +153,6 @@ namespace spartan
             && "Failed to present");
 
         AcquireNextImage();
-    }
-
-    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
-    {
-
     }
 
     void RHI_SwapChain::SetHdr(const bool enabled)
@@ -173,10 +168,5 @@ namespace spartan
     bool RHI_SwapChain::GetVsync()
     {
         return false;
-    }
-
-    RHI_Image_Layout RHI_SwapChain::GetLayout() const
-    {
-        return m_layouts[m_image_index];
     }
 }
