@@ -402,10 +402,8 @@ namespace spartan
                     m_rhi_rt[i],
                     m_format,
                     0, 1, 1,
-                    RHI_Image_Layout::Max,
                     RHI_Image_Layout::Attachment
                 );
-                m_layouts[i] = RHI_Image_Layout::Attachment;
             }
             RHI_Device::CmdImmediateSubmit(cmd_list);
         }
@@ -513,8 +511,6 @@ namespace spartan
         if (Window::IsMinimized())
             return;
 
-        SP_ASSERT(m_layouts[m_image_index] == RHI_Image_Layout::Present_Source);
-    
         cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, cmd_list_frame->GetRenderingCompleteSemaphore());
 
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
@@ -559,22 +555,16 @@ namespace spartan
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
     {
-        if (m_layouts[m_image_index] == layout)
-            return;
-
         cmd_list->InsertBarrier(
             m_rhi_rt[m_image_index],
             m_format,
             0, 1, 1,
-            m_layouts[m_image_index],
             layout
         );
-
-        m_layouts[m_image_index] = layout;
     }
 
     RHI_Image_Layout RHI_SwapChain::GetLayout() const
     {
-        return m_layouts[m_image_index];
+        return RHI_CommandList::GetImageLayout(m_rhi_rt[m_image_index], 0);
     }
 }

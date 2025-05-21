@@ -456,53 +456,33 @@ namespace spartan
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/)
     {
         const bool mip_specified = mip_index != rhi_all_mips;
-        const bool ranged        = mip_specified && mip_range != 0;
         mip_index                = mip_specified ? mip_index : 0;
-        mip_range                = ranged ? (mip_specified ? m_mip_count - mip_index : m_mip_count) : m_mip_count - mip_index;
-
-        // asserts
+        mip_range                = mip_specified ? mip_range : m_mip_count;
+    
         if (mip_specified)
         {
             SP_ASSERT(HasPerMipViews());
             SP_ASSERT(mip_range != 0);
+            SP_ASSERT(mip_index + mip_range <= m_mip_count);
         }
+    
+        cmd_list->InsertBarrier(m_rhi_resource, m_format, mip_index, mip_range, m_depth, new_layout);
+    }
 
-        // check if the layouts are indeed different from the new layout
-        // if they are different, then find at which mip the difference starts
-        bool transition_required = false;
-        for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
+    RHI_Image_Layout RHI_Texture::GetLayout(const uint32_t mip) const
+    {
+        return m_rhi_resource ? RHI_CommandList::GetImageLayout(m_rhi_resource, mip) : RHI_Image_Layout::Max;
+    }
+
+    array<RHI_Image_Layout, rhi_max_mip_count> RHI_Texture::GetLayouts()
+    {
+        array<RHI_Image_Layout, rhi_max_mip_count> layouts;
+        for (uint32_t i = 0; i < rhi_max_mip_count; i++)
         {
-            if (m_layout[i] != new_layout)
-            {
-                mip_index           = i;
-                mip_range           = ranged ? (mip_specified ? m_mip_count - mip_index : m_mip_count) : m_mip_count - mip_index;
-                transition_required = true;
-                break;
-            }
+            layouts[i] = GetLayout(i);
         }
 
-        if (!transition_required)
-            return;
-
-        // insert memory barrier
-        if (cmd_list != nullptr)
-        {
-            // wait in case this texture loading in another thread
-            while (m_resource_state != ResourceState::PreparedForGpu)
-            {
-                SP_LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_object_name.c_str());
-                this_thread::sleep_for(chrono::milliseconds(16));
-            }
-
-            // transition
-            cmd_list->InsertBarrier(m_rhi_resource, m_format, mip_index, mip_range, m_depth, m_layout[mip_index], new_layout);
-        }
-
-        // update layout
-        for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
-        {
-            m_layout[i] = new_layout;
-        }
+        return layouts;
     }
 
     void RHI_Texture::ClearData()

@@ -148,7 +148,6 @@ namespace spartan
             const uint32_t mip_index,
             const uint32_t mip_range,
             const uint32_t array_length,
-            const RHI_Image_Layout layout_old,
             const RHI_Image_Layout layout_new
         );
         void InsertBarrierReadWrite(RHI_Buffer* buffer);
@@ -160,6 +159,10 @@ namespace spartan
         void* GetRhiResource() const                       { return m_rhi_resource; }
         const RHI_CommandListState GetState() const        { return m_state; }
         RHI_Queue* GetQueue() const                        { return m_queue; }
+
+        // layouts
+        static void RemoveLayout(void* image);
+        static RHI_Image_Layout GetImageLayout(void* image, uint32_t mip_index);
 
     private:
         void PreDraw();

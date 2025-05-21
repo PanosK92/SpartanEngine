@@ -1287,7 +1287,7 @@ namespace spartan
     {
     #ifdef _WIN32
         // output is displayed in the viewport, so add a barrier to ensure any work is done before writing to it
-        cmd_list->InsertBarrier(tex_output->GetRhiResource(), tex_output->GetFormat(), 0, 1, 1, tex_output->GetLayout(0), tex_output->GetLayout(0));
+        cmd_list->InsertBarrier(tex_output->GetRhiResource(), tex_output->GetFormat(), 0, 1, 1, tex_output->GetLayout(0));
         cmd_list->InsertPendingBarrierGroup();
 
         // upscale
@@ -1346,8 +1346,10 @@ namespace spartan
 
         // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
 
-         // end the render pass (if there is one) as third-party code takes over here
-        tex_depth->SetLayout(RHI_Image_Layout::General, cmd_list); // working around bug: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/issues/137
+        // sssr does not respect the current resource states and performs its own transitions: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/issues/137
+        // so we have guess what it does and then add barriers that will match what it expects, what a mess...
+        tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
+        tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
         cmd_list->InsertPendingBarrierGroup();
         cmd_list->RenderPassEnd();
 

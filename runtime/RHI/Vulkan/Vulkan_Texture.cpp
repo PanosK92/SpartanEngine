@@ -234,7 +234,7 @@ namespace spartan
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
 
                 // insert memory barrier
-                cmd_list->InsertBarrier(texture->GetRhiResource(), texture->GetFormat(), 0, texture->GetMipCount(), texture->GetDepth(), texture->GetLayout(0), layout);
+                cmd_list->InsertBarrier(texture->GetRhiResource(), texture->GetFormat(), 0, texture->GetMipCount(), texture->GetDepth(), layout);
 
                 // copy the staging buffer to the image
                 vkCmdCopyBufferToImage(
@@ -251,9 +251,6 @@ namespace spartan
 
                 // free staging buffer
                 RHI_Device::MemoryBufferDestroy(staging_buffer);
-
-                // update texture layout
-                texture->SetLayout(layout, nullptr);
             }
         }
 
@@ -281,10 +278,6 @@ namespace spartan
         SP_ASSERT_MSG(m_width  != 0, "Width can't be zero");
         SP_ASSERT_MSG(m_height != 0, "Height can't be zero");
 
-        // as per vulkan
-        RHI_Image_Layout initial_layout = HasExternalMemory() ? RHI_Image_Layout::Max : RHI_Image_Layout::Preinitialized;
-        SetLayout(initial_layout, nullptr);
-
         // create image
         RHI_Device::MemoryTextureCreate(this);
 
@@ -297,9 +290,6 @@ namespace spartan
         // transition to target layout
         if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
         {
-            RHI_Image_Layout target_layout = GetAppropriateLayout(this);
-
-            // transition to the final layout
             uint32_t array_length = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
             cmd_list->InsertBarrier(
                 m_rhi_resource,
@@ -307,18 +297,11 @@ namespace spartan
                 0,            // mip start
                 m_mip_count,  // mip count
                 array_length, // array length
-                m_layout[0],
-                target_layout
+                GetAppropriateLayout(this)
             );
         
             // flush
             RHI_Device::CmdImmediateSubmit(cmd_list);
-
-            // update this texture with the new layout
-            for (uint32_t i = 0; i < m_mip_count; i++)
-            {
-                m_layout[i] = target_layout;
-            }
         }
 
         // create image views
@@ -401,6 +384,7 @@ namespace spartan
         }
 
         // rhi resource
+        RHI_CommandList::RemoveLayout(m_rhi_resource);
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Image, m_rhi_resource);
         m_rhi_resource = nullptr;
     }
