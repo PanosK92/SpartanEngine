@@ -1344,15 +1344,6 @@ namespace spartan
     #ifdef _WIN32
         SP_ASSERT(amd::ssr::context_created);
 
-        // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/stochastic-screen-space-reflections.md
-
-        // sssr does not respect the current resource states and performs its own transitions: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/issues/137
-        // so we have guess what it does and then add barriers that will match what it expects, what a mess...
-        tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
-        tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
-        cmd_list->InsertPendingBarrierGroup();
-        cmd_list->RenderPassEnd();
-
         // set resources
         amd::ssr::description_dispatch.commandList        = amd::to_cmd_list(cmd_list);
         amd::ssr::description_dispatch.color              = amd::to_resource(tex_color,                 L"sssr_color");

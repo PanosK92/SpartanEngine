@@ -732,6 +732,10 @@ namespace spartan
         { 
             cmd_list->BeginTimeblock("ssr");
             {
+                // do any pending barriers as we don't have control over fidelityfx sssr
+                cmd_list->InsertPendingBarrierGroup();
+                cmd_list->RenderPassEnd();
+
                 RHI_VendorTechnology::SSSR_Dispatch(
                     cmd_list,
                     GetOption<float>(Renderer_Option::ResolutionScale),
