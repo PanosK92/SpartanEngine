@@ -1675,55 +1675,102 @@ namespace spartan
         const uint32_t mip_range,
         const uint32_t array_length,
         const RHI_Image_Layout layout_new
-    )
+        )
     {
         SP_ASSERT(image != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(mip_index < rhi_max_mip_count);
         SP_ASSERT(mip_index + mip_range <= rhi_max_mip_count);
-
-        bool is_depth               = format == RHI_Format::D16_Unorm || format == RHI_Format::D32_Float || format == RHI_Format::D32_Float_S8X24_Uint;
-        uint32_t aspect_mask        = get_aspect_mask(format);
-        RHI_Image_Layout layout_old = image_barrier::get_layout(image, mip_index);
-
-        // check if all requested mip levels already have the target layout
-        bool all_mips_match = true;
-        for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
+    
+        bool is_depth        = format == RHI_Format::D16_Unorm || format == RHI_Format::D32_Float || format == RHI_Format::D32_Float_S8X24_Uint;
+        uint32_t aspect_mask = get_aspect_mask(format);
+    
+        // get layouts for all mips in the range
+        vector<RHI_Image_Layout> layouts(mip_range);
+        bool all_mips_same_layout = true;
+        RHI_Image_Layout first_layout = image_barrier::get_layout(image, mip_index);
+        for (uint32_t i = 0; i < mip_range; i++)
         {
-            RHI_Image_Layout layout_old = image_barrier::get_layout(image, i);
-            if (layout_old != layout_new)
+            layouts[i] = image_barrier::get_layout(image, mip_index + i);
+            if (layouts[i] != first_layout)
+            {
+                all_mips_same_layout = false;
+            }
+            if (layouts[i] == layout_new)
+            {
+                all_mips_same_layout = false;
+            }
+        }
+    
+        // early exit if all mips match target layout
+        bool all_mips_match = true;
+        for (const auto& layout : layouts)
+        {
+            if (layout != layout_new)
             {
                 all_mips_match = false;
                 break;
             }
         }
-
-        // early exit only if all requested mip levels already have the target layout
         if (all_mips_match)
             return;
-
+    
+        // single barrier if all mips have the same layout
+        vector<VkImageMemoryBarrier2> barriers;
+        if (all_mips_same_layout)
+        {
+            barriers.push_back(image_barrier::create(
+                first_layout, layout_new, image, aspect_mask, mip_index, mip_range, array_length, is_depth, m_pso
+            ));
+        }
+        else
+        {
+            // separate barriers for differing layouts
+            for (uint32_t i = 0; i < mip_range; i++)
+            {
+                if (layouts[i] != layout_new)
+                {
+                    barriers.push_back(image_barrier::create(
+                        layouts[i], layout_new, image, aspect_mask, mip_index + i, 1, array_length, is_depth, m_pso
+                    ));
+                }
+            }
+        }
+    
+        if (barriers.empty())
+            return;
+    
+        // defer or execute barriers
         if (!m_render_pass_active)
         {
-            bool immediate_barrier = layout_old == RHI_Image_Layout::Max                  ||
-                                     layout_old == RHI_Image_Layout::Preinitialized       ||
-                                     layout_old == RHI_Image_Layout::Transfer_Source      || layout_new == RHI_Image_Layout::Transfer_Source      ||
-                                     layout_old == RHI_Image_Layout::Transfer_Destination || layout_new == RHI_Image_Layout::Transfer_Destination ||
-                                     layout_old == RHI_Image_Layout::Present_Source       || layout_new == RHI_Image_Layout::Present_Source;
-
+            bool immediate_barrier = first_layout == RHI_Image_Layout::Max ||
+                                     first_layout == RHI_Image_Layout::Preinitialized ||
+                                     first_layout == RHI_Image_Layout::Transfer_Source || layout_new == RHI_Image_Layout::Transfer_Source ||
+                                     first_layout == RHI_Image_Layout::Transfer_Destination || layout_new == RHI_Image_Layout::Transfer_Destination ||
+                                     first_layout == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
+    
             if (!immediate_barrier)
-            { 
-                m_image_barriers.emplace_back(image, aspect_mask, mip_index, mip_range, array_length, layout_old, layout_new, is_depth);
+            {
+                // store barriers with RHI_Image_Layout
+                for (const auto& barrier : barriers)
+                {
+                    // use layouts[i] directly, no need to convert back from VkImageLayout
+                    RHI_Image_Layout old_layout = layouts[barrier.subresourceRange.baseMipLevel - mip_index];
+                    m_image_barriers.emplace_back(
+                        image, aspect_mask, barrier.subresourceRange.baseMipLevel, barrier.subresourceRange.levelCount,
+                        array_length, old_layout, layout_new, is_depth
+                    );
+                }
                 image_barrier::set_layout(image, mip_index, mip_range, layout_new);
                 return;
             }
         }
-
-        VkDependencyInfo dependency_info        = {};
-        dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
-        dependency_info.imageMemoryBarrierCount = 1;
-        VkImageMemoryBarrier2 barrier           = image_barrier::create(layout_old, layout_new, image, aspect_mask, mip_index, mip_range, array_length, is_depth, m_pso);
-        dependency_info.pImageMemoryBarriers    = &barrier;
-
+    
+        VkDependencyInfo dependency_info = {};
+        dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+        dependency_info.imageMemoryBarrierCount = static_cast<uint32_t>(barriers.size());
+        dependency_info.pImageMemoryBarriers = barriers.data();
+    
         RenderPassEnd();
         vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
