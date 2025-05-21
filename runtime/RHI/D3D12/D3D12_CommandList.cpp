@@ -373,7 +373,6 @@ namespace spartan
         const uint32_t mip_index,
         const uint32_t mip_range,
         const uint32_t array_length,
-        const RHI_Image_Layout layout_old,
         const RHI_Image_Layout layout_new
     )
     {
@@ -388,5 +387,10 @@ namespace spartan
     void RHI_CommandList::InsertPendingBarrierGroup()
     {
 
+    }
+
+    RHI_Image_Layout RHI_CommandList::GetImageLayout(void* image, const uint32_t mip_index)
+    {
+        return RHI_Image_Layout::Max;
     }
 }

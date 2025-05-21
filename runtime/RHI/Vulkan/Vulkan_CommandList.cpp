@@ -1687,7 +1687,7 @@ namespace spartan
     
         // get layouts for all mips in the range
         vector<RHI_Image_Layout> layouts(mip_range);
-        bool all_mips_same_layout = true;
+        bool all_mips_same_layout     = true;
         RHI_Image_Layout first_layout = image_barrier::get_layout(image, mip_index);
         for (uint32_t i = 0; i < mip_range; i++)
         {
@@ -1735,41 +1735,35 @@ namespace spartan
                     ));
                 }
             }
-        }
-    
+        }   
         if (barriers.empty())
             return;
     
-        // defer or execute barriers
+        // defer barriers and group into one (if eligible)
         if (!m_render_pass_active)
         {
-            bool immediate_barrier = first_layout == RHI_Image_Layout::Max ||
-                                     first_layout == RHI_Image_Layout::Preinitialized ||
-                                     first_layout == RHI_Image_Layout::Transfer_Source || layout_new == RHI_Image_Layout::Transfer_Source ||
+            bool immediate_barrier = first_layout == RHI_Image_Layout::Max                  ||
+                                     first_layout == RHI_Image_Layout::Preinitialized       ||
+                                     first_layout == RHI_Image_Layout::Transfer_Source      || layout_new == RHI_Image_Layout::Transfer_Source      ||
                                      first_layout == RHI_Image_Layout::Transfer_Destination || layout_new == RHI_Image_Layout::Transfer_Destination ||
-                                     first_layout == RHI_Image_Layout::Present_Source || layout_new == RHI_Image_Layout::Present_Source;
+                                     first_layout == RHI_Image_Layout::Present_Source       || layout_new == RHI_Image_Layout::Present_Source;
     
             if (!immediate_barrier)
             {
-                // store barriers with RHI_Image_Layout
                 for (const auto& barrier : barriers)
                 {
-                    // use layouts[i] directly, no need to convert back from VkImageLayout
                     RHI_Image_Layout old_layout = layouts[barrier.subresourceRange.baseMipLevel - mip_index];
-                    m_image_barriers.emplace_back(
-                        image, aspect_mask, barrier.subresourceRange.baseMipLevel, barrier.subresourceRange.levelCount,
-                        array_length, old_layout, layout_new, is_depth
-                    );
+                    m_image_barriers.emplace_back(image, aspect_mask, barrier.subresourceRange.baseMipLevel, barrier.subresourceRange.levelCount,array_length, old_layout, layout_new, is_depth);
                 }
                 image_barrier::set_layout(image, mip_index, mip_range, layout_new);
                 return;
             }
         }
     
-        VkDependencyInfo dependency_info = {};
-        dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+        VkDependencyInfo dependency_info        = {};
+        dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
         dependency_info.imageMemoryBarrierCount = static_cast<uint32_t>(barriers.size());
-        dependency_info.pImageMemoryBarriers = barriers.data();
+        dependency_info.pImageMemoryBarriers    = barriers.data();
     
         RenderPassEnd();
         vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
