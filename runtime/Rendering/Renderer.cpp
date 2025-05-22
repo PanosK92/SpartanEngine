@@ -263,12 +263,13 @@ namespace spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // manually invoke the deconstructor so that ParseDeletionQueue()
-        // releases their rhi resources before device destruction
+        // wait for all commands list, from all queues,to finish executing
+        RHI_Device::QueueWaitAll();
+
+        // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
         {
             DestroyResources();
-
-            swapchain            = nullptr;
+            swapchain             = nullptr;
             m_lines_vertex_buffer = nullptr;
         }
 
