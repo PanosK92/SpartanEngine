@@ -1067,12 +1067,12 @@ namespace spartan
                                 shared_ptr<Material> material = make_shared<Material>();
                                 {
                                     material->SetObjectName("tree_leaf");
-                                    material->SetTexture(MaterialTextureType::Color,              "project\\terrain\\model_tree\\Twig_Base_Material_2.png");
-                                    material->SetTexture(MaterialTextureType::Normal,             "project\\terrain\\model_tree\\Twig_Normal.png");
-                                    material->SetTexture(MaterialTextureType::AlphaMask,          "project\\terrain\\model_tree\\Twig_Opacity_Map.jpg");
-                                    material->SetProperty(MaterialProperty::WindAnimation,        1.0f);
-                                    material->SetProperty(MaterialProperty::ColorVariationFromInstance,    1.0f);
-                                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                                    material->SetTexture(MaterialTextureType::Color,                    "project\\terrain\\model_tree\\Twig_Base_Material_2.png");
+                                    material->SetTexture(MaterialTextureType::Normal,                   "project\\terrain\\model_tree\\Twig_Normal.png");
+                                    material->SetTexture(MaterialTextureType::AlphaMask,                "project\\terrain\\model_tree\\Twig_Opacity_Map.jpg");
+                                    material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
+                                    material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
+                                    material->SetProperty(MaterialProperty::SubsurfaceScattering,       1.0f);
                                     // create a file path for this material (required for the material to be able to be cached by the resource cache)
                                     material->SetResourceFilePath("project\\terrain\\tree_leaf_material" + string(EXTENSION_MATERIAL));
                                 }
@@ -1150,7 +1150,7 @@ namespace spartan
                         {
                             mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
                             mesh->SetLodDropoff(MeshLodDropoff::Linear); // linear dropoff - more aggressive
-
+                    
                             // create sub-mesh and add three lods for the grass blade
                             uint32_t sub_mesh_index = 0;
                         
@@ -1169,11 +1169,11 @@ namespace spartan
                                 geometry_generation::generate_grass_blade(&vertices, &indices, 1); // medium detail
                                 mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
                             }
-
+                    
                             mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
                             mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
                         }
-
+                    
                         // generate instances
                         vector<Matrix> instances;
                         terrain->GenerateTransforms(&instances, grass_blade_count, TerrainProp::Grass);

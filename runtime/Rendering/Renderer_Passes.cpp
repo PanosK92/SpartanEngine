@@ -334,7 +334,7 @@ namespace spartan
                         cmd_list->PushConstants(m_pcb_pass_cpu);
     
                         // set buffers
-                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
                         // draw
@@ -343,8 +343,8 @@ namespace spartan
                             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
                                 uint32_t instance_index = renderable->GetInstanceGroupStartIndex(group_index);
-                                uint32_t instance_count       = renderable->GetInstanceGroupCount(group_index);
-                                instance_count                = min(instance_count, renderable->GetInstanceCount() - instance_index);
+                                uint32_t instance_count = renderable->GetInstanceGroupCount(group_index);
+                                instance_count          = min(instance_count, renderable->GetInstanceCount() - instance_index);
                                 if (instance_count == 0)
                                     continue;
                                 
@@ -535,9 +535,11 @@ namespace spartan
                 {
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
+
                     if (renderable->HasInstancing())
                     {
+                        SP_ASSERT(draw_call.instance_count < renderable->GetInstanceBuffer()->GetElementCount());
+
                         cmd_list->DrawIndexed(
                             renderable->GetIndexCount(draw_call.lod_index),
                             renderable->GetIndexOffset(draw_call.lod_index),
