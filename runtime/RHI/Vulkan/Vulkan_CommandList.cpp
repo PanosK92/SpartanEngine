@@ -636,12 +636,12 @@ namespace spartan
             if (swapchain)
             {
                 // transition to the appropriate layout
-                swapchain->SetLayout(RHI_Image_Layout::Attachment, this);
+                InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Attachment);
 
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                 color_attachment.imageView                 = static_cast<VkImageView>(swapchain->GetRhiRtv());
-                color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(swapchain->GetLayout())];
+                color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(RHI_Image_Layout::Attachment)];
                 color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -1047,7 +1047,7 @@ namespace spartan
 
         // transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Source,           this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
+        InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Transfer_Destination);
 
         // deduce filter
         bool width_equal  = source->GetWidth() == destination->GetWidth();
@@ -1065,7 +1065,7 @@ namespace spartan
 
         // transition to the initial layouts
         source->SetLayout(source_layout_initial, this);
-        destination->SetLayout(RHI_Image_Layout::Present_Source, this);
+        InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -1149,7 +1149,7 @@ namespace spartan
         // transition to blit appropriate layouts
         RHI_Image_Layout layout_initial_source = source->GetLayout(0);
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
-        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
+        InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Transfer_Destination);
 
         // blit
         vkCmdCopyImage(
@@ -1161,7 +1161,7 @@ namespace spartan
 
         // transition to the initial layout
         source->SetLayout(layout_initial_source, this);
-        destination->SetLayout(RHI_Image_Layout::Present_Source, this);
+        InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const

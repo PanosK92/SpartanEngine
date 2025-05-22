@@ -69,10 +69,6 @@ namespace spartan
         void* GetRhiRt() const          { return m_rhi_rt[m_image_index]; }
         void* GetRhiRtv() const         { return m_rhi_rtv[m_image_index]; }
 
-        // layout
-        RHI_Image_Layout GetLayout() const;
-        void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
-
         // misc
         RHI_SyncPrimitive* GetImageAcquiredSemaphore() const { return m_image_acquired_semaphore[m_image_index].get(); }
 

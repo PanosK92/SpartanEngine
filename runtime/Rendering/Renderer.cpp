@@ -80,7 +80,7 @@ namespace spartan
         RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
 
         // rhi resources
-        shared_ptr<RHI_SwapChain> swap_chain;
+        shared_ptr<RHI_SwapChain> swapchain;
         const uint8_t swap_chain_buffer_count = 2;
 
         // misc
@@ -190,7 +190,7 @@ namespace spartan
 
         // swap chain
         {
-            swap_chain = make_shared<RHI_SwapChain>
+            swapchain = make_shared<RHI_SwapChain>
             (
                 Window::GetHandleSDL(),
                 Window::GetWidth(),
@@ -203,11 +203,11 @@ namespace spartan
                 "renderer"
             );
 
-            SetOption(Renderer_Option::Hdr, swap_chain->IsHdr() ? 1.0f : 0.0f);
+            SetOption(Renderer_Option::Hdr, swapchain->IsHdr() ? 1.0f : 0.0f);
         }
 
         // tonemapping
-        if (!swap_chain->IsHdr())
+        if (!swapchain->IsHdr())
         {
             SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::NautilusACES));
         }
@@ -268,7 +268,7 @@ namespace spartan
         {
             DestroyResources();
 
-            swap_chain            = nullptr;
+            swapchain            = nullptr;
             m_lines_vertex_buffer = nullptr;
         }
 
@@ -281,7 +281,7 @@ namespace spartan
     void Renderer::Tick()
     {
         // update logic
-        swap_chain->AcquireNextImage();
+        swapchain->AcquireNextImage();
         RHI_Device::Tick(frame_num);
         RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
         dynamic_resolution();
@@ -704,16 +704,16 @@ namespace spartan
             }
             else if (option == Renderer_Option::Hdr)
             {
-                if (swap_chain)
+                if (swapchain)
                 { 
-                    swap_chain->SetHdr(value == 1.0f);
+                    swapchain->SetHdr(value == 1.0f);
                 }
             }
             else if (option == Renderer_Option::Vsync)
             {
-                if (swap_chain)
+                if (swapchain)
                 {
-                    swap_chain->SetVsync(value == 1.0f);
+                    swapchain->SetVsync(value == 1.0f);
                 }
             }
             else if (option == Renderer_Option::PerformanceMetrics)
@@ -759,13 +759,13 @@ namespace spartan
 
     RHI_SwapChain* Renderer::GetSwapChain()
     {
-        return swap_chain.get();
+        return swapchain.get();
     }
     
     void Renderer::BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture)
     {
         cmd_list->BeginMarker("blit_to_back_buffer");
-        cmd_list->Blit(texture, swap_chain.get());
+        cmd_list->Blit(texture, swapchain.get());
         cmd_list->EndMarker();
     }
 
@@ -775,9 +775,9 @@ namespace spartan
         {
             if (m_cmd_list_present->GetState() == RHI_CommandListState::Recording)
             {
-                swap_chain->SetLayout(RHI_Image_Layout::Present_Source, m_cmd_list_present);
-                m_cmd_list_present->Submit(swap_chain->GetImageAcquiredSemaphore());
-                swap_chain->Present(m_cmd_list_present);
+                m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+                m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore());
+                swapchain->Present(m_cmd_list_present);
             }
         }
         Profiler::TimeBlockEnd();
