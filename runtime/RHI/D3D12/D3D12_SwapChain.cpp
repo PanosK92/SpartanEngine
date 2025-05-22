@@ -169,14 +169,4 @@ namespace spartan
     {
         return false;
     }
-
-    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
-    {
-
-    }
-
-    RHI_Image_Layout RHI_SwapChain::GetLayout() const
-    {
-        return RHI_Image_Layout::Max;
-    }
 }
