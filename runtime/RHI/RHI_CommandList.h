@@ -150,6 +150,7 @@ namespace spartan
             const uint32_t array_length,
             const RHI_Image_Layout layout_new
         );
+        void InsertBarrierReadWrite(RHI_Texture* texture);
         void InsertBarrierReadWrite(RHI_Buffer* buffer);
         void InsertPendingBarrierGroup();
 

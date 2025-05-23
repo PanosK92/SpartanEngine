@@ -1549,6 +1549,8 @@ namespace spartan
 
         cmd_list->BeginMarker("downscale");
         {
+            cmd_list->InsertBarrierReadWrite(GetBuffer(Renderer_Buffer::SpdCounter));
+
             // set pipeline state
             RHI_PipelineState pso;
             pso.name             = "downscale";
