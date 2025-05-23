@@ -87,10 +87,12 @@ namespace spartan
     namespace image_barrier
     {
         static unordered_map<void*, array<RHI_Image_Layout, rhi_max_mip_count>> image_layouts;
+        static mutex image_layouts_mutex;
 
         RHI_Image_Layout get_layout(void* image, uint32_t mip_index)
         {
             SP_ASSERT(image != nullptr);
+            lock_guard<mutex> lock(image_layouts_mutex);
 
             auto it = image_layouts.find(image);
             if (it == image_layouts.end())
@@ -105,6 +107,7 @@ namespace spartan
             SP_ASSERT(image != nullptr);
             SP_ASSERT(mip_index < rhi_max_mip_count);
             SP_ASSERT(mip_index + mip_range <= rhi_max_mip_count);
+            lock_guard<mutex> lock(image_layouts_mutex);
 
             auto it = image_layouts.find(image);
             if (it == image_layouts.end())
@@ -124,6 +127,7 @@ namespace spartan
 
         void remove_layout(void* image)
         {
+            lock_guard<mutex> lock(image_layouts_mutex);
             image_layouts.erase(image);
         }
 
@@ -1788,7 +1792,7 @@ namespace spartan
         barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
         barrier.subresourceRange.aspectMask     = get_aspect_mask(texture->GetFormat());
         barrier.subresourceRange.baseMipLevel   = 0;
-        barrier.subresourceRange.levelCount     = texture->GetMipCount(); 
+        barrier.subresourceRange.levelCount     = texture->GetMipCount();
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount     = texture->GetDepth();
     
