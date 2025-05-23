@@ -62,9 +62,17 @@ namespace spartan
 
     void RHI_CommandList::Dispatch(RHI_Texture* texture)
     {
+        // compute dimensiosn and dispatch
         const uint32_t thread_group_count   = 8;
         const uint32_t thread_group_count_x = (texture->GetWidth() + thread_group_count - 1) / thread_group_count;
         const uint32_t thread_group_count_y = (texture->GetHeight() + thread_group_count - 1) / thread_group_count;
         Dispatch(thread_group_count_x, thread_group_count_y);
+
+        // synchronize writes to the texture
+        if (GetImageLayout(texture->GetRhiResource(), 0) == RHI_Image_Layout::General)
+        { 
+            InsertBarrierReadWrite(texture);
+            InsertPendingBarrierGroup();
+        }
     }
 }
