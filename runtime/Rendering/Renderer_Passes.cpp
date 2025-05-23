@@ -730,6 +730,8 @@ namespace spartan
     {
         static bool cleared = false;
 
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::ssr);
+
         if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
         { 
             cmd_list->BeginTimeblock("ssr");
@@ -747,7 +749,7 @@ namespace spartan
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
                     GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut),
-                    GetRenderTarget(Renderer_RenderTarget::ssr)
+                    tex_out
                 );
 
                 cleared = false;
@@ -756,9 +758,12 @@ namespace spartan
         }
         else if (!cleared)
         {
-            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::ssr), Color::standard_transparent);
+            cmd_list->ClearTexture(tex_out, Color::standard_transparent);
             cleared = true;
         }
+
+        // wait for vendor tech to finish writing to the texture
+        cmd_list->InsertBarrierReadWrite(tex_out);
     }
 
     void Renderer::Pass_Sss(RHI_CommandList* cmd_list)
@@ -1487,6 +1492,9 @@ namespace spartan
             {
                 cmd_list->Blit(tex_in, tex_out, false, GetOption<float>(Renderer_Option::ResolutionScale));
             }
+
+            // wait for vendor tech to finish writing to the texture
+            cmd_list->InsertBarrierReadWrite(tex_out);
 
             // used for refraction by the transparent passes, so generate mips to emulate roughness
             Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
