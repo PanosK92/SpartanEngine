@@ -1777,7 +1777,8 @@ namespace spartan
 
     void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture)
     {
-        RHI_Image_Layout layout = image_barrier::get_layout(texture->GetRhiResource(), 0);
+        VkDependencyInfo dependency_info = {};
+        dependency_info.sType            = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
 
         VkImageMemoryBarrier2 barrier           = {};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -1785,23 +1786,46 @@ namespace spartan
         barrier.srcAccessMask                   = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT; // wait for all previous reads and writes
         barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;                       // allow all future stages
         barrier.dstAccessMask                   = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT; // allow all future reads and writes
-        barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)];
-        barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)];
         barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
         barrier.subresourceRange.aspectMask     = get_aspect_mask(texture->GetFormat());
-        barrier.subresourceRange.baseMipLevel   = 0;
-        barrier.subresourceRange.levelCount     = texture->GetMipCount();
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount     = texture->GetDepth();
+        VkImageMemoryBarrier2 barriers[rhi_max_mip_count];
+
+        if (texture->HasPerMipViews())
+        { 
+            for (uint32_t mip = 0; mip < texture->GetMipCount(); ++mip)
+            {
+                RHI_Image_Layout layout = image_barrier::get_layout(texture->GetRhiResource(), mip);
+
+                barrier.oldLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
+                barrier.newLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
+                barrier.subresourceRange.baseMipLevel = mip;
+                barrier.subresourceRange.levelCount   = 1;
+
+                barriers[mip] = barrier;
+            }
     
-        VkDependencyInfo dependencyInfo        = {};
-        dependencyInfo.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.imageMemoryBarrierCount = 1;
-        dependencyInfo.pImageMemoryBarriers    = &barrier;
-    
-        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependencyInfo);
+            dependency_info.imageMemoryBarrierCount = texture->GetMipCount();
+            dependency_info.pImageMemoryBarriers    = barriers;
+        }
+        else
+        {
+            RHI_Image_Layout layout = image_barrier::get_layout(texture->GetRhiResource(), 0);
+
+            barrier.oldLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
+            barrier.newLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount   = texture->GetMipCount();
+
+            dependency_info.imageMemoryBarrierCount = 1;
+            dependency_info.pImageMemoryBarriers    = &barrier;
+        }
+
+        RenderPassEnd();
+        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
     }
 
@@ -1817,12 +1841,13 @@ namespace spartan
         barrier.offset                 = 0;
         barrier.size                   = VK_WHOLE_SIZE; 
 
-        VkDependencyInfo dependencyInfo         = {};
-        dependencyInfo.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.bufferMemoryBarrierCount = 1;
-        dependencyInfo.pBufferMemoryBarriers    = &barrier;
+        VkDependencyInfo dependency_info         = {};
+        dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependency_info.bufferMemoryBarrierCount = 1;
+        dependency_info.pBufferMemoryBarriers    = &barrier;
 
-        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependencyInfo);
+        RenderPassEnd();
+        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         Profiler::m_rhi_pipeline_barriers++;
     }
 

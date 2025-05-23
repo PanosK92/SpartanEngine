@@ -897,6 +897,7 @@ namespace spartan
                         static_cast<uint32_t>(ceil(static_cast<float>(resolution_x) / 8)),
                         static_cast<uint32_t>(ceil(static_cast<float>(resolution_y / 2.0f) / 8)) // dispatch top half only
                     );
+                    cmd_list->InsertBarrierReadWrite(tex_environment);
                 }
             }
         }
