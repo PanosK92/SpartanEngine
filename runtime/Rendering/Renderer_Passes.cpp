@@ -1114,6 +1114,9 @@ namespace spartan
             RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
             cmd_list->Dispatch(tex_brdf_specular_lut);
+
+            // light pass and ssr pass both read it as an srv, so transition once here
+            cmd_list->InsertBarrier(tex_brdf_specular_lut->GetRhiResource(), tex_brdf_specular_lut->GetFormat(), 0, 1, 1, RHI_Image_Layout::Shader_Read);
         }
         cmd_list->EndTimeblock();
     }

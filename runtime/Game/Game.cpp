@@ -1044,100 +1044,100 @@ namespace spartan
                     }
 
                     // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
-                    //uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                    //if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_tree\\tree.fbx", flags))
-                    //{
-                    //    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                    //    entity->SetObjectName("tree");
-                    //    entity->SetScale(0.05f);
-                    //
-                    //    // generate instances
-                    //    {
-                    //        vector<Matrix> instances;
-                    //        terrain->GenerateTransforms(&instances, tree_count, TerrainProp::Tree, -3.0f);
-                    //        
-                    //        if (Entity* leaf = entity->GetChildByIndex(1))
-                    //        {
-                    //            Renderable* renderable = leaf->GetComponent<Renderable>();
-                    //
-                    //            renderable->SetInstances(instances);
-                    //            renderable->SetMaxRenderDistance(render_distance_trees);
-                    //
-                    //             // create material
-                    //            shared_ptr<Material> material = make_shared<Material>();
-                    //            {
-                    //                material->SetObjectName("tree_leaf");
-                    //                material->SetTexture(MaterialTextureType::Color,                    "project\\terrain\\model_tree\\Twig_Base_Material_2.png");
-                    //                material->SetTexture(MaterialTextureType::Normal,                   "project\\terrain\\model_tree\\Twig_Normal.png");
-                    //                material->SetTexture(MaterialTextureType::AlphaMask,                "project\\terrain\\model_tree\\Twig_Opacity_Map.jpg");
-                    //                material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
-                    //                material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
-                    //                material->SetProperty(MaterialProperty::SubsurfaceScattering,       1.0f);
-                    //                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                    //                material->SetResourceFilePath("project\\terrain\\tree_leaf_material" + string(EXTENSION_MATERIAL));
-                    //            }
-                    //
-                    //            renderable->SetMaterial(material);
-                    //        }
-                    //        
-                    //        if (Entity* body =  entity->GetChildByIndex(0))
-                    //        {
-                    //            Renderable* renderable = body->GetComponent<Renderable>();
-                    //
-                    //            renderable->SetInstances(instances);
-                    //            renderable->SetMaxRenderDistance(render_distance_trees);
-                    //
-                    //            // create material
-                    //            shared_ptr<Material> material = make_shared<Material>();
-                    //            {
-                    //                material->SetObjectName("tree_body");
-                    //                material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_tree\\tree_bark_diffuse.png");
-                    //                material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_tree\\tree_bark_normal.png");
-                    //                material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\model_tree\\tree_bark_roughness.png");
-                    //                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                    //                material->SetResourceFilePath("project\\terrain\\tree_body_material" + string(EXTENSION_MATERIAL));
-                    //            }
-                    //            renderable->SetMaterial(material);
-                    //        }
-                    //
-                    //    }
-                    //}
+                    uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_tree\\tree.fbx", flags))
+                    {
+                        shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                        entity->SetObjectName("tree");
+                        entity->SetScale(0.05f);
+                    
+                        // generate instances
+                        {
+                            vector<Matrix> instances;
+                            terrain->GenerateTransforms(&instances, tree_count, TerrainProp::Tree, -3.0f);
+                            
+                            if (Entity* leaf = entity->GetChildByIndex(1))
+                            {
+                                Renderable* renderable = leaf->GetComponent<Renderable>();
+                    
+                                renderable->SetInstances(instances);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                    
+                                 // create material
+                                shared_ptr<Material> material = make_shared<Material>();
+                                {
+                                    material->SetObjectName("tree_leaf");
+                                    material->SetTexture(MaterialTextureType::Color,                    "project\\terrain\\model_tree\\Twig_Base_Material_2.png");
+                                    material->SetTexture(MaterialTextureType::Normal,                   "project\\terrain\\model_tree\\Twig_Normal.png");
+                                    material->SetTexture(MaterialTextureType::AlphaMask,                "project\\terrain\\model_tree\\Twig_Opacity_Map.jpg");
+                                    material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
+                                    material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
+                                    material->SetProperty(MaterialProperty::SubsurfaceScattering,       1.0f);
+                                    // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                                    material->SetResourceFilePath("project\\terrain\\tree_leaf_material" + string(EXTENSION_MATERIAL));
+                                }
+                    
+                                renderable->SetMaterial(material);
+                            }
+                            
+                            if (Entity* body =  entity->GetChildByIndex(0))
+                            {
+                                Renderable* renderable = body->GetComponent<Renderable>();
+                    
+                                renderable->SetInstances(instances);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                    
+                                // create material
+                                shared_ptr<Material> material = make_shared<Material>();
+                                {
+                                    material->SetObjectName("tree_body");
+                                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_tree\\tree_bark_diffuse.png");
+                                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_tree\\tree_bark_normal.png");
+                                    material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\model_tree\\tree_bark_roughness.png");
+                                    // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                                    material->SetResourceFilePath("project\\terrain\\tree_body_material" + string(EXTENSION_MATERIAL));
+                                }
+                                renderable->SetMaterial(material);
+                            }
+                    
+                        }
+                    }
 
                     // rock
-                    //if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_rock\\rock.obj"))
-                    //{
-                    //    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                    //    entity->SetObjectName("rock");
-                    //    entity->SetScale(0.7f);
-                    //
-                    //    // generate instances
-                    //    {
-                    //        vector<Matrix> instances;
-                    //        terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree, -2.0f);
-                    //        
-                    //        if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
-                    //        {
-                    //            Renderable* renderable = rock_entity->GetComponent<Renderable>();
-                    //            renderable->SetInstances(instances);
-                    //            renderable->SetMaxRenderDistance(render_distance_trees);
-                    //            renderable->SetFlag(RenderableFlags::CastsShadows, false); // small things are taken care of from screen space shadows
-                    //
-                    //            // create material
-                    //            shared_ptr<Material> material = make_shared<Material>();
-                    //            {
-                    //                material->SetObjectName("rock");
-                    //                material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_rock\\albedo.jpg");
-                    //                material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_rock\\normal.jpg");
-                    //                material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\model_rock\\occlusion.jpg");
-                    //                material->SetProperty(MaterialProperty::Roughness,1.0f);
-                    //                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                    //                const string file_path = "project\\terrain\\rock_material" + string(EXTENSION_MATERIAL);
-                    //                material->SetResourceFilePath(file_path);
-                    //            }
-                    //            renderable->SetMaterial(material);
-                    //        }
-                    //    }
-                    //}
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_rock\\rock.obj"))
+                    {
+                        shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                        entity->SetObjectName("rock");
+                        entity->SetScale(0.7f);
+                    
+                        // generate instances
+                        {
+                            vector<Matrix> instances;
+                            terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree, -2.0f);
+                            
+                            if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
+                            {
+                                Renderable* renderable = rock_entity->GetComponent<Renderable>();
+                                renderable->SetInstances(instances);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false); // small things are taken care of from screen space shadows
+                    
+                                // create material
+                                shared_ptr<Material> material = make_shared<Material>();
+                                {
+                                    material->SetObjectName("rock");
+                                    material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_rock\\albedo.jpg");
+                                    material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_rock\\normal.jpg");
+                                    material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\model_rock\\occlusion.jpg");
+                                    material->SetProperty(MaterialProperty::Roughness,1.0f);
+                                    // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                                    const string file_path = "project\\terrain\\rock_material" + string(EXTENSION_MATERIAL);
+                                    material->SetResourceFilePath(file_path);
+                                }
+                                renderable->SetMaterial(material);
+                            }
+                        }
+                    }
 
                     // grass
                     {
