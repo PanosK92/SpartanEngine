@@ -451,7 +451,7 @@ namespace
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("Default worlds", &visible_download_prompt, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    ImGui::Text("No default worlds are present. Would you like to download them?");
+                    ImGui::Text("No default worlds are present. Would you like to download them? A python script will be used, so please ensure python is installed.");
                     ImGui::Separator();
             
                     // calculate the offset to center the group

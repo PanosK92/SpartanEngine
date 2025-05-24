@@ -1645,10 +1645,10 @@ namespace spartan
             // second barrier: ensure the write completes before all subsequent stages
             VkBufferMemoryBarrier2 barrier_after = {};
             barrier_after.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-            barrier_after.srcStageMask           = VK_PIPELINE_STAGE_2_TRANSFER_BIT;      // Stage of the write
-            barrier_after.srcAccessMask          = VK_ACCESS_2_TRANSFER_WRITE_BIT;         // Access type of the write
-            barrier_after.dstStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;  // Broad: cover all subsequent stages
-            barrier_after.dstAccessMask          = 0;                                      // No specific access needed (execution dependency)
+            barrier_after.srcStageMask           = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            barrier_after.srcAccessMask          = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            barrier_after.dstStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            barrier_after.dstAccessMask          = 0;
             barrier_after.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
             barrier_after.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
             barrier_after.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
@@ -1684,7 +1684,7 @@ namespace spartan
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info_after);
             Profiler::m_rhi_pipeline_barriers++;
         }
-        else // big bindless arrays
+        else // big bindless arrays (updating these is up to the renderer)
         {
             void* mapped_data = static_cast<char*>(buffer->GetMappedData()) + offset;
             memcpy(mapped_data, data, size);
