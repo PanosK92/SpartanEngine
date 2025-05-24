@@ -1608,8 +1608,31 @@ namespace spartan
 
         if (synchronized_update)
         {
+            // end any active render pass before updating the buffer
             RenderPassEnd();
-
+        
+            // first barrier: ensure prior reads complete before the write
+            VkBufferMemoryBarrier2 barrier_before = {};
+            barrier_before.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier_before.srcStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            barrier_before.srcAccessMask          = VK_ACCESS_2_MEMORY_READ_BIT;
+            barrier_before.dstStageMask           = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            barrier_before.dstAccessMask          = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            barrier_before.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier_before.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier_before.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
+            barrier_before.offset                 = offset;
+            barrier_before.size                   = size;
+        
+            VkDependencyInfo dependency_info_before = {};
+            dependency_info_before.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info_before.bufferMemoryBarrierCount = 1;
+            dependency_info_before.pBufferMemoryBarriers    = &barrier_before;
+        
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info_before);
+            Profiler::m_rhi_pipeline_barriers++;
+        
+            // update the buffer
             vkCmdUpdateBuffer
             (
                 static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -1618,45 +1641,47 @@ namespace spartan
                 size,
                 data
             );
-    
-            VkBufferMemoryBarrier2 barrier = {};
-            barrier.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
-            barrier.srcStageMask           = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            barrier.srcAccessMask          = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            barrier.dstStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-            barrier.dstAccessMask          = VK_ACCESS_TRANSFER_WRITE_BIT; // write after write
-            barrier.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
-            barrier.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
-            barrier.offset                 = offset;
-            barrier.size                   = size;
-    
+        
+            // second barrier: ensure the write completes before all subsequent stages
+            VkBufferMemoryBarrier2 barrier_after = {};
+            barrier_after.sType                  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier_after.srcStageMask           = VK_PIPELINE_STAGE_2_TRANSFER_BIT;      // Stage of the write
+            barrier_after.srcAccessMask          = VK_ACCESS_2_TRANSFER_WRITE_BIT;         // Access type of the write
+            barrier_after.dstStageMask           = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;  // Broad: cover all subsequent stages
+            barrier_after.dstAccessMask          = 0;                                      // No specific access needed (execution dependency)
+            barrier_after.srcQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier_after.dstQueueFamilyIndex    = VK_QUEUE_FAMILY_IGNORED;
+            barrier_after.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
+            barrier_after.offset                 = offset;
+            barrier_after.size                   = size;
+        
+            // adjust dstAccessMask for subsequent accesses based on buffer type
             switch (buffer->GetType())
             {
                 case RHI_Buffer_Type::Vertex:
                 case RHI_Buffer_Type::Instance:
-                    barrier.dstAccessMask |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Index:
-                    barrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_INDEX_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Storage:
-                    barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT;
                     break;
                 case RHI_Buffer_Type::Constant:
-                    barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_UNIFORM_READ_BIT;
                     break;
                 default:
                     SP_ASSERT_MSG(false, "Unknown buffer type");
                     break;
             }
-     
-            VkDependencyInfo dependency_info         = {};
-            dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
-            dependency_info.bufferMemoryBarrierCount = 1;
-            dependency_info.pBufferMemoryBarriers    = &barrier;
-
-            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
+        
+            VkDependencyInfo dependency_info_after          = {};
+            dependency_info_after.sType                     = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info_after.bufferMemoryBarrierCount  = 1;
+            dependency_info_after.pBufferMemoryBarriers     = &barrier_after;
+        
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info_after);
             Profiler::m_rhi_pipeline_barriers++;
         }
         else // big bindless arrays

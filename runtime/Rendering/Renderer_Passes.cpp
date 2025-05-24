@@ -737,6 +737,7 @@ namespace spartan
             cmd_list->BeginTimeblock("ssr");
             {
                 // do any pending barriers as we don't have control over fidelityfx sssr
+                GetRenderTarget(Renderer_RenderTarget::source_refraction)->SetLayout(RHI_Image_Layout::General, cmd_list);
                 cmd_list->InsertPendingBarrierGroup();
                 cmd_list->RenderPassEnd();
 
