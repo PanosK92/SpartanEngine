@@ -183,22 +183,16 @@ namespace spartan
         
             case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
                 {
-                    VkPipelineStageFlags2 used_stages = 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Vertex]  ? VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT                  : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Hull]    ? VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT    : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Domain]  ? VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Pixel]   ? VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT                : 0;
-                    used_stages |= pso.shaders[RHI_Shader_Type::Compute] ? VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT                 : 0;
-        
-                    // a call to ClearTexture() will enter this path without shaders, so go wide
-                    if (used_stages == 0)
-                    {
-                        used_stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-                    }
-        
+                    VkPipelineStageFlags2 used_stages = 
+                        VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                        VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                        VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                
                     return make_tuple(
                         used_stages,
-                        VK_ACCESS_2_SHADER_READ_BIT
+                        VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
                     );
                 }
         
@@ -1783,9 +1777,9 @@ namespace spartan
         VkImageMemoryBarrier2 barrier           = {};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
         barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+        barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        barrier.dstAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+        barrier.dstAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());

@@ -930,12 +930,17 @@ namespace spartan
             {
                 Light* light = entity->GetComponent<Light>();
 
+                RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+                RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
+                RHI_Texture* light_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
+                RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+
                 // set textures
                 SetGbufferTextures(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao,    GetRenderTarget(Renderer_RenderTarget::ssao));
                 cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetDepthTexture());
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,         GetRenderTarget(Renderer_RenderTarget::light_diffuse));
-                cmd_list->SetTexture(Renderer_BindingsUav::tex2,        GetRenderTarget(Renderer_RenderTarget::light_specular));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3,        GetRenderTarget(Renderer_RenderTarget::light_shadow));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex4,        GetRenderTarget(Renderer_RenderTarget::light_volumetric));
 
@@ -949,8 +954,12 @@ namespace spartan
                 );
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                // dispatch lighting computation
-                cmd_list->Dispatch(GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+                // dispatch
+                cmd_list->Dispatch(light_diffuse);
+                // the above dispatch will add a read/write barrier to the diffuse texture
+                cmd_list->InsertBarrierReadWrite(light_specular);
+                cmd_list->InsertBarrierReadWrite(light_shadow);
+                cmd_list->InsertBarrierReadWrite(light_volumetric);
             }
         }
         cmd_list->EndTimeblock();

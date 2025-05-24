@@ -393,21 +393,6 @@ namespace spartan
             SP_ASSERT_VK(vkCreateImageView(RHI_Context::device, &view_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])));
         }
     
-        // transition layouts
-        if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
-        {
-            for (uint32_t i = 0; i < m_buffer_count; i++)
-            {
-                 cmd_list->InsertBarrier(
-                    m_rhi_rt[i],
-                    m_format,
-                    0, 1, 1,
-                    RHI_Image_Layout::Attachment
-                );
-            }
-            RHI_Device::CmdImmediateSubmit(cmd_list);
-        }
-    
         // sync primitives
         for (uint32_t i = 0; i < static_cast<uint32_t>( m_image_acquired_semaphore.size()); i++)
         {
