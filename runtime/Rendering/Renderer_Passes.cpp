@@ -837,6 +837,8 @@ namespace spartan
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                         cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
                     }
+
+                    cmd_list->InsertBarrierReadWrite(tex_sss); // ensure the texture is ready for the next light
                 }
             }
 
@@ -941,8 +943,8 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetDepthTexture());
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3,        GetRenderTarget(Renderer_RenderTarget::light_shadow));
-                cmd_list->SetTexture(Renderer_BindingsUav::tex4,        GetRenderTarget(Renderer_RenderTarget::light_volumetric));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
 
                 // push pass constants
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
@@ -1028,9 +1030,13 @@ namespace spartan
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_c       = GetShader(Renderer_Shader::light_composition_c);
-        RHI_Texture* tex_out       = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Shader* shader_c            = GetShader(Renderer_Shader::light_composition_c);
+        RHI_Texture* tex_out            = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_skysphere      = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_refraction     = GetRenderTarget(Renderer_RenderTarget::source_refraction);
+        RHI_Texture* tex_lig_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* tex_lig_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
+        RHI_Texture* tex_lig_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
         {
@@ -1049,10 +1055,10 @@ namespace spartan
             SetGbufferTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,      tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,      GetStandardTexture(Renderer_StandardTexture::Foam));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2,     GetRenderTarget(Renderer_RenderTarget::light_diffuse));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,     GetRenderTarget(Renderer_RenderTarget::light_specular));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex4,     GetRenderTarget(Renderer_RenderTarget::light_volumetric));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,     GetRenderTarget(Renderer_RenderTarget::source_refraction));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2,     tex_lig_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,     tex_lig_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4,     tex_lig_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,     tex_refraction);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,     tex_skysphere);
 
@@ -1060,13 +1066,8 @@ namespace spartan
             cmd_list->Dispatch(tex_out);
 
             // create sampling source for refraction
-            {
-                cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::source_refraction), false);
-                Pass_Downscale(cmd_list, GetRenderTarget(Renderer_RenderTarget::source_refraction), Renderer_DownsampleFilter::Average); // emulate roughness for refraction
-
-                // todo: remove this, and find out why it doesn't properly transition and can cause a GPU crash
-                GetRenderTarget(Renderer_RenderTarget::source_refraction)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            }
+            cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), tex_refraction, false);
+            Pass_Downscale(cmd_list, tex_refraction, Renderer_DownsampleFilter::Average); // emulate roughness for refraction
         }
         cmd_list->EndTimeblock();
     }
@@ -1590,6 +1591,7 @@ namespace spartan
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+            cmd_list->InsertBarrierReadWrite(tex);
         }
         cmd_list->EndMarker();
     }
