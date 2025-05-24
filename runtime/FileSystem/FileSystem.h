@@ -91,8 +91,9 @@ namespace spartan
         static bool CreateDirectory_(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 
-        // internet
+        // internet & path
         static bool DownloadFile(const std::string& url, const std::string& destination, std::function<void(float)> progress_callback);
+        static bool IsExecutableInPath(const std::string& executable);
     };
 
     static const char* EXTENSION_WORLD    = ".world";

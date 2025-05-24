@@ -451,21 +451,30 @@ namespace
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("Default worlds", &visible_download_prompt, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    ImGui::Text("No default worlds are present. Would you like to download them? A python script will be used, so please ensure python is installed.");
+                    bool python_available = spartan::FileSystem::IsExecutableInPath("python") || spartan::FileSystem::IsExecutableInPath("python3");
+            
+                    ImGui::Text("No default worlds are present. would you like to download them?");
+            
+                    if (!python_available)
+                    {
+                        ImGui::Spacing();
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Warning: Python is not installed or not found in your path. Please install it to enable downloading.");
+                    }
+            
                     ImGui::Separator();
             
-                    // calculate the offset to center the group
                     float button_width = ImGui::CalcTextSize("Yes").x + ImGui::CalcTextSize("No").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
                     float offset_x     = (ImGui::GetContentRegionAvail().x - button_width) * 0.5f;
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
             
-                    // group yes and no buttons
                     ImGui::BeginGroup();
                     {
+                        ImGui::BeginDisabled(!python_available);
                         if (ImGui::Button("Yes"))
                         {
                             download_and_extract();
                         }
+                        ImGui::EndDisabled();
             
                         ImGui::SameLine();
             

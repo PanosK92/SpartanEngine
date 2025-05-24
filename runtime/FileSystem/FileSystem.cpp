@@ -965,4 +965,41 @@ namespace spartan
         progress_callback(1.0f);
         return success;
     }
+
+    bool FileSystem::IsExecutableInPath(const std::string& executable)
+    {
+        const char* path_env = std::getenv("PATH");
+        if (!path_env)
+            return false;
+    
+        std::string path_str = path_env;
+        std::vector<std::string> paths;
+    
+    #ifdef _WIN32
+        char delimiter = ';';
+        std::string exe_suffix = ".exe";
+    #else
+        char delimiter = ':';
+        std::string exe_suffix = "";
+    #endif
+    
+        size_t start = 0;
+        size_t end;
+        while ((end = path_str.find(delimiter, start)) != std::string::npos)
+        {
+            paths.emplace_back(path_str.substr(start, end - start));
+            start = end + 1;
+        }
+        paths.emplace_back(path_str.substr(start));
+    
+        for (const auto& dir : paths)
+        {
+            std::filesystem::path exe_path = std::filesystem::path(dir) / (executable + exe_suffix);
+            std::error_code ec;
+            if (std::filesystem::exists(exe_path, ec) && std::filesystem::is_regular_file(exe_path, ec))
+                return true;
+        }
+    
+        return false;
+    }
 }
