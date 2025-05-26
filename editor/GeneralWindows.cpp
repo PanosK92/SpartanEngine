@@ -463,26 +463,20 @@ namespace
             
                     ImGui::Separator();
             
-                    float button_width = ImGui::CalcTextSize("Yes").x + ImGui::CalcTextSize("No").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
+                    float button_width = ImGui::CalcTextSize("Download").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
                     float offset_x     = (ImGui::GetContentRegionAvail().x - button_width) * 0.5f;
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
             
                     ImGui::BeginGroup();
                     {
                         ImGui::BeginDisabled(!python_available);
-                        if (ImGui::Button("Yes"))
+                        if (ImGui::Button("Download"))
                         {
                             download_and_extract();
                         }
                         ImGui::EndDisabled();
             
                         ImGui::SameLine();
-            
-                        if (ImGui::Button("No"))
-                        {
-                            visible_download_prompt = false;
-                            visible_world_list      = false;
-                        }
                     }
                     ImGui::EndGroup();
                 }
