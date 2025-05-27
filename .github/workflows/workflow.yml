@@ -67,10 +67,10 @@ jobs:
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
           IF "${{ matrix.configuration }}" == "Release" (
             echo "Creating binaries-only archive for Release..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_release.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\libxess.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
+            build_scripts\7z.exe a -bb1 spartan_vulkan_release.7z .\binaries\7z.exe .\binaries\7z.dll .\binaries\dxcompiler.dll .\binaries\libxess.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
           ) ELSE (
             echo "Creating binaries-only archive for Debug..."
-            build_scripts\7z.exe a -bb1 spartan_vulkan_debug.7z .\binaries\7z.exe .\binaries\dxcompiler.dll .\binaries\libxess.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
+            build_scripts\7z.exe a -bb1 spartan_vulkan_debug.7z .\binaries\7z.exe .\binaries\7z.dll .\binaries\libxess.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\data .\binaries\spartan_${{ matrix.api }}_debug.exe
           )
           echo "Artifact creation completed for ${{ matrix.api }} - ${{ matrix.configuration }}"
 
