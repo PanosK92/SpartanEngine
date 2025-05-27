@@ -415,14 +415,14 @@ namespace
     {
         const char* world_names[] =
         {
-            "1. Open world forest with car (millions of Ghost of Tsushima grass blades - very demanding)",
-            "2. Liminal Space (shifts your frequency to a nearby reality - light)",
-            "3. Showroom (Gran Turismo 7 brand central - light)",
-            "4. Sponza 4k (high-resolution textures & meshes - demanding)",
-            "5. Bistro interior & exterior (excessive draw calls - demanding)",
-            "6. Subway (gi test, no lights, only emissive textures - moderate)",
-            "7. Doom E1M1 (classic level recreation - light)",
-            "8. Minecraft (blocky aesthetic - light)"
+            "1. Open world forest with car (millions of Ghost of Tsushima grass blades) - very demanding - basically a stress test",
+            "2. Liminal Space (shifts your frequency to a nearby reality) - light",
+            "3. Showroom (Gran Turismo 7 brand central) - light",
+            "4. Sponza 4k (high-resolution textures & meshes) - demanding",
+            "5. Bistro interior & exterior (excessive draw calls) - demanding",
+            "6. Subway (gi test, no lights, only emissive textures) - moderate",
+            "7. Doom E1M1 (classic level recreation) - light",
+            "8. Minecraft (blocky aesthetic) - light"
         };
 
         int world_index = 0;
@@ -486,30 +486,33 @@ namespace
             if (visible_world_list)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-                if (ImGui::Begin("World selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                if (ImGui::Begin("World selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    ImGui::Text("Select the world you would like to load and click \"Ok\"");
-                    ImGui::Text("WARNING: The worlds use evolving tech and might not be as stable as a released steam game");
-
-                    // calculate the maximum width of the world names
+                    const char* prompt_text  = "Select the world you would like to load and click \"Ok\"";
+                    const char* warning_text = "Warning: These worlds use evolving tech, performance and stability may not match that of a polished 300-person studio game.";
+                    
+                    ImGui::Text(prompt_text);
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), warning_text);
+            
+                    // calculate maximum width of world names and text strings
                     float max_width = 0.0f;
                     for (const char* name : world_names)
                     {
                         ImVec2 size = ImGui::CalcTextSize(name);
-                        if (size.x > max_width)
-                        { 
-                            max_width = size.x;
-                        }
+                        max_width   = max(max_width, size.x);
                     }
-
-                    // add padding for the list box frame (left and right)
-                    float padding = ImGui::GetStyle().FramePadding.x * 2;
-                    ImGui::PushItemWidth(max_width + padding);
-
+                    max_width = max(max_width, ImGui::CalcTextSize(prompt_text).x);
+                    max_width = max(max_width, ImGui::CalcTextSize(warning_text).x);
+            
+                    // add padding for list box frame and scrollbar
+                    float padding         = ImGui::GetStyle().FramePadding.x * 2;
+                    float scrollbar_width = ImGui::GetStyle().ScrollbarSize;
+                    ImGui::PushItemWidth(max_width + padding + scrollbar_width);
+            
                     // list box with dynamic width
                     ImGui::ListBox("##list_box", &world_index, world_names, IM_ARRAYSIZE(world_names), IM_ARRAYSIZE(world_names));
                     ImGui::PopItemWidth();
-            
+                    
                     // button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
