@@ -43,7 +43,7 @@ namespace spartan
         // this namespace organizes 3D objects into a grid layout, grouping instances into grid cells
         // it enables optimized rendering by allowing culling of non-visible chunks
     
-        const uint32_t cell_size = 64; // meters
+        const uint32_t cell_size = 128; // meters
     
         struct GridKey
         {
@@ -105,6 +105,79 @@ namespace spartan
                 index += static_cast<uint32_t>(transforms.size());
                 cell_end_indices.push_back(index);
             }
+        }
+    }
+
+    namespace instancing
+    {
+        struct InstanceData
+        {
+            vector<math::Matrix> transforms;
+            vector<uint32_t> group_end_indices;
+            shared_ptr<RHI_Buffer> buffer;
+        };
+        static unordered_map<string, InstanceData> instance_cache;
+
+        // Generate a unique key for the instance transforms (e.g., hash of the first few matrices)
+        string generate_instance_key(const vector<math::Matrix>& transforms, const string& renderable_name)
+        {
+            if (transforms.empty())
+                return renderable_name + "_empty";
+
+            // Simple hash based on first few matrices (up to 10 for speed)
+            string hash;
+            size_t count = min(transforms.size(), size_t(10));
+            for (size_t i = 0; i < count; i++)
+            {
+                for (int j = 0; j < 16; j++)
+                    hash += to_string(transforms[i].Data()[j]).substr(0, 5);
+            }
+            return renderable_name + "_" + to_string(std::hash<string>{}(hash));
+        }
+
+        // Process and cache instance data
+        InstanceData& get_or_create_instance_data(const vector<math::Matrix>& transforms, const string& renderable_name)
+        {
+            string key = generate_instance_key(transforms, renderable_name);
+            auto it = instance_cache.find(key);
+            if (it != instance_cache.end())
+            {
+                SP_LOG_INFO("Reusing instance data for %s (key: %s)", renderable_name.c_str(), key.c_str());
+                return it->second;
+            }
+
+            // Create new instance data
+            InstanceData data;
+            data.transforms = transforms;
+            grid_partitioning::reorder_instances_into_cell_chunks(data.transforms, data.group_end_indices);
+
+            // Transpose instances for row-major layout
+            vector<math::Matrix> instances_transposed;
+            instances_transposed.reserve(data.transforms.size());
+            for (const auto& instance : data.transforms)
+            {
+                instances_transposed.push_back(instance.Transposed());
+            }
+
+            // Create instance buffer
+            data.buffer = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Instance,
+                sizeof(instances_transposed[0]),
+                static_cast<uint32_t>(instances_transposed.size()),
+                static_cast<void*>(&instances_transposed[0]),
+                false,
+                ("instance_buffer_" + renderable_name).c_str()
+            );
+
+            // Log and validate
+            SP_LOG_INFO("Created instance data for %s: instances=%zu, groups=%zu, buffer_size=%u", renderable_name.c_str(), data.transforms.size(), data.group_end_indices.size(), data.buffer->GetElementCount());
+            if (instances_transposed.empty())
+            {
+                SP_LOG_WARNING("Empty instance buffer for %s", renderable_name.c_str());
+            }
+
+            instance_cache[key] = move(data);
+            return instance_cache[key];
         }
     }
 
@@ -389,31 +462,13 @@ namespace spartan
         return end_index - start_index;
     }
 
-    void Renderable::SetInstances(const vector<Matrix>& instances)
+    void Renderable::SetInstances(const vector<Matrix>& transforms)
     {
-        m_instances = instances;
-
-        grid_partitioning::reorder_instances_into_cell_chunks(m_instances, m_instance_group_end_indices);
-
-        // we are mapping 4 Vector4s as 4 rows (see vulkan_pipeline.cpp, line 246) in order to get 1 matrix (HLSL side)
-        // but the matrix memory layout is column-major, so we need to transpose to get it as row-major
-        vector<Matrix> instances_transposed;
-        instances_transposed.reserve(m_instances.size());
-        for (const auto& instance : m_instances)
-        {
-            instances_transposed.push_back(instance.Transposed());
-        }
-
-        m_instance_buffer = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Instance,
-            sizeof(instances_transposed[0]),
-            static_cast<uint32_t>(instances_transposed.size()),
-            static_cast<void*>(&instances_transposed[0]),
-            false,
-            "instance_buffer"
-        );
-
-        m_bounding_box_dirty = true;
+        instancing::InstanceData& instance_data = instancing::get_or_create_instance_data(transforms, GetEntity()->GetObjectName());
+        m_instances                             = instance_data.transforms;
+        m_instance_group_end_indices            = instance_data.group_end_indices;
+        m_instance_buffer                       = instance_data.buffer;
+        m_bounding_box_dirty                    = true;
     }
 
     uint32_t Renderable::GetLodCount() const

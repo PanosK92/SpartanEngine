@@ -87,7 +87,7 @@ namespace spartan
         uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
         uint32_t GetInstanceGroupStartIndex(uint32_t group_index) const;
         uint32_t GetInstanceGroupCount(uint32_t group_index) const;
-        void SetInstances(const std::vector<math::Matrix>& instances);
+        void SetInstances(const std::vector<math::Matrix>& transforms);
 
         // distance & visibility
         float GetDistanceSquared(const uint32_t instance_group_index = 0) const      { return m_distance_squared[instance_group_index]; }

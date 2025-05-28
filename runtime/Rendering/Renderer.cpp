@@ -1074,12 +1074,12 @@ namespace spartan
                             {
                                 if (renderable->IsVisible(group_index))
                                 {
-                                    uint32_t instance_index  = renderable->GetInstanceGroupStartIndex(group_index);
+                                    uint32_t instance_index        = renderable->GetInstanceGroupStartIndex(group_index);
                                     uint32_t instance_count        = renderable->GetInstanceGroupCount(group_index);
                                     uint32_t total_instance_count  = renderable->GetInstanceCount();
                                     instance_count                 = min(instance_count, total_instance_count - instance_index);
-                                    RHI_Buffer* instance_buffer    = renderable->GetInstanceBuffer();
-                                    uint32_t buffer_instance_count = instance_buffer ? instance_buffer->GetElementCount() : 0;
+                                    RHI_Buffer* buffer             = renderable->GetInstanceBuffer();
+                                    uint32_t buffer_instance_count = buffer ? buffer->GetElementCount() : 0;
 
                                     // validate draw call (critical as anything wrong can cause GPU crashes)
                                     SP_ASSERT_MSG(instance_index < total_instance_count,                    "instance start index exceeds total instance count");

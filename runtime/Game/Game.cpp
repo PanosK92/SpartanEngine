@@ -1053,17 +1053,17 @@ namespace spartan
                     
                         // generate instances
                         {
-                            vector<Matrix> instances;
-                            terrain->GenerateTransforms(&instances, tree_count, TerrainProp::Tree, -3.0f);
+                            vector<Matrix> transforms;
+                            terrain->GenerateTransforms(&transforms, tree_count, TerrainProp::Tree, -3.0f);
                             
                             if (Entity* leaf = entity->GetChildByIndex(1))
                             {
                                 Renderable* renderable = leaf->GetComponent<Renderable>();
                     
-                                renderable->SetInstances(instances);
+                                renderable->SetInstances(transforms);
                                 renderable->SetMaxRenderDistance(render_distance_trees);
                     
-                                 // create material
+                                // create material
                                 shared_ptr<Material> material = make_shared<Material>();
                                 {
                                     material->SetObjectName("tree_leaf");
@@ -1084,7 +1084,7 @@ namespace spartan
                             {
                                 Renderable* renderable = body->GetComponent<Renderable>();
                     
-                                renderable->SetInstances(instances);
+                                renderable->SetInstances(transforms);
                                 renderable->SetMaxRenderDistance(render_distance_trees);
                     
                                 // create material
@@ -1112,13 +1112,13 @@ namespace spartan
                     
                         // generate instances
                         {
-                            vector<Matrix> instances;
-                            terrain->GenerateTransforms(&instances, rock_count, TerrainProp::Tree, -2.0f);
+                            vector<Matrix> transforms;
+                            terrain->GenerateTransforms(&transforms, rock_count, TerrainProp::Tree, -2.0f);
                             
                             if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
                             {
                                 Renderable* renderable = rock_entity->GetComponent<Renderable>();
-                                renderable->SetInstances(instances);
+                                renderable->SetInstances(transforms);
                                 renderable->SetMaxRenderDistance(render_distance_trees);
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false); // small things are taken care of from screen space shadows
                     
@@ -1175,14 +1175,14 @@ namespace spartan
                         }
                     
                         // generate instances
-                        vector<Matrix> instances;
-                        terrain->GenerateTransforms(&instances, grass_blade_count, TerrainProp::Grass);
+                        vector<Matrix> transforms;
+                        terrain->GenerateTransforms(&transforms, grass_blade_count, TerrainProp::Grass);
                     
                         // add renderable component
                         Renderable* renderable = entity->AddComponent<Renderable>();
                         renderable->SetMesh(mesh.get());
                         renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
-                        renderable->SetInstances(instances);
+                        renderable->SetInstances(transforms);
                     
                         // create a material
                         shared_ptr<Material> material = make_shared<Material>();
