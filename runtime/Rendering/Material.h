@@ -71,7 +71,7 @@ namespace spartan
         IsTerrain,                  // applies texture mapping based on the mesh slope
         WindAnimation,              // offsets vertices based on wind direction and strength
         ColorVariationFromInstance, // applies a color variation based on the instance ID
-        IsGrassBlasde,              // applies grass blade specific enchantments
+        IsGrassBlade,               // applies grass blade specific enchantments
         IsWater,                    // applies vertex-based animation to simulate water flow
         CullMode,                   // sets the culling mode based on RHI_CullMode enum values
         Gltf,                       // indicates if the material was imported from a glTF file

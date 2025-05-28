@@ -892,7 +892,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsTerrain)                  ? (1U << 8)  : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::WindAnimation)              ? (1U << 9)  : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::ColorVariationFromInstance) ? (1U << 10) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::IsGrassBlasde)              ? (1U << 11) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsGrassBlade)               ? (1U << 11) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)                    ? (1U << 12) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 13) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected

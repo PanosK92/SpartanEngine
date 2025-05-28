@@ -978,8 +978,7 @@ namespace spartan
         {
             // shared
             {
-                // empty skybox (the engine uses a skysphere)
-                amd::texture_skybox = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 1, 1, 6, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox");
+                amd::texture_skybox = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 128, 128, 6, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox");
             }
 
             // brixelizer gi
@@ -1416,7 +1415,7 @@ namespace spartan
 
                 // skip entities that won't contribute yet will kill performance
                 Renderable* renderable = entity->GetComponent<Renderable>();
-                if (!renderable || renderable->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlasde) || renderable->GetMaterial()->IsTransparent())
+                if (!renderable || renderable->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlade) || renderable->GetMaterial()->IsTransparent())
                     continue;
 
                 uint64_t entity_id                   = entity->GetObjectId();

@@ -1102,7 +1102,7 @@ namespace spartan
                     
                         }
                     }
-
+                  
                     // rock
                     if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_rock\\rock.obj"))
                     {
@@ -1187,7 +1187,7 @@ namespace spartan
                         // create a material
                         shared_ptr<Material> material = make_shared<Material>();
                         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
-                        material->SetProperty(MaterialProperty::IsGrassBlasde,        1.0f);
+                        material->SetProperty(MaterialProperty::IsGrassBlade,         1.0f);
                         material->SetProperty(MaterialProperty::Roughness,            1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.4f);
