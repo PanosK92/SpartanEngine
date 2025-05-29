@@ -88,9 +88,10 @@ namespace spartan
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
         // misc
-        bool m_is_dirty        = false;
-        uint32_t m_image_index = 0;
-        void* m_sdl_window     = nullptr;
+        bool m_is_dirty          = false;
+        uint32_t m_image_index   = 0;
+        uint32_t semaphore_index = 0;
+        void* m_sdl_window       = nullptr;
         std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count * 2> m_image_acquired_semaphore;
 
         // rhi

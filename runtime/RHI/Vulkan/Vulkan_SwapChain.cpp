@@ -443,7 +443,6 @@ namespace spartan
             return;
     
         // get semaphore
-        static uint32_t semaphore_index     = 0;
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
 
         // ensure the semaphore is free; with enough semaphores, waits are rare as command lists typically complete before reuse
@@ -476,7 +475,7 @@ namespace spartan
             {
                 // associate the semaphore with the acquired image index
                 m_image_acquired_semaphore[m_image_index] = m_image_acquired_semaphore[semaphore_index];
-                semaphore_index = (semaphore_index + 1) % m_image_acquired_semaphore.size(); // rotate through all semaphores
+                semaphore_index                           = (semaphore_index + 1) % m_image_acquired_semaphore.size(); // rotate through all semaphores
                 return;
             }
             else if (result == VK_NOT_READY)
