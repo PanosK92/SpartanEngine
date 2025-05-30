@@ -61,7 +61,9 @@ namespace spartan
         shared_ptr<Entity> default_metal_cube        = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
-        void create_music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav", const float pitch = 1.0f)
+        namespace build
+        { 
+            void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav", const float pitch = 1.0f)
         {
             SP_ASSERT(soundtrack_file_path);
 
@@ -74,7 +76,7 @@ namespace spartan
             audio_source->SetPitch(pitch);
         }
 
-        void create_sun(const bool enabled, const Vector3& rotation = Vector3::Infinity)
+            void sun(const bool enabled, const Vector3& rotation = Vector3::Infinity)
         {
             default_light_directional = World::CreateEntity();
             default_light_directional->SetObjectName("light_directional");
@@ -98,7 +100,7 @@ namespace spartan
             light->SetFlag(LightFlags::DayNightCycle, false);
         }
 
-        void create_floor()
+            void floor()
         {
             // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit (cube size)
 
@@ -119,7 +121,7 @@ namespace spartan
             physics_body->SetShapeType(PhysicsShape::StaticPlane);
         }
 
-        void create_camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
+            void camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
         {
             // create the camera's root (which will be used for movement)
             default_camera = World::CreateEntity();
@@ -142,7 +144,7 @@ namespace spartan
             camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
         }
 
-        void create_metal_cube(const Vector3& position)
+            void metal_cube(const Vector3& position)
         {
             // create entity
             default_metal_cube = World::CreateEntity();
@@ -174,7 +176,7 @@ namespace spartan
             physics_body->SetShapeType(PhysicsShape::Box);
         }
 
-        void create_flight_helmet(const Vector3& position)
+            void flight_helmet(const Vector3& position)
         {
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
             {
@@ -189,7 +191,7 @@ namespace spartan
             }
         }
 
-        void create_damaged_helmet(const Vector3& position)
+            void damaged_helmet(const Vector3& position)
         {
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
             {
@@ -204,7 +206,7 @@ namespace spartan
             }
         }
 
-        void create_material_ball(const Vector3& position)
+            void material_ball(const Vector3& position)
         {
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf"))
             {
@@ -222,12 +224,85 @@ namespace spartan
             }
         }
 
+            void water()
+            {
+                // create root entity
+                shared_ptr<Entity> water = World::CreateEntity();
+                water->SetObjectName("water");
+                water->SetPosition(Vector3(0.0f, -0.2f, 0.0f)); // push a bit below sea level (0.0f) to show some sand
+                water->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+                
+                // create material
+                shared_ptr<Material> material = make_shared<Material>();
+                {
+                    material->SetObjectName("material_water");
+                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
+                    material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
+                    material->SetProperty(MaterialProperty::Roughness,           0.0f);
+                    material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
+                    material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
+                    material->SetProperty(MaterialProperty::WorldSpaceUv,        1.0f); // mesh size independent tiling
+                    material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
+                    material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
+                    material->SetProperty(MaterialProperty::IsWater,             1.0f);
+                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
+                
+                    // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                    const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
+                    material->SetResourceFilePath(file_path);
+                }
+                
+                // geometry
+                {
+                    // generate grid
+                    const float extend                       = 4000.0f;
+                    const uint32_t grid_points_per_dimension = 64;
+                    vector<RHI_Vertex_PosTexNorTan> vertices;
+                    vector<uint32_t> indices;
+                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, extend);
+                
+                    // split into tiles
+                    const uint32_t tile_count = 10; // 10x10 tiles
+                    vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
+                    vector<vector<uint32_t>> tiled_indices;
+                    spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices);
+                
+                    for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
+                    {
+                        string name = "tile_" + to_string(tile_index);
+                
+                        // create mesh if it doesn't exist
+                        shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                        mesh->SetObjectName(name);
+                        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                        mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
+                        mesh->CreateGpuBuffers();
+                
+                        // create a child entity, add a renderable, and this mesh tile to it
+                        {
+                            shared_ptr<Entity> entity = World::CreateEntity();
+                            entity->SetObjectName(name);
+                            entity->SetParent(water);
+                
+                            if (Renderable* renderable = entity->AddComponent<Renderable>())
+                            {
+                                renderable->SetMesh(mesh.get());
+                                renderable->SetMaterial(material);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         void create_sponza_4k()
         {
             // set the mood
-            create_camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            create_sun(false);
-            create_music("project\\music\\jake_chudnow_olive.wav");
+            build::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
+            build::sun(false);
+            build::music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
             // point light
@@ -331,9 +406,9 @@ namespace spartan
 
         void create_doom_e1m1()
         {
-            create_camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-            create_sun(true);
-            create_music("project\\music\\doom_e1m1.wav");
+             build::camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
+             build::sun(true);
+             build::music("project\\music\\doom_e1m1.wav");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
             {
@@ -360,9 +435,9 @@ namespace spartan
 
         void create_bistro()
         {
-            create_camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
-            create_sun(false);
-            create_music();
+             build::camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
+             build::sun(false);
+             build::music();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
             {
@@ -433,9 +508,9 @@ namespace spartan
 
         void create_minecraft()
         {
-            create_camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-            create_sun(true);
-            create_music();
+             build::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
+             build::sun(true);
+             build::music();
 
             // the entire minecraft world is a single mesh so don't generate any lods
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
@@ -452,8 +527,8 @@ namespace spartan
 
         void create_subway_gi_test()
         {
-            create_sun(false);
-            create_camera();
+             build::sun(false);
+             build::camera();
             
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
             Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
@@ -480,13 +555,13 @@ namespace spartan
 
         void car_mark2()
         {
-            create_camera();
-            create_sun(true);
-            create_floor();
-            create_damaged_helmet(Vector3(5.0f, 1.0f, 0.0f));
-            create_material_ball(Vector3(8.0f, 1.0f, 0.0f));
-            create_metal_cube(Vector3(0.0f, 2.0f, 0.0f));
-            create_flight_helmet(Vector3(-4.0f, 2.0f, 0.0f));
+             build::camera();
+             build::sun(true);
+             build::floor();
+             build::damaged_helmet(Vector3(5.0f, 1.0f, 0.0f));
+             build::material_ball(Vector3(8.0f, 1.0f, 0.0f));
+             build::metal_cube(Vector3(0.0f, 2.0f, 0.0f));
+             build::flight_helmet(Vector3(-4.0f, 2.0f, 0.0f));
 
             PhysicsBody* physics_body = default_metal_cube->GetComponent<PhysicsBody>();
             physics_body->SetBoundingBox(Vector3(1.0f, 0.5f, 2.5f));
@@ -871,9 +946,9 @@ namespace spartan
                 const uint32_t rock_count         = 10'000;     // these are small and on the ground, we can have more
 
                 // sun/lighting/mood
-                create_sun(true, Vector3(8.0f, 40.0f, 0.0f));
+                build::sun(true, Vector3(8.0f, 40.0f, 0.0f));
 
-                create_camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
+                build::camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
                 Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 
@@ -973,75 +1048,7 @@ namespace spartan
                     physics_body->SetShapeType(PhysicsShape::Terrain);
 
                     // water
-                    {
-                        // create root entity
-                        shared_ptr<Entity> water = World::CreateEntity();
-                        water->SetObjectName("water");
-                        water->SetPosition(Vector3(0.0f, -0.2f, 0.0f)); // push a bit below sea level (0.0f) to show some sand
-                        water->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-
-                        // create material
-                        shared_ptr<Material> material = make_shared<Material>();
-                        {
-                            material->SetObjectName("material_water");
-                            material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
-                            material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
-                            material->SetProperty(MaterialProperty::Roughness,           0.0f);
-                            material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
-                            material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
-                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
-                            material->SetProperty(MaterialProperty::TextureTilingX,      1000.0f);
-                            material->SetProperty(MaterialProperty::TextureTilingY,      1000.0f);
-                            material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                            material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
-
-                            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                            const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
-                            material->SetResourceFilePath(file_path);
-                        }
-
-                        // geometry
-                        {
-                            // generate grid
-                            const float extend                       = 4000.0f;
-                            const uint32_t grid_points_per_dimension = 64;
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, extend);
-
-                            // split into tiles
-                            const uint32_t tile_count = 10; // 10x10 tiles
-                            vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
-                            vector<vector<uint32_t>> tiled_indices;
-                            spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices);
-
-                            for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
-                            {
-                                string name = "tile_" + to_string(tile_index);
-
-                                // create mesh if it doesn't exist
-                                shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
-                                mesh->SetObjectName(name);
-                                mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                                mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
-                                mesh->CreateGpuBuffers();
-
-                                // create a child entity, add a renderable, and this mesh tile to it
-                                {
-                                    shared_ptr<Entity> entity = World::CreateEntity();
-                                    entity->SetObjectName(name);
-                                    entity->SetParent(water);
-
-                                    if (Renderable* renderable = entity->AddComponent<Renderable>())
-                                    {
-                                        renderable->SetMesh(mesh.get());
-                                        renderable->SetMaterial(material);
-                                        renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    build::water();
 
                     // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                     uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
@@ -1258,7 +1265,7 @@ namespace spartan
             void create()
             {
                 // gran turismo 7 brand central music
-                create_music("project\\music\\gran_turismo.wav", 1.9f);
+                build::music("project\\music\\gran_turismo.wav", 1.9f);
 
                 // logo
                 icon_logo = make_shared<RHI_Texture>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\logo.png");
@@ -1268,7 +1275,7 @@ namespace spartan
                 // camera
                 {
                     Vector3 camera_position = Vector3(-4.7317f, 1.2250f, -7.6135f);
-                    create_camera(camera_position);
+                    build::camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
                     default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::PhysicalBodyAnimation, false);
@@ -1276,7 +1283,7 @@ namespace spartan
 
                 // floor
                 {
-                    create_floor();
+                    build::floor();
 
                     shared_ptr<Material> material = make_shared<Material>();
                     material->SetResourceFilePath(string("project\\terrain\\material_floor_shiny") + string(EXTENSION_MATERIAL));
@@ -1456,7 +1463,7 @@ namespace spartan
                 
                 // camera
                 {
-                    create_camera(Vector3(5.4084f, 1.8f, 4.7593f));
+                    build::camera(Vector3(5.4084f, 1.8f, 4.7593f));
 
                     AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
