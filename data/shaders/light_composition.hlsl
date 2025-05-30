@@ -28,7 +28,7 @@ struct refraction
 {
     static float compute_fade_factor(float2 uv)
     {
-        const float edge_threshold = 0.05f;
+        float edge_threshold = 10.0f;
         
         float2 edge_distance       = min(uv, 1.0f - uv);
         float2 resolution          = buffer_frame.resolution_render; 
@@ -38,7 +38,7 @@ struct refraction
     
     static float3 get_color(Surface surface)
     {
-        const float strength = 0.05f;
+        const float strength = 0.02f;
         
         // get view-space normal
         float3 normal_view = world_to_view(surface.normal, false);
@@ -50,18 +50,13 @@ struct refraction
         // sample background color and depth at refracted UV
         float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, 0).rgb;
 
-        // depth test: 1 if background at refracted_uv is behind refractive surface
-        float refracted_depth  = get_linear_depth(refracted_uv);
-        float refractive_depth = get_linear_depth(surface.uv);
-        float depth_test       = (refracted_depth < refractive_depth) ? 1.0f : 0.0f;
-
         // cmpute fade factor for screen edges
         float screen_fade = compute_fade_factor(refracted_uv);
 
         // get background color at current UV
         float3 color_background = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, 0).rgb;
 
-        return lerp(color_background, color_refraction, screen_fade * depth_test);
+        return lerp(color_background, color_refraction, screen_fade);
     }
 };
 

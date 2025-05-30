@@ -247,7 +247,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
                     material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
-                    material->SetProperty(MaterialProperty::Normal,              0.1f);
+                    material->SetProperty(MaterialProperty::Normal,              0.2f);
 
                     // create a file path for this material (required for the material to be able to be cached by the resource cache)
                     const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -1451,24 +1451,33 @@ namespace spartan
                     Renderer::SetOption(Renderer_Option::Grid,                0.0f);
                 }
 
-                // ambient audio
-                {
-                    shared_ptr<Entity> entity = World::CreateEntity();
-                    entity->SetObjectName("audio_hum_electric");
-                    
-                    AudioSource* audio_source = entity->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\hum_electric.wav");
-                    audio_source->SetLoop(true);
-                    audio_source->SetVolume(0.25f);
-                }
-                
                 // camera
                 {
                     build::camera(Vector3(5.4084f, 1.8f, 4.7593f));
 
-                    AudioSource* audio_source = default_camera->GetChildByIndex(0)->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\footsteps_tiles.wav");
-                    audio_source->SetPlayOnStart(false);
+                    shared_ptr<Entity> entity_hum = World::CreateEntity();
+                    entity_hum->SetObjectName("audio_hum_electric");
+                    AudioSource* audio_source = entity_hum->AddComponent<AudioSource>();
+                    audio_source->SetAudioClip("project\\music\\hum_electric.wav");
+                    audio_source->SetLoop(true);
+                    entity_hum->SetParent(default_camera);
+
+                    audio_source->SetVolume(0.25f);
+                    // entity for tile footsteps
+                    shared_ptr<Entity> entity_tiles = World::CreateEntity();
+                    entity_tiles->SetObjectName("audio_footsteps_tiles");
+                    entity_tiles->SetParent(default_camera);
+                    AudioSource* audio_source_tiles = entity_tiles->AddComponent<AudioSource>();
+                    audio_source_tiles->SetAudioClip("project\\music\\footsteps_tiles.wav");
+                    audio_source_tiles->SetPlayOnStart(false);
+
+                    // entity for water footsteps
+                    shared_ptr<Entity> entity_water = World::CreateEntity();
+                    entity_water->SetObjectName("audio_footsteps_water");
+                    entity_water->SetParent(default_camera);
+                    AudioSource* audio_source_water = entity_water->AddComponent<AudioSource>();
+                    audio_source_water->SetAudioClip("project\\music\\footsteps_water.wav");
+                    audio_source_water->SetPlayOnStart(false);
                 }
                 
                 // point light
@@ -1744,15 +1753,33 @@ namespace spartan
             void tick()
             {
                 // footsteps
-                AudioSource* audio_source = default_camera->GetChildByIndex(0)->GetComponent<AudioSource>();
-                Camera* camera            = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
-                if (camera->IsWalking() && !audio_source->IsPlaying())
                 {
-                    audio_source->Play();
-                }
-                else if (!camera->IsWalking() && audio_source->IsPlaying())
-                {
-                    audio_source->Stop();
+                    AudioSource* audio_source_tiles = default_camera->GetChildByName("audio_footsteps_tiles")->GetComponent<AudioSource>();
+                    AudioSource* audio_source_water = default_camera->GetChildByName("audio_footsteps_water")->GetComponent<AudioSource>();
+                    Camera* camera                  = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
+                    bool is_in_pool                 = default_camera->GetPosition().y < 1.5f;
+                    AudioSource* active_source      = is_in_pool ? audio_source_water : audio_source_tiles;
+                    AudioSource* inactive_source    = is_in_pool ? audio_source_tiles : audio_source_water;
+            
+                    if (camera->IsWalking() && !active_source->IsPlaying())
+                    {
+                        active_source->Play();
+                        if (inactive_source->IsPlaying())
+                        {
+                            inactive_source->Stop();
+                        }
+                    }
+                    else if (!camera->IsWalking())
+                    {
+                        if (audio_source_tiles->IsPlaying())
+                        {
+                            audio_source_tiles->Stop();
+                        }
+                        if (audio_source_water->IsPlaying())
+                        {
+                            audio_source_water->Stop();
+                        }
+                    }
                 }
             }
         }
