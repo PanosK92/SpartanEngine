@@ -28,43 +28,40 @@ struct refraction
 {
     static float compute_fade_factor(float2 uv)
     {
-        float edge_threshold = 0.05f; // how close to the edge to start fading
-        float2 edge_distance = min(uv, 1.0f - uv);
-        return saturate(min(edge_distance.x, edge_distance.y) / edge_threshold);
-    }
-    
-    static float3 refract_vector(float3 i, float3 n, float eta)
-    {
-        // snell's Law
-        float cosi  = dot(-i, n);
-        float cost2 = 1.0f - eta * eta * (1.0f - cosi * cosi);
-        return eta * i + (eta * cosi - sqrt(abs(cost2))) * n;
+        const float edge_threshold = 0.05f;
+        
+        float2 edge_distance       = min(uv, 1.0f - uv);
+        float2 resolution          = buffer_frame.resolution_render; 
+        float normalized_threshold = edge_threshold / min(resolution.x, resolution.y);
+        return saturate(min(edge_distance.x, edge_distance.y) / normalized_threshold);
     }
     
     static float3 get_color(Surface surface)
     {
-        // super hacky way to disable refraction for the car windshield
-        const float strength = surface.alpha > 0.5f ? 1.0f : 0.0f;
+        const float strength = 0.05f;
         
-        // compute refraction vector
-        float3 normal_vector        = world_to_view(surface.normal, false);
-        float3 incident_vector      = world_to_view(surface.camera_to_pixel, false);
-        float3 refraction_direction = refract_vector(incident_vector, normal_vector, 1.0f / surface.ior);
-        
-        // compute refracted uv
-        float2 refraction_uv_offset = refraction_direction.xy * (strength / surface.camera_to_pixel_length);
-        float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset) * buffer_frame.resolution_scale;
+        // get view-space normal
+        float3 normal_view = world_to_view(surface.normal, false);
 
-        // get base and refraction color
-        float frame_mip_count   = pass_get_f3_value().x;
-        float mip_level         = lerp(0, frame_mip_count, surface.roughness_alpha);
-        float3 color            = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, mip_level).rgb;
-        float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, mip_level).rgb;
+        // compute refraction UV offset using normal's XY components
+        float2 refraction_uv_offset = normal_view.xy * strength;
+        float2 refracted_uv = saturate(surface.uv + refraction_uv_offset);
 
-        // don't refract what's outside the screen
+        // sample background color and depth at refracted UV
+        float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, 0).rgb;
+
+        // depth test: 1 if background at refracted_uv is behind refractive surface
+        float refracted_depth  = get_linear_depth(refracted_uv);
+        float refractive_depth = get_linear_depth(surface.uv);
+        float depth_test       = (refracted_depth < refractive_depth) ? 1.0f : 0.0f;
+
+        // cmpute fade factor for screen edges
         float screen_fade = compute_fade_factor(refracted_uv);
 
-        return lerp(color, color_refraction, screen_fade);
+        // get background color at current UV
+        float3 color_background = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, 0).rgb;
+
+        return lerp(color_background, color_refraction, screen_fade * depth_test);
     }
 };
 
@@ -106,13 +103,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (surface.is_transparent())
         {
             light_refraction = refraction::get_color(surface);
-
-            // fade refraction into material color based on depth
-            if (surface.is_water())
-            {
-                float depth_factor = saturate(distance_from_camera * 0.01f);
-                light_refraction   = lerp(light_refraction, surface.albedo * light_diffuse, depth_factor);
-            }
         }
     }
 

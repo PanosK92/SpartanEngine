@@ -224,19 +224,19 @@ namespace spartan
             }
         }
 
-            void water()
+            shared_ptr<Entity> water(const Vector3& position, float dimension, uint32_t density)
             {
-                // create root entity
+                // entity
                 shared_ptr<Entity> water = World::CreateEntity();
                 water->SetObjectName("water");
-                water->SetPosition(Vector3(0.0f, -0.2f, 0.0f)); // push a bit below sea level (0.0f) to show some sand
-                water->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+                water->SetPosition(position);
                 
-                // create material
+                // material
                 shared_ptr<Material> material = make_shared<Material>();
                 {
                     material->SetObjectName("material_water");
-                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 200.0f / 255.0f));
+                    
+                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 254.0f / 255.0f)); // greenish turquoise, decent brightness
                     material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
                     material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
@@ -247,7 +247,8 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
                     material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
-                
+                    material->SetProperty(MaterialProperty::Normal,              0.1f);
+
                     // create a file path for this material (required for the material to be able to be cached by the resource cache)
                     const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
                     material->SetResourceFilePath(file_path);
@@ -256,14 +257,13 @@ namespace spartan
                 // geometry
                 {
                     // generate grid
-                    const float extend                       = 4000.0f;
-                    const uint32_t grid_points_per_dimension = 64;
+                    const uint32_t grid_points_per_dimension = density;
                     vector<RHI_Vertex_PosTexNorTan> vertices;
                     vector<uint32_t> indices;
-                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, extend);
+                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, dimension);
                 
                     // split into tiles
-                    const uint32_t tile_count = 10; // 10x10 tiles
+                    const uint32_t tile_count = std::max(1u, density / 6); // dynamic tile count based on density, minimum 1
                     vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
                     vector<vector<uint32_t>> tiled_indices;
                     spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices);
@@ -294,6 +294,8 @@ namespace spartan
                         }
                     }
                 }
+
+                return water;
             }
         }
 
@@ -739,10 +741,6 @@ namespace spartan
                 entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
                 entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
 
-                // super hacky way to disable refraction
-                default_car_window = entity_car->GetDescendantByName("CarBody_Windows_0");
-                default_car_window->GetComponent<Renderable>()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.4f);
-
                 // set the position last so that transforms all the way down to the new wheels are updated
                 default_car->SetPosition(position);
             }
@@ -1048,7 +1046,9 @@ namespace spartan
                     physics_body->SetShapeType(PhysicsShape::Terrain);
 
                     // water
-                    build::water();
+                    float dimension  = 8000; // meters
+                    uint32_t density = 64;   // geometric
+                    build::water(Vector3(0.0f, -0.2f, 0.0f), dimension, density);
 
                     // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                     uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
@@ -1448,6 +1448,7 @@ namespace spartan
                     Renderer::SetOption(Renderer_Option::GlobalIllumination,  0.0f);
                     Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
                     Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
+                    Renderer::SetOption(Renderer_Option::Grid,                0.0f);
                 }
 
                 // ambient audio
@@ -1600,14 +1601,27 @@ namespace spartan
                 // lambda for creating a room
                 auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset, int room_index)
                 {
-                    // create parent,number entity for the room
+                     // create parent entity for the room
                     auto room_entity = World::CreateEntity();
                     room_entity->SetObjectName("room_" + to_string(room_index));
                     room_entity->SetPosition(offset); // set room position
                     
+                    // random chance for pool (lowered floor)
+                    const float pool_depth = 0.5f;
+                    uniform_real_distribution<float> dist(0.0f, 1.0f);
+                    const bool is_pool  = dist(rng) < 0.5f;             // 50% chance for lowered floor
+                    const float floor_y = is_pool ? -pool_depth : 0.0f; // lower floor
+                    
                     // floor and ceiling
-                    create_surface("floor", Vector3(0, 0, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity, false);
+                    create_surface("floor", Vector3(0, floor_y, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity, false);
                     create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity, false);
+                    
+                    // spawn water if floor is lowered
+                    if (is_pool)
+                    {
+                        auto water_entity = build::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2);
+                        water_entity->SetParent(room_entity);
+                    }
                     
                     // wall configurations
                     struct WallConfig

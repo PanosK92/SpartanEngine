@@ -118,7 +118,7 @@ namespace spartan::geometry_generation
         const Vector3 normal(0, 1, 0);  // upward-facing normal (Y-axis)
         const Vector3 tangent(1, 0, 0); // tangent along X-axis
     
-        // Generate vertices
+        // generate vertices
         for (uint32_t i = 0; i < grid_points_per_dimension; ++i)
         {
             for (uint32_t j = 0; j < grid_points_per_dimension; ++j)
