@@ -450,8 +450,8 @@ namespace spartan
         }
 
         // semaphores
-        m_rendering_complete_semaphore          = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, name);
-        m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, name);
+        m_rendering_complete_semaphore          = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, (string(name) + "_binary").c_str());
+        m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, (string(name) + "timeline").c_str());
 
         queries::initialize(m_rhi_query_pool_timestamps, m_rhi_query_pool_occlusion, m_rhi_query_pool_pipeline_statistics);
     }
@@ -512,7 +512,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait)
+    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -520,17 +520,14 @@ namespace spartan
         RenderPassEnd();
         SP_ASSERT_VK(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)));
 
-        if (!m_rendering_complete_semaphore->has_been_waited_for)
-        {
-            m_rendering_complete_semaphore          = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore,         m_rendering_complete_semaphore->GetObjectName().c_str());
-            m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, m_rendering_complete_semaphore_timeline->GetObjectName().c_str());
-        }
+        // immediate command lists wait on the CPU using the timeline semaphore
+        RHI_SyncPrimitive* semaphore_binary = is_immediate ? nullptr : m_rendering_complete_semaphore.get();
 
         m_queue->Submit(
             static_cast<VkCommandBuffer>(m_rhi_resource), // cmd buffer
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,            // wait flags
             semaphore_wait,                               // wait semaphore
-            m_rendering_complete_semaphore.get(),         // signal semaphore
+            semaphore_binary,                             // signal semaphore
             m_rendering_complete_semaphore_timeline.get() // signal semaphore
         );
 
@@ -539,8 +536,7 @@ namespace spartan
             semaphore_wait->SetUserCmdList(this);
         }
 
-        m_rendering_complete_semaphore->has_been_waited_for = false;
-        m_state                                             = RHI_CommandListState::Submitted;
+        m_state = RHI_CommandListState::Submitted;
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)

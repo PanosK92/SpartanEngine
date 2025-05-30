@@ -263,7 +263,7 @@ namespace spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // wait for all commands list, from all queues,to finish executing
+        // wait for all commands list, from all queues, to finish executing
         RHI_Device::QueueWaitAll();
 
         // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
@@ -287,7 +287,7 @@ namespace spartan
         RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
         dynamic_resolution();
 
-        // begin a the main/present command list
+        // begin the main/present command list
         RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
         m_cmd_list_present        = queue_graphics->NextCommandList();
         m_cmd_list_present->Begin();
@@ -774,12 +774,10 @@ namespace spartan
     {
         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
         {
-            if (m_cmd_list_present->GetState() == RHI_CommandListState::Recording)
-            {
-                m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
-                m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore());
-                swapchain->Present(m_cmd_list_present);
-            }
+            SP_ASSERT(m_cmd_list_present->GetState() == RHI_CommandListState::Recording);
+            m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+            m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false);
+            swapchain->Present(m_cmd_list_present);
         }
         Profiler::TimeBlockEnd();
     }

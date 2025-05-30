@@ -99,7 +99,7 @@ namespace spartan
         // submit any pending work (toggling between fullscreen and windowed mode can leave work)
         if (cmd_list->GetState() == RHI_CommandListState::Recording)
         {
-           cmd_list->Submit(0);
+            cmd_list->Submit(0, false);
         }
 
         // with enough command lists available, there is no wait time
@@ -127,7 +127,7 @@ namespace spartan
         {
             if (cmd_list->GetState() == RHI_CommandListState::Recording)
             {
-                cmd_list->Submit(0); // submit any recording command lists
+                cmd_list->Submit(0, false); // submit any recording command lists
             }
 
             if (cmd_list->GetState() == RHI_CommandListState::Submitted)
@@ -147,59 +147,66 @@ namespace spartan
         {
             lock = unique_lock<mutex>(get_mutex(this));
         }
-
+    
+        // wait semaphore setup
         VkSemaphoreSubmitInfo semaphores_list_wait[1] = {};
+        uint32_t wait_semaphore_count = 0;
+        if (semaphore_wait)
         {
-            // semaphore binary
             semaphores_list_wait[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-            semaphores_list_wait[0].semaphore = semaphore_wait ? static_cast<VkSemaphore>(semaphore_wait->GetRhiResource()) : nullptr;
-            semaphores_list_wait[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
+            semaphores_list_wait[0].semaphore = static_cast<VkSemaphore>(semaphore_wait->GetRhiResource());
+            semaphores_list_wait[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR;
             semaphores_list_wait[0].value     = 0; // ignored for binary semaphores
+            wait_semaphore_count = 1;
         }
-
+    
+        // signal semaphores setup
         VkSemaphoreSubmitInfo semaphores_list_signal[2] = {};
+        uint32_t signal_semaphore_count = 0;
+        if (semaphore_signal)
         {
-            // semaphore binary
-            semaphores_list_signal[0].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-            semaphores_list_signal[0].semaphore = static_cast<VkSemaphore>(semaphore_signal->GetRhiResource());
-            semaphores_list_signal[0].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
-            semaphores_list_signal[0].value     = 0; // ignored for binary semaphores
-
-            // semaphore timeline
-            semaphores_list_signal[1].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
-            semaphores_list_signal[1].semaphore = static_cast<VkSemaphore>(semaphore_timeline_signal->GetRhiResource());
-            semaphores_list_signal[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR; // todo: adjust based on the queue
-            semaphores_list_signal[1].value     = semaphore_timeline_signal->GetNextSignalValue(); // signal
+            semaphores_list_signal[signal_semaphore_count].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+            semaphores_list_signal[signal_semaphore_count].semaphore = static_cast<VkSemaphore>(semaphore_signal->GetRhiResource());
+            semaphores_list_signal[signal_semaphore_count].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR;
+            semaphores_list_signal[signal_semaphore_count].value     = 0; // ignored for binary semaphores
+            signal_semaphore_count++;
         }
-
+        if (semaphore_timeline_signal)
+        {
+            semaphores_list_signal[signal_semaphore_count].sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR;
+            semaphores_list_signal[signal_semaphore_count].semaphore = static_cast<VkSemaphore>(semaphore_timeline_signal->GetRhiResource());
+            semaphores_list_signal[signal_semaphore_count].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR;
+            semaphores_list_signal[signal_semaphore_count].value     = semaphore_timeline_signal->GetNextSignalValue(); // signal
+            signal_semaphore_count++;
+        }
+    
         // command buffer
         VkCommandBufferSubmitInfo cmd_buffer_info = {};
-        cmd_buffer_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
-        cmd_buffer_info.commandBuffer             = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-  
+        cmd_buffer_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
+        cmd_buffer_info.commandBuffer            = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+    
         // submit
         {
             VkSubmitInfo2 submit_info            = {};
             submit_info.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-            submit_info.waitSemaphoreInfoCount   = semaphore_wait ? 1 : 0;
-            submit_info.pWaitSemaphoreInfos      = semaphores_list_wait;
-            submit_info.signalSemaphoreInfoCount = 2;
-            submit_info.pSignalSemaphoreInfos    = semaphores_list_signal;
+            submit_info.waitSemaphoreInfoCount   = wait_semaphore_count;
+            submit_info.pWaitSemaphoreInfos      = wait_semaphore_count ? semaphores_list_wait : nullptr;
+            submit_info.signalSemaphoreInfoCount = signal_semaphore_count;
+            submit_info.pSignalSemaphoreInfos    = signal_semaphore_count ? semaphores_list_signal : nullptr;
             submit_info.commandBufferInfoCount   = 1;
             submit_info.pCommandBufferInfos      = &cmd_buffer_info;
-
+    
             VkResult result = vkQueueSubmit2(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), 1, &submit_info, nullptr);
-
+    
             if (result == VK_ERROR_DEVICE_LOST)
             {
                 if (Debugging::IsBreadcrumbsEnabled())
                 { 
                     RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved();
                 }
-
                 SP_ERROR_WINDOW("GPU crashed");
             }
-
+    
             SP_ASSERT_VK(result);
         }
     }

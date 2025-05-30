@@ -439,9 +439,6 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        if (Window::IsMinimized())
-            return;
-    
         // get semaphore
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
 
@@ -459,7 +456,6 @@ namespace spartan
         // it can happen often on some gpus/drivers and less and on others, regardless, it has to be handled
         uint32_t retry_count     = 0;
         const uint32_t retry_max = 10;
-    
         while (retry_count < retry_max)
         {
             VkResult result = vkAcquireNextImageKHR(
@@ -478,9 +474,9 @@ namespace spartan
                 semaphore_index                           = (semaphore_index + 1) % m_image_acquired_semaphore.size(); // rotate through all semaphores
                 return;
             }
-            else if (result == VK_NOT_READY)
+            else if (result == VK_NOT_READY || result == VK_SUBOPTIMAL_KHR)
             {
-                this_thread::sleep_for(std::chrono::milliseconds(16));
+                this_thread::sleep_for(chrono::milliseconds(16));
                 retry_count++;
             }
             else
@@ -492,9 +488,6 @@ namespace spartan
     
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
-        if (Window::IsMinimized())
-            return;
-
         cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, cmd_list_frame->GetRenderingCompleteSemaphore());
 
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for

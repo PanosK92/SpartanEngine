@@ -462,7 +462,7 @@ namespace spartan
         cmd_list->EndTimeblock();
 
         // perform occlusion queries and wait for the results to be ready
-        cmd_list->Submit(0);
+        cmd_list->Submit(0, true);
         cmd_list->WaitForExecution(false);
 
         // update the draw calls with the visibility results so all subsequent passes can use them

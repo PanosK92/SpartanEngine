@@ -87,7 +87,7 @@ namespace spartan
         m_state = RHI_CommandListState::Recording;
     }
 
-    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait)
+    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate)
     {
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

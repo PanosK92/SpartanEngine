@@ -2138,13 +2138,13 @@ namespace spartan
 
     void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
     {
-        cmd_list->Submit(nullptr);
+        cmd_list->Submit(nullptr, true);
         cmd_list->WaitForExecution();
 
         // signal that it's safe to proceed with the next ImmediateBegin()
         queues::is_immediate_executing = false;
         queues::condition_variable_immediate_execution.notify_one();
-         ProgressTracker::SetGlobalLoadingState(false);
+        ProgressTracker::SetGlobalLoadingState(false);
     }
 
     // markers
