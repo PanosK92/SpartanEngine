@@ -169,4 +169,9 @@ namespace spartan
     {
         return false;
     }
+
+    RHI_SyncPrimitive* RHI_SwapChain::GetImageAcquiredSemaphore() const
+    {
+        return nullptr;
+    }
 }

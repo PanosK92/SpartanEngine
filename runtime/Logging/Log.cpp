@@ -96,6 +96,27 @@ namespace spartan
         log_to_file = log;
     }
 
+    void Log::Clear()
+    {
+        // lock mutex to ensure thread safety
+        static std::mutex log_mutex;
+        std::lock_guard<std::mutex> guard(log_mutex);
+
+        // clear the in-memory logs
+        logs.clear();
+
+        // clear the file if logging to file is enabled
+        if (log_to_file || Debugging::IsLoggingToFileEnabled())
+        {
+            // open the file in truncate mode to clear its contents
+            std::ofstream file("log.txt", std::ios::out | std::ios::trunc);
+            if (file.is_open())
+            {
+                file.close();
+            }
+        }
+    }
+
     // all functions resolve to this one
     void Log::Write(const char* text, const LogType type)
     {

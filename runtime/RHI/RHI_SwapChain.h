@@ -70,7 +70,7 @@ namespace spartan
         void* GetRhiRtv() const         { return m_rhi_rtv[m_image_index]; }
 
         // misc
-        RHI_SyncPrimitive* GetImageAcquiredSemaphore() const { return m_image_acquired_semaphore[m_image_index].get(); }
+        RHI_SyncPrimitive* GetImageAcquiredSemaphore() const;
 
         static const uint8_t buffer_count  = 2;
         static const RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;

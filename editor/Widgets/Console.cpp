@@ -171,7 +171,7 @@ void Console::AddLogPackage(const LogPackage& package)
 {
     lock_guard lock(m_mutex);
 
-    // Save to deque
+    // save to deque
     m_logs.push_back(package);
     if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
     {
@@ -196,4 +196,6 @@ void Console::Clear()
     m_log_type_count[0] = 0;
     m_log_type_count[1] = 0;
     m_log_type_count[2] = 0;
+
+    spartan::Log::Clear();
 }

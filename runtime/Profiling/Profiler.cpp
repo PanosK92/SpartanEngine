@@ -439,7 +439,6 @@ namespace spartan
                 "Driver:\t\t%s\t\t%s\n\n"
                 "CPU\n"
                 "Name:\t\t\t\t\t%s\n"
-                "Threads:\t\t\t\t%u\n"
                 "Worker threads:\t%u/%u\n"
                 #ifdef __AVX2__
                 "AVX2:\t\t\t\t\t\tYes\n"
@@ -476,7 +475,6 @@ namespace spartan
                 RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName().c_str(), gpu_driver.c_str(),
 
                 cpu_name.c_str(),
-                thread::hardware_concurrency(),
                 ThreadPool::GetWorkingThreadCount(), ThreadPool::GetThreadCount(),
 
                 Display::GetName(),

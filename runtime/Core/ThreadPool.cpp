@@ -82,9 +82,10 @@ namespace spartan
 
     void ThreadPool::Initialize()
     {
-        is_stopping                      = false;
-        uint32_t concurrent_thread_count = thread::hardware_concurrency();
-        thread_count                     = concurrent_thread_count - 1; // exclude the calling thread
+        is_stopping = false;
+
+        uint32_t core_count = thread::hardware_concurrency() / 2;  // assume physical cores
+        thread_count        = min(core_count * 2, core_count + 4); // 2x for I/O-bound, cap at core_count + 4
 
         for (uint32_t i = 0; i < thread_count; i++)
         {

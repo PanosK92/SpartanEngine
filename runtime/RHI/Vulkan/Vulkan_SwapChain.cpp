@@ -313,6 +313,12 @@ namespace spartan
         }
     }
 
+    RHI_SyncPrimitive* RHI_SwapChain::GetImageAcquiredSemaphore() const
+    {
+        // when minimized, image acquisition is not needed, so return nullptr
+        return Window::IsMinimized() ? nullptr : m_image_acquired_semaphore[m_image_index].get();
+    }
+
     void RHI_SwapChain::Create()
     {
         SP_ASSERT(m_sdl_window != nullptr);
@@ -439,6 +445,10 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
+        // when the window is minimized acquisition will fail and it's not necessery either
+        if (Window::IsMinimized())
+            return;
+
         // get semaphore
         RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
 
@@ -488,6 +498,10 @@ namespace spartan
     
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
+        // when the window is minimized acquisition isn't happening, so neither is presentation
+        if (Window::IsMinimized())
+            return;
+
         cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, cmd_list_frame->GetRenderingCompleteSemaphore());
 
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for

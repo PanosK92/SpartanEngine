@@ -73,6 +73,7 @@ namespace spartan
         static void Initialize();
         static void SetLogger(ILogger* logger);
         static void SetLogToFile(const bool log_to_file);
+        static void Clear();
 
         // alpha
         static void Write(const char* text, const LogType type);
@@ -101,7 +102,7 @@ namespace spartan
             Write(to_string(value), type);
         }
 
-        // nath
+        // math
         static void Write(const math::Vector2& value, LogType type);
         static void Write(const math::Vector3& value, LogType type);
         static void Write(const math::Vector4& value, LogType type);
