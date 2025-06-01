@@ -1457,12 +1457,12 @@ namespace spartan
 
                     shared_ptr<Entity> entity_hum = World::CreateEntity();
                     entity_hum->SetObjectName("audio_hum_electric");
+                    entity_hum->SetParent(default_camera);
                     AudioSource* audio_source = entity_hum->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\hum_electric.wav");
                     audio_source->SetLoop(true);
-                    entity_hum->SetParent(default_camera);
-
                     audio_source->SetVolume(0.25f);
+
                     // entity for tile footsteps
                     shared_ptr<Entity> entity_tiles = World::CreateEntity();
                     entity_tiles->SetObjectName("audio_footsteps_tiles");

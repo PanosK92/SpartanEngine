@@ -122,14 +122,9 @@ namespace spartan
             lock = unique_lock<mutex>(get_mutex(this));
         }
 
-        // ensure all command lists are either Idle or Submitted
+        // ensure that any submitted command lists have completed execution
         for (auto& cmd_list : m_cmd_lists)
         {
-            if (cmd_list->GetState() == RHI_CommandListState::Recording)
-            {
-                cmd_list->Submit(0, false); // submit any recording command lists
-            }
-
             if (cmd_list->GetState() == RHI_CommandListState::Submitted)
             {
                 cmd_list->WaitForExecution(); // wait for submitted command lists to complete

@@ -1622,8 +1622,8 @@ namespace spartan
 
                 switch (resource_type)
                 {
-                    case RHI_Resource_Type::Image:             MemoryTextureDestroy(resource);                                                                           break;
-                    case RHI_Resource_Type::ImageView:         vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Image:               MemoryTextureDestroy(resource);                                                                           break;
+                    case RHI_Resource_Type::ImageView:           vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
                     case RHI_Resource_Type::Sampler:             vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
                     case RHI_Resource_Type::Buffer:              MemoryBufferDestroy(resource);                                                                            break;
                     case RHI_Resource_Type::Shader:              vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
