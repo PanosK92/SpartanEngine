@@ -24,42 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-struct refraction
-{
-    static float compute_fade_factor(float2 uv)
-    {
-        float edge_threshold = 10.0f;
-        
-        float2 edge_distance       = min(uv, 1.0f - uv);
-        float2 resolution          = buffer_frame.resolution_render; 
-        float normalized_threshold = edge_threshold / min(resolution.x, resolution.y);
-        return saturate(min(edge_distance.x, edge_distance.y) / normalized_threshold);
-    }
-    
-    static float3 get_color(Surface surface)
-    {
-        const float strength = 0.02f;
-        
-        // get view-space normal
-        float3 normal_view = world_to_view(surface.normal, false);
-
-        // compute refraction UV offset using normal's XY components
-        float2 refraction_uv_offset = normal_view.xy * strength;
-        float2 refracted_uv = saturate(surface.uv + refraction_uv_offset);
-
-        // sample background color and depth at refracted UV
-        float3 color_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, 0).rgb;
-
-        // cmpute fade factor for screen edges
-        float screen_fade = compute_fade_factor(refracted_uv);
-
-        // get background color at current UV
-        float3 color_background = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), surface.uv, 0).rgb;
-
-        return lerp(color_background, color_refraction, screen_fade);
-    }
-};
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -94,10 +58,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
         
-        // transparent
+        // refraction
         if (surface.is_transparent())
         {
-            light_refraction = refraction::get_color(surface);
+            const float strength = 0.01f;
+
+            float3 normal_view          = world_to_view(surface.normal, false);
+            float2 refraction_uv_offset = normal_view.xy * strength;
+            float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
+
+            light_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, 0).rgb;
         }
     }
 

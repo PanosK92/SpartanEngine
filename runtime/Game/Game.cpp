@@ -247,7 +247,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
                     material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
-                    material->SetProperty(MaterialProperty::Normal,              0.2f);
+                    material->SetProperty(MaterialProperty::Normal,              0.5f);
 
                     // create a file path for this material (required for the material to be able to be cached by the resource cache)
                     const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
@@ -1493,7 +1493,7 @@ namespace spartan
                     light->SetFlag(LightFlags::Volumetric, false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                     light->SetFlag(LightFlags::Shadows, false);
-                    
+                    light->GetEntity()->SetPosition(Vector3(0.0f, 1.7f, 0.0f));
                     light->GetEntity()->SetParent(default_camera);
                 }
                 
