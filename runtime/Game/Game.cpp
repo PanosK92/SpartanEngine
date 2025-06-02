@@ -235,8 +235,9 @@ namespace spartan
                 shared_ptr<Material> material = make_shared<Material>();
                 {
                     material->SetObjectName("material_water");
-                    
-                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 100.0f / 255.0f, 254.0f / 255.0f)); // greenish turquoise, decent brightness
+                    material->SetResourceFilePath("water" + string(EXTENSION_MATERIAL));
+
+                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f)); // pool water color
                     material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
                     material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
@@ -246,12 +247,10 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation - close up water needs tessellation so you can see fine ripples
-                    material->SetProperty(MaterialProperty::Normal,              0.5f);
-
-                    // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                    const string file_path = "project\\terrain\\water_material" + string(EXTENSION_MATERIAL);
-                    material->SetResourceFilePath(file_path);
+                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest (it works in the small liminal space world)
+                    material->SetProperty(MaterialProperty::Normal,              0.35f);
+                    material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
+                    material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                 }
                 
                 // geometry
