@@ -36,7 +36,7 @@ namespace spartan
         RHI_Queue(const RHI_Queue_Type queue_type, const char* name);
         ~RHI_Queue();
 
-        void Wait();
+        void Wait(const bool flush = false);
         void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline);
         void Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait);
         RHI_CommandList* NextCommandList();

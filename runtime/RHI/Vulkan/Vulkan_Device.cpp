@@ -1589,11 +1589,11 @@ namespace spartan
         return nullptr;
     }
 
-    void RHI_Device::QueueWaitAll()
+    void RHI_Device::QueueWaitAll(const bool flush)
     {
         for (uint32_t i = 0; i < 2; i++)
         {
-            queues::regular[i]->Wait();
+            queues::regular[i]->Wait(flush);
         }
     }
 

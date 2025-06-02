@@ -41,7 +41,7 @@ namespace spartan
         static void Destroy();
 
         // queues
-        static void QueueWaitAll();
+        static void QueueWaitAll(const bool flush = false);
         static uint32_t GetQueueIndex(const RHI_Queue_Type type);
         static RHI_Queue* GetQueue(const RHI_Queue_Type type);
         static void* GetQueueRhiResource(const RHI_Queue_Type type);

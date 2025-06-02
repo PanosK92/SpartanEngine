@@ -371,6 +371,13 @@ namespace spartan
 
         if (recreate_resources)
         {
+            // if frames are in-flight, wait for them to finish before resizing
+            if (m_cb_frame_cpu.frame > 1)
+            {
+                bool flush = true;
+                RHI_Device::QueueWaitAll(flush);
+            }
+
             CreateRenderTargets(true, false, true);
             CreateSamplers();
         }
@@ -402,7 +409,8 @@ namespace spartan
             // if frames are in-flight, wait for them to finish before resizing
             if (m_cb_frame_cpu.frame > 1)
             {
-                RHI_Device::QueueWaitAll();
+                bool flush = true;
+                RHI_Device::QueueWaitAll(flush);
             }
 
             CreateRenderTargets(false, true, true);

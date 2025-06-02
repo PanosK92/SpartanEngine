@@ -113,7 +113,7 @@ namespace spartan
         return cmd_list.get();
     }
 
-    void RHI_Queue::Wait()
+    void RHI_Queue::Wait(const bool flush)
     {
         // ensure single-threaded access
         unique_lock<mutex> lock;
@@ -125,9 +125,22 @@ namespace spartan
         // ensure that any submitted command lists have completed execution
         for (auto& cmd_list : m_cmd_lists)
         {
+            bool got_flushed = false;
+            if (cmd_list->GetState() == RHI_CommandListState::Recording && flush)
+            {
+                cmd_list->Submit(0, false); // submit any pending work
+                got_flushed = true;
+            }
+
             if (cmd_list->GetState() == RHI_CommandListState::Submitted)
             {
                 cmd_list->WaitForExecution(); // wait for submitted command lists to complete
+            }
+
+            // if we flushed, start recording again (so we don't interfere with external code that may be using it)
+            if (got_flushed)
+            { 
+                cmd_list->Begin();
             }
         }
 
