@@ -122,27 +122,27 @@ namespace spartan
         }
 
             void camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
-        {
-            // create the camera's root (which will be used for movement)
-            default_camera = World::CreateEntity();
-            default_camera->SetObjectName("physics_body_camera");
-            default_camera->SetPosition(camera_position);
+            {
+                // create the camera's root (which will be used for movement)
+                default_camera = World::CreateEntity();
+                default_camera->SetObjectName("physics_body_camera");
+                default_camera->SetPosition(camera_position);
 
-            // add a physics body so that the camera can move through the environment in a physical manner
-            PhysicsBody* physics_body = default_camera->AddComponent<PhysicsBody>();
-            physics_body->SetBoundingBox(Vector3(0.45f, 1.8f, 0.25f)); // average european male
-            physics_body->SetMass(82.0f);
-            physics_body->SetShapeType(PhysicsShape::Capsule);
-            physics_body->SetRotationLock(true);
-            
-            // create the entity that will actual hold the camera component
-            shared_ptr<Entity> camera = World::CreateEntity();
-            camera->SetObjectName("component_camera");
-            camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
-            camera->SetParent(default_camera);
-            camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
-            camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
-        }
+                // add a physics body so that the camera can move through the environment in a physical manner
+                PhysicsBody* physics_body = default_camera->AddComponent<PhysicsBody>();
+                physics_body->SetBoundingBox(Vector3(0.45f, 1.8f, 0.25f)); // average european male
+                physics_body->SetMass(82.0f);
+                physics_body->SetShapeType(PhysicsShape::Capsule);
+                physics_body->SetRotationLock(true);
+                
+                // create the entity that will actual hold the camera component
+                shared_ptr<Entity> camera = World::CreateEntity();
+                camera->SetObjectName("component_camera");
+                camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
+                camera->SetParent(default_camera);
+                camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
+                camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
+            }
 
             void metal_cube(const Vector3& position)
         {
