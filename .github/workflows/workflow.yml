@@ -55,11 +55,6 @@ jobs:
           import os
           api = os.environ["API"]
           subprocess.run(f"python generate_vs2022_{api}.py ci")
-
-      - name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          toolset: 14.40  # Latest MSVC toolset for Visual Studio 2022
           
       - name: Build
         shell: cmd
