@@ -235,7 +235,7 @@ namespace spartan
        RHI_Context::device = nullptr;
     }
 
-    void RHI_Device::QueueWaitAll()
+    void RHI_Device::QueueWaitAll(const bool flush)
     {
 
     }
