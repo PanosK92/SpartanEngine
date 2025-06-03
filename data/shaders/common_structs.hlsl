@@ -76,6 +76,7 @@ struct Surface
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
+        // initialize properties
         pos = position_screen;
         uv  = (position_screen + 0.5f) / (resolution_out * buffer_frame.resolution_scale);
 
@@ -85,8 +86,8 @@ struct Surface
         float4 sample_material      = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
         float sample_depth          = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
         MaterialParameters material = material_parameters[sample_normal.a];
-        
-        // fill propertie
+
+        // initialize properties
         depth                 = sample_depth;
         normal                = sample_normal.xyz;
         flags                 = material.flags;

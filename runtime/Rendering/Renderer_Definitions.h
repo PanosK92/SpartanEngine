@@ -117,12 +117,14 @@ namespace spartan
         tex2 = 8,
         tex3 = 9,
         tex4 = 10,
+        tex5 = 11,
+        tex6 = 12,
 
         // bindless
-        bindless_material_textures   = 11,
-        bindless_material_parameters = 12,
-        bindless_light_parameters    = 13,
-        bindless_aabbs               = 14,
+        bindless_material_textures   = 13,
+        bindless_material_parameters = 14,
+        bindless_light_parameters    = 15,
+        bindless_aabbs               = 16,
     };
 
     enum class Renderer_BindingsUav
