@@ -89,8 +89,8 @@ namespace spartan
                 Pass_GBuffer(cmd_list_present, is_transparent);
                 Pass_ShadowMaps(cmd_list_present);
                 Pass_Skysphere(cmd_list_present);
-                Pass_Sss(cmd_list_present);
-                Pass_Ssao(cmd_list_present);
+                Pass_ScreenSpaceShadows(cmd_list_present);
+                Pass_ScreenSpaceAmbientOcclusion(cmd_list_present);
                 Pass_Light(cmd_list_present, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_GlobalIllumination(cmd_list_present);          // compute global illumination
                 Pass_Light_Composition(cmd_list_present, is_transparent); // compose all light (diffuse, specular, etc).
@@ -106,7 +106,7 @@ namespace spartan
             }
 
             // apply skysphere, ssr and global illumination
-            Pass_Ssr(cmd_list_present);
+            Pass_ScreenSpaceReflections(cmd_list_present);
             Pass_Light_ImageBased(cmd_list_present);
 
             // render -> output resolution
@@ -697,7 +697,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
+    void Renderer::Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list)
     {
         static bool cleared = false;
         RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
@@ -705,7 +705,7 @@ namespace spartan
         if (GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
         {
             RHI_PipelineState pso;
-            pso.name             = "ssao";
+            pso.name             = "screen_space_ambient_occlusion";
             pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);
 
             cmd_list->BeginTimeblock(pso.name);
@@ -726,7 +726,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
+    void Renderer::Pass_ScreenSpaceReflections(RHI_CommandList* cmd_list)
     {
         static bool cleared = false;
 
@@ -734,7 +734,7 @@ namespace spartan
 
         if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
         { 
-            cmd_list->BeginTimeblock("ssr");
+            cmd_list->BeginTimeblock("screen_space_reflections");
             {
                 // do any pending barriers as we don't have control over fidelityfx sssr
                 GetRenderTarget(Renderer_RenderTarget::source_refraction)->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -767,16 +767,18 @@ namespace spartan
         cmd_list->InsertBarrierReadWrite(tex_out);
     }
 
-    void Renderer::Pass_Sss(RHI_CommandList* cmd_list)
+    void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)
     {
         // get resources
         RHI_Texture* tex_sss= GetRenderTarget(Renderer_RenderTarget::sss);
 
-        cmd_list->BeginTimeblock("sss");
+        cmd_list->BeginTimeblock("screen_space_shadows");
         {
+            cmd_list->InsertBarrierReadWrite(tex_sss); // ensure any previous reads are complete
+
             // set pipeline state
             RHI_PipelineState pso;
-            pso.name             = "sss";
+            pso.name             = "screen_space_shadows";
             pso.shaders[Compute] = GetShader(Renderer_Shader::sss_c_bend);
             cmd_list->SetPipelineState(pso);
 

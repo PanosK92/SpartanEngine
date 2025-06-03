@@ -938,9 +938,9 @@ namespace spartan
             {
                 const float render_distance_trees = 2'000.0f;
                 const float render_distance_grass = 1'000.0f;
-                const uint32_t grass_blade_count  = 33'000'000; // above this point validation layer will complain about the size of the buffer
-                const uint32_t tree_count         = 5'000;      // too many are actually distracting (because naturally occupy too much screen space)
-                const uint32_t rock_count         = 10'000;     // these are small and on the ground, we can have more
+                const uint32_t grass_blade_count  = 33'000'000; // above 33 million it will hit a max buffer size validation layer error (still works but it's risky)
+                const uint32_t tree_count         = 3'000;      // too many are actually distracting (because naturally occupy too much screen space)
+                const uint32_t rock_count         = 3'000;      // these are small and on the ground, we can have more
 
                 // sun/lighting/mood
                 build::sun(true, Vector3(8.0f, 40.0f, 0.0f));
