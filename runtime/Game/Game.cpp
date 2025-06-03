@@ -248,7 +248,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
                     material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest (it works in the small liminal space world)
-                    material->SetProperty(MaterialProperty::Normal,              0.35f);
+                    material->SetProperty(MaterialProperty::Normal,              0.2f);
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                 }

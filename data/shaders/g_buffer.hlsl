@@ -175,10 +175,13 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
         // rotate normals for water using Perlin noise, modulated by surface.is_water()
         {
-            float time      = (float)buffer_frame.time;
-            float2 noise_uv = vertex.uv * 4.0f; // scale UVs for wave size
-            float noise     = get_noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
-            float angle     = noise * 2.0 * 3.14159 * (float)surface.is_water(); // map noise [0,1] to angle [0, 2π] for water only
+            float2 direction = float2(1.0, 0.5);
+            float speed      = 0.2;
+            float time       = (float)buffer_frame.time;
+            float2 uv_offset = direction * speed * time;
+            float2 noise_uv  = (vertex.uv + uv_offset) * 5.0f; // scale UVs for wave size
+            float noise      = get_noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
+            float angle      = noise * 2.0 * 3.14159 * (float)surface.is_water(); // map noise [0,1] to angle [0, 2π] for water only
             
             // rotate tangent normal around Z-axis (in tangent space)
             float cos_a = cos(angle);
