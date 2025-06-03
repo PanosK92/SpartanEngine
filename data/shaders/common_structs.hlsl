@@ -76,16 +76,17 @@ struct Surface
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
+        pos = position_screen;
+        uv  = (position_screen + 0.5f) / (resolution_out * buffer_frame.resolution_scale);
+
         // access resources
-        float4 sample_albedo        = use_albedo ? tex_albedo[position_screen] : 0.0f;
-        float4 sample_normal        = tex_normal[position_screen];
-        float4 sample_material      = tex_material[position_screen];
-        float sample_depth          = tex_depth[position_screen].r;
+        float4 sample_albedo        = !use_albedo ? 0.0f : tex_albedo.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+        float4 sample_normal        = tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+        float4 sample_material      = tex_material.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+        float sample_depth          = tex_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
         MaterialParameters material = material_parameters[sample_normal.a];
         
-        // fill properties
-        pos                   = position_screen;
-        uv                    = (position_screen + 0.5f) / (resolution_out * buffer_frame.resolution_scale);
+        // fill propertie
         depth                 = sample_depth;
         normal                = sample_normal.xyz;
         flags                 = material.flags;
@@ -113,7 +114,7 @@ struct Surface
         if (is_ssao_enabled())
         {
             int2 coords = clamp(int2(position_screen), int2(0, 0), int2(resolution_out) - 1);
-            occlusion   = min(sample_material.a, tex_ssao[coords].r); // combine occlusion with material occlusion
+            occlusion   = min(sample_material.a, tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0).r); // combine occlusion with material occlusion
         }
 
         position               = get_position(depth, uv);

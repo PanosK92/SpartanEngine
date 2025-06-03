@@ -187,7 +187,7 @@ namespace spartan
 
         // misc
         static void AddLinesToBeRendered();
-        static void SetGbufferTextures(RHI_CommandList* cmd_list);
+        static void SetCommonTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
 
         // misc

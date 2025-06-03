@@ -800,13 +800,17 @@ namespace spartan
         return frame_num;
     }
 
-    void Renderer::SetGbufferTextures(RHI_CommandList* cmd_list)
+    void Renderer::SetCommonTextures(RHI_CommandList* cmd_list)
     {
+        // gbuffer
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+
+        // other
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
     }
 
     void Renderer::UpdateBindlessBuffers(RHI_CommandList* cmd_list)
