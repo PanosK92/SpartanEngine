@@ -1192,19 +1192,26 @@ namespace spartan
             swap_output = !swap_output;
             Pass_Fxaa(cmd_list, get_output_in, get_output_out);
         }
-        
+
+        // film grain
+        if (GetOption<bool>(Renderer_Option::FilmGrain))
+        {
+            swap_output = !swap_output;
+            Pass_FilmGrain(cmd_list, get_output_in, get_output_out);
+        }
+
         // chromatic aberration
         if (GetOption<bool>(Renderer_Option::ChromaticAberration))
         {
             swap_output = !swap_output;
             Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
         }
-        
-        // film grain
-        if (GetOption<bool>(Renderer_Option::FilmGrain))
+
+        // vhs
+        if (GetOption<bool>(Renderer_Option::Vhs))
         {
             swap_output = !swap_output;
-            Pass_FilmGrain(cmd_list, get_output_in, get_output_out);
+            Pass_Vhs(cmd_list, get_output_in, get_output_out);
         }
 
         // if the last written texture is not the output one, then make sure it is
@@ -1443,28 +1450,35 @@ namespace spartan
 
     void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::film_grain_c);
-
-        cmd_list->BeginTimeblock("film_grain");
-
-        // set pipeline state
         RHI_PipelineState pso;
         pso.name             = "film_grain";
-        pso.shaders[Compute] = shader_c;
-        cmd_list->SetPipelineState(pso);
+        pso.shaders[Compute] = GetShader(Renderer_Shader::film_grain_c);
 
-        // set pass constants
-        m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetIso(), 0.0f, 0.0f);
-        cmd_list->PushConstants(m_pcb_pass_cpu);
+        cmd_list->BeginTimeblock(pso.name);
+        {
+            cmd_list->SetPipelineState(pso);
+            m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetIso(), 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            cmd_list->Dispatch(tex_out);
+        }
+        cmd_list->EndTimeblock();
+    }
 
-        // set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+      void Renderer::Pass_Vhs(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        RHI_PipelineState pso;
+        pso.name             = "vhs";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::vhs_c);
 
-        // render
-        cmd_list->Dispatch(tex_out);
-
+        cmd_list->BeginTimeblock(pso.name);
+        {
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            cmd_list->Dispatch(tex_out);
+        }
         cmd_list->EndTimeblock();
     }
 

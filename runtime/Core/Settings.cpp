@@ -80,6 +80,7 @@ namespace spartan
                 case Renderer_Option::ResolutionScale:             return "ResolutionScale";
                 case Renderer_Option::DynamicResolution:           return "DynamicResolution";
                 case Renderer_Option::Dithering:                   return "Dithering";
+                case Renderer_Option::Vhs:                         return "VHS";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");

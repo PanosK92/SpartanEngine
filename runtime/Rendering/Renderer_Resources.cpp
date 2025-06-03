@@ -446,6 +446,10 @@ namespace spartan
         shader(Renderer_Shader::chromatic_aberration_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "chromatic_aberration.hlsl", async);
 
+        // vhs
+        shader(Renderer_Shader::vhs_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::vhs_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "vhs.hlsl", async);
+
         // tone-mapping & gamma correction
         shader(Renderer_Shader::output_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::output_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "output.hlsl", async);

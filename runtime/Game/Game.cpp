@@ -1448,6 +1448,7 @@ namespace spartan
                     Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
                     Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
                     Renderer::SetOption(Renderer_Option::Grid,                0.0f);
+                    Renderer::SetOption(Renderer_Option::Vhs,                 1.0f);
                 }
 
                 // camera

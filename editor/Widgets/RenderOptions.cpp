@@ -377,9 +377,11 @@ void RenderOptions::OnTickVisible()
             option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled", 0.01f);
             option_check_box("Motion blur (controlled by the camera's shutter speed)", Renderer_Option::MotionBlur);
             option_check_box("Depth of field (controlled by the camera's aperture)", Renderer_Option::DepthOfField);
-            option_check_box("Chromatic aberration (controlled by the camera's aperture)", Renderer_Option::ChromaticAberration, "Emulates the inability of old cameras to focus all colors in the same focal point");
-            option_check_box("Film grain", Renderer_Option::FilmGrain);
-            option_check_box("Dithering", Renderer_Option::Dithering);
+            
+            option_check_box("Film grain",           Renderer_Option::FilmGrain,           "Emulates the noise of old film cameras, can be used to add a vintage look to the scene");
+            option_check_box("Chromatic aberration", Renderer_Option::ChromaticAberration, "Emulates the inability of old cameras to focus all colors in the same focal point");
+            option_check_box("VHS",                  Renderer_Option::Vhs,                 "Emulates the look of VHS tapes, can be used to add a vintage look to the scene");
+            option_check_box("Dithering",            Renderer_Option::Dithering,           "Reduces banding artifacts in gradients by adding noise to the image, can be used to improve the quality of the image at lower bit depths");
         }
 
         if (option("World"))
