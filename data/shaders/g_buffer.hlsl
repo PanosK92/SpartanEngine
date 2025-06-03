@@ -128,14 +128,6 @@ gbuffer main_ps(gbuffer_vertex vertex)
         velocity = position_ndc_current - position_ndc_previous;
     }
 
-    // compute animated uv for water
-    {
-        const float2 direction  = float2(1.0, 0.5);
-        const float speed       = 0.2;
-        float2 uv_offset        = direction * speed * (float)buffer_frame.time * surface.is_water();
-        vertex.uv              += uv_offset; 
-    }
-
     // albedo
     {
         float4 albedo_sample = 1.0f;
@@ -180,11 +172,31 @@ gbuffer main_ps(gbuffer_vertex vertex)
     
         // reconstruct z-component as this can be a bc5 two channel normal map
         tangent_normal.z = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
-    
+
+        // rotate normals for water using Perlin noise, modulated by surface.is_water()
+        {
+            float time      = (float)buffer_frame.time;
+            float2 noise_uv = vertex.uv * 4.0f; // scale UVs for wave size
+            float noise     = get_noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
+            float angle     = noise * 2.0 * 3.14159 * (float)surface.is_water(); // map noise [0,1] to angle [0, 2π] for water only
+            
+            // rotate tangent normal around Z-axis (in tangent space)
+            float cos_a = cos(angle);
+            float sin_a = sin(angle);
+            float2 rotated_xy = float2(
+                tangent_normal.x * cos_a - tangent_normal.y * sin_a,
+                tangent_normal.x * sin_a + tangent_normal.y * cos_a
+            );
+            
+            // blend between original and rotated normals based on is_water (0 = original, 1 = rotated)
+            tangent_normal.xy = lerp(tangent_normal.xy, rotated_xy, (float)surface.is_water());
+        }
+
         float normal_intensity     = saturate(max(0.012f, GetMaterial().normal));
         tangent_normal.xy         *= normal_intensity;
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
+
     }
 
     // occlusion, roughness, metalness, height sample
