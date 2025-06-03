@@ -958,7 +958,8 @@ namespace spartan
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
                 // dispatch
-                cmd_list->Dispatch(light_diffuse);
+                cmd_list->Dispatch(light_diffuse); // includes InsertBarrierReadWrite(light_diffuse)
+
                 // the above dispatch will add a read/write barrier to the diffuse texture
                 cmd_list->InsertBarrierReadWrite(light_specular);
                 cmd_list->InsertBarrierReadWrite(light_shadow);
@@ -1031,13 +1032,13 @@ namespace spartan
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
-        RHI_Shader* shader_c            = GetShader(Renderer_Shader::light_composition_c);
-        RHI_Texture* tex_out            = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_skysphere      = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_refraction     = GetRenderTarget(Renderer_RenderTarget::source_refraction);
-        RHI_Texture* tex_lig_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
-        RHI_Texture* tex_lig_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
-        RHI_Texture* tex_lig_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        RHI_Shader* shader_c              = GetShader(Renderer_Shader::light_composition_c);
+        RHI_Texture* tex_out              = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_skysphere        = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_refraction       = GetRenderTarget(Renderer_RenderTarget::source_refraction);
+        RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
+        RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
         {
@@ -1056,9 +1057,9 @@ namespace spartan
             SetGbufferTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,      tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,      GetStandardTexture(Renderer_StandardTexture::Foam));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2,     tex_lig_diffuse);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,     tex_lig_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex4,     tex_lig_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2,     tex_light_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,     tex_light_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4,     tex_light_volumetric);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,     tex_refraction);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,     tex_skysphere);
@@ -1067,8 +1068,12 @@ namespace spartan
             cmd_list->Dispatch(tex_out);
 
             // create sampling source for refraction
-            cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), tex_refraction, false);
+            cmd_list->Blit(tex_out, tex_refraction, false);
             Pass_Downscale(cmd_list, tex_refraction, Renderer_DownsampleFilter::Average); // emulate roughness for refraction
+
+            cmd_list->InsertBarrierReadWrite(tex_light_diffuse);
+            cmd_list->InsertBarrierReadWrite(tex_light_specular);
+            cmd_list->InsertBarrierReadWrite(tex_light_volumetric);
         }
         cmd_list->EndTimeblock();
     }
@@ -1509,6 +1514,7 @@ namespace spartan
             }
 
             // wait for vendor tech to finish writing to the texture
+            cmd_list->InsertBarrierReadWrite(tex_in);
             cmd_list->InsertBarrierReadWrite(tex_out);
 
             // used for refraction by the transparent passes, so generate mips to emulate roughness
