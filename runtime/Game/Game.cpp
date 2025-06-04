@@ -572,6 +572,16 @@ namespace spartan
   
             //Renderer::SetOption(Renderer_Option::Physics, 1.0f);
         }
+
+        void set_base_renderer_options()
+         {
+             // disable all effects which are specific to certain worlds, let the each world decide which effects it wants to enable
+             Renderer::SetOption(Renderer_Option::GlobalIllumination,  0.0f);
+             Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
+             Renderer::SetOption(Renderer_Option::ChromaticAberration, 0.0f);
+             Renderer::SetOption(Renderer_Option::Grid,                0.0f);
+             Renderer::SetOption(Renderer_Option::Vhs,                 0.0f);
+         }
     }
 
     namespace car
@@ -1831,6 +1841,8 @@ namespace spartan
         ThreadPool::AddTask([default_world]()
         {
             ProgressTracker::SetGlobalLoadingState(true);
+
+            set_base_renderer_options();
 
             switch (default_world)
             {
