@@ -134,7 +134,7 @@ namespace spartan
         bool GetOcclusionQueryResult(const uint64_t entity_id);
         void UpdateOcclusionQueries();
 
-        // timeblocks (markers + timestamps)
+        // timeblocks (cpu and gpu time measurement as well as gpu markers)
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
         void EndTimeblock();
 

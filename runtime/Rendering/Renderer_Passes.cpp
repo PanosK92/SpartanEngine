@@ -911,34 +911,44 @@ namespace spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // early exit if no entities or no camera
+        // early exit if there is nothing to work with
         if (World::GetLightCount() == 0 || !World::GetCamera())
             return;
-    
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
+
+        // acquire resources
+        RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
+        RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
+        RHI_Texture* light_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
+        RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        RHI_Texture* tex_skysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
+
+        // define pipeline state
+        RHI_PipelineState pso;
+        pso.name             = is_transparent_pass ? "light_transparent" : "light";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
+
+        cmd_list->BeginTimeblock(pso.name);
         {
-            // set pipeline state
-            RHI_PipelineState pso;
-            pso.name             = is_transparent_pass ? "light_transparent" : "light";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
+            // set shared state
             cmd_list->SetPipelineState(pso);
-    
-            // set static textures once
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::skysphere));
     
-            // track light index for clearing (first light clears render targets)
-            uint32_t light_index = 0;
-    
-            // process all lights
-            for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
+            // process lights
+            uint32_t light_count = 0;
+            const auto& lights   = World::GetEntitiesLights();
+            for (uint32_t i = 0; i < lights.size(); i++)
             {
-                Light* light = entity->GetComponent<Light>();
+                // skip lights beyond the first 16
+                if (i > 16)
+                    continue;
 
-                RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
-                RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
-                RHI_Texture* light_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
-                RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+                // skip lights beyond 100 meters from the camera
+                const shared_ptr<Entity>& entity = lights[i];
+                Light* light                     = entity->GetComponent<Light>();
+                float distance_squared           = Vector3::DistanceSquared(entity->GetPosition(), World::GetCamera()->GetEntity()->GetPosition());
+                if (distance_squared > 10000.0f && light->GetLightType() != LightType::Directional)
+                    continue;
 
                 // set textures
                 SetCommonTextures(cmd_list);
@@ -948,14 +958,11 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
 
-                // push pass constants
+                // push constants
                 m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light_index++), 0.0f, 0.0f);
-                m_pcb_pass_cpu.set_f3_value(
-                    GetOption<float>(Renderer_Option::Fog),
-                    GetOption<float>(Renderer_Option::ShadowResolution),
-                    static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount())
-                );
+                bool clear = light_count == 0;
+                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(i), clear, 0.0f);
+                m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), static_cast<float>(tex_skysphere->GetMipCount()));
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
                 // dispatch
@@ -965,6 +972,8 @@ namespace spartan
                 cmd_list->InsertBarrierReadWrite(light_specular);
                 cmd_list->InsertBarrierReadWrite(light_shadow);
                 cmd_list->InsertBarrierReadWrite(light_volumetric);
+
+                light_count++;
             }
         }
         cmd_list->EndTimeblock();
