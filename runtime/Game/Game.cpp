@@ -1488,8 +1488,8 @@ namespace spartan
                     Light* light = point_light->AddComponent<Light>();
                     light->SetLightType(LightType::Point);
                     light->SetColor(Color::light_fluorescent_tube_light);
-                    light->SetRange(30.0f);
-                    light->SetIntensity(LightIntensity::bulb_500_watt);
+                    light->SetRange(50.0f);       // meters
+                    light->SetIntensity(4750.0f); // lumens
                     light->SetFlag(LightFlags::Volumetric, false);
                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                     light->SetFlag(LightFlags::Shadows, false);
@@ -1498,9 +1498,9 @@ namespace spartan
                 }
                 
                 // constants
-                const float ROOM_WIDTH  = 20.0f;
-                const float ROOM_DEPTH  = 20.0f;
-                const float ROOM_HEIGHT = 10.0f;
+                const float ROOM_WIDTH  = 40.0f;
+                const float ROOM_DEPTH  = 40.0f;
+                const float ROOM_HEIGHT = 100.0f;
                 const float DOOR_WIDTH  = 2.0f;
                 const float DOOR_HEIGHT = 5.0f;
                 const int NUM_ROOMS     = 100; // might not reach this number if the path gets boxed in
