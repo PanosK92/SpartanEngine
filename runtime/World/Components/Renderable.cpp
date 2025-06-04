@@ -179,7 +179,9 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,          Material*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,             uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,              Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,      BoundingBox);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh, BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index,    uint32_t);
     }
 
     Renderable::~Renderable()
