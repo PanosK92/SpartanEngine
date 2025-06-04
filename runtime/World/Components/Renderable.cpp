@@ -245,7 +245,7 @@ namespace spartan
         if (Entity* entity = GetEntity())
         {
             // wait for model loading to finish and entity activation before reading its transform, as accessing it prematurely can cause NaNs and trigger an assertion
-            if (entity->IsActive())
+            if (entity->GetActive())
             { 
                 const Matrix& transform = entity->GetMatrix();
 

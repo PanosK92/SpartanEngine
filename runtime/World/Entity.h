@@ -55,7 +55,7 @@ namespace spartan
         void Deserialize(FileStream* stream, std::shared_ptr<Entity> parent);
 
         // active
-        bool IsActive() const;
+        bool GetActive() const;
         void SetActive(const bool active) { m_is_active = active; }
 
         // adds a component of type T

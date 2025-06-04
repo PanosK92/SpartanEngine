@@ -46,7 +46,7 @@ namespace spartan
             shared_ptr<Entity> clone = World::CreateEntity();
             clone->SetObjectId(SpartanObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
-            clone->SetActive(entity->IsActive());
+            clone->SetActive(entity->GetActive());
             clone->SetPosition(entity->GetPositionLocal());
             clone->SetRotation(entity->GetRotationLocal());
             clone->SetScale(entity->GetScaleLocal());
@@ -284,11 +284,11 @@ namespace spartan
         World::Resolve();
     }
 
-    bool Entity::IsActive() const
+    bool Entity::GetActive() const
     {
         if (shared_ptr<Entity> parent = GetParent())
         {
-            return m_is_active && parent->IsActive();
+            return m_is_active && parent->GetActive();
         }
 
         return m_is_active;

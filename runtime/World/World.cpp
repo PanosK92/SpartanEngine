@@ -59,7 +59,7 @@ namespace spartan
         {
             for (shared_ptr<Entity>& entity : entities)
             {
-                if (entity->IsActive())
+                if (entity->GetActive())
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
@@ -135,7 +135,7 @@ namespace spartan
         // tick
         for (shared_ptr<Entity>& entity : entities)
         {
-            if (entity->IsActive())
+            if (entity->GetActive())
             { 
                 entity->Tick();
             }
@@ -151,7 +151,7 @@ namespace spartan
                 entities_lights.clear();
                 for (shared_ptr<Entity>& entity : entities)
                 {
-                    if (entity->IsActive())
+                    if (entity->GetActive())
                     {
                         if (!camera && entity->GetComponent<Camera>())
                         { 

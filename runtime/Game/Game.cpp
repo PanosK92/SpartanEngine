@@ -348,7 +348,7 @@ namespace spartan
                 entity->GetDescendants(&entities);
                 for (Entity* entity_it : entities)
                 {
-                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
@@ -458,7 +458,7 @@ namespace spartan
                 entity->GetDescendants(&entities);
                 for (Entity* entity_it : entities)
                 {
-                    if (entity_it->IsActive())
+                    if (entity_it->GetActive())
                     {
                         if (Renderable* renderable = entity_it->GetComponent<Renderable>())
                         {
@@ -498,7 +498,7 @@ namespace spartan
                 entity->GetDescendants(&entities);
                 for (Entity* entity_it : entities)
                 {
-                    if (entity_it->IsActive() && entity_it->GetComponent<Renderable>() != nullptr)
+                    if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
                         physics_body->SetShapeType(PhysicsShape::Mesh);
@@ -1393,7 +1393,9 @@ namespace spartan
         }
 
         namespace liminal_space
-        { 
+        {
+            shared_ptr<Entity> flashlight;
+
             void create()
             {
                 // shared material for all surfaces (floor, walls, ceiling)
@@ -1488,25 +1490,25 @@ namespace spartan
                     AudioSource* audio_source_water = entity_water->AddComponent<AudioSource>();
                     audio_source_water->SetAudioClip("project\\music\\footsteps_water.wav");
                     audio_source_water->SetPlayOnStart(false);
+
+                    // flashglight
+                    flashlight = World::CreateEntity();
+                    {
+                        flashlight->SetObjectName("flashlight");
+                        flashlight->SetPosition(Vector3(0.0f, 1.7f, 0.0f));
+                        flashlight->SetParent(default_camera);
+
+                        Light* light = flashlight->AddComponent<Light>();
+                        light->SetLightType(LightType::Point);
+                        light->SetColor(Color::light_light_bulb);
+                        light->SetRange(50.0f);       // meters
+                        light->SetIntensity(4750.0f); // lumens
+                        light->SetFlag(LightFlags::Volumetric,         false);
+                        light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                        light->SetFlag(LightFlags::Shadows,            false);
+                    }
                 }
-                
-                // point light
-                shared_ptr<Entity> point_light = World::CreateEntity();
-                {
-                    point_light->SetObjectName("light_point");
-                    
-                    Light* light = point_light->AddComponent<Light>();
-                    light->SetLightType(LightType::Point);
-                    light->SetColor(Color::light_fluorescent_tube_light);
-                    light->SetRange(50.0f);       // meters
-                    light->SetIntensity(4750.0f); // lumens
-                    light->SetFlag(LightFlags::Volumetric, false);
-                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                    light->SetFlag(LightFlags::Shadows, false);
-                    light->GetEntity()->SetPosition(Vector3(0.0f, 1.7f, 0.0f));
-                    light->GetEntity()->SetParent(default_camera);
-                }
-                
+
                 // constants
                 const float ROOM_WIDTH  = 40.0f;
                 const float ROOM_DEPTH  = 40.0f;
@@ -1526,7 +1528,7 @@ namespace spartan
                     return dist(rng);
                 };
                 
-                auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, shared_ptr<Entity> parent, bool add_light)
+                auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, shared_ptr<Entity> parent)
                 {
                     auto entity = World::CreateEntity();
                     
@@ -1541,49 +1543,6 @@ namespace spartan
                     
                     auto physics_body = entity->AddComponent<PhysicsBody>();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
-                    
-                    // add pool light if requested
-                    if (false /*add_light*/)
-                    {
-                        shared_ptr<Entity> light_clone = entity_pool_light->Clone();
-                        light_clone->SetObjectName(string("pool_light_") + name);
-                        light_clone->SetParent(entity); // parent to the wall entity
-                        
-                        // position at center of wall
-                        Vector3 light_pos = pos;
-                        bool is_front_back = (string(name).find("wall_1") == 0 || string(name).find("wall_2") == 0);
-                        if (is_front_back)
-                        {
-                            // front/back walls: center in x, y, offset in z
-                            light_pos.x = 0.0f; // center of ROOM_WIDTH
-                            light_pos.y = ROOM_HEIGHT / 2.0f; // center of ROOM_HEIGHT
-                            light_pos.z += (string(name).find("wall_1") == 0 ? 0.51f : -0.51f) * scale.z; // offset from surface
-                        }
-                        else
-                        {
-                            // left/right walls: center in z, y, offset in x
-                            light_pos.z = 0.0f; // center of ROOM_DEPTH
-                            light_pos.y = ROOM_HEIGHT / 2.0f; // center of ROOM_HEIGHT
-                            light_pos.x += (string(name).find("wall_3") == 0 ? 0.51f : -0.51f) * scale.x; // offset from surface
-                        }
-                        // convert to local space relative to wall
-                        light_clone->SetPosition(light_pos - pos);
-                        
-                        // compute inward-facing normal
-                        Vector3 wall_normal;
-                        if (string(name).find("wall_1") == 0) // front
-                            wall_normal = Vector3(0, 0, 1); // normal points +z
-                        else if (string(name).find("wall_2") == 0) // back
-                            wall_normal = Vector3(0, 0, -1); // normal points -z
-                        else if (string(name).find("wall_3") == 0) // left
-                            wall_normal = Vector3(1, 0, 0); // normal points +x
-                        else // wall_4, right
-                            wall_normal = Vector3(-1, 0, 0); // normal points -x
-                        
-                        // set light to look opposite the wall normal (inward)
-                        Vector3 light_forward = -wall_normal; // light faces inward
-                        light_clone->SetRotation(Quaternion::FromLookRotation(light_forward, Vector3::Up));
-                    }
                 };
                 
                 // lambda for creating a door on a specified wall
@@ -1598,7 +1557,7 @@ namespace spartan
                     create_surface((base_name + "_top").c_str(),
                         Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
                         Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH),
-                        parent, false);
+                        parent);
                     
                     // bottom sections
                     float dim    = isFb ? ROOM_WIDTH : ROOM_DEPTH;
@@ -1609,12 +1568,12 @@ namespace spartan
                     create_surface((base_name + "_left").c_str(),
                         Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
-                        parent, false);
+                        parent);
                     
                     create_surface((base_name + "_right").c_str(),
                         Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
-                        parent, false);
+                        parent);
                 };
                 
                 // lambda for creating a room
@@ -1632,8 +1591,8 @@ namespace spartan
                     const float floor_y = is_pool ? -pool_depth : 0.0f; // lower floor
                     
                     // floor and ceiling
-                    create_surface("floor", Vector3(0, floor_y, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity, false);
-                    create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity, false);
+                    create_surface("floor", Vector3(0, floor_y, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
+                    create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
                     
                     // spawn water if floor is lowered
                     if (is_pool)
@@ -1672,7 +1631,16 @@ namespace spartan
                         else
                         {
                             string name = "wall_" + to_string(i + 1);
-                            create_surface(name.c_str(), walls[i].pos, walls[i].scale, room_entity, true); // add light for full walls
+                            create_surface(name.c_str(), walls[i].pos, walls[i].scale, room_entity); // add light for full walls
+                        }
+
+                        // decorate with a light
+                        if (false)
+                        {
+                            shared_ptr<Entity> light_clone = entity_pool_light->Clone();
+                            light_clone->SetObjectName(string("pool_light_") + to_string(i));
+                            light_clone->SetParent(room_entity);
+                            light_clone->SetPositionLocal(Vector3(0.0f, 1.5f, 0.0f));
                         }
                     }
                 };
@@ -1790,6 +1758,13 @@ namespace spartan
                             audio_source_water->Stop();
                         }
                     }
+                }
+
+                // flashlight
+                if (Input::GetKeyDown(KeyCode::F))
+                {
+                    flashlight->SetActive(!flashlight->GetActive());
+                    SP_LOG_INFO("Flashlight: %s", flashlight->GetActive() ? "On" : "Off");
                 }
             }
         }

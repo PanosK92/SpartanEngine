@@ -1410,7 +1410,7 @@ namespace spartan
             // process entities
             for (const shared_ptr<Entity>& entity : entities)
             {
-                if (!entity->IsActive())
+                if (!entity->GetActive())
                     continue;
 
                 // skip entities that won't contribute yet will kill performance

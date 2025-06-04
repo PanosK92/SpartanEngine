@@ -934,7 +934,7 @@ namespace spartan
         {
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
-                if (entity->IsActive())
+                if (entity->GetActive())
                 {
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
@@ -1068,7 +1068,7 @@ namespace spartan
             {  
                 for (const shared_ptr<Entity>& entity : World::GetEntities())
                 {
-                    if (!entity->IsActive())
+                    if (!entity->GetActive())
                         continue;
 
                     if (Renderable* renderable = entity->GetComponent<Renderable>())

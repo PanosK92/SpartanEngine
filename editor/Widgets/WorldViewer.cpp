@@ -92,7 +92,7 @@ void WorldViewer::TreeShow()
         vector<shared_ptr<spartan::Entity>> root_entities = spartan::World::GetRootEntities();
         for (const shared_ptr<spartan::Entity>& entity : root_entities)
         {
-            if (entity->IsActive())
+            if (entity->GetActive())
             {
                 TreeAddEntity(entity);
             }
