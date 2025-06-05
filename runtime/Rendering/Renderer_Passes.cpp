@@ -945,7 +945,7 @@ namespace spartan
                         continue;
     
                     // skip inactive lights
-                    const std::shared_ptr<Entity>& entity = lights[i];
+                    const shared_ptr<Entity>& entity = lights[i];
                     if (!entity->GetActive())
                         continue;
     
@@ -958,10 +958,10 @@ namespace spartan
                     // set textures
                     SetCommonTextures(cmd_list);
                     cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetDepthTexture());
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex, light_diffuse);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex2, light_specular);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex3, light_shadow);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex4, light_volumetric);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
     
                     // push constants
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);

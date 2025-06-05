@@ -151,7 +151,6 @@ struct Light
     bool has_shadows()              { return flags & uint(1U << 3); }
     bool has_shadows_screen_space() { return flags & uint(1U << 4); }
     bool is_volumetric()            { return flags & uint(1U << 5); }
-    uint get_array_index()          { return (uint)pass_get_f3_value2().y; }
 
     float compute_attenuation_distance(const float3 surface_position)
     {
