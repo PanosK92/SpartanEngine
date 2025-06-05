@@ -828,6 +828,7 @@ namespace spartan
                     );
 
                     // light index writes into the texture array index
+                    light->SetScreenSpaceShadowsSliceIndex(static_cast<uint32_t>(array_slice_index));
                     float near = 1.0f;
                     float far  = 0.0f;
                     m_pcb_pass_cpu.set_f3_value(near, far, array_slice_index++);
@@ -966,7 +967,7 @@ namespace spartan
                     // push constants
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
                     bool clear = light_count == 0;
-                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(i), clear, 0.0f);
+                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(i), clear, light->GetScreenSpaceShadowsSliceIndex());
                     m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), static_cast<float>(tex_skysphere->GetMipCount()));
                     cmd_list->PushConstants(m_pcb_pass_cpu);
     

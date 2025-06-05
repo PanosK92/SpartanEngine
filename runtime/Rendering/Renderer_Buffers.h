@@ -196,7 +196,7 @@ namespace spartan
 
         float angle;
         uint32_t flags;
-        math::Vector2 alpha_tested;
+        math::Vector2 padding;
     };
 
     struct Sb_Aabb

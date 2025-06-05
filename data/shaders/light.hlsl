@@ -88,7 +88,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             // screen space shadows
             if (light.has_shadows_screen_space())
             {
-                shadow = min(shadow, tex_uav_sss[int3(thread_id.xy, light_index)].x);
+                uint slice_index = pass_get_f3_value2().z;
+                shadow = min(shadow, tex_uav_sss[int3(thread_id.xy, slice_index)].x);
             }
 
             // modulate radiance with shadow
