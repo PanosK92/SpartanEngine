@@ -625,7 +625,7 @@ namespace spartan
     void Camera::FocusOnSelectedEntity()
     {
         // only do this in editor mode
-        if (!Engine::IsFlagSet(EngineMode::Playing))
+        if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
         if (shared_ptr<Entity> entity = GetSelectedEntity())

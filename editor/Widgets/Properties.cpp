@@ -159,7 +159,7 @@ void Properties::OnTickVisible()
                 Renderable* renderable        = entity_ptr->GetComponent<Renderable>();
                 Material* material            = renderable ? renderable->GetMaterial() : nullptr;
 
-                ShowTransform(entity_ptr);
+                ShowEntity(entity_ptr);
                 ShowLight(entity_ptr->GetComponent<Light>());
                 ShowCamera(entity_ptr->GetComponent<Camera>());
                 ShowTerrain(entity_ptr->GetComponent<Terrain>());
@@ -199,10 +199,17 @@ void Properties::Inspect(const shared_ptr<Material> material)
     m_inspected_material = material;
 }
 
-void Properties::ShowTransform(shared_ptr<Entity> entity) const 
+void Properties::ShowEntity(shared_ptr<Entity> entity) const 
 {
-    if (component_begin("Transform", IconType::Component_Transform, nullptr, true, false))
+    if (component_begin("Entity", IconType::Component_Transform, nullptr, true, false))
     {
+        // toggle for Active state
+        bool is_active = entity->GetActive();
+        if (ImGui::Checkbox("Active", &is_active))
+        {
+            entity->SetActive(is_active);
+        }
+
         //= REFLECT =====================================
         Vector3 position    = entity->GetPositionLocal();
         Quaternion rotation = entity->GetRotationLocal();

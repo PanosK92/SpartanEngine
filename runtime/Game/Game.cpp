@@ -1638,19 +1638,21 @@ namespace spartan
                         bool is_side_wall = (dir == Direction::Left || dir == Direction::Right);
                         if (is_side_wall)
                         {
+                            const float height = 1.5f;
+
                             shared_ptr<Entity> light_clone = entity_pool_light->Clone();
                             light_clone->SetObjectName(string("pool_light_") + to_string(i));
                             light_clone->SetParent(room_entity);
                             light_clone->SetScale(0.5f);
                             
                             // set position on the wall
-                            light_clone->SetPositionLocal(Vector3(walls[i].pos.x, 1.5f, walls[i].pos.z));
+                            light_clone->SetPositionLocal(Vector3(walls[i].pos.x,height, walls[i].pos.z));
                             
                             // compute inward direction (from wall position to room center)
-                            Vector3 wall_pos     = Vector3(walls[i].pos.x, 1.5f, walls[i].pos.z);
-                            Vector3 room_center  = Vector3(room_entity->GetPosition().x, 1.5f, room_entity->GetPosition().z);
+                            Vector3 wall_pos     = Vector3(walls[i].pos.x, height, walls[i].pos.z);
+                            Vector3 room_center  = Vector3(room_entity->GetPosition().x, height, room_entity->GetPosition().z);
                             Vector3 direction    = (room_center - wall_pos).Normalized();
-                            direction           *= -1.0f; // invert direction to match 3D model orientation
+                            //direction           *= -1.0f; // invert direction to match 3D model orientation
                             
                             // set look-at rotation
                             light_clone->SetRotation(Quaternion::FromLookRotation(direction, Vector3::Up));

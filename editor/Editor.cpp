@@ -81,7 +81,7 @@ Editor::Editor(const vector<string>& args)
     font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * spartan::Window::GetDpiScale(), &config);
     io.FontGlobalScale     = font_scale;
 
-    // initialise imgui backends
+    // initialize imgui backends
     SP_ASSERT_MSG(ImGui_ImplSDL3_InitForVulkan(static_cast<SDL_Window*>(spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 

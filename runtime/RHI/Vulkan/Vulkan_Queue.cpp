@@ -209,7 +209,9 @@ namespace spartan
             if (result == VK_ERROR_DEVICE_LOST)
             {
                 if (Debugging::IsBreadcrumbsEnabled())
-                { 
+                {
+                    bool flush = true;
+                    RHI_Device::QueueWaitAll(flush);
                     RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved();
                 }
                 SP_ERROR_WINDOW("GPU crashed");
