@@ -85,12 +85,6 @@ namespace spartan
         float GetRestitution() const { return m_restitution; }
         void SetRestitution(float restitution);
 
-        // gravity
-        void SetUseGravity(bool gravity);
-        bool GetUseGravity() const { return m_use_gravity; };
-        math::Vector3 GetGravity() const { return m_gravity; }
-        void SetGravity(const math::Vector3& gravity);
-
         // kinematic
         void SetIsKinematic(bool kinematic);
         bool GetIsKinematic() const { return m_is_kinematic; }
@@ -149,9 +143,7 @@ namespace spartan
         float m_friction               = 1.0f;
         float m_friction_rolling       = 0.002f;
         float m_restitution            = 0.2f;
-        bool m_use_gravity             = true;
         bool m_is_kinematic            = false;
-        math::Vector3 m_gravity        = math::Vector3::Zero;
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;

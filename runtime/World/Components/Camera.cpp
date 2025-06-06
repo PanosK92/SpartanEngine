@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
+#include "../../Physics/Physics.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -543,7 +544,7 @@ namespace spartan
                         float submerged_height   = -GetEntity()->GetPosition().y;
                         float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
                         float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                        Vector3 buoyancy         = -(1.03f * m_physics_body_to_control->GetGravity() * volume);
+                        Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume);
                         m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
     
                         // drag

@@ -52,15 +52,11 @@ namespace spartan
 {
     PhysicsBody::PhysicsBody(Entity* entity) : Component(entity)
     {
-        m_gravity = Physics::GetGravity();
-
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction_rolling, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_restitution, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_use_gravity, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_kinematic, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_gravity, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
@@ -136,8 +132,6 @@ namespace spartan
         stream->Write(m_friction);
         stream->Write(m_friction_rolling);
         stream->Write(m_restitution);
-        stream->Write(m_use_gravity);
-        stream->Write(m_gravity);
         stream->Write(m_is_kinematic);
         stream->Write(m_position_lock);
         stream->Write(m_rotation_lock);
@@ -152,8 +146,6 @@ namespace spartan
         stream->Read(&m_friction);
         stream->Read(&m_friction_rolling);
         stream->Read(&m_restitution);
-        stream->Read(&m_use_gravity);
-        stream->Read(&m_gravity);
         stream->Read(&m_is_kinematic);
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
@@ -178,48 +170,103 @@ namespace spartan
     {
         if (!m_body || m_friction == friction)
             return;
-
+    
         m_friction = friction;
+    
+        // Update the material's static friction
+        PxShape* shape = static_cast<PxShape*>(m_shape);
+        if (shape)
+        {
+            PxMaterial* material = nullptr;
+            shape->getMaterials(&material, 1);
+            if (material)
+            {
+                material->setStaticFriction(m_friction);
+            }
+            else
+            {
+                SP_LOG_WARNING("SetFriction: No material found for shape.");
+            }
+        }
+        else
+        {
+            SP_LOG_WARNING("SetFriction: No shape attached to body.");
+        }
     }
 
     void PhysicsBody::SetFrictionRolling(float frictionRolling)
     {
         if (!m_body || m_friction_rolling == frictionRolling)
             return;
-
+    
         m_friction_rolling = frictionRolling;
+    
+        // Update the material's dynamic friction (used as a proxy for rolling friction)
+        PxShape* shape = static_cast<PxShape*>(m_shape);
+        if (shape)
+        {
+            PxMaterial* material = nullptr;
+            shape->getMaterials(&material, 1);
+            if (material)
+            {
+                material->setDynamicFriction(m_friction_rolling);
+            }
+            else
+            {
+                SP_LOG_WARNING("SetFrictionRolling: No material found for shape.");
+            }
+        }
+        else
+        {
+            SP_LOG_WARNING("SetFrictionRolling: No shape attached to body.");
+        }
     }
 
     void PhysicsBody::SetRestitution(float restitution)
     {
         if (!m_body || m_restitution == restitution)
             return;
-
+    
         m_restitution = restitution;
-    }
-
-    void PhysicsBody::SetUseGravity(bool gravity)
-    {
-        if (gravity == m_use_gravity)
-            return;
-
-        m_use_gravity = gravity;
-    }
-
-    void PhysicsBody::SetGravity(const Vector3& gravity)
-    {
-        if (m_gravity == gravity)
-            return;
-
-        m_gravity = gravity;
+    
+        // Update the material's restitution
+        PxShape* shape = static_cast<PxShape*>(m_shape);
+        if (shape)
+        {
+            PxMaterial* material = nullptr;
+            shape->getMaterials(&material, 1);
+            if (material)
+            {
+                material->setRestitution(m_restitution);
+            }
+            else
+            {
+                SP_LOG_WARNING("SetRestitution: No material found for shape.");
+            }
+        }
+        else
+        {
+            SP_LOG_WARNING("SetRestitution: No shape attached to body.");
+        }
     }
 
     void PhysicsBody::SetIsKinematic(bool kinematic)
     {
         if (kinematic == m_is_kinematic)
             return;
-
+    
         m_is_kinematic = kinematic;
+    
+        // Update kinematic flag for dynamic bodies
+        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+        if (rigid_dynamic)
+        {
+            rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
+        }
+        else
+        {
+            SP_LOG_WARNING("SetIsKinematic: Body is not dynamic, kinematic flag ignored.");
+        }
     }
 
     void PhysicsBody::SetLinearVelocity(const Vector3& velocity) const
@@ -289,14 +336,12 @@ namespace spartan
     
         m_position_lock = lock;
     
-        // Apply position locks to the rigid body
         PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
         if (rigid_dynamic)
         {
             PxRigidDynamicLockFlags flags = rigid_dynamic->getRigidDynamicLockFlags();
             
-            // Update linear lock flags based on input
-            flags = PxRigidDynamicLockFlags(0); // Clear existing flags
+            flags = PxRigidDynamicLockFlags(0);
             if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
             if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
             if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
@@ -330,14 +375,12 @@ namespace spartan
     
         m_rotation_lock = lock;
     
-        // Apply rotation locks to the rigid body
         PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
         if (rigid_dynamic)
         {
             PxRigidDynamicLockFlags flags = rigid_dynamic->getRigidDynamicLockFlags();
             
-            // Update angular lock flags based on input
-            flags = PxRigidDynamicLockFlags(0); // Clear existing flags
+            flags = PxRigidDynamicLockFlags(0);
             if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
             if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
             if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
@@ -484,8 +527,8 @@ namespace spartan
     float PhysicsBody::GetCapsuleVolume()
     {
         // total volume is the sum of the cylinder and two hemispheres
-        float radius = GetCapsuleRadius(); // radius is max of x and z scale divided by 2
-        float half_height = m_scale.y * 0.5f; // Hjalf the height of the cylindrical part
+        float radius = GetCapsuleRadius();    // radius is max of x and z scale divided by 2
+        float half_height = m_scale.y * 0.5f; // half the height of the cylindrical part
 
         // cylinder volume: π * r² * h
         float cylinder_volume = math::pi * radius * radius * (m_scale.y - 2 * radius);
@@ -510,11 +553,9 @@ namespace spartan
         PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
     
         // determine if a new body is needed (no body or mass-based type change)
-        bool is_static = m_mass == 0.0f;
-        bool needs_new_body = !m_body ||
-            (is_static && !rigid_actor->is<PxRigidStatic>()) ||
-            (!is_static && !rigid_actor->is<PxRigidDynamic>());
-    
+        bool is_static      = m_mass == 0.0f;
+        bool needs_new_body = !m_body || (is_static && !rigid_actor->is<PxRigidStatic>()) || (!is_static && !rigid_actor->is<PxRigidDynamic>());
+
         if (needs_new_body)
         {
             // clean up existing body if it exists
@@ -556,8 +597,7 @@ namespace spartan
                     PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
                 }
                 rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
-                rigid_dynamic->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !m_use_gravity);
-                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0); // initialize empty flags
+                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
                 if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
                 if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
                 if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
@@ -583,8 +623,7 @@ namespace spartan
                 PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
             }
             rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
-            rigid_dynamic->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !m_use_gravity);
-            PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0); // initialize empty flags
+            PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
             if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
             if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
             if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;

@@ -526,7 +526,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         float friction         = body->GetFriction();
         float friction_rolling = body->GetFrictionRolling();
         float restitution      = body->GetRestitution();
-        bool use_gravity       = body->GetUseGravity();
         bool is_kinematic      = body->GetIsKinematic();
         bool freeze_pos_x      = static_cast<bool>(body->GetPositionLock().x);
         bool freeze_pos_y      = static_cast<bool>(body->GetPositionLock().y);
@@ -553,10 +552,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         // restitution
         ImGui::Text("Restitution");
         ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_restitution", &restitution, step, step_fast, precision, input_text_flags);
-
-        // use gravity
-        ImGui::Text("Use Gravity");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_use_gravity", &use_gravity);
 
         // is kinematic
         ImGui::Text("Is Kinematic");
@@ -620,7 +615,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         if (friction != body->GetFriction())                              body->SetFriction(friction);
         if (friction_rolling != body->GetFrictionRolling())               body->SetFrictionRolling(friction_rolling);
         if (restitution != body->GetRestitution())                        body->SetRestitution(restitution);
-        if (use_gravity != body->GetUseGravity())                         body->SetUseGravity(use_gravity);
         if (is_kinematic != body->GetIsKinematic())                       body->SetIsKinematic(is_kinematic);
         if (freeze_pos_x != static_cast<bool>(body->GetPositionLock().x)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
         if (freeze_pos_y != static_cast<bool>(body->GetPositionLock().y)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
