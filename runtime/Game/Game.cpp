@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Game.h"
-#include "../Game/Car.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
@@ -554,25 +553,6 @@ namespace spartan
             }
         }
 
-        void car_mark2()
-        {
-             build::camera();
-             build::sun(true);
-             build::floor();
-             build::damaged_helmet(Vector3(5.0f, 1.0f, 0.0f));
-             build::material_ball(Vector3(8.0f, 1.0f, 0.0f));
-             build::metal_cube(Vector3(0.0f, 2.0f, 0.0f));
-             build::flight_helmet(Vector3(-4.0f, 2.0f, 0.0f));
-
-            PhysicsBody* physics_body = default_metal_cube->GetComponent<PhysicsBody>();
-            physics_body->SetBoundingBox(Vector3(1.0f, 0.5f, 2.5f));
-            physics_body->SetMass(960.0f);
-            physics_body->SetShapeType(PhysicsShape::Box);
-            physics_body->SetBodyType(PhysicsBodyType::Vehicle2);
-  
-            //Renderer::SetOption(Renderer_Option::Physics, 1.0f);
-        }
-
         void set_base_renderer_options()
          {
              // disable all effects which are specific to certain worlds, let the each world decide which effects it wants to enable
@@ -700,21 +680,21 @@ namespace spartan
                 // add physics body
                 if (physics)
                 {
-                    PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
-                    physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
-                    physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
-                    physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
-                    physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                    physics_body->SetShapeType(PhysicsShape::Box);
-
-                    // disable car control (it's toggled via the gameplay code in Tick())
-                    physics_body->GetCar()->SetControlEnabled(false);
-
-                    // set the steering wheel to the physics body so that it can rotate it
-                    if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
-                    {
-                        physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
-                    }
+                    //PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
+                    //physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
+                    //physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
+                    //physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
+                    //physics_body->SetBodyType(PhysicsBodyType::Vehicle);
+                    //physics_body->SetShapeType(PhysicsShape::Box);
+                    //
+                    //// disable car control (it's toggled via the gameplay code in Tick())
+                    //physics_body->GetCar()->SetControlEnabled(false);
+                    //
+                    //// set the steering wheel to the physics body so that it can rotate it
+                    //if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
+                    //{
+                    //    physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
+                    //}
                 }
 
                 // disable entities
@@ -786,26 +766,26 @@ namespace spartan
                         shared_ptr<Entity> wheel = entity_wheel_root;
                         wheel->SetObjectName("wheel_fl");
                         wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
+                        //physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
 
                         wheel = entity_wheel_root->Clone();
                         wheel->SetObjectName("wheel_fr");
                         wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
                         wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
                         wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
+                        //physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
 
                         wheel = entity_wheel_root->Clone();
                         wheel->SetObjectName("wheel_rl");
                         wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
+                       // physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
 
                         wheel = entity_wheel_root->Clone();
                         wheel->SetObjectName("wheel_rr");
                         wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
                         wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
                         wheel->SetParent(default_car);
-                        physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
+                        //physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
                     }
                 }
              }
@@ -910,7 +890,7 @@ namespace spartan
             
                     // enable/disable car/camera control
                     camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
-                    default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
+                    //default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
             
                     // play exit/enter sound
                     audio_source_door->Play();

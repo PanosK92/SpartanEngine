@@ -31,15 +31,11 @@ namespace spartan
 {
     class Entity;
     class Physics;
-    class Car;
-    class Car2;
     namespace math { class Quaternion; }
 
     enum class PhysicsBodyType
     {
-        RigidBody,
-        Vehicle,
-        Vehicle2
+        RigidBody
     };
 
     enum class PhysicsForce
@@ -151,7 +147,6 @@ namespace spartan
 
         // ray tracing
         bool RayTraceIsGrounded() const;
-        math::Vector3 RayTraceIsNearStairStep(const math::Vector3& forward) const;
 
         // dimensional properties
         float GetCapsuleVolume();
@@ -162,7 +157,6 @@ namespace spartan
         void Activate() const;
         void Deactivate() const;
         void* GetBtRigidBody() const  { return m_rigid_body; }
-        std::shared_ptr<Car> GetCar() { return m_car; }
 
         constexpr static inline float mass_auto = FLT_MAX;
 
@@ -190,9 +184,5 @@ namespace spartan
         void* m_rigid_body             = nullptr;
         bool m_replicate_hierarchy     = false;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
-
-        // vehicle
-        std::shared_ptr<Car> m_car;
-        std::shared_ptr<Car2> m_car2;
     };
 }

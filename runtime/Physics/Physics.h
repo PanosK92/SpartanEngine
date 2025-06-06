@@ -21,23 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
-#include "Definitions.h"
-//======================
-
-//= FORWARD DECLARATIONS =================
-class btBroadphaseInterface;
-class btCollisionDispatcher;
-class btSequentialImpulseConstraintSolver;
-class btDefaultCollisionConfiguration;
-class btCollisionObject;
-class btDiscreteDynamicsWorld;
-class btRigidBody;
-class btSoftBody;
-class btTypedConstraint;
-struct btSoftBodyWorldInfo;
-class btRaycastVehicle;
-//========================================
+//= INCLUDES ===============
+#include <vector>
+#include "../Math/Vector3.h"
+//==========================
 
 namespace spartan
 {
@@ -48,27 +35,9 @@ namespace spartan
         static void Shutdown();
         static void Tick();
 
-        static std::vector<btRigidBody*> RayCast(const math::Vector3& start, const math::Vector3& end);
+        static std::vector<void*> RayCast(const math::Vector3& start, const math::Vector3& end);
         static math::Vector3 RayCastFirstHitPosition(const math::Vector3& start, const math::Vector3& end);
-
-        // body
-        static void AddBody(btRigidBody* body);
-        static void RemoveBody(btRigidBody*& body);
-        static void AddBody(btSoftBody* body);
-        static void RemoveBody(btSoftBody*& body);
-        static void AddBody(btRaycastVehicle* body);
-        static void RemoveBody(btRaycastVehicle*& body);
-
-        // constraint
-        static void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true);
-        static void RemoveConstraint(btTypedConstraint*& constraint);
-
-        // misc
-        static math::Vector3& GetGravity();
-        static btSoftBodyWorldInfo& GetSoftWorldInfo();
-        static void* GetPhysicsDebugDraw();
-        static void* GetWorld();
-        static float GetTimeStepInternalSec();
+        static math::Vector3 GetGravity();
 
     private:
         // picking

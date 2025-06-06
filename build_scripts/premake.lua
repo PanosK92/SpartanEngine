@@ -197,7 +197,7 @@ function runtime_project_configuration()
         if os.target() == "windows" then
             includedirs { "../third_party/sdl" }
             includedirs { "../third_party/assimp" }
-            includedirs { "../third_party/bullet" }
+            includedirs { "../third_party/physx" }
             includedirs { "../third_party/free_image" }
             includedirs { "../third_party/free_type" }
             includedirs { "../third_party/compressonator" }
@@ -210,7 +210,7 @@ function runtime_project_configuration()
         else
             includedirs { "/usr/include/SDL3" }
             includedirs { "/usr/include/assimp" }
-            includedirs { "/usr/include/bullet" }
+            includedirs { "/usr/include/physx" }
             includedirs { "/usr/include/freetype2" }
             includedirs { "/usr/include/renderdoc" }
         end
@@ -228,7 +228,16 @@ function runtime_project_configuration()
             links { "assimp" }
             links { "FreeImageLib" }
             links { "freetype" }
-            links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
+            links {
+                "PhysX_static_64",
+                "PhysXCommon_static_64",
+                "PhysXFoundation_static_64",
+                "PhysXExtensions_static_64",
+                "PhysXPvdSDK_static_64",
+                "PhysXCooking_static_64",
+                "PhysXVehicle2_static_64",
+                "PhysXCharacterKinematic_static_64"
+            }
             links { "SDL3" }
             links { "Compressonator_MT" }
             links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
@@ -244,7 +253,16 @@ function runtime_project_configuration()
                 links { "assimp_debug" }
                 links { "FreeImageLib_debug" }
                 links { "freetype_debug" }
-                links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
+                links {
+                    "PhysX_static_64_debug",
+                    "PhysXCommon_static_64_debug",
+                    "PhysXFoundation_static_64_debug",
+                    "PhysXExtensions_static_64_debug",
+                    "PhysXPvdSDK_static_64_debug",
+                    "PhysXCooking_static_64_debug",
+                    "PhysXVehicle2_static_64_debug",
+                    "PhysXCharacterKinematic_static_64_debug"
+                }
                 links { "SDL3_debug" }
                 links { "Compressonator_MT_debug" }
                 links { "OpenImageDenoise_debug" , "OpenImageDenoise_core_debug", "OpenImageDenoise_utils_debug" }

@@ -847,7 +847,6 @@ namespace spartan
         }
     }
 
-    
     void Renderer::BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list)
     {
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer

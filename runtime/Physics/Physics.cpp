@@ -19,11 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================================================
+//= INCLUDES ==========================
 #include "pch.h"
 #include "Physics.h"
-#include "PhysicsDebugDraw.h"
-#include "BulletPhysicsHelper.h"
 #include "ProgressTracker.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
@@ -31,139 +29,86 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/World.h"
 SP_WARNINGS_OFF
-#include <btBulletDynamicsCommon.h>
-#include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h>
-#include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
-#include <BulletCollision/NarrowPhaseCollision/btRaycastCallback.h>
-#include <BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h>
-#include <BulletSoftBody/btSoftRigidDynamicsWorld.h>
+#ifdef DEBUG
+    #define _DEBUG 1
+    #undef NDEBUG
+#else
+    #define NDEBUG 1
+    #undef _DEBUG
+#endif
+#define PX_PHYSX_STATIC_LIB
+#include <physx/PxPhysicsAPI.h>
 SP_WARNINGS_ON
-//==============================================================================
+//=====================================
 
 //= NAMESPACES ================
 using namespace std;
 using namespace spartan::math;
+using namespace physx;
 //=============================
 
 namespace spartan
 {
     namespace
-    { 
-        btBroadphaseInterface* broadphase                        = nullptr;
-        btCollisionDispatcher* collision_dispatcher              = nullptr;
-        btSequentialImpulseConstraintSolver* constraint_solver   = nullptr;
-        btDefaultCollisionConfiguration* collision_configuration = nullptr;
-        btDiscreteDynamicsWorld* world                           = nullptr;
-        btSoftBodyWorldInfo* world_info                          = nullptr;
-        PhysicsDebugDraw* debug_draw                             = nullptr;
+    {
+        float gravity = -9.81f;
+        float hz      = 60.0f;
 
-        // world properties
-        int max_solve_iterations       = 256;
-        const float internal_time_step = 1.0f / 200.0f; // 200 Hz - needed for car simulation
-        float accumulator              = 0.0f;
-        math::Vector3 gravity          = math::Vector3(0.0f, -9.81f, 0.0f);
-
-        // picking
-        btRigidBody* picked_body                = nullptr;
-        btTypedConstraint* picked_constraint    = nullptr;
-        int activation_state                    = 0;
-        math::Vector3 hit_position              = math::Vector3::Zero;
-        math::Vector3 picking_position_previous = math::Vector3::Zero;
-        float picking_distance_previous         = 0.0f;
-
-        const bool soft_body_support = true;
+        static PxDefaultAllocator allocator;
+        static PxDefaultErrorCallback error_callback;
+        static PxFoundation* foundation           = nullptr;
+        static PxPhysics* physics                 = nullptr;
+        static PxScene* scene                     = nullptr;
+        static PxDefaultCpuDispatcher* dispatcher = nullptr;
+        static PxRigidDynamic* picked_body        = nullptr;
+        static PxReal pick_distance               = 0.0f;
+        static PxVec3 pick_direction;
     }
 
     void Physics::Initialize()
     {
-        broadphase        = new btDbvtBroadphase();
-        constraint_solver = new btSequentialImpulseConstraintSolver();
+        // foundation
+        foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, error_callback);
+        SP_ASSERT(foundation);
 
-        if (soft_body_support)
-        {
-            // create
-            collision_configuration = new btSoftBodyRigidBodyCollisionConfiguration();
-            collision_dispatcher    = new btCollisionDispatcher(collision_configuration);
-            world                   = new btSoftRigidDynamicsWorld(collision_dispatcher, broadphase, constraint_solver, collision_configuration);
+        // physics
+        physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale(), true, nullptr);
+        SP_ASSERT(physics);
 
-            // setup         
-            world_info = new btSoftBodyWorldInfo();
-            world_info->m_sparsesdf.Initialize();
-            world->getDispatchInfo().m_enableSPU = true;
-            world_info->m_dispatcher             = collision_dispatcher;
-            world_info->m_broadphase             = broadphase;
-            world_info->air_density              = (btScalar)1.2;
-            world_info->water_density            = 0;
-            world_info->water_offset             = 0;
-            world_info->water_normal             = btVector3(0, 0, 0);
-            world_info->m_gravity                = vector_to_bt(gravity);
-        }
-        else
-        {
-            // create
-            collision_configuration = new btDefaultCollisionConfiguration();
-            collision_dispatcher    = new btCollisionDispatcher(collision_configuration);
-            world                   = new btDiscreteDynamicsWorld(collision_dispatcher, broadphase, constraint_solver, collision_configuration);
-        }
+        // scene
+        PxSceneDesc scene_desc(physics->getTolerancesScale());
+        scene_desc.gravity = PxVec3(0.0f, gravity, 0.0f);
+        scene_desc.cpuDispatcher = PxDefaultCpuDispatcherCreate(2);
+        scene_desc.filterShader = PxDefaultSimulationFilterShader;
+        scene = physics->createScene(scene_desc);
+        SP_ASSERT(scene);
 
-        // setup
-        world->setGravity(vector_to_bt(gravity));
-        world->getDispatchInfo().m_useContinuous = true;
-        world->getSolverInfo().m_splitImpulse    = false;
-        world->getSolverInfo().m_numIterations   = max_solve_iterations;
-
-        // get version
-        const string major = to_string(btGetVersion() / 100);
-        const string minor = to_string(btGetVersion()).erase(0, 1);
-        Settings::RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
-
-        // enabled debug drawing
-        {
-            debug_draw = new PhysicsDebugDraw();
-
-            if (world)
-            {
-                world->setDebugDrawer(debug_draw);
-            }
-        }
+        // store dispatcher
+        dispatcher = static_cast<PxDefaultCpuDispatcher*>(scene_desc.cpuDispatcher);
     }
 
     void Physics::Shutdown()
     {
-        delete world;
-        world = nullptr;
-    
-        delete constraint_solver;
-        constraint_solver = nullptr;
-    
-        delete collision_dispatcher;
-        collision_dispatcher = nullptr;
-    
-        delete collision_configuration;
-        collision_configuration = nullptr;
-    
-        delete broadphase;
-        broadphase = nullptr;
-    
-        delete world_info;
-        world_info = nullptr;
-    
-        delete debug_draw;
-        debug_draw = nullptr;
+        PX_RELEASE(scene);
+        PX_RELEASE(dispatcher);
+        PX_RELEASE(physics);
+        PX_RELEASE(foundation);
     }
 
     void Physics::Tick()
     {
         SP_PROFILE_CPU();
-;
-        // don't simulate or debug draw when loading a world (a different thread could be creating physics objects)
+
         if (ProgressTracker::IsLoading())
             return;
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
-            // Picking
+            // simulate
+            scene->simulate(1.0f / hz);
+            scene->fetchResults(true);
+
+            // pick
             {
                 if (Input::GetKeyDown(KeyCode::Click_Left) && Input::GetMouseIsInViewport())
                 {
@@ -177,212 +122,118 @@ namespace spartan
                 MovePickedBody();
             }
 
-            // accumulate elapsed time
-            float freme_time  = static_cast<float>(Timer::GetDeltaTimeSec());
-            accumulator      += freme_time;
-            // update physics as many times as needed to consume the accumulator at 200 Hz rate
-            while (accumulator >= internal_time_step)
+            // debug draw
+            if (Renderer::GetOption<bool>(Renderer_Option::Physics))
             {
-                world->stepSimulation(internal_time_step, 1, internal_time_step);
-                accumulator -= internal_time_step;
-            }
-        }
-
-        if (Renderer::GetOption<bool>(Renderer_Option::Physics))
-        {
-            world->debugDrawWorld();
-        }
-    }
-
-    vector<btRigidBody*> Physics::RayCast(const Vector3& start, const Vector3& end)
-    {
-        btVector3 bt_start = vector_to_bt(start);
-        btVector3 bt_end   = vector_to_bt(end);
-
-        btCollisionWorld::AllHitsRayResultCallback ray_callback(bt_start, bt_end);
-        world->rayTest(bt_start, bt_end, ray_callback);
-
-        vector<btRigidBody*> hit_bodies;
-        if (ray_callback.hasHit())
-        {
-            for (int i = 0; i < ray_callback.m_collisionObjects.size(); ++i)
-            {
-                if (const btRigidBody* body = btRigidBody::upcast(ray_callback.m_collisionObjects[i]))
+                const PxRenderBuffer& rb = scene->getRenderBuffer();
+                for (PxU32 i = 0; i < rb.getNbLines(); i++)
                 {
-                    hit_bodies.push_back(const_cast<btRigidBody*>(body));
+                    const PxDebugLine& line = rb.getLines()[i];
+                    Vector3 start(line.pos0.x, line.pos0.y, line.pos0.z);
+                    Vector3 end(line.pos1.x, line.pos1.y, line.pos1.z);
+                    Color color(
+                        ((line.color0 >> 16) & 0xFF) / 255.0f,
+                        ((line.color0 >> 8) & 0xFF) / 255.0f,
+                        (line.color0 & 0xFF) / 255.0f
+                    );
+                    Renderer::DrawLine(start, end, color, color);
                 }
             }
         }
-
-        return hit_bodies;
     }
 
-    Vector3 Physics::RayCastFirstHitPosition(const math::Vector3& start, const math::Vector3& end)
+    vector<void*> Physics::RayCast(const Vector3& start, const Vector3& end)
     {
-        btVector3 bt_start = vector_to_bt(start);
-        btVector3 bt_end   = vector_to_bt(end);
+        vector<void*> hits;
+        PxRaycastBuffer hit;
+        PxVec3 origin(start.x, start.y, start.z);
+        PxVec3 dir(end.x - start.x, end.y - start.y, end.z - start.z);
+        PxReal max_distance = dir.magnitude();
+        dir.normalize();
 
-        btCollisionWorld::ClosestRayResultCallback ray_callback(bt_start, bt_end);
-        world->rayTest(bt_start, bt_end, ray_callback);
-
-        if (ray_callback.hasHit())
+        if (scene->raycast(origin, dir, max_distance, hit))
         {
-            return bt_to_vector(ray_callback.m_hitPointWorld);
+            for (PxU32 i = 0; i < hit.nbTouches; i++)
+            {
+                hits.push_back(hit.touches[i].actor);
+            }
         }
 
-        return Vector3::Infinity;
+        return hits;
     }
 
-    void Physics::AddBody(btRigidBody* body)
+    math::Vector3 Physics::RayCastFirstHitPosition(const math::Vector3& start, const math::Vector3& end)
     {
-        world->addRigidBody(body);
-    }
+        PxRaycastBuffer hit;
+        PxVec3 origin(start.x, start.y, start.z);
+        PxVec3 dir(end.x - start.x, end.y - start.y, end.z - start.z);
+        PxReal max_distance = dir.magnitude();
+        dir.normalize();
 
-    void Physics::RemoveBody(btRigidBody*& body)
-    {
-        world->removeRigidBody(body);
-    }
-
-    void Physics::AddBody(btRaycastVehicle* body)
-    {
-        world->addVehicle(body);
-    }
-
-    void Physics::RemoveBody(btRaycastVehicle*& body)
-    {
-        world->removeVehicle(body);
-    }
-
-    void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/)
-    {
-        world->addConstraint(constraint, !collision_with_linked_body);
-    }
-
-    void Physics::RemoveConstraint(btTypedConstraint*& constraint)
-    {
-        world->removeConstraint(constraint);
-        delete constraint;
-    }
-
-    void Physics::AddBody(btSoftBody* body)
-    {
-        if (btSoftRigidDynamicsWorld* _world = static_cast<btSoftRigidDynamicsWorld*>(world))
+        if (scene->raycast(origin, dir, max_distance, hit) && hit.hasBlock)
         {
-            _world->addSoftBody(body);
+            PxVec3 pos = hit.block.position;
+            return Vector3(pos.x, pos.y, pos.z);
         }
+
+        return Vector3::Zero;
     }
 
-    void Physics::RemoveBody(btSoftBody*& body)
+    Vector3 Physics::GetGravity()
     {
-        if (btSoftRigidDynamicsWorld* _world = static_cast<btSoftRigidDynamicsWorld*>(world))
-        {
-            _world->removeSoftBody(body);
-            delete body;
-        }
-    }
-
-    Vector3& Physics::GetGravity()
-    {
-        return gravity;
-    }
-
-    btSoftBodyWorldInfo& Physics::GetSoftWorldInfo()
-    {
-        return *world_info;
-    }
-
-    void* Physics::GetPhysicsDebugDraw()
-    {
-        return static_cast<void*>(debug_draw);
-    }
-
-    void* Physics::GetWorld()
-    {
-        return static_cast<void*>(world);
-    }
-
-    float Physics::GetTimeStepInternalSec()
-    {
-        return 1.0f / internal_time_step;
+        PxVec3 g = scene->getGravity();
+        return Vector3(g.x, g.y, g.z);
     }
 
     void Physics::PickBody()
     {
-        if (Camera* camera = World::GetCamera())
+        // get camera
+        Camera* camera = World::GetCamera();
+        if (!camera)
+            return;
+
+        // get picking ray
+        Ray picking_ray = camera->ComputePickingRay();
+        PxVec3 origin(picking_ray.GetStart().x, picking_ray.GetStart().y, picking_ray.GetStart().z);
+        PxVec3 direction(picking_ray.GetDirection().x, picking_ray.GetDirection().y, picking_ray.GetDirection().z);
+
+        // raycast
+        PxRaycastBuffer hit;
+        if (scene->raycast(origin, direction, 1000.0f, hit) && hit.hasBlock)
         {
-            const Ray& picking_ray = camera->ComputePickingRay();
-
-            // get camera picking ray
-            Vector3 ray_start     = picking_ray.GetStart();
-            Vector3 ray_direction = picking_ray.GetDirection();
-            Vector3 ray_end       = ray_start + ray_direction * camera->GetFarPlane();
-
-            btVector3 bt_ray_start = vector_to_bt(ray_start);
-            btVector3 bt_ray_end   = vector_to_bt(ray_end);
-            btCollisionWorld::ClosestRayResultCallback ray_callback(bt_ray_start, bt_ray_end);
-
-            ray_callback.m_flags |= btTriangleRaycastCallback::kF_UseGjkConvexCastRaytest;
-            world->rayTest(bt_ray_start, bt_ray_end, ray_callback);
-
-            if (ray_callback.hasHit())
+            PxRigidActor* actor = hit.block.actor;
+            if (actor->is<PxRigidDynamic>())
             {
-                btVector3 pick_position = ray_callback.m_hitPointWorld;
-                if (btRigidBody* body = (btRigidBody*)btRigidBody::upcast(ray_callback.m_collisionObject))
-                {
-                    if (!(body->isStaticObject() || body->isKinematicObject()))
-                    {
-                        body->setActivationState(DISABLE_DEACTIVATION);
-
-                        activation_state              = body->getActivationState();
-                        btVector3 pivot_local         = body->getCenterOfMassTransform().inverse() * pick_position;
-                        btPoint2PointConstraint* p2p  = new btPoint2PointConstraint(*body, pivot_local);
-                        p2p->m_setting.m_impulseClamp = 10.0f; // maximum impulse the constraint can apply to maintain the connection
-                        p2p->m_setting.m_tau          = 0.1f;  // strength of the constraint (lower values make the constraint stronger)
-                        p2p->m_setting.m_damping      = 1.0f;  // amount of damping applied to the constraint (higher values reduce oscillations)
-                        world->addConstraint(p2p, true);
-
-                        picked_body       = body;
-                        picked_constraint = p2p;
-                    }
-                }
-
-                hit_position              = bt_to_vector(pick_position);
-                picking_distance_previous = (hit_position - ray_start).Length();
+                picked_body    = actor->is<PxRigidDynamic>();
+                pick_distance  = hit.block.distance;
+                pick_direction = direction;
+                picked_body->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
             }
         }
     }
 
     void Physics::UnpickBody()
     {
-        if (picked_constraint)
+        if (picked_body)
         {
-            picked_body->forceActivationState(activation_state);
-            picked_body->activate();
-            world->removeConstraint(picked_constraint);
-            delete picked_constraint;
-            picked_constraint = nullptr;
-            picked_body       = nullptr;
+            picked_body->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, false);
+            picked_body = nullptr;
         }
     }
 
     void Physics::MovePickedBody()
     {
-        if (Camera* camera = World::GetCamera())
-        {
-            Ray picking_ray       = camera->ComputePickingRay();
-            Vector3 ray_start     = picking_ray.GetStart();
-            Vector3 ray_direction = picking_ray.GetDirection();
-
-            if (picked_body && picked_constraint)
-            {
-                if (btPoint2PointConstraint* pick_constraint = static_cast<btPoint2PointConstraint*>(picked_constraint))
-                {
-                    // keep it at the same picking distance
-                    ray_direction *= picking_distance_previous;
-                    Vector3 new_pivot_b = ray_start + ray_direction;
-                    pick_constraint->setPivotB(vector_to_bt(new_pivot_b));
-                }
-            }
-        }
+        if (!picked_body)
+            return;
+    
+        Camera* camera = World::GetCamera();
+        if (!camera)
+            return;
+    
+        Ray picking_ray = camera->ComputePickingRay();
+        PxVec3 origin(picking_ray.GetStart().x, picking_ray.GetStart().y, picking_ray.GetStart().z);
+        PxVec3 direction(picking_ray.GetDirection().x, picking_ray.GetDirection().y, picking_ray.GetDirection().z);
+        PxVec3 target = origin + direction * pick_distance;
+        picked_body->setGlobalPose(PxTransform(target));
     }
 }

@@ -1503,7 +1503,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-      void Renderer::Pass_Vhs(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Vhs(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         RHI_PipelineState pso;
         pso.name             = "vhs";
