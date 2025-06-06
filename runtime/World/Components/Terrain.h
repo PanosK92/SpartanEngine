@@ -51,8 +51,8 @@ namespace spartan
         RHI_Texture* GetHeightMap() const          { return m_height_texture; }
         void SetHeightMap(RHI_Texture* height_map) { m_height_texture = height_map;}
 
-        uint32_t GetWidth() const;
-        uint32_t GetHeight() const;
+        uint32_t GetWidth() const { return m_width; }
+        uint32_t GetHeight() const { return m_height; }
 
         float GetMinY() const     { return m_min_y; }
         void SetMinY(float min_z) { m_min_y = min_z; }
@@ -61,6 +61,8 @@ namespace spartan
         void SetMaxY(float max_z) { m_max_y = max_z; }
 
         float GetArea() const     { return m_area_km2; }
+        uint32_t GetDensity() const;
+        uint32_t GetScale() const;
 
         // generate
         void Generate();
@@ -79,6 +81,8 @@ namespace spartan
     private:
         void Clear();
 
+        uint32_t m_width                  = 0;      // number of samples in the x-axis
+        uint32_t m_height                 = 0;      // number of samples in the y-axis
         float m_min_y                     = -64.0f; // sea level is 0.0 - engine axiom
         float m_max_y                     = 256.0f;
         float m_area_km2                  = 0.0f;
