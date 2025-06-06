@@ -880,7 +880,8 @@ namespace spartan
         }
 
         vector<Vector3> positions;
-
+        uint32_t dense_width  = 0;
+        uint32_t dense_height = 0;
         if (!loaded_from_cache)
         {
             SP_LOG_INFO("Terrain not found, generating from scratch...");
@@ -894,16 +895,14 @@ namespace spartan
     
                 // increase grid density
                 densify_height_map(m_height_data, m_width, m_height, parameters::density);
-                uint32_t dense_width  = parameters::density * (m_width - 1) + 1;
-                uint32_t dense_height = parameters::density * (m_height - 1) + 1;
+                dense_width  = parameters::density * (m_width - 1) + 1;
+                dense_height = parameters::density * (m_height - 1) + 1;
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
             // 2. apply hydraulic erosion
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic erosion...");
-                uint32_t dense_width  = parameters::density * (m_width - 1) + 1;
-                uint32_t dense_height = parameters::density * (m_height - 1) + 1;
                 //apply_hydraulic_erosion(m_height_data, dense_width, dense_height, m_min_y, m_max_y);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
@@ -911,8 +910,6 @@ namespace spartan
             // 3. compute positions
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating positions...");
-                uint32_t dense_width  = parameters::density * (m_width - 1) + 1;
-                uint32_t dense_height = parameters::density * (m_height - 1) + 1;
                 positions.resize(dense_width * dense_height);
                 generate_positions(positions, m_height_data, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
@@ -921,8 +918,6 @@ namespace spartan
             // 4. compute vertices and indices
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating vertices and indices...");
-                uint32_t dense_width  = parameters::density * (m_width - 1) + 1;
-                uint32_t dense_height = parameters::density * (m_height - 1) + 1;
                 m_vertices.resize(dense_width * dense_height);
                 m_indices.resize((dense_width - 1) * (dense_height - 1) * 6);
                 generate_vertices_and_indices(m_vertices, m_indices, positions, dense_width, dense_height);
@@ -932,8 +927,6 @@ namespace spartan
             // 5. compute normals and tangents
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
-                uint32_t dense_width  = parameters::density * (m_width - 1) + 1;
-                uint32_t dense_height = parameters::density * (m_height - 1) + 1;
                 generate_normals(m_indices, m_vertices, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
@@ -955,8 +948,6 @@ namespace spartan
         }
     
         // initialize members
-        uint32_t dense_width  = parameters::density * (m_width - 1) + 1;
-        uint32_t dense_height = parameters::density * (m_height - 1) + 1;
         m_height_samples = dense_width * dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());

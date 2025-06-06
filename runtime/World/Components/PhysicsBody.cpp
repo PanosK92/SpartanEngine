@@ -712,43 +712,43 @@ namespace spartan
                     height_range = 1.0f;
                 }
             
-                // Create height field samples
+                // create height field samples
                 std::vector<PxHeightFieldSample> samples(width * depth);
                 for (uint32_t z = 0; z < depth; ++z)
                 {
                     for (uint32_t x = 0; x < width; ++x)
                     {
-                        uint32_t index = z * width + x;
+                        uint32_t index = z * width + x; 
                         PxHeightFieldSample& sample = samples[index];
-            
-                        // Map height directly to PxI16 (heights are in world units)
-                        float height            = height_map[index];
+                
+                        // flip x and z if heightmap is stored as [x * depth + z]
+                        uint32_t flipped_index  = x * depth + z;
+                        float height            = height_map[flipped_index];
                         float normalized_height = (height - terrain->GetMinY()) / height_range;
-                        sample.height           = static_cast<PxI16>(normalized_height * 65535.0f - 32768.0f); // Map to [-32768, 32767]
-            
-                        // Set material indices (default to 0)
+                        sample.height           = static_cast<PxI16>(normalized_height * 65535.0f - 32768.0f);
+                
                         sample.materialIndex0 = 0;
                         sample.materialIndex1 = 0;
                     }
                 }
             
-                // Create height field description
+                // create height field description
                 PxHeightFieldDesc height_field_desc;
-                height_field_desc.nbRows         = width; // z-direction
-                height_field_desc.nbColumns      = depth; // x-direction
+                height_field_desc.nbRows         = depth; // z-direction
+                height_field_desc.nbColumns      = width; // x-direction
                 height_field_desc.samples.data   = samples.data();
                 height_field_desc.samples.stride = sizeof(PxHeightFieldSample);
             
-                // Cooking parameters
+                // cooking parameters
                 PxTolerancesScale px_scale;
                 px_scale.length = 1.0f; // 1 unit = 1 meter
-                px_scale.speed = Physics::GetGravity().y; // gravity in meters per second
+                px_scale.speed  = Physics::GetGravity().y; // gravity in meters per second
                 PxCookingParams params(px_scale);
                 params.meshPreprocessParams = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                params.meshWeldTolerance = 0.05f; // merge vertices within 5cm
-                params.buildGPUData = false;
+                params.meshWeldTolerance    = 0.2f; // merge vertices within 20cm
+                params.buildGPUData         = false;
             
-                // Create height field
+                // create height field
                 PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
                 PxHeightField* height_field = PxCreateHeightField(height_field_desc, *insertion_callback);
                 if (!height_field)
@@ -775,10 +775,11 @@ namespace spartan
                 // Adjust local pose to center the terrain
                 if (m_shape)
                 {
+                    float height_midpoint = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
                     PxVec3 offset(
-                        -terrain_scale.x * 0.5f, // center x
-                        0.0f,                   // height is handled by geometry
-                        -terrain_scale.z * 0.5f // center z
+                        -terrain_scale.x * 0.5f, // Center x
+                        height_midpoint,         // Shift up by half height range
+                        -terrain_scale.z * 0.5f  // Center z
                     );
                     static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(offset));
                 }
