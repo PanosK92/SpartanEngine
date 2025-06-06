@@ -173,7 +173,7 @@ namespace spartan
     
         m_friction = friction;
     
-        // Update the material's static friction
+        // update the material's static friction
         PxShape* shape = static_cast<PxShape*>(m_shape);
         if (shape)
         {
@@ -201,7 +201,7 @@ namespace spartan
     
         m_friction_rolling = frictionRolling;
     
-        // Update the material's dynamic friction (used as a proxy for rolling friction)
+        // update the material's dynamic friction (used as a proxy for rolling friction)
         PxShape* shape = static_cast<PxShape*>(m_shape);
         if (shape)
         {
@@ -229,7 +229,7 @@ namespace spartan
     
         m_restitution = restitution;
     
-        // Update the material's restitution
+        // update the material's restitution
         PxShape* shape = static_cast<PxShape*>(m_shape);
         if (shape)
         {
@@ -257,7 +257,7 @@ namespace spartan
     
         m_is_kinematic = kinematic;
     
-        // Update kinematic flag for dynamic bodies
+        // update kinematic flag for dynamic bodies
         PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
         if (rigid_dynamic)
         {
@@ -407,7 +407,7 @@ namespace spartan
         if (m_body)
         {
             PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-            PxTransform pose = rigid_actor->getGlobalPose();
+            PxTransform pose          = rigid_actor->getGlobalPose();
             return Vector3(pose.p.x, pose.p.y, pose.p.z);
         }
         
@@ -420,8 +420,8 @@ namespace spartan
             return;
 
         PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-        PxTransform pose = rigid_actor->getGlobalPose();
-        pose.p = PxVec3(position.x, position.y, position.z);
+        PxTransform pose          = rigid_actor->getGlobalPose();
+        pose.p                    = PxVec3(position.x, position.y, position.z);
         rigid_actor->setGlobalPose(pose);
     }
 
@@ -443,8 +443,8 @@ namespace spartan
             return;
 
         PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-        PxTransform pose = rigid_actor->getGlobalPose();
-        pose.q = PxQuat(rotation.x, rotation.y, rotation.z, rotation.w);
+        PxTransform pose          = rigid_actor->getGlobalPose();
+        pose.q                    = PxQuat(rotation.x, rotation.y, rotation.z, rotation.w);
         rigid_actor->setGlobalPose(pose);
     }
 
@@ -527,8 +527,8 @@ namespace spartan
     float PhysicsBody::GetCapsuleVolume()
     {
         // total volume is the sum of the cylinder and two hemispheres
-        float radius = GetCapsuleRadius();    // radius is max of x and z scale divided by 2
-        float half_height = m_scale.y * 0.5f; // half the height of the cylindrical part
+        float radius      = GetCapsuleRadius(); // radius is max of x and z scale divided by 2
+        float half_height = m_scale.y * 0.5f;   // half the height of the cylindrical part
 
         // cylinder volume: π * r² * h
         float cylinder_volume = math::pi * radius * radius * (m_scale.y - 2 * radius);
@@ -581,7 +581,7 @@ namespace spartan
                 PxQuat(GetEntity()->GetRotation().x, GetEntity()->GetRotation().y, GetEntity()->GetRotation().z, GetEntity()->GetRotation().w)
             );
     
-            // create body based on mass
+            // create body
             if (is_static)
             {
                 m_body = physics->createRigidStatic(pose);
@@ -829,7 +829,7 @@ namespace spartan
                 scale.speed  = Physics::GetGravity().y; // gravity is in meters per second
                 PxCookingParams params(scale);
                 params.meshPreprocessParams           = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                params.meshWeldTolerance              = 0.05f;   // merge vertices within 5cm  
+                params.meshWeldTolerance              = 0.01f;   // merge vertices within 1cm  
                 params.meshAreaMinLimit               = 0.0001f; // remove very small triangles
                 params.meshEdgeLengthMaxLimit         = 500.0f;  // warn about large edges
                 params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;

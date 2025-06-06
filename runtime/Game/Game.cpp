@@ -1524,7 +1524,7 @@ namespace spartan
                     auto physics_body = entity->AddComponent<PhysicsBody>();
                     physics_body->SetScale(scale);
                     physics_body->SetMass(0.0f);
-                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetShapeType(PhysicsShape::Box);
                 };
                 
                 // lambda for creating a door on a specified wall
