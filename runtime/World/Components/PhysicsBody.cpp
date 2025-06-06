@@ -39,6 +39,7 @@ SP_WARNINGS_OFF
     #define NDEBUG 1
     #undef _DEBUG
 #endif
+#define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
 SP_WARNINGS_ON
 //====================================================================
@@ -594,8 +595,131 @@ namespace spartan
             }
             case PhysicsShape::Mesh:
             {
-                // todo: implement convex or triangle mesh
-                SP_LOG_WARNING("mesh shape not implemented");
+                Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+                if (!renderable)
+                {
+                    SP_LOG_ERROR("No Renderable component found for mesh shape");
+                    break;
+                }
+            
+                // get geometry from Renderable
+                vector<uint32_t> indices;
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                renderable->GetGeometry(&indices, &vertices);
+            
+                if (vertices.empty() || indices.empty())
+                {
+                    SP_LOG_ERROR("Empty vertex or index data for mesh shape");
+                    break;
+                }
+            
+                // convert vertices to physx format
+                vector<PxVec3> px_vertices;
+                px_vertices.reserve(vertices.size());
+                for (const auto& vertex : vertices)
+                {
+                    px_vertices.emplace_back(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
+                }
+            
+                // cooking parameters
+                PxTolerancesScale scale;
+                scale.length = 1.0f;                    // 1 unit = 1 meter
+                scale.speed  = Physics::GetGravity().y; // gravity is in meters per second
+                PxCookingParams params(scale);
+                params.meshPreprocessParams           = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
+                params.meshWeldTolerance              = 0.001f; 
+                params.meshAreaMinLimit               = 0.0001f; // remove very small triangles
+                params.meshEdgeLengthMaxLimit         = 500.0f;  // warn about large edges
+                params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;
+                params.buildGPUData                   = false;
+                params.suppressTriangleMeshRemapTable = false;
+                params.buildTriangleAdjacencies       = false;
+            
+                // create PhysX mesh based on whether the body is static or dynamic
+                PxShape* shape = nullptr;
+                PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+                if (m_mass == 0.0f) // static: Use triangle mesh
+                {
+                    // ensure indices are in groups of 3 for triangles
+                    if (indices.size() % 3 != 0)
+                    {
+                        SP_LOG_ERROR("Index count must be a multiple of 3 for triangle mesh");
+                        break;
+                    }
+            
+                    // create triangle mesh description
+                    PxTriangleMeshDesc mesh_desc = {};
+                    mesh_desc.points.count       = static_cast<PxU32>(px_vertices.size());
+                    mesh_desc.points.stride      = sizeof(PxVec3);
+                    mesh_desc.points.data        = px_vertices.data();
+                    mesh_desc.triangles.count    = static_cast<PxU32>(indices.size() / 3);
+                    mesh_desc.triangles.stride   = 3 * sizeof(PxU32);
+                    mesh_desc.triangles.data     = indices.data();
+            
+                    // validate triangle mesh
+                    if (!PxValidateTriangleMesh(params, mesh_desc))
+                    {
+                        SP_LOG_ERROR("Triangle mesh validation failed");
+                        break;
+                    }
+            
+                    // Create triangle mesh
+                    PxTriangleMeshCookingResult::Enum condition;
+                    PxTriangleMesh* triangle_mesh = PxCreateTriangleMesh(params, mesh_desc, *insertion_callback, &condition);
+                    if (!triangle_mesh || condition != PxTriangleMeshCookingResult::eSUCCESS)
+                    {
+                        SP_LOG_ERROR("Failed to create triangle mesh: %d", condition);
+                        if (triangle_mesh)
+                            triangle_mesh->release();
+                        break;
+                    }
+            
+                    // Create triangle mesh geometry
+                    PxTriangleMeshGeometry geometry(triangle_mesh);
+                    shape = physics->createShape(geometry, *material);
+                    triangle_mesh->release(); // Shape takes ownership
+                }
+                else // Dynamic: Use convex mesh
+                {
+                    // Create convex mesh description
+                    PxConvexMeshDesc mesh_desc;
+                    mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
+                    mesh_desc.points.stride = sizeof(PxVec3);
+                    mesh_desc.points.data = px_vertices.data();
+                    mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+            
+                    // Validate convex mesh
+                    if (!PxValidateConvexMesh(params, mesh_desc))
+                    {
+                        SP_LOG_ERROR("Convex mesh validation failed");
+                        break;
+                    }
+            
+                    // Create convex mesh
+                    PxConvexMeshCookingResult::Enum condition;
+                    PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+                    if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+                    {
+                        SP_LOG_ERROR("Failed to create convex mesh: %d", condition);
+                        if (convex_mesh)
+                            convex_mesh->release();
+                        break;
+                    }
+            
+                    // Create convex mesh geometry
+                    PxConvexMeshGeometry geometry(convex_mesh);
+                    shape = physics->createShape(geometry, *material);
+                    convex_mesh->release(); // Shape takes ownership
+                }
+            
+                if (shape)
+                {
+                    m_shape = shape;
+                }
+                else
+                {
+                    SP_LOG_ERROR("Failed to create mesh shape");
+                }
                 break;
             }
         }

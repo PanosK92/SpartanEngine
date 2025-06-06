@@ -74,7 +74,7 @@ The Forest is the most advanced and demanding worlds. It features **50 million**
 
 - One-click project generation for easy setup.
 - Universal input support, keyboard & mouse, controllers (tested a PS5 controller) and steering wheels.
-- Comprehensive physics features.
+- Comprehensive physics features (PhysX).
 - CPU & GPU profiling.
 - XML support for data handling.
 - Thread pool that can consume any workload.

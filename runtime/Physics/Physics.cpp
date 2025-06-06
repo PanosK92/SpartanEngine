@@ -49,13 +49,34 @@ using namespace physx;
 
 namespace spartan
 {
+    class ErrorCallback : public physx::PxErrorCallback
+    {
+    public:
+        void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
+        {
+            string error_message = string(message) + " (File: " + file + ", Line: " + to_string(line) + ")";
+            switch (code)
+            {
+                case physx::PxErrorCode::eINVALID_PARAMETER: SP_LOG_ERROR("PhysX Invalid Parameter: %s", error_message.c_str()); break;
+                case physx::PxErrorCode::eINVALID_OPERATION: SP_LOG_ERROR("PhysX Invalid Operation: %s", error_message.c_str()); break;
+                case physx::PxErrorCode::eOUT_OF_MEMORY:     SP_LOG_ERROR("PhysX Out of Memory: %s", error_message.c_str()); break;
+                case physx::PxErrorCode::eDEBUG_INFO:        SP_LOG_INFO("PhysX Debug Info: %s", error_message.c_str()); break;
+                case physx::PxErrorCode::eDEBUG_WARNING:     SP_LOG_WARNING("PhysX Debug Warning: %s", error_message.c_str()); break;
+                case physx::PxErrorCode::eINTERNAL_ERROR:    SP_LOG_ERROR("PhysX Internal Error: %s", error_message.c_str()); break;
+                case physx::PxErrorCode::eABORT:             SP_LOG_ERROR("PhysX Abort: %s", error_message.c_str()); break;
+                case physx::PxErrorCode::ePERF_WARNING:      SP_LOG_WARNING("PhysX Perf Warning: %s", error_message.c_str()); break;
+                default:                                     SP_LOG_ERROR("PhysX Unknown Error (%d): %s", code, error_message.c_str()); break;
+            }
+        }
+    };
+
     namespace
     {
         float gravity = -9.81f;
         float hz      = 60.0f;
 
         static PxDefaultAllocator allocator;
-        static PxDefaultErrorCallback error_callback;
+        static ErrorCallback error_callback;
         static PxFoundation* foundation           = nullptr;
         static PxPhysics* physics                 = nullptr;
         static PxScene* scene                     = nullptr;
@@ -67,6 +88,8 @@ namespace spartan
 
     void Physics::Initialize()
     {
+        Settings::RegisterThirdPartyLib("PhysX", to_string(PX_PHYSICS_VERSION_MAJOR) + "." + to_string(PX_PHYSICS_VERSION_MINOR) + "." + to_string(PX_PHYSICS_VERSION_BUGFIX), "https://github.com/NVIDIA-Omniverse/PhysX");
+
         // foundation
         foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, error_callback);
         SP_ASSERT(foundation);
@@ -87,21 +110,21 @@ namespace spartan
         dispatcher = static_cast<PxDefaultCpuDispatcher*>(scene_desc.cpuDispatcher);
 
         // enable all debug visualization parameters
-        scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eWORLD_AXES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AXES, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eSCALE,               1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eWORLD_AXES,          1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES,          1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES,    1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS,     1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AXES,      1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_COMPOUNDS, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_FNORMALS, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_ERROR, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_FORCE, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_FNORMALS,  1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES,     1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT,       1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL,      1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_ERROR,       1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_FORCE,       1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES,  1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS,        1.0f);
     }
 
     void Physics::Shutdown()
@@ -121,11 +144,11 @@ namespace spartan
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
-            // simulate
+            // simulation
             scene->simulate(1.0f / hz);
             scene->fetchResults(true);
 
-            // pick
+            // object picking
             {
                 if (Input::GetKeyDown(KeyCode::Click_Left) && Input::GetMouseIsInViewport())
                 {
@@ -151,8 +174,8 @@ namespace spartan
                 Vector3 end(line.pos1.x, line.pos1.y, line.pos1.z);
                 Color color(
                     ((line.color0 >> 16) & 0xFF) / 255.0f,
-                    ((line.color0 >> 8) & 0xFF) / 255.0f,
-                    (line.color0 & 0xFF) / 255.0f
+                    ((line.color0 >> 8)  & 0xFF) / 255.0f,
+                     (line.color0        & 0xFF) / 255.0f
                 );
                 Renderer::DrawLine(start, end, color, color);
             }
@@ -179,7 +202,7 @@ namespace spartan
         return hits;
     }
 
-    math::Vector3 Physics::RayCastFirstHitPosition(const math::Vector3& start, const math::Vector3& end)
+    Vector3 Physics::RayCastFirstHitPosition(const Vector3& start, const Vector3& end)
     {
         PxRaycastBuffer hit;
         PxVec3 origin(start.x, start.y, start.z);
