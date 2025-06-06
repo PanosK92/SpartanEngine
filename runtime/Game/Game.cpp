@@ -185,7 +185,7 @@ namespace spartan
                 entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh, true);
+                physics_body->SetShapeType(PhysicsShape::Mesh);
                 physics_body->SetMass(PhysicsBody::mass_auto);
             }
         }
@@ -407,7 +407,7 @@ namespace spartan
         void create_doom_e1m1()
         {
              build::camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-             build::sun(true);
+             build::sun(false);
              build::music("project\\music\\doom_e1m1.wav");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
@@ -417,9 +417,6 @@ namespace spartan
                 entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
                 entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
 
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh, true);
-
                 // nothing is double sided, so we need to disable culling to get proper shadows
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
@@ -428,6 +425,11 @@ namespace spartan
                     if (Renderable* renderable = entity_it->GetComponent<Renderable>())
                     {
                         renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+
+                        // add physics as well
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        physics_body->SetScale(entity->GetScale());
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
             }
@@ -521,7 +523,7 @@ namespace spartan
                 entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
 
                 PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh, false);
+                physics_body->SetShapeType(PhysicsShape::Mesh);
             }
         }
 

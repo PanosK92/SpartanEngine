@@ -123,7 +123,7 @@ namespace spartan
 
         // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
-        void SetShapeType(PhysicsShape type, const bool replicate_hierarchy = false);
+        void SetShapeType(PhysicsShape type);
 
         // ray tracing
         bool RayTraceIsGrounded() const;

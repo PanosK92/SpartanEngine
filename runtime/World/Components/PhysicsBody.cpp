@@ -465,13 +465,12 @@ namespace spartan
         m_scale.z = clamp(m_scale.z, numeric_limits<float>::min(), numeric_limits<float>::infinity());
     }
 
-    void PhysicsBody::SetShapeType(PhysicsShape type, const bool replicate_hierarchy)
+    void PhysicsBody::SetShapeType(PhysicsShape type)
     {
         if (m_shape_type == type)
             return;
 
         m_shape_type = type;
-
         Create();
     }
 
@@ -885,10 +884,10 @@ namespace spartan
                 {
                     // create convex mesh description
                     PxConvexMeshDesc mesh_desc;
-                    mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
+                    mesh_desc.points.count  = static_cast<PxU32>(px_vertices.size());
                     mesh_desc.points.stride = sizeof(PxVec3);
-                    mesh_desc.points.data = px_vertices.data();
-                    mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+                    mesh_desc.points.data   = px_vertices.data();
+                    mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
             
                     // validate convex mesh
                     if (!PxValidateConvexMesh(params, mesh_desc))
