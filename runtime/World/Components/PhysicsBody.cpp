@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================================================
+//= INCLUDES =================================
 #include "pch.h"
 #include "PhysicsBody.h"
 #include "Renderable.h"
@@ -28,8 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Vertex.h"
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
-#include "../../Rendering/Renderer.h"
-#include "../../Core/ProgressTracker.h"
 #include "../../Geometry/GeometryProcessing.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -42,7 +40,7 @@ SP_WARNINGS_OFF
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
 SP_WARNINGS_ON
-//====================================================================
+//============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -102,40 +100,31 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::OnStart()
-    {
-        Activate();
-    }
-
     void PhysicsBody::OnTick()
     {
         if (!m_body)
             return;
     
-        // cast m_body to PxRigidActor
-        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-    
-        // sync transform with entity when not in playing mode
+        // engine -> physx
         if (!Engine::IsFlagSet(EngineMode::Playing))
         {
             if (GetPosition() != GetEntity()->GetPosition())
             {
-                SetPosition(GetEntity()->GetPosition(), false);
-                SetLinearVelocity(Vector3::Zero, false);
-                SetAngularVelocity(Vector3::Zero, false);
+                SetPosition(GetEntity()->GetPosition());
+                SetLinearVelocity(Vector3::Zero);
+                SetAngularVelocity(Vector3::Zero);
             }
     
             if (GetRotation() != GetEntity()->GetRotation())
             {
-                SetRotation(GetEntity()->GetRotation(), false);
-                SetLinearVelocity(Vector3::Zero, false);
-                SetAngularVelocity(Vector3::Zero, false);
+                SetRotation(GetEntity()->GetRotation());
+                SetLinearVelocity(Vector3::Zero);
+                SetAngularVelocity(Vector3::Zero);
             }
         }
-        else
+        else // physx -> engine
         {
-            // update entity transform from physics simulation
-            PxTransform pose = rigid_actor->getGlobalPose();
+            PxTransform pose = static_cast<PxRigidActor*>(m_body)->getGlobalPose();
             GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
             GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
         }
@@ -233,14 +222,16 @@ namespace spartan
         m_is_kinematic = kinematic;
     }
 
-    void PhysicsBody::SetLinearVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+    void PhysicsBody::SetLinearVelocity(const Vector3& velocity) const
     {
         if (!m_body)
             return;
 
-        if (velocity != Vector3::Zero && activate)
+        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+        if (rigid_dynamic)
         {
-            Activate();
+            rigid_dynamic->setLinearVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
+            rigid_dynamic->wakeUp();
         }
     }
 
@@ -249,17 +240,26 @@ namespace spartan
         if (!m_body)
             return Vector3::Zero;
 
+        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+        if (rigid_dynamic)
+        {
+            PxVec3 velocity = rigid_dynamic->getLinearVelocity();
+            return Vector3(velocity.x, velocity.y, velocity.z);
+        }
+
         return Vector3::Zero;
     }
     
-	void PhysicsBody::SetAngularVelocity(const Vector3& velocity, const bool activate /*= true*/) const
+	void PhysicsBody::SetAngularVelocity(const Vector3& velocity) const
     {
         if (!m_body)
             return;
 
-        if (velocity != Vector3::Zero && activate)
+        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+        if (rigid_dynamic)
         {
-            Activate();
+            rigid_dynamic->setAngularVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
+            rigid_dynamic->wakeUp();
         }
     }
 
@@ -268,15 +268,12 @@ namespace spartan
         if (!m_body)
             return;
 
-        Activate();
-
-        if (mode == PhysicsForce::Constant)
+        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+        if (rigid_dynamic)
         {
-            
-        }
-        else if (mode == PhysicsForce::Impulse)
-        {
-           
+            PxForceMode::Enum px_mode = (mode == PhysicsForce::Constant) ? PxForceMode::eFORCE : PxForceMode::eIMPULSE;
+            rigid_dynamic->addForce(PxVec3(force.x, force.y, force.z), px_mode);
+            rigid_dynamic->wakeUp();
         }
     }
 
@@ -289,8 +286,30 @@ namespace spartan
     {
         if (!m_body || m_position_lock == lock)
             return;
-
+    
         m_position_lock = lock;
+    
+        // Apply position locks to the rigid body
+        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+        if (rigid_dynamic)
+        {
+            PxRigidDynamicLockFlags flags = rigid_dynamic->getRigidDynamicLockFlags();
+            
+            // Update linear lock flags based on input
+            flags = PxRigidDynamicLockFlags(0); // Clear existing flags
+            if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+            if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+            if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+            if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+            if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+            if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+    
+            rigid_dynamic->setRigidDynamicLockFlags(flags);
+        }
+        else
+        {
+            SP_LOG_WARNING("SetPositionLock: Body is not dynamic, position lock ignored.");
+        }
     }
 
     void PhysicsBody::SetRotationLock(bool lock)
@@ -302,13 +321,36 @@ namespace spartan
     {
         if (!m_body)
         {
-            SP_LOG_WARNING("This call needs to happen after SetShapeType()");
+            SP_LOG_WARNING("SetRotationLock: This call needs to happen after SetShapeType()");
+            return;
         }
-
+    
         if (m_rotation_lock == lock)
             return;
-
+    
         m_rotation_lock = lock;
+    
+        // Apply rotation locks to the rigid body
+        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+        if (rigid_dynamic)
+        {
+            PxRigidDynamicLockFlags flags = rigid_dynamic->getRigidDynamicLockFlags();
+            
+            // Update angular lock flags based on input
+            flags = PxRigidDynamicLockFlags(0); // Clear existing flags
+            if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+            if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+            if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+            if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+            if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+            if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+    
+            rigid_dynamic->setRigidDynamicLockFlags(flags);
+        }
+        else
+        {
+            SP_LOG_WARNING("SetRotationLock: Body is not dynamic, rotation lock ignored.");
+        }
     }
 
     void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)
@@ -321,38 +363,46 @@ namespace spartan
     {
         if (m_body)
         {
-
+            PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
+            PxTransform pose = rigid_actor->getGlobalPose();
+            return Vector3(pose.p.x, pose.p.y, pose.p.z);
         }
-    
+        
         return Vector3::Zero;
     }
 
-    void PhysicsBody::SetPosition(const Vector3& position, const bool activate /*= true*/) const
+    void PhysicsBody::SetPosition(const Vector3& position) const
     {
         if (!m_body)
             return;
 
-        if (activate)
-        {
-            Activate();
-        }
+        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
+        PxTransform pose = rigid_actor->getGlobalPose();
+        pose.p = PxVec3(position.x, position.y, position.z);
+        rigid_actor->setGlobalPose(pose);
     }
 
     Quaternion PhysicsBody::GetRotation() const
     {
+        if (m_body)
+        {
+            PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
+            PxTransform pose = rigid_actor->getGlobalPose();
+            return Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
+        }
+        
         return Quaternion::Identity;
     }
 
-    void PhysicsBody::SetRotation(const Quaternion& rotation, const bool activate /*= true*/) const
+    void PhysicsBody::SetRotation(const Quaternion& rotation) const
     {
-        // setting rotation when loading can sometimes cause a crash, so early exit
-        if (!m_body || ProgressTracker::IsLoading())
+        if (!m_body)
             return;
 
-        if (activate)
-        {
-            Activate();
-        }
+        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
+        PxTransform pose = rigid_actor->getGlobalPose();
+        pose.q = PxQuat(rotation.x, rotation.y, rotation.z, rotation.w);
+        rigid_actor->setGlobalPose(pose);
     }
 
     void PhysicsBody::ClearForces() const
@@ -361,30 +411,12 @@ namespace spartan
             return;
     }
 
-    void PhysicsBody::Activate() const
+    void PhysicsBody::SetScale(const Vector3& scale)
     {
-        if (!m_body)
+        if (m_scale == scale)
             return;
 
-        if (m_mass > 0.0f)
-        {
-
-        }
-    }
-
-    void PhysicsBody::Deactivate() const
-    {
-        if (!m_body)
-            return;
-
-    }
-
-    void PhysicsBody::SetSize(const Vector3& bounding_box)
-    {
-        if (m_scale == bounding_box)
-            return;
-
-        m_scale   = bounding_box;
+        m_scale   = scale;
         m_scale.x = clamp(m_scale.x, numeric_limits<float>::min(), numeric_limits<float>::infinity());
         m_scale.y = clamp(m_scale.y, numeric_limits<float>::min(), numeric_limits<float>::infinity());
         m_scale.z = clamp(m_scale.z, numeric_limits<float>::min(), numeric_limits<float>::infinity());
@@ -395,26 +427,79 @@ namespace spartan
         if (m_shape_type == type)
             return;
 
-        m_shape_type          = type;
-        m_replicate_hierarchy = replicate_hierarchy;
+        m_shape_type = type;
 
         Create();
     }
 
     bool PhysicsBody::RayTraceIsGrounded() const
     {
-        return false;
+        if (!m_body)
+            return false;
+    
+        PxScene* scene           = static_cast<PxScene*>(Physics::GetScene());
+        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
+    
+        // get the body's AABB to find the lowest point
+        PxShape* shape = nullptr;
+        rigid_actor->getShapes(&shape, 1);
+        if (!shape)
+            return false;
+    
+        PxBounds3 bounds = PxShapeExt::getWorldBounds(*shape, *rigid_actor, 1.0f);
+        float min_y = bounds.minimum.y;
+    
+        // get the body's position and adjust ray start
+        PxTransform pose = rigid_actor->getGlobalPose();
+        PxVec3 ray_start(pose.p.x, min_y + 0.1f, pose.p.z); // Offset 0.1 units above lowest point
+    
+        // define raycast parameters
+        PxVec3 direction(0, -1, 0); // downward
+        PxReal max_distance = 0.2f; // raycast 0.2 units down
+        PxRaycastBuffer hit;
+    
+        // filter to exclude self-collision
+        struct RaycastFilterCallback : public PxQueryFilterCallback
+        {
+            PxRigidActor* self_actor;
+            RaycastFilterCallback(PxRigidActor* actor) : self_actor(actor) {}
+            PxQueryHitType::Enum preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) override
+            {
+                return (actor == self_actor) ? PxQueryHitType::eNONE : PxQueryHitType::eBLOCK;
+            }
+            PxQueryHitType::Enum postFilter(const PxFilterData& filterData, const PxQueryHit& hit, const PxShape* shape, const PxRigidActor* actor) override
+            {
+                return PxQueryHitType::eBLOCK;
+            }
+        };
+        RaycastFilterCallback filter_callback(rigid_actor);
+    
+        // perform raycast
+        PxQueryFilterData filter_data;
+        filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::eANY_HIT;
+    
+        return scene->raycast(ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data, &filter_callback);
     }
-
+    
     float PhysicsBody::GetCapsuleVolume()
-	{
+    {
         // total volume is the sum of the cylinder and two hemispheres
-        return 0.0f;
-	}
+        float radius = GetCapsuleRadius(); // radius is max of x and z scale divided by 2
+        float half_height = m_scale.y * 0.5f; // Hjalf the height of the cylindrical part
+
+        // cylinder volume: π * r² * h
+        float cylinder_volume = math::pi * radius * radius * (m_scale.y - 2 * radius);
+
+        // sphere volume (two hemispheres = one full sphere): (4/3) * π * r³
+        float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
+
+        // total volume
+        return cylinder_volume + sphere_volume;
+    }
 
     float PhysicsBody::GetCapsuleRadius()
     {
-        return 0.0f;
+        return max(m_scale.x, m_scale.z) * 0.5f;
     }
     
     void PhysicsBody::Create()

@@ -65,7 +65,6 @@ namespace spartan
         // component
         void OnInitialize() override;
         void OnRemove() override;
-        void OnStart() override;
         void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
@@ -97,9 +96,9 @@ namespace spartan
         bool GetIsKinematic() const { return m_is_kinematic; }
 
         // forces
-        void SetLinearVelocity(const math::Vector3& velocity, const bool activate = true) const;
+        void SetLinearVelocity(const math::Vector3& velocity) const;
         math::Vector3 GetLinearVelocity() const;
-        void SetAngularVelocity(const math::Vector3& velocity, const bool activate = true) const;
+        void SetAngularVelocity(const math::Vector3& velocity) const;
         void ApplyForce(const math::Vector3& force, PhysicsForce mode) const;
 
         // position lock
@@ -118,15 +117,15 @@ namespace spartan
 
         // position
         math::Vector3 GetPosition() const;
-        void SetPosition(const math::Vector3& position, const bool activate = true) const;
+        void SetPosition(const math::Vector3& position) const;
 
         // rotation
         math::Quaternion GetRotation() const;
-        void SetRotation(const math::Quaternion& rotation, const bool activate = true) const;
+        void SetRotation(const math::Quaternion& rotation) const;
 
         // bounding box
-        const math::Vector3& GetBoundingBox() const { return m_scale; }
-        void SetSize(const math::Vector3& boundingBox);
+        const math::Vector3& GetScale() const { return m_scale; }
+        void SetScale(const math::Vector3& scale);
 
         // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
@@ -141,8 +140,6 @@ namespace spartan
 
         // misc
         void ClearForces() const;
-        void Activate() const;
-        void Deactivate() const;
         constexpr static inline float mass_auto = FLT_MAX;
 
     private:
@@ -164,7 +161,6 @@ namespace spartan
         uint32_t terrain_length        = 0;
         void* m_shape                  = nullptr;
         void* m_body                   = nullptr;
-        bool m_replicate_hierarchy     = false;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
     };
 }

@@ -535,7 +535,7 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         bool freeze_rot_y      = static_cast<bool>(body->GetRotationLock().y);
         bool freeze_rot_z      = static_cast<bool>(body->GetRotationLock().z);
         Vector3 center_of_mass = body->GetCenterOfMass();
-        Vector3 bounding_box   = body->GetBoundingBox();
+        Vector3 scale          = body->GetScale();
         //====================================================================
 
         // mass
@@ -589,9 +589,7 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
                 "Box",
                 "Sphere",
                 "Static Plane",
-                "Cylinder",
                 "Capsule",
-                "Cone",
                 "Terrain",
                 "Mesh"
             };
@@ -612,10 +610,10 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_z"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
         // size
-        ImGui::Text("Shape Size");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_size_x"); ImGui::InputFloat("X", &bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("physics_body_shape_size_y"); ImGui::InputFloat("Y", &bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("physics_body_shape_size_z"); ImGui::InputFloat("Z", &bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::Text("Shape Scale");
+        ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_size_x"); ImGui::InputFloat("X", &scale.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("physics_body_shape_size_y"); ImGui::InputFloat("Y", &scale.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("physics_body_shape_size_z"); ImGui::InputFloat("Z", &scale.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
         //= MAP ===============================================================================================================================================================================================
         if (mass != body->GetMass())                                      body->SetMass(mass);
@@ -631,7 +629,7 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         if (freeze_rot_y != static_cast<bool>(body->GetRotationLock().y)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         if (freeze_rot_z != static_cast<bool>(body->GetRotationLock().z)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         if (center_of_mass != body->GetCenterOfMass())                    body->SetCenterOfMass(center_of_mass);
-        if (bounding_box != body->GetBoundingBox())                       body->SetSize(bounding_box);
+        if (scale != body->GetScale())                                    body->SetScale(scale);
         //=====================================================================================================================================================================================================
     }
     component_end();

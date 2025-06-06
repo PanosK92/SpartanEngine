@@ -200,43 +200,6 @@ namespace spartan
         }
     }
 
-    vector<void*> Physics::RayCast(const Vector3& start, const Vector3& end)
-    {
-        vector<void*> hits;
-        PxRaycastBuffer hit;
-        PxVec3 origin(start.x, start.y, start.z);
-        PxVec3 dir(end.x - start.x, end.y - start.y, end.z - start.z);
-        PxReal max_distance = dir.magnitude();
-        dir.normalize();
-
-        if (scene->raycast(origin, dir, max_distance, hit))
-        {
-            for (PxU32 i = 0; i < hit.nbTouches; i++)
-            {
-                hits.push_back(hit.touches[i].actor);
-            }
-        }
-
-        return hits;
-    }
-
-    Vector3 Physics::RayCastFirstHitPosition(const Vector3& start, const Vector3& end)
-    {
-        PxRaycastBuffer hit;
-        PxVec3 origin(start.x, start.y, start.z);
-        PxVec3 dir(end.x - start.x, end.y - start.y, end.z - start.z);
-        PxReal max_distance = dir.magnitude();
-        dir.normalize();
-
-        if (scene->raycast(origin, dir, max_distance, hit) && hit.hasBlock)
-        {
-            PxVec3 pos = hit.block.position;
-            return Vector3(pos.x, pos.y, pos.z);
-        }
-
-        return Vector3::Zero;
-    }
-
     Vector3 Physics::GetGravity()
     {
         PxVec3 g = scene->getGravity();
