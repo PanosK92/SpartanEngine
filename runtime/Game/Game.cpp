@@ -518,11 +518,18 @@ namespace spartan
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("minecraft");
-                entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                entity->SetScale(Vector3(100.0f, 100.0f, 100.0f));
 
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh);
+                // enable physics for all meshes
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (entity_it->GetComponent<Renderable>() != nullptr)
+                    {
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                    }
+                }
             }
         }
 
