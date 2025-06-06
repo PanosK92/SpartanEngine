@@ -538,23 +538,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         Vector3 bounding_box   = body->GetBoundingBox();
         //====================================================================
 
-        // body type
-        {
-            static vector<string> shape_types =
-            {
-                "Rigid Body",
-                "Vehicle"
-            };
-
-            ImGui::Text("Body Type");
-            ImGui::SameLine(column_pos_x);
-            uint32_t selection_index = static_cast<uint32_t>(body->GetBodyType());
-            if (ImGuiSp::combo_box("##physics_body_type", shape_types, &selection_index))
-            {
-                body->SetBodyType(static_cast<PhysicsBodyType>(selection_index));
-            }
-        }
-
         // mass
         ImGui::Text("Mass (kg)");
         ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_mass", &mass, step, step_fast, precision, input_text_flags);

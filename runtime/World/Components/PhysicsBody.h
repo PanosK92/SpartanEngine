@@ -33,11 +33,6 @@ namespace spartan
     class Physics;
     namespace math { class Quaternion; }
 
-    enum class PhysicsBodyType
-    {
-        RigidBody
-    };
-
     enum class PhysicsForce
     {
         Constant,
@@ -49,9 +44,7 @@ namespace spartan
         Box,
         Sphere,
         StaticPlane,
-        Cylinder,
         Capsule,
-        Cone,
         Terrain,
         Mesh,
         Max
@@ -141,10 +134,6 @@ namespace spartan
         PhysicsShape GetShapeType() const { return m_shape_type; }
         void SetShapeType(PhysicsShape type, const bool replicate_hierarchy = false);
 
-        // body type
-        PhysicsBodyType GetBodyType() const { return m_body_type; }
-        void SetBodyType(const PhysicsBodyType type);
-
         // ray tracing
         bool RayTraceIsGrounded() const;
 
@@ -156,14 +145,10 @@ namespace spartan
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
-        void* GetBtRigidBody() const  { return m_rigid_body; }
-
         constexpr static inline float mass_auto = FLT_MAX;
 
     private:
-        void AddBodyToWorld();
-        void RemoveBodyFromWorld();
-        void UpdateShape();
+        void Create();
 
         float m_mass                   = 0.0f;
         float m_friction               = 1.0f;
@@ -177,11 +162,10 @@ namespace spartan
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
         math::Vector3 m_size           = math::Vector3::One;
         PhysicsShape m_shape_type      = PhysicsShape::Max;
-        PhysicsBodyType m_body_type    = PhysicsBodyType::RigidBody;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
         void* m_shape                  = nullptr;
-        void* m_rigid_body             = nullptr;
+        void* m_body                   = nullptr;
         bool m_replicate_hierarchy     = false;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
     };

@@ -77,14 +77,31 @@ namespace spartan
 
         // scene
         PxSceneDesc scene_desc(physics->getTolerancesScale());
-        scene_desc.gravity = PxVec3(0.0f, gravity, 0.0f);
+        scene_desc.gravity       = PxVec3(0.0f, gravity, 0.0f);
         scene_desc.cpuDispatcher = PxDefaultCpuDispatcherCreate(2);
-        scene_desc.filterShader = PxDefaultSimulationFilterShader;
+        scene_desc.filterShader  = PxDefaultSimulationFilterShader;
         scene = physics->createScene(scene_desc);
         SP_ASSERT(scene);
 
         // store dispatcher
         dispatcher = static_cast<PxDefaultCpuDispatcher*>(scene_desc.cpuDispatcher);
+
+        // enable all debug visualization parameters
+        scene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eWORLD_AXES, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AXES, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_COMPOUNDS, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_FNORMALS, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_ERROR, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_FORCE, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LOCAL_FRAMES, 1.0f);
+        scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS, 1.0f);
     }
 
     void Physics::Shutdown()
@@ -121,23 +138,23 @@ namespace spartan
 
                 MovePickedBody();
             }
+        }
 
-            // debug draw
-            if (Renderer::GetOption<bool>(Renderer_Option::Physics))
+        // debug draw
+        if (Renderer::GetOption<bool>(Renderer_Option::Physics) && !Engine::IsFlagSet(EngineMode::Playing))
+        {
+            const PxRenderBuffer& rb = scene->getRenderBuffer();
+            for (PxU32 i = 0; i < rb.getNbLines(); i++)
             {
-                const PxRenderBuffer& rb = scene->getRenderBuffer();
-                for (PxU32 i = 0; i < rb.getNbLines(); i++)
-                {
-                    const PxDebugLine& line = rb.getLines()[i];
-                    Vector3 start(line.pos0.x, line.pos0.y, line.pos0.z);
-                    Vector3 end(line.pos1.x, line.pos1.y, line.pos1.z);
-                    Color color(
-                        ((line.color0 >> 16) & 0xFF) / 255.0f,
-                        ((line.color0 >> 8) & 0xFF) / 255.0f,
-                        (line.color0 & 0xFF) / 255.0f
-                    );
-                    Renderer::DrawLine(start, end, color, color);
-                }
+                const PxDebugLine& line = rb.getLines()[i];
+                Vector3 start(line.pos0.x, line.pos0.y, line.pos0.z);
+                Vector3 end(line.pos1.x, line.pos1.y, line.pos1.z);
+                Color color(
+                    ((line.color0 >> 16) & 0xFF) / 255.0f,
+                    ((line.color0 >> 8) & 0xFF) / 255.0f,
+                    (line.color0 & 0xFF) / 255.0f
+                );
+                Renderer::DrawLine(start, end, color, color);
             }
         }
     }
@@ -183,6 +200,16 @@ namespace spartan
     {
         PxVec3 g = scene->getGravity();
         return Vector3(g.x, g.y, g.z);
+    }
+
+    void* Physics::GetScene()
+    {
+        return static_cast<void*>(scene);
+    }
+
+    void* Physics::GetPhysics()
+    {
+        return static_cast<void*>(physics);
     }
 
     void Physics::PickBody()

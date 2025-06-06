@@ -38,6 +38,8 @@ namespace spartan
         static std::vector<void*> RayCast(const math::Vector3& start, const math::Vector3& end);
         static math::Vector3 RayCastFirstHitPosition(const math::Vector3& start, const math::Vector3& end);
         static math::Vector3 GetGravity();
+        static void* GetScene();
+        static void* GetPhysics();
 
     private:
         // picking
