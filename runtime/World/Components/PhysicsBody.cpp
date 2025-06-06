@@ -60,7 +60,6 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scale, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
     }
 
@@ -136,7 +135,6 @@ namespace spartan
         stream->Write(m_position_lock);
         stream->Write(m_rotation_lock);
         stream->Write(uint32_t(m_shape_type));
-        stream->Write(m_scale);
         stream->Write(m_center_of_mass);
     }
 
@@ -150,7 +148,6 @@ namespace spartan
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
         m_shape_type = PhysicsShape(stream->ReadAs<uint32_t>());
-        stream->Read(&m_scale);
         stream->Read(&m_center_of_mass);
 
         Create();
@@ -454,17 +451,6 @@ namespace spartan
             return;
     }
 
-    void PhysicsBody::SetScale(const Vector3& scale)
-    {
-        if (m_scale == scale)
-            return;
-
-        m_scale   = scale;
-        m_scale.x = clamp(m_scale.x, numeric_limits<float>::min(), numeric_limits<float>::infinity());
-        m_scale.y = clamp(m_scale.y, numeric_limits<float>::min(), numeric_limits<float>::infinity());
-        m_scale.z = clamp(m_scale.z, numeric_limits<float>::min(), numeric_limits<float>::infinity());
-    }
-
     void PhysicsBody::SetShapeType(PhysicsShape type)
     {
         if (m_shape_type == type)
@@ -527,10 +513,11 @@ namespace spartan
     {
         // total volume is the sum of the cylinder and two hemispheres
         float radius      = GetCapsuleRadius(); // radius is max of x and z scale divided by 2
-        float half_height = m_scale.y * 0.5f;   // half the height of the cylindrical part
+        Vector3 scale     = GetEntity()->GetScale();
+        float half_height = scale.y * 0.5f;   // half the height of the cylindrical part
 
         // cylinder volume: π * r² * h
-        float cylinder_volume = math::pi * radius * radius * (m_scale.y - 2 * radius);
+        float cylinder_volume = math::pi * radius * radius * (scale.y - 2 * radius);
 
         // sphere volume (two hemispheres = one full sphere): (4/3) * π * r³
         float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
@@ -541,7 +528,8 @@ namespace spartan
 
     float PhysicsBody::GetCapsuleRadius()
     {
-        return max(m_scale.x, m_scale.z) * 0.5f;
+        Vector3 scale = GetEntity()->GetScale();
+        return max(scale.x, scale.z) * 0.5f;
     }
     
     void PhysicsBody::Create()
@@ -649,13 +637,15 @@ namespace spartan
         {
             case PhysicsShape::Box:
             {
-                PxBoxGeometry geometry(m_scale.x * 0.5f, m_scale.y * 0.5f, m_scale.z * 0.5f);
+                Vector3 scale = GetEntity()->GetScale();
+                PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
                 m_shape = physics->createShape(geometry, *material);
                 break;
             }
             case PhysicsShape::Sphere:
             {
-                float radius = max(max(m_scale.x, m_scale.y), m_scale.z) * 0.5f;
+                Vector3 scale = GetEntity()->GetScale();
+                float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
                 PxSphereGeometry geometry(radius);
                 m_shape = physics->createShape(geometry, *material);
                 break;
@@ -669,8 +659,9 @@ namespace spartan
             }
             case PhysicsShape::Capsule:
             {
-                float radius      = max(m_scale.x, m_scale.z) * 0.5f;
-                float half_height = m_scale.y * 0.5f;
+                Vector3 scale     = GetEntity()->GetScale();
+                float radius      = max(scale.x, scale.z) * 0.5f;
+                float half_height = scale.y * 0.5f;
                 PxCapsuleGeometry geometry(radius, half_height);
                 m_shape = physics->createShape(geometry, *material);
                 static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
@@ -812,12 +803,13 @@ namespace spartan
                 // convert vertices to physx format
                 vector<PxVec3> px_vertices;
                 px_vertices.reserve(vertices.size());
+                Vector3 _scale = GetEntity()->GetScale();
                 for (const auto& vertex : vertices)
                 {
                     PxVec3 scaled_vertex(
-                        vertex.pos[0] * m_scale.x,
-                        vertex.pos[1] * m_scale.y,
-                        vertex.pos[2] * m_scale.z
+                        vertex.pos[0] * _scale.x,
+                        vertex.pos[1] * _scale.y,
+                        vertex.pos[2] * _scale.z
                     );
                     px_vertices.emplace_back(scaled_vertex);
                 }

@@ -126,10 +126,10 @@ namespace spartan
                 default_camera = World::CreateEntity();
                 default_camera->SetObjectName("physics_body_camera");
                 default_camera->SetPosition(camera_position);
+                default_camera->SetScale(Vector3(0.45f, 1.8f, 0.25f)); // average european male)
 
                 // add a physics body so that the camera can move through the environment in a physical manner
                 PhysicsBody* physics_body = default_camera->AddComponent<PhysicsBody>();
-                physics_body->SetScale(Vector3(0.45f, 1.8f, 0.25f)); // average european male
                 physics_body->SetMass(82.0f);
                 physics_body->SetShapeType(PhysicsShape::Capsule);
                 physics_body->SetRotationLock(true);
@@ -407,7 +407,7 @@ namespace spartan
         void create_doom_e1m1()
         {
              build::camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-             build::sun(false);
+             build::sun(true);
              build::music("project\\music\\doom_e1m1.wav");
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
@@ -428,7 +428,6 @@ namespace spartan
 
                         // add physics as well
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetScale(entity->GetScale());
                         physics_body->SetShapeType(PhysicsShape::Mesh);
                     }
                 }
@@ -1524,7 +1523,6 @@ namespace spartan
                     renderable->SetMaterial(tile_material);
                     
                     auto physics_body = entity->AddComponent<PhysicsBody>();
-                    physics_body->SetScale(scale);
                     physics_body->SetMass(0.0f);
                     physics_body->SetShapeType(PhysicsShape::Box);
                 };

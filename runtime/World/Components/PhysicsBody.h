@@ -117,10 +117,6 @@ namespace spartan
         math::Quaternion GetRotation() const;
         void SetRotation(const math::Quaternion& rotation) const;
 
-        // bounding box
-        const math::Vector3& GetScale() const { return m_scale; }
-        void SetScale(const math::Vector3& scale);
-
         // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
         void SetShapeType(PhysicsShape type);
@@ -147,7 +143,6 @@ namespace spartan
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
-        math::Vector3 m_scale           = math::Vector3::One;
         PhysicsShape m_shape_type      = PhysicsShape::Max;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
