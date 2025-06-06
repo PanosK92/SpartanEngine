@@ -66,7 +66,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scale, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
     }
 
@@ -153,7 +153,7 @@ namespace spartan
         stream->Write(m_position_lock);
         stream->Write(m_rotation_lock);
         stream->Write(uint32_t(m_shape_type));
-        stream->Write(m_size);
+        stream->Write(m_scale);
         stream->Write(m_center_of_mass);
     }
 
@@ -169,7 +169,7 @@ namespace spartan
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
         m_shape_type = PhysicsShape(stream->ReadAs<uint32_t>());
-        stream->Read(&m_size);
+        stream->Read(&m_scale);
         stream->Read(&m_center_of_mass);
 
         Create();
@@ -264,40 +264,6 @@ namespace spartan
     }
 
     void PhysicsBody::ApplyForce(const Vector3& force, PhysicsForce mode) const
-    {
-        if (!m_body)
-            return;
-
-        Activate();
-
-        if (mode == PhysicsForce::Constant)
-        {
-            
-        }
-        else if (mode == PhysicsForce::Impulse)
-        {
-           
-        }
-    }
-
-    void PhysicsBody::ApplyForceAtPosition(const Vector3& force, const Vector3& position, PhysicsForce mode) const
-    {
-        if (!m_body)
-            return;
-
-        Activate();
-
-        if (mode == PhysicsForce::Constant)
-        {
-            
-        }
-        else if (mode == PhysicsForce::Impulse)
-        {
-           
-        }
-    }
-
-    void PhysicsBody::ApplyTorque(const Vector3& torque, PhysicsForce mode) const
     {
         if (!m_body)
             return;
@@ -413,15 +379,15 @@ namespace spartan
 
     }
 
-    void PhysicsBody::SetBoundingBox(const Vector3& bounding_box)
+    void PhysicsBody::SetSize(const Vector3& bounding_box)
     {
-        if (m_size == bounding_box)
+        if (m_scale == bounding_box)
             return;
 
-        m_size   = bounding_box;
-        m_size.x = clamp(m_size.x, std::numeric_limits<float>::min(), std::numeric_limits<float>::infinity());
-        m_size.y = clamp(m_size.y, std::numeric_limits<float>::min(), std::numeric_limits<float>::infinity());
-        m_size.z = clamp(m_size.z, std::numeric_limits<float>::min(), std::numeric_limits<float>::infinity());
+        m_scale   = bounding_box;
+        m_scale.x = clamp(m_scale.x, numeric_limits<float>::min(), numeric_limits<float>::infinity());
+        m_scale.y = clamp(m_scale.y, numeric_limits<float>::min(), numeric_limits<float>::infinity());
+        m_scale.z = clamp(m_scale.z, numeric_limits<float>::min(), numeric_limits<float>::infinity());
     }
 
     void PhysicsBody::SetShapeType(PhysicsShape type, const bool replicate_hierarchy)
@@ -560,13 +526,13 @@ namespace spartan
         {
             case PhysicsShape::Box:
             {
-                PxBoxGeometry geometry(m_size.x * 0.5f, m_size.y * 0.5f, m_size.z * 0.5f);
+                PxBoxGeometry geometry(m_scale.x * 0.5f, m_scale.y * 0.5f, m_scale.z * 0.5f);
                 m_shape = physics->createShape(geometry, *material);
                 break;
             }
             case PhysicsShape::Sphere:
             {
-                float radius = max(max(m_size.x, m_size.y), m_size.z) * 0.5f;
+                float radius = max(max(m_scale.x, m_scale.y), m_scale.z) * 0.5f;
                 PxSphereGeometry geometry(radius);
                 m_shape = physics->createShape(geometry, *material);
                 break;
@@ -580,8 +546,8 @@ namespace spartan
             }
             case PhysicsShape::Capsule:
             {
-                float radius = max(m_size.x, m_size.z) * 0.5f;
-                float half_height = m_size.y * 0.5f;
+                float radius      = max(m_scale.x, m_scale.z) * 0.5f;
+                float half_height = m_scale.y * 0.5f;
                 PxCapsuleGeometry geometry(radius, half_height);
                 m_shape = physics->createShape(geometry, *material);
                 static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
@@ -612,13 +578,22 @@ namespace spartan
                     SP_LOG_ERROR("Empty vertex or index data for mesh shape");
                     break;
                 }
-            
+
+                // imported meshes lack duplicate vertices, but engine-generated meshes like cubes may have them to ensure unique
+                // normals for flat shading, avoiding normal interpolation. We remove duplicates here to meet PhysX requirements
+                geometry_processing::remove_duplicate_vertices(vertices, indices);
+
                 // convert vertices to physx format
                 vector<PxVec3> px_vertices;
                 px_vertices.reserve(vertices.size());
                 for (const auto& vertex : vertices)
                 {
-                    px_vertices.emplace_back(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
+                    PxVec3 scaled_vertex(
+                        vertex.pos[0] * m_scale.x,
+                        vertex.pos[1] * m_scale.y,
+                        vertex.pos[2] * m_scale.z
+                    );
+                    px_vertices.emplace_back(scaled_vertex);
                 }
             
                 // cooking parameters
@@ -627,7 +602,7 @@ namespace spartan
                 scale.speed  = Physics::GetGravity().y; // gravity is in meters per second
                 PxCookingParams params(scale);
                 params.meshPreprocessParams           = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                params.meshWeldTolerance              = 0.001f; 
+                params.meshWeldTolerance              = 0.05f;   // merge vertices within 5cm  
                 params.meshAreaMinLimit               = 0.0001f; // remove very small triangles
                 params.meshEdgeLengthMaxLimit         = 500.0f;  // warn about large edges
                 params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;
@@ -635,10 +610,10 @@ namespace spartan
                 params.suppressTriangleMeshRemapTable = false;
                 params.buildTriangleAdjacencies       = false;
             
-                // create PhysX mesh based on whether the body is static or dynamic
+                // create physx mesh
                 PxShape* shape = nullptr;
                 PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                if (m_mass == 0.0f) // static: Use triangle mesh
+                if (m_mass == 0.0f) // static: triangle mesh
                 {
                     // ensure indices are in groups of 3 for triangles
                     if (indices.size() % 3 != 0)
@@ -663,7 +638,7 @@ namespace spartan
                         break;
                     }
             
-                    // Create triangle mesh
+                    // create triangle mesh
                     PxTriangleMeshCookingResult::Enum condition;
                     PxTriangleMesh* triangle_mesh = PxCreateTriangleMesh(params, mesh_desc, *insertion_callback, &condition);
                     if (!triangle_mesh || condition != PxTriangleMeshCookingResult::eSUCCESS)
@@ -674,28 +649,28 @@ namespace spartan
                         break;
                     }
             
-                    // Create triangle mesh geometry
+                    // create triangle mesh geometry
                     PxTriangleMeshGeometry geometry(triangle_mesh);
                     shape = physics->createShape(geometry, *material);
-                    triangle_mesh->release(); // Shape takes ownership
+                    triangle_mesh->release(); // shape takes ownership
                 }
-                else // Dynamic: Use convex mesh
+                else // dynamic: convex mesh
                 {
-                    // Create convex mesh description
+                    // create convex mesh description
                     PxConvexMeshDesc mesh_desc;
                     mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
                     mesh_desc.points.stride = sizeof(PxVec3);
                     mesh_desc.points.data = px_vertices.data();
                     mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
             
-                    // Validate convex mesh
+                    // validate convex mesh
                     if (!PxValidateConvexMesh(params, mesh_desc))
                     {
                         SP_LOG_ERROR("Convex mesh validation failed");
                         break;
                     }
             
-                    // Create convex mesh
+                    // create convex mesh
                     PxConvexMeshCookingResult::Enum condition;
                     PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
                     if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
@@ -706,10 +681,10 @@ namespace spartan
                         break;
                     }
             
-                    // Create convex mesh geometry
+                    // create convex mesh geometry
                     PxConvexMeshGeometry geometry(convex_mesh);
                     shape = physics->createShape(geometry, *material);
-                    convex_mesh->release(); // Shape takes ownership
+                    convex_mesh->release(); // shape takes ownership
                 }
             
                 if (shape)

@@ -49,7 +49,13 @@ using namespace physx;
 
 namespace spartan
 {
-    class ErrorCallback : public physx::PxErrorCallback
+    namespace settings
+    {
+        float gravity = -9.81f; // gravity value in m/s^2
+        float hz      = 60.0f;  // simulation frequency in Hz
+    }
+
+    class PhysXLogging : public physx::PxErrorCallback
     {
     public:
         void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
@@ -72,11 +78,8 @@ namespace spartan
 
     namespace
     {
-        float gravity = -9.81f;
-        float hz      = 60.0f;
-
         static PxDefaultAllocator allocator;
-        static ErrorCallback error_callback;
+        static PhysXLogging logger;
         static PxFoundation* foundation           = nullptr;
         static PxPhysics* physics                 = nullptr;
         static PxScene* scene                     = nullptr;
@@ -91,7 +94,7 @@ namespace spartan
         Settings::RegisterThirdPartyLib("PhysX", to_string(PX_PHYSICS_VERSION_MAJOR) + "." + to_string(PX_PHYSICS_VERSION_MINOR) + "." + to_string(PX_PHYSICS_VERSION_BUGFIX), "https://github.com/NVIDIA-Omniverse/PhysX");
 
         // foundation
-        foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, error_callback);
+        foundation = PxCreateFoundation(PX_PHYSICS_VERSION, allocator, logger);
         SP_ASSERT(foundation);
 
         // physics
@@ -100,7 +103,7 @@ namespace spartan
 
         // scene
         PxSceneDesc scene_desc(physics->getTolerancesScale());
-        scene_desc.gravity       = PxVec3(0.0f, gravity, 0.0f);
+        scene_desc.gravity       = PxVec3(0.0f, settings::gravity, 0.0f);
         scene_desc.cpuDispatcher = PxDefaultCpuDispatcherCreate(2);
         scene_desc.filterShader  = PxDefaultSimulationFilterShader;
         scene = physics->createScene(scene_desc);
@@ -145,8 +148,23 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
             // simulation
-            scene->simulate(1.0f / hz);
-            scene->fetchResults(true);
+            {
+                const float  fixed_time_step   = 1.0f / settings::hz;
+                static float accumulated_time = 0.0f;
+
+                // accumulate delta time
+                accumulated_time += static_cast<float>(Timer::GetDeltaTimeSec());
+
+                // perform simulation steps
+                while (accumulated_time >= fixed_time_step)
+                {
+                    // simulate one fixed time step
+                    scene->simulate(fixed_time_step);
+                    scene->fetchResults(true); // block
+
+                    accumulated_time -= fixed_time_step;
+                }
+            }
 
             // object picking
             {

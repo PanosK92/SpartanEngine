@@ -101,8 +101,6 @@ namespace spartan
         math::Vector3 GetLinearVelocity() const;
         void SetAngularVelocity(const math::Vector3& velocity, const bool activate = true) const;
         void ApplyForce(const math::Vector3& force, PhysicsForce mode) const;
-        void ApplyForceAtPosition(const math::Vector3& force, const math::Vector3& position, PhysicsForce mode) const;
-        void ApplyTorque(const math::Vector3& torque, PhysicsForce mode) const;
 
         // position lock
         void SetPositionLock(bool lock);
@@ -127,8 +125,8 @@ namespace spartan
         void SetRotation(const math::Quaternion& rotation, const bool activate = true) const;
 
         // bounding box
-        const math::Vector3& GetBoundingBox() const { return m_size; }
-        void SetBoundingBox(const math::Vector3& boundingBox);
+        const math::Vector3& GetBoundingBox() const { return m_scale; }
+        void SetSize(const math::Vector3& boundingBox);
 
         // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
@@ -160,7 +158,7 @@ namespace spartan
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
-        math::Vector3 m_size           = math::Vector3::One;
+        math::Vector3 m_scale           = math::Vector3::One;
         PhysicsShape m_shape_type      = PhysicsShape::Max;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;

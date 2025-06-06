@@ -631,7 +631,7 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         if (freeze_rot_y != static_cast<bool>(body->GetRotationLock().y)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         if (freeze_rot_z != static_cast<bool>(body->GetRotationLock().z)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         if (center_of_mass != body->GetCenterOfMass())                    body->SetCenterOfMass(center_of_mass);
-        if (bounding_box != body->GetBoundingBox())                       body->SetBoundingBox(bounding_box);
+        if (bounding_box != body->GetBoundingBox())                       body->SetSize(bounding_box);
         //=====================================================================================================================================================================================================
     }
     component_end();

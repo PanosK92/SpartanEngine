@@ -129,7 +129,7 @@ namespace spartan
 
                 // add a physics body so that the camera can move through the environment in a physical manner
                 PhysicsBody* physics_body = default_camera->AddComponent<PhysicsBody>();
-                physics_body->SetBoundingBox(Vector3(0.45f, 1.8f, 0.25f)); // average european male
+                physics_body->SetSize(Vector3(0.45f, 1.8f, 0.25f)); // average european male
                 physics_body->SetMass(82.0f);
                 physics_body->SetShapeType(PhysicsShape::Capsule);
                 physics_body->SetRotationLock(true);
@@ -1522,6 +1522,8 @@ namespace spartan
                     renderable->SetMaterial(tile_material);
                     
                     auto physics_body = entity->AddComponent<PhysicsBody>();
+                    physics_body->SetSize(scale);
+                    physics_body->SetMass(0.0f);
                     physics_body->SetShapeType(PhysicsShape::Mesh);
                 };
                 
