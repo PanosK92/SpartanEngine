@@ -578,12 +578,12 @@ namespace spartan
                 m_body = physics->createRigidDynamic(pose);
                 PxRigidDynamic* rigid_dynamic = static_cast<PxRigidDynamic*>(m_body);
                 rigid_dynamic->setMass(m_mass);
+                rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
                 if (m_center_of_mass != Vector3::Zero)
                 {
                     PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
                     PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
                 }
-                rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
                 PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
                 if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
                 if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
