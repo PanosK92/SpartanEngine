@@ -43,7 +43,7 @@ namespace spartan
     {
         Box,
         Sphere,
-        StaticPlane,
+        Plane,
         Capsule,
         Terrain,
         Mesh,

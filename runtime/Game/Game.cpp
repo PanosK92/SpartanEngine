@@ -117,7 +117,7 @@ namespace spartan
                 
                 // add physics components
                 PhysicsBody* physics_body = default_floor->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::StaticPlane);
+                physics_body->SetShapeType(PhysicsShape::Plane);
             }
 
             void camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))

@@ -650,11 +650,11 @@ namespace spartan
                 m_shape = physics->createShape(geometry, *material);
                 break;
             }
-            case PhysicsShape::StaticPlane:
+            case PhysicsShape::Plane:
             {
                 PxPlaneGeometry geometry;
                 m_shape = physics->createShape(geometry, *material);
-                static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxIdentity)));
+                static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
                 break;
             }
             case PhysicsShape::Capsule:
