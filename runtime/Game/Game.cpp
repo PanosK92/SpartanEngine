@@ -517,6 +517,7 @@ namespace spartan
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("minecraft");
+                entity->SetScale(100.0f);
 
                 // enable physics for all meshes
                 vector<Entity*> entities;
