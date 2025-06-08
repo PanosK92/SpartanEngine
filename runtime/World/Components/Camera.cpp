@@ -535,9 +535,19 @@ namespace spartan
                     bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
                     if (is_grounded)
                     {
-                        Vector3 velocity        = m_physics_body_to_control->GetLinearVelocity();
+                        Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
                         Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
-                        Vector3 force           = (target_velocity - velocity) * 10.0f;
+                        
+                        // force multiplier for faster acceleration
+                        float force_multiplier = 50.0f;
+                        
+                        // more aggressive deceleration when not actively moving
+                        if (movement_direction.LengthSquared() < 0.1f)
+                        {
+                            force_multiplier *= 8.0f;
+                        }
+                        
+                        Vector3 force = (target_velocity - velocity) * force_multiplier;
                         m_physics_body_to_control->ApplyForce(force, PhysicsForce::Constant);
                     }
                     if (is_underwater)

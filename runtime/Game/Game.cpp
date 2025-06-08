@@ -63,62 +63,62 @@ namespace spartan
         namespace build
         { 
             void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav", const float pitch = 1.0f)
-        {
-            SP_ASSERT(soundtrack_file_path);
+            {
+                SP_ASSERT(soundtrack_file_path);
 
-            auto entity = World::CreateEntity();
-            entity->SetObjectName("music");
+                auto entity = World::CreateEntity();
+                entity->SetObjectName("music");
 
-            AudioSource* audio_source = entity->AddComponent<AudioSource>();
-            audio_source->SetAudioClip(soundtrack_file_path);
-            audio_source->SetLoop(true);
-            audio_source->SetPitch(pitch);
-        }
+                AudioSource* audio_source = entity->AddComponent<AudioSource>();
+                audio_source->SetAudioClip(soundtrack_file_path);
+                audio_source->SetLoop(true);
+                audio_source->SetPitch(pitch);
+            }
 
             void sun(const bool enabled, const Vector3& rotation = Vector3::Infinity)
-        {
-            default_light_directional = World::CreateEntity();
-            default_light_directional->SetObjectName("light_directional");
-            Light* light = default_light_directional->AddComponent<Light>();
-            light->SetLightType(LightType::Directional);
-
-            // rotation
-            if (rotation == Vector3::Infinity)
-            { 
-                default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
-            }
-            else
             {
-                default_light_directional->SetRotation(Quaternion::FromEulerAngles(rotation));
-            }
+                default_light_directional = World::CreateEntity();
+                default_light_directional->SetObjectName("light_directional");
+                Light* light = default_light_directional->AddComponent<Light>();
+                light->SetLightType(LightType::Directional);
 
-            // intensity
-            light->SetTemperature(5500.0f);                  // kelvin
-            light->SetIntensity(enabled ? 70'000.0f : 0.0f); // lux
-            light->SetFlag(LightFlags::Shadows, enabled);
-            light->SetFlag(LightFlags::DayNightCycle, false);
-        }
+                // rotation
+                if (rotation == Vector3::Infinity)
+                { 
+                    default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
+                }
+                else
+                {
+                    default_light_directional->SetRotation(Quaternion::FromEulerAngles(rotation));
+                }
+
+                // intensity
+                light->SetTemperature(5500.0f);                  // kelvin
+                light->SetIntensity(enabled ? 70'000.0f : 0.0f); // lux
+                light->SetFlag(LightFlags::Shadows, enabled);
+                light->SetFlag(LightFlags::DayNightCycle, false);
+            }
 
             void floor()
-        {
-            // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit (cube size)
+            {
+                // the scale of the entity and the UV tiling is adjusted so that it each square represents 1 unit (cube size)
 
-            default_floor = World::CreateEntity();
-            default_floor->SetObjectName("floor");
-            default_floor->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
-            default_floor->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
-            
-            // add a renderable component
-            Renderable* renderable = default_floor->AddComponent<Renderable>();
-            renderable->SetMesh(MeshType::Quad);
-            renderable->SetDefaultMaterial();
-            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, default_floor->GetScale().x);
-            renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, default_floor->GetScale().z);
-            
-            // add physics components
-            PhysicsBody* physics_body = default_floor->AddComponent<PhysicsBody>();
-            physics_body->SetShapeType(PhysicsShape::StaticPlane);
-        }
+                default_floor = World::CreateEntity();
+                default_floor->SetObjectName("floor");
+                default_floor->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
+                default_floor->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
+                
+                // add a renderable component
+                Renderable* renderable = default_floor->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Quad);
+                renderable->SetDefaultMaterial();
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, default_floor->GetScale().x);
+                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, default_floor->GetScale().z);
+                
+                // add physics components
+                PhysicsBody* physics_body = default_floor->AddComponent<PhysicsBody>();
+                physics_body->SetShapeType(PhysicsShape::StaticPlane);
+            }
 
             void camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
             {
@@ -126,7 +126,6 @@ namespace spartan
                 default_camera = World::CreateEntity();
                 default_camera->SetObjectName("physics_body_camera");
                 default_camera->SetPosition(camera_position);
-                default_camera->SetScale(Vector3(0.45f, 1.8f, 0.25f)); // average european male)
 
                 // add a physics body so that the camera can move through the environment in a physical manner
                 PhysicsBody* physics_body = default_camera->AddComponent<PhysicsBody>();
@@ -139,89 +138,89 @@ namespace spartan
                 camera->SetObjectName("component_camera");
                 camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
                 camera->SetParent(default_camera);
-                camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // place it at the top of the capsule
+                camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // average european male
                 camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
 
             void metal_cube(const Vector3& position)
-        {
-            // create entity
-            default_metal_cube = World::CreateEntity();
-            default_metal_cube->SetObjectName("metal_cube");
-            default_metal_cube->SetPosition(position);
-            
-            // create material
-            shared_ptr<Material> material = make_shared<Material>();
-            material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
-            material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
-            material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
-            material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
-            material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
-            material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
-            material->SetProperty(MaterialProperty::Tessellation, 1.0f);
-            
-            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-            const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
-            material->SetResourceFilePath(file_path);
-            
-            // add a renderable component
-            Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
-            renderable->SetMesh(MeshType::Cube);
-            renderable->SetMaterial(material);
-            
-            // add physics components
-            PhysicsBody* physics_body = default_metal_cube->AddComponent<PhysicsBody>();
-            physics_body->SetMass(PhysicsBody::mass_auto);
-            physics_body->SetShapeType(PhysicsShape::Box);
-        }
+            {
+                // create entity
+                default_metal_cube = World::CreateEntity();
+                default_metal_cube->SetObjectName("metal_cube");
+                default_metal_cube->SetPosition(position);
+                
+                // create material
+                shared_ptr<Material> material = make_shared<Material>();
+                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
+                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
+                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
+                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
+                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
+                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
+                material->SetProperty(MaterialProperty::Tessellation, 1.0f);
+                
+                // create a file path for this material (required for the material to be able to be cached by the resource cache)
+                const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
+                material->SetResourceFilePath(file_path);
+                
+                // add a renderable component
+                Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Cube);
+                renderable->SetMaterial(material);
+                
+                // add physics components
+                PhysicsBody* physics_body = default_metal_cube->AddComponent<PhysicsBody>();
+                physics_body->SetMass(PhysicsBody::mass_auto);
+                physics_body->SetShapeType(PhysicsShape::Box);
+            }
 
             void flight_helmet(const Vector3& position)
-        {
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
             {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("flight_helmet");
-                entity->SetPosition(position);
-                entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
-
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh);
-                physics_body->SetMass(PhysicsBody::mass_auto);
-            }
-        }
-
-            void damaged_helmet(const Vector3& position)
-        {
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("damaged_helmet");
-                entity->SetPosition(position);
-                entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
-
-                PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Mesh);
-                physics_body->SetMass(PhysicsBody::mass_auto);
-            }
-        }
-
-            void material_ball(const Vector3& position)
-        {
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("material_ball");
-                entity->SetPosition(position);
-                entity->SetRotation(Quaternion::Identity);
-
-                if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
                 {
-                    PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>();
-                    physics_body->SetMass(PhysicsBody::mass_auto);
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    entity->SetObjectName("flight_helmet");
+                    entity->SetPosition(position);
+                    entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
+
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
                     physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(PhysicsBody::mass_auto);
                 }
             }
-        }
+
+            void damaged_helmet(const Vector3& position)
+            {
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+                {
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    entity->SetObjectName("damaged_helmet");
+                    entity->SetPosition(position);
+                    entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
+
+                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
+                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetMass(PhysicsBody::mass_auto);
+                }
+            }
+
+            void material_ball(const Vector3& position)
+            {
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf"))
+                {
+                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    entity->SetObjectName("material_ball");
+                    entity->SetPosition(position);
+                    entity->SetRotation(Quaternion::Identity);
+
+                    if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
+                    {
+                        PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>();
+                        physics_body->SetMass(PhysicsBody::mass_auto);
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                    }
+                }
+            }
 
             shared_ptr<Entity> water(const Vector3& position, float dimension, uint32_t density)
             {
@@ -297,7 +296,7 @@ namespace spartan
             }
         }
 
-        void create_sponza_4k()
+        void create_world_sponza_4k()
         {
             // set the mood
             build::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
@@ -404,7 +403,7 @@ namespace spartan
             }
         }
 
-        void create_doom_e1m1()
+        void create_world_doom_e1m1()
         {
              build::camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
              build::sun(true);
@@ -434,7 +433,7 @@ namespace spartan
             }
         }
 
-        void create_bistro()
+        void create_world_bistro()
         {
              build::camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
              build::sun(false);
@@ -507,7 +506,7 @@ namespace spartan
             }
         }
 
-        void create_minecraft()
+        void create_world_minecraft()
         {
              build::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
              build::sun(true);
@@ -533,7 +532,7 @@ namespace spartan
             }
         }
 
-        void create_subway_gi_test()
+        void create_world_subway_gi_test()
         {
              build::sun(false);
              build::camera();
@@ -579,7 +578,7 @@ namespace spartan
             const float car_scale   = 0.0180f;
             const float wheel_scale = 0.3f;
 
-            // load full detail model (no vertex/index optimisations)
+            // load full detail model (no vertex/index optimizations)
             uint32_t mesh_flags = Mesh::GetDefaultFlags();
             mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize); 
             
@@ -1828,11 +1827,11 @@ namespace spartan
             switch (default_world)
             {
                 case DefaultWorld::Forest:       worlds::forest::create();        break;
-                case DefaultWorld::Doom:         create_doom_e1m1();              break;
-                case DefaultWorld::Bistro:       create_bistro();                 break;
-                case DefaultWorld::Minecraft:    create_minecraft();              break;
-                case DefaultWorld::Sponza:       create_sponza_4k();              break;
-                case DefaultWorld::Subway:       create_subway_gi_test();         break;
+                case DefaultWorld::Doom:         create_world_doom_e1m1();              break;
+                case DefaultWorld::Bistro:       create_world_bistro();                 break;
+                case DefaultWorld::Minecraft:    create_world_minecraft();              break;
+                case DefaultWorld::Sponza:       create_world_sponza_4k();              break;
+                case DefaultWorld::Subway:       create_world_subway_gi_test();         break;
                 case DefaultWorld::GranTurismo:  worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
