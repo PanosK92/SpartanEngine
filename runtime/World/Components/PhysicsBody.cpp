@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PhysicsBody.h"
 #include "Renderable.h"
 #include "Terrain.h"
+#include "Camera.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../IO/FileStream.h"
@@ -97,9 +98,6 @@ namespace spartan
 
     void PhysicsBody::OnTick()
     {
-        if (!m_body)
-            return;
-    
         // engine -> physx
         if (!Engine::IsFlagSet(EngineMode::Playing))
         {
@@ -117,11 +115,33 @@ namespace spartan
                 SetAngularVelocity(Vector3::Zero);
             }
         }
-        else // physx -> engine
+        else if(m_body) // physx -> engine
         {
             PxTransform pose = static_cast<PxRigidActor*>(m_body)->getGlobalPose();
             GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
             GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+        }
+
+        // handle distance-based removal for static bodies (required to have good performance with the terrain tiles)
+        if (m_mass == 0.0f)
+        {
+            if (Camera* camera = World::GetCamera())
+            {
+                const Vector3 camera_pos        = camera->GetEntity()->GetPosition();
+                const Vector3 body_pos          = m_body ? GetPosition() : GetEntity()->GetPosition();
+                const float distance_camera     = Vector3::Distance(camera_pos, body_pos);
+                const float distance_deactivate = 200.0f;
+                const float distance_activate   = 150.0f; 
+        
+                if (m_body && distance_camera > distance_deactivate)
+                {
+                    OnRemove();
+                }
+                else if (!m_body && distance_camera <= distance_activate)
+                {
+                    Create();
+                }
+            }
         }
     }
 
@@ -667,12 +687,12 @@ namespace spartan
                 static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
                 
                 // set higher friction values for the capsule (which is typically used for characters)
-                material->setStaticFriction(0.8f);  // static friction (when not moving)
-                material->setDynamicFriction(0.6f); // dynamic friction (when moving)
+                material->setStaticFriction(1.0f);  // static friction (when not moving)
+                material->setDynamicFriction(0.9f); // dynamic friction (when moving)
                 material->setRestitution(0.1f);     // lower restitution for less bouncy movement
                 break;
             }
-            case PhysicsShape::Terrain:
+            case PhysicsShape::HeightField:
             {
                 Terrain* terrain = GetEntity()->GetComponent<Terrain>();
                 if (!terrain)

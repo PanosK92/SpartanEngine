@@ -1021,26 +1021,32 @@ namespace spartan
                         material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\ground\\normal.png",    0);
                         material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\ground\\roughness.png", 0);
                         material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\ground\\occlusion.png", 0);
-                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",     1);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",     1);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png",  1);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png",  1);
-                        material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\rock\\height.png",     1);
-                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",     2);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",     2);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",  2);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png",  2);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",      1);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",      1);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png",   1);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png",   1);
+                        material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\rock\\height.png",      1);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",      2);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",      2);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",   2);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png",   2);
                         material->SetProperty(MaterialProperty::Tessellation, 0.0f);
                     }
                     
-                    // generate a height field
+                    // generate a terrain from a height map
                     shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\terrain\\height_map.png", RHI_Texture_KeepData);
                     terrain->SetHeightMap(height_map.get());
                     terrain->Generate();
 
                     // add physics so we can walk on it
-                    PhysicsBody* physics_body = default_terrain->AddComponent<PhysicsBody>();
-                    physics_body->SetShapeType(PhysicsShape::Terrain);
+                    for(Entity* entity : terrain->GetEntity()->GetChildren())
+                    {
+                        if (entity->GetActive() && entity->GetComponent<Renderable>() != nullptr)
+                        {
+                            PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
+                            physics_body->SetShapeType(PhysicsShape::Mesh);
+                        }
+                    }
 
                     // water
                     float dimension  = 8000; // meters
@@ -1828,11 +1834,11 @@ namespace spartan
             switch (default_world)
             {
                 case DefaultWorld::Forest:       worlds::forest::create();        break;
-                case DefaultWorld::Doom:         create_world_doom_e1m1();              break;
-                case DefaultWorld::Bistro:       create_world_bistro();                 break;
-                case DefaultWorld::Minecraft:    create_world_minecraft();              break;
-                case DefaultWorld::Sponza:       create_world_sponza_4k();              break;
-                case DefaultWorld::Subway:       create_world_subway_gi_test();         break;
+                case DefaultWorld::Doom:         create_world_doom_e1m1();        break;
+                case DefaultWorld::Bistro:       create_world_bistro();           break;
+                case DefaultWorld::Minecraft:    create_world_minecraft();        break;
+                case DefaultWorld::Sponza:       create_world_sponza_4k();        break;
+                case DefaultWorld::Subway:       create_world_subway_gi_test();   break;
                 case DefaultWorld::GranTurismo:  worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;

@@ -118,10 +118,8 @@ namespace spartan
         scene->setVisualizationParameter(PxVisualizationParameter::eWORLD_AXES,          1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES,          1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES,    1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AABBS,     1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_AXES,      1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_COMPOUNDS, 1.0f);
-        scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_FNORMALS,  1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_EDGES,     1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_POINT,       1.0f);
         scene->setVisualizationParameter(PxVisualizationParameter::eCONTACT_NORMAL,      1.0f);
@@ -181,11 +179,9 @@ namespace spartan
                 MovePickedBody();
             }
         }
-
-        // debug draw
-        if (Renderer::GetOption<bool>(Renderer_Option::Physics) && !Engine::IsFlagSet(EngineMode::Playing))
+        else if (Renderer::GetOption<bool>(Renderer_Option::Physics))
         {
-            const PxRenderBuffer& rb = scene->getRenderBuffer();
+            const PxRenderBuffer& rb = scene->getRenderBuffer(); // accessing while thesimulation is running can result in undefined behavior
             for (PxU32 i = 0; i < rb.getNbLines(); i++)
             {
                 const PxDebugLine& line = rb.getLines()[i];
