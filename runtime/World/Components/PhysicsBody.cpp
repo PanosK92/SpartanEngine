@@ -131,7 +131,7 @@ namespace spartan
                 const Vector3 body_pos          = m_body ? GetPosition() : GetEntity()->GetPosition();
                 const float distance_camera     = Vector3::Distance(camera_pos, body_pos);
                 const float distance_deactivate = 200.0f;
-                const float distance_activate   = 150.0f; 
+                const float distance_activate   = 150.0f;
         
                 if (m_body && distance_camera > distance_deactivate)
                 {

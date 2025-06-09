@@ -60,7 +60,7 @@ namespace spartan
         shared_ptr<Entity> default_metal_cube        = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
-        namespace build
+        namespace entities
         { 
             void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav", const float pitch = 1.0f)
             {
@@ -296,271 +296,6 @@ namespace spartan
                 }
 
                 return water;
-            }
-        }
-
-        void create_world_sponza_4k()
-        {
-            // set the mood
-            build::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            build::sun(false);
-            build::music("project\\music\\jake_chudnow_olive.wav");
-            Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
-
-            // point light
-            {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("light_point");
-                entity->SetPosition(Vector3(0.0f, 7.5f, 0.0f));
-
-                Light* light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_light_bulb);
-                light->SetRange(39.66f);
-                light->SetIntensity(LightIntensity::bulb_500_watt);
-                light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
-            }
-
-            const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
-            const float scale      = 2.0f; // I actually walked in sponza, it's that big
-
-            // 3d model - Sponza
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("sponza");
-                entity->SetPosition(position);
-                entity->SetScale(scale);
-
-                // make the lamp frame not cast shadows
-                if (Renderable* renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
-                {
-                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                }
-
-                // disable dirt decals since they look bad
-                // they are hovering over the surfaces, they have z-fighting, and they also cast shadows underneath them
-                entity->GetDescendantByName("decals_1st_floor")->SetActive(false);
-                entity->GetDescendantByName("decals_2nd_floor")->SetActive(false);
-                entity->GetDescendantByName("decals_3rd_floor")->SetActive(false);
-
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
-            }
-
-            // 3d model - curtains
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("sponza_curtains");
-                entity->SetPosition(position);
-                entity->SetScale(scale);
-
-                // disable back face culling and enable wind
-                {
-                    // this is fabric
-                    if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
-                    }
-
-                     // this is fabric
-                    if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
-                    }
-
-                     // this is fabric
-                    if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
-                    }
-                }
-            }
-
-            // 3d model - ivy
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("sponza_ivy");
-                entity->SetPosition(position);
-                entity->SetScale(scale);
-
-                if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                    material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
-                }
-            }
-        }
-
-        void create_world_doom_e1m1()
-        {
-             build::camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-             build::sun(true);
-             build::music("project\\music\\doom_e1m1.wav");
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("doom_e1m1");
-                entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
-                entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
-
-                // nothing is double sided, so we need to disable culling to get proper shadows
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (Renderable* renderable = entity_it->GetComponent<Renderable>())
-                    {
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-
-                        // add physics as well
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
-            }
-        }
-
-        void create_world_bistro()
-        {
-             build::camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
-             build::sun(false);
-             build::music();
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("bistro_exterior");
-                entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-
-                // disable door (so we can go through)
-                entity->GetDescendantByName("dOORS_2")->SetActive(false);
-                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4825")->SetActive(false);
-                // disable the glass windows as the interior also has them
-                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4873")->SetActive(false);
-
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (entity_it->GetActive())
-                    {
-                        if (Renderable* renderable = entity_it->GetComponent<Renderable>())
-                        {
-                            PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                            physics_body->SetShapeType(PhysicsShape::Mesh);
-                        }
-                    }
-                }
-            }
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroInterior.fbx"))
-            {
-                shared_ptr<Entity> light = World::CreateEntity();
-                light->SetObjectName("light_point");
-                light->SetPositionLocal(Vector3(2.2f, 4.0f, 3.2f));
-                light->AddComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
-                light->GetComponent<Light>()->SetLightType(LightType::Point);
-                light->GetComponent<Light>()->SetRange(120.0f);
-                light->GetComponent<Light>()->SetIntensity(LightIntensity::bulb_500_watt);
-                light->GetComponent<Light>()->SetTemperature(4000.0f); // a bit white, what the emissive textures seem to try to emulate
-
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("bistro_interior");
-                entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                entity->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // interior has a different scale (for some reason)
-
-                // disable door (so we can go through)
-                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_121")->SetActive(false);
-
-                // remove color and normal textures from the tablecloth material as they are empty/corrupted
-                Material* material = entity->GetDescendantByName("Bistro_Research_Interior_Cotton_Placemat_1276")->GetComponent<Renderable>()->GetMaterial();
-                material->SetTexture(MaterialTextureType::Color, nullptr);
-                material->SetTexture(MaterialTextureType::Normal, nullptr);
-
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
-            }
-        }
-
-        void create_world_minecraft()
-        {
-             build::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-             build::sun(true);
-             build::music();
-
-            // the entire minecraft world is a single mesh so don't generate any lods
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("minecraft");
-                entity->SetScale(100.0f);
-
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (entity_it->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
-            }
-        }
-
-        void create_world_subway_gi_test()
-        {
-             build::sun(false);
-             build::camera();
-            
-            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
-            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("subway");
-                entity->SetScale(Vector3(0.015f));
-                
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (entity_it->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
-                    }
-                }
             }
         }
 
@@ -933,6 +668,271 @@ namespace spartan
 
     namespace worlds
     {
+        void create_sponza_4k()
+        {
+            // set the mood
+            entities::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
+            entities::sun(false);
+            entities::music("project\\music\\jake_chudnow_olive.wav");
+            Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
+
+            // point light
+            {
+                shared_ptr<Entity> entity = World::CreateEntity();
+                entity->SetObjectName("light_point");
+                entity->SetPosition(Vector3(0.0f, 7.5f, 0.0f));
+
+                Light* light = entity->AddComponent<Light>();
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color::light_light_bulb);
+                light->SetRange(39.66f);
+                light->SetIntensity(LightIntensity::bulb_500_watt);
+                light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
+            }
+
+            const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
+            const float scale      = 2.0f; // I actually walked in sponza, it's that big
+
+            // 3d model - Sponza
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("sponza");
+                entity->SetPosition(position);
+                entity->SetScale(scale);
+
+                // make the lamp frame not cast shadows
+                if (Renderable* renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
+                {
+                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                }
+
+                // disable dirt decals since they look bad
+                // they are hovering over the surfaces, they have z-fighting, and they also cast shadows underneath them
+                entity->GetDescendantByName("decals_1st_floor")->SetActive(false);
+                entity->GetDescendantByName("decals_2nd_floor")->SetActive(false);
+                entity->GetDescendantByName("decals_3rd_floor")->SetActive(false);
+
+                // enable physics for all meshes
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
+                    {
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                    }
+                }
+            }
+
+            // 3d model - curtains
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("sponza_curtains");
+                entity->SetPosition(position);
+                entity->SetScale(scale);
+
+                // disable back face culling and enable wind
+                {
+                    // this is fabric
+                    if (Material* material = entity->GetDescendantByName("curtain_03_2")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                    }
+
+                     // this is fabric
+                    if (Material* material = entity->GetDescendantByName("curtain_03_3")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                    }
+
+                     // this is fabric
+                    if (Material* material = entity->GetDescendantByName("curtain_hanging_06_3")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                        material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                    }
+                }
+            }
+
+            // 3d model - ivy
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("sponza_ivy");
+                entity->SetPosition(position);
+                entity->SetScale(scale);
+
+                if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                }
+            }
+        }
+
+        void create_doom_e1m1()
+        {
+             entities::camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
+             entities::sun(true);
+             entities::music("project\\music\\doom_e1m1.wav");
+
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("doom_e1m1");
+                entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
+                entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
+
+                // nothing is double sided, so we need to disable culling to get proper shadows
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (Renderable* renderable = entity_it->GetComponent<Renderable>())
+                    {
+                        renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+
+                        // add physics as well
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                    }
+                }
+            }
+        }
+
+        void create_bistro()
+        {
+             entities::camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
+             entities::sun(false);
+             entities::music();
+
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("bistro_exterior");
+                entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
+
+                // disable door (so we can go through)
+                entity->GetDescendantByName("dOORS_2")->SetActive(false);
+                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4825")->SetActive(false);
+                // disable the glass windows as the interior also has them
+                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4873")->SetActive(false);
+
+                // enable physics for all meshes
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (entity_it->GetActive())
+                    {
+                        if (Renderable* renderable = entity_it->GetComponent<Renderable>())
+                        {
+                            PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                            physics_body->SetShapeType(PhysicsShape::Mesh);
+                        }
+                    }
+                }
+            }
+
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroInterior.fbx"))
+            {
+                shared_ptr<Entity> light = World::CreateEntity();
+                light->SetObjectName("light_point");
+                light->SetPositionLocal(Vector3(2.2f, 4.0f, 3.2f));
+                light->AddComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
+                light->GetComponent<Light>()->SetLightType(LightType::Point);
+                light->GetComponent<Light>()->SetRange(120.0f);
+                light->GetComponent<Light>()->SetIntensity(LightIntensity::bulb_500_watt);
+                light->GetComponent<Light>()->SetTemperature(4000.0f); // a bit white, what the emissive textures seem to try to emulate
+
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("bistro_interior");
+                entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                entity->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // interior has a different scale (for some reason)
+
+                // disable door (so we can go through)
+                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_121")->SetActive(false);
+
+                // remove color and normal textures from the tablecloth material as they are empty/corrupted
+                Material* material = entity->GetDescendantByName("Bistro_Research_Interior_Cotton_Placemat_1276")->GetComponent<Renderable>()->GetMaterial();
+                material->SetTexture(MaterialTextureType::Color, nullptr);
+                material->SetTexture(MaterialTextureType::Normal, nullptr);
+
+                // enable physics for all meshes
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
+                    {
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                    }
+                }
+            }
+        }
+
+        void create_minecraft()
+        {
+             entities::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
+             entities::sun(true);
+             entities::music();
+
+            // the entire minecraft world is a single mesh so don't generate any lods
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("minecraft");
+                entity->SetScale(100.0f);
+
+                // enable physics for all meshes
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (entity_it->GetComponent<Renderable>() != nullptr)
+                    {
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                    }
+                }
+            }
+        }
+
+        void create_subway_gi_test()
+        {
+             entities::sun(false);
+             entities::camera();
+            
+            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
+
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
+            {
+                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                entity->SetObjectName("subway");
+                entity->SetScale(Vector3(0.015f));
+                
+                // enable physics for all meshes
+                vector<Entity*> entities;
+                entity->GetDescendants(&entities);
+                for (Entity* entity_it : entities)
+                {
+                    if (entity_it->GetComponent<Renderable>() != nullptr)
+                    {
+                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                    }
+                }
+            }
+        }
+
         namespace forest
         {
             void create()
@@ -944,9 +944,9 @@ namespace spartan
                 const uint32_t rock_count         = 3'000;      // these are small and on the ground, we can have more
 
                 // sun/lighting/mood
-                build::sun(true, Vector3(8.0f, 40.0f, 0.0f));
+                entities::sun(true, Vector3(8.0f, 40.0f, 0.0f));
 
-                build::camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
                 Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 
@@ -1054,7 +1054,7 @@ namespace spartan
                     // water
                     float dimension  = 8000; // meters
                     uint32_t density = 64;   // geometric
-                    build::water(Vector3(0.0f, -0.2f, 0.0f), dimension, density);
+                    entities::water(Vector3(0.0f, -0.2f, 0.0f), dimension, density);
 
                     // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                     uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
@@ -1271,7 +1271,7 @@ namespace spartan
             void create()
             {
                 // gran turismo 7 brand central music
-                build::music("project\\music\\gran_turismo.wav", 1.9f);
+                entities::music("project\\music\\gran_turismo.wav", 1.9f);
 
                 // logo
                 icon_logo = make_shared<RHI_Texture>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\logo.png");
@@ -1281,7 +1281,7 @@ namespace spartan
                 // camera
                 {
                     Vector3 camera_position = Vector3(-4.7317f, 1.2250f, -7.6135f);
-                    build::camera(camera_position);
+                    entities::camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
                     default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::PhysicalBodyAnimation, false);
@@ -1289,7 +1289,7 @@ namespace spartan
 
                 // floor
                 {
-                    build::floor();
+                    entities::floor();
 
                     shared_ptr<Material> material = make_shared<Material>();
                     material->SetResourceFilePath(string("project\\terrain\\material_floor_shiny") + string(EXTENSION_MATERIAL));
@@ -1462,7 +1462,7 @@ namespace spartan
 
                 // camera
                 {
-                    build::camera(Vector3(5.4084f, 1.8f, 4.7593f));
+                    entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
 
                     shared_ptr<Entity> entity_hum = World::CreateEntity();
                     entity_hum->SetObjectName("audio_hum_electric");
@@ -1595,7 +1595,7 @@ namespace spartan
                     // spawn water if floor is lowered
                     if (is_pool)
                     {
-                        auto water_entity = build::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2);
+                        auto water_entity = entities::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2);
                         water_entity->SetParent(room_entity);
                     }
                     
@@ -1840,11 +1840,11 @@ namespace spartan
             switch (default_world)
             {
                 case DefaultWorld::Forest:       worlds::forest::create();        break;
-                case DefaultWorld::Doom:         create_world_doom_e1m1();        break;
-                case DefaultWorld::Bistro:       create_world_bistro();           break;
-                case DefaultWorld::Minecraft:    create_world_minecraft();        break;
-                case DefaultWorld::Sponza:       create_world_sponza_4k();        break;
-                case DefaultWorld::Subway:       create_world_subway_gi_test();   break;
+                case DefaultWorld::Doom:         worlds::create_doom_e1m1();      break;
+                case DefaultWorld::Bistro:       worlds::create_bistro();         break;
+                case DefaultWorld::Minecraft:    worlds::create_minecraft();      break;
+                case DefaultWorld::Sponza:       worlds::create_sponza_4k();      break;
+                case DefaultWorld::Subway:       worlds::create_subway_gi_test(); break;
                 case DefaultWorld::GranTurismo:  worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
