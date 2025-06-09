@@ -139,10 +139,10 @@ namespace spartan
             if (Camera* camera = World::GetCamera())
             {
                 const Vector3 camera_pos        = camera->GetEntity()->GetPosition();
-                const Vector3 body_pos          = GetEntity()->GetPosition();
+                const Vector3 body_pos          = GetEntity()->GetComponent<Renderable>()->GetBoundingBox().GetClosestPoint(camera_pos);
                 const float distance_camera     = Vector3::Distance(camera_pos, body_pos);
-                const float distance_deactivate = 200.0f;
-                const float distance_activate   = 150.0f;
+                const float distance_deactivate = 100.0f;
+                const float distance_activate   = 80.0f;
 
                 if (m_body && distance_camera > distance_deactivate)
                 {
