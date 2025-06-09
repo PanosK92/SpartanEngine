@@ -1824,6 +1824,9 @@ namespace spartan
         // clear all entities and their resources (and memory)
         World::Clear();
 
+        // stop simulation
+        Engine::SetFlag(EngineMode::Playing, false);
+
         // load whatever needs to be loaded
         ThreadPool::AddTask([default_world]()
         {
