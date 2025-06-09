@@ -98,28 +98,39 @@ namespace spartan
 
     void PhysicsBody::OnTick()
     {
-        // engine -> physx
-        if (!Engine::IsFlagSet(EngineMode::Playing))
+        if (PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body))
         {
-            if (GetPosition() != GetEntity()->GetPosition())
+            // engine -> physx
+            if (!Engine::IsFlagSet(EngineMode::Playing))
             {
-                SetPosition(GetEntity()->GetPosition());
-                SetLinearVelocity(Vector3::Zero);
-                SetAngularVelocity(Vector3::Zero);
+                PxTransform pose = rigid_actor->getGlobalPose();
+                Vector3 current_position(pose.p.x, pose.p.y, pose.p.z);
+                Quaternion current_rotation(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
+                Vector3 entity_position    = GetEntity()->GetPosition();
+                Quaternion entity_rotation = GetEntity()->GetRotation();
+                
+                if (current_position != entity_position)
+                {
+                    pose.p = PxVec3(entity_position.x, entity_position.y, entity_position.z);
+                    rigid_actor->setGlobalPose(pose);
+                    SetLinearVelocity(Vector3::Zero);
+                    SetAngularVelocity(Vector3::Zero);
+                }
+                
+                if (current_rotation != entity_rotation)
+                {
+                    pose.q = PxQuat(entity_rotation.x, entity_rotation.y, entity_rotation.z, entity_rotation.w);
+                    rigid_actor->setGlobalPose(pose);
+                    SetLinearVelocity(Vector3::Zero);
+                    SetAngularVelocity(Vector3::Zero);
+                }
             }
-    
-            if (GetRotation() != GetEntity()->GetRotation())
+            else // physx -> engine
             {
-                SetRotation(GetEntity()->GetRotation());
-                SetLinearVelocity(Vector3::Zero);
-                SetAngularVelocity(Vector3::Zero);
+                PxTransform pose = rigid_actor->getGlobalPose();
+                GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
+                GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
             }
-        }
-        else if(m_body) // physx -> engine
-        {
-            PxTransform pose = static_cast<PxRigidActor*>(m_body)->getGlobalPose();
-            GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-            GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
         }
 
         // handle distance-based removal for static bodies (required to have good performance with the terrain tiles)
@@ -128,11 +139,11 @@ namespace spartan
             if (Camera* camera = World::GetCamera())
             {
                 const Vector3 camera_pos        = camera->GetEntity()->GetPosition();
-                const Vector3 body_pos          = m_body ? GetPosition() : GetEntity()->GetPosition();
+                const Vector3 body_pos          = GetEntity()->GetPosition();
                 const float distance_camera     = Vector3::Distance(camera_pos, body_pos);
                 const float distance_deactivate = 200.0f;
                 const float distance_activate   = 150.0f;
-        
+
                 if (m_body && distance_camera > distance_deactivate)
                 {
                     OnRemove();
@@ -416,53 +427,6 @@ namespace spartan
     void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)
     {
         m_center_of_mass = center_of_mass;
-        SetPosition(GetPosition());
-    }
-
-    Vector3 PhysicsBody::GetPosition() const
-    {
-        if (m_body)
-        {
-            PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-            PxTransform pose          = rigid_actor->getGlobalPose();
-            return Vector3(pose.p.x, pose.p.y, pose.p.z);
-        }
-        
-        return Vector3::Zero;
-    }
-
-    void PhysicsBody::SetPosition(const Vector3& position) const
-    {
-        if (!m_body)
-            return;
-
-        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-        PxTransform pose          = rigid_actor->getGlobalPose();
-        pose.p                    = PxVec3(position.x, position.y, position.z);
-        rigid_actor->setGlobalPose(pose);
-    }
-
-    Quaternion PhysicsBody::GetRotation() const
-    {
-        if (m_body)
-        {
-            PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-            PxTransform pose = rigid_actor->getGlobalPose();
-            return Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-        }
-        
-        return Quaternion::Identity;
-    }
-
-    void PhysicsBody::SetRotation(const Quaternion& rotation) const
-    {
-        if (!m_body)
-            return;
-
-        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-        PxTransform pose          = rigid_actor->getGlobalPose();
-        pose.q                    = PxQuat(rotation.x, rotation.y, rotation.z, rotation.w);
-        rigid_actor->setGlobalPose(pose);
     }
 
     void PhysicsBody::ClearForces() const

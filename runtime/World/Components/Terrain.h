@@ -99,5 +99,6 @@ namespace spartan
         std::vector<std::vector<uint32_t>> m_tile_indices;
         std::shared_ptr<Mesh> m_mesh;
         std::shared_ptr<Material> m_material;
+        std::vector<math::Vector3> m_tile_offsets;
     };
 }

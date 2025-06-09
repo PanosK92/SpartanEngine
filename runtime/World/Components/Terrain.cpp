@@ -715,7 +715,6 @@ namespace spartan
 
     void Terrain::SaveToFile(const char* file_path)
     {
-        // open file for writing
         ofstream file(file_path, ios::binary);
         if (!file.is_open())
         {
@@ -723,14 +722,14 @@ namespace spartan
             return;
         }
     
-        // write all sizes first
-        uint32_t width            = GetWidth();
-        uint32_t height           = GetHeight();
+        uint32_t width = GetWidth();
+        uint32_t height = GetHeight();
         uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
-        uint32_t vertex_count     = static_cast<uint32_t>(m_vertices.size());
-        uint32_t index_count      = static_cast<uint32_t>(m_indices.size());
-        uint32_t tile_count       = static_cast<uint32_t>(m_tile_vertices.size());
-        uint32_t placement_count  = static_cast<uint32_t>(triangle_data.size());
+        uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
+        uint32_t index_count = static_cast<uint32_t>(m_indices.size());
+        uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
+        uint32_t placement_count = static_cast<uint32_t>(triangle_data.size());
+        uint32_t offset_count = static_cast<uint32_t>(m_tile_offsets.size());
     
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
@@ -739,14 +738,14 @@ namespace spartan
         file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&placement_count), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&offset_count), sizeof(uint32_t));
     
-        // write vector data
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(triangle_data.data()), placement_count * sizeof(TriangleData));
+        file.write(reinterpret_cast<const char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
     
-        // write tile data
         for (uint32_t i = 0; i < tile_count; i++)
         {
             uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
@@ -759,24 +758,22 @@ namespace spartan
     
         file.close();
     
-        // log save operation
-        SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
-                    file_path, width, height, height_data_size, vertex_count, index_count, tile_count);
+        SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, offset_count=%u",
+                    file_path, width, height, height_data_size, vertex_count, index_count, tile_count, offset_count);
     }
     
     void Terrain::LoadFromFile(const char* file_path)
     {
-        // open file for reading
         ifstream file(file_path, ios::binary);
         if (!file.is_open())
             return;
     
-        // read all sizes first
         uint32_t height_data_size = 0;
-        uint32_t vertex_count     = 0;
-        uint32_t index_count      = 0;
-        uint32_t tile_count       = 0;
-        uint32_t placement_count  = 0;
+        uint32_t vertex_count = 0;
+        uint32_t index_count = 0;
+        uint32_t tile_count = 0;
+        uint32_t placement_count = 0;
+        uint32_t offset_count = 0;
     
         file.read(reinterpret_cast<char*>(&m_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_height), sizeof(uint32_t));
@@ -785,30 +782,29 @@ namespace spartan
         file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&placement_count), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&offset_count), sizeof(uint32_t)); 
     
-        // sanity check
-        if (tile_count > 10000) // adjust as needed
+        if (tile_count > 10000 || offset_count > 10000)
         {
-            SP_LOG_ERROR("invalid tile_count (%u) read from file, aborting load", tile_count);
+            SP_LOG_ERROR("invalid tile_count (%u) or offset_count (%u) read from file, aborting load", tile_count, offset_count);
             file.close();
             return;
         }
     
-        // resize vectors based on saved sizes
         m_height_data.resize(height_data_size);
         m_vertices.resize(vertex_count);
         m_indices.resize(index_count);
         m_tile_vertices.resize(tile_count);
         m_tile_indices.resize(tile_count);
+        m_tile_offsets.resize(offset_count);
         triangle_data.resize(placement_count);
     
-        // read vector data
         file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(triangle_data.data()), placement_count * sizeof(TriangleData));
+        file.read(reinterpret_cast<char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
     
-        // read tile data
         for (uint32_t i = 0; i < tile_count; i++)
         {
             uint32_t vertex_size, index_size;
@@ -824,11 +820,10 @@ namespace spartan
     
         file.close();
     
-        // log load operation
-        SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u",
-                    file_path, m_width, m_height, height_data_size, vertex_count, index_count, tile_count);
+        SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, offset_count=%u",
+                    file_path, m_width, m_height, height_data_size, vertex_count, index_count, tile_count, offset_count);
     }
-    
+
     uint32_t Terrain::GetDensity() const
     {
         return parameters::density;
@@ -941,7 +936,7 @@ namespace spartan
             // 7. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
-                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, parameters::tile_count, m_tile_vertices, m_tile_indices);
+                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, parameters::tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
                 SaveToFile(cache_file.c_str());
             }
@@ -967,6 +962,7 @@ namespace spartan
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("tile_" + to_string(tile_index));
                 entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()));
+                entity->SetPosition(m_tile_offsets[tile_index]); 
                 if (Renderable* renderable = entity->AddComponent<Renderable>())
                 {
                     renderable->SetMesh(m_mesh.get(), sub_mesh_index);

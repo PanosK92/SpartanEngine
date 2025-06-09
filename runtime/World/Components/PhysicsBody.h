@@ -109,14 +109,6 @@ namespace spartan
         void SetCenterOfMass(const math::Vector3& center_of_mass);
         const math::Vector3& GetCenterOfMass() const { return m_center_of_mass; }
 
-        // position
-        math::Vector3 GetPosition() const;
-        void SetPosition(const math::Vector3& position) const;
-
-        // rotation
-        math::Quaternion GetRotation() const;
-        void SetRotation(const math::Quaternion& rotation) const;
-
         // shape type
         PhysicsShape GetShapeType() const { return m_shape_type; }
         void SetShapeType(PhysicsShape type);

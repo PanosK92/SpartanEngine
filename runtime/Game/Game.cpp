@@ -266,7 +266,8 @@ namespace spartan
                     const uint32_t tile_count = std::max(1u, density / 6); // dynamic tile count based on density, minimum 1
                     vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
                     vector<vector<uint32_t>> tiled_indices;
-                    spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices);
+                    vector<Vector3> tile_offsets;
+                    spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices, tile_offsets);
                 
                     for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
                     {
@@ -284,6 +285,7 @@ namespace spartan
                             shared_ptr<Entity> entity = World::CreateEntity();
                             entity->SetObjectName(name);
                             entity->SetParent(water);
+                            entity->SetPosition(tile_offsets[tile_index]);
                 
                             if (Renderable* renderable = entity->AddComponent<Renderable>())
                             {
@@ -627,7 +629,7 @@ namespace spartan
                         camera->SetRotationLocal(Quaternion::Identity);
             
                         // place the camera on the left of the driver's door
-                        default_camera->GetComponent<PhysicsBody>()->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
+                        default_camera->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
             
                         audio_source_idle->Stop();
             

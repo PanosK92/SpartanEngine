@@ -213,7 +213,8 @@ namespace spartan::geometry_processing
         const std::vector<uint32_t>& terrain_indices,
         const uint32_t tile_count,
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
-        std::vector<std::vector<uint32_t>>& tiled_indices
+        std::vector<std::vector<uint32_t>>& tiled_indices,
+        std::vector<math::Vector3>& tile_offsets
     )
     {
         // find terrain bounds
@@ -232,13 +233,14 @@ namespace spartan::geometry_processing
         // calculate tile dimensions
         float terrain_width = max_x - min_x;
         float terrain_depth = max_z - min_z;
-        float tile_width    = terrain_width / static_cast<float>(tile_count);
-        float tile_depth    = terrain_depth / static_cast<float>(tile_count);
-
+        float tile_width = terrain_width / static_cast<float>(tile_count);
+        float tile_depth = terrain_depth / static_cast<float>(tile_count);
+    
         // initialize output containers and mutexes
         const uint32_t total_tiles = tile_count * tile_count;
         tiled_vertices.resize(total_tiles);
         tiled_indices.resize(total_tiles);
+        tile_offsets.resize(total_tiles, math::Vector3::Zero);
         std::vector<std::unordered_map<uint32_t, uint32_t>> global_to_local_indices(total_tiles);
         std::vector<std::mutex> tile_mutexes(total_tiles);
     
@@ -246,7 +248,7 @@ namespace spartan::geometry_processing
         uint32_t triangle_count = static_cast<uint32_t>(terrain_indices.size()) / 3;
     
         // parallel processing of triangles
-        auto process_triangles = [&terrain_vertices, &terrain_indices, tile_count, min_x, min_z, tile_width, tile_depth, &tiled_vertices, &tiled_indices, &global_to_local_indices, &tile_mutexes](uint32_t start_tri, uint32_t end_tri)
+        auto process_triangles = [&terrain_vertices, &terrain_indices, tile_count, min_x, min_z, tile_width, tile_depth, &tiled_vertices, &tiled_indices, &global_to_local_indices, &tile_mutexes, &tile_offsets](uint32_t start_tri, uint32_t end_tri)
         {
             for (uint32_t tri = start_tri; tri < end_tri; ++tri)
             {
@@ -254,15 +256,25 @@ namespace spartan::geometry_processing
                 uint32_t i = tri * 3;
     
                 // assign triangle to tile based on first vertex
-                const auto& vertex  = terrain_vertices[terrain_indices[i]];
-                uint32_t tile_x     = std::min(static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width), tile_count - 1);
-                uint32_t tile_z     = std::min(static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth), tile_count - 1);
+                const auto& vertex = terrain_vertices[terrain_indices[i]];
+                uint32_t tile_x = std::min(static_cast<uint32_t>((vertex.pos[0] - min_x) / tile_width), tile_count - 1);
+                uint32_t tile_z = std::min(static_cast<uint32_t>((vertex.pos[2] - min_z) / tile_depth), tile_count - 1);
                 uint32_t tile_index = tile_z * tile_count + tile_x;
+    
+                // calculate tile center for offset
+                float tile_center_x = min_x + (tile_x + 0.5f) * tile_width;
+                float tile_center_z = min_z + (tile_z + 0.5f) * tile_depth;
     
                 // lock the tile to prevent concurrent access
                 std::lock_guard<std::mutex> lock(tile_mutexes[tile_index]);
     
-                // add all three vertices to the tile
+                // set tile offset (center of the tile)
+                if (tile_offsets[tile_index] == math::Vector3::Zero)
+                {
+                    tile_offsets[tile_index] = math::Vector3(tile_center_x, 0.0f, tile_center_z);
+                }
+    
+                // add all three vertices to the tile, translated to local coordinates
                 auto& map = global_to_local_indices[tile_index];
                 for (uint32_t j = 0; j < 3; ++j)
                 {
@@ -275,7 +287,11 @@ namespace spartan::geometry_processing
                     }
                     else
                     {
-                        tiled_vertices[tile_index].push_back(terrain_vertices[global_idx]);
+                        // translate vertex to local coordinates (relative to tile center)
+                        RHI_Vertex_PosTexNorTan vertex_local = terrain_vertices[global_idx];
+                        vertex_local.pos[0] -= tile_center_x;
+                        vertex_local.pos[2] -= tile_center_z;
+                        tiled_vertices[tile_index].push_back(vertex_local);
                         local_idx = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
                         map[global_idx] = local_idx;
                     }
@@ -295,6 +311,7 @@ namespace spartan::geometry_processing
                 tiled_vertices[i].clear();
                 tiled_indices[i].clear();
                 global_to_local_indices[i].clear();
+                tile_offsets[i] = math::Vector3::Zero;
             }
         }
     }
