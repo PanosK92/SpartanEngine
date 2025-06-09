@@ -705,11 +705,6 @@ namespace spartan
                 PxCapsuleGeometry geometry(radius, half_height);
                 m_shape = physics->createShape(geometry, *material);
                 static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                
-                // set higher friction values for the capsule (which is typically used for characters)
-                material->setStaticFriction(1.0f);  // static friction (when not moving)
-                material->setDynamicFriction(0.9f); // dynamic friction (when moving)
-                material->setRestitution(0.1f);     // lower restitution for less bouncy movement
                 break;
             }
             case PhysicsShape::HeightField:

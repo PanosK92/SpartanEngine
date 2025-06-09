@@ -132,6 +132,9 @@ namespace spartan
                 physics_body->SetMass(82.0f);
                 physics_body->SetShapeType(PhysicsShape::Capsule);
                 physics_body->SetRotationLock(true);
+                physics_body->SetFriction(1.0f); 
+                physics_body->SetFrictionRolling(0.0f);
+                physics_body->SetRestitution(0.1f);
                 
                 // create the entity that will actual hold the camera component
                 shared_ptr<Entity> camera = World::CreateEntity();
