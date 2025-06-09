@@ -947,6 +947,11 @@ namespace spartan
             
                 if (shape)
                 {
+                    if (PxShape* old_shape = static_cast<PxShape*>(m_shape))
+                    {
+                        old_shape->release();
+                    }
+
                     m_shape = shape;
                 }
                 else
@@ -963,8 +968,6 @@ namespace spartan
             PxShape* shape = static_cast<PxShape*>(m_shape);
             shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
             rigid_actor->attachShape(*shape);
-            shape->release();
-            m_shape = nullptr;
         }
         else
         {
