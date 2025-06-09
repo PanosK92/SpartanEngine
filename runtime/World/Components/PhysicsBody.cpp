@@ -484,51 +484,71 @@ namespace spartan
     {
         if (!m_body)
             return false;
-    
-        PxScene* scene           = static_cast<PxScene*>(Physics::GetScene());
+
+        // get physx pointers
+        PxScene* scene            = static_cast<PxScene*>(Physics::GetScene());
         PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
     
-        // get the body's AABB to find the lowest point
+        // get the body's shape
         PxShape* shape = nullptr;
+        PxU32 shape_count = rigid_actor->getNbShapes();
+        if (shape_count == 0)
+            return false;
+
         rigid_actor->getShapes(&shape, 1);
         if (!shape)
             return false;
     
+        // get the body's aabb and transform
         PxBounds3 bounds = PxShapeExt::getWorldBounds(*shape, *rigid_actor, 1.0f);
-        float min_y = bounds.minimum.y;
-    
-        // get the body's position and adjust ray start
         PxTransform pose = rigid_actor->getGlobalPose();
-        PxVec3 ray_start(pose.p.x, min_y + 0.1f, pose.p.z); // Offset 0.1 units above lowest point
+        float min_y      = bounds.minimum.y;
+    
+        // calculate ray start with fixed offset
+        float ray_offset = 1.0f;
+        PxVec3 ray_start(pose.p.x, min_y + ray_offset, pose.p.z);
     
         // define raycast parameters
-        PxVec3 direction(0, -1, 0); // downward
-        PxReal max_distance = 0.2f; // raycast 0.2 units down
-        PxRaycastBuffer hit;
+        PxVec3 direction(0, -1, 0);
+        PxReal max_distance = ray_offset + 0.2f;
     
-        // filter to exclude self-collision
-        struct RaycastFilterCallback : public PxQueryFilterCallback
-        {
-            PxRigidActor* self_actor;
-            RaycastFilterCallback(PxRigidActor* actor) : self_actor(actor) {}
-            PxQueryHitType::Enum preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) override
-            {
-                return (actor == self_actor) ? PxQueryHitType::eNONE : PxQueryHitType::eBLOCK;
-            }
-            PxQueryHitType::Enum postFilter(const PxFilterData& filterData, const PxQueryHit& hit, const PxShape* shape, const PxRigidActor* actor) override
-            {
-                return PxQueryHitType::eBLOCK;
-            }
-        };
-        RaycastFilterCallback filter_callback(rigid_actor);
+        // use a buffer to collect multiple hits
+        const PxU32 max_hits = 10;
+        PxRaycastHit hit_buffer[max_hits];
+        PxRaycastBuffer hit(hit_buffer, max_hits);
     
         // perform raycast
         PxQueryFilterData filter_data;
-        filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::eANY_HIT;
+        filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
     
-        return scene->raycast(ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data, &filter_callback);
+        bool hit_found = scene->raycast(ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data);
+    
+        // process hits manually
+        bool is_grounded = false;
+        if (hit_found)
+        {
+            // check blocking hit first
+            if (hit.hasBlock && hit.block.actor != rigid_actor && hit.block.distance > 0.001f)
+            {
+                is_grounded = true;
+            }
+            else if (!is_grounded && hit.nbTouches > 0)
+            {
+                for (PxU32 i = 0; i < hit.nbTouches; ++i)
+                {
+                    const PxRaycastHit& current_hit = hit.getTouch(i);
+                    if (current_hit.actor != rigid_actor && current_hit.distance > 0.001f)
+                    {
+                        is_grounded = true;
+                        break;
+                    }
+                }
+            }
+        }
+    
+        return is_grounded;
     }
-    
+
     float PhysicsBody::GetCapsuleVolume()
     {
         // total volume is the sum of the cylinder and two hemispheres
