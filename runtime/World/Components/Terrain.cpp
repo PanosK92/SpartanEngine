@@ -45,7 +45,7 @@ namespace spartan
     {
         const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
         const uint32_t smoothing_iterations = 1;         // the number of height map neighboring pixel averaging
-        const uint32_t density              = 1;         // multiplier for height map grid density
+        const uint32_t density              = 2;         // multiplier for height map grid density
         const uint32_t scale                = 3;         // scale factor for physical terrain dimensions
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
     }
@@ -341,150 +341,6 @@ namespace spartan
             height_data = move(dense_height_data);
         }
 
-        // applies hydraulic erosion to the height map by simulating water droplets
-        void apply_hydraulic_erosion(vector<float>& height_data, uint32_t width, uint32_t height, float min_height, float max_height)
-        { 
-            // parameters adjusted for density
-            uint32_t density = parameters::density;
-            uint32_t base_width = (width - 1) / density + 1;
-            float grid_spacing = static_cast<float>(base_width - 1) * parameters::scale / static_cast<float>(width - 1);
-            uint32_t droplet_count         = 500'000 * density * density; // scale with density^2
-            float erosion_strength         = 0.05f * density;             // scale with density
-            float deposition_strength      = 0.02f * density;             // scale with density
-            float sediment_capacity_factor = 3.0f;
-            float min_slope                = 0.003f / density;            // reduce min slope for finer grid
-            uint32_t max_lifetime          = 50;
-            float inertia                  = 0.2f;
-            float gravity                  = 2.0f;
-            float max_speed                = 5.0f;                       // limit droplet speed
-        
-            // random number generation for droplet placement and movement
-            thread_local mt19937 generator(random_device{}());
-            uniform_real_distribution<float> random_float(0.0f, 1.0f);
-            uniform_int_distribution<uint32_t> random_index(0, width * height - 1);
-        
-            // temporary buffer to store height changes (to avoid race conditions)
-            vector<float> height_changes(width * height, 0.0f);
-            mutex height_changes_mutex;
-        
-            // helper function to get height and gradient at a position
-            auto get_height_and_gradient = [&](float x, float y, float& height, Vector2& gradient)
-            {
-                // clamp coordinates to valid range
-                uint32_t x0 = static_cast<uint32_t>(max(0.0f, min(x, static_cast<float>(width - 1))));
-                uint32_t y0 = static_cast<uint32_t>(max(0.0f, min(y, static_cast<float>(height - 1))));
-                uint32_t x1 = min<uint32_t>(x0 + 1, width  - 1U);
-                uint32_t y1 = min<uint32_t>(y0 + 1, height - 1U);
-        
-                // bilinear interpolation for height
-                float fx = x - static_cast<float>(x0);
-                float fy = y - static_cast<float>(y0);
-                float h00 = height_data[y0 * width + x0];
-                float h10 = height_data[y0 * width + x1];
-                float h01 = height_data[y1 * width + x0];
-                float h11 = height_data[y1 * width + x1];
-                height = (1.0f - fx) * (1.0f - fy) * h00 + fx * (1.0f - fy) * h10 +
-                         (1.0f - fx) * fy * h01 + fx * fy * h11;
-        
-                // compute gradients using finite differences, scaled by grid spacing
-                gradient.x = (h10 - h00 + h11 - h01) * 0.5f / grid_spacing;
-                gradient.y = (h01 - h00 + h11 - h10) * 0.5f / grid_spacing;
-            };
-        
-            // parallel droplet simulation
-            auto simulate_droplet_batch = [&](uint32_t start, uint32_t end)
-            {
-                vector<float> local_height_changes(width * height, 0.0f);
-        
-                for (uint32_t i = start; i < end; i++)
-                {
-                    // initialize droplet
-                    Vector2 pos(random_float(generator) * (width - 1), random_float(generator) * (height - 1));
-                    Vector2 dir(0.0f, 0.0f);
-                    float speed = 0.0f;
-                    float sediment = 0.0f;
-                    uint32_t lifetime = 0;
-        
-                    while (lifetime < max_lifetime)
-                    {
-                        // get current height and gradient
-                        float height;
-                        Vector2 gradient;
-                        get_height_and_gradient(pos.x, pos.y, height, gradient);
-        
-                        // update direction with inertia and gradient
-                        dir = dir * inertia - gradient * (1.0f - inertia);
-                        if (dir.LengthSquared() > 0.0f)
-                            dir.Normalize();
-        
-                        // update speed based on slope
-                        float slope = gradient.Length();
-                        speed = sqrt(max(0.0f, speed * speed + gravity * slope));
-                        speed = min(speed, max_speed); // cap speed to prevent large jumps
-        
-                        // move droplet
-                        Vector2 new_pos = pos + dir * speed;
-        
-                        // compute sediment capacity
-                        float capacity = max(min_slope, slope) * speed * sediment_capacity_factor;
-        
-                        // erode or deposit based on sediment capacity
-                        float sediment_change = sediment - capacity;
-                        float erode_amount    = min(erosion_strength * slope, -sediment_change);
-                        float deposit_amount  = min(deposition_strength * sediment_change, sediment);
-        
-                        // update sediment
-                        sediment += erode_amount - deposit_amount;
-        
-                        // apply height change at current position
-                        uint32_t x0 = static_cast<uint32_t>(max(0.0f, min(pos.x, static_cast<float>(width - 1))));
-                        uint32_t y0 = static_cast<uint32_t>(max(0.0f, min(pos.y, static_cast<float>(height - 1))));
-                        local_height_changes[y0 * width + x0] -= erode_amount;
-                        local_height_changes[y0 * width + x0] += deposit_amount;
-        
-                        // debug log to track indices and changes
-                        if (i == 0 && lifetime == 0)
-                        {
-                            SP_LOG_INFO("droplet 0, step 0: x0=%u, y0=%u, erode=%f, deposit=%f", x0, y0, erode_amount, deposit_amount);
-                        }
-        
-                        // move to new position
-                        pos = new_pos;
-                        lifetime++;
-        
-                        // stop if speed is too low
-                        if (speed < 0.01f)
-                            break;
-                    }
-                }
-        
-                // merge local height changes into global buffer
-                lock_guard<mutex> lock(height_changes_mutex);
-                for (uint32_t i = 0; i < width * height; i++)
-                {
-                    height_changes[i] += local_height_changes[i];
-                }
-            };
-        
-            // run droplet simulation in parallel
-            ThreadPool::ParallelLoop(simulate_droplet_batch, droplet_count);
-        
-            // apply height changes to height_data with clamping
-            for (uint32_t i = 0; i < height_data.size(); i++)
-            {
-                height_data[i] = clamp(height_data[i] + height_changes[i], min_height, max_height);
-            }
-        
-            // log to verify changes
-            float max_change = 0.0f;
-            for (float change : height_changes)
-            {
-                max_change = max(max_change, abs(change));
-            }
-            SP_LOG_INFO("hydraulic erosion applied, max height change: %f", max_change);
-        }
-
-        // generates position vectors from height map data, scaling physical dimensions
         void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
@@ -531,6 +387,120 @@ namespace spartan
         
             uint32_t total_positions = width * height;
             ThreadPool::ParallelLoop(generate_position_range, total_positions);
+        }
+
+        void apply_hydraulic_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000)
+        {
+            const float rain_amount     = 1.5f;  // Amount of water per raindrop (meters). Higher (e.g., 3.0f) increases erosion strength; lower (e.g., 0.5f) reduces it.
+            const float solubility      = 0.5f;  // Soil eroded per unit of water (meters). Higher (e.g., 0.5f) deepens erosion dents; lower (e.g., 0.1f) makes them shallower.
+            const float evaporation     = 0.5f;  // Fraction of water lost per step (0.0f to 1.0f). Higher (e.g., 0.4f) shortens flow, reduces final deposits; lower (e.g., 0.1f) spreads erosion.
+            const float capacity        = 0.5f;  // Sediment carried per unit of water (meters). Higher (e.g., 1.0f) increases deposits; lower (e.g., 0.2f) reduces them.
+            const uint32_t max_steps    = 20;    // Maximum steps a droplet travels. Higher (e.g., 30) creates longer valleys; lower (e.g., 10) keeps erosion localized.
+            const float deposition_rate = 0.1f;  // Fraction of excess sediment deposited per step (0.0f to 1.0f). Lower (e.g., 0.2f) reduces final spikes; higher (e.g., 0.8f) increases piles.
+            const float min_slope       = 0.01f; // Minimum slope (meters) for water to flow. Lower (e.g., 0.005f) erodes flatter areas; higher (e.g., 0.05f) limits to steep slopes.
+
+            // parallel erosion simulation
+            mutex mtx;
+            vector<float> water(width * height, 0.0f);
+            vector<float> sediment(width * height, 0.0f);
+            auto erode = [&](uint32_t start, uint32_t end)
+            {
+                thread_local mt19937 generator(random_device{}());
+                uniform_int_distribution<uint32_t> pos_dist(0, width * height - 1);
+        
+                for (uint32_t iter = start; iter < end; ++iter)
+                {
+                    uint32_t index = pos_dist(generator);
+                    uint32_t x = index % width;
+                    uint32_t y = index / width;
+        
+                    // skip boundary
+                    if (x <= 1 || x >= width - 2 || y <= 1 || y >= height - 2)
+                        continue;
+        
+                    float current_water = rain_amount;
+                    float current_sediment = 0.0f;
+                    Vector3 current_pos = positions[index];
+                    uint32_t current_index = index;
+        
+                    for (uint32_t step = 0; step < max_steps && current_water > 0.0f; ++step)
+                    {
+                        float steepest_slope = 0.0f;
+                        uint32_t next_index = current_index;
+                        Vector3 current_height = positions[current_index];
+        
+                        // check 8 neighbors
+                        int dx[] = {-1, 1, 0, 0, -1, -1, 1, 1};
+                        int dy[] = {0, 0, -1, 1, -1, 1, -1, 1};
+                        for (int i = 0; i < 8; ++i)
+                        {
+                            uint32_t nx = x + dx[i];
+                            uint32_t ny = y + dy[i];
+                            if (nx >= width || ny >= height)
+                                continue;
+        
+                            uint32_t neighbor_index = ny * width + nx;
+                            float height_diff = current_height.y - positions[neighbor_index].y;
+                            float slope = height_diff > 0 ? height_diff : 0.0f;
+        
+                            if (slope > steepest_slope)
+                            {
+                                steepest_slope = slope;
+                                next_index = neighbor_index;
+                            }
+                        }
+        
+                        if (steepest_slope < min_slope || next_index == current_index)
+                        {
+                            lock_guard<mutex> lock(mtx);
+                            sediment[current_index] += current_sediment;
+                            break;
+                        }
+        
+                        float erosion = min(solubility * current_water, steepest_slope);
+                        {
+                            lock_guard<mutex> lock(mtx);
+                            sediment[current_index] -= erosion;
+                            current_sediment += erosion;
+                        }
+        
+                        current_index = next_index;
+                        x = current_index % width;
+                        y = current_index / width;
+                        current_pos = positions[current_index];
+        
+                        float max_sediment = capacity * current_water;
+                        if (current_sediment > max_sediment)
+                        {
+                            float deposit = (current_sediment - max_sediment) * deposition_rate;
+                            {
+                                lock_guard<mutex> lock(mtx);
+                                sediment[current_index] += deposit;
+                            }
+                            current_sediment -= deposit;
+                        }
+        
+                        current_water *= (1.0f - evaporation);
+                    }
+                }
+            };
+        
+            // run erosion iterations in parallel
+            ThreadPool::ParallelLoop(erode, iterations);
+        
+            // apply sediment changes
+            auto apply_sediment = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; ++i)
+                {
+                    positions[i].y += sediment[i];
+                    if (positions[i].y < 0.0f) // stop at sea level
+                    { 
+                        positions[i].y = 0.0f;
+                    }
+                }
+            };
+            ThreadPool::ParallelLoop(apply_sediment, width * height);
         }
 
         void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, vector<uint32_t>& terrain_indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
@@ -895,18 +865,18 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 2. apply hydraulic erosion
-            {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic erosion...");
-                //apply_hydraulic_erosion(m_height_data, dense_width, dense_height, m_min_y, m_max_y);
-                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            }
-    
-            // 3. compute positions
+            // 2. compute positions
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating positions...");
                 positions.resize(dense_width * dense_height);
                 generate_positions(positions, m_height_data, dense_width, dense_height);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 3. apply hydraulic erosion
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic erosion...");
+                apply_hydraulic_erosion(positions, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
@@ -948,7 +918,7 @@ namespace spartan
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
     
-        // 9. create a mesh for each tile
+        // 8. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
             m_mesh = make_shared<Mesh>();
