@@ -391,15 +391,15 @@ namespace spartan
 
         void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000)
         {
-            const float inertia           = 0.05f;  // particle tendency to follow previous direction vs. downhill slope
-            const float sediment_capacity = 1.5f;   // max sediment a particle can carry, higher deepens valleys, raises deposits
-            const float erode_speed       = 0.5f;   // rate of terrain erosion, higher lowers terrain faster
-            const float deposit_speed     = 0.5f;   // rate of sediment deposition, higher raises terrain faster
-            const float evaporate_speed   = 0.005f; // rate water decreases per step, lower extends particle travel
-            const float gravity           = 4.0f;   // strength of downhill movement, higher deepens valleys
-            const float max_steps         = 50.0f;  // max steps per particle, higher affects more terrain
-            const float min_slope         = 0.01f;  // min slope for erosion, higher focuses on steep areas
-            const float max_height_delta  = 2.0f;   // maximum height deviation - in a way this how hard the surface is
+            const float inertia           = 0.02f;  // Reduced from 0.05f to make particles less likely to follow previous paths, encouraging branching
+            const float sediment_capacity = 1.0f;   // Reduced from 1.5f to deposit sediment sooner, affecting flatter areas more
+            const float erode_speed       = 0.7f;   // Increased from 0.5f to erode more on all surfaces, including flat ones
+            const float deposit_speed     = 0.5f;   // Unchanged, as it balances deposition
+            const float evaporate_speed   = 0.01f;  // Increased from 0.005f to shorten particle paths, promoting more new paths
+            const float gravity           = 2.0f;   // Reduced from 4.0f to reduce focus on steep slopes, encouraging wider spread
+            const float max_steps         = 75.0f;  // Increased from 50.0f to allow particles to travel further, creating more branches
+            const float min_slope         = 0.005f; // Reduced from 0.01f to allow erosion on flatter surfaces
+            const float max_height_delta  = 4.0f;   // Unchanged, as it controls surface hardness
 
             // lambda for parallel erosion
             mutex positions_mutex;
