@@ -473,7 +473,7 @@ namespace spartan
         m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
     
         // translation
-        Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction;
+        Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction * 4.0f;
         if (Input::GetKey(KeyCode::Shift_Left))
         {
             translation *= 3.0f;

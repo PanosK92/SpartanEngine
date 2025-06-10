@@ -392,16 +392,18 @@ namespace spartan
         void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000)
         {
             const float inertia           = 0.05f;  // particle tendency to follow previous direction vs. downhill slope
-            const float sediment_capacity = 1.0f;   // max sediment a particle can carry, higher deepens valleys, raises deposits
-            const float erode_speed       = 0.3f;   // rate of terrain erosion, higher lowers terrain faster
-            const float deposit_speed     = 0.3f;   // rate of sediment deposition, higher raises terrain faster
-            const float evaporate_speed   = 0.01f;  // rate water decreases per step, lower extends particle travel
+            const float sediment_capacity = 1.5f;   // max sediment a particle can carry, higher deepens valleys, raises deposits
+            const float erode_speed       = 0.5f;   // rate of terrain erosion, higher lowers terrain faster
+            const float deposit_speed     = 0.5f;   // rate of sediment deposition, higher raises terrain faster
+            const float evaporate_speed   = 0.005f; // rate water decreases per step, lower extends particle travel
             const float gravity           = 4.0f;   // strength of downhill movement, higher deepens valleys
-            const float max_steps         = 30.0f;  // max steps per particle, higher affects more terrain
+            const float max_steps         = 50.0f;  // max steps per particle, higher affects more terrain
             const float min_slope         = 0.01f;  // min slope for erosion, higher focuses on steep areas
+            const float max_height_delta  = 2.0f;   // maximum height deviation - in a way this how hard the surface is
 
             // lambda for parallel erosion
             mutex positions_mutex;
+            vector<Vector3> original_positions = positions;
             auto erode_range = [&](uint32_t start_index, uint32_t end_index)
             {
                 // thread-local random number generator
@@ -512,10 +514,18 @@ namespace spartan
                             float w11 = frac_x * frac_z;
 
                             lock_guard<mutex> lock(positions_mutex);
-                            positions[idx00].y -= sediment_change * w00;
-                            positions[idx10].y -= sediment_change * w10;
-                            positions[idx01].y -= sediment_change * w01;
-                            positions[idx11].y -= sediment_change * w11;
+
+                            // compute new heights and clamp them
+                            float new_y00 = positions[idx00].y - sediment_change * w00;
+                            float new_y10 = positions[idx10].y - sediment_change * w10;
+                            float new_y01 = positions[idx01].y - sediment_change * w01;
+                            float new_y11 = positions[idx11].y - sediment_change * w11;
+
+                            // Clamp to max_height_delta from original height
+                            positions[idx00].y = clamp<float>(new_y00, original_positions[idx00].y - max_height_delta, original_positions[idx00].y + max_height_delta);
+                            positions[idx10].y = clamp<float>(new_y10, original_positions[idx10].y - max_height_delta, original_positions[idx10].y + max_height_delta);
+                            positions[idx01].y = clamp<float>(new_y01, original_positions[idx01].y - max_height_delta, original_positions[idx01].y + max_height_delta);
+                            positions[idx11].y = clamp<float>(new_y11, original_positions[idx11].y - max_height_delta, original_positions[idx11].y + max_height_delta);
                         }
         
                         // evaporate water
