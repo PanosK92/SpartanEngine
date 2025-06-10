@@ -391,116 +391,144 @@ namespace spartan
 
         void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000)
         {
-            const float rain_amount     = 3.0f;  // Amount of water per raindrop (meters). Higher (e.g., 3.0f) increases erosion strength; lower (e.g., 0.5f) reduces it.
-            const float solubility      = 3.0f;  // Soil eroded per unit of water (meters). Higher (e.g., 0.5f) deepens erosion dents; lower (e.g., 0.1f) makes them shallower.
-            const float evaporation     = 1.0f;  // Fraction of water lost per step (0.0f to 1.0f). Higher (e.g., 0.4f) shortens flow, reduces final deposits; lower (e.g., 0.1f) spreads erosion.
-            const float capacity        = 3.0f;  // Sediment carried per unit of water (meters). Higher (e.g., 1.0f) increases deposits; lower (e.g., 0.2f) reduces them.
-            const uint32_t max_steps    = 128;   // Maximum steps a droplet travels. Higher (e.g., 30) creates longer valleys; lower (e.g., 10) keeps erosion localized.
-            const float deposition_rate = 1.5f;  // Fraction of excess sediment deposited per step (0.0f to 1.0f). Lower (e.g., 0.2f) reduces final spikes; higher (e.g., 0.8f) increases piles.
-            const float min_slope       = 0.02f; // Minimum slope (meters) for water to flow. Lower (e.g., 0.005f) erodes flatter areas; higher (e.g., 0.05f) limits to steep slopes.
+            const float inertia           = 0.05f;  // particle tendency to follow previous direction vs. downhill slope
+            const float sediment_capacity = 1.0f;   // max sediment a particle can carry, higher deepens valleys, raises deposits
+            const float erode_speed       = 0.3f;   // rate of terrain erosion, higher lowers terrain faster
+            const float deposit_speed     = 0.3f;   // rate of sediment deposition, higher raises terrain faster
+            const float evaporate_speed   = 0.01f;  // rate water decreases per step, lower extends particle travel
+            const float gravity           = 4.0f;   // strength of downhill movement, higher deepens valleys
+            const float max_steps         = 30.0f;  // max steps per particle, higher affects more terrain
+            const float min_slope         = 0.01f;  // min slope for erosion, higher focuses on steep areas
 
-            // parallel erosion simulation
-            mutex mtx;
-            vector<float> water(width * height, 0.0f);
-            vector<float> sediment(width * height, 0.0f);
-            auto erode = [&](uint32_t start, uint32_t end)
+            // lambda for parallel erosion
+            mutex positions_mutex;
+            auto erode_range = [&](uint32_t start_index, uint32_t end_index)
             {
-                thread_local mt19937 generator(random_device{}());
-                uniform_int_distribution<uint32_t> pos_dist(0, width * height - 1);
+                // thread-local random number generator
+                mt19937 gen(random_device{}() + start_index); // unique seed per thread
+                uniform_real_distribution<float> dist(0.0f, 1.0f);
         
-                for (uint32_t iter = start; iter < end; ++iter)
+                // process particles in the given range
+                for (uint32_t iter = start_index; iter < end_index; ++iter)
                 {
-                    uint32_t index = pos_dist(generator);
-                    uint32_t x = index % width;
-                    uint32_t y = index / width;
-        
-                    // skip boundary
-                    if (x <= 1 || x >= width - 2 || y <= 1 || y >= height - 2)
-                        continue;
-        
-                    float current_water = rain_amount;
-                    float current_sediment = 0.0f;
-                    Vector3 current_pos = positions[index];
-                    uint32_t current_index = index;
-        
-                    for (uint32_t step = 0; step < max_steps && current_water > 0.0f; ++step)
+                    // spawn particle at random position
+                    float pos_x      = dist(gen) * (width - 1);
+                    float pos_z      = dist(gen) * (height - 1);
+                    float velocity_x = 0.0f;
+                    float velocity_z = 0.0f;
+                    float water      = 1.0f;
+                    float sediment   = 0.0f;
+                    float speed      = 0.0f;
+
+                    // simulate particle movement
+                    for (int step = 0; step < max_steps && water > 0.0f; step++)
                     {
-                        float steepest_slope = 0.0f;
-                        uint32_t next_index = current_index;
-                        Vector3 current_height = positions[current_index];
+                        // current grid cell
+                        int cell_x = static_cast<int>(pos_x);
+                        int cell_z = static_cast<int>(pos_z);
+
+                        // fractional position
+                        float frac_x = pos_x - cell_x;
+                        float frac_z = pos_z - cell_z;
         
-                        // check 8 neighbors
-                        int dx[] = {-1, 1, 0, 0, -1, -1, 1, 1};
-                        int dy[] = {0, 0, -1, 1, -1, 1, -1, 1};
-                        for (int i = 0; i < 8; ++i)
+                        // get heights at four corners
+                        uint32_t idx00 = cell_x + cell_z * width;
+                        uint32_t idx10 = idx00 + 1;
+                        uint32_t idx01 = idx00 + width;
+                        uint32_t idx11 = idx01 + 1;
+        
+                        // read heights (no lock needed for reads)
+                        float h00 = positions[idx00].y;
+                        float h10 = positions[idx10].y;
+                        float h01 = positions[idx01].y;
+                        float h11 = positions[idx11].y;
+        
+                        // bilinear interpolation
+                        float h0             = h00 * (1 - frac_x) + h10 * frac_x;
+                        float h1             = h01 * (1 - frac_x) + h11 * frac_x;
+                        float paricle_height = h0 * (1 - frac_z) + h1 * frac_z;
+        
+                        // compute gradient
+                        float grad_x = (h10 - h00) * (1 - frac_z) + (h11 - h01) * frac_z;
+                        float grad_z = (h01 - h00) * (1 - frac_x) + (h11 - h10) * frac_x;
+        
+                        // update velocity
+                        velocity_x = velocity_x * inertia - grad_x * (1.0f - inertia);
+                        velocity_z = velocity_z * inertia - grad_z * (1.0f - inertia);
+        
+                        // normalize velocity
+                        float speed_new = sqrt(velocity_x * velocity_x + velocity_z * velocity_z);
+                        if (speed_new > 0.0f)
                         {
-                            uint32_t nx = x + dx[i];
-                            uint32_t ny = y + dy[i];
-                            if (nx >= width || ny >= height)
-                                continue;
-        
-                            uint32_t neighbor_index = ny * width + nx;
-                            float height_diff = current_height.y - positions[neighbor_index].y;
-                            float slope = height_diff > 0 ? height_diff : 0.0f;
-        
-                            if (slope > steepest_slope)
-                            {
-                                steepest_slope = slope;
-                                next_index = neighbor_index;
-                            }
+                            velocity_x /= speed_new;
+                            velocity_z /= speed_new;
                         }
+                        speed = speed_new;
         
-                        if (steepest_slope < min_slope || next_index == current_index)
-                        {
-                            lock_guard<mutex> lock(mtx);
-                            sediment[current_index] += current_sediment;
+                        // move particle
+                        float old_pos_x  = pos_x;
+                        float old_pos_z  = pos_z;
+                        pos_x           += velocity_x;
+                        pos_z           += velocity_z;
+        
+                        // skip if still in same cell
+                        if (static_cast<int>(pos_x) == cell_x && static_cast<int>(pos_z) == cell_z)
+                            continue;
+        
+                        // check new position
+                        int new_cell_x = static_cast<int>(pos_x);
+                        int new_cell_z = static_cast<int>(pos_z);
+                        if (new_cell_x < 0 || new_cell_x >= static_cast<int>(width - 1) || new_cell_z < 0 || new_cell_z >= static_cast<int>(height - 1))
                             break;
-                        }
         
-                        float erosion = min(solubility * current_water, steepest_slope);
+                        // get new height (simplified)
+                        uint32_t new_idx = new_cell_x + new_cell_z * width;
+                        float new_height = positions[new_idx].y;
+        
+                        // compute slope
+                        float slope = max(min_slope, (paricle_height - new_height) / sqrt((pos_x - old_pos_x) * (pos_x - old_pos_x) + (pos_z - old_pos_z) * (pos_z - old_pos_z)));
+        
+                        // sediment capacity
+                        float capacity = max(slope * speed * water * sediment_capacity, 0.01f);
+        
+                        // erode or deposit
+                        float sediment_change = 0.0f;
+                        if (sediment > capacity)
                         {
-                            lock_guard<mutex> lock(mtx);
-                            sediment[current_index] -= erosion;
-                            current_sediment += erosion;
+                            sediment_change  = (sediment - capacity) * deposit_speed;
+                            sediment        -= sediment_change;
                         }
-        
-                        current_index = next_index;
-                        x = current_index % width;
-                        y = current_index / width;
-                        current_pos = positions[current_index];
-        
-                        float max_sediment = capacity * current_water;
-                        if (current_sediment > max_sediment)
+                        else
                         {
-                            float deposit = (current_sediment - max_sediment) * deposition_rate;
-                            {
-                                lock_guard<mutex> lock(mtx);
-                                sediment[current_index] += deposit;
-                            }
-                            current_sediment -= deposit;
+                            sediment_change  = min((capacity - sediment) * erode_speed, paricle_height);
+                            sediment        += sediment_change;
                         }
         
-                        current_water *= (1.0f - evaporation);
+                        // update heights with mutex
+                        {
+                            float w00 = (1 - frac_x) * (1 - frac_z);
+                            float w10 = frac_x * (1 - frac_z);
+                            float w01 = (1 - frac_x) * frac_z;
+                            float w11 = frac_x * frac_z;
+
+                            lock_guard<mutex> lock(positions_mutex);
+                            positions[idx00].y -= sediment_change * w00;
+                            positions[idx10].y -= sediment_change * w10;
+                            positions[idx01].y -= sediment_change * w01;
+                            positions[idx11].y -= sediment_change * w11;
+                        }
+        
+                        // evaporate water
+                        water *= (1.0f - evaporate_speed);
+        
+                        // stop if speed too low
+                        if (speed < 0.01f)
+                            break;
                     }
                 }
             };
         
-            // run erosion iterations in parallel
-            ThreadPool::ParallelLoop(erode, iterations);
-        
-            // apply sediment changes
-            auto apply_sediment = [&](uint32_t start, uint32_t end)
-            {
-                for (uint32_t i = start; i < end; ++i)
-                {
-                    positions[i].y += sediment[i];
-                    if (positions[i].y < 0.0f) // stop at sea level
-                    { 
-                        positions[i].y = 0.0f;
-                    }
-                }
-            };
-            ThreadPool::ParallelLoop(apply_sediment, width * height);
+            ThreadPool::ParallelLoop(erode_range, iterations);
         }
 
         void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, vector<uint32_t>& terrain_indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
