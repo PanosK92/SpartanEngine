@@ -1056,7 +1056,7 @@ namespace spartan
                     // water
                     float dimension  = 8000; // meters
                     uint32_t density = 64;   // geometric
-                    entities::water(Vector3(0.0f, -0.2f, 0.0f), dimension, density);
+                    entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density);
 
                     // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                     uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);

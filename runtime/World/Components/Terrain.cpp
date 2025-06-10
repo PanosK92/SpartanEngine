@@ -45,9 +45,9 @@ namespace spartan
     {
         const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
         const uint32_t smoothing_iterations = 1;         // the number of height map neighboring pixel averaging
-        const uint32_t density              = 2;         // multiplier for height map grid density
-        const uint32_t scale                = 3;         // scale factor for physical terrain dimensions
-        const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
+        const uint32_t density              = 3;         // density of the mesh, this determines the memory usage as well
+        const uint32_t scale                = 3;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
+        const uint32_t tile_count           = 3 * scale; // the number of tiles in each dimension to split the terrain into
     }
 
     namespace
@@ -391,13 +391,13 @@ namespace spartan
 
         void apply_hydraulic_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000)
         {
-            const float rain_amount     = 1.5f;  // Amount of water per raindrop (meters). Higher (e.g., 3.0f) increases erosion strength; lower (e.g., 0.5f) reduces it.
-            const float solubility      = 0.5f;  // Soil eroded per unit of water (meters). Higher (e.g., 0.5f) deepens erosion dents; lower (e.g., 0.1f) makes them shallower.
-            const float evaporation     = 0.5f;  // Fraction of water lost per step (0.0f to 1.0f). Higher (e.g., 0.4f) shortens flow, reduces final deposits; lower (e.g., 0.1f) spreads erosion.
-            const float capacity        = 0.5f;  // Sediment carried per unit of water (meters). Higher (e.g., 1.0f) increases deposits; lower (e.g., 0.2f) reduces them.
-            const uint32_t max_steps    = 20;    // Maximum steps a droplet travels. Higher (e.g., 30) creates longer valleys; lower (e.g., 10) keeps erosion localized.
-            const float deposition_rate = 0.1f;  // Fraction of excess sediment deposited per step (0.0f to 1.0f). Lower (e.g., 0.2f) reduces final spikes; higher (e.g., 0.8f) increases piles.
-            const float min_slope       = 0.01f; // Minimum slope (meters) for water to flow. Lower (e.g., 0.005f) erodes flatter areas; higher (e.g., 0.05f) limits to steep slopes.
+            const float rain_amount     = 3.0f;  // Amount of water per raindrop (meters). Higher (e.g., 3.0f) increases erosion strength; lower (e.g., 0.5f) reduces it.
+            const float solubility      = 3.0f;  // Soil eroded per unit of water (meters). Higher (e.g., 0.5f) deepens erosion dents; lower (e.g., 0.1f) makes them shallower.
+            const float evaporation     = 1.0f;  // Fraction of water lost per step (0.0f to 1.0f). Higher (e.g., 0.4f) shortens flow, reduces final deposits; lower (e.g., 0.1f) spreads erosion.
+            const float capacity        = 3.0f;  // Sediment carried per unit of water (meters). Higher (e.g., 1.0f) increases deposits; lower (e.g., 0.2f) reduces them.
+            const uint32_t max_steps    = 128;   // Maximum steps a droplet travels. Higher (e.g., 30) creates longer valleys; lower (e.g., 10) keeps erosion localized.
+            const float deposition_rate = 1.5f;  // Fraction of excess sediment deposited per step (0.0f to 1.0f). Lower (e.g., 0.2f) reduces final spikes; higher (e.g., 0.8f) increases piles.
+            const float min_slope       = 0.02f; // Minimum slope (meters) for water to flow. Lower (e.g., 0.005f) erodes flatter areas; higher (e.g., 0.05f) limits to steep slopes.
 
             // parallel erosion simulation
             mutex mtx;
