@@ -47,7 +47,7 @@ namespace spartan
         const uint32_t smoothing_iterations = 1;         // the number of height map neighboring pixel averaging
         const uint32_t density              = 3;         // density of the mesh, this determines the memory usage as well
         const uint32_t scale                = 3;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
-        const uint32_t tile_count           = 3 * scale; // the number of tiles in each dimension to split the terrain into
+        const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
     }
 
     namespace
@@ -389,7 +389,7 @@ namespace spartan
             ThreadPool::ParallelLoop(generate_position_range, total_positions);
         }
 
-        void apply_hydraulic_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000)
+        void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000)
         {
             const float rain_amount     = 3.0f;  // Amount of water per raindrop (meters). Higher (e.g., 3.0f) increases erosion strength; lower (e.g., 0.5f) reduces it.
             const float solubility      = 3.0f;  // Soil eroded per unit of water (meters). Higher (e.g., 0.5f) deepens erosion dents; lower (e.g., 0.1f) makes them shallower.
@@ -876,7 +876,7 @@ namespace spartan
             // 3. apply hydraulic erosion
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic erosion...");
-                apply_hydraulic_erosion(positions, dense_width, dense_height);
+                apply_erosion(positions, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
