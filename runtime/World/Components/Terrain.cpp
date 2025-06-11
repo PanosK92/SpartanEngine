@@ -44,8 +44,8 @@ namespace spartan
     namespace parameters
     {
         const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
-        const uint32_t smoothing_iterations = 1;         // the number of height map neighboring pixel averaging
-        const uint32_t density              = 3;         // density of the mesh, this determines the memory usage as well
+        const uint32_t smoothing_iterations = 1;         // applied on the height map
+        const uint32_t density              = 3;         // dermines the number of positions extracted out of the height map (that means more triangles later down the line)
         const uint32_t scale                = 3;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
     }
@@ -124,7 +124,7 @@ namespace spartan
             transforms.reserve(transform_count);
             mutex mtx;
         
-            // step 3: parallel placement with local storage
+            // step 3: parallel placement
             auto place_mesh = [&acceptable_triangles, &transforms, &mtx, rotate_to_match_surface_normal, terrain_offset](uint32_t start_index, uint32_t end_index)
             {
                 thread_local mt19937 generator(random_device{}());
@@ -160,8 +160,6 @@ namespace spartan
                 lock_guard<mutex> lock(mtx);
                 transforms.insert(transforms.end(), local_transforms.begin(), local_transforms.end());
             };
-        
-            // step 4: Execute parallel loop
             ThreadPool::ParallelLoop(place_mesh, transform_count);
         
             return transforms;
@@ -184,11 +182,11 @@ namespace spartan
                 float x = vertex.pos[0]; // x-coordinate
                 float z = vertex.pos[2]; // z-coordinate
         
-                // Update min and max values
-                if (x < min_x) min_x = x;
-                if (x > max_x) max_x = x;
-                if (z < min_z) min_z = z;
-                if (z > max_z) max_z = z;
+                // update min and max values
+                x = min(x, min_x);
+                x = min(x, max_z);
+                z = min(z, min_z);
+                z = max(z, max_z);
             }
         
             // calculate width (x extent) and depth (z extent) in meters
@@ -199,9 +197,7 @@ namespace spartan
             float area_m2 = width * depth;
         
             // convert to square kilometers (1 km² = 1,000,000 m²)
-            float area_km2 = area_m2 / 1000000.0f;
-        
-            return area_km2;
+            return area_m2 / 1000000.0f;
         }
 
         // extracts height values from a texture and applies optional smoothing
@@ -937,7 +933,7 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 3. apply hydraulic erosion
+            // 3. apply hydraulic and wind erosion
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic and wind erosion...");
                 apply_erosion(positions, dense_width, dense_height);

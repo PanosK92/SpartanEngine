@@ -947,6 +947,7 @@ namespace spartan
 
                 // sun/lighting/mood
                 entities::sun(true, Vector3(8.0f, 40.0f, 0.0f));
+                default_light_directional->GetComponent<Light>()->SetTemperature(2700.0f); // kelvin
 
                 entities::camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);

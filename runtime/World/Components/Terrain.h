@@ -81,10 +81,13 @@ namespace spartan
     private:
         void Clear();
 
-        uint32_t m_width                  = 0;      // number of samples in the x-axis
-        uint32_t m_height                 = 0;      // number of samples in the y-axis
-        float m_min_y                     = -64.0f; // sea level is 0.0 - engine axiom
-        float m_max_y                     = 256.0f;
+        // properties
+        float m_min_y = -64.0f;
+        float m_max_y = 256.0f;
+
+        // members
+        uint32_t m_width                  = 0; 
+        uint32_t m_height                 = 0;
         float m_area_km2                  = 0.0f;
         std::atomic<bool> m_is_generating = false;
         uint32_t m_height_samples         = 0;

@@ -73,19 +73,6 @@ namespace spartan
 
             return Color::light_direct_sunlight;
         }
-
-        const float near_plane   = 0.05f;
-        const float depth_range  = 2000.0f; // beyond that, screen space shadows are enough
-        float shadow_extent_near = 0.0f;
-        float shadow_extent_far  = 0.0f;
-        void update_shadow_extents()
-        {
-            const BoundingBox world_bounds = World::GetBoundingBox();
-            const float max_extent         = world_bounds.GetExtents().Abs().Max();
-        
-            shadow_extent_near = 32.0f; // small and precise
-            shadow_extent_far  = max(128.0f, max_extent * 0.5f); // large and blurry - going too large can cause artifacts, a clamp would work better here
-        }
     }
 
     Light::Light(Entity* entity) : Component(entity)
@@ -368,7 +355,7 @@ namespace spartan
     void Light::ComputeViewMatrix()
     {
         const Vector3 position        = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
-        const Vector3 light_direction = GetEntity()->GetForward();  // light direction
+        const Vector3 light_direction = -GetEntity()->GetForward(); // light direction
         const uint32_t texture_width  = m_texture_depth ? m_texture_depth->GetWidth() : 0;
     
         if (m_light_type == LightType::Directional)
@@ -377,20 +364,23 @@ namespace spartan
             if (!camera)
                 return;
     
-            Vector3 camera_pos = camera->GetEntity()->GetPosition();
-            float depth_range  = 500.0f; // just an arbitrary value
-
-            // near and cascades: center on camera position
-            Vector3 near_eye_position = camera_pos - (light_direction * depth_range);
-            Vector3 near_target       = camera_pos;
-            m_matrix_view[0]          = Matrix::CreateLookAtLH(near_eye_position, near_target, Vector3::Up);
-            m_matrix_view[1]          = m_matrix_view[0];
+            // both near and far planes follow the camera
+            Vector3 camera_pos         = camera->GetEntity()->GetPosition();
+            BoundingBox terrain_bounds = World::GetBoundingBox();
+            Vector3 terrain_extents    = terrain_bounds.GetExtents().Abs();
+            float max_extent           = terrain_extents.Max();
+            float depth_range          = max_extent;
+            Vector3 position           = camera_pos - (light_direction * depth_range * 0.5f);
+            m_matrix_view[0]           = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
+            m_matrix_view[1]           = m_matrix_view[0];
     
-            // snapping to reduce shadow shimmering
+            // compute shadow extents inline
             if (texture_width > 0)
             {
-                update_shadow_extents();
-                float extents[2] = { shadow_extent_near, shadow_extent_far };
+                m_shadow_extent_near = max_extent * 0.1f * 0.5f; // near: 10% coverage, half-extent
+                m_shadow_extent_far  = max_extent * 0.4f * 0.5f; // far:  40% coverage, half-extent
+    
+                float extents[2] = { m_shadow_extent_near, m_shadow_extent_far };
     
                 for (int i = 0; i < 2; i++)
                 {
@@ -407,41 +397,50 @@ namespace spartan
         }
         else if (m_light_type == LightType::Point)
         {
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Forward, Vector3::Up); // front
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - Vector3::Forward, Vector3::Up); // back
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Forward, Vector3::Up); // Front
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - Vector3::Forward, Vector3::Up); // Back
         }
     }
     
-    void Light::ComputeProjectionMatrix()
+   void Light::ComputeProjectionMatrix()
     {
         if (m_light_type == LightType::Directional)
         {
-            // create near cascade projection using world bounds extents
+            Camera* camera = World::GetCamera();
+            if (!camera)
+                return;
+    
+            Vector3 camera_pos         = camera->GetEntity()->GetPosition();
+            BoundingBox terrain_bounds = World::GetBoundingBox();
+            Vector3 terrain_extents    = terrain_bounds.GetExtents().Abs();
+            float max_extent           = terrain_extents.Max();
+            float far_plane            = max_extent * 2; // full depth
+            float near_plane           = 0.05f;
+
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -shadow_extent_near, shadow_extent_near,
-                -shadow_extent_near, shadow_extent_near,
-                depth_range, near_plane 
+                -m_shadow_extent_near, m_shadow_extent_near,
+                -m_shadow_extent_near, m_shadow_extent_near,
+                near_plane, far_plane
             );
-    
-            // create far cascade projection
+
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
-                -shadow_extent_far, shadow_extent_far,
-                -shadow_extent_far, shadow_extent_far,
-                depth_range, near_plane
+                -m_shadow_extent_far, m_shadow_extent_far,
+                -m_shadow_extent_far, m_shadow_extent_far,
+                near_plane, far_plane
             );
-    
-            // update frustums for each cascade
-            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], 2 * depth_range);
-            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], 2 * depth_range);
+
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], far_plane - near_plane);
+            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], far_plane - near_plane);
         }
         else if (m_light_type == LightType::Spot)
         {
             if (!m_texture_depth)
                 return;
     
+            const float near_plane   = 0.05f;
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
             const float fov          = m_angle_rad * 2.0f;
-            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, near_plane);
+            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, m_range);
             m_matrix_projection[0]   = projection;
             m_frustums[0]            = Frustum(m_matrix_view[0], projection, m_range - near_plane);
         }

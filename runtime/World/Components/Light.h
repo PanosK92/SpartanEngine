@@ -152,5 +152,7 @@ namespace spartan
         float m_range              = 32.0f;
         float m_angle_rad          = math::deg_to_rad * 30.0f;
         uint32_t m_index           = 0;
+        float m_shadow_extent_near = 0.0f;
+        float m_shadow_extent_far  = 0.0f;
     };
 }
