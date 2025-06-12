@@ -143,7 +143,7 @@ namespace spartan
 
         // misc
         void SetPhysicsBodyToControl(PhysicsBody* physics_body);
-        bool IsWalking();
+        bool IsWalking() { return m_is_walking; }
         void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
         std::shared_ptr<Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
 
@@ -179,6 +179,7 @@ namespace spartan
         float m_mouse_smoothing                      = 0.5f;
         bool m_lerp_to_target_p                      = false;
         bool m_lerp_to_target_r                      = false;
+        bool m_is_walking                            = false;
         float m_lerp_to_target_alpha                 = 0.0f;
         float m_lerp_to_target_distance              = 0.0f;
         math::Vector3 m_lerp_to_target_position      = math::Vector3::Zero;

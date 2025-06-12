@@ -588,9 +588,9 @@ namespace spartan
             desc.radius        = 0.5f;
             desc.height        = 1.8f;
             desc.climbingMode  = PxCapsuleClimbingMode::eEASY;
-            desc.stepOffset    = 0.5f;
-            desc.slopeLimit    = 45.0f * math::deg_to_rad;
-            desc.contactOffset = 0.1f;
+            desc.stepOffset    = 0.8f;
+            desc.slopeLimit    = cosf(60.0f * math::deg_to_rad);
+            desc.contactOffset = 0.15f;
             desc.position      = PxExtendedVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z);
             desc.upDirection   = PxVec3(0, 1, 0);
             desc.material      = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);

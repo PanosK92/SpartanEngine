@@ -525,6 +525,7 @@ namespace spartan
         }
     
         // apply movement
+        m_is_walking = false;
         if (m_movement_speed != Vector3::Zero)
         {
             if (m_physics_body_to_control)
@@ -554,7 +555,9 @@ namespace spartan
                             float drag_force         = 0.5f * 1.03f * velocity.LengthSquared() * 0.34f * 200.0f * delta_time;
                             displacement -= velocity.Normalized() * drag_force;
                         }
+
                         m_physics_body_to_control->Move(displacement);
+                        m_is_walking = m_movement_speed.Length() > 0.1f;
                     }
                     else
                     {
@@ -712,14 +715,6 @@ namespace spartan
     void Camera::SetPhysicsBodyToControl(PhysicsBody* physics_body)
     {
         m_physics_body_to_control = physics_body;
-    }
-
-    bool Camera::IsWalking()
-    {
-        if (!m_physics_body_to_control || !m_physics_body_to_control->RayTraceIsGrounded())
-            return false;
-
-        return m_physics_body_to_control->GetLinearVelocity().LengthSquared() > 0.001f;
     }
 
     Matrix Camera::ComputeViewMatrix() const

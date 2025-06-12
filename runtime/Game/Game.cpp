@@ -1752,10 +1752,10 @@ namespace spartan
                     AudioSource* audio_source_tiles = default_camera->GetChildByName("audio_footsteps_tiles")->GetComponent<AudioSource>();
                     AudioSource* audio_source_water = default_camera->GetChildByName("audio_footsteps_water")->GetComponent<AudioSource>();
                     Camera* camera                  = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
-                    bool is_in_pool                 = default_camera->GetPosition().y < 1.5f;
+                    bool is_in_pool                 = default_camera->GetPosition().y < 1.6f;
                     AudioSource* active_source      = is_in_pool ? audio_source_water : audio_source_tiles;
                     AudioSource* inactive_source    = is_in_pool ? audio_source_tiles : audio_source_water;
-            
+
                     if (camera->IsWalking() && !active_source->IsPlaying())
                     {
                         active_source->Play();
