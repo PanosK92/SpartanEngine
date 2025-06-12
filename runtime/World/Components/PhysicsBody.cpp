@@ -108,6 +108,13 @@ namespace spartan
             // update entity position from controller
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
+                // apply gravity
+                PxVec3 displacement(0.0f,  Physics::GetGravity().y * Timer::GetDeltaTimeSec(), 0.0f);
+                PxControllerFilters filters;
+                filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+                static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, Timer::GetDeltaTimeSec(), filters);
+
+                // update entity position from controller
                 PxExtendedVec3 pos = static_cast<PxCapsuleController*>(m_controller)->getPosition();
                 GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
             }
@@ -343,25 +350,11 @@ namespace spartan
     {
         if (m_body_type == BodyType::Controller)
         {
-            if (!m_controller)
-                return;
-
-            PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
-            float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-            PxVec3 displacement(force.x * delta_time, force.y * delta_time, force.z * delta_time);
-
-            // apply gravity if not grounded
-            if (!RayTraceIsGrounded())
-            {
-                displacement.y += Physics::GetGravity().y * delta_time;
-            }
-
-            // move controller
-            PxControllerFilters filters;
-            filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-            controller->move(displacement, 0.001f, delta_time, filters);
+            SP_WARNINGS_ON("Don't call ApplyForce on a player controller, call Move() instead");
+            return;
         }
-        else if (m_body)
+
+        if (m_body)
         {
             PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
             if (rigid_dynamic)
@@ -477,7 +470,7 @@ namespace spartan
         {
             PxVec3 px_ray_start = PxVec3(ray_start.x, ray_start.y, ray_start.z);
             PxVec3 direction(0, -1, 0);
-            PxReal max_distance = 10.0f;
+            PxReal max_distance = 1.8f; // average male height (greece)
     
             const PxU32 max_hits = 10;
             PxRaycastHit hit_buffer[max_hits];
