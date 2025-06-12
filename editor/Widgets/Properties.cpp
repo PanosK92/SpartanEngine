@@ -526,7 +526,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         float friction         = body->GetFriction();
         float friction_rolling = body->GetFrictionRolling();
         float restitution      = body->GetRestitution();
-        bool is_kinematic      = body->GetIsKinematic();
         bool freeze_pos_x      = static_cast<bool>(body->GetPositionLock().x);
         bool freeze_pos_y      = static_cast<bool>(body->GetPositionLock().y);
         bool freeze_pos_z      = static_cast<bool>(body->GetPositionLock().z);
@@ -552,10 +551,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         ImGui::Text("Restitution");
         ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_restitution", &restitution, step, step_fast, precision, input_text_flags);
 
-        // is kinematic
-        ImGui::Text("Is Kinematic");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_is_kinematic", &is_kinematic);
-
         // freeze position
         ImGui::Text("Freeze Position");
         ImGui::SameLine(column_pos_x); ImGui::Text("X");
@@ -576,24 +571,25 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
 
         ImGui::Separator();
 
-        // collision shape
+        // body type
         {
-            static vector<string> shape_types =
+            static vector<string> body_types =
             {
                 "Box",
                 "Sphere",
                 "Plane",
                 "Capsule",
                 "Height Field",
-                "Mesh"
+                "Mesh",
+                "Controller"
             };
 
-            ImGui::Text("Shape Type");
+            ImGui::Text("Body Type");
             ImGui::SameLine(column_pos_x);
-            uint32_t selection_index = static_cast<uint32_t>(body->GetShapeType());
-            if (ImGuiSp::combo_box("##physics_body_shape", shape_types, &selection_index))
+            uint32_t selection_index = static_cast<uint32_t>(body->GetBodyType());
+            if (ImGuiSp::combo_box("##physics_body_shape", body_types, &selection_index))
             {
-                body->SetShapeType(static_cast<PhysicsShape>(selection_index));
+                body->SetBodyType(static_cast<BodyType>(selection_index));
             }
         }
 
@@ -608,7 +604,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
         if (friction != body->GetFriction())                              body->SetFriction(friction);
         if (friction_rolling != body->GetFrictionRolling())               body->SetFrictionRolling(friction_rolling);
         if (restitution != body->GetRestitution())                        body->SetRestitution(restitution);
-        if (is_kinematic != body->GetIsKinematic())                       body->SetIsKinematic(is_kinematic);
         if (freeze_pos_x != static_cast<bool>(body->GetPositionLock().x)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
         if (freeze_pos_y != static_cast<bool>(body->GetPositionLock().y)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
         if (freeze_pos_z != static_cast<bool>(body->GetPositionLock().z)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));

@@ -117,7 +117,7 @@ namespace spartan
                 
                 // add physics components
                 PhysicsBody* physics_body = default_floor->AddComponent<PhysicsBody>();
-                physics_body->SetShapeType(PhysicsShape::Plane);
+                physics_body->SetBodyType(BodyType::Plane);
             }
 
             void camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
@@ -127,15 +127,13 @@ namespace spartan
                 default_camera->SetObjectName("physics_body_camera");
                 default_camera->SetPosition(camera_position);
 
-                // add a physics body so that the camera can move through the environment in a physical manner
+                // add a physics controller so that the camera can move around
                 PhysicsBody* physics_body = default_camera->AddComponent<PhysicsBody>();
-                physics_body->SetMass(82.0f);
-                physics_body->SetShapeType(PhysicsShape::Capsule);
-                physics_body->SetRotationLock(true);
                 physics_body->SetFriction(1.0f);
-                physics_body->SetFrictionRolling(0.0f);
+                physics_body->SetFrictionRolling(0.8f);
                 physics_body->SetRestitution(0.1f);
-                
+                physics_body->SetBodyType(BodyType::Controller);
+
                 // create the entity that will actual hold the camera component
                 shared_ptr<Entity> camera = World::CreateEntity();
                 camera->SetObjectName("component_camera");
@@ -174,7 +172,7 @@ namespace spartan
                 // add physics components
                 PhysicsBody* physics_body = default_metal_cube->AddComponent<PhysicsBody>();
                 physics_body->SetMass(PhysicsBody::mass_auto);
-                physics_body->SetShapeType(PhysicsShape::Box);
+                physics_body->SetBodyType(BodyType::Box);
             }
 
             void flight_helmet(const Vector3& position)
@@ -187,7 +185,7 @@ namespace spartan
                     entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
 
                     PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetBodyType(BodyType::Mesh);
                     physics_body->SetMass(PhysicsBody::mass_auto);
                 }
             }
@@ -202,7 +200,7 @@ namespace spartan
                     entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
                     PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                    physics_body->SetShapeType(PhysicsShape::Mesh);
+                    physics_body->SetBodyType(BodyType::Mesh);
                     physics_body->SetMass(PhysicsBody::mass_auto);
                 }
             }
@@ -220,7 +218,7 @@ namespace spartan
                     {
                         PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>();
                         physics_body->SetMass(PhysicsBody::mass_auto);
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
             }
@@ -723,7 +721,7 @@ namespace spartan
                     if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
             }
@@ -801,7 +799,7 @@ namespace spartan
 
                         // add physics as well
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
             }
@@ -836,7 +834,7 @@ namespace spartan
                         if (Renderable* renderable = entity_it->GetComponent<Renderable>())
                         {
                             PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                            physics_body->SetShapeType(PhysicsShape::Mesh);
+                            physics_body->SetBodyType(BodyType::Mesh);
                         }
                     }
                 }
@@ -874,7 +872,7 @@ namespace spartan
                     if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
             }
@@ -901,7 +899,7 @@ namespace spartan
                     if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
             }
@@ -929,7 +927,7 @@ namespace spartan
                     if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
                         PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetShapeType(PhysicsShape::Mesh);
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
             }
@@ -946,8 +944,9 @@ namespace spartan
                 const uint32_t rock_count         = 3'000;      // these are small and on the ground, we can have more
 
                 // sun/lighting/mood
-                entities::sun(true, Vector3(8.0f, 40.0f, 0.0f));
-                default_light_directional->GetComponent<Light>()->SetTemperature(2700.0f); // kelvin
+                entities::sun(true, Vector3(130.0f, 40.0f, 0.0f));
+                default_light_directional->GetComponent<Light>()->SetIntensity(20'000.0f);
+                default_light_directional->GetComponent<Light>()->SetTemperature(3'000.0f); // kelvin - warm light
 
                 entities::camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
@@ -1050,7 +1049,7 @@ namespace spartan
                         if (entity->GetActive() && entity->GetComponent<Renderable>() != nullptr)
                         {
                             PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
-                            physics_body->SetShapeType(PhysicsShape::Mesh);
+                            physics_body->SetBodyType(BodyType::Mesh);
                         }
                     }
 
@@ -1543,7 +1542,7 @@ namespace spartan
                     
                     auto physics_body = entity->AddComponent<PhysicsBody>();
                     physics_body->SetMass(0.0f);
-                    physics_body->SetShapeType(PhysicsShape::Box);
+                    physics_body->SetBodyType(BodyType::Box);
                 };
                 
                 // lambda for creating a door on a specified wall

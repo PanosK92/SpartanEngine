@@ -39,7 +39,7 @@ namespace spartan
         Impulse
     };
 
-    enum class PhysicsShape
+    enum class BodyType
     {
         Box,
         Sphere,
@@ -47,6 +47,7 @@ namespace spartan
         Capsule,
         HeightField,
         Mesh,
+        Controller,
         Max
     };
 
@@ -85,10 +86,6 @@ namespace spartan
         float GetRestitution() const { return m_restitution; }
         void SetRestitution(float restitution);
 
-        // kinematic
-        void SetIsKinematic(bool kinematic);
-        bool GetIsKinematic() const { return m_is_kinematic; }
-
         // forces
         void SetLinearVelocity(const math::Vector3& velocity) const;
         math::Vector3 GetLinearVelocity() const;
@@ -109,9 +106,9 @@ namespace spartan
         void SetCenterOfMass(const math::Vector3& center_of_mass);
         const math::Vector3& GetCenterOfMass() const { return m_center_of_mass; }
 
-        // shape type
-        PhysicsShape GetShapeType() const { return m_shape_type; }
-        void SetShapeType(PhysicsShape type);
+        // body type
+        BodyType GetBodyType() const { return m_body_type; }
+        void SetBodyType(BodyType type);
 
         // ray tracing
         bool RayTraceIsGrounded() const;
@@ -121,7 +118,7 @@ namespace spartan
         float GetCapsuleRadius();
 
         // misc
-        void ClearForces() const;
+        void Move(const math::Vector3& offset);
         constexpr static inline float mass_auto = FLT_MAX;
 
     private:
@@ -135,11 +132,12 @@ namespace spartan
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
-        PhysicsShape m_shape_type      = PhysicsShape::Max;
+        BodyType m_body_type           = BodyType::Max;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
         void* m_shape                  = nullptr;
         void* m_body                   = nullptr;
+        void* m_controller             = nullptr;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
     };
 }

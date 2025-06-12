@@ -533,55 +533,80 @@ namespace spartan
                 if (Engine::IsFlagSet(EngineMode::Playing))
                 {
                     bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
-                    if (is_grounded)
+                    if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
                     {
-                        Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
-                        Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
-                        
-                        // force multiplier for faster acceleration
-                        float force_multiplier = 50.0f;
-                        
-                        // more aggressive deceleration when not actively moving
-                        if (movement_direction.LengthSquared() < 0.1f)
+                        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+                        Vector3 displacement = m_movement_speed * delta_time * 10.0f;
+                        if (!is_grounded)
                         {
-                            force_multiplier *= 8.0f;
+                            displacement.y += Physics::GetGravity().y * delta_time;
                         }
-                        
-                        Vector3 force = (target_velocity - velocity) * force_multiplier;
-                        m_physics_body_to_control->ApplyForce(force, PhysicsForce::Constant);
+                        if (is_underwater)
+                        {
+                            // buoyancy and drag
+                            float submerged_height   = -GetEntity()->GetPosition().y;
+                            float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
+                            float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
+                            Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume) * 2500.0f * delta_time;
+                            displacement            += buoyancy;
+                            // drag (approximated)
+                            Vector3 velocity         = m_movement_speed;
+                            float drag_force         = 0.5f * 1.03f * velocity.LengthSquared() * 0.34f * 200.0f * delta_time;
+                            displacement -= velocity.Normalized() * drag_force;
+                        }
+                        m_physics_body_to_control->Move(displacement);
                     }
-                    if (is_underwater)
+                    else
                     {
-                        // buoyancy
-                        float submerged_height   = -GetEntity()->GetPosition().y;
-                        float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
-                        float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                        Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume);
-                        m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
-    
-                        // drag
-                        float velocity_y   = m_physics_body_to_control->GetLinearVelocity().y;
-                        float drag_force_y = 0.5f * 1.03f * velocity_y * velocity_y * 0.34f;
-                        if (velocity_y > 0)
+                        if (is_grounded)
                         {
-                            drag_force_y = -drag_force_y;
+                            Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
+                            Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
+                            float force_multiplier = 50.0f;
+                            if (movement_direction.LengthSquared() < 0.1f)
+                            {
+                                force_multiplier *= 8.0f;
+                            }
+                            Vector3 force = (target_velocity - velocity) * force_multiplier;
+                            m_physics_body_to_control->ApplyForce(force, PhysicsForce::Constant);
                         }
-                        m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
-    
-                        // swim
-                        Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
-                        m_physics_body_to_control->SetLinearVelocity(Vector3(m_movement_speed.x * 20.0f, velocity.y, m_movement_speed.z * 20.0f));
+                        if (is_underwater)
+                        {
+                            float submerged_height   = -GetEntity()->GetPosition().y;
+                            float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
+                            float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
+                            Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume);
+                            m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
+                            float velocity_y         = m_physics_body_to_control->GetLinearVelocity().y;
+                            float drag_force_y       = 0.5f * 1.03f * velocity_y * velocity_y * 0.34f;
+                            if (velocity_y > 0)
+                            {
+                                drag_force_y = -drag_force_y;
+                            }
+                            m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
+                            Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
+                            m_physics_body_to_control->SetLinearVelocity(Vector3(m_movement_speed.x * 20.0f, velocity.y, m_movement_speed.z * 20.0f));
+                        }
+                    }
+
+                    // jump
+                    if ((Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South)) && is_grounded)
+                    {
+                        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+                        if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
+                        {
+                            Vector3 jump_displacement = Vector3::Up * 450.0f * delta_time;
+                            m_physics_body_to_control->Move(jump_displacement);
+                        }
+                        else
+                        {
+                            m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
+                        }
                     }
                 }
                 else
                 {
-                    m_physics_body_to_control->GetEntity()->Translate(m_movement_speed);
-                }
-    
-                // jump
-                if ((Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South)) && is_grounded)
-                {
-                    m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
+                    m_physics_body_to_control->Move(m_movement_speed);
                 }
             }
             else

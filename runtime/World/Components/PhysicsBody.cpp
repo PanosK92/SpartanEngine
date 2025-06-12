@@ -51,6 +51,11 @@ using namespace physx;
 
 namespace spartan
 {
+    namespace
+    {
+        void* controller_manager = nullptr;
+    }
+
     PhysicsBody::PhysicsBody(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
@@ -61,7 +66,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_shape_type, SetShapeType, PhysicsShape);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_body_type, SetBodyType, BodyType);
     }
 
     PhysicsBody::~PhysicsBody()
@@ -98,17 +103,32 @@ namespace spartan
 
     void PhysicsBody::OnTick()
     {
-        if (PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body))
+        if (m_controller)
         {
-            // engine -> physx
+            // update entity position from controller
+            if (Engine::IsFlagSet(EngineMode::Playing))
+            {
+                PxExtendedVec3 pos = static_cast<PxCapsuleController*>(m_controller)->getPosition();
+                GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
+            }
+            else
+            {
+                // update controller position from entity
+                Vector3 entity_pos = GetEntity()->GetPosition();
+                static_cast<PxCapsuleController*>(m_controller)->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
+            }
+        }
+        else if (PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body))
+        {
+            // existing rigid body logic
             if (!Engine::IsFlagSet(EngineMode::Playing))
             {
                 PxTransform pose = rigid_actor->getGlobalPose();
                 Vector3 current_position(pose.p.x, pose.p.y, pose.p.z);
                 Quaternion current_rotation(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-                Vector3 entity_position    = GetEntity()->GetPosition();
+                Vector3 entity_position = GetEntity()->GetPosition();
                 Quaternion entity_rotation = GetEntity()->GetRotation();
-                
+
                 if (current_position != entity_position)
                 {
                     pose.p = PxVec3(entity_position.x, entity_position.y, entity_position.z);
@@ -116,7 +136,7 @@ namespace spartan
                     SetLinearVelocity(Vector3::Zero);
                     SetAngularVelocity(Vector3::Zero);
                 }
-                
+
                 if (current_rotation != entity_rotation)
                 {
                     pose.q = PxQuat(entity_rotation.x, entity_rotation.y, entity_rotation.z, entity_rotation.w);
@@ -125,7 +145,7 @@ namespace spartan
                     SetAngularVelocity(Vector3::Zero);
                 }
             }
-            else // physx -> engine
+            else
             {
                 PxTransform pose = rigid_actor->getGlobalPose();
                 GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
@@ -133,8 +153,8 @@ namespace spartan
             }
         }
 
-        // handle distance-based removal for static bodies (required to have good performance with the terrain tiles)
-        if (m_mass == 0.0f)
+        // distance-based removal for static bodies
+        if (m_mass == 0.0f && m_body_type != BodyType::Controller)
         {
             if (Camera* camera = World::GetCamera())
             {
@@ -165,7 +185,7 @@ namespace spartan
         stream->Write(m_is_kinematic);
         stream->Write(m_position_lock);
         stream->Write(m_rotation_lock);
-        stream->Write(uint32_t(m_shape_type));
+        stream->Write(uint32_t(m_body_type));
         stream->Write(m_center_of_mass);
     }
 
@@ -178,7 +198,7 @@ namespace spartan
         stream->Read(&m_is_kinematic);
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
-        m_shape_type = PhysicsShape(stream->ReadAs<uint32_t>());
+        m_body_type = BodyType(stream->ReadAs<uint32_t>());
         stream->Read(&m_center_of_mass);
 
         Create();
@@ -278,28 +298,9 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetIsKinematic(bool kinematic)
-    {
-        if (kinematic == m_is_kinematic)
-            return;
-    
-        m_is_kinematic = kinematic;
-    
-        // update kinematic flag for dynamic bodies
-        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-        if (rigid_dynamic)
-        {
-            rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
-        }
-        else
-        {
-            SP_LOG_WARNING("SetIsKinematic: Body is not dynamic, kinematic flag ignored.");
-        }
-    }
-
     void PhysicsBody::SetLinearVelocity(const Vector3& velocity) const
     {
-        if (!m_body)
+        if (!m_body || m_body_type == BodyType::Controller)
             return;
 
         PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
@@ -327,7 +328,7 @@ namespace spartan
     
 	void PhysicsBody::SetAngularVelocity(const Vector3& velocity) const
     {
-        if (!m_body)
+        if (!m_body || m_body_type == BodyType::Controller)
             return;
 
         PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
@@ -340,15 +341,35 @@ namespace spartan
 
     void PhysicsBody::ApplyForce(const Vector3& force, PhysicsForce mode) const
     {
-        if (!m_body)
-            return;
-
-        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-        if (rigid_dynamic)
+        if (m_body_type == BodyType::Controller)
         {
-            PxForceMode::Enum px_mode = (mode == PhysicsForce::Constant) ? PxForceMode::eFORCE : PxForceMode::eIMPULSE;
-            rigid_dynamic->addForce(PxVec3(force.x, force.y, force.z), px_mode);
-            rigid_dynamic->wakeUp();
+            if (!m_controller)
+                return;
+
+            PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+            float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+            PxVec3 displacement(force.x * delta_time, force.y * delta_time, force.z * delta_time);
+
+            // apply gravity if not grounded
+            if (!RayTraceIsGrounded())
+            {
+                displacement.y += Physics::GetGravity().y * delta_time;
+            }
+
+            // move controller
+            PxControllerFilters filters;
+            filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+            controller->move(displacement, 0.001f, delta_time, filters);
+        }
+        else if (m_body)
+        {
+            PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+            if (rigid_dynamic)
+            {
+                PxForceMode::Enum px_mode = (mode == PhysicsForce::Constant) ? PxForceMode::eFORCE : PxForceMode::eIMPULSE;
+                rigid_dynamic->addForce(PxVec3(force.x, force.y, force.z), px_mode);
+                rigid_dynamic->wakeUp();
+            }
         }
     }
 
@@ -359,7 +380,7 @@ namespace spartan
 
     void PhysicsBody::SetPositionLock(const Vector3& lock)
     {
-        if (!m_body || m_position_lock == lock)
+        if (!m_body || m_position_lock == lock || m_body_type == BodyType::Controller)
             return;
     
         m_position_lock = lock;
@@ -392,7 +413,7 @@ namespace spartan
 
     void PhysicsBody::SetRotationLock(const Vector3& lock)
     {
-        if (!m_body)
+        if (!m_body || m_body_type == BodyType::Controller)
         {
             SP_LOG_WARNING("SetRotationLock: This call needs to happen after SetShapeType()");
             return;
@@ -426,91 +447,86 @@ namespace spartan
 
     void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)
     {
+        if (m_body_type == BodyType::Controller)
+            return;
+
         m_center_of_mass = center_of_mass;
+        if (m_body)
+        {
+            PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
+            if (rigid_dynamic && m_center_of_mass != Vector3::Zero)
+            {
+                PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
+            }
+        }
     }
 
-    void PhysicsBody::ClearForces() const
+    void PhysicsBody::SetBodyType(BodyType type)
     {
-        if (!m_body)
-            return;
-    }
-
-    void PhysicsBody::SetShapeType(PhysicsShape type)
-    {
-        if (m_shape_type == type)
+        if (m_body_type == type)
             return;
 
-        m_shape_type = type;
+        m_body_type = type;
         Create();
     }
 
     bool PhysicsBody::RayTraceIsGrounded() const
     {
-        if (!m_body)
-            return false;
-
-        // get physx pointers
-        PxScene* scene            = static_cast<PxScene*>(Physics::GetScene());
-        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-    
-        // get the body's shape
-        PxShape* shape = nullptr;
-        PxU32 shape_count = rigid_actor->getNbShapes();
-        if (shape_count == 0)
-            return false;
-
-        rigid_actor->getShapes(&shape, 1);
-        if (!shape)
-            return false;
-    
-        // get the body's aabb and transform
-        PxBounds3 bounds = PxShapeExt::getWorldBounds(*shape, *rigid_actor, 1.0f);
-        PxTransform pose = rigid_actor->getGlobalPose();
-        float min_y      = bounds.minimum.y;
-    
-        // calculate ray start with fixed offset
-        float ray_offset = 1.0f;
-        PxVec3 ray_start(pose.p.x, min_y + ray_offset, pose.p.z);
-    
-        // define raycast parameters
-        PxVec3 direction(0, -1, 0);
-        PxReal max_distance = ray_offset + 0.2f;
-    
-        // use a buffer to collect multiple hits
-        const PxU32 max_hits = 10;
-        PxRaycastHit hit_buffer[max_hits];
-        PxRaycastBuffer hit(hit_buffer, max_hits);
-    
-        // perform raycast
-        PxQueryFilterData filter_data;
-        filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-    
-        bool hit_found = scene->raycast(ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data);
-    
-        // process hits manually
-        bool is_grounded = false;
-        if (hit_found)
+        auto perform_raycast = [](PxScene* scene, const Vector3& ray_start, void* actor_to_exclude) -> bool
         {
-            // check blocking hit first
-            if (hit.hasBlock && hit.block.actor != rigid_actor && hit.block.distance > 0.001f)
+            PxVec3 px_ray_start = PxVec3(ray_start.x, ray_start.y, ray_start.z);
+            PxVec3 direction(0, -1, 0);
+            PxReal max_distance = 10.0f;
+    
+            const PxU32 max_hits = 10;
+            PxRaycastHit hit_buffer[max_hits];
+            PxRaycastBuffer hit(hit_buffer, max_hits);
+            PxQueryFilterData filter_data;
+            filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+    
+            bool hit_found   = scene->raycast(px_ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data);
+            bool is_grounded = false;
+            if (hit_found)
             {
-                is_grounded = true;
-            }
-            else if (!is_grounded && hit.nbTouches > 0)
-            {
-                for (PxU32 i = 0; i < hit.nbTouches; ++i)
+                // check blocking hit
+                if (hit.hasBlock && hit.block.actor != actor_to_exclude && hit.block.distance > 0.001f)
                 {
-                    const PxRaycastHit& current_hit = hit.getTouch(i);
-                    if (current_hit.actor != rigid_actor && current_hit.distance > 0.001f)
+                    is_grounded = true;
+                }
+                // check touching hits if no blocking hit
+                else if (!is_grounded && hit.nbTouches > 0)
+                {
+                    for (PxU32 i = 0; i < hit.nbTouches; ++i)
                     {
-                        is_grounded = true;
-                        break;
+                        const PxRaycastHit& current_hit = hit.getTouch(i);
+                        if (current_hit.actor != actor_to_exclude && current_hit.distance > 0.001f)
+                        {
+                            is_grounded = true;
+                            break;
+                        }
                     }
                 }
             }
-        }
+            return is_grounded;
+        };
     
-        return is_grounded;
+        PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
+        if (m_body_type == BodyType::Controller)
+        {
+            if (!m_controller)
+                return false;
+
+            return perform_raycast(scene, GetEntity()->GetPosition(), static_cast<PxController*>(m_controller)->getActor());
+        }
+        else
+        {
+            if (!m_body)
+                return false;
+    
+            PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
+            return perform_raycast(scene, GetEntity()->GetPosition(), rigid_actor);
+        }
     }
 
     float PhysicsBody::GetCapsuleVolume()
@@ -535,59 +551,139 @@ namespace spartan
         Vector3 scale = GetEntity()->GetScale();
         return max(scale.x, scale.z) * 0.5f;
     }
+
+    void PhysicsBody::Move(const math::Vector3& offset)
+    {
+        if (m_body_type == BodyType::Controller && Engine::IsFlagSet(EngineMode::Playing))
+        {
+            if (!m_controller)
+                return;
+
+            PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+            float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+            PxControllerFilters filters;
+            filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+            controller->move(PxVec3(offset.x, offset.y, offset.z), 0.001f, delta_time, filters);
+        }
+        else
+        {
+            GetEntity()->Translate(offset);
+        }
+    }
     
     void PhysicsBody::Create()
     {
         // get physx pointers
-        PxPhysics* physics        = static_cast<PxPhysics*>(Physics::GetPhysics());
-        PxScene* scene            = static_cast<PxScene*>(Physics::GetScene());
-        PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-    
-        // determine if a new body is needed (no body or mass-based type change)
-        bool is_static      = m_mass == 0.0f;
-        bool needs_new_body = !m_body || (is_static && !rigid_actor->is<PxRigidStatic>()) || (!is_static && !rigid_actor->is<PxRigidDynamic>());
+        PxPhysics* physics              = static_cast<PxPhysics*>(Physics::GetPhysics());
+        PxScene* scene                  = static_cast<PxScene*>(Physics::GetScene());
+        PxRigidActor* rigid_actor       = static_cast<PxRigidActor*>(m_body);
+        PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
 
-        if (needs_new_body)
+        if (m_body_type == BodyType::Controller)
         {
-            // clean up existing body if it exists
-            if (m_body)
+            if (!controller_manager)
             {
-                // detach and release shape
-                if (m_shape)
+                controller_manager = PxCreateControllerManager(*scene);
+                if (!controller_manager)
                 {
-                    PxShape* shape = static_cast<PxShape*>(m_shape);
-                    static_cast<PxRigidActor*>(m_body)->detachShape(*shape);
-                    shape->release();
-                    m_shape = nullptr;
+                    SP_LOG_ERROR("Failed to create controller manager");
+                    return;
                 }
-                // remove and release body
-                scene->removeActor(*static_cast<PxRigidActor*>(m_body));
-                static_cast<PxRigidActor*>(m_body)->release();
-                m_body = nullptr;
             }
-    
-            // create transform from entity
-            PxTransform pose(
-                PxVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z),
-                PxQuat(GetEntity()->GetRotation().x, GetEntity()->GetRotation().y, GetEntity()->GetRotation().z, GetEntity()->GetRotation().w)
-            );
-    
-            // create body
-            if (is_static)
+
+            PxCapsuleControllerDesc desc;
+            desc.radius        = 0.5f;
+            desc.height        = 1.8f;
+            desc.climbingMode  = PxCapsuleClimbingMode::eEASY;
+            desc.stepOffset    = 0.5f;
+            desc.slopeLimit    = 45.0f * math::deg_to_rad;
+            desc.contactOffset = 0.1f;
+            desc.position      = PxExtendedVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z);
+            desc.upDirection   = PxVec3(0, 1, 0);
+            desc.material      = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
+
+            m_controller = static_cast<PxControllerManager*>(controller_manager)->createController(desc);
+            if (!m_controller)
             {
-                m_body = physics->createRigidStatic(pose);
+                SP_LOG_ERROR("Failed to create capsule controller");
+                desc.material->release();
+                return;
             }
-            else
+            desc.material->release();
+        }
+        else
+        { 
+            // determine if a new body is needed (no body or mass-based type change)
+            bool is_static      = m_mass == 0.0f;
+            bool needs_new_body = !m_body || (is_static && !rigid_actor->is<PxRigidStatic>()) || (!is_static && !rigid_actor->is<PxRigidDynamic>());
+
+            if (needs_new_body)
             {
-                m_body = physics->createRigidDynamic(pose);
+                // clean up existing body if it exists
+                if (m_body)
+                {
+                    // detach and release shape
+                    if (m_shape)
+                    {
+                        PxShape* shape = static_cast<PxShape*>(m_shape);
+                        static_cast<PxRigidActor*>(m_body)->detachShape(*shape);
+                        shape->release();
+                        m_shape = nullptr;
+                    }
+                    // remove and release body
+                    scene->removeActor(*static_cast<PxRigidActor*>(m_body));
+                    static_cast<PxRigidActor*>(m_body)->release();
+                    m_body = nullptr;
+                }
+            
+                // create transform from entity
+                PxTransform pose(
+                    PxVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z),
+                    PxQuat(GetEntity()->GetRotation().x, GetEntity()->GetRotation().y, GetEntity()->GetRotation().z, GetEntity()->GetRotation().w)
+                );
+            
+                // create body
+                if (is_static)
+                {
+                    m_body = physics->createRigidStatic(pose);
+                }
+                else
+                {
+                    m_body = physics->createRigidDynamic(pose);
+                    PxRigidDynamic* rigid_dynamic = static_cast<PxRigidDynamic*>(m_body);
+                    rigid_dynamic->setMass(m_mass);
+                    rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+                    if (m_center_of_mass != Vector3::Zero)
+                    {
+                        PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                        PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
+                    }
+                    PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
+                    if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+                    if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+                    if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+                    if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+                    if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+                    if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+                    rigid_dynamic->setRigidDynamicLockFlags(flags);
+                }
+            
+                // add to scene
+                scene->addActor(*static_cast<PxRigidActor*>(m_body));
+                rigid_actor = static_cast<PxRigidActor*>(m_body);
+            }
+            
+            // update existing dynamic body properties
+            if (!needs_new_body && rigid_actor->is<PxRigidDynamic>())
+            {
                 PxRigidDynamic* rigid_dynamic = static_cast<PxRigidDynamic*>(m_body);
                 rigid_dynamic->setMass(m_mass);
-                rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
                 if (m_center_of_mass != Vector3::Zero)
                 {
                     PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
                     PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
                 }
+                rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
                 PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
                 if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
                 if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
@@ -597,348 +693,323 @@ namespace spartan
                 if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
                 rigid_dynamic->setRigidDynamicLockFlags(flags);
             }
-    
-            // add to scene
-            scene->addActor(*static_cast<PxRigidActor*>(m_body));
-            rigid_actor = static_cast<PxRigidActor*>(m_body);
-        }
-    
-        // update existing dynamic body properties
-        if (!needs_new_body && rigid_actor->is<PxRigidDynamic>())
-        {
-            PxRigidDynamic* rigid_dynamic = static_cast<PxRigidDynamic*>(m_body);
-            rigid_dynamic->setMass(m_mass);
-            if (m_center_of_mass != Vector3::Zero)
+            
+            // remove existing shape
+            if (m_shape)
             {
-                PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
-                PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
+                PxShape* shape = static_cast<PxShape*>(m_shape);
+                rigid_actor->detachShape(*shape);
+                shape->release();
+                m_shape = nullptr;
             }
-            rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
-            PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-            if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-            if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-            if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-            if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-            if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-            if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-            rigid_dynamic->setRigidDynamicLockFlags(flags);
-        }
-    
-        // remove existing shape
-        if (m_shape)
-        {
-            PxShape* shape = static_cast<PxShape*>(m_shape);
-            rigid_actor->detachShape(*shape);
-            shape->release();
-            m_shape = nullptr;
-        }
-    
-        // create material
-        PxMaterial* material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
-    
-        // create new shape based on shape type
-        switch (m_shape_type)
-        {
-            case PhysicsShape::Box:
+            
+            // create material
+            PxMaterial* material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
+            
+            // create new shape based on shape type
+            switch (m_body_type)
             {
-                Vector3 scale = GetEntity()->GetScale();
-                PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
-                m_shape = physics->createShape(geometry, *material);
-                break;
-            }
-            case PhysicsShape::Sphere:
-            {
-                Vector3 scale = GetEntity()->GetScale();
-                float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
-                PxSphereGeometry geometry(radius);
-                m_shape = physics->createShape(geometry, *material);
-                break;
-            }
-            case PhysicsShape::Plane:
-            {
-                PxPlaneGeometry geometry;
-                m_shape = physics->createShape(geometry, *material);
-                static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                break;
-            }
-            case PhysicsShape::Capsule:
-            {
-                Vector3 scale     = GetEntity()->GetScale();
-                float radius      = max(scale.x, scale.z) * 0.5f;
-                float half_height = scale.y * 0.5f;
-                PxCapsuleGeometry geometry(radius, half_height);
-                m_shape = physics->createShape(geometry, *material);
-                static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                break;
-            }
-            case PhysicsShape::HeightField:
-            {
-                Terrain* terrain = GetEntity()->GetComponent<Terrain>();
-                if (!terrain)
+                case BodyType::Box:
                 {
-                    SP_LOG_ERROR("No Terrain component found for terrain shape");
+                    Vector3 scale = GetEntity()->GetScale();
+                    PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
+                    m_shape = physics->createShape(geometry, *material);
                     break;
                 }
-            
-                // get heightmap data
-                float* height_map = terrain->GetHeightData();
-                uint32_t width    = terrain->GetWidth();
-                uint32_t depth    = terrain->GetHeight();
-            
-                // compute terrain scale based on physical dimensions (from generate_positions)
-                uint32_t density     = terrain->GetDensity();
-                uint32_t scale       = terrain->GetScale();
-                uint32_t base_width  = (width - 1) / density + 1;
-                uint32_t base_height = (depth - 1) / density + 1;
-                float extent_x = static_cast<float>(base_width - 1) * scale;
-                float extent_z = static_cast<float>(base_height - 1) * scale;
-                Vector3 terrain_scale(
-                    extent_x, // x scale (width in world units)
-                    1.0f,     // y scale (heights are in world units)
-                    extent_z  // z scale (depth in world units)
-                );
-            
-                // compute height range
-                float height_range = terrain->GetMaxY() - terrain->GetMinY();
-                if (height_range == 0.0f)
+                case BodyType::Sphere:
                 {
-                    SP_LOG_WARNING("Terrain height range is zero, using 1.0 to avoid division by zero");
-                    height_range = 1.0f;
+                    Vector3 scale = GetEntity()->GetScale();
+                    float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
+                    PxSphereGeometry geometry(radius);
+                    m_shape = physics->createShape(geometry, *material);
+                    break;
                 }
-            
-                // create height field samples
-                std::vector<PxHeightFieldSample> samples(width * depth);
-                for (uint32_t z = 0; z < depth; ++z)
+                case BodyType::Plane:
                 {
-                    for (uint32_t x = 0; x < width; ++x)
+                    PxPlaneGeometry geometry;
+                    m_shape = physics->createShape(geometry, *material);
+                    static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
+                    break;
+                }
+                case BodyType::Capsule:
+                {
+                    Vector3 scale     = GetEntity()->GetScale();
+                    float radius      = max(scale.x, scale.z) * 0.5f;
+                    float half_height = scale.y * 0.5f;
+                    PxCapsuleGeometry geometry(radius, half_height);
+                    m_shape = physics->createShape(geometry, *material);
+                    static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
+                    break;
+                }
+                case BodyType::HeightField:
+                {
+                    Terrain* terrain = GetEntity()->GetComponent<Terrain>();
+                    if (!terrain)
                     {
-                        uint32_t index = z * width + x; 
-                        PxHeightFieldSample& sample = samples[index];
+                        SP_LOG_ERROR("No Terrain component found for terrain shape");
+                        break;
+                    }
                 
-                        // flip x and z if heightmap is stored as [x * depth + z]
-                        uint32_t flipped_index  = x * depth + z;
-                        float height            = height_map[flipped_index];
-                        float normalized_height = (height - terrain->GetMinY()) / height_range;
-                        sample.height           = static_cast<PxI16>(normalized_height * 65535.0f - 32768.0f);
+                    // get heightmap data
+                    float* height_map = terrain->GetHeightData();
+                    uint32_t width    = terrain->GetWidth();
+                    uint32_t depth    = terrain->GetHeight();
                 
-                        sample.materialIndex0 = 0;
-                        sample.materialIndex1 = 0;
+                    // compute terrain scale based on physical dimensions (from generate_positions)
+                    uint32_t density     = terrain->GetDensity();
+                    uint32_t scale       = terrain->GetScale();
+                    uint32_t base_width  = (width - 1) / density + 1;
+                    uint32_t base_height = (depth - 1) / density + 1;
+                    float extent_x = static_cast<float>(base_width - 1) * scale;
+                    float extent_z = static_cast<float>(base_height - 1) * scale;
+                    Vector3 terrain_scale(
+                        extent_x, // x scale (width in world units)
+                        1.0f,     // y scale (heights are in world units)
+                        extent_z  // z scale (depth in world units)
+                    );
+                
+                    // compute height range
+                    float height_range = terrain->GetMaxY() - terrain->GetMinY();
+                    if (height_range == 0.0f)
+                    {
+                        SP_LOG_WARNING("Terrain height range is zero, using 1.0 to avoid division by zero");
+                        height_range = 1.0f;
                     }
-                }
-            
-                // create height field description
-                PxHeightFieldDesc height_field_desc;
-                height_field_desc.nbRows         = depth; // z-direction
-                height_field_desc.nbColumns      = width; // x-direction
-                height_field_desc.samples.data   = samples.data();
-                height_field_desc.samples.stride = sizeof(PxHeightFieldSample);
-            
-                // cooking parameters
-                PxTolerancesScale px_scale;
-                px_scale.length = 1.0f; // 1 unit = 1 meter
-                px_scale.speed  = Physics::GetGravity().y; // gravity in meters per second
-                PxCookingParams params(px_scale);
-                params.meshPreprocessParams = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                params.meshWeldTolerance    = 0.2f; // merge vertices within 20cm
-                params.buildGPUData         = false;
-            
-                // create height field
-                PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                PxHeightField* height_field = PxCreateHeightField(height_field_desc, *insertion_callback);
-                if (!height_field)
-                {
-                    SP_LOG_ERROR("Failed to create height field");
+                
+                    // create height field samples
+                    std::vector<PxHeightFieldSample> samples(width * depth);
+                    for (uint32_t z = 0; z < depth; ++z)
+                    {
+                        for (uint32_t x = 0; x < width; ++x)
+                        {
+                            uint32_t index = z * width + x; 
+                            PxHeightFieldSample& sample = samples[index];
+                    
+                            // flip x and z if heightmap is stored as [x * depth + z]
+                            uint32_t flipped_index  = x * depth + z;
+                            float height            = height_map[flipped_index];
+                            float normalized_height = (height - terrain->GetMinY()) / height_range;
+                            sample.height           = static_cast<PxI16>(normalized_height * 65535.0f - 32768.0f);
+                    
+                            sample.materialIndex0 = 0;
+                            sample.materialIndex1 = 0;
+                        }
+                    }
+                
+                    // create height field description
+                    PxHeightFieldDesc height_field_desc;
+                    height_field_desc.nbRows         = depth; // z-direction
+                    height_field_desc.nbColumns      = width; // x-direction
+                    height_field_desc.samples.data   = samples.data();
+                    height_field_desc.samples.stride = sizeof(PxHeightFieldSample);
+                
+                    // cooking parameters
+                    PxTolerancesScale px_scale;
+                    px_scale.length = 1.0f; // 1 unit = 1 meter
+                    px_scale.speed  = Physics::GetGravity().y; // gravity in meters per second
+                    PxCookingParams params(px_scale);
+                    params.meshPreprocessParams = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
+                    params.meshWeldTolerance    = 0.2f; // merge vertices within 20cm
+                    params.buildGPUData         = false;
+                
+                    // create height field
+                    PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+                    PxHeightField* height_field = PxCreateHeightField(height_field_desc, *insertion_callback);
+                    if (!height_field)
+                    {
+                        SP_LOG_ERROR("Failed to create height field");
+                        break;
+                    }
+                
+                    // Create height field geometry
+                    PxHeightFieldGeometry geometry(
+                        height_field,
+                        PxMeshGeometryFlags(),
+                        height_range / 65535.0f, // height scale to map PxI16 back to world units
+                        terrain_scale.x / (width > 1 ? width - 1 : 1), // row scale (x-direction)
+                        terrain_scale.z / (depth > 1 ? depth - 1 : 1)  // column scale (z-direction)
+                    );
+                
+                    // Create shape
+                    m_shape = physics->createShape(geometry, *material);
+                
+                    // Release height field (shape takes ownership)
+                    height_field->release();
+                
+                    // Adjust local pose to center the terrain
+                    if (m_shape)
+                    {
+                        float height_midpoint = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
+                        PxVec3 offset(
+                            -terrain_scale.x * 0.5f, // Center x
+                            height_midpoint,         // Shift up by half height range
+                            -terrain_scale.z * 0.5f  // Center z
+                        );
+                        static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(offset));
+                    }
+                
                     break;
                 }
-            
-                // Create height field geometry
-                PxHeightFieldGeometry geometry(
-                    height_field,
-                    PxMeshGeometryFlags(),
-                    height_range / 65535.0f, // height scale to map PxI16 back to world units
-                    terrain_scale.x / (width > 1 ? width - 1 : 1), // row scale (x-direction)
-                    terrain_scale.z / (depth > 1 ? depth - 1 : 1)  // column scale (z-direction)
-                );
-            
-                // Create shape
-                m_shape = physics->createShape(geometry, *material);
-            
-                // Release height field (shape takes ownership)
-                height_field->release();
-            
-                // Adjust local pose to center the terrain
-                if (m_shape)
+                case BodyType::Mesh:
                 {
-                    float height_midpoint = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
-                    PxVec3 offset(
-                        -terrain_scale.x * 0.5f, // Center x
-                        height_midpoint,         // Shift up by half height range
-                        -terrain_scale.z * 0.5f  // Center z
-                    );
-                    static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(offset));
+                    Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+                    if (!renderable)
+                    {
+                        SP_LOG_ERROR("No Renderable component found for mesh shape");
+                        break;
+                    }
+                
+                    // get geometry from Renderable
+                    vector<uint32_t> indices;
+                    vector<RHI_Vertex_PosTexNorTan> vertices;
+                    renderable->GetGeometry(&indices, &vertices);
+                
+                    if (vertices.empty() || indices.empty())
+                    {
+                        SP_LOG_ERROR("Empty vertex or index data for mesh shape");
+                        break;
+                    }
+
+                    // imported meshes lack duplicate vertices, but engine-generated meshes like cubes may have them to ensure unique
+                    // normals for flat shading, avoiding normal interpolation. We remove duplicates here to meet PhysX requirements
+                    geometry_processing::remove_duplicate_vertices(vertices, indices);
+
+                    // convert vertices to physx format
+                    vector<PxVec3> px_vertices;
+                    px_vertices.reserve(vertices.size());
+                    Vector3 _scale = GetEntity()->GetScale();
+                    for (const auto& vertex : vertices)
+                    {
+                        PxVec3 scaled_vertex(
+                            vertex.pos[0] * _scale.x,
+                            vertex.pos[1] * _scale.y,
+                            vertex.pos[2] * _scale.z
+                        );
+                        px_vertices.emplace_back(scaled_vertex);
+                    }
+                
+                    // cooking parameters
+                    PxTolerancesScale scale;
+                    scale.length = 1.0f;                    // 1 unit = 1 meter
+                    scale.speed  = Physics::GetGravity().y; // gravity is in meters per second
+                    PxCookingParams params(scale);
+                    params.meshPreprocessParams           = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
+                    params.meshWeldTolerance              = 0.01f;   // merge vertices within 1cm  
+                    params.meshAreaMinLimit               = 0.0001f; // remove very small triangles
+                    params.meshEdgeLengthMaxLimit         = 500.0f;  // warn about large edges
+                    params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;
+                    params.buildGPUData                   = false;
+                    params.suppressTriangleMeshRemapTable = false;
+                    params.buildTriangleAdjacencies       = false;
+                
+                    // create physx mesh
+                    PxShape* shape = nullptr;
+                    PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+                    if (m_mass == 0.0f) // static: triangle mesh
+                    {
+                        // ensure indices are in groups of 3 for triangles
+                        if (indices.size() % 3 != 0)
+                        {
+                            SP_LOG_ERROR("Index count must be a multiple of 3 for triangle mesh");
+                            break;
+                        }
+                
+                        // create triangle mesh description
+                        PxTriangleMeshDesc mesh_desc = {};
+                        mesh_desc.points.count       = static_cast<PxU32>(px_vertices.size());
+                        mesh_desc.points.stride      = sizeof(PxVec3);
+                        mesh_desc.points.data        = px_vertices.data();
+                        mesh_desc.triangles.count    = static_cast<PxU32>(indices.size() / 3);
+                        mesh_desc.triangles.stride   = 3 * sizeof(PxU32);
+                        mesh_desc.triangles.data     = indices.data();
+                
+                        // validate triangle mesh
+                        if (!PxValidateTriangleMesh(params, mesh_desc))
+                        {
+                            SP_LOG_ERROR("Triangle mesh validation failed");
+                            break;
+                        }
+                
+                        // create triangle mesh
+                        PxTriangleMeshCookingResult::Enum condition;
+                        PxTriangleMesh* triangle_mesh = PxCreateTriangleMesh(params, mesh_desc, *insertion_callback, &condition);
+                        if (!triangle_mesh || condition != PxTriangleMeshCookingResult::eSUCCESS)
+                        {
+                            SP_LOG_ERROR("Failed to create triangle mesh: %d", condition);
+                            if (triangle_mesh)
+                                triangle_mesh->release();
+                            break;
+                        }
+                
+                        // create triangle mesh geometry
+                        PxTriangleMeshGeometry geometry(triangle_mesh);
+                        shape = physics->createShape(geometry, *material);
+                        triangle_mesh->release(); // shape takes ownership
+                    }
+                    else // dynamic: convex mesh
+                    {
+                        // create convex mesh description
+                        PxConvexMeshDesc mesh_desc;
+                        mesh_desc.points.count  = static_cast<PxU32>(px_vertices.size());
+                        mesh_desc.points.stride = sizeof(PxVec3);
+                        mesh_desc.points.data   = px_vertices.data();
+                        mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
+                
+                        // validate convex mesh
+                        if (!PxValidateConvexMesh(params, mesh_desc))
+                        {
+                            SP_LOG_ERROR("Convex mesh validation failed");
+                            break;
+                        }
+                
+                        // create convex mesh
+                        PxConvexMeshCookingResult::Enum condition;
+                        PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+                        if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+                        {
+                            SP_LOG_ERROR("Failed to create convex mesh: %d", condition);
+                            if (convex_mesh)
+                                convex_mesh->release();
+                            break;
+                        }
+                
+                        // create convex mesh geometry
+                        PxConvexMeshGeometry geometry(convex_mesh);
+                        shape = physics->createShape(geometry, *material);
+                        convex_mesh->release(); // shape takes ownership
+                    }
+                
+                    if (shape)
+                    {
+                        if (PxShape* old_shape = static_cast<PxShape*>(m_shape))
+                        {
+                            old_shape->release();
+                        }
+
+                        m_shape = shape;
+                    }
+                    else
+                    {
+                        SP_LOG_ERROR("Failed to create mesh shape");
+                    }
+                    break;
                 }
-            
-                break;
             }
-            case PhysicsShape::Mesh:
+            
+            // attach shape to body
+            if (m_shape)
             {
-                Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-                if (!renderable)
-                {
-                    SP_LOG_ERROR("No Renderable component found for mesh shape");
-                    break;
-                }
-            
-                // get geometry from Renderable
-                vector<uint32_t> indices;
-                vector<RHI_Vertex_PosTexNorTan> vertices;
-                renderable->GetGeometry(&indices, &vertices);
-            
-                if (vertices.empty() || indices.empty())
-                {
-                    SP_LOG_ERROR("Empty vertex or index data for mesh shape");
-                    break;
-                }
-
-                // imported meshes lack duplicate vertices, but engine-generated meshes like cubes may have them to ensure unique
-                // normals for flat shading, avoiding normal interpolation. We remove duplicates here to meet PhysX requirements
-                geometry_processing::remove_duplicate_vertices(vertices, indices);
-
-                // convert vertices to physx format
-                vector<PxVec3> px_vertices;
-                px_vertices.reserve(vertices.size());
-                Vector3 _scale = GetEntity()->GetScale();
-                for (const auto& vertex : vertices)
-                {
-                    PxVec3 scaled_vertex(
-                        vertex.pos[0] * _scale.x,
-                        vertex.pos[1] * _scale.y,
-                        vertex.pos[2] * _scale.z
-                    );
-                    px_vertices.emplace_back(scaled_vertex);
-                }
-            
-                // cooking parameters
-                PxTolerancesScale scale;
-                scale.length = 1.0f;                    // 1 unit = 1 meter
-                scale.speed  = Physics::GetGravity().y; // gravity is in meters per second
-                PxCookingParams params(scale);
-                params.meshPreprocessParams           = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                params.meshWeldTolerance              = 0.01f;   // merge vertices within 1cm  
-                params.meshAreaMinLimit               = 0.0001f; // remove very small triangles
-                params.meshEdgeLengthMaxLimit         = 500.0f;  // warn about large edges
-                params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;
-                params.buildGPUData                   = false;
-                params.suppressTriangleMeshRemapTable = false;
-                params.buildTriangleAdjacencies       = false;
-            
-                // create physx mesh
-                PxShape* shape = nullptr;
-                PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                if (m_mass == 0.0f) // static: triangle mesh
-                {
-                    // ensure indices are in groups of 3 for triangles
-                    if (indices.size() % 3 != 0)
-                    {
-                        SP_LOG_ERROR("Index count must be a multiple of 3 for triangle mesh");
-                        break;
-                    }
-            
-                    // create triangle mesh description
-                    PxTriangleMeshDesc mesh_desc = {};
-                    mesh_desc.points.count       = static_cast<PxU32>(px_vertices.size());
-                    mesh_desc.points.stride      = sizeof(PxVec3);
-                    mesh_desc.points.data        = px_vertices.data();
-                    mesh_desc.triangles.count    = static_cast<PxU32>(indices.size() / 3);
-                    mesh_desc.triangles.stride   = 3 * sizeof(PxU32);
-                    mesh_desc.triangles.data     = indices.data();
-            
-                    // validate triangle mesh
-                    if (!PxValidateTriangleMesh(params, mesh_desc))
-                    {
-                        SP_LOG_ERROR("Triangle mesh validation failed");
-                        break;
-                    }
-            
-                    // create triangle mesh
-                    PxTriangleMeshCookingResult::Enum condition;
-                    PxTriangleMesh* triangle_mesh = PxCreateTriangleMesh(params, mesh_desc, *insertion_callback, &condition);
-                    if (!triangle_mesh || condition != PxTriangleMeshCookingResult::eSUCCESS)
-                    {
-                        SP_LOG_ERROR("Failed to create triangle mesh: %d", condition);
-                        if (triangle_mesh)
-                            triangle_mesh->release();
-                        break;
-                    }
-            
-                    // create triangle mesh geometry
-                    PxTriangleMeshGeometry geometry(triangle_mesh);
-                    shape = physics->createShape(geometry, *material);
-                    triangle_mesh->release(); // shape takes ownership
-                }
-                else // dynamic: convex mesh
-                {
-                    // create convex mesh description
-                    PxConvexMeshDesc mesh_desc;
-                    mesh_desc.points.count  = static_cast<PxU32>(px_vertices.size());
-                    mesh_desc.points.stride = sizeof(PxVec3);
-                    mesh_desc.points.data   = px_vertices.data();
-                    mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
-            
-                    // validate convex mesh
-                    if (!PxValidateConvexMesh(params, mesh_desc))
-                    {
-                        SP_LOG_ERROR("Convex mesh validation failed");
-                        break;
-                    }
-            
-                    // create convex mesh
-                    PxConvexMeshCookingResult::Enum condition;
-                    PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
-                    if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
-                    {
-                        SP_LOG_ERROR("Failed to create convex mesh: %d", condition);
-                        if (convex_mesh)
-                            convex_mesh->release();
-                        break;
-                    }
-            
-                    // create convex mesh geometry
-                    PxConvexMeshGeometry geometry(convex_mesh);
-                    shape = physics->createShape(geometry, *material);
-                    convex_mesh->release(); // shape takes ownership
-                }
-            
-                if (shape)
-                {
-                    if (PxShape* old_shape = static_cast<PxShape*>(m_shape))
-                    {
-                        old_shape->release();
-                    }
-
-                    m_shape = shape;
-                }
-                else
-                {
-                    SP_LOG_ERROR("Failed to create mesh shape");
-                }
-                break;
+                PxShape* shape = static_cast<PxShape*>(m_shape);
+                shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                rigid_actor->attachShape(*shape);
             }
+            else
+            {
+                SP_LOG_ERROR("failed to create shape for type %d", m_body_type);
+            }
+            
+            // release material
+            material->release();
         }
-    
-        // attach shape to body
-        if (m_shape)
-        {
-            PxShape* shape = static_cast<PxShape*>(m_shape);
-            shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
-            rigid_actor->attachShape(*shape);
-        }
-        else
-        {
-            SP_LOG_ERROR("failed to create shape for type %d", m_shape_type);
-        }
-    
-        // release material
-        material->release();
     }
 }
