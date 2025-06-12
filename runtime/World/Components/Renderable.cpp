@@ -549,10 +549,10 @@ namespace spartan
         // thresholds for projected angle (defined in degrees, converted to radians)
         static const array<float, 4> lod_angle_thresholds =
         {
-            30.0f * math::deg_to_rad,
-            15.0f * math::deg_to_rad,
-            7.5f  * math::deg_to_rad,
-            3.2f  * math::deg_to_rad 
+            40.0f  * math::deg_to_rad,
+            30.0f  * math::deg_to_rad,
+            20.0f  * math::deg_to_rad,
+            15.0f  * math::deg_to_rad 
         };
         const uint32_t lod_count  = GetLodCount();
         const uint32_t max_lod    = lod_count - 1;

@@ -95,9 +95,11 @@ namespace spartan
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices()   { return m_vertices; }
         std::vector<uint32_t>& GetIndices()                   { return m_indices; }
         const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
+        bool IsSolid(const uint32_t sub_mesh_index) const     { return m_sub_meshes[sub_mesh_index].is_solid; }
+
+        // lod dropoff
         MeshLodDropoff GetLodDropoff() const                  { return m_lod_dropoff; }
         void SetLodDropoff(const MeshLodDropoff dropoff)      { m_lod_dropoff = dropoff; }
-        bool IsSolid(const uint32_t sub_mesh_index) const     { return m_sub_meshes[sub_mesh_index].is_solid; }
 
         // get counts
         uint32_t GetVertexCount() const;

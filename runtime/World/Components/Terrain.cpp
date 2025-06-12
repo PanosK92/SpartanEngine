@@ -984,6 +984,7 @@ namespace spartan
             m_mesh = make_shared<Mesh>();
             m_mesh->SetObjectName("terrain_mesh");
             m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            m_mesh->SetLodDropoff(MeshLodDropoff::Linear);
     
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {

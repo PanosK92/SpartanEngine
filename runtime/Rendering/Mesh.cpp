@@ -304,8 +304,7 @@ namespace spartan
                     float target_fraction = 1.0f - t;
                     
                     // compute target index count based on the previous LOD's actual index count
-                    size_t target_index_count = max(static_cast<size_t>(3), 
-                                                   static_cast<size_t>(prev_indices.size() * target_fraction));
+                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_indices.size() * target_fraction));
             
                     // simplify geometry
                     geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
