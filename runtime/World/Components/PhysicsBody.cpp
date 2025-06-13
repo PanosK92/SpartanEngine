@@ -888,9 +888,9 @@ namespace spartan
                     scale.speed  = Physics::GetGravity().y; // gravity is in meters per second
                     PxCookingParams params(scale);
                     params.meshPreprocessParams           = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                    params.meshWeldTolerance              = 0.01f;   // merge vertices within 1cm  
-                    params.meshAreaMinLimit               = 0.0001f; // remove very small triangles
-                    params.meshEdgeLengthMaxLimit         = 500.0f;  // warn about large edges
+                    params.meshWeldTolerance              = 0.01f;  // merge vertices within 1cm
+                    params.meshAreaMinLimit               = 0.01f;  // remove very small triangles
+                    params.meshEdgeLengthMaxLimit         = 500.0f; // warn about large edges
                     params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;
                     params.buildGPUData                   = false;
                     params.suppressTriangleMeshRemapTable = false;

@@ -553,9 +553,9 @@ namespace spartan
                 }
                 else if (is_grounded)
                 {
-                    Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
+                    Vector3 velocity        = m_physics_body_to_control->GetLinearVelocity();
                     Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
-                    float force_multiplier = 50.0f;
+                    float force_multiplier  = 50.0f;
                     if (movement_direction.LengthSquared() < 0.1f)
                     {
                         force_multiplier *= 8.0f;

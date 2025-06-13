@@ -567,24 +567,8 @@ namespace spartan
         {
             SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
 
-            Vector3 offset = Vector3::Zero;
-            {
-                // calculate offsets to center the terrain
-                float offset_x   = -static_cast<float>(width) * 0.5f;
-                float offset_z   = -static_cast<float>(height) * 0.5f;
-                float min_height = FLT_MAX;
-
-                // find the minimum height to align the lower part of the terrain at y = 0
-                for (const Vector3& pos : positions)
-                {
-                    if (pos.y < min_height)
-                    {
-                        min_height = pos.y;
-                    }
-                }
-
-                offset = Vector3(offset_x, -min_height, offset_z);
-            }
+            // offset that centers the mesh
+            Vector3 offset = Vector3( -static_cast<float>(width) * 0.5f, 0.0f, -static_cast<float>(height) * 0.5f);
 
             uint32_t index = 0;
             uint32_t k     = 0;
