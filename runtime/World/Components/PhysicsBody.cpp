@@ -466,56 +466,57 @@ namespace spartan
 
     bool PhysicsBody::RayTraceIsGrounded() const
     {
-        auto perform_raycast = [](PxScene* scene, const Vector3& ray_start, void* actor_to_exclude) -> bool
-        {
-            PxVec3 px_ray_start = PxVec3(ray_start.x, ray_start.y, ray_start.z);
-            PxVec3 direction(0, -1, 0);
-            PxReal max_distance = 1.8f; // average male height (greece)
-    
-            const PxU32 max_hits = 10;
-            PxRaycastHit hit_buffer[max_hits];
-            PxRaycastBuffer hit(hit_buffer, max_hits);
-            PxQueryFilterData filter_data;
-            filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-    
-            bool hit_found   = scene->raycast(px_ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data);
-            bool is_grounded = false;
-            if (hit_found)
-            {
-                // check blocking hit
-                if (hit.hasBlock && hit.block.actor != actor_to_exclude && hit.block.distance > 0.001f)
-                {
-                    is_grounded = true;
-                }
-                // check touching hits if no blocking hit
-                else if (!is_grounded && hit.nbTouches > 0)
-                {
-                    for (PxU32 i = 0; i < hit.nbTouches; ++i)
-                    {
-                        const PxRaycastHit& current_hit = hit.getTouch(i);
-                        if (current_hit.actor != actor_to_exclude && current_hit.distance > 0.001f)
-                        {
-                            is_grounded = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            return is_grounded;
-        };
-    
         PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
+        
         if (m_body_type == BodyType::Controller)
         {
             if (!m_controller)
                 return false;
-
-            return perform_raycast(scene, GetEntity()->GetPosition(), static_cast<PxController*>(m_controller)->getActor());
+    
+            PxControllerState state;
+            static_cast<PxController*>(m_controller)->getState(state);
+            return state.collisionFlags & PxControllerCollisionFlag::eCOLLISION_DOWN;
         }
         else
         {
             if (!m_body)
                 return false;
+    
+            auto perform_raycast = [](PxScene* scene, const Vector3& ray_start, void* actor_to_exclude) -> bool
+            {
+                PxVec3 px_ray_start = PxVec3(ray_start.x, ray_start.y, ray_start.z);
+                PxVec3 direction(0, -1, 0);
+                PxReal max_distance = 1.8f; // average male height (Greece)
+    
+                const PxU32 max_hits = 10;
+                PxRaycastHit hit_buffer[max_hits];
+                PxRaycastBuffer hit(hit_buffer, max_hits);
+                PxQueryFilterData filter_data;
+                filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+    
+                bool hit_found = scene->raycast(px_ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data);
+                bool is_grounded = false;
+                if (hit_found)
+                {
+                    if (hit.hasBlock && hit.block.actor != actor_to_exclude && hit.block.distance > 0.001f)
+                    {
+                        is_grounded = true;
+                    }
+                    else if (!is_grounded && hit.nbTouches > 0)
+                    {
+                        for (PxU32 i = 0; i < hit.nbTouches; ++i)
+                        {
+                            const PxRaycastHit& current_hit = hit.getTouch(i);
+                            if (current_hit.actor != actor_to_exclude && current_hit.distance > 0.001f)
+                            {
+                                is_grounded = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                return is_grounded;
+            };
     
             PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
             return perform_raycast(scene, GetEntity()->GetPosition(), rigid_actor);

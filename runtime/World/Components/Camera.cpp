@@ -473,16 +473,18 @@ namespace spartan
         m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
     
         // translation
-        Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction * 4.0f;
-        if (Input::GetKey(KeyCode::Shift_Left))
         {
-            translation *= 3.0f;
-        }
-        m_movement_speed += translation * delta_time;
-        m_movement_speed *= clamp(1.0f - drag * delta_time, 0.1f, numeric_limits<float>::max());
-        if (m_movement_speed.Length() > max_speed)
-        {
-            m_movement_speed = m_movement_speed.Normalized() * max_speed;
+            Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction * 4.0f;
+            if (Input::GetKey(KeyCode::Shift_Left))
+            {
+                translation *= 3.0f;
+            }
+            m_movement_speed += translation * delta_time;
+            m_movement_speed *= clamp(1.0f - drag * delta_time, 0.1f, numeric_limits<float>::max());
+            if (m_movement_speed.Length() > max_speed)
+            {
+                m_movement_speed = m_movement_speed.Normalized() * max_speed;
+            }
         }
     
         // physical body animation - head bob and breathing
@@ -536,7 +538,7 @@ namespace spartan
                     bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
                     if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
                     {
-                        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+                        float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec());
                         Vector3 displacement = m_movement_speed * delta_time * 10.0f;
                         if (!is_grounded)
                         {
@@ -593,17 +595,38 @@ namespace spartan
                     }
 
                     // jump
-                    if ((Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South)) && is_grounded)
                     {
-                        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                        if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
+                        // initiation
+                        if ((Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South)) && is_grounded && !m_is_jumping)
                         {
-                            Vector3 jump_displacement = Vector3::Up * 450.0f * delta_time;
-                            m_physics_body_to_control->Move(jump_displacement);
+                            m_is_jumping    = true;
+                            m_jump_velocity = 26.0f; // below 25.0f you start to not beat gravity
+                            m_jump_time     = 0.0f;
                         }
-                        else
+                        
+                        // simulation
+                        if (m_is_jumping)
                         {
-                            m_physics_body_to_control->ApplyForce(Vector3::Up * 450.0f, PhysicsForce::Impulse);
+                            float delta_time           = static_cast<float>(Timer::GetDeltaTimeSec());
+                            m_jump_time               += delta_time;
+                            m_jump_velocity           += Physics::GetGravity().y * delta_time;
+                            float jump_displacement_y  = m_jump_velocity * delta_time;
+                            
+                            // move controller
+                            if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
+                            {
+                                Vector3 displacement = m_movement_speed * delta_time * 10.0f;
+                                displacement.y       = jump_displacement_y;
+                                m_physics_body_to_control->Move(displacement);
+                            }
+                            
+                            // end jump when grounded or velocity becomes negative
+                            if (m_physics_body_to_control->RayTraceIsGrounded() && m_jump_velocity < 0.0f)
+                            {
+                                m_is_jumping    = false;
+                                m_jump_velocity = 0.0f;
+                                m_jump_time     = 0.0f;
+                            }
                         }
                     }
                 }
