@@ -1687,8 +1687,8 @@ namespace spartan
                         switch (dir)
                         {
                             case Direction::Front: next_pos.second -= 1; break;
-                            case Direction::Back: next_pos.second += 1; break;
-                            case Direction::Left: next_pos.first -= 1; break;
+                            case Direction::Back:  next_pos.second += 1; break;
+                            case Direction::Left:  next_pos.first -= 1; break;
                             case Direction::Right: next_pos.first += 1; break;
                             default: SP_ASSERT(false); break;
                         }
