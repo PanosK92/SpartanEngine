@@ -944,7 +944,7 @@ namespace spartan
                 default_light_directional->GetComponent<Light>()->SetIntensity(50'000.0f);
                 default_light_directional->GetComponent<Light>()->SetTemperature(7'000.0f); // kelvin - warm light
 
-                entities::camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::camera(Vector3(-810.8645f, 55.4595f, 618.8524f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
                 Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 

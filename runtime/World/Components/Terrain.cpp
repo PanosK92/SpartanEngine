@@ -45,8 +45,8 @@ namespace spartan
     {
         const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
         const uint32_t smoothing_iterations = 1;         // applied on the height map
-        const uint32_t density              = 3;         // dermines the number of positions extracted out of the height map (that means more triangles later down the line)
-        const uint32_t scale                = 3;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
+        const uint32_t density              = 3;         // determines the number of positions extracted out of the height map (that means more triangles later down the line)
+        const uint32_t scale                = 4;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
     }
 
@@ -170,23 +170,23 @@ namespace spartan
             if (vertices.empty())
                 return 0.0f;
         
-            // Initialize min and max values for x and z coordinates
+            // initialize min and max values for x and z coordinates
             float min_x = numeric_limits<float>::max();
             float max_x = numeric_limits<float>::lowest();
             float min_z = numeric_limits<float>::max();
             float max_z = numeric_limits<float>::lowest();
         
-            // iterate through all vertices to find the bounding box
+            // Iterate through all vertices to find the bounding box
             for (const auto& vertex : vertices)
             {
                 float x = vertex.pos[0]; // x-coordinate
                 float z = vertex.pos[2]; // z-coordinate
         
                 // update min and max values
-                x = min(x, min_x);
-                x = min(x, max_z);
-                z = min(z, min_z);
-                z = max(z, max_z);
+                min_x = min(x, min_x);
+                max_x = max(x, max_x);
+                min_z = min(z, min_z);
+                max_z = max(z, max_z);
             }
         
             // calculate width (x extent) and depth (z extent) in meters
