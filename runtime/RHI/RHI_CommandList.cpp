@@ -66,7 +66,9 @@ namespace spartan
         const uint32_t thread_group_count   = 8;
         const uint32_t thread_group_count_x = (texture->GetWidth() + thread_group_count - 1) / thread_group_count;
         const uint32_t thread_group_count_y = (texture->GetHeight() + thread_group_count - 1) / thread_group_count;
-        Dispatch(thread_group_count_x, thread_group_count_y);
+        const uint32_t thread_group_count_z = (texture->GetType() == RHI_Texture_Type::Type3D) ? (texture->GetDepth() + thread_group_count - 1) / thread_group_count : 1;
+
+        Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z);
 
         // synchronize writes to the texture
         if (GetImageLayout(texture->GetRhiResource(), 0) == RHI_Image_Layout::General)

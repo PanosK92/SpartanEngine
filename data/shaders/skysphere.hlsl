@@ -1,4 +1,25 @@
-﻿//= includes =========
+﻿/*
+Copyright(c) 2015-2025 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+//= includes =========
 #include "common.hlsl"
 //====================
 
@@ -12,8 +33,8 @@ static const float h_mie             = 1200.0;                           // mie 
 static const float3 beta_rayleigh    = float3(5.8e-6, 13.5e-6, 33.1e-6); // rayleigh scattering coefficients (m^-1)
 static const float3 beta_mie         = float3(2e-5, 2e-5, 2e-5);         // mie scattering coefficients (m^-1)
 static const float g_mie             = 0.8;                              // mie phase asymmetry factor
-static const int num_view_samples    = 6;                                // samples along view ray
-static const int num_sun_samples     = 6;                                // samples along sun ray
+static const int num_view_samples    = 64;                               // samples along view ray
+static const int num_sun_samples     = 64;                               // samples along sun ray
 
 struct sun
 {
@@ -93,31 +114,114 @@ float intersect_sphere(float3 origin, float3 direction, float3 center, float rad
         return -1.0;
 }
 
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : sv_dispatchthreadid)
+static const int lut_width  = 256;
+static const int lut_height = 256;
+
+float3 compute_optical_depth(float3 position, float3 direction, float t_max, int num_samples)
 {
-    // get output texture dimensions
+    float ds = t_max / num_samples;
+    float3 optical_depth = 0.0;
+
+    for (int i = 0; i < num_samples; i++)
+    {
+        float t          = (i + 0.5) * ds;
+        float3 sample_pos = position + t * direction;
+        float height     = length(sample_pos - earth_center) - earth_radius;
+        if (height < 0)
+            break;
+
+        float density_rayleigh = exp(-height / h_rayleigh);
+        float density_mie      = exp(-height / h_mie);
+        optical_depth         += (density_rayleigh * beta_rayleigh + density_mie * beta_mie) * ds;
+    }
+    return optical_depth;
+}
+
+#ifdef LUT
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    if (thread_id.x >= lut_width || thread_id.y >= lut_height)
+        return;
+
+    // map thread ID to height and cos_theta
+    float height    = (float)thread_id.y / (lut_height - 1) * atmosphere_height; // 0 to 100e3
+    float cos_theta = (float)thread_id.x / (lut_width - 1) * 2.0 - 1.0;         // -1 to 1
+
+    // compute view direction (assuming up_direction is (0, 1, 0))
+    float sin_theta    = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
+    float3 view_direction = float3(sin_theta, cos_theta, 0.0); // Simplified, adjust if needed
+
+    // position at this height
+    float3 position = earth_center + float3(0, earth_radius + height, 0);
+
+    // get sun direction (assume it’s passed via a buffer or constant for this example)
+    Light light;
+    Surface surface;
+    light.Build(0, surface); // Assuming index 0 is your sun
+    float3 sun_direction = -light.forward;
+
+    // compute view ray optical depth
+    float t_max_view = intersect_sphere(position, view_direction, earth_center, earth_radius + atmosphere_height);
+    if (t_max_view < 0)
+        t_max_view = atmosphere_height; // Default to full atmosphere if no intersection
+    float3 optical_depth_view = compute_optical_depth(position, view_direction, t_max_view, num_view_samples);
+
+    // compute sun ray optical depth
+    float s_earth = intersect_sphere(position, sun_direction, earth_center, earth_radius);
+    float3 optical_depth_sun;
+    if (s_earth > 0)
+    {
+        optical_depth_sun = 1e6; // Large value to simulate full occlusion
+    }
+    else
+    {
+        float s_max = intersect_sphere(position, sun_direction, earth_center, earth_radius + atmosphere_height);
+        if (s_max < 0)
+            optical_depth_sun = 1e6;
+        else
+            optical_depth_sun = compute_optical_depth(position, sun_direction, s_max, num_sun_samples);
+    }
+
+    // compute scattering phase
+    float cos_theta_phase = dot(view_direction, sun_direction);
+    float phase_rayleigh  = (3.0 / (16.0 * PI)) * (1.0 + cos_theta_phase * cos_theta_phase);
+    float phase_mie       = (1.0 - g_mie * g_mie) / (4.0 * PI * pow(1.0 + g_mie * g_mie - 2.0 * g_mie * cos_theta_phase, 1.5));
+
+    // compute transmission
+    float3 t_view = exp(-optical_depth_view);
+    float3 t_sun  = exp(-optical_depth_sun);
+
+    // compute scattering integrals
+    float density_rayleigh   = exp(-height / h_rayleigh);
+    float density_mie        = exp(-height / h_mie);
+    float3 integral_rayleigh = density_rayleigh * phase_rayleigh * t_sun * t_view;
+    float3 integral_mie      = density_mie * phase_mie * t_sun * t_view;
+
+    // store in LUT (Rayleigh RGB, Mie scalar in A)
+    tex_uav[thread_id.xy] = float4(integral_rayleigh, integral_mie.x);
+}
+#else
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
     float2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
 
-    // compute uv coordinates
-    float2 uv = (float2(thread_id.xy) + 0.5f) / resolution;
-
-    // convert uv to view direction (spherical mapping for skysphere)
+    float2 uv             = (float2(thread_id.xy) + 0.5f) / resolution;
     float phi             = uv.x * PI2;
     float theta           = -uv.y * PI;
     float sin_theta       = sin(theta);
     float cos_theta       = cos(theta);
     float3 view_direction = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
 
-    // get sun direction and color from light
     Light light;
     Surface surface;
-    light.Build(0, surface); // index 0 for the directional light
+    light.Build(0, surface);
     float3 sun_direction = -light.forward;
-    float3 light_color   = light.color; // use the light's color (derived from temperature)
+    float3 light_color   = light.color;
 
-    // compute atmosphere
+    // compute atmosphere color using lut
     float3 atmosphere_color = 0.0f;
     {
         float t_max = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
@@ -127,85 +231,43 @@ void main_cs(uint3 thread_id : sv_dispatchthreadid)
             return;
         }
 
-        float ds                  = t_max / num_view_samples;
-        float3 integral_rayleigh  = 0.0;
-        float3 integral_mie       = 0.0;
-        float3 optical_depth_view = 0.0;
+        float ds                 = t_max / num_view_samples;
+        float3 integral_rayleigh = 0.0;
+        float3 integral_mie      = 0.0;
 
         for (int i = 0; i < num_view_samples; i++)
         {
-            float t         = (i + 0.5) * ds;
+            float t = (i + 0.5) * ds;
             float3 position = buffer_frame.camera_position + t * view_direction;
-            float height    = length(position - earth_center) - earth_radius;
+            float height = length(position - earth_center) - earth_radius;
             if (height < 0)
                 break;
 
-            float density_rayleigh = exp(-height / h_rayleigh);
-            float density_mie      = exp(-height / h_mie);
-            float3 t_view          = exp(-optical_depth_view);
+            // map to lut coordinates
+            float cos_theta_lut = dot(view_direction, up_direction); // Cosine of angle with zenith
+            float u             = (cos_theta_lut + 1.0) * 0.5; // -1 to 1 -> 0 to 1
+            float v             = height / atmosphere_height;  // 0 to 1
 
-            float s_earth = intersect_sphere(position, sun_direction, earth_center, earth_radius);
-            float3 t_sun;
-            if (s_earth > 0)
-            {
-                t_sun = 0.0; // sun is blocked by the earth
-            }
-            else
-            {
-                float s_max = intersect_sphere(position, sun_direction, earth_center, earth_radius + atmosphere_height);
-                if (s_max < 0)
-                {
-                    t_sun = 0.0;
-                }
-                else
-                {
-                    float ds_sun             = s_max / num_sun_samples;
-                    float3 optical_depth_sun = 0.0;
-
-                    for (int j = 0; j < num_sun_samples; j++)
-                    {
-                        float s          = (j + 0.5) * ds_sun;
-                        float3 sun_pos   = position + s * sun_direction;
-                        float height_sun = length(sun_pos - earth_center) - earth_radius;
-                        if (height_sun < 0)
-                            break;
-
-                        float density_r_sun  = exp(-height_sun / h_rayleigh);
-                        float density_m_sun  = exp(-height_sun / h_mie);
-                        optical_depth_sun   += (density_r_sun * beta_rayleigh + density_m_sun * beta_mie) * ds_sun;
-                    }
-                    t_sun = exp(-optical_depth_sun);
-                }
-            }
-
-            float cos_theta_phase = dot(view_direction, sun_direction);
-            float phase_rayleigh  = (3.0 / (16.0 * PI)) * (1.0 + cos_theta_phase * cos_theta_phase);
-            float phase_mie       = (1.0 - g_mie * g_mie) / 
-                                   (4.0 * PI * pow(1.0 + g_mie * g_mie - 2.0 * g_mie * cos_theta_phase, 1.5));
-
-            integral_rayleigh += density_rayleigh * phase_rayleigh * t_sun * t_view * ds;
-            integral_mie      += density_mie * phase_mie * t_sun * t_view * ds;
-
-            optical_depth_view += (density_rayleigh * beta_rayleigh + density_mie * beta_mie) * ds;
+            // sample lut
+            float4 lut_value   = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), float2(u, v), 0);
+            integral_rayleigh += lut_value.rgb * ds;
+            integral_mie      += float3(lut_value.a, lut_value.a, lut_value.a) * ds; // mie is scalar in lut
         }
 
-        // scale scattering by light color and intensity
         atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light_color * light.intensity;
     }
 
     // artistic touches
-    float3 sun_color  = sun::compute_color(view_direction, sun_direction, light_color);
-    float3 star_color = stars::compute_color(uv, sun_direction);
-
-    // add moon
-    float3 moon_direction = -sun_direction;
+    float3 sun_color      = sun::compute_color(view_direction, sun_direction, light_color);
+    float3 star_color     = stars::compute_color(uv, sun_direction);
     float3 moon_color     = 0.0;
+    float3 moon_direction = -sun_direction;
     if (dot(moon_direction, up_direction) > 0)
     {
         float3 moon_disc = sun::compute_mie_scatter_color(view_direction, moon_direction, 0.001f, -0.997f, light_color);
-        moon_color = moon_disc * float3(0.5, 0.65, 1.0); // retain tint for lunar albedo
+        moon_color       = moon_disc * float3(0.5, 0.65, 1.0);
     }
 
-    // compose output
     tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color + moon_color, 1.0);
 }
+#endif

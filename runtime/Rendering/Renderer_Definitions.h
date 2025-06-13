@@ -114,12 +114,12 @@ namespace spartan
         light_depth = 6,
     
         // misc
-        tex  = 7,
-        tex2 = 8,
-        tex3 = 9,
-        tex4 = 10,
-        tex5 = 11,
-        tex6 = 12,
+        tex   = 7,
+        tex2  = 8,
+        tex3  = 9,
+        tex4  = 10,
+        tex5  = 11,
+        tex6  = 12,
 
         // bindless
         bindless_material_textures   = 13,
@@ -177,6 +177,7 @@ namespace spartan
         ssao_c,
         sss_c_bend,
         skysphere_c,
+        skysphere_lut_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
         variable_rate_shading_c,
@@ -201,7 +202,8 @@ namespace spartan
         gbuffer_depth_occluders,
         gbuffer_depth_occluders_hiz,
         gbuffer_depth_output,
-        brdf_specular_lut,
+        lut_brdf_specular,
+        lut_atmosphere_scatter,
         light_diffuse,
         light_diffuse_gi,
         light_specular,

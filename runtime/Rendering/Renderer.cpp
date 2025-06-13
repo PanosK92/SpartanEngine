@@ -252,7 +252,7 @@ namespace spartan
             // subscribe
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
             SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_materials_dirty = true; ));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_lights_dirty    = true; ));
+            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_lights_dirty    = true; m_atmospheric_scattering_lut_dirty = true; ));
 
             // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);

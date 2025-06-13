@@ -48,6 +48,7 @@ namespace spartan
 {
     array<Renderer_DrawCall, renderer_max_entities> Renderer::m_draw_calls;
     uint32_t Renderer::m_draw_call_count;
+    bool Renderer::m_atmospheric_scattering_lut_dirty = true;
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
@@ -69,12 +70,20 @@ namespace spartan
         RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
-        // brdf specular lut
-        static bool brdf_specular_lut_produced = false;
-        if (!brdf_specular_lut_produced)
+        // render lookup tables (once per session)
         {
-            Pass_Light_Integration_BrdfSpecularLut(cmd_list_present);
-            brdf_specular_lut_produced = true;
+            static bool brdf_produced = false;
+            if (!brdf_produced)
+            {
+                Pass_Lut_BrdfSpecular(cmd_list_present);
+                brdf_produced = true;
+            }
+
+            if (m_atmospheric_scattering_lut_dirty)
+            {
+                Pass_Lut_AtmosphericScattering(cmd_list_present);
+                m_atmospheric_scattering_lut_dirty = false;
+            }
         }
 
         if (Camera* camera = World::GetCamera())
@@ -749,7 +758,7 @@ namespace spartan
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
                     GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
-                    GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut),
+                    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular),
                     tex_out
                 );
 
@@ -857,7 +866,8 @@ namespace spartan
         if (!light)
             return;
     
-        RHI_Texture* tex_environment = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_environment            = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
 
         cmd_list->BeginTimeblock("skysphere");
         {
@@ -872,6 +882,7 @@ namespace spartan
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_scatter);
                 cmd_list->Dispatch(tex_environment);
             }
 
@@ -1131,7 +1142,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::light_shadow));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::ssr));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4,    GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             // set pass constants
@@ -1147,22 +1158,46 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list)
     {
-        cmd_list->BeginTimeblock("light_integration_brdf_specular_lut");
+        RHI_Texture* tex_lut_brdf_specular = GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular);
+
+        cmd_list->BeginTimeblock("lut_brdf_specular");
         {
             // set pipeline state
             RHI_PipelineState pso;
-            pso.name             = "light_integration_brdf_specular_lut";
+            pso.name             = "lut_brdf_specular";
             pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_brdf_specular_lut_c);
             cmd_list->SetPipelineState(pso);
 
-            RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTarget::brdf_specular_lut);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
-            cmd_list->Dispatch(tex_brdf_specular_lut);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_brdf_specular);
+            cmd_list->Dispatch(tex_lut_brdf_specular);
 
-            // light pass and ssr pass both read it as an srv, so transition once here
-            cmd_list->InsertBarrier(tex_brdf_specular_lut->GetRhiResource(), tex_brdf_specular_lut->GetFormat(), 0, 1, 1, RHI_Image_Layout::Shader_Read);
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            cmd_list->InsertBarrier(tex_lut_brdf_specular->GetRhiResource(), tex_lut_brdf_specular->GetFormat(), 0, 1, 1, RHI_Image_Layout::Shader_Read);
+        }
+        cmd_list->EndTimeblock();
+
+      
+    }
+
+    void Renderer::Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+
+        cmd_list->BeginTimeblock("lut_atmospheric_scattering");
+        {
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name             = "lut_atmospheric_scattering";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
+            cmd_list->SetPipelineState(pso);
+        
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_scatter);
+            cmd_list->Dispatch(tex_lut_atmosphere_scatter);
+        
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            cmd_list->InsertBarrier(tex_lut_atmosphere_scatter->GetRhiResource(), tex_lut_atmosphere_scatter->GetFormat(), 0, 1, tex_lut_atmosphere_scatter->GetDepth(), RHI_Image_Layout::Shader_Read);
         }
         cmd_list->EndTimeblock();
     }

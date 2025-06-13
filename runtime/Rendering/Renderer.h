@@ -151,7 +151,8 @@ namespace spartan
         static void Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list);
-        static void Pass_Light_Integration_BrdfSpecularLut(RHI_CommandList* cmd_list);
+        static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
+        static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -213,5 +214,6 @@ namespace spartan
         static bool m_bindless_abbs_dirty;
         static bool m_bindless_materials_dirty;
         static bool m_bindless_lights_dirty;
+        static bool m_atmospheric_scattering_lut_dirty;
     };
 }

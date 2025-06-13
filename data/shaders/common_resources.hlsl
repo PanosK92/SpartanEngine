@@ -149,12 +149,12 @@ Texture2D tex_ssao : register(t5);
 Texture2DArray tex_light_depth : register(t6);
 
 // misc
-Texture2D tex  : register(t7);
-Texture2D tex2 : register(t8);
-Texture2D tex3 : register(t9);
-Texture2D tex4 : register(t10);
-Texture2D tex5 : register(t11);
-Texture2D tex6 : register(t12);
+Texture2D tex   : register(t7);
+Texture2D tex2  : register(t8);
+Texture2D tex3  : register(t9);
+Texture2D tex4  : register(t10);
+Texture2D tex5  : register(t11);
+Texture2D tex6  : register(t12);
 
 // bindless arrays
 Texture2D material_textures[]                            : register(t13, space1);

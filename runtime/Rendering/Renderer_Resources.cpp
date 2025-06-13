@@ -262,12 +262,14 @@ namespace spartan
         }
 
         // resolution - fixed (created once)
-        if (!render_target(Renderer_RenderTarget::brdf_specular_lut))
+        if (!render_target(Renderer_RenderTarget::lut_brdf_specular))
         {
-            render_target(Renderer_RenderTarget::brdf_specular_lut) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512,  512,  1, 1, RHI_Format::R8G8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "brdf_specular_lut");
-            render_target(Renderer_RenderTarget::blur)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, format_standard,        RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
+            // lookup tables
+            render_target(Renderer_RenderTarget::lut_brdf_specular)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R8G8_Unorm,         RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
+            render_target(Renderer_RenderTarget::lut_atmosphere_scatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 256, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
 
-            // sky
+            // misc
+            render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, format_standard,        RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             uint32_t lowest_dimension = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 2048, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "skysphere");
         }
@@ -425,8 +427,14 @@ namespace spartan
         }
 
         // sky
-        shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+        {
+            shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+
+            shader(Renderer_Shader::skysphere_lut_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_lut_c)->AddDefine("LUT");
+            shader(Renderer_Shader::skysphere_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+        }
 
         // fxaa
         shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
