@@ -58,6 +58,7 @@ namespace spartan
         shared_ptr<Entity> default_environment       = nullptr;
         shared_ptr<Entity> default_light_directional = nullptr;
         shared_ptr<Entity> default_metal_cube        = nullptr;
+        shared_ptr<Entity> default_water             = nullptr; 
         vector<shared_ptr<Mesh>> meshes;
 
         namespace entities
@@ -75,26 +76,21 @@ namespace spartan
                 audio_source->SetPitch(pitch);
             }
 
-            void sun(const bool enabled, const Vector3& rotation = Vector3::Infinity)
+            void sun(const bool enabled, const Vector3& direction = Vector3(-1.0f, -0.2f, 0.25f))
             {
                 default_light_directional = World::CreateEntity();
                 default_light_directional->SetObjectName("light_directional");
                 Light* light = default_light_directional->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
-
-                // rotation
-                if (rotation == Vector3::Infinity)
-                { 
-                    default_light_directional->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
-                }
-                else
-                {
-                    default_light_directional->SetRotation(Quaternion::FromEulerAngles(rotation));
-                }
-
+            
+                // rotation from direction
+                Vector3 forward = direction.Normalized();
+                Quaternion rot  = Quaternion::FromLookRotation(forward);
+                default_light_directional->SetRotation(rot);
+            
                 // intensity
-                light->SetTemperature(5500.0f);                  // kelvin
-                light->SetIntensity(enabled ? 70'000.0f : 0.0f); // lux
+                light->SetTemperature(5500.0f);
+                light->SetIntensity(enabled ? 40'000.0f : 0.0f);
                 light->SetFlag(LightFlags::Shadows, enabled);
                 light->SetFlag(LightFlags::DayNightCycle, false);
             }
@@ -223,7 +219,7 @@ namespace spartan
                 }
             }
 
-            shared_ptr<Entity> water(const Vector3& position, float dimension, uint32_t density)
+            shared_ptr<Entity> water(const Vector3& position, float dimension, uint32_t density, Color color)
             {
                 // entity
                 shared_ptr<Entity> water = World::CreateEntity();
@@ -944,9 +940,9 @@ namespace spartan
                 const uint32_t rock_count         = 3'000;      // these are small and on the ground, we can have more
 
                 // sun/lighting/mood
-                entities::sun(true, Vector3(130.0f, 40.0f, 0.0f));
-                default_light_directional->GetComponent<Light>()->SetIntensity(20'000.0f);
-                default_light_directional->GetComponent<Light>()->SetTemperature(3'000.0f); // kelvin - warm light
+                entities::sun(true);
+                default_light_directional->GetComponent<Light>()->SetIntensity(50'000.0f);
+                default_light_directional->GetComponent<Light>()->SetTemperature(7'000.0f); // kelvin - warm light
 
                 entities::camera(Vector3(-458.0084f, 30.0f, 371.9392f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
@@ -1056,7 +1052,8 @@ namespace spartan
                     // water
                     float dimension  = 8000; // meters
                     uint32_t density = 64;   // geometric
-                    entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density);
+                    Color forest_water_color = Color(25.0f / 255.0f, 80.0f / 255.0f, 60.0f / 255.0f, 220.0f / 255.0f);
+                    entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color);
 
                     // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                     uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
@@ -1597,7 +1594,8 @@ namespace spartan
                     // spawn water if floor is lowered
                     if (is_pool)
                     {
-                        auto water_entity = entities::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2);
+                        Color pool_color = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
+                        auto water_entity = entities::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2, pool_color);
                         water_entity->SetParent(room_entity);
                     }
                     
