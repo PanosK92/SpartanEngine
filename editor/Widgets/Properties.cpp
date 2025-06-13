@@ -579,7 +579,6 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
                 "Sphere",
                 "Plane",
                 "Capsule",
-                "Height Field",
                 "Mesh",
                 "Controller"
             };

@@ -109,10 +109,11 @@ namespace spartan
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
                 // apply gravity
-                PxVec3 displacement(0.0f,  Physics::GetGravity().y * Timer::GetDeltaTimeSec(), 0.0f);
+                float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+                PxVec3 displacement(0.0f,  Physics::GetGravity().y * delta_time, 0.0f);
                 PxControllerFilters filters;
                 filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-                static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, Timer::GetDeltaTimeSec(), filters);
+                static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, delta_time, filters);
 
                 // update entity position from controller
                 PxExtendedVec3 pos = static_cast<PxCapsuleController*>(m_controller)->getPosition();
@@ -350,7 +351,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Controller)
         {
-            SP_WARNINGS_ON("Don't call ApplyForce on a player controller, call Move() instead");
+            SP_LOG_WARNING("Don't call ApplyForce on a player controller, call Move() instead");
             return;
         }
 
@@ -733,115 +734,6 @@ namespace spartan
                     PxCapsuleGeometry geometry(radius, half_height);
                     m_shape = physics->createShape(geometry, *material);
                     static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                    break;
-                }
-                case BodyType::HeightField:
-                {
-                    Terrain* terrain = GetEntity()->GetComponent<Terrain>();
-                    if (!terrain)
-                    {
-                        SP_LOG_ERROR("No Terrain component found for terrain shape");
-                        break;
-                    }
-                
-                    // get heightmap data
-                    float* height_map = terrain->GetHeightData();
-                    uint32_t width    = terrain->GetWidth();
-                    uint32_t depth    = terrain->GetHeight();
-                
-                    // compute terrain scale based on physical dimensions (from generate_positions)
-                    uint32_t density     = terrain->GetDensity();
-                    uint32_t scale       = terrain->GetScale();
-                    uint32_t base_width  = (width - 1) / density + 1;
-                    uint32_t base_height = (depth - 1) / density + 1;
-                    float extent_x = static_cast<float>(base_width - 1) * scale;
-                    float extent_z = static_cast<float>(base_height - 1) * scale;
-                    Vector3 terrain_scale(
-                        extent_x, // x scale (width in world units)
-                        1.0f,     // y scale (heights are in world units)
-                        extent_z  // z scale (depth in world units)
-                    );
-                
-                    // compute height range
-                    float height_range = terrain->GetMaxY() - terrain->GetMinY();
-                    if (height_range == 0.0f)
-                    {
-                        SP_LOG_WARNING("Terrain height range is zero, using 1.0 to avoid division by zero");
-                        height_range = 1.0f;
-                    }
-                
-                    // create height field samples
-                    std::vector<PxHeightFieldSample> samples(width * depth);
-                    for (uint32_t z = 0; z < depth; ++z)
-                    {
-                        for (uint32_t x = 0; x < width; ++x)
-                        {
-                            uint32_t index = z * width + x; 
-                            PxHeightFieldSample& sample = samples[index];
-                    
-                            // flip x and z if heightmap is stored as [x * depth + z]
-                            uint32_t flipped_index  = x * depth + z;
-                            float height            = height_map[flipped_index];
-                            float normalized_height = (height - terrain->GetMinY()) / height_range;
-                            sample.height           = static_cast<PxI16>(normalized_height * 65535.0f - 32768.0f);
-                    
-                            sample.materialIndex0 = 0;
-                            sample.materialIndex1 = 0;
-                        }
-                    }
-                
-                    // create height field description
-                    PxHeightFieldDesc height_field_desc;
-                    height_field_desc.nbRows         = depth; // z-direction
-                    height_field_desc.nbColumns      = width; // x-direction
-                    height_field_desc.samples.data   = samples.data();
-                    height_field_desc.samples.stride = sizeof(PxHeightFieldSample);
-                
-                    // cooking parameters
-                    PxTolerancesScale px_scale;
-                    px_scale.length = 1.0f; // 1 unit = 1 meter
-                    px_scale.speed  = Physics::GetGravity().y; // gravity in meters per second
-                    PxCookingParams params(px_scale);
-                    params.meshPreprocessParams = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                    params.meshWeldTolerance    = 0.2f; // merge vertices within 20cm
-                    params.buildGPUData         = false;
-                
-                    // create height field
-                    PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                    PxHeightField* height_field = PxCreateHeightField(height_field_desc, *insertion_callback);
-                    if (!height_field)
-                    {
-                        SP_LOG_ERROR("Failed to create height field");
-                        break;
-                    }
-                
-                    // Create height field geometry
-                    PxHeightFieldGeometry geometry(
-                        height_field,
-                        PxMeshGeometryFlags(),
-                        height_range / 65535.0f, // height scale to map PxI16 back to world units
-                        terrain_scale.x / (width > 1 ? width - 1 : 1), // row scale (x-direction)
-                        terrain_scale.z / (depth > 1 ? depth - 1 : 1)  // column scale (z-direction)
-                    );
-                
-                    // Create shape
-                    m_shape = physics->createShape(geometry, *material);
-                
-                    // Release height field (shape takes ownership)
-                    height_field->release();
-                
-                    // Adjust local pose to center the terrain
-                    if (m_shape)
-                    {
-                        float height_midpoint = (terrain->GetMaxY() + terrain->GetMinY()) / 2.0f;
-                        PxVec3 offset(
-                            -terrain_scale.x * 0.5f, // Center x
-                            height_midpoint,         // Shift up by half height range
-                            -terrain_scale.z * 0.5f  // Center z
-                        );
-                        static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(offset));
-                    }
-                
                     break;
                 }
                 case BodyType::Mesh:

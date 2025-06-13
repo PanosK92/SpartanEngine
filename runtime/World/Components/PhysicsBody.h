@@ -45,7 +45,6 @@ namespace spartan
         Sphere,
         Plane,
         Capsule,
-        HeightField,
         Mesh,
         Controller,
         Max
