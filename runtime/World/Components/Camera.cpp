@@ -338,41 +338,67 @@ namespace spartan
 
     void Camera::Input_FpsControl()
     {
-        static const float max_speed = 5.0f, acceleration = 1.0f, drag = 10.0f;
-        float delta_time             = static_cast<float>(Timer::GetDeltaTimeSec());
-        Vector3 movement_direction   = Vector3::Zero;
+        // parameters
+        static const float max_speed    = 5.0f;
+        static const float acceleration = 1.0f;
+        static const float drag         = 10.0f;
+        float delta_time                = static_cast<float>(Timer::GetDeltaTimeSec());
     
-        // fps control activation
-        SetFlag(CameraFlags::IsControlled,
-            (Input::GetKeyDown(KeyCode::Click_Right) && Input::GetMouseIsInViewport()) || // control initiation
-            (Input::GetKey(KeyCode::Click_Right) && GetFlag(CameraFlags::IsControlled))   // control maintenance
-        );
+        // deduce all states into booleans (some states exists as part of the class)
+        bool is_controlled        = GetFlag(CameraFlags::IsControlled);
+        bool wants_cursor_hidden  = GetFlag(CameraFlags::WantsCursorHidden);
+        bool is_gamepad_connected = Input::IsGamepadConnected();
+        bool is_playing           = Engine::IsFlagSet(EngineMode::Playing);
+        bool has_physics_body     = m_physics_body_to_control != nullptr;
+        bool is_grounded          = has_physics_body ? m_physics_body_to_control->RayTraceIsGrounded() : false;
+        bool is_underwater        = GetEntity()->GetPosition().y <= 0.0f;
+
+        // input mapping
+        bool button_move_forward    = Input::GetKey(KeyCode::W);
+        bool button_move_backward   = Input::GetKey(KeyCode::S);
+        bool button_move_right      = Input::GetKey(KeyCode::D);
+        bool button_move_left       = Input::GetKey(KeyCode::A);
+        bool button_move_up         = Input::GetKey(KeyCode::Q);
+        bool button_move_down       = Input::GetKey(KeyCode::E);
+        bool button_sprint          = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Left_Shoulder);
+        bool button_jump            = Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South);
+        bool mouse_right_click_down = Input::GetKeyDown(KeyCode::Click_Right);
+        bool mouse_right_click      = Input::GetKey(KeyCode::Click_Right);
+        bool mouse_in_viewport      = Input::GetMouseIsInViewport();
     
-        // cursor visibility
-        if (GetFlag(CameraFlags::IsControlled) && !GetFlag(CameraFlags::WantsCursorHidden))
+        // Behavior: Control Activation and Cursor Handling
         {
-            m_mouse_last_position = Input::GetMousePosition();
-            if (!Window::IsFullScreen())
+            bool control_initiated  = mouse_right_click_down && mouse_in_viewport;
+            bool control_maintained = mouse_right_click && is_controlled;
+            bool is_controlled_new  = control_initiated || control_maintained;
+            SetFlag(CameraFlags::IsControlled, is_controlled_new);
+    
+            if (is_controlled_new && !wants_cursor_hidden)
             {
-                Input::SetMouseCursorVisible(false);
+                m_mouse_last_position = Input::GetMousePosition();
+                if (!Window::IsFullScreen())
+                {
+                    Input::SetMouseCursorVisible(false);
+                }
+                SetFlag(CameraFlags::WantsCursorHidden, true);
             }
-            SetFlag(CameraFlags::WantsCursorHidden, true);
-        }
-        else if (!GetFlag(CameraFlags::IsControlled) && GetFlag(CameraFlags::WantsCursorHidden))
-        {
-            Input::SetMousePosition(m_mouse_last_position);
-            if (!Window::IsFullScreen())
+            else if (!is_controlled_new && wants_cursor_hidden)
             {
-                Input::SetMouseCursorVisible(true);
+                Input::SetMousePosition(m_mouse_last_position);
+                if (!Window::IsFullScreen())
+                {
+                    Input::SetMouseCursorVisible(true);
+                }
+                SetFlag(CameraFlags::WantsCursorHidden, false);
             }
-            SetFlag(CameraFlags::WantsCursorHidden, false);
         }
     
-        // mouse look and movement
-        if (GetFlag(CameraFlags::IsControlled) || Input::IsGamepadConnected())
+        // Behavior: Mouse Look and Movement Direction Calculation
+        Vector3 movement_direction = Vector3::Zero;
+        if (is_controlled || is_gamepad_connected)
         {
-            // cursor/mouse/crosshair viewport edge wrapping
-            if (GetFlag(CameraFlags::IsControlled))
+            // cursor edge wrapping
+            if (is_controlled)
             {
                 Vector2 mouse_pos = Input::GetMousePosition();
                 uint32_t edge = 5;
@@ -386,96 +412,60 @@ namespace spartan
                 }
             }
     
-            // mouse and right thumbstick look
+            // mouse and gamepad look
+            Quaternion current_rotation = GetEntity()->GetRotation();
+            Vector2 input_delta = Vector2::Zero;
+            if (is_controlled)
             {
-                // get current rotation as a quaternion
-                Quaternion current_rotation = GetEntity()->GetRotation();
-                
-                // compute rotation delta from input
-                math::Vector2 input_delta = Vector2::Zero;
-                if (GetFlag(CameraFlags::IsControlled))
-                {
-                    input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
-                }
-                else if (Input::IsGamepadConnected())
-                {
-                    input_delta = Input::GetGamepadThumbStickRight();
-                }
-                
-                // create incremental quaternions for yaw and pitch
-                Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up,    input_delta.x * deg_to_rad);
-                Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
-                
-                // apply rotations: yaw globally, pitch locally
-                Quaternion new_rotation = yaw_increment * current_rotation * pitch_increment;
-                
-                // constrain pitch to avoid flipping
-                Vector3 forward   = new_rotation * Vector3::Forward;
-                float pitch_angle = asin(-forward.y) * rad_to_deg;
-                if (pitch_angle > 80.0f || pitch_angle < -80.0f)
-                {
-                    // revert pitch increment if it exceeds bounds
-                    new_rotation = yaw_increment * current_rotation;
-                }
-                
-                // apply final rotation
-                GetEntity()->SetRotationLocal(new_rotation.Normalized());
+                input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
+            }
+            else if (is_gamepad_connected)
+            {
+                input_delta = Input::GetGamepadThumbStickRight();
+            }
+            Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
+            Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
+            Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
+            Vector3 forward            = new_rotation * Vector3::Forward;
+            float pitch_angle          = asin(-forward.y) * rad_to_deg;
+            if (pitch_angle > 80.0f || pitch_angle < -80.0f)
+            {
+                new_rotation = yaw_increment * current_rotation;
+            }
+            GetEntity()->SetRotationLocal(new_rotation.Normalized());
+    
+            // Keyboard and gamepad movement direction
+            if (is_controlled)
+            {
+                if (button_move_forward) movement_direction += GetEntity()->GetForward();
+                if (button_move_backward) movement_direction += GetEntity()->GetBackward();
+                if (button_move_right) movement_direction += GetEntity()->GetRight();
+                if (button_move_left) movement_direction += GetEntity()->GetLeft();
+                if (button_move_up) movement_direction += Vector3::Up;
+                if (button_move_down) movement_direction += Vector3::Down;
+            }
+            else if (is_gamepad_connected)
+            {
+                movement_direction += GetEntity()->GetBackward() * Input::GetGamepadThumbStickLeft().y;
+                movement_direction += GetEntity()->GetRight()    * Input::GetGamepadThumbStickLeft().x;
+                movement_direction += Vector3::Up                * Input::GetGamepadTriggerRight();
+                movement_direction += Vector3::Down              * Input::GetGamepadTriggerLeft();
             }
     
-            // keyboard and left thumbstick movement
+            if (has_physics_body && is_playing)
             {
-                if (GetFlag(CameraFlags::IsControlled))
-                {
-                    if (Input::GetKey(KeyCode::W))
-                    {
-                        movement_direction += GetEntity()->GetForward();
-                    }
-                    if (Input::GetKey(KeyCode::S))
-                    {
-                        movement_direction += GetEntity()->GetBackward();
-                    }
-                    if (Input::GetKey(KeyCode::D))
-                    {
-                        movement_direction += GetEntity()->GetRight();
-                    }
-                    if (Input::GetKey(KeyCode::A))
-                    {
-                        movement_direction += GetEntity()->GetLeft();
-                    }
-                    if (Input::GetKey(KeyCode::Q))
-                    {
-                        movement_direction += Vector3::Up;
-                    }
-                    if (Input::GetKey(KeyCode::E))
-                    {
-                        movement_direction += Vector3::Down;
-                    }
-                }
-                else if (Input::IsGamepadConnected())
-                {
-                    movement_direction += GetEntity()->GetBackward() * Input::GetGamepadThumbStickLeft().y;
-                    movement_direction += GetEntity()->GetRight()    * Input::GetGamepadThumbStickLeft().x;
-                    movement_direction += Vector3::Up                * Input::GetGamepadTriggerRight();
-                    movement_direction += Vector3::Down              * Input::GetGamepadTriggerLeft();
-                }
-    
-                // flatten movement for physics in game mode
-                if (m_physics_body_to_control && Engine::IsFlagSet(EngineMode::Playing))
-                {
-                    movement_direction.y = 0.0f;
-                }
-                movement_direction.Normalize();
+                movement_direction.y = 0.0f;
             }
+            movement_direction.Normalize();
         }
     
-        // speed adjustment
-        m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
-        m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
-    
-        // translation
+        // Behavior: Speed Adjustment
         {
+            m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
+            m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
+    
             Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction * 4.0f;
-            if (Input::GetKey(KeyCode::Shift_Left))
+            if (button_sprint)
             {
                 translation *= 3.0f;
             }
@@ -487,158 +477,126 @@ namespace spartan
             }
         }
     
-        // physical body animation - head bob and breathing
+        // Behavior: Physical Body Animation
+        if (GetFlag(CameraFlags::PhysicalBodyAnimation) && is_playing && has_physics_body && is_grounded)
         {
             static Vector3 base_local_position = GetEntity()->GetPositionLocal();
             static Vector3 bob_offset          = Vector3::Zero;
             static float bob_timer             = 0.0f;
             static float breathe_timer         = 0.0f;
-            if (GetFlag(CameraFlags::PhysicalBodyAnimation) && Engine::IsFlagSet(EngineMode::Playing) && m_physics_body_to_control && m_physics_body_to_control->RayTraceIsGrounded())
+    
+            float velocity_magnitude = m_physics_body_to_control->GetLinearVelocity().Length();
+            if (velocity_magnitude > 0.01f) // Walking head bob
             {
-                float velocity_magnitude = m_physics_body_to_control->GetLinearVelocity().Length();
-                if (velocity_magnitude > 0.01f) // walking head bob
-                {
-                    // increment bob timer based on rigid body velocity
-                    bob_timer += delta_time * velocity_magnitude * 2.0f; // scale frequency with velocity
-    
-                    // sinusoidal bobbing for vertical and horizontal shake
-                    float bob_amplitude = 0.04f; // subtle amplitude for head bob
-                    bob_offset.y        = sin(bob_timer) * bob_amplitude; 
-                    bob_offset.x        = cos(bob_timer) * bob_amplitude * 0.5f; // horizontal bob (less pronounced)
-                }
-                else // breathing effect when resting
-                {
-                    // increment breathe timer (slower frequency for breathing)
-                    breathe_timer += delta_time * 0.5f; // approx. one breath every ~4 seconds
-    
-                    // sinusoidal breathing for pitch rotation
-                    float breathe_amplitude     = 0.0025f; // subtle pitch angle in degrees
-                    float pitch_offset          = sin(breathe_timer) * breathe_amplitude; // pitch oscillation
-                    Quaternion breathe_rotation = Quaternion::FromAxisAngle(Vector3::Right, pitch_offset * deg_to_rad);
-    
-                    // apply breathing rotation on top of current rotation
-                    Quaternion current_rotation = GetEntity()->GetRotationLocal();
-                    GetEntity()->SetRotationLocal(current_rotation * breathe_rotation);
-                }
+                bob_timer           += delta_time * velocity_magnitude * 2.0f;
+                float bob_amplitude  = 0.04f;
+                bob_offset.y         = sin(bob_timer) * bob_amplitude;
+                bob_offset.x         = cos(bob_timer) * bob_amplitude * 0.5f;
             }
-
-            // apply bob to camera's local position
+            else // Breathing effect when resting
+            {
+                breathe_timer               += delta_time * 0.5f;
+                float breathe_amplitude      = 0.0025f;
+                float pitch_offset           = sin(breathe_timer) * breathe_amplitude;
+                Quaternion breathe_rotation  = Quaternion::FromAxisAngle(Vector3::Right, pitch_offset * deg_to_rad);
+                Quaternion current_rotation  = GetEntity()->GetRotationLocal();
+                GetEntity()->SetRotationLocal(current_rotation * breathe_rotation);
+            }
             GetEntity()->SetPositionLocal(base_local_position + bob_offset);
         }
     
-        // apply movement
-        m_is_walking = false;
-        if (m_movement_speed != Vector3::Zero)
+        // Behavior: Jumping
         {
-            if (m_physics_body_to_control)
+            if (has_physics_body && is_playing && is_grounded && !m_is_jumping && button_jump)
             {
-                bool is_grounded = m_physics_body_to_control->RayTraceIsGrounded();
-                if (Engine::IsFlagSet(EngineMode::Playing))
-                {
-                    bool is_underwater = GetEntity()->GetPosition().y <= 0.0f;
-                    if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
-                    {
-                        float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec());
-                        Vector3 displacement = m_movement_speed * delta_time * 10.0f;
-                        if (!is_grounded)
-                        {
-                            displacement.y += Physics::GetGravity().y * delta_time;
-                        }
-                        if (is_underwater)
-                        {
-                            // buoyancy and drag
-                            float submerged_height   = -GetEntity()->GetPosition().y;
-                            float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
-                            float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                            Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume) * 2500.0f * delta_time;
-                            displacement            += buoyancy;
-                            // drag (approximated)
-                            Vector3 velocity         = m_movement_speed;
-                            float drag_force         = 0.5f * 1.03f * velocity.LengthSquared() * 0.34f * 200.0f * delta_time;
-                            displacement -= velocity.Normalized() * drag_force;
-                        }
+                m_is_jumping    = true;
+                m_jump_velocity = 15.0f;
+                m_jump_time     = 0.0f;
+            }
+    
+            if (m_is_jumping)
+            {
+                m_jump_time     += delta_time;
+                m_jump_velocity += Physics::GetGravity().y * delta_time;
+            }
+        }
 
-                        m_physics_body_to_control->Move(displacement);
-                        m_is_walking = m_movement_speed.Length() > 0.1f;
-                    }
-                    else
-                    {
-                        if (is_grounded)
-                        {
-                            Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
-                            Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
-                            float force_multiplier = 50.0f;
-                            if (movement_direction.LengthSquared() < 0.1f)
-                            {
-                                force_multiplier *= 8.0f;
-                            }
-                            Vector3 force = (target_velocity - velocity) * force_multiplier;
-                            m_physics_body_to_control->ApplyForce(force, PhysicsForce::Constant);
-                        }
-                        if (is_underwater)
-                        {
-                            float submerged_height   = -GetEntity()->GetPosition().y;
-                            float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
-                            float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                            Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume);
-                            m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
-                            float velocity_y         = m_physics_body_to_control->GetLinearVelocity().y;
-                            float drag_force_y       = 0.5f * 1.03f * velocity_y * velocity_y * 0.34f;
-                            if (velocity_y > 0)
-                            {
-                                drag_force_y = -drag_force_y;
-                            }
-                            m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
-                            Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
-                            m_physics_body_to_control->SetLinearVelocity(Vector3(m_movement_speed.x * 20.0f, velocity.y, m_movement_speed.z * 20.0f));
-                        }
-                    }
-
-                    // jump
-                    {
-                        // initiation
-                        if ((Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South)) && is_grounded && !m_is_jumping)
-                        {
-                            m_is_jumping    = true;
-                            m_jump_velocity = 26.0f; // below 25.0f you start to not beat gravity
-                            m_jump_time     = 0.0f;
-                        }
-                        
-                        // simulation
-                        if (m_is_jumping)
-                        {
-                            float delta_time           = static_cast<float>(Timer::GetDeltaTimeSec());
-                            m_jump_time               += delta_time;
-                            m_jump_velocity           += Physics::GetGravity().y * delta_time;
-                            float jump_displacement_y  = m_jump_velocity * delta_time;
-                            
-                            // move controller
-                            if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
-                            {
-                                Vector3 displacement = m_movement_speed * delta_time * 10.0f;
-                                displacement.y       = jump_displacement_y;
-                                m_physics_body_to_control->Move(displacement);
-                            }
-                            
-                            // end jump when grounded or velocity becomes negative
-                            if (m_physics_body_to_control->RayTraceIsGrounded() && m_jump_velocity < 0.0f)
-                            {
-                                m_is_jumping    = false;
-                                m_jump_velocity = 0.0f;
-                                m_jump_time     = 0.0f;
-                            }
-                        }
-                    }
-                }
-                else
+        // Behavior: Apply Movement
+        if (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && m_is_jumping))
+        {
+            if (has_physics_body && is_playing)
+            {
+                if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
                 {
-                    m_physics_body_to_control->Move(m_movement_speed);
+                    Vector3 displacement = m_movement_speed * delta_time * 10.0f;
+                    if (m_is_jumping)
+                    {
+                        displacement.y = m_jump_velocity * delta_time;
+                    }
+                    else if (!is_grounded)
+                    {
+                        displacement.y += Physics::GetGravity().y * delta_time;
+                    }
+                    if (is_underwater)
+                    {
+                        float submerged_height   = -GetEntity()->GetPosition().y;
+                        float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
+                        float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
+                        Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume) * 2500.0f * delta_time;
+                        displacement             += buoyancy;
+                        Vector3 velocity         = m_movement_speed;
+                        float drag_force         = 0.5f * 1.03f * velocity.LengthSquared() * 0.34f * 200.0f * delta_time;
+                        displacement             -= velocity.Normalized() * drag_force;
+                    }
+                    m_physics_body_to_control->Move(displacement);
+                    m_is_walking = m_movement_speed.Length() > 0.1f;
                 }
+                else if (is_grounded)
+                {
+                    Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
+                    Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
+                    float force_multiplier = 50.0f;
+                    if (movement_direction.LengthSquared() < 0.1f)
+                    {
+                        force_multiplier *= 8.0f;
+                    }
+                    Vector3 force = (target_velocity - velocity) * force_multiplier;
+                    m_physics_body_to_control->ApplyForce(force, PhysicsForce::Constant);
+                }
+                if (is_underwater)
+                {
+                    float submerged_height   = -GetEntity()->GetPosition().y;
+                    float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
+                    float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
+                    Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume);
+                    m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
+                    float velocity_y         = m_physics_body_to_control->GetLinearVelocity().y;
+                    float drag_force_y       = 0.5f * 1.03f * velocity_y * velocity_y * 0.34f;
+                    if (velocity_y > 0)
+                    {
+                        drag_force_y = -drag_force_y;
+                    }
+                    m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
+                    Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
+                    m_physics_body_to_control->SetLinearVelocity(Vector3(m_movement_speed.x * 20.0f, velocity.y, m_movement_speed.z * 20.0f));
+                }
+            }
+            else if (has_physics_body)
+            {
+                m_physics_body_to_control->Move(m_movement_speed);
             }
             else
             {
                 GetEntity()->Translate(m_movement_speed);
             }
+        }
+    
+        // end jump condition
+        if (m_is_jumping && is_grounded && m_jump_velocity < 0.0f)
+        {
+            m_is_jumping    = false;
+            m_jump_velocity = 0.0f;
+            m_jump_time     = 0.0f;
         }
     }
 
