@@ -62,7 +62,6 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction_rolling, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_restitution, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_kinematic, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
@@ -171,14 +170,25 @@ namespace spartan
                 const float distance_camera     = Vector3::Distance(camera_pos, body_pos);
                 const float distance_deactivate = 30.0f;
                 const float distance_activate   = 15.0f;
-
-                if (m_body && distance_camera > distance_deactivate)
+        
+                PxScene* scene            = static_cast<PxScene*>(Physics::GetScene());
+                PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
+        
+                if (m_body && distance_camera > distance_deactivate && m_is_active)
                 {
-                    OnRemove();
+                    scene->removeActor(*rigid_actor);
+                    m_is_active = false;
                 }
-                else if (!m_body && distance_camera <= distance_activate)
+                else if (m_body && distance_camera <= distance_activate && !m_is_active)
                 {
-                    Create();
+                    // update pose to match entity’s current transform
+                    PxTransform pose(
+                        PxVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z),
+                        PxQuat(GetEntity()->GetRotation().x, GetEntity()->GetRotation().y, GetEntity()->GetRotation().z, GetEntity()->GetRotation().w)
+                    );
+                    rigid_actor->setGlobalPose(pose);
+                    scene->addActor(*rigid_actor);
+                    m_is_active = true;
                 }
             }
         }
@@ -190,7 +200,6 @@ namespace spartan
         stream->Write(m_friction);
         stream->Write(m_friction_rolling);
         stream->Write(m_restitution);
-        stream->Write(m_is_kinematic);
         stream->Write(m_position_lock);
         stream->Write(m_rotation_lock);
         stream->Write(uint32_t(m_body_type));
@@ -203,7 +212,6 @@ namespace spartan
         stream->Read(&m_friction);
         stream->Read(&m_friction_rolling);
         stream->Read(&m_restitution);
-        stream->Read(&m_is_kinematic);
         stream->Read(&m_position_lock);
         stream->Read(&m_rotation_lock);
         m_body_type = BodyType(stream->ReadAs<uint32_t>());
@@ -678,7 +686,6 @@ namespace spartan
                     PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
                     PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
                 }
-                rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
                 PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
                 if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
                 if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;

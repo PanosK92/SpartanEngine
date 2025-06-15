@@ -127,7 +127,7 @@ namespace spartan
         float m_friction               = 1.0f;
         float m_friction_rolling       = 0.002f;
         float m_restitution            = 0.2f;
-        bool m_is_kinematic            = false;
+        bool m_is_active               = true;
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
