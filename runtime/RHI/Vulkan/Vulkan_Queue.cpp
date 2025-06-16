@@ -210,7 +210,7 @@ namespace spartan
             {
                 if (Debugging::IsBreadcrumbsEnabled())
                 {
-                    bool flush = true;
+                    bool flush = false; // we don't need to flush and we do, this will call Submit() again, causing stack overflow
                     RHI_Device::QueueWaitAll(flush);
                     RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved();
                 }

@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "PhysicsBody.h"
 #include "Renderable.h"
-#include "Terrain.h"
 #include "Camera.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
@@ -107,12 +106,23 @@ namespace spartan
             // update entity position from controller
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
-                // apply gravity
+                // apply gravity as acceleration
                 float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                PxVec3 displacement(0.0f,  Physics::GetGravity().y * delta_time, 0.0f);
+                m_velocity.y += Physics::GetGravity().y * delta_time; // v += g * dt
+
+                // compute displacement from velocity
+                PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f); // displacement = v * dt
+
+                // move controller
                 PxControllerFilters filters;
                 filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-                static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, delta_time, filters);
+                PxControllerCollisionFlags collision_flags = static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, delta_time, filters);
+
+                // reset vertical velocity if grounded to prevent accumulation
+                if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
+                {
+                    m_velocity.y = 0.0f;
+                }
 
                 // update entity position from controller
                 PxExtendedVec3 pos = static_cast<PxCapsuleController*>(m_controller)->getPosition();
@@ -123,6 +133,7 @@ namespace spartan
                 // update controller position from entity
                 Vector3 entity_pos = GetEntity()->GetPosition();
                 static_cast<PxCapsuleController*>(m_controller)->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
+                m_velocity = Vector3::Zero; // reset velocity when not playing
             }
         }
         else if (PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body))

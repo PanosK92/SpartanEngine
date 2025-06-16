@@ -180,11 +180,10 @@ namespace spartan
         bool m_lerp_to_target_p                      = false;
         bool m_lerp_to_target_r                      = false;
         bool m_is_walking                            = false;
-        bool m_is_jumping                            = false;
         float m_jump_velocity                        = 0.0f;
-        float m_jump_time                            = 0.0f;
         float m_lerp_to_target_alpha                 = 0.0f;
         float m_lerp_to_target_distance              = 0.0f;
+        float m_jump_time                            = 0.0f;
         math::Vector3 m_lerp_to_target_position      = math::Vector3::Zero;
         math::Quaternion m_lerp_to_target_rotation   = math::Quaternion::Identity;
         PhysicsBody* m_physics_body_to_control       = nullptr;

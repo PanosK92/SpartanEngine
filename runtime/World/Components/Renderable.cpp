@@ -42,7 +42,7 @@ namespace spartan
     {
         // partitions instances into grid cells to enable spatial splitting and culling of non-visible chunks during instanced draws
 
-        const uint32_t cell_size = 128; // meters
+        const uint32_t cell_size = 150; // meters
     
         struct GridKey
         {

@@ -1874,7 +1874,7 @@ namespace spartan
             allocation_create_info.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT; // mappable
         }
 
-        // create the buffer
+        // allocate
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
         SP_ASSERT_VK(vmaCreateBuffer(
@@ -1885,24 +1885,25 @@ namespace spartan
                 &allocation,
                 &allocation_info)
         );
+        SP_ASSERT(allocation != nullptr);
 
         // if a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data)
         {
             SP_ASSERT_MSG(is_mappable, "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag");
-
+        
             // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
             // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
             // invalidate the cache before reading a mapped pointer and flush cache after writing to
             // it. Map/unmap operations don't do that automatically.
-
+        
             void* mapped_data = nullptr;
             SP_ASSERT_VK(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data));
             memcpy(mapped_data, data, size);
             SP_ASSERT_VK(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size));
             vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation);
         }
-
+        
         vulkan_memory_allocator::save_allocation(resource, name, allocation);
     }
 

@@ -339,12 +339,14 @@ namespace spartan
     void Camera::Input_FpsControl()
     {
         // parameters
-        static const float max_speed    = 5.0f;
-        static const float acceleration = 1.0f;
-        static const float drag         = 10.0f;
-        float delta_time                = static_cast<float>(Timer::GetDeltaTimeSec());
+        static const float jump_height       = 2.0f;  // target height in meters
+        static const float jump_acceleration = 20.0f; // acceleration to reach height (m/s^2)
+        static const float max_speed         = 5.0f;  // maximum movement speed
+        static const float acceleration      = 1.0f;  // speed increase per second
+        static const float drag              = 10.0f; // speed decrease per second
+        float delta_time                     = static_cast<float>(Timer::GetDeltaTimeSec());
     
-        // deduce all states into booleans (some states exists as part of the class)
+        // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
         bool is_controlled        = GetFlag(CameraFlags::IsControlled);
         bool wants_cursor_hidden  = GetFlag(CameraFlags::WantsCursorHidden);
         bool is_gamepad_connected = Input::IsGamepadConnected();
@@ -507,36 +509,42 @@ namespace spartan
     
         // Behavior: Jumping
         {
-            if (has_physics_body && is_playing && is_grounded && !m_is_jumping && button_jump)
+            if (has_physics_body && is_playing && is_grounded && button_jump)
             {
-                m_is_jumping    = true;
-                m_jump_velocity = 15.0f;
-                m_jump_time     = 0.0f;
+                m_jump_velocity = sqrt(2.0f * jump_acceleration * jump_height); // initial velocity from v^2 = 2*a*h
+                m_jump_time = 0.0f;
             }
-    
-            if (m_is_jumping)
+        
+            if (m_jump_velocity > 0.0f)
             {
-                m_jump_time     += delta_time;
-                m_jump_velocity += Physics::GetGravity().y * delta_time;
+                m_jump_time         += delta_time;
+                float max_jump_time  = m_jump_velocity / jump_acceleration; // time to peak from v = a*t
+                if (m_jump_time <= max_jump_time)
+                {
+                    Vector3 displacement = Vector3(0.0f, m_jump_velocity * delta_time, 0.0f);
+                    m_physics_body_to_control->Move(displacement);
+                }
+                else
+                {
+                    m_jump_velocity = 0.0f; // stop applying upward velocity
+                }
+            }
+        
+            // end jump condition
+            if (is_grounded && m_jump_velocity == 0.0f)
+            {
+                m_jump_time = 0.0f;
             }
         }
-
+        
         // Behavior: Apply Movement
-        if (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && m_is_jumping))
+        if (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && is_grounded))
         {
             if (has_physics_body && is_playing)
             {
                 if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
                 {
                     Vector3 displacement = m_movement_speed * delta_time * 10.0f;
-                    if (m_is_jumping)
-                    {
-                        displacement.y = m_jump_velocity * delta_time;
-                    }
-                    else if (!is_grounded)
-                    {
-                        displacement.y += Physics::GetGravity().y * delta_time;
-                    }
                     if (is_underwater)
                     {
                         float submerged_height   = -GetEntity()->GetPosition().y;
@@ -589,14 +597,6 @@ namespace spartan
             {
                 GetEntity()->Translate(m_movement_speed);
             }
-        }
-    
-        // end jump condition
-        if (m_is_jumping && is_grounded && m_jump_velocity < 0.0f)
-        {
-            m_is_jumping    = false;
-            m_jump_velocity = 0.0f;
-            m_jump_time     = 0.0f;
         }
     }
 

@@ -137,6 +137,7 @@ namespace spartan
         void* m_shape                  = nullptr;
         void* m_body                   = nullptr;
         void* m_controller             = nullptr;
+        math::Vector3 m_velocity       = math::Vector3::Zero;
         std::vector<PhysicsBodyMeshData> m_mesh_data;
     };
 }
