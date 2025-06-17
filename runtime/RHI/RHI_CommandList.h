@@ -189,6 +189,8 @@ namespace spartan
         RHI_PipelineState m_pso;
         std::vector<ImageBarrierInfo> m_image_barriers;
         RHI_Queue* m_queue = nullptr;
+        bool m_load_depth_render_target = false;
+        std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
 
         // rhi resources
         void* m_rhi_resource                       = nullptr;

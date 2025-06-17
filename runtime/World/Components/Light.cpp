@@ -38,6 +38,8 @@ namespace spartan
 {
     namespace
     {
+        const float far_plane = 10'000.0f; // a good max for a 32-bit reverse-z depth buffer
+
         float get_sensible_range(const LightType type)
         {
             if (type == LightType::Directional)
@@ -355,7 +357,6 @@ namespace spartan
     void Light::ComputeViewMatrix()
     {
         const Vector3 position        = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
-        const Vector3 light_direction = -GetEntity()->GetForward(); // light direction
         const uint32_t texture_width  = m_texture_depth ? m_texture_depth->GetWidth() : 0;
     
         if (m_light_type == LightType::Directional)
@@ -369,8 +370,7 @@ namespace spartan
             BoundingBox terrain_bounds = World::GetBoundingBox();
             Vector3 terrain_extents    = terrain_bounds.GetExtents().Abs();
             float max_extent           = terrain_extents.Max();
-            float depth_range          = max_extent;
-            Vector3 position           = camera_pos - (light_direction * depth_range * 0.5f);
+            Vector3 position           = camera_pos - (GetEntity()->GetForward() * far_plane);
             m_matrix_view[0]           = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
             m_matrix_view[1]           = m_matrix_view[0];
     
@@ -410,12 +410,7 @@ namespace spartan
             if (!camera)
                 return;
     
-            Vector3 camera_pos         = camera->GetEntity()->GetPosition();
-            BoundingBox terrain_bounds = World::GetBoundingBox();
-            Vector3 terrain_extents    = terrain_bounds.GetExtents().Abs();
-            float max_extent           = terrain_extents.Max();
-            float far_plane            = max_extent * 2; // full depth
-            float near_plane           = 0.05f;
+            const float near_plane = 0.05f;
 
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
                 -m_shadow_extent_near, m_shadow_extent_near,

@@ -1,7 +1,7 @@
 
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
-<p>Spartan Engine is one of the most advanced one-man game engines out there. It is built for research and experimentation, ideal for industry veterans, not individuals looking to build a game.
+<p>Spartan Engine is one of the most advance one-man game engines out there (it even comes with a podcast). It is built for research and experimentation, ideal for industry veterans, not individuals looking to build a game.
 
 What started as a simple portfolio project helped me learn, land jobs, make friends, and grow my network. Since then, it has evolved beyond anything I imagined, now backed by a thriving Discord community with over 500 members, including seasoned professionals and a dedicated jobs channel.
 

@@ -464,29 +464,29 @@ namespace spartan
     void RHI_CommandList::Begin()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
- 
+     
         // begin command buffer
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
-
+    
         // enable breadcrumbs for this command list
         if (Debugging::IsBreadcrumbsEnabled())
         {
             RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(this, m_queue, m_object_name.c_str());
         }
-
+    
         // set states
         m_state     = RHI_CommandListState::Recording;
         m_pso       = RHI_PipelineState();
         m_cull_mode = RHI_CullMode::Max;
-
+    
         // set dynamic states
         if (m_queue->GetType() == RHI_Queue_Type::Graphics)
         {
             // cull mode
             SetCullMode(RHI_CullMode::Back);
-
+    
             // scissor rectangle
             math::Rectangle scissor_rect;
             scissor_rect.left   = 0.0f;
@@ -495,7 +495,7 @@ namespace spartan
             scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
             SetScissorRectangle(scissor_rect);
         }
-
+    
         // queries
         if (m_queue->GetType() != RHI_Queue_Type::Copy)
         {
@@ -503,7 +503,7 @@ namespace spartan
             {
                 queries::timestamp::update(m_rhi_query_pool_timestamps);
             }
-
+    
             // queries need to be reset before they are first used and they
             // also need to be reset after every use, so we just reset them always
             m_timestamp_index = 0;
@@ -547,6 +547,24 @@ namespace spartan
         pso.Prepare();
         if (m_pso.GetHash() == pso.GetHash())
             return;
+
+        // determine if the new render pass should clear the render targets or not
+        if (m_pso.shaders[RHI_Shader_Type::Vertex] != nullptr && m_pso.shaders[RHI_Shader_Type::Vertex] == pso.shaders[RHI_Shader_Type::Vertex])
+        {
+            m_load_depth_render_target = (pso.render_target_depth_texture == m_pso.render_target_depth_texture);
+            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            {
+                m_load_color_render_targets[i] = (pso.render_target_color_textures[i] == m_pso.render_target_color_textures[i]);
+            }
+        }
+        else
+        {
+            m_load_depth_render_target = false;
+            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            {
+                m_load_color_render_targets[i] = false;
+            }
+        }
 
         // get (or create) a pipeline which matches the requested pipeline state
         m_pso = pso;
@@ -609,10 +627,10 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         RenderPassEnd();
-
+    
         if (!m_pso.IsGraphics())
             return;
-
+    
         VkRenderingInfo rendering_info      = {};
         rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
         rendering_info.renderArea           = { 0, 0, m_pso.GetWidth(), m_pso.GetHeight() };
@@ -621,7 +639,7 @@ namespace spartan
         rendering_info.pColorAttachments    = nullptr;
         rendering_info.pDepthAttachment     = nullptr;
         rendering_info.pStencilAttachment   = nullptr;
-
+    
         // color attachments
         vector<VkRenderingAttachmentInfo> attachments_color;
         {
@@ -631,16 +649,16 @@ namespace spartan
             {
                 // transition to the appropriate layout
                 InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Attachment);
-
+    
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                 color_attachment.imageView                 = static_cast<VkImageView>(swapchain->GetRhiRtv());
                 color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(RHI_Image_Layout::Attachment)];
                 color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
-
+    
                 SP_ASSERT(color_attachment.imageView != nullptr);
-
+    
                 attachments_color.push_back(color_attachment);
             }
             else // regular render target(s)
@@ -648,32 +666,33 @@ namespace spartan
                 for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                 {
                     RHI_Texture* rt = m_pso.render_target_color_textures[i];
-
+    
                     if (rt == nullptr)
                         break;
-
+    
                     SP_ASSERT_MSG(rt->IsRtv(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
-
+    
                     // transition to the appropriate layout
                     rt->SetLayout(RHI_Image_Layout::Attachment, this);
-
+    
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                     color_attachment.imageView                 = static_cast<VkImageView>(rt->GetRhiRtv(m_pso.render_target_array_index));
                     color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-                    color_attachment.loadOp                    = get_color_load_op(m_pso.clear_color[i]);
+                    // use load if this render target was already used in this command list
+                    color_attachment.loadOp                    = m_load_color_render_targets[i] ? VK_ATTACHMENT_LOAD_OP_LOAD : get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
                     color_attachment.clearValue.color          = { m_pso.clear_color[i].r, m_pso.clear_color[i].g, m_pso.clear_color[i].b, m_pso.clear_color[i].a };
-
+    
                     SP_ASSERT(color_attachment.imageView != nullptr);
-
+    
                     attachments_color.push_back(color_attachment);
                 }
             }
             rendering_info.colorAttachmentCount = static_cast<uint32_t>(attachments_color.size());
             rendering_info.pColorAttachments    = attachments_color.data();
         }
-
+    
         // depth-stencil attachment
         VkRenderingAttachmentInfoKHR attachment_depth_stencil = {};
         if (m_pso.render_target_depth_texture != nullptr)
@@ -684,21 +703,22 @@ namespace spartan
                 SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
             }
             SP_ASSERT(rt->IsDsv());
-
+    
             // transition to the appropriate layout
             RHI_Image_Layout layout = RHI_Image_Layout::Attachment;
             rt->SetLayout(layout, this);
-
+    
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
             attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_array_index));
             attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-            attachment_depth_stencil.loadOp                          = get_depth_load_op(m_pso.clear_depth);
+            // use load if this depth render target was already used in this command list and draw calls were made
+            attachment_depth_stencil.loadOp                          = m_load_depth_render_target ? VK_ATTACHMENT_LOAD_OP_LOAD : get_depth_load_op(m_pso.clear_depth);
             attachment_depth_stencil.storeOp                         = m_pso.depth_stencil_state->GetDepthWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_NONE;
             attachment_depth_stencil.clearValue.depthStencil.depth   = m_pso.clear_depth;
             attachment_depth_stencil.clearValue.depthStencil.stencil = m_pso.clear_stencil;
-
+    
             rendering_info.pDepthAttachment = &attachment_depth_stencil;
-
+    
             // we are using the combined depth-stencil approach
             // this means we can assign the depth attachment as the stencil attachment
             if (m_pso.render_target_depth_texture->IsStencilFormat())
@@ -706,30 +726,30 @@ namespace spartan
                 rendering_info.pStencilAttachment = rendering_info.pDepthAttachment;
             }
         }
-
+    
         // variable rate shading
         VkRenderingFragmentShadingRateAttachmentInfoKHR attachment_shading_rate = {};
         if (m_pso.vrs_input_texture)
         {
             m_pso.vrs_input_texture->SetLayout(RHI_Image_Layout::Shading_Rate_Attachment, this);
-
+    
             attachment_shading_rate.sType                          = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR;
             attachment_shading_rate.imageView                      = static_cast<VkImageView>(m_pso.vrs_input_texture->GetRhiRtv());
             attachment_shading_rate.imageLayout                    = vulkan_image_layout[static_cast<uint8_t>(m_pso.vrs_input_texture->GetLayout(0))];
             attachment_shading_rate.shadingRateAttachmentTexelSize = { RHI_Device::PropertyGetMaxShadingRateTexelSizeX(), RHI_Device::PropertyGetMaxShadingRateTexelSizeY() };
-
+    
             rendering_info.pNext = &attachment_shading_rate;
         }
-
+    
         // begin dynamic render pass
         InsertPendingBarrierGroup();
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
-
+    
         // set dynamic states
         {
             // variable rate shading
             RHI_Device::SetVariableRateShading(this, m_pso.vrs_input_texture != nullptr);
-
+    
             // set viewport
             RHI_Viewport viewport = RHI_Viewport(
                 0.0f, 0.0f,
@@ -738,7 +758,14 @@ namespace spartan
             );
             SetViewport(viewport);
         }
-
+    
+        // update current render targets
+        m_load_depth_render_target = false;
+        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+        {
+            m_load_color_render_targets[i] = false;
+        }
+    
         m_render_pass_active     = true;
         m_render_pass_draw_calls = 0;
     }
@@ -747,7 +774,7 @@ namespace spartan
     {
         if (!m_render_pass_active)
             return;
-
+    
         vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
         m_render_pass_active = false;
         SP_ASSERT_MSG(m_render_pass_draw_calls != 0, "No draw calls were made within the render pass, this wastes GPU resources");

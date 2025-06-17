@@ -193,7 +193,7 @@ namespace spartan
             pso.clear_depth                      = 0.0f;
 
             // constants
-            constexpr size_t MAX_LIGHTS = 64;
+            constexpr size_t MAX_LIGHTS      = 64;
             constexpr size_t MAX_RENDERABLES = 1024;
     
             // track which lights need updates and their visible renderables
@@ -275,9 +275,9 @@ namespace spartan
                     }
 
                     bool is_dirty = light->GetFlag(LightFlags::ShadowDirty);
-                    is_dirty      = entity->GetTimeSinceLastTransform() <= 0.25f                                       ? true : is_dirty;
+                    is_dirty      = entity->GetTimeSinceLastTransform() <= 0.25f                                   ? true : is_dirty;
                     is_dirty      = renderable->GetMaterial()->GetProperty(MaterialProperty::WindAnimation) > 0.0f ? true : is_dirty;
-                    is_dirty      = light->GetLightType() == LightType::Directional                                    ? true : is_dirty;
+                    is_dirty      = light->GetLightType() == LightType::Directional                                ? true : is_dirty;
                     if (affects_light && is_dirty)
                     {
                         current_lights       |= (1ULL << light_index);
