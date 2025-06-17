@@ -104,8 +104,6 @@ namespace spartan::geometry_processing
                     locked_count++;
                 }
             }
-            SP_LOG_INFO("locked %zu vertices on tile boundaries (min_x=%.3f, max_x=%.3f, min_z=%.3f, max_z=%.3f)",
-                        locked_count, min_x, max_x, min_z, max_z);
         }
     
         // simplification loop up to error = 1.0
