@@ -38,8 +38,6 @@ namespace spartan
 {
     namespace
     {
-        const float far_plane = 10'000.0f; // a good max for a 32-bit reverse-z depth buffer
-
         float get_sensible_range(const LightType type)
         {
             if (type == LightType::Directional)
@@ -365,20 +363,17 @@ namespace spartan
             if (!camera)
                 return;
     
-            // both near and far planes follow the camera
-            Vector3 camera_pos         = camera->GetEntity()->GetPosition();
-            BoundingBox terrain_bounds = World::GetBoundingBox();
-            Vector3 terrain_extents    = terrain_bounds.GetExtents().Abs();
-            float max_extent           = terrain_extents.Max();
-            Vector3 position           = camera_pos - (GetEntity()->GetForward() * far_plane);
-            m_matrix_view[0]           = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
-            m_matrix_view[1]           = m_matrix_view[0];
+            // both near and far cascades  follow the camera
+            Vector3 camera_pos = camera->GetEntity()->GetPosition();
+            Vector3 position   = camera_pos - GetEntity()->GetForward();
+            m_matrix_view[0]   = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
+            m_matrix_view[1]   = m_matrix_view[0];
     
             // compute shadow extents inline
             if (texture_width > 0)
             {
-                m_shadow_extent_near = max_extent * 0.1f * 0.5f; // near: 10% coverage, half-extent
-                m_shadow_extent_far  = max_extent * 0.4f * 0.5f; // far:  40% coverage, half-extent
+                m_shadow_extent_near = 50.0f;  // fixed 20 meters half-extent
+                m_shadow_extent_far  = 500.0f; // fixed 200 meters half-extent
     
                 float extents[2] = { m_shadow_extent_near, m_shadow_extent_far };
     
@@ -409,23 +404,23 @@ namespace spartan
             Camera* camera = World::GetCamera();
             if (!camera)
                 return;
-    
-            const float near_plane = 0.05f;
+
+            const float cascade_depth = 1'000.0f;
 
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -m_shadow_extent_near, m_shadow_extent_near,
-                -m_shadow_extent_near, m_shadow_extent_near,
-                near_plane, far_plane
+                -m_shadow_extent_near, m_shadow_extent_near, // left, right
+                -m_shadow_extent_near, m_shadow_extent_near, // bottom, top,
+                -cascade_depth * 0.5f, cascade_depth * 0.5f  // near, far
             );
 
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
                 -m_shadow_extent_far, m_shadow_extent_far,
                 -m_shadow_extent_far, m_shadow_extent_far,
-                near_plane, far_plane
+                -cascade_depth * 0.5f, cascade_depth * 0.5f
             );
 
-            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], far_plane - near_plane);
-            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], far_plane - near_plane);
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], cascade_depth);
+            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], cascade_depth);
         }
         else if (m_light_type == LightType::Spot)
         {

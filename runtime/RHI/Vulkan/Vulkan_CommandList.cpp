@@ -549,7 +549,7 @@ namespace spartan
             return;
 
         // determine if the new render pass should clear the render targets or not
-        if (m_pso.shaders[RHI_Shader_Type::Vertex] != nullptr && m_pso.shaders[RHI_Shader_Type::Vertex] == pso.shaders[RHI_Shader_Type::Vertex])
+        if ((m_pso.shaders[RHI_Shader_Type::Vertex] != nullptr && m_pso.shaders[RHI_Shader_Type::Vertex] == pso.shaders[RHI_Shader_Type::Vertex]) && m_pso.render_target_array_index == pso.render_target_array_index)
         {
             m_load_depth_render_target = (pso.render_target_depth_texture == m_pso.render_target_depth_texture);
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
@@ -679,7 +679,6 @@ namespace spartan
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                     color_attachment.imageView                 = static_cast<VkImageView>(rt->GetRhiRtv(m_pso.render_target_array_index));
                     color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-                    // use load if this render target was already used in this command list
                     color_attachment.loadOp                    = m_load_color_render_targets[i] ? VK_ATTACHMENT_LOAD_OP_LOAD : get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
                     color_attachment.clearValue.color          = { m_pso.clear_color[i].r, m_pso.clear_color[i].g, m_pso.clear_color[i].b, m_pso.clear_color[i].a };
@@ -711,7 +710,6 @@ namespace spartan
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
             attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_array_index));
             attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-            // use load if this depth render target was already used in this command list and draw calls were made
             attachment_depth_stencil.loadOp                          = m_load_depth_render_target ? VK_ATTACHMENT_LOAD_OP_LOAD : get_depth_load_op(m_pso.clear_depth);
             attachment_depth_stencil.storeOp                         = m_pso.depth_stencil_state->GetDepthWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_NONE;
             attachment_depth_stencil.clearValue.depthStencil.depth   = m_pso.clear_depth;
@@ -759,13 +757,12 @@ namespace spartan
             SetViewport(viewport);
         }
     
-        // update current render targets
+        // reset
         m_load_depth_render_target = false;
         for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
         {
             m_load_color_render_targets[i] = false;
         }
-    
         m_render_pass_active     = true;
         m_render_pass_draw_calls = 0;
     }
