@@ -490,11 +490,9 @@ namespace
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("World selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    const char* prompt_text  = "Select the world you would like to load and click \"Ok\"";
-                    const char* warning_text = "Warning: These worlds use evolving tech, performance and stability may not match that of a polished 300-person studio game.";
-                    
-                    ImGui::Text(prompt_text);
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), warning_text);
+                    ImGui::Text("Select the world you would like to load and click \"Ok\"");
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Note for non-devs: This is an active dev branch, updated daily with experimental features. It's not necessarily");
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "stable or QA-tested like a full game. Think of it as a live tech demo focused on stability, not a published game.");
             
                     // calculate maximum width of world names and text strings
                     float max_width = 0.0f;
@@ -503,8 +501,8 @@ namespace
                         ImVec2 size = ImGui::CalcTextSize(name);
                         max_width   = max(max_width, size.x);
                     }
-                    max_width = max(max_width, ImGui::CalcTextSize(prompt_text).x);
-                    max_width = max(max_width, ImGui::CalcTextSize(warning_text).x);
+                    //max_width = max(max_width, ImGui::CalcTextSize(prompt_text).x);
+                    //max_width = max(max_width, ImGui::CalcTextSize(warning_text).x);
             
                     // add padding for list box frame and scrollbar
                     float padding         = ImGui::GetStyle().FramePadding.x * 2;
