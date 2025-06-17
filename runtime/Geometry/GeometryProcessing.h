@@ -49,13 +49,14 @@ namespace spartan::geometry_processing
         registered = true;
     }
 
-    static void simplify(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t target_index_count)
+    // simplify geometry
+    static void simplify(std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices, size_t target_index_count, const bool preserve_edges)
     {
         register_meshoptimizer();
     
         // starting parameters
-        float error                   = 0.01f; // initial error tolerance
-        size_t index_count            = indices.size();
+        float error = 0.01f; // initial error tolerance
+        size_t index_count = indices.size();
         size_t current_triangle_count = index_count / 3;
     
         // early exit if target is already met
@@ -69,6 +70,44 @@ namespace spartan::geometry_processing
         // temporary buffer for simplified indices
         std::vector<uint32_t> indices_simplified(index_count);
     
+        // vertex lock array for preserving perimeter vertices
+        std::vector<unsigned char> vertex_locks;
+        size_t vertex_count = vertices.size();
+        if (preserve_edges)
+        {
+            vertex_locks.resize(vertex_count, 0); // 0 = unlocked, 1 = locked
+    
+            // compute tile bounding box
+            float min_x = std::numeric_limits<float>::max();
+            float max_x = std::numeric_limits<float>::lowest();
+            float min_z = std::numeric_limits<float>::max();
+            float max_z = std::numeric_limits<float>::lowest();
+            for (const auto& vertex : vertices)
+            {
+                min_x = std::min(min_x, vertex.pos[0]);
+                max_x = std::max(max_x, vertex.pos[0]);
+                min_z = std::min(min_z, vertex.pos[2]);
+                max_z = std::max(max_z, vertex.pos[2]);
+            }
+    
+            // lock vertices near bounding box edges
+            const float edge_tolerance = 0.01f; // adjust based on terrain scale
+            size_t locked_count = 0;
+            for (size_t i = 0; i < vertex_count; ++i)
+            {
+                float x = vertices[i].pos[0];
+                float z = vertices[i].pos[2];
+                if (std::abs(x - min_x) < edge_tolerance || std::abs(x - max_x) < edge_tolerance ||
+                    std::abs(z - min_z) < edge_tolerance || std::abs(z - max_z) < edge_tolerance)
+                {
+                    vertex_locks[i] = 1; // lock vertex on tile boundary
+                    locked_count++;
+                }
+            }
+            SP_LOG_INFO("locked %zu vertices on tile boundaries (min_x=%.3f, max_x=%.3f, min_z=%.3f, max_z=%.3f)",
+                        locked_count, min_x, max_x, min_z, max_z);
+        }
+    
         // simplification loop up to error = 1.0
         float lod_error = 0.0f;
         while (current_triangle_count > (target_index_count / 3) && error <= 1.0f)
@@ -76,18 +115,44 @@ namespace spartan::geometry_processing
             if (target_index_count < 3)
                 break;
     
-            size_t index_count_new = meshopt_simplify(
-                indices_simplified.data(),              // destination for simplified indices
-                indices.data(),                         // source indices
-                index_count,                            // current index count
-                &vertices[0].pos[0],                    // vertex position data
-                static_cast<uint32_t>(vertices.size()), // vertex count
-                sizeof(RHI_Vertex_PosTexNorTan),        // vertex stride
-                target_index_count,                     // desired index count
-                error,                                  // error tolerance
-                0,                                      // options (default)
-                &lod_error                              // output error
-            );
+            size_t index_count_new = 0;
+            if (preserve_edges && !vertex_locks.empty() && std::count(vertex_locks.begin(), vertex_locks.end(), 1) > 0)
+            {
+                // use meshopt_simplifyWithAttributes to respect locked vertices
+                index_count_new = meshopt_simplifyWithAttributes(
+                    indices_simplified.data(),              // destination for simplified indices
+                    indices.data(),                         // source indices
+                    index_count,                            // current index count
+                    &vertices[0].pos[0],                    // vertex position data
+                    vertex_count,                           // vertex count
+                    sizeof(RHI_Vertex_PosTexNorTan),        // vertex stride
+                    nullptr,                                // vertex attributes (none)
+                    0,                                      // vertex attributes stride
+                    nullptr,                                // attribute weights (none)
+                    0,                                      // attribute count
+                    vertex_locks.data(),                    // vertex lock array
+                    target_index_count,                     // desired index count
+                    error,                                  // error tolerance
+                    0,                                      // options (default)
+                    &lod_error                              // output error
+                );
+            }
+            else
+            {
+                // standard simplification without locks
+                index_count_new = meshopt_simplify(
+                    indices_simplified.data(),              // destination for simplified indices
+                    indices.data(),                         // source indices
+                    index_count,                            // current index count
+                    &vertices[0].pos[0],                    // vertex position data
+                    vertex_count,                           // vertex count
+                    sizeof(RHI_Vertex_PosTexNorTan),        // vertex stride
+                    target_index_count,                     // desired index count
+                    error,                                  // error tolerance
+                    0,                                      // options (default)
+                    &lod_error                              // output error
+                );
+            }
     
             // update indices and triangle count
             index_count = index_count_new;
@@ -98,15 +163,16 @@ namespace spartan::geometry_processing
             error += 0.1f;
         }
     
-        // second attempt: use meshopt_simplifySloppy with fallback if indices become zero
-        if (current_triangle_count > (target_index_count / 3))
+        // second attempt: use meshopt_simplifySloppy if needed
+        // note: meshopt_simplifySloppy does not support vertex locking, so skip if preserve_edges is true
+        if (current_triangle_count > (target_index_count / 3) && !preserve_edges)
         {
             if (target_index_count >= 3)
             {
-                float target_error     = FLT_MAX;
+                float target_error = FLT_MAX;
                 size_t index_count_new = 0;
-                
-                // Keep trying with reduced aggressiveness until we get valid indices
+    
+                // keep trying with reduced aggressiveness until we get valid indices
                 do
                 {
                     index_count_new = meshopt_simplifySloppy(
@@ -114,23 +180,23 @@ namespace spartan::geometry_processing
                         indices.data(),
                         index_count,
                         &vertices[0].pos[0],
-                        static_cast<uint32_t>(vertices.size()),
+                        vertex_count,
                         sizeof(RHI_Vertex_PosTexNorTan),
                         target_index_count,
                         target_error,
                         &lod_error
                     );
-                    
+    
                     // if we got zero indices, reduce the error and try again
                     if (index_count_new == 0)
                         target_error *= 0.5f; // reduce error
-                    
+    
                     // stop if error becomes too small to be practical
                     if (target_error < 0.1f)
                         break;
-                    
+    
                 } while (index_count_new == 0);
-                
+    
                 // only update if we got valid indices
                 if (index_count_new > 0)
                 {
@@ -204,7 +270,7 @@ namespace spartan::geometry_processing
                 return index_count; // native
             };
         
-            simplify(indices, vertices, get_target_index_count(indices.size()));
+            simplify(indices, vertices, get_target_index_count(indices.size()), false);
         }
     }
 

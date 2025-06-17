@@ -307,7 +307,8 @@ namespace spartan
                     size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_indices.size() * target_fraction));
             
                     // simplify geometry
-                    geometry_processing::simplify(lod_indices, lod_vertices, target_index_count);
+                    bool preserve_edges = m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges);
+                    geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_edges);
             
                     // check if simplification reduced the index count; if not, stop
                     if (lod_indices.size() >= prev_indices.size())
