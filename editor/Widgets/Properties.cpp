@@ -865,8 +865,6 @@ void Properties::ShowCamera(Camera* camera) const
         float shutter_speed                    = camera->GetShutterSpeed();
         float iso                              = camera->GetIso();
         float fov                              = camera->GetFovHorizontalDeg();
-        float near_plane                       = camera->GetNearPlane();
-        float far_plane                        = camera->GetFarPlane();
         bool first_person_control_enabled      = camera->GetFlag(CameraFlags::CanBeControlled);
         //================================================================================
 
@@ -904,23 +902,16 @@ void Properties::ShowCamera(Camera* camera) const
         ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("Field of View", &fov, 0.1f, 1.0f, 179.0f);
 
-        // Clipping Planes
-        ImGui::Text("Clipping Planes");
-        ImGui::SameLine(column_pos_x);      ImGui::InputFloat("Near", &near_plane, 0.01f, 0.01f, "%.2f", input_text_flags);
-        ImGui::SetCursorPosX(column_pos_x); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags);
-
         // FPS Control
         ImGui::Text("First Person Control");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
  
         //= MAP =======================================================================================================================================================
-        if (aperture != camera->GetAperture())                             camera->SetAperture(aperture);
-        if (shutter_speed != camera->GetShutterSpeed())                    camera->SetShutterSpeed(shutter_speed);
-        if (iso != camera->GetIso())                                       camera->SetIso(iso);
-        if (fov != camera->GetFovHorizontalDeg())                          camera->SetFovHorizontalDeg(fov);
-        if (near_plane != camera->GetNearPlane())                          camera->SetNearPlane(near_plane);
-        if (far_plane != camera->GetFarPlane())                            camera->SetFarPlane(far_plane);
+        if (aperture != camera->GetAperture())          camera->SetAperture(aperture);
+        if (shutter_speed != camera->GetShutterSpeed()) camera->SetShutterSpeed(shutter_speed);
+        if (iso != camera->GetIso())                    camera->SetIso(iso);
+        if (fov != camera->GetFovHorizontalDeg())       camera->SetFovHorizontalDeg(fov);
         if (first_person_control_enabled != camera->GetFlag(CameraFlags::CanBeControlled)) camera->SetFlag(CameraFlags::CanBeControlled, first_person_control_enabled);
         //=============================================================================================================================================================
     }

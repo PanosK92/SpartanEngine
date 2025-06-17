@@ -98,23 +98,6 @@ namespace spartan
         ComputeMatrices();
     }
 
-    void Camera::SetNearPlane(const float near_plane)
-    {
-        float near_plane_limited = max(near_plane, 0.01f);
-
-        if (m_near_plane != near_plane_limited)
-        {
-            m_near_plane = near_plane_limited;
-            SetFlag(CameraFlags::IsDirty, true);
-        }
-    }
-
-    void Camera::SetFarPlane(const float far_plane)
-    {
-        m_far_plane = far_plane;
-        SetFlag(CameraFlags::IsDirty, true);
-    }
-
     void Camera::SetProjection(const ProjectionType projection)
     {
         m_projection_type = projection;

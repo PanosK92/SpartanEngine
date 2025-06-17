@@ -80,7 +80,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         light_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density * sky_color;
 
         // volumetric
-        light_atmospheric += tex6.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;; // already uses sky color
+        light_atmospheric += tex6.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb; // already uses sky color
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend

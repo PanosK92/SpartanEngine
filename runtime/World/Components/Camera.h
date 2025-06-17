@@ -112,15 +112,13 @@ namespace spartan
             float base_exposure = 1.0f / (std::pow(2.0f, ev100));
 
             // the base exposure is very low for bright conditions
-            // so we apply an aristic bias here, to make it look right
+            // so we apply an artistic bias here, to make it look right
             float exposure_bias = 600.0f;
 
             return base_exposure * exposure_bias;
         }
 
         // planes/projection
-        void SetNearPlane(float near_plane);
-        void SetFarPlane(float far_plane);
         void SetProjection(ProjectionType projection);
         float GetNearPlane()               const { return m_near_plane; }
         float GetFarPlane()                const { return m_far_plane; }
@@ -163,7 +161,7 @@ namespace spartan
         float m_iso                                  = 200.0f;        // sensitivity to light
         float m_fov_horizontal_rad                   = 90.0f * math::deg_to_rad;
         float m_near_plane                           = 0.1f;
-        float m_far_plane                            = 4000.0f;
+        float m_far_plane                            = 10'000.0f; // a good maximum for a 32 bit reverse-z depth buffer
         ProjectionType m_projection_type             = Projection_Perspective;
         math::Matrix m_view                          = math::Matrix::Identity;
         math::Matrix m_projection                    = math::Matrix::Identity;
