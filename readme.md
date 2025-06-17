@@ -1,14 +1,13 @@
 
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
-<p>Spartan Engine is one of the most advanced one-man game engines out there, it even comes with a [podcast](https://www.youtube.com/@panos_karabelas). It is built for research and experimentation, ideal for industry veterans, not individuals looking to build a game.
+<p>Spartan Engine is one of the most advanced one-man game engines out there, it even comes with a <a href="https://www.youtube.com/@panos_karabelas">podcast</a>. It is built for research and experimentation, ideal for industry veterans, not individuals looking to build a game.</p>
 
-What started as a simple portfolio project helped me learn, land jobs, make friends, and grow my network. Since then, it has evolved beyond anything I imagined, now backed by a thriving Discord community with over 500 members, including seasoned professionals and a dedicated jobs channel.
+<p>What started as a simple portfolio project helped me learn, land jobs, make friends, and grow my network. Since then, it has evolved beyond anything I imagined, now backed by a thriving Discord community with over 500 members, including seasoned professionals and a dedicated jobs channel.</p>
 
-You can benefit from this project the same way I did. That is why there are incredible [contribution perks](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor) to help you get started, grow your skills, and build something meaningful. The most capable and ambitious contributors will get direct support from me to reach their potential.
+<p>You can benefit from this project the same way I did. That is why there are incredible <a href="https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor">contribution perks</a> to help you get started, grow your skills, and build something meaningful. The most capable and ambitious contributors will get direct support from me to reach their potential.</p>
 
-This project now serves an altruistic purpose. It exists to give back, enable others, and push the limits of what is possible.
-</p>
+<p>This project now serves an altruistic purpose. It exists to give back, enable others, and push the limits of what is possible.</p>
 
 - <img align="left" width="32" src="https://i.pinimg.com/736x/99/65/5e/99655e9fe24eb0a7ea38de683cedb735.jpg"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">X</a>.
   
