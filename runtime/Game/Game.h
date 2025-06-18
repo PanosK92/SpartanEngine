@@ -29,7 +29,6 @@ namespace spartan
         LiminalSpace,
         GranTurismo,
         Sponza,
-        Bistro,
         Subway,
         Doom,
         Minecraft,

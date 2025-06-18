@@ -801,79 +801,6 @@ namespace spartan
             }
         }
 
-        void create_bistro()
-        {
-             entities::camera(Vector3(5.2739f, 1.6343f, 8.2956f), Vector3(0.0f, -180.0f, 0.0f));
-             entities::sun(false);
-             entities::music();
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroExterior.fbx"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("bistro_exterior");
-                entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                entity->SetScale(Vector3(1.0f, 1.0f, 1.0f));
-
-                // disable door (so we can go through)
-                entity->GetDescendantByName("dOORS_2")->SetActive(false);
-                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4825")->SetActive(false);
-                // disable the glass windows as the interior also has them
-                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_4873")->SetActive(false);
-
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (entity_it->GetActive())
-                    {
-                        if (Renderable* renderable = entity_it->GetComponent<Renderable>())
-                        {
-                            PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                            physics_body->SetBodyType(BodyType::Mesh);
-                        }
-                    }
-                }
-            }
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\Bistro_v5_2\\BistroInterior.fbx"))
-            {
-                shared_ptr<Entity> light = World::CreateEntity();
-                light->SetObjectName("light_point");
-                light->SetPositionLocal(Vector3(2.2f, 4.0f, 3.2f));
-                light->AddComponent<Light>()->SetFlag(LightFlags::Volumetric, false);
-                light->GetComponent<Light>()->SetLightType(LightType::Point);
-                light->GetComponent<Light>()->SetRange(120.0f);
-                light->GetComponent<Light>()->SetIntensity(LightIntensity::bulb_500_watt);
-                light->GetComponent<Light>()->SetTemperature(4000.0f); // a bit white, what the emissive textures seem to try to emulate
-
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("bistro_interior");
-                entity->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                entity->SetScale(Vector3(1.6f, 1.6f, 1.6f)); // interior has a different scale (for some reason)
-
-                // disable door (so we can go through)
-                entity->GetDescendantByName("Bistro_Research_Exterior_Paris_Building_01_paris_building_01_bottom_121")->SetActive(false);
-
-                // remove color and normal textures from the tablecloth material as they are empty/corrupted
-                Material* material = entity->GetDescendantByName("Bistro_Research_Interior_Cotton_Placemat_1276")->GetComponent<Renderable>()->GetMaterial();
-                material->SetTexture(MaterialTextureType::Color, nullptr);
-                material->SetTexture(MaterialTextureType::Normal, nullptr);
-
-                // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
-                    {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
-                        physics_body->SetBodyType(BodyType::Mesh);
-                    }
-                }
-            }
-        }
-
         void create_minecraft()
         {
              entities::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
@@ -1840,7 +1767,6 @@ namespace spartan
             {
                 case DefaultWorld::Forest:       worlds::forest::create();        break;
                 case DefaultWorld::Doom:         worlds::create_doom_e1m1();      break;
-                case DefaultWorld::Bistro:       worlds::create_bistro();         break;
                 case DefaultWorld::Minecraft:    worlds::create_minecraft();      break;
                 case DefaultWorld::Sponza:       worlds::create_sponza_4k();      break;
                 case DefaultWorld::Subway:       worlds::create_subway_gi_test(); break;

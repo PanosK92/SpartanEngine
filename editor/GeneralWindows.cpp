@@ -421,10 +421,9 @@ namespace
             "2. Liminal Space (shifts your frequency to a nearby reality) - light",
             "3. Showroom (Gran Turismo 7 brand central) - light",
             "4. Sponza 4k (high-resolution textures & meshes) - demanding",
-            "5. Bistro interior & exterior (excessive draw calls) - demanding",
-            "6. Subway (gi test, no lights, only emissive textures) - moderate",
-            "7. Doom E1M1 (classic level recreation) - light",
-            "8. Minecraft (blocky aesthetic) - light"
+            "5. Subway (gi test, no lights, only emissive textures) - moderate",
+            "6. Doom E1M1 (classic level recreation) - light",
+            "7. Minecraft (blocky aesthetic) - light"
         };
 
         int world_index = 0;
