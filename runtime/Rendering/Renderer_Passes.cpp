@@ -191,111 +191,12 @@ namespace spartan
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
             pso.clear_depth                      = 0.0f;
-
-            // constants
-            constexpr size_t MAX_LIGHTS      = 64;
-            constexpr size_t MAX_RENDERABLES = 1024;
-    
-            // track which lights need updates and their visible renderables
-            static array<bool, MAX_LIGHTS> update_shadow_map = { false };
-            static array<array<Entity*, MAX_RENDERABLES>, MAX_LIGHTS * 6> visible_renderables_per_cascade = { nullptr }; // 6 for max cascades/faces (e.g., point light cubemap)
-            static array<array<size_t, MAX_LIGHTS>, 6> visible_counts = { 0 }; // count per cascade per light
-    
-            // reset arrays
-            fill(update_shadow_map.begin(), update_shadow_map.end(), false);
-            for (size_t i = 0; i < MAX_LIGHTS * 6; ++i)
-            {
-                fill(visible_renderables_per_cascade[i].begin(), visible_renderables_per_cascade[i].end(), nullptr);
-            }
-            fill(visible_counts.begin(), visible_counts.end(), array<size_t, MAX_LIGHTS>{0});
-    
-            // get light entities
-            const auto& light_entities = World::GetEntitiesLights();
-            size_t light_count = min(light_entities.size(), MAX_LIGHTS);
-    
-            // single loop to compute updates and collect renderables
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
-            {
-                if (!entity->GetActive())
-                    continue;
-    
-                Renderable* renderable = entity->GetComponent<Renderable>();
-                if (!renderable || !renderable->HasFlag(RenderableFlags::CastsShadows))
-                    continue;
-    
-                Material* material = renderable->GetMaterial();
-                if (!material || material->IsTransparent())
-                    continue;
-    
-                uint64_t current_lights = 0;
-                uint32_t light_index    = 0;
-    
-                // check each light
-                for (size_t i = 0; i < light_count && i < light_entities.size(); ++i)
-                {
-                    Light* light = light_entities[i]->GetComponent<Light>();
-                    if (!light->GetFlag(LightFlags::Shadows))
-                        continue;
-    
-                    uint32_t depth = light->GetDepthTexture()->GetDepth();
-                    bool affects_light = false;
-    
-                    // check visibility per cascade/face
-                    for (uint32_t array_index = 0; array_index < depth; ++array_index)
-                    {
-                        bool is_visible = false;
-                        if (renderable->HasInstancing())
-                        {
-                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); ++group_index)
-                            {
-                                if (light->IsInViewFrustum(renderable, array_index, group_index))
-                                {
-                                    is_visible = true;
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (light->IsInViewFrustum(renderable, array_index))
-                            {
-                                is_visible = true;
-                            }
-                        }
-    
-                        if (is_visible)
-                        {
-                            affects_light       = true;
-                            size_t cascade_slot = i * 6 + array_index; // unique slot for light and cascade
-                            if (visible_counts[array_index][i] < MAX_RENDERABLES)
-                            {
-                                visible_renderables_per_cascade[cascade_slot][visible_counts[array_index][i]++] = entity.get();
-                            }
-                        }
-                    }
-
-                    bool is_dirty = light->GetFlag(LightFlags::ShadowDirty);
-                    is_dirty      = entity->GetTimeSinceLastTransform() <= 0.25f                                   ? true : is_dirty;
-                    is_dirty      = renderable->GetMaterial()->GetProperty(MaterialProperty::WindAnimation) > 0.0f ? true : is_dirty;
-                    is_dirty      = light->GetLightType() == LightType::Directional                                ? true : is_dirty;
-                    if (affects_light && is_dirty)
-                    {
-                        current_lights       |= (1ULL << light_index);
-                        update_shadow_map[i]  = true;
-                        light->SetFlag(LightFlags::ShadowDirty, false);
-                    }
-    
-                    light_index++;
-                }
-    
-                renderable->SetPreviousLights(current_lights);
-            }
-    
+          
             // render shadow maps using cached renderables
-            for (size_t i = 0; i < light_count && i < light_entities.size(); ++i)
+            for (const shared_ptr<Entity>& entity_light : World::GetEntitiesLights())
             {
-                Light* light = light_entities[i]->GetComponent<Light>();
-                if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f || !update_shadow_map[i])
+                Light* light = entity_light->GetComponent<Light>();
+                if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                     continue;
     
                 // set light-specific pso properties
@@ -307,22 +208,17 @@ namespace spartan
                 {
                     pso.render_target_array_index = array_index;
 
-                    // use cached renderables
-                    size_t cascade_slot       = i * 6 + array_index;
-                    size_t visible_count      = visible_counts[array_index][i];
-                    auto& visible_renderables = visible_renderables_per_cascade[cascade_slot];
-                    if (visible_count == 0)
-                        continue;
-    
                     // render cached renderables
-                    for (size_t j = 0; j < visible_count; ++j)
+                    for (shared_ptr<Entity> entity : World::GetEntities())
                     {
-                        Entity* entity         = visible_renderables[j];
                         Renderable* renderable = entity->GetComponent<Renderable>();
-                        Material* material     = renderable->GetMaterial();
+                        if (!renderable)
+                            continue;
+
+                        Material* material = renderable->GetMaterial();
                         if (!material || material->IsTransparent())
                             continue;
-    
+
                         // set per-renderable states
                         cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                         if (light->GetLightType() == LightType::Directional && array_index > 0)

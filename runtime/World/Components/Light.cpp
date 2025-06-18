@@ -363,9 +363,9 @@ namespace spartan
             if (!camera)
                 return;
     
-            // both near and far cascades  follow the camera
+            // both near and far cascades follow the camera
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
-            Vector3 position   = camera_pos - GetEntity()->GetForward();
+            Vector3 position   = camera_pos + GetEntity()->GetForward();
             m_matrix_view[0]   = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
             m_matrix_view[1]   = m_matrix_view[0];
     
