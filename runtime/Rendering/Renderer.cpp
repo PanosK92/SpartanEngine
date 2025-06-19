@@ -1081,43 +1081,42 @@ namespace spartan
                         {
                             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
-                                if (renderable->IsVisible(group_index))
-                                {
-                                    uint32_t instance_index        = renderable->GetInstanceGroupStartIndex(group_index);
-                                    uint32_t instance_count        = renderable->GetInstanceGroupCount(group_index);
-                                    uint32_t total_instance_count  = renderable->GetInstanceCount();
-                                    instance_count                 = min(instance_count, total_instance_count - instance_index);
-                                    RHI_Buffer* buffer             = renderable->GetInstanceBuffer();
-                                    uint32_t buffer_instance_count = buffer ? buffer->GetElementCount() : 0;
-
-                                    // validate draw call (critical as anything wrong can cause GPU crashes)
-                                    SP_ASSERT_MSG(instance_index < total_instance_count,                    "instance start index exceeds total instance count");
-                                    SP_ASSERT_MSG(instance_count > 0,                                       "instance count is zero after clamping");
-                                    SP_ASSERT_MSG(instance_index + instance_count <= total_instance_count,  "instance range exceeds total instance count");
-                                    SP_ASSERT_MSG(instance_index < buffer_instance_count,                   "instance start index exceeds instance buffer capacity");
-                                    SP_ASSERT_MSG(instance_index + instance_count <= buffer_instance_count, "instance range exceeds instance buffer capacity");
-
-                                    if (instance_count == 0)
-                                        continue;
-
-                                    Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
-                                    draw_call.renderable           = renderable;
-                                    draw_call.instance_group_index = group_index;
-                                    draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                                    draw_call.instance_index       = instance_index;
-                                    draw_call.instance_count       = instance_count;
-                                    draw_call.lod_index            = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
-                                    draw_call.is_occluder          = false;
-                                }
+                                uint32_t instance_index        = renderable->GetInstanceGroupStartIndex(group_index);
+                                uint32_t instance_count        = renderable->GetInstanceGroupCount(group_index);
+                                uint32_t total_instance_count  = renderable->GetInstanceCount();
+                                instance_count                 = min(instance_count, total_instance_count - instance_index);
+                                RHI_Buffer* buffer             = renderable->GetInstanceBuffer();
+                                uint32_t buffer_instance_count = buffer ? buffer->GetElementCount() : 0;
+                                
+                                // validate draw call (critical as anything wrong can cause GPU crashes)
+                                SP_ASSERT_MSG(instance_index < total_instance_count,                    "instance start index exceeds total instance count");
+                                SP_ASSERT_MSG(instance_count > 0,                                       "instance count is zero after clamping");
+                                SP_ASSERT_MSG(instance_index + instance_count <= total_instance_count,  "instance range exceeds total instance count");
+                                SP_ASSERT_MSG(instance_index < buffer_instance_count,                   "instance start index exceeds instance buffer capacity");
+                                SP_ASSERT_MSG(instance_index + instance_count <= buffer_instance_count, "instance range exceeds instance buffer capacity");
+                                
+                                if (instance_count == 0)
+                                    continue;
+                                
+                                Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
+                                draw_call.renderable           = renderable;
+                                draw_call.instance_group_index = group_index;
+                                draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
+                                draw_call.instance_index       = instance_index;
+                                draw_call.instance_count       = instance_count;
+                                draw_call.lod_index            = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+                                draw_call.is_occluder          = false;
+                                draw_call.camera_visible       = renderable->IsVisible(group_index);
                             }
                         }
-                        else if (renderable->IsVisible())
+                        else
                         {
                             Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
                             draw_call.renderable         = renderable;
                             draw_call.distance_squared   = renderable->GetDistanceSquared();
                             draw_call.lod_index          = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
                             draw_call.is_occluder        = false;
+                            draw_call.camera_visible     = renderable->IsVisible();
                         }
                     }
                 }
@@ -1187,7 +1186,7 @@ namespace spartan
             
                     // skip any draw calls that have a mesh that you can see through (transparent, instanced, non-solid)
                     bool is_solid = material->GetProperty(MaterialProperty::IsTerrain) || renderable->IsSolid(); // IsSolid() is still unreliable for some meshes, like terrain, temp hack
-                    if (!material || material->IsTransparent() || renderable->HasInstancing() || !is_solid)
+                    if (!material || material->IsTransparent() || renderable->HasInstancing() || !is_solid || !draw_call.camera_visible)
                         continue;
             
                     // get bounding box

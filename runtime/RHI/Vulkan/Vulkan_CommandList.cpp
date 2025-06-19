@@ -774,7 +774,7 @@ namespace spartan
     
         vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
         m_render_pass_active = false;
-        SP_ASSERT_MSG(m_render_pass_draw_calls != 0, "No draw calls were made within the render pass, this wastes GPU resources");
+        //SP_ASSERT_MSG(m_render_pass_draw_calls != 0, "No draw calls were made within the render pass, this wastes GPU resources");
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)

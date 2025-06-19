@@ -315,5 +315,6 @@ namespace spartan
         uint32_t lod_index;            // level of detail index for the mesh
         float distance_squared;        // distance for sorting or other purposes
         bool is_occluder;              // is this draw call an occluder
+        bool camera_visible;           // is this draw call visible to the camera
     };
 }

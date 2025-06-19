@@ -182,16 +182,16 @@ namespace spartan
         if (World::GetLightCount() == 0)
             return;
 
-        cmd_list->BeginTimeblock("shadow_maps");
+        // define base pipeline state
+        RHI_PipelineState pso;
+        pso.name                             = "shadow_maps";
+        pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_light_v);
+        pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
+        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+        pso.clear_depth                      = 0.0f;
+
+        cmd_list->BeginTimeblock(pso.name);
         {
-            // define base pipeline state
-            RHI_PipelineState pso;
-            pso.name                             = "shadow_maps";
-            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_light_v);
-            pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-            pso.clear_depth                      = 0.0f;
-          
             // render shadow maps using cached renderables
             for (const shared_ptr<Entity>& entity_light : World::GetEntitiesLights())
             {
@@ -209,28 +209,28 @@ namespace spartan
                     pso.render_target_array_index = array_index;
 
                     // render cached renderables
-                    for (shared_ptr<Entity> entity : World::GetEntities())
+                    for (uint32_t i = 0; i < m_draw_call_count; i++)
                     {
-                        Renderable* renderable = entity->GetComponent<Renderable>();
-                        if (!renderable)
-                            continue;
-
-                        Material* material = renderable->GetMaterial();
+                        const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                        Renderable* renderable             = draw_call.renderable;
+                        Material* material                 = renderable->GetMaterial();
                         if (!material || material->IsTransparent())
                             continue;
 
-                        // set per-renderable states
-                        cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                        if (light->GetLightType() == LightType::Directional && array_index > 0)
+                        // set pso
                         {
-                            pso.shaders[RHI_Shader_Type::Pixel] = nullptr; // no pixel shader for directional light cascades beyond index 0
+                            cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                            if (light->GetLightType() == LightType::Directional && array_index > 0)
+                            {
+                                pso.shaders[RHI_Shader_Type::Pixel] = nullptr; // no pixel shader for directional light cascades beyond index 0
+                            }
+                            else
+                            {
+                                pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
+                            }
+                            cmd_list->SetPipelineState(pso);
                         }
-                        else
-                        {
-                            pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
-                        }
-                        cmd_list->SetPipelineState(pso);
-    
+
                         // set push constants
                         m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
                         m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
@@ -238,41 +238,31 @@ namespace spartan
                         m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                         cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                        // set buffers
-                        cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
-                        cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
                         // draw
-                        if (renderable->HasInstancing())
                         {
-                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
+                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
+                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                            if (renderable->HasInstancing())
                             {
-                                uint32_t instance_index = renderable->GetInstanceGroupStartIndex(group_index);
-                                uint32_t instance_count = renderable->GetInstanceGroupCount(group_index);
-                                instance_count          = min(instance_count, renderable->GetInstanceCount() - instance_index);
-                                if (instance_count == 0)
-                                    continue;
-                                
-                                uint32_t lod_index = renderable->GetLodCount() - 1;
-                                
+                                SP_ASSERT(draw_call.instance_count < renderable->GetInstanceBuffer()->GetElementCount());
+
                                 cmd_list->DrawIndexed(
-                                    renderable->GetIndexCount(lod_index),
-                                    renderable->GetIndexOffset(lod_index),
-                                    renderable->GetVertexOffset(lod_index),
-                                    instance_index,
-                                    instance_count
+                                    renderable->GetIndexCount(draw_call.lod_index),
+                                    renderable->GetIndexOffset(draw_call.lod_index),
+                                    renderable->GetVertexOffset(draw_call.lod_index),
+                                    draw_call.instance_index,
+                                    draw_call.instance_count
                                 );
                             }
-                        }
-                        else
-                        {
-                            uint32_t lod_index = renderable->GetLodCount() - 1;
-    
-                            cmd_list->DrawIndexed(
-                                renderable->GetIndexCount(lod_index),
-                                renderable->GetIndexOffset(lod_index),
-                                renderable->GetVertexOffset(lod_index)
-                            );
+                            else
+                            {
+                                cmd_list->DrawIndexed(
+                                    renderable->GetIndexCount(draw_call.lod_index),
+                                    renderable->GetIndexOffset(draw_call.lod_index),
+                                    renderable->GetVertexOffset(draw_call.lod_index)
+                                );
+                            }
                         }
                     }
                 }
@@ -409,7 +399,7 @@ namespace spartan
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
                 Renderable* renderable             = draw_call.renderable;
                 Material* material                 = renderable->GetMaterial();
-                if (!material || material->IsTransparent() || !renderable->IsVisible(draw_call.instance_group_index))
+                if (!material || material->IsTransparent() || !draw_call.camera_visible)
                     continue;
     
                 // toggles
@@ -526,7 +516,7 @@ namespace spartan
             const Renderer_DrawCall& draw_call = m_draw_calls[i];
             Renderable* renderable             = draw_call.renderable;
             Material* material                 = renderable->GetMaterial();
-            if (!material || material->IsTransparent() != is_transparent_pass || !renderable->IsVisible(draw_call.instance_group_index))
+            if (!material || material->IsTransparent() != is_transparent_pass || !renderable->IsVisible(draw_call.instance_group_index) || !draw_call.camera_visible)
                 continue;
     
             // toggles
@@ -874,7 +864,7 @@ namespace spartan
                     // push constants
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
                     bool clear = light_count == 0;
-                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(i), clear, light->GetScreenSpaceShadowsSliceIndex());
+                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(i), clear, static_cast<float>(light->GetScreenSpaceShadowsSliceIndex()));
                     m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), static_cast<float>(tex_skysphere->GetMipCount()));
                     cmd_list->PushConstants(m_pcb_pass_cpu);
     
