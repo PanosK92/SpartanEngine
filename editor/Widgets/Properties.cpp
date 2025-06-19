@@ -216,7 +216,7 @@ void Properties::ShowEntity(shared_ptr<Entity> entity) const
         Vector3 scale       = entity->GetScaleLocal();
         //===============================================
 
-        // convert current rotation to Euler angles for display
+        // convert current rotation to euler angles for display
         static Vector3 last_frame_euler = rotation.ToEulerAngles();
         Vector3 current_euler           = last_frame_euler;
 

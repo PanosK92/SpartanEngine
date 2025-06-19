@@ -774,10 +774,6 @@ namespace spartan
                         break;
                     }
 
-                    // imported meshes lack duplicate vertices, but engine-generated meshes like cubes may have them to ensure unique
-                    // normals for flat shading, avoiding normal interpolation. We remove duplicates here to meet PhysX requirements
-                    geometry_processing::remove_duplicate_vertices(vertices, indices);
-
                     // convert vertices to physx format
                     vector<PxVec3> px_vertices;
                     px_vertices.reserve(vertices.size());
@@ -794,30 +790,27 @@ namespace spartan
                 
                     // cooking parameters
                     PxTolerancesScale scale;
-                    scale.length = 1.0f;                    // 1 unit = 1 meter
-                    scale.speed  = Physics::GetGravity().y; // gravity is in meters per second
+                    scale.length                          = 1.0f;                    // 1 unit = 1 meter
+                    scale.speed                           = Physics::GetGravity().y; // gravity is in meters per second
                     PxCookingParams params(scale);
-                    params.meshPreprocessParams           = PxMeshPreprocessingFlags(PxMeshPreprocessingFlag::eWELD_VERTICES);
-                    params.meshWeldTolerance              = 0.01f;  // merge vertices within 1cm
-                    params.meshAreaMinLimit               = 0.01f;  // remove very small triangles
-                    params.meshEdgeLengthMaxLimit         = 500.0f; // warn about large edges
+                    params.areaTestEpsilon                = 0.06f * scale.length * scale.length;
+                    params.planeTolerance                 = 0.0007f;
                     params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;
-                    params.buildGPUData                   = false;
                     params.suppressTriangleMeshRemapTable = false;
                     params.buildTriangleAdjacencies       = false;
+                    params.buildGPUData                   = false;
+                    params.meshPreprocessParams           = PxMeshPreprocessingFlags(0);
+                    params.meshWeldTolerance              = 0.0f;
+                    params.meshAreaMinLimit               = 0.0f;
+                    params.meshEdgeLengthMaxLimit         = 500.0f;
+                    params.gaussMapLimit                  = 32;
+                    params.maxWeightRatioInTet            = FLT_MAX;
                 
                     // create physx mesh
                     PxShape* shape = nullptr;
                     PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
                     if (m_mass == 0.0f) // static: triangle mesh
                     {
-                        // ensure indices are in groups of 3 for triangles
-                        if (indices.size() % 3 != 0)
-                        {
-                            SP_LOG_ERROR("Index count must be a multiple of 3 for triangle mesh");
-                            break;
-                        }
-                
                         // create triangle mesh description
                         PxTriangleMeshDesc mesh_desc = {};
                         mesh_desc.points.count       = static_cast<PxU32>(px_vertices.size());
@@ -826,22 +819,20 @@ namespace spartan
                         mesh_desc.triangles.count    = static_cast<PxU32>(indices.size() / 3);
                         mesh_desc.triangles.stride   = 3 * sizeof(PxU32);
                         mesh_desc.triangles.data     = indices.data();
-                
-                        // validate triangle mesh
+
+                        // validate
                         if (!PxValidateTriangleMesh(params, mesh_desc))
                         {
-                            SP_LOG_ERROR("Triangle mesh validation failed");
-                            break;
+                           SP_LOG_WARNING("Triangle mesh validation failed, the mesh is suboptimal so it will be skipped to ensure high performance");
+                           break;
                         }
-                
+
                         // create triangle mesh
                         PxTriangleMeshCookingResult::Enum condition;
                         PxTriangleMesh* triangle_mesh = PxCreateTriangleMesh(params, mesh_desc, *insertion_callback, &condition);
-                        if (!triangle_mesh || condition != PxTriangleMeshCookingResult::eSUCCESS)
+                        if (condition != PxTriangleMeshCookingResult::eSUCCESS)
                         {
                             SP_LOG_ERROR("Failed to create triangle mesh: %d", condition);
-                            if (triangle_mesh)
-                                triangle_mesh->release();
                             break;
                         }
                 
@@ -858,14 +849,14 @@ namespace spartan
                         mesh_desc.points.stride = sizeof(PxVec3);
                         mesh_desc.points.data   = px_vertices.data();
                         mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
-                
-                        // validate convex mesh
+                       
+                        // validate
                         if (!PxValidateConvexMesh(params, mesh_desc))
                         {
-                            SP_LOG_ERROR("Convex mesh validation failed");
+                            SP_LOG_WARNING("Triangle mesh validation failed, the mesh is suboptimal so it will be skipped to ensure high performance");
                             break;
                         }
-                
+
                         // create convex mesh
                         PxConvexMeshCookingResult::Enum condition;
                         PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
@@ -907,11 +898,7 @@ namespace spartan
                 shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                 rigid_actor->attachShape(*shape);
             }
-            else
-            {
-                SP_LOG_ERROR("failed to create shape for type %d", m_body_type);
-            }
-            
+
             // release material
             material->release();
         }

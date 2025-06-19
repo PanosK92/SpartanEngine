@@ -293,7 +293,7 @@ namespace ImGuiSp
     static void draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
         static const uint32_t screen_edge_padding = 10;
-        static bool needs_to_wrap                 = false;
+        bool needs_to_wrap                        = false;
         ImGuiIO& imgui_io                         = ImGui::GetIO();
 
         // wrap
@@ -324,11 +324,9 @@ namespace ImGuiSp
 
                 // prevent delta from being huge by invalidating the previous position
                 imgui_io.MousePosPrev = ImVec2(-FLT_MAX, -FLT_MAX);
-
-                needs_to_wrap = false;
             }
         }
-
+        
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
         ImGui::PopID();
@@ -378,19 +376,17 @@ namespace ImGuiSp
             const float label_float_spacing = 15.0f * spartan::Window::GetDpiScale();
             const float step                = 0.01f;
 
-            // Label
+            // label
             ImGui::TextUnformatted(axis.x == 1.0f ? "X" : axis.y == 1.0f ? "Y" : "Z");
             ImGui::SameLine(label_float_spacing);
             spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
 
-            // Float
+            // float
             ImGui::PushItemWidth(128.0f);
-            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
             ImGuiSp::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
-            ImGui::PopID();
             ImGui::PopItemWidth();
 
-            // Axis color
+            // axis color
             static const ImU32 color_x                 = IM_COL32(168, 46, 2, 255);
             static const ImU32 color_y                 = IM_COL32(112, 162, 22, 255);
             static const ImU32 color_z                 = IM_COL32(51, 122, 210, 255);
