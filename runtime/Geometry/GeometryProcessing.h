@@ -23,8 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include <vector>
-#include <array>
-#include <functional>
 #include "../RHI/RHI_Vertex.h"
 #include "../Core/ThreadPool.h"
 SP_WARNINGS_OFF

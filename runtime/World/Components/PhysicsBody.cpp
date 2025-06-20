@@ -82,7 +82,7 @@ namespace spartan
         if (m_body)
         {
             PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
-
+    
             // detach shape if it exists
             if (m_shape)
             {
@@ -91,10 +91,15 @@ namespace spartan
                 shape->release();
                 m_shape = nullptr;
             }
-
-            // remove and release body
-            scene->removeActor(*static_cast<PxRigidActor*>(m_body));
-            static_cast<PxRigidActor*>(m_body)->release();
+    
+            // check if actor is in the scene before trying to remove
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_body);
+            if (actor->getScene())
+            {
+                scene->removeActor(*actor);
+            }
+    
+            actor->release();
             m_body = nullptr;
         }
     }
@@ -763,7 +768,7 @@ namespace spartan
                         break;
                     }
                 
-                    // get geometry from Renderable
+                    // get geometry
                     vector<uint32_t> indices;
                     vector<RHI_Vertex_PosTexNorTan> vertices;
                     renderable->GetGeometry(&indices, &vertices);
@@ -773,6 +778,10 @@ namespace spartan
                         SP_LOG_ERROR("Empty vertex or index data for mesh shape");
                         break;
                     }
+
+                    // simplify geometry
+                    size_t target_index_count = 1024;
+                    geometry_processing::simplify(indices, vertices, target_index_count, false);
 
                     // convert vertices to physx format
                     vector<PxVec3> px_vertices;
@@ -790,21 +799,21 @@ namespace spartan
                 
                     // cooking parameters
                     PxTolerancesScale scale;
-                    scale.length                          = 1.0f;                    // 1 unit = 1 meter
-                    scale.speed                           = Physics::GetGravity().y; // gravity is in meters per second
-                    PxCookingParams params(scale);
-                    params.areaTestEpsilon                = 0.06f * scale.length * scale.length;
-                    params.planeTolerance                 = 0.0007f;
-                    params.convexMeshCookingType          = PxConvexMeshCookingType::eQUICKHULL;
-                    params.suppressTriangleMeshRemapTable = false;
-                    params.buildTriangleAdjacencies       = false;
-                    params.buildGPUData                   = false;
-                    params.meshPreprocessParams           = PxMeshPreprocessingFlags(0);
-                    params.meshWeldTolerance              = 0.0f;
-                    params.meshAreaMinLimit               = 0.0f;
-                    params.meshEdgeLengthMaxLimit         = 500.0f;
-                    params.gaussMapLimit                  = 32;
-                    params.maxWeightRatioInTet            = FLT_MAX;
+                    scale.length                           = 1.0f;                    // 1 unit = 1 meter
+                    scale.speed                            = Physics::GetGravity().y; // gravity is in meters per second
+                    PxCookingParams params(scale);         
+                    params.areaTestEpsilon                 = 0.06f * scale.length * scale.length;
+                    params.planeTolerance                  = 0.0007f;
+                    params.convexMeshCookingType           = PxConvexMeshCookingType::eQUICKHULL;
+                    params.suppressTriangleMeshRemapTable  = false;
+                    params.buildTriangleAdjacencies        = false;
+                    params.buildGPUData                    = false;
+                    params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+                    params.meshWeldTolerance               = 0.001f;
+                    params.meshAreaMinLimit                = 0.0f;
+                    params.meshEdgeLengthMaxLimit          = 500.0f;
+                    params.gaussMapLimit                   = 32;
+                    params.maxWeightRatioInTet             = FLT_MAX;
                 
                     // create physx mesh
                     PxShape* shape = nullptr;
