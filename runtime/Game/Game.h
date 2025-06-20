@@ -41,5 +41,6 @@ namespace spartan
         static void Shutdown();
         static void Tick();
         static void Load(DefaultWorld default_world);
+        static DefaultWorld GetLoadedWorld();
     };
 }

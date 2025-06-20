@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
+#include "../Game/Game.h"#
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 #include "../RHI/RHI_OpenImageDenoise.h"
@@ -96,7 +97,10 @@ namespace spartan
                 //Pass_Occlusion(cmd_list_graphics_secondary);
                 Pass_Depth_Prepass(cmd_list_present);
                 Pass_GBuffer(cmd_list_present, is_transparent);
-                Pass_ShadowMaps(cmd_list_present);
+                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // temp till I fix the GPU crash
+                { 
+                    Pass_ShadowMaps(cmd_list_present);
+                }
                 Pass_Skysphere(cmd_list_present);
                 Pass_ScreenSpaceShadows(cmd_list_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_present);

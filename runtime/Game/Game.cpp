@@ -1780,4 +1780,9 @@ namespace spartan
 
         loaded_world = default_world;
     }
+
+    DefaultWorld Game::GetLoadedWorld()
+    {
+        return loaded_world;
+    }
 }

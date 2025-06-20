@@ -337,6 +337,7 @@ namespace spartan
         bool has_physics_body     = m_physics_body_to_control != nullptr;
         bool is_grounded          = has_physics_body ? m_physics_body_to_control->RayTraceIsGrounded() : false;
         bool is_underwater        = GetEntity()->GetPosition().y <= 0.0f;
+        m_is_walking              = false;
 
         // input mapping
         bool button_move_forward    = Input::GetKey(KeyCode::W);
@@ -540,7 +541,7 @@ namespace spartan
                         displacement             -= velocity.Normalized() * drag_force;
                     }
                     m_physics_body_to_control->Move(displacement);
-                    m_is_walking = m_movement_speed.Length() > 0.1f;
+                    m_is_walking = m_movement_speed.Length() > 0.1f && is_grounded;
                 }
                 else if (is_grounded)
                 {
