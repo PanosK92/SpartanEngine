@@ -130,6 +130,7 @@ function solution_configuration()
         -- platforms
         if os.target() == "windows" then
             platforms { "windows" }
+            toolset "v143" -- visual studio 2022 compiler
         elseif os.target() == "linux" then
             platforms { "linux" }
         end

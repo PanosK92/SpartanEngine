@@ -4,9 +4,9 @@
 #define GitVersion 0x0
 #define GitBranch ""
 
-#define VER_MAJOR 5
-#define VER_MINOR 4
-#define VER_PATCH 3
+#define VER_MAJOR 6
+#define VER_MINOR 0
+#define VER_PATCH 2
 #define VER_BUILD 0
 
 #define STR_HELP(x) #x
