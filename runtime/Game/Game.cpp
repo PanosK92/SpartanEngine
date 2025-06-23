@@ -940,8 +940,8 @@ namespace spartan
                         // set properties
                         material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain,      1.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingX, 800.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY, 800.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX, 2000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY, 2000.0f);
 
                         // set textures
                         material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\ground\\albedo.png",    0);

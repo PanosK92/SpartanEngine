@@ -1,1 +1,1 @@
-The Assimp 6.0.1 Bugfix Release
+The Assimp 6.0.2

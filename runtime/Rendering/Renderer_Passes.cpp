@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
-#include "../Game/Game.h"#
+#include "../Game/Game.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 #include "../RHI/RHI_OpenImageDenoise.h"
