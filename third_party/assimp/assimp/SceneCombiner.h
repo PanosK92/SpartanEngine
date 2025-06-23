@@ -2,7 +2,8 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2025, assimp team
+Copyright (c) 2006-2024, assimp team
+
 
 All rights reserved.
 
@@ -189,11 +190,12 @@ struct SceneHelper {
  * and loaders (ie. LWS).
  */
 class ASSIMP_API SceneCombiner {
-public:
     // class cannot be instanced
     SceneCombiner() = delete;
+
     ~SceneCombiner() = delete;
 
+public:
     // -------------------------------------------------------------------
     /** Merges two or more scenes.
      *
@@ -273,8 +275,8 @@ public:
     /** Builds a list of uniquely named bones in a mesh list
      *
      *  @param asBones Receives the output list
-     *  @param it      First mesh to be processed
-     *  @param end     Last mesh to be processed
+     *  @param it First mesh to be processed
+     *  @param end Last mesh to be processed
      */
     static void BuildUniqueBoneList(std::list<BoneWithHash> &asBones,
             std::vector<aiMesh *>::const_iterator it,
@@ -283,9 +285,9 @@ public:
     // -------------------------------------------------------------------
     /** Add a name prefix to all nodes in a scene.
      *
-     *  @param node   Current node. This function is called recursively.
+     *  @param Current node. This function is called recursively.
      *  @param prefix Prefix to be added to all nodes
-     *  @param len    String length
+     *  @param len STring length
      */
     static void AddNodePrefixes(aiNode *node, const char *prefix,
             unsigned int len);
@@ -293,7 +295,7 @@ public:
     // -------------------------------------------------------------------
     /** Add an offset to all mesh indices in a node graph
      *
-     *  @param node   Current node. This function is called recursively.
+     *  @param Current node. This function is called recursively.
      *  @param offset Offset to be added to all mesh indices
      */
     static void OffsetNodeMeshIndices(aiNode *node, unsigned int offset);
@@ -308,7 +310,7 @@ public:
      *    the master graph), a scene is attached to the root of the master
      *    graph (as an additional child node)
      *  @duplicates List of duplicates. If elem[n] == n the scene is not
-     *    a duplicate. Otherwise, elem[n] links scene n to its first occurrence.
+     *    a duplicate. Otherwise elem[n] links scene n to its first occurrence.
      */
     static void AttachToGraph(aiScene *master,
             std::vector<NodeAttachmentInfo> &srcList);
@@ -319,9 +321,8 @@ public:
     // -------------------------------------------------------------------
     /** Get a deep copy of a scene
      *
-     *  @param dest     Receives a pointer to the destination scene
-     *  @param source   Source scene - remains unmodified.
-     *  @param allocate true for allocation a new scene
+     *  @param dest Receives a pointer to the destination scene
+     *  @param src Source scene - remains unmodified.
      */
     static void CopyScene(aiScene **dest, const aiScene *source, bool allocate = true);
 
