@@ -123,7 +123,7 @@ end
 function solution_configuration()
     solution (SOLUTION_NAME)
         location ".." -- generate in root directory
-        systemversion "latest"
+        systemversion "10.0.26100.0" -- windows SDK
         language "C++"
         configurations { "debug", "release" }
 
