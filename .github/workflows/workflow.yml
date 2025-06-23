@@ -32,7 +32,7 @@ jobs:
           - api: d3d12
             configuration: Release
 
-    runs-on: "windows-latest"
+    runs-on: windows-2022
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
@@ -83,7 +83,7 @@ jobs:
 
   release:
     if: github.event_name != 'pull_request'
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: write
@@ -140,7 +140,7 @@ jobs:
             return releaseNotes;
 
       - name: Publish release
-        uses: "marvinpinto/action-automatic-releases@latest"
+        uses: marvinpinto/action-automatic-releases@latest
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "${{ steps.get_datetime.outputs.version }}"
