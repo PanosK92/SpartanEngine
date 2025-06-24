@@ -45,6 +45,14 @@ jobs:
 
       - name: Install Python dependencies
         run: python -m pip install requests tqdm
+        
+      - name: Setup MSBuild / Visual Studio Environment
+        uses: microsoft/setup-msbuild@v1
+        with:
+          vs-version: '17.9.5'  # explicitly define VS version
+
+      - name: Show MSVC version (for debugging)
+        run: cl
 
       - name: Generate project files
         shell: python
