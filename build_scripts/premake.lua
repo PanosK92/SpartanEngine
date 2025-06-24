@@ -329,13 +329,14 @@ function editor_project_configuration()
         -- Libraries
         libdirs (LIBRARY_DIR)
 
+        -- explicitly link static C++ runtime (libcpmt/libcpmtd to resolve Assimp STL internals like __std_find_first_of_trivial_pos_1
+
         -- "Release"
         filter "configurations:release"
             targetname ( EXECUTABLE_NAME )
             targetdir (TARGET_DIR)
             debugdir (TARGET_DIR)
-            links { "freetype" }
-            links { "SDL3" }
+            links { "freetype", "SDL3", "libcpmt" }
 
         -- "Debug"
         filter "configurations:debug"
@@ -343,11 +344,9 @@ function editor_project_configuration()
             targetdir (TARGET_DIR)
             debugdir (TARGET_DIR)
             if os.target() == "windows" then
-                links { "freetype_debug" }
-                links { "SDL3_debug" }
+                links { "freetype_debug", "SDL3_debug", "libcpmtd" }
             else
-                links { "freetype" }
-                links { "SDL3" }
+                links { "freetype", "SDL3" }
             end
 end
 

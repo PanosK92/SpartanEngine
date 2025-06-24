@@ -654,8 +654,8 @@ namespace spartan
                 params.suppressTriangleMeshRemapTable  = false;
                 params.buildTriangleAdjacencies        = false;
                 params.buildGPUData                    = false;
-                params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-                params.meshWeldTolerance               = 0.001f;
+                //params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+                //params.meshWeldTolerance               = 0.001f;
                 params.meshAreaMinLimit                = 0.0f;
                 params.meshEdgeLengthMaxLimit          = 500.0f;
                 params.gaussMapLimit                   = 32;
