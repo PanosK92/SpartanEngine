@@ -132,7 +132,7 @@ namespace spartan
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
         math::Vector3 m_velocity       = math::Vector3::Zero;
-        BodyType m_body_type           = BodyType::Mesh;
+        BodyType m_body_type           = BodyType::Max;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
         void* m_shape                  = nullptr;
