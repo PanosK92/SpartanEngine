@@ -175,9 +175,6 @@ function runtime_project_configuration()
         end
         staticruntime "On"
         defines { API_CPP_DEFINE  }
-        if os.target() == "windows" then
-            conformancemode "On"
-        end
 
         -- Source
         files {
@@ -291,9 +288,6 @@ function editor_project_configuration()
         kind "WindowedApp"
         staticruntime "On"
         defines{ API_CPP_DEFINE }
-        if os.target() == "windows" then
-            conformancemode "On"
-        end
 
         -- Files
         if os.target() == "windows" then
@@ -329,14 +323,12 @@ function editor_project_configuration()
         -- Libraries
         libdirs (LIBRARY_DIR)
 
-        -- explicitly link static C++ runtime (libcpmt/libcpmtd to resolve Assimp STL internals like __std_find_first_of_trivial_pos_1
-
         -- "Release"
         filter "configurations:release"
             targetname ( EXECUTABLE_NAME )
             targetdir (TARGET_DIR)
             debugdir (TARGET_DIR)
-            links { "freetype", "SDL3", "libcpmt" }
+            links { "freetype", "SDL3" }
 
         -- "Debug"
         filter "configurations:debug"
@@ -344,7 +336,7 @@ function editor_project_configuration()
             targetdir (TARGET_DIR)
             debugdir (TARGET_DIR)
             if os.target() == "windows" then
-                links { "freetype_debug", "SDL3_debug", "libcpmtd" }
+                links { "freetype_debug", "SDL3_debug" }
             else
                 links { "freetype", "SDL3" }
             end
