@@ -181,7 +181,7 @@ namespace spartan
         }
         else if (Renderer::GetOption<bool>(Renderer_Option::Physics))
         {
-            const PxRenderBuffer& rb = scene->getRenderBuffer(); // accessing while thesimulation is running can result in undefined behavior
+            const PxRenderBuffer& rb = scene->getRenderBuffer(); // accessing while the simulation is running can result in undefined behavior
             for (PxU32 i = 0; i < rb.getNbLines(); i++)
             {
                 const PxDebugLine& line = rb.getLines()[i];

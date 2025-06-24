@@ -147,72 +147,81 @@ namespace spartan
             const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
             bool has_instances                    = !instances.empty();
 
-            for (size_t i = 0; i < m_bodies.size(); i++)
+            if (!renderable->HasInstancing()) // temp fix as things seem to break for instanced bodies
             {
-                PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]);
+                for (size_t i = 0; i < m_bodies.size(); i++)
+                {
+                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]);
 
-                if (Engine::IsFlagSet(EngineMode::Playing))
-                {
-                    PxTransform pose = actor->getGlobalPose();
-                    math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                    if (has_instances && renderable && i < instances.size())
+                    if (Engine::IsFlagSet(EngineMode::Playing))
                     {
-                        renderable->SetInstance(static_cast<uint32_t>(i), transform);
-                    }
-                    else if (i == 0)
-                    {
-                        GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                        GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                    }
-                }
-                else
-                {
-                    math::Matrix transform;
-                    if (has_instances && i < instances.size())
-                    {
-                        transform = instances[i];
-                    }
-                    else if (i == 0)
-                    {
-                        transform = GetEntity()->GetMatrix();
+                        PxTransform pose = actor->getGlobalPose();
+                        math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                        if (has_instances && renderable && i < instances.size())
+                        {
+                            renderable->SetInstance(static_cast<uint32_t>(i), transform);
+                        }
+                        else if (i == 0)
+                        {
+                            GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
+                            GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                        }
                     }
                     else
                     {
-                        continue;
-                    }
-                    PxTransform pose(
-                        PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                        PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                    );
-                    actor->setGlobalPose(pose);
-                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
-                    {
-                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
-                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                        math::Matrix transform;
+                        if (has_instances && i < instances.size())
+                        {
+                            transform = instances[i];
+                        }
+                        else if (i == 0)
+                        {
+                            transform = GetEntity()->GetMatrix();
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                        PxTransform pose(
+                            PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                            PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
+                        );
+                        actor->setGlobalPose(pose);
+                        if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+                        {
+                            dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                            dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                        }
                     }
                 }
             }
 
-            // distance-based management for static bodies
+            // distance-based activation/deactivation
             if (m_mass == 0.0f && m_body_type != BodyType::Controller)
             {
                 if (Camera* camera = World::GetCamera())
                 {
                     const Vector3 camera_pos = camera->GetEntity()->GetPosition();
                     PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
-                    for (auto* body : m_bodies)
+            
+                    for (void* body : m_bodies)
                     {
-                        PxRigidActor* actor             = static_cast<PxRigidActor*>(body);
-                        PxTransform pose                = actor->getGlobalPose();
-                        Vector3 body_pos                = Vector3(pose.p.x, pose.p.y, pose.p.z);
-                        float distance                  = Vector3::Distance(camera_pos, body_pos);
-                        const float distance_deactivate = 40.0f;
-                        const float distance_activate   = 20.0f;
-                        if (distance > distance_deactivate && actor->getScene())
+                        PxRigidActor* actor   = static_cast<PxRigidActor*>(body);
+                        size_t instance_index = reinterpret_cast<size_t>(actor->userData);
+            
+                        Renderable* renderable          = GetEntity()->GetComponent<Renderable>();
+                        const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(instance_index)) : renderable->GetBoundingBox();
+                        const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
+                        const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
+            
+                        const float distance_deactivate = 80.0f;
+                        const float distance_activate   = 40.0f;
+
+                        if (distance_to_camera > distance_deactivate && actor->getScene())
                         {
                             scene->removeActor(*actor);
                         }
-                        else if (distance <= distance_activate && !actor->getScene())
+                        else if (distance_to_camera <= distance_activate && !actor->getScene())
                         {
                             scene->addActor(*actor);
                         }
@@ -834,6 +843,10 @@ namespace spartan
                     actor->attachShape(*shape);
                 }
                 scene->addActor(*actor);
+
+                // store the instance index in userData
+                actor->userData = reinterpret_cast<void*>(i);
+
                 m_bodies.push_back(actor);
             }
         }

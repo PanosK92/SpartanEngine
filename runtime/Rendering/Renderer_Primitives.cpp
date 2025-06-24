@@ -264,19 +264,22 @@ namespace spartan
 
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
-                {
-                    if (!renderable->HasInstancing())
-                    { 
-                        DrawBox(renderable->GetBoundingBox(), get_color(renderable));
-                    }
-                    else
+                if (entity)
+                { 
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
-                        uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
-                        for (uint32_t group_index = 0; group_index < group_count; group_index++)
+                        if (!renderable->HasInstancing())
+                        { 
+                            DrawBox(renderable->GetBoundingBox(), get_color(renderable));
+                        }
+                        else
                         {
-                            const BoundingBox& bounding_box_group = renderable->GetBoundingBoxInstanceGroup(group_index);
-                            DrawBox(bounding_box_group, get_color(renderable));
+                            uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
+                            for (uint32_t group_index = 0; group_index < group_count; group_index++)
+                            {
+                                const BoundingBox& bounding_box_group = renderable->GetBoundingBoxInstanceGroup(group_index);
+                                DrawBox(bounding_box_group, get_color(renderable));
+                            }
                         }
                     }
                 }

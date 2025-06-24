@@ -124,22 +124,21 @@ namespace spartan
         void Create();
         void CreateBodies();
 
-        float m_mass                      = 0.0f;
-        float m_friction                  = 1.0f;
-        float m_friction_rolling          = 0.002f;
-        float m_restitution               = 0.2f;
-        bool m_is_active                  = true;
-        math::Vector3 m_position_lock     = math::Vector3::Zero;
-        math::Vector3 m_rotation_lock     = math::Vector3::Zero;
-        math::Vector3 m_center_of_mass    = math::Vector3::Zero;
-        math::Vector3 m_velocity          = math::Vector3::Zero;
-        BodyType m_body_type              = BodyType::Max;
-        uint32_t terrain_width            = 0;
-        uint32_t terrain_length           = 0;
-        void* m_shape                     = nullptr;
-        void* m_controller                = nullptr;
-        void* m_material                  = nullptr;
-        void* m_mesh                      = nullptr;
+        float m_mass                   = 0.0f;
+        float m_friction               = 1.0f;
+        float m_friction_rolling       = 0.002f;
+        float m_restitution            = 0.2f;
+        math::Vector3 m_position_lock  = math::Vector3::Zero;
+        math::Vector3 m_rotation_lock  = math::Vector3::Zero;
+        math::Vector3 m_center_of_mass = math::Vector3::Zero;
+        math::Vector3 m_velocity       = math::Vector3::Zero;
+        BodyType m_body_type           = BodyType::Max;
+        uint32_t terrain_width         = 0;
+        uint32_t terrain_length        = 0;
+        void* m_shape                  = nullptr;
+        void* m_controller             = nullptr;
+        void* m_material               = nullptr;
+        void* m_mesh                   = nullptr;
         std::vector<void*> m_bodies; // multiple bodies to allow for instancing support
         std::vector<PhysicsBodyMeshData> m_mesh_data;
     };

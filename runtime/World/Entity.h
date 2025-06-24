@@ -153,7 +153,7 @@ namespace spartan
         void GetDescendants(std::vector<Entity*>* descendants);
         Entity* GetDescendantByName(const std::string& name);
         bool HasParent() const                    { return !m_parent.expired(); }
-        bool HasChildren() const                  { return GetChildrenCount() > 0 ? true : false; }
+        bool HasChildren() const                  { return GetChildrenCount() > 0; }
         uint32_t GetChildrenCount() const         { return static_cast<uint32_t>(m_children.size()); }
         Entity* GetRoot()                         { return HasParent() ? GetParent()->GetRoot() : this; }
         std::shared_ptr<Entity> GetParent() const { return m_parent.lock(); }
