@@ -38,7 +38,7 @@ namespace spartan
         AudioSource,
         Camera,
         Light,
-        PhysicsBody,
+        Physics,
         Renderable,
         Terrain,
         Max

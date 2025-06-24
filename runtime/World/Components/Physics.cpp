@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
-#include "PhysicsBody.h"
+#include "Physics.h"
 #include "Renderable.h"
 #include "Camera.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../IO/FileStream.h"
-#include "../../Physics/Physics.h"
+#include "../../Physics/PhysicsWorld.h"
 #include "../../Geometry/GeometryProcessing.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -55,7 +55,7 @@ namespace spartan
         void* controller_manager = nullptr;
     }
 
-    PhysicsBody::PhysicsBody(Entity* entity) : Component(entity)
+    Physics::Physics(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -67,17 +67,17 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_body_type, SetBodyType, BodyType);
     }
 
-    PhysicsBody::~PhysicsBody()
+    Physics::~Physics()
     {
         OnRemove();
     }
 
-    void PhysicsBody::OnInitialize()
+    void Physics::OnInitialize()
     {
         Component::OnInitialize();
     }
 
-    void PhysicsBody::OnRemove()
+    void Physics::OnRemove()
     {
         // controller
         if (m_controller)
@@ -90,7 +90,7 @@ namespace spartan
         for (auto* body : m_bodies)
         {
             PxRigidActor* actor = static_cast<PxRigidActor*>(body);
-            PxScene* scene      = static_cast<PxScene*>(Physics::GetScene());
+            PxScene* scene      = static_cast<PxScene*>(PhysicsWorld::GetScene());
             if (actor->getScene())
             {
                 scene->removeActor(*actor);
@@ -114,7 +114,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::OnTick()
+    void Physics::OnTick()
     {
          // controller
         if (m_body_type == BodyType::Controller)
@@ -122,7 +122,7 @@ namespace spartan
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
                 float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                m_velocity.y += Physics::GetGravity().y * delta_time;
+                m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
                 PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f);
                 PxControllerFilters filters;
                 filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
@@ -202,7 +202,7 @@ namespace spartan
                 if (Camera* camera = World::GetCamera())
                 {
                     const Vector3 camera_pos = camera->GetEntity()->GetPosition();
-                    PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
+                    PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
             
                     for (void* body : m_bodies)
                     {
@@ -231,7 +231,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::Serialize(FileStream* stream)
+    void Physics::Serialize(FileStream* stream)
     {
         stream->Write(m_mass);
         stream->Write(m_friction);
@@ -243,7 +243,7 @@ namespace spartan
         stream->Write(m_center_of_mass);
     }
 
-    void PhysicsBody::Deserialize(FileStream* stream)
+    void Physics::Deserialize(FileStream* stream)
     {
         stream->Read(&m_mass);
         stream->Read(&m_friction);
@@ -257,7 +257,7 @@ namespace spartan
         Create();
     }
 
-    void PhysicsBody::SetMass(float mass)
+    void Physics::SetMass(float mass)
     {
         m_mass = max(mass, 0.0f);
         for (auto* body : m_bodies)
@@ -269,7 +269,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetFriction(float friction)
+    void Physics::SetFriction(float friction)
     {
         if (m_friction == friction)
             return;
@@ -292,7 +292,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetFrictionRolling(float friction_rolling)
+    void Physics::SetFrictionRolling(float friction_rolling)
     {
         if (m_friction_rolling == friction_rolling)
             return;
@@ -315,7 +315,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetRestitution(float restitution)
+    void Physics::SetRestitution(float restitution)
     {
         if (m_restitution == restitution)
             return;
@@ -338,7 +338,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetLinearVelocity(const Vector3& velocity) const
+    void Physics::SetLinearVelocity(const Vector3& velocity) const
     {
         if (m_body_type == BodyType::Controller)
             return;
@@ -353,7 +353,7 @@ namespace spartan
         }
     }
 
-    Vector3 PhysicsBody::GetLinearVelocity() const
+    Vector3 Physics::GetLinearVelocity() const
     {
         if (m_bodies.empty())
             return Vector3::Zero;
@@ -367,7 +367,7 @@ namespace spartan
         return Vector3::Zero;
     }
 
-    void PhysicsBody::SetAngularVelocity(const Vector3& velocity) const
+    void Physics::SetAngularVelocity(const Vector3& velocity) const
     {
         if (m_body_type == BodyType::Controller)
             return;
@@ -382,7 +382,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::ApplyForce(const Vector3& force, PhysicsForce mode) const
+    void Physics::ApplyForce(const Vector3& force, PhysicsForce mode) const
     {
         if (m_body_type == BodyType::Controller)
         {
@@ -401,12 +401,12 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetPositionLock(bool lock)
+    void Physics::SetPositionLock(bool lock)
     {
         SetPositionLock(lock ? Vector3::One : Vector3::Zero);
     }
 
-    void PhysicsBody::SetPositionLock(const Vector3& lock)
+    void Physics::SetPositionLock(const Vector3& lock)
     {
         if (m_body_type == BodyType::Controller)
             return;
@@ -428,12 +428,12 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetRotationLock(bool lock)
+    void Physics::SetRotationLock(bool lock)
     {
         SetRotationLock(lock ? Vector3::One : Vector3::Zero);
     }
 
-    void PhysicsBody::SetRotationLock(const Vector3& lock)
+    void Physics::SetRotationLock(const Vector3& lock)
     {
         if (m_body_type == BodyType::Controller)
             return;
@@ -455,7 +455,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetCenterOfMass(const Vector3& center_of_mass)
+    void Physics::SetCenterOfMass(const Vector3& center_of_mass)
     {
         if (m_body_type == BodyType::Controller)
             return;
@@ -474,7 +474,7 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::SetBodyType(BodyType type)
+    void Physics::SetBodyType(BodyType type)
     {
         if (m_body_type == type)
             return;
@@ -483,9 +483,9 @@ namespace spartan
         Create();
     }
 
-    bool PhysicsBody::RayTraceIsGrounded() const
+    bool Physics::RayTraceIsGrounded() const
     {
-        PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
+        PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
         
         if (m_body_type == BodyType::Controller)
         {
@@ -504,7 +504,7 @@ namespace spartan
         return false;
     }
 
-    float PhysicsBody::GetCapsuleVolume()
+    float Physics::GetCapsuleVolume()
     {
         // total volume is the sum of the cylinder and two hemispheres
         float radius      = GetCapsuleRadius(); // radius is max of x and z scale divided by 2
@@ -521,13 +521,13 @@ namespace spartan
         return cylinder_volume + sphere_volume;
     }
 
-    float PhysicsBody::GetCapsuleRadius()
+    float Physics::GetCapsuleRadius()
     {
         Vector3 scale = GetEntity()->GetScale();
         return max(scale.x, scale.z) * 0.5f;
     }
 
-    void PhysicsBody::Move(const math::Vector3& offset)
+    void Physics::Move(const math::Vector3& offset)
     {
         if (m_body_type == BodyType::Controller && Engine::IsFlagSet(EngineMode::Playing))
         {
@@ -546,10 +546,10 @@ namespace spartan
         }
     }
     
-    void PhysicsBody::Create()
+    void Physics::Create()
     {
-        PxPhysics* physics = static_cast<PxPhysics*>(Physics::GetPhysics());
-        PxScene* scene     = static_cast<PxScene*>(Physics::GetScene());
+        PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
+        PxScene* scene     = static_cast<PxScene*>(PhysicsWorld::GetScene());
 
         if (m_body_type == BodyType::Controller)
         {
@@ -648,7 +648,7 @@ namespace spartan
                 // cooking parameters
                 PxTolerancesScale _scale;
                 _scale.length                          = 1.0f;                    // 1 unit = 1 meter
-                _scale.speed                           = Physics::GetGravity().y; // gravity is in meters per second
+                _scale.speed                           = PhysicsWorld::GetGravity().y; // gravity is in meters per second
                 PxCookingParams params(_scale);         
                 params.areaTestEpsilon                 = 0.06f * _scale.length * _scale.length;
                 params.planeTolerance                  = 0.0007f;
@@ -719,10 +719,10 @@ namespace spartan
         }
     }
 
-    void PhysicsBody::CreateBodies()
+    void Physics::CreateBodies()
     {
-        PxPhysics* physics                    = static_cast<PxPhysics*>(Physics::GetPhysics());
-        PxScene* scene                        = static_cast<PxScene*>(Physics::GetScene());
+        PxPhysics* physics                    = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
+        PxScene* scene                        = static_cast<PxScene*>(PhysicsWorld::GetScene());
         Renderable* renderable                = GetEntity()->GetComponent<Renderable>();
         const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
         size_t instance_count                 = instances.empty() ? 1 : instances.size();

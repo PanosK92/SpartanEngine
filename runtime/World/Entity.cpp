@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Entity.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
-#include "Components/PhysicsBody.h"
+#include "Components/Physics.h"
 #include "Components/AudioSource.h"
 #include "Components/Terrain.h"
 #include "../IO/FileStream.h"
@@ -304,7 +304,7 @@ namespace spartan
             case ComponentType::Camera:      component = static_cast<Component*>(AddComponent<Camera>());        break;
             case ComponentType::Light:       component = static_cast<Component*>(AddComponent<Light>());         break;
             case ComponentType::Renderable:  component = static_cast<Component*>(AddComponent<Renderable>());    break;
-            case ComponentType::PhysicsBody: component = static_cast<Component*>(AddComponent<PhysicsBody>());   break;
+            case ComponentType::Physics: component = static_cast<Component*>(AddComponent<Physics>());   break;
             case ComponentType::Terrain:     component = static_cast<Component*>(AddComponent<Terrain>());       break;
             default:                         component = nullptr;                                               break;
         }

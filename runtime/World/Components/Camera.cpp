@@ -19,20 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==========================
 #include "pch.h"
 #include "Camera.h"
 #include "Renderable.h"
 #include "Window.h"
-#include "PhysicsBody.h"
+#include "Physics.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
-#include "../../Physics/Physics.h"
-//===================================
+#include "../../Physics/PhysicsWorld.h"
+//=====================================
 
 //= NAMESPACES ===============
 using namespace spartan::math;
@@ -534,7 +534,7 @@ namespace spartan
                         float submerged_height   = -GetEntity()->GetPosition().y;
                         float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
                         float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                        Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume) * 2500.0f * delta_time;
+                        Vector3 buoyancy         = -(1.03f * PhysicsWorld::GetGravity().y * volume) * 2500.0f * delta_time;
                         displacement             += buoyancy;
                         Vector3 velocity         = m_movement_speed;
                         float drag_force         = 0.5f * 1.03f * velocity.LengthSquared() * 0.34f * 200.0f * delta_time;
@@ -560,7 +560,7 @@ namespace spartan
                     float submerged_height   = -GetEntity()->GetPosition().y;
                     float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
                     float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                    Vector3 buoyancy         = -(1.03f * Physics::GetGravity().y * volume);
+                    Vector3 buoyancy         = -(1.03f * PhysicsWorld::GetGravity().y * volume);
                     m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
                     float velocity_y         = m_physics_body_to_control->GetLinearVelocity().y;
                     float drag_force_y       = 0.5f * 1.03f * velocity_y * velocity_y * 0.34f;
@@ -677,7 +677,7 @@ namespace spartan
         }
     }
 
-    void Camera::SetPhysicsBodyToControl(PhysicsBody* physics_body)
+    void Camera::SetPhysicsBodyToControl(Physics* physics_body)
     {
         m_physics_body_to_control = physics_body;
     }

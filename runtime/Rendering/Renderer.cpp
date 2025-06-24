@@ -156,7 +156,7 @@ namespace spartan
             SetOption(Renderer_Option::SelectionOutline,            1.0f);
             SetOption(Renderer_Option::Grid,                        1.0f);
             SetOption(Renderer_Option::Lights,                      1.0f);
-            SetOption(Renderer_Option::Physics,                     0.0f);
+            SetOption(Renderer_Option::PhysicsWorld,                     0.0f);
             SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
             SetOption(Renderer_Option::Dithering,                   0.0f);
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());

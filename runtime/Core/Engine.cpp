@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ThreadPool.h"
 #include "../Input/Input.h"
 #include "../World/World.h"
-#include "../Physics/Physics.h"
+#include "../Physics/PhysicsWorld.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
@@ -81,7 +81,7 @@ namespace spartan
             ThreadPool::Initialize();
             ResourceCache::Initialize();
             Profiler::Initialize();
-            Physics::Initialize();
+            PhysicsWorld::Initialize();
             Renderer::Initialize();
             World::Initialize();
             Settings::Initialize();
@@ -100,7 +100,7 @@ namespace spartan
         ResourceCache::Shutdown();
         World::Shutdown();
         Renderer::Shutdown();
-        Physics::Shutdown();
+        PhysicsWorld::Shutdown();
         Event::Shutdown();
         Window::Shutdown();
         ImageImporter::Shutdown();
@@ -116,7 +116,7 @@ namespace spartan
         // tick
         Window::Tick();
         Input::Tick();
-        Physics::Tick();
+        PhysicsWorld::Tick();
         World::Tick();
         Renderer::Tick();
 

@@ -55,7 +55,7 @@ namespace spartan
                 case Renderer_Option::SelectionOutline:            return "SelectionOutline";
                 case Renderer_Option::Lights:                      return "Lights";
                 case Renderer_Option::PerformanceMetrics:          return "PerformanceMetrics";
-                case Renderer_Option::Physics:                     return "Physics";
+                case Renderer_Option::PhysicsWorld:                     return "Physics";
                 case Renderer_Option::Wireframe:                   return "Wireframe";
                 case Renderer_Option::Bloom:                       return "Bloom";
                 case Renderer_Option::Fog:                         return "Fog";

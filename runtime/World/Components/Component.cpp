@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Component.h"
 #include "Light.h"
-#include "PhysicsBody.h"
+#include "Physics.h"
 #include "Camera.h"
 #include "AudioSource.h"
 #include "Terrain.h"
@@ -55,7 +55,7 @@ namespace spartan
     REGISTER_COMPONENT(Camera,      ComponentType::Camera)
     REGISTER_COMPONENT(Light,       ComponentType::Light)
     REGISTER_COMPONENT(Renderable,  ComponentType::Renderable)
-    REGISTER_COMPONENT(PhysicsBody, ComponentType::PhysicsBody)
+    REGISTER_COMPONENT(Physics,     ComponentType::Physics)
     REGISTER_COMPONENT(Terrain,     ComponentType::Terrain)
  
 }

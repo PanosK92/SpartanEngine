@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "pch.h"
-#include "Physics.h"
+#include "PhysicsWorld.h"
 #include "ProgressTracker.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
@@ -89,7 +89,7 @@ namespace spartan
         static PxVec3 pick_direction;
     }
 
-    void Physics::Initialize()
+    void PhysicsWorld::Initialize()
     {
         Settings::RegisterThirdPartyLib("PhysX", to_string(PX_PHYSICS_VERSION_MAJOR) + "." + to_string(PX_PHYSICS_VERSION_MINOR) + "." + to_string(PX_PHYSICS_VERSION_BUGFIX), "https://github.com/NVIDIA-Omniverse/PhysX");
 
@@ -129,7 +129,7 @@ namespace spartan
         scene->setVisualizationParameter(PxVisualizationParameter::eJOINT_LIMITS,        1.0f);
     }
 
-    void Physics::Shutdown()
+    void PhysicsWorld::Shutdown()
     {
         PX_RELEASE(scene);
         PX_RELEASE(dispatcher);
@@ -137,7 +137,7 @@ namespace spartan
         PX_RELEASE(foundation);
     }
 
-    void Physics::Tick()
+    void PhysicsWorld::Tick()
     {
         SP_PROFILE_CPU();
 
@@ -179,7 +179,7 @@ namespace spartan
                 MovePickedBody();
             }
         }
-        else if (Renderer::GetOption<bool>(Renderer_Option::Physics))
+        else if (Renderer::GetOption<bool>(Renderer_Option::PhysicsWorld))
         {
             const PxRenderBuffer& rb = scene->getRenderBuffer(); // accessing while the simulation is running can result in undefined behavior
             for (PxU32 i = 0; i < rb.getNbLines(); i++)
@@ -197,23 +197,23 @@ namespace spartan
         }
     }
 
-    Vector3 Physics::GetGravity()
+    Vector3 PhysicsWorld::GetGravity()
     {
         PxVec3 g = scene->getGravity();
         return Vector3(g.x, g.y, g.z);
     }
 
-    void* Physics::GetScene()
+    void* PhysicsWorld::GetScene()
     {
         return static_cast<void*>(scene);
     }
 
-    void* Physics::GetPhysics()
+    void* PhysicsWorld::GetPhysics()
     {
         return static_cast<void*>(physics);
     }
 
-    void Physics::PickBody()
+    void PhysicsWorld::PickBody()
     {
         // get camera
         Camera* camera = World::GetCamera();
@@ -240,7 +240,7 @@ namespace spartan
         }
     }
 
-    void Physics::UnpickBody()
+    void PhysicsWorld::UnpickBody()
     {
         if (picked_body)
         {
@@ -249,7 +249,7 @@ namespace spartan
         }
     }
 
-    void Physics::MovePickedBody()
+    void PhysicsWorld::MovePickedBody()
     {
         if (!picked_body)
             return;

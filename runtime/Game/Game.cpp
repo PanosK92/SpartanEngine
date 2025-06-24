@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
-#include "../World/Components/PhysicsBody.h"
+#include "../World/Components/Physics.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/Terrain.h"
 #include "../Core/ThreadPool.h"
@@ -112,7 +112,7 @@ namespace spartan
                 renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, default_floor->GetScale().z);
                 
                 // add physics components
-                PhysicsBody* physics_body = default_floor->AddComponent<PhysicsBody>();
+                Physics* physics_body = default_floor->AddComponent<Physics>();
                 physics_body->SetBodyType(BodyType::Plane);
             }
 
@@ -124,7 +124,7 @@ namespace spartan
                 default_camera->SetPosition(camera_position);
 
                 // add a physics controller so that the camera can move around
-                PhysicsBody* physics_body = default_camera->AddComponent<PhysicsBody>();
+                Physics* physics_body = default_camera->AddComponent<Physics>();
                 physics_body->SetFriction(1.0f);
                 physics_body->SetFrictionRolling(0.8f);
                 physics_body->SetRestitution(0.1f);
@@ -166,8 +166,8 @@ namespace spartan
                 renderable->SetMaterial(material);
                 
                 // add physics components
-                PhysicsBody* physics_body = default_metal_cube->AddComponent<PhysicsBody>();
-                physics_body->SetMass(PhysicsBody::mass_auto);
+                Physics* physics_body = default_metal_cube->AddComponent<Physics>();
+                physics_body->SetMass(Physics::mass_auto);
                 physics_body->SetBodyType(BodyType::Box);
             }
 
@@ -180,9 +180,9 @@ namespace spartan
                     entity->SetPosition(position);
                     entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
 
-                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
+                    Physics* physics_body = entity->AddComponent<Physics>();
                     physics_body->SetBodyType(BodyType::Mesh);
-                    physics_body->SetMass(PhysicsBody::mass_auto);
+                    physics_body->SetMass(Physics::mass_auto);
                 }
             }
 
@@ -195,9 +195,9 @@ namespace spartan
                     entity->SetPosition(position);
                     entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
 
-                    PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
+                    Physics* physics_body = entity->AddComponent<Physics>();
                     physics_body->SetBodyType(BodyType::Mesh);
-                    physics_body->SetMass(PhysicsBody::mass_auto);
+                    physics_body->SetMass(Physics::mass_auto);
                 }
             }
 
@@ -212,8 +212,8 @@ namespace spartan
 
                     if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
                     {
-                        PhysicsBody* physics_body = mesh_entity->AddComponent<PhysicsBody>();
-                        physics_body->SetMass(PhysicsBody::mass_auto);
+                        Physics* physics_body = mesh_entity->AddComponent<Physics>();
+                        physics_body->SetMass(Physics::mass_auto);
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
@@ -503,7 +503,7 @@ namespace spartan
 
                     // add the wheels to the body
                     {
-                        PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
+                        Physics* physics_body = default_car->AddComponent<Physics>();
 
                         shared_ptr<Entity> wheel = entity_wheel_root;
                         wheel->SetObjectName("wheel_fl");
@@ -716,7 +716,7 @@ namespace spartan
                 {
                     if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        Physics* physics_body = entity_it->AddComponent<Physics>();
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
@@ -794,7 +794,7 @@ namespace spartan
                         renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
 
                         // add physics as well
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        Physics* physics_body = entity_it->AddComponent<Physics>();
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
@@ -821,7 +821,7 @@ namespace spartan
                 {
                     if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        Physics* physics_body = entity_it->AddComponent<Physics>();
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
@@ -849,7 +849,7 @@ namespace spartan
                 {
                     if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
-                        PhysicsBody* physics_body = entity_it->AddComponent<PhysicsBody>();
+                        Physics* physics_body = entity_it->AddComponent<Physics>();
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
@@ -970,7 +970,7 @@ namespace spartan
                     {
                         if (entity->GetActive() && entity->GetComponent<Renderable>() != nullptr)
                         {
-                            PhysicsBody* physics_body = entity->AddComponent<PhysicsBody>();
+                            Physics* physics_body = entity->AddComponent<Physics>();
                             physics_body->SetBodyType(BodyType::Mesh);
                         }
                     }
@@ -1038,7 +1038,7 @@ namespace spartan
                             renderable->SetMaterial(material);
 
                             // enable physics
-                            body->AddComponent<PhysicsBody>()->SetBodyType(BodyType::Mesh);
+                            body->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
                         }
                     }
                 }
@@ -1077,7 +1077,7 @@ namespace spartan
                             renderable->SetMaterial(material);
 
                             // enable physics
-                            rock_entity->AddComponent<PhysicsBody>()->SetBodyType(BodyType::Mesh);
+                            rock_entity->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
                         }
                     }
                 }
@@ -1467,7 +1467,7 @@ namespace spartan
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetMaterial(tile_material);
                     
-                    auto physics_body = entity->AddComponent<PhysicsBody>();
+                    auto physics_body = entity->AddComponent<Physics>();
                     physics_body->SetMass(0.0f);
                     physics_body->SetBodyType(BodyType::Box);
                 };

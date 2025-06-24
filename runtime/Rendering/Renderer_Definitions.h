@@ -39,7 +39,7 @@ namespace spartan
         SelectionOutline,
         Lights,
         PerformanceMetrics,
-        Physics,
+        PhysicsWorld,
         Wireframe,
         Bloom,
         Fog,

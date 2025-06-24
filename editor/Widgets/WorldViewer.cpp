@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
-#include "World/Components/PhysicsBody.h"
+#include "World/Components/Physics.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
@@ -46,7 +46,7 @@ namespace
 {
     weak_ptr <spartan::Entity> entity_clicked;
     weak_ptr <spartan::Entity> entity_hovered;
-    ImGuiSp::DragDropPayload drag_drop_paylod;
+    ImGuiSp::DragDropPayload drag_drop_payload;
     bool popup_rename_entity       = false;
     spartan::Entity* entity_copied = nullptr;
     ImRect selected_entity_rect;
@@ -233,9 +233,9 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<spartan::Entity> entity_ptr) c
     // Drag
     if (ImGui::BeginDragDropSource())
     {
-        drag_drop_paylod.data = entity_ptr->GetObjectId();
-        drag_drop_paylod.type = ImGuiSp::DragPayloadType::Entity;
-        ImGuiSp::create_drag_drop_paylod(drag_drop_paylod);
+        drag_drop_payload.data = entity_ptr->GetObjectId();
+        drag_drop_payload.type = ImGuiSp::DragPayloadType::Entity;
+        ImGuiSp::create_drag_drop_paylod(drag_drop_payload);
         ImGui::EndDragDropSource();
     }
     // Drop
@@ -601,7 +601,7 @@ void WorldViewer::ActionEntityCreateLightSpot()
 void WorldViewer::ActionEntityCreatePhysicsBody()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->AddComponent<spartan::PhysicsBody>();
+    entity->AddComponent<spartan::Physics>();
     entity->SetObjectName("PhysicsBody");
 }
 

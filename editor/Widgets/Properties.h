@@ -33,7 +33,7 @@ namespace spartan
     class Transform;
     class Light;
     class Renderable;
-    class PhysicsBody;
+    class Physics;
     class Collider;
     class Material;
     class Camera;
@@ -62,7 +62,7 @@ private:
     void ShowEntity(std::shared_ptr<spartan::Entity> transform) const;
     void ShowLight(spartan::Light* light) const;
     void ShowRenderable(spartan::Renderable* renderable) const;
-    void ShowPhysicsBody(spartan::PhysicsBody* rigid_body) const;
+    void ShowPhysics(spartan::Physics* rigid_body) const;
     void ShowMaterial(spartan::Material* material) const;
     void ShowCamera(spartan::Camera* camera) const;
     void ShowTerrain(spartan::Terrain* terrain) const;

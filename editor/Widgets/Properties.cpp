@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "World/Entity.h"
 #include "World/Components/Renderable.h"
-#include "World/Components/PhysicsBody.h"
+#include "World/Components/Physics.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/Terrain.h"
@@ -166,7 +166,7 @@ void Properties::OnTickVisible()
                 ShowAudioSource(entity_ptr->GetComponent<AudioSource>());
                 ShowRenderable(renderable);
                 ShowMaterial(material);
-                ShowPhysicsBody(entity_ptr->GetComponent<PhysicsBody>());
+                ShowPhysics(entity_ptr->GetComponent<Physics>());
 
                 ShowAddComponentButton();
             }
@@ -509,7 +509,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
     component_end();
 }
 
-void Properties::ShowPhysicsBody(PhysicsBody* body) const
+void Properties::ShowPhysics(Physics* body) const
 {
     if (!body)
         return;
@@ -519,7 +519,7 @@ void Properties::ShowPhysicsBody(PhysicsBody* body) const
     const float step_fast       = 0.1f;
     const auto precision        = "%.3f";
 
-    if (component_begin("PhysicsBody", IconType::Component_PhysicsBody, body))
+    if (component_begin("Physics", IconType::Component_PhysicsBody, body))
     {
         //= REFLECT ==========================================================
         float mass             = body->GetMass();
@@ -1091,9 +1091,9 @@ void Properties::ComponentContextMenu_Add() const
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Physics Body"))
+            if (ImGui::MenuItem("Physics"))
             {
-                entity->AddComponent<PhysicsBody>();
+                entity->AddComponent<Physics>();
             }
 
             if (ImGui::BeginMenu("Audio"))
