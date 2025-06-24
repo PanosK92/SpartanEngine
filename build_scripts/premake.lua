@@ -175,6 +175,9 @@ function runtime_project_configuration()
         end
         staticruntime "On"
         defines { API_CPP_DEFINE  }
+        if os.target() == "windows" then
+            conformancemode "On"
+        end
 
         -- Source
         files {
@@ -288,6 +291,9 @@ function editor_project_configuration()
         kind "WindowedApp"
         staticruntime "On"
         defines{ API_CPP_DEFINE }
+        if os.target() == "windows" then
+            conformancemode "On"
+        end
 
         -- Files
         if os.target() == "windows" then
