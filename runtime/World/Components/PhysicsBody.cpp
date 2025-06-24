@@ -631,7 +631,9 @@ namespace spartan
                 }
 
                 // simplify geometry
-                size_t target_index_count = 1024;
+                float simplification_ratio = 0.15f; // keep 10% of the original indices
+                size_t target_index_count  = static_cast<size_t>(indices.size() * simplification_ratio);
+                target_index_count         = max<size_t>(target_index_count, 256); // prevent over-simplification
                 geometry_processing::simplify(indices, vertices, target_index_count, false);
 
                 // convert vertices to physx format
@@ -654,8 +656,8 @@ namespace spartan
                 params.suppressTriangleMeshRemapTable  = false;
                 params.buildTriangleAdjacencies        = false;
                 params.buildGPUData                    = false;
-                //params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-                //params.meshWeldTolerance               = 0.001f;
+                params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+                params.meshWeldTolerance               = 0.001f;
                 params.meshAreaMinLimit                = 0.0f;
                 params.meshEdgeLengthMaxLimit          = 500.0f;
                 params.gaussMapLimit                   = 32;
@@ -671,13 +673,6 @@ namespace spartan
                     mesh_desc.triangles.count  = static_cast<PxU32>(indices.size() / 3);
                     mesh_desc.triangles.stride = 3 * sizeof(PxU32);
                     mesh_desc.triangles.data   = indices.data();
-
-                    // validate
-                    if (!PxValidateTriangleMesh(params, mesh_desc))
-                    {
-                        SP_LOG_WARNING("Triangle mesh validation failed");
-                        return;
-                    }
 
                     // create
                     PxTriangleMeshCookingResult::Enum condition;
