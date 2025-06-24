@@ -123,14 +123,14 @@ end
 function solution_configuration()
     solution (SOLUTION_NAME)
         location ".." -- generate in root directory
-        systemversion "10.0.26100.0" -- windows SDK
         language "C++"
         configurations { "debug", "release" }
 
         -- platforms
         if os.target() == "windows" then
             platforms { "windows" }
-            toolset "v143" -- visual studio 2022 compiler
+            toolset "msc" -- auto-selects latest MSVC toolset
+            systemversion "latest" -- auto-selects latest installed Windows SDK
         elseif os.target() == "linux" then
             platforms { "linux" }
         end
@@ -317,10 +317,10 @@ function editor_project_configuration()
 
         -- Includes
         includedirs { RUNTIME_DIR }
-        includedirs { RUNTIME_DIR .. "/Core" }         -- This is here because the runtime uses it
+        includedirs { RUNTIME_DIR .. "/Core" }         -- this is here because the runtime uses it
         if os.target() == "windows" then
-            includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
-            includedirs { "../third_party/sdl" }       -- SDL, used by ImGui to create windows
+            includedirs { "../third_party/free_type" } -- used to rasterise the imgui font atlas
+            includedirs { "../third_party/sdl" }       -- sdl, used by imgui to create windows
         else
             includedirs { "/usr/include/SDL3" }
             includedirs { "/usr/include/freetype2" }
