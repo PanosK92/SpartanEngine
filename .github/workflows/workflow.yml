@@ -49,7 +49,7 @@ jobs:
       - name: Setup MSBuild / Visual Studio Environment
         uses: microsoft/setup-msbuild@v1
         with:
-          vs-version: '17.14.7'  # explicitly define VS version
+          vs-version: '[17.0,18.0)'  # opt for latest available visual studio version
 
       - name: Show MSVC version (for debugging)
         shell: cmd
