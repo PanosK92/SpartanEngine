@@ -79,132 +79,144 @@ namespace spartan
 
     void PhysicsBody::OnRemove()
     {
-        if (m_body)
+        // controller
+        if (m_controller)
         {
-            PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
-    
-            // detach shape if it exists
-            if (m_shape)
-            {
-                PxShape* shape = static_cast<PxShape*>(m_shape);
-                static_cast<PxRigidActor*>(m_body)->detachShape(*shape);
-                shape->release();
-                m_shape = nullptr;
-            }
-    
-            // check if actor is in the scene before trying to remove
-            PxRigidActor* actor = static_cast<PxRigidActor*>(m_body);
+            static_cast<PxController*>(m_controller)->release();
+            m_controller = nullptr;
+        }
+
+        // bodies
+        for (auto* body : m_bodies)
+        {
+            PxRigidActor* actor = static_cast<PxRigidActor*>(body);
+            PxScene* scene      = static_cast<PxScene*>(Physics::GetScene());
             if (actor->getScene())
             {
                 scene->removeActor(*actor);
             }
-    
             actor->release();
-            m_body = nullptr;
+        }
+        m_bodies.clear();
+
+        // shape
+        if (m_shape)
+        {
+            static_cast<PxShape*>(m_shape)->release();
+            m_shape = nullptr;
+        }
+
+        // material
+        if (m_material)
+        {
+            static_cast<PxMaterial*>(m_material)->release();
+            m_material = nullptr;
         }
     }
 
     void PhysicsBody::OnTick()
     {
-        if (m_controller)
+         // controller
+        if (m_body_type == BodyType::Controller)
         {
-            // update entity position from controller
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
-                // apply gravity as acceleration
                 float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                m_velocity.y += Physics::GetGravity().y * delta_time; // v += g * dt
-
-                // compute displacement from velocity
-                PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f); // displacement = v * dt
-
-                // move controller
+                m_velocity.y += Physics::GetGravity().y * delta_time;
+                PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f);
                 PxControllerFilters filters;
                 filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
                 PxControllerCollisionFlags collision_flags = static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, delta_time, filters);
-
-                // reset vertical velocity if grounded to prevent accumulation
                 if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
                 {
                     m_velocity.y = 0.0f;
                 }
-
-                // update entity position from controller
                 PxExtendedVec3 pos = static_cast<PxCapsuleController*>(m_controller)->getPosition();
                 GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
             }
             else
             {
-                // update controller position from entity
                 Vector3 entity_pos = GetEntity()->GetPosition();
                 static_cast<PxCapsuleController*>(m_controller)->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
-                m_velocity = Vector3::Zero; // reset velocity when not playing
+                m_velocity = Vector3::Zero;
             }
         }
-        else if (PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body))
+        else // regular bodies
         {
-            // existing rigid body logic
-            if (!Engine::IsFlagSet(EngineMode::Playing))
-            {
-                PxTransform pose = rigid_actor->getGlobalPose();
-                Vector3 current_position(pose.p.x, pose.p.y, pose.p.z);
-                Quaternion current_rotation(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-                Vector3 entity_position = GetEntity()->GetPosition();
-                Quaternion entity_rotation = GetEntity()->GetRotation();
+            Renderable* renderable                = GetEntity()->GetComponent<Renderable>();
+            const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
+            bool has_instances                    = !instances.empty();
 
-                if (current_position != entity_position)
-                {
-                    pose.p = PxVec3(entity_position.x, entity_position.y, entity_position.z);
-                    rigid_actor->setGlobalPose(pose);
-                    SetLinearVelocity(Vector3::Zero);
-                    SetAngularVelocity(Vector3::Zero);
-                }
-
-                if (current_rotation != entity_rotation)
-                {
-                    pose.q = PxQuat(entity_rotation.x, entity_rotation.y, entity_rotation.z, entity_rotation.w);
-                    rigid_actor->setGlobalPose(pose);
-                    SetLinearVelocity(Vector3::Zero);
-                    SetAngularVelocity(Vector3::Zero);
-                }
-            }
-            else
+            for (size_t i = 0; i < m_bodies.size(); i++)
             {
-                PxTransform pose = rigid_actor->getGlobalPose();
-                GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-            }
-        }
+                PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]);
 
-        // distance-based removal for static bodies
-        if (m_mass == 0.0f && m_body_type != BodyType::Controller)
-        {
-            if (Camera* camera = World::GetCamera())
-            {
-                const Vector3 camera_pos        = camera->GetEntity()->GetPosition();
-                const Vector3 body_pos          = GetEntity()->GetComponent<Renderable>()->GetBoundingBox().GetClosestPoint(camera_pos);
-                const float distance_camera     = Vector3::Distance(camera_pos, body_pos);
-                const float distance_deactivate = 30.0f;
-                const float distance_activate   = 15.0f;
-        
-                PxScene* scene            = static_cast<PxScene*>(Physics::GetScene());
-                PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-        
-                if (m_body && distance_camera > distance_deactivate && m_is_active)
+                if (Engine::IsFlagSet(EngineMode::Playing))
                 {
-                    scene->removeActor(*rigid_actor);
-                    m_is_active = false;
+                    PxTransform pose = actor->getGlobalPose();
+                    math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                    if (has_instances && renderable && i < instances.size())
+                    {
+                        renderable->SetInstance(static_cast<uint32_t>(i), transform);
+                    }
+                    else if (i == 0)
+                    {
+                        GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
+                        GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                    }
                 }
-                else if (m_body && distance_camera <= distance_activate && !m_is_active)
+                else
                 {
-                    // update pose to match entity’s current transform
+                    math::Matrix transform;
+                    if (has_instances && i < instances.size())
+                    {
+                        transform = instances[i];
+                    }
+                    else if (i == 0)
+                    {
+                        transform = GetEntity()->GetMatrix();
+                    }
+                    else
+                    {
+                        continue;
+                    }
                     PxTransform pose(
-                        PxVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z),
-                        PxQuat(GetEntity()->GetRotation().x, GetEntity()->GetRotation().y, GetEntity()->GetRotation().z, GetEntity()->GetRotation().w)
+                        PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                        PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
                     );
-                    rigid_actor->setGlobalPose(pose);
-                    scene->addActor(*rigid_actor);
-                    m_is_active = true;
+                    actor->setGlobalPose(pose);
+                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+                    {
+                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                    }
+                }
+            }
+
+            // distance-based management for static bodies
+            if (m_mass == 0.0f && m_body_type != BodyType::Controller)
+            {
+                if (Camera* camera = World::GetCamera())
+                {
+                    const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+                    PxScene* scene = static_cast<PxScene*>(Physics::GetScene());
+                    for (auto* body : m_bodies)
+                    {
+                        PxRigidActor* actor             = static_cast<PxRigidActor*>(body);
+                        PxTransform pose                = actor->getGlobalPose();
+                        Vector3 body_pos                = Vector3(pose.p.x, pose.p.y, pose.p.z);
+                        float distance                  = Vector3::Distance(camera_pos, body_pos);
+                        const float distance_deactivate = 40.0f;
+                        const float distance_activate   = 20.0f;
+                        if (distance > distance_deactivate && actor->getScene())
+                        {
+                            scene->removeActor(*actor);
+                        }
+                        else if (distance <= distance_activate && !actor->getScene())
+                        {
+                            scene->addActor(*actor);
+                        }
+                    }
                 }
             }
         }
@@ -239,21 +251,22 @@ namespace spartan
     void PhysicsBody::SetMass(float mass)
     {
         m_mass = max(mass, 0.0f);
-
-        if (m_body)
-        { 
-            static_cast<PxRigidDynamic*>(m_body)->setMass(m_mass);
+        for (auto* body : m_bodies)
+        {
+            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
+            {
+                dynamic->setMass(m_mass);
+            }
         }
     }
 
     void PhysicsBody::SetFriction(float friction)
     {
-        if (!m_body || m_friction == friction)
+        if (m_friction == friction)
             return;
     
         m_friction = friction;
-    
-        // update the material's static friction
+
         PxShape* shape = static_cast<PxShape*>(m_shape);
         if (shape)
         {
@@ -268,20 +281,15 @@ namespace spartan
                 SP_LOG_WARNING("SetFriction: No material found for shape.");
             }
         }
-        else
-        {
-            SP_LOG_WARNING("SetFriction: No shape attached to body.");
-        }
     }
 
-    void PhysicsBody::SetFrictionRolling(float frictionRolling)
+    void PhysicsBody::SetFrictionRolling(float friction_rolling)
     {
-        if (!m_body || m_friction_rolling == frictionRolling)
+        if (m_friction_rolling == friction_rolling)
             return;
     
-        m_friction_rolling = frictionRolling;
+        m_friction_rolling = friction_rolling;
     
-        // update the material's dynamic friction (used as a proxy for rolling friction)
         PxShape* shape = static_cast<PxShape*>(m_shape);
         if (shape)
         {
@@ -296,20 +304,15 @@ namespace spartan
                 SP_LOG_WARNING("SetFrictionRolling: No material found for shape.");
             }
         }
-        else
-        {
-            SP_LOG_WARNING("SetFrictionRolling: No shape attached to body.");
-        }
     }
 
     void PhysicsBody::SetRestitution(float restitution)
     {
-        if (!m_body || m_restitution == restitution)
+        if (m_restitution == restitution)
             return;
     
         m_restitution = restitution;
     
-        // update the material's restitution
         PxShape* shape = static_cast<PxShape*>(m_shape);
         if (shape)
         {
@@ -324,50 +327,49 @@ namespace spartan
                 SP_LOG_WARNING("SetRestitution: No material found for shape.");
             }
         }
-        else
-        {
-            SP_LOG_WARNING("SetRestitution: No shape attached to body.");
-        }
     }
 
     void PhysicsBody::SetLinearVelocity(const Vector3& velocity) const
     {
-        if (!m_body || m_body_type == BodyType::Controller)
+        if (m_body_type == BodyType::Controller)
             return;
 
-        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-        if (rigid_dynamic)
+        for (auto* body : m_bodies)
         {
-            rigid_dynamic->setLinearVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
-            rigid_dynamic->wakeUp();
+            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
+            {
+                dynamic->setLinearVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
+                dynamic->wakeUp();
+            }
         }
     }
 
     Vector3 PhysicsBody::GetLinearVelocity() const
     {
-        if (!m_body)
+        if (m_bodies.empty())
             return Vector3::Zero;
 
-        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-        if (rigid_dynamic)
+        if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(m_bodies[0])->is<PxRigidDynamic>())
         {
-            PxVec3 velocity = rigid_dynamic->getLinearVelocity();
+            PxVec3 velocity = dynamic->getLinearVelocity();
             return Vector3(velocity.x, velocity.y, velocity.z);
         }
 
         return Vector3::Zero;
     }
-    
-	void PhysicsBody::SetAngularVelocity(const Vector3& velocity) const
+
+    void PhysicsBody::SetAngularVelocity(const Vector3& velocity) const
     {
-        if (!m_body || m_body_type == BodyType::Controller)
+        if (m_body_type == BodyType::Controller)
             return;
 
-        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-        if (rigid_dynamic)
+        for (auto* body : m_bodies)
         {
-            rigid_dynamic->setAngularVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
-            rigid_dynamic->wakeUp();
+            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
+            {
+                dynamic->setAngularVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
+                dynamic->wakeUp();
+            }
         }
     }
 
@@ -375,18 +377,17 @@ namespace spartan
     {
         if (m_body_type == BodyType::Controller)
         {
-            SP_LOG_WARNING("Don't call ApplyForce on a player controller, call Move() instead");
+            SP_LOG_WARNING("Don't call ApplyForce on a controller, call Move() instead");
             return;
         }
 
-        if (m_body)
+        for (auto* body : m_bodies)
         {
-            PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-            if (rigid_dynamic)
+            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 PxForceMode::Enum px_mode = (mode == PhysicsForce::Constant) ? PxForceMode::eFORCE : PxForceMode::eIMPULSE;
-                rigid_dynamic->addForce(PxVec3(force.x, force.y, force.z), px_mode);
-                rigid_dynamic->wakeUp();
+                dynamic->addForce(PxVec3(force.x, force.y, force.z), px_mode);
+                dynamic->wakeUp();
             }
         }
     }
@@ -398,29 +399,23 @@ namespace spartan
 
     void PhysicsBody::SetPositionLock(const Vector3& lock)
     {
-        if (!m_body || m_position_lock == lock || m_body_type == BodyType::Controller)
+        if (m_body_type == BodyType::Controller)
             return;
     
         m_position_lock = lock;
-    
-        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-        if (rigid_dynamic)
+        for (auto* body : m_bodies)
         {
-            PxRigidDynamicLockFlags flags = rigid_dynamic->getRigidDynamicLockFlags();
-            
-            flags = PxRigidDynamicLockFlags(0);
-            if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-            if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-            if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-            if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-            if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-            if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-    
-            rigid_dynamic->setRigidDynamicLockFlags(flags);
-        }
-        else
-        {
-            SP_LOG_WARNING("SetPositionLock: Body is not dynamic, position lock ignored.");
+            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
+            {
+                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
+                if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+                if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+                if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+                if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+                if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+                if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+                dynamic->setRigidDynamicLockFlags(flags);
+            }
         }
     }
 
@@ -431,35 +426,23 @@ namespace spartan
 
     void PhysicsBody::SetRotationLock(const Vector3& lock)
     {
-        if (!m_body || m_body_type == BodyType::Controller)
-        {
-            SP_LOG_WARNING("SetRotationLock: This call needs to happen after SetShapeType()");
-            return;
-        }
-    
-        if (m_rotation_lock == lock)
+        if (m_body_type == BodyType::Controller)
             return;
     
         m_rotation_lock = lock;
-    
-        PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-        if (rigid_dynamic)
+        for (auto* body : m_bodies)
         {
-            PxRigidDynamicLockFlags flags = rigid_dynamic->getRigidDynamicLockFlags();
-            
-            flags = PxRigidDynamicLockFlags(0);
-            if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-            if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-            if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-            if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-            if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-            if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-    
-            rigid_dynamic->setRigidDynamicLockFlags(flags);
-        }
-        else
-        {
-            SP_LOG_WARNING("SetRotationLock: Body is not dynamic, rotation lock ignored.");
+            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
+            {
+                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
+                if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+                if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+                if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+                if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+                if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+                if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+                dynamic->setRigidDynamicLockFlags(flags);
+            }
         }
     }
 
@@ -467,15 +450,17 @@ namespace spartan
     {
         if (m_body_type == BodyType::Controller)
             return;
-
+    
         m_center_of_mass = center_of_mass;
-        if (m_body)
+        for (auto* body : m_bodies)
         {
-            PxRigidDynamic* rigid_dynamic = static_cast<PxRigidActor*>(m_body)->is<PxRigidDynamic>();
-            if (rigid_dynamic && m_center_of_mass != Vector3::Zero)
+            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
-                PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
-                PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
+                if (m_center_of_mass != Vector3::Zero)
+                {
+                    PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
+                }
             }
         }
     }
@@ -504,48 +489,10 @@ namespace spartan
         }
         else
         {
-            if (!m_body)
-                return false;
-    
-            auto perform_raycast = [](PxScene* scene, const Vector3& ray_start, void* actor_to_exclude) -> bool
-            {
-                PxVec3 px_ray_start = PxVec3(ray_start.x, ray_start.y, ray_start.z);
-                PxVec3 direction(0, -1, 0);
-                PxReal max_distance = 1.8f; // average male height (Greece)
-    
-                const PxU32 max_hits = 10;
-                PxRaycastHit hit_buffer[max_hits];
-                PxRaycastBuffer hit(hit_buffer, max_hits);
-                PxQueryFilterData filter_data;
-                filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-    
-                bool hit_found = scene->raycast(px_ray_start, direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data);
-                bool is_grounded = false;
-                if (hit_found)
-                {
-                    if (hit.hasBlock && hit.block.actor != actor_to_exclude && hit.block.distance > 0.001f)
-                    {
-                        is_grounded = true;
-                    }
-                    else if (!is_grounded && hit.nbTouches > 0)
-                    {
-                        for (PxU32 i = 0; i < hit.nbTouches; ++i)
-                        {
-                            const PxRaycastHit& current_hit = hit.getTouch(i);
-                            if (current_hit.actor != actor_to_exclude && current_hit.distance > 0.001f)
-                            {
-                                is_grounded = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                return is_grounded;
-            };
-    
-            PxRigidActor* rigid_actor = static_cast<PxRigidActor*>(m_body);
-            return perform_raycast(scene, GetEntity()->GetPosition(), rigid_actor);
+            SP_LOG_WARNING("RayTraceIsGrounded: This method is not applicable for non-controller bodies.");
         }
+
+        return false;
     }
 
     float PhysicsBody::GetCapsuleVolume()
@@ -592,11 +539,8 @@ namespace spartan
     
     void PhysicsBody::Create()
     {
-        // get physx pointers
-        PxPhysics* physics              = static_cast<PxPhysics*>(Physics::GetPhysics());
-        PxScene* scene                  = static_cast<PxScene*>(Physics::GetScene());
-        PxRigidActor* rigid_actor       = static_cast<PxRigidActor*>(m_body);
-        PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+        PxPhysics* physics = static_cast<PxPhysics*>(Physics::GetPhysics());
+        PxScene* scene     = static_cast<PxScene*>(Physics::GetScene());
 
         if (m_body_type == BodyType::Controller)
         {
@@ -609,7 +553,6 @@ namespace spartan
                     return;
                 }
             }
-
             PxCapsuleControllerDesc desc;
             desc.radius        = 0.5f;
             desc.height        = 1.8f;
@@ -620,7 +563,6 @@ namespace spartan
             desc.position      = PxExtendedVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z);
             desc.upDirection   = PxVec3(0, 1, 0);
             desc.material      = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
-
             m_controller = static_cast<PxControllerManager*>(controller_manager)->createController(desc);
             if (!m_controller)
             {
@@ -631,285 +573,285 @@ namespace spartan
             desc.material->release();
         }
         else
-        { 
-            // determine if a new body is needed (no body or mass-based type change)
-            bool is_static      = m_mass == 0.0f;
-            bool needs_new_body = !m_body || (is_static && !rigid_actor->is<PxRigidStatic>()) || (!is_static && !rigid_actor->is<PxRigidDynamic>());
-
-            if (needs_new_body)
+        {
+            // bodies
+            for (auto* body : m_bodies)
             {
-                // clean up existing body if it exists
-                if (m_body)
+                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
+                PxShape* shape;
+                actor->getShapes(&shape, 1);
+                if (shape)
                 {
-                    // detach and release shape
-                    if (m_shape)
-                    {
-                        PxShape* shape = static_cast<PxShape*>(m_shape);
-                        static_cast<PxRigidActor*>(m_body)->detachShape(*shape);
-                        shape->release();
-                        m_shape = nullptr;
-                    }
-                    // remove and release body
-                    scene->removeActor(*static_cast<PxRigidActor*>(m_body));
-                    static_cast<PxRigidActor*>(m_body)->release();
-                    m_body = nullptr;
+                    actor->detachShape(*shape);
+                    shape->release();
                 }
-            
-                // create transform from entity
-                PxTransform pose(
-                    PxVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z),
-                    PxQuat(GetEntity()->GetRotation().x, GetEntity()->GetRotation().y, GetEntity()->GetRotation().z, GetEntity()->GetRotation().w)
-                );
-            
-                // create body
-                if (is_static)
+                if (actor->getScene())
                 {
-                    m_body = physics->createRigidStatic(pose);
+                    scene->removeActor(*actor);
+                }
+                actor->release();
+            }
+            m_bodies.clear();
+
+            // material
+            if (m_material)
+            {
+                static_cast<PxMaterial*>(m_material)->release();
+                m_material = nullptr;
+            }
+            m_material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
+
+            // mesh
+            if (m_body_type == BodyType::Mesh)
+            {
+                Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+                if (!renderable)
+                {
+                    SP_LOG_ERROR("No Renderable component found for mesh shape");
+                    return;
+                }
+
+                // get geometry
+                vector<uint32_t> indices;
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                renderable->GetGeometry(&indices, &vertices);
+                if (vertices.empty() || indices.empty())
+                {
+                    SP_LOG_ERROR("Empty vertex or index data for mesh shape");
+                    return;
+                }
+
+                // simplify geometry
+                size_t target_index_count = 1024;
+                geometry_processing::simplify(indices, vertices, target_index_count, false);
+
+                // convert vertices to physx format
+                vector<PxVec3> px_vertices;
+                px_vertices.reserve(vertices.size());
+                Vector3 scale = GetEntity()->GetScale();
+                for (const auto& vertex : vertices)
+                {
+                    px_vertices.emplace_back(vertex.pos[0] * scale.x, vertex.pos[1] * scale.y, vertex.pos[2] * scale.z);
+                }
+
+                // cooking parameters
+                PxTolerancesScale _scale;
+                _scale.length                          = 1.0f;                    // 1 unit = 1 meter
+                _scale.speed                           = Physics::GetGravity().y; // gravity is in meters per second
+                PxCookingParams params(_scale);         
+                params.areaTestEpsilon                 = 0.06f * _scale.length * _scale.length;
+                params.planeTolerance                  = 0.0007f;
+                params.convexMeshCookingType           = PxConvexMeshCookingType::eQUICKHULL;
+                params.suppressTriangleMeshRemapTable  = false;
+                params.buildTriangleAdjacencies        = false;
+                params.buildGPUData                    = false;
+                params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+                params.meshWeldTolerance               = 0.001f;
+                params.meshAreaMinLimit                = 0.0f;
+                params.meshEdgeLengthMaxLimit          = 500.0f;
+                params.gaussMapLimit                   = 32;
+                params.maxWeightRatioInTet             = FLT_MAX;
+
+                PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+                if (m_mass == 0.0f) // static: triangle mesh
+                {
+                    PxTriangleMeshDesc mesh_desc;
+                    mesh_desc.points.count     = static_cast<PxU32>(px_vertices.size());
+                    mesh_desc.points.stride    = sizeof(PxVec3);
+                    mesh_desc.points.data      = px_vertices.data();
+                    mesh_desc.triangles.count  = static_cast<PxU32>(indices.size() / 3);
+                    mesh_desc.triangles.stride = 3 * sizeof(PxU32);
+                    mesh_desc.triangles.data   = indices.data();
+
+                    // validate
+                    if (!PxValidateTriangleMesh(params, mesh_desc))
+                    {
+                        SP_LOG_WARNING("Triangle mesh validation failed");
+                        return;
+                    }
+
+                    // create
+                    PxTriangleMeshCookingResult::Enum condition;
+                    m_mesh = PxCreateTriangleMesh(params, mesh_desc, *insertion_callback, &condition);
+                    if (condition != PxTriangleMeshCookingResult::eSUCCESS)
+                    {
+                        SP_LOG_ERROR("Failed to create triangle mesh: %d", condition);
+                        if (m_mesh)
+                        {
+                            static_cast<PxTriangleMesh*>(m_mesh)->release();
+                            m_mesh = nullptr;
+                        }
+                        return;
+                    }
+                }
+                else // dynamic: convex mesh
+                {
+                    PxConvexMeshDesc mesh_desc;
+                    mesh_desc.points.count  = static_cast<PxU32>(px_vertices.size());
+                    mesh_desc.points.stride = sizeof(PxVec3);
+                    mesh_desc.points.data   = px_vertices.data();
+                    mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
+                    if (!PxValidateConvexMesh(params, mesh_desc))
+                    {
+                        SP_LOG_WARNING("Convex mesh validation failed");
+                        return;
+                    }
+                    PxConvexMeshCookingResult::Enum condition;
+                    m_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+                    if (!m_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+                    {
+                        SP_LOG_ERROR("Failed to create convex mesh: %d", condition);
+                        if (m_mesh)
+                        {
+                            static_cast<PxConvexMesh*>(m_mesh)->release();
+                            m_mesh = nullptr;
+                        }
+                        return;
+                    }
+                }
+            }
+
+            CreateBodies();
+        }
+    }
+
+    void PhysicsBody::CreateBodies()
+    {
+        PxPhysics* physics                    = static_cast<PxPhysics*>(Physics::GetPhysics());
+        PxScene* scene                        = static_cast<PxScene*>(Physics::GetScene());
+        Renderable* renderable                = GetEntity()->GetComponent<Renderable>();
+        const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
+        size_t instance_count                 = instances.empty() ? 1 : instances.size();
+
+        if (m_bodies.size() != instance_count)
+        {
+            // clean up existing bodies
+            for (auto* body : m_bodies)
+            {
+                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
+                if (actor->getScene())
+                {
+                    scene->removeActor(*actor);
+                }
+                actor->release();
+            }
+            m_bodies.clear();
+
+            // create new bodies
+            for (size_t i = 0; i < instance_count; i++)
+            {
+                math::Matrix transform = instances.empty() ? GetEntity()->GetMatrix() : instances[i];
+                PxTransform pose(
+                    PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                    PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
+                );
+                PxRigidActor* actor;
+                if (m_mass == 0.0f)
+                {
+                    actor = physics->createRigidStatic(pose);
                 }
                 else
                 {
-                    m_body = physics->createRigidDynamic(pose);
-                    PxRigidDynamic* rigid_dynamic = static_cast<PxRigidDynamic*>(m_body);
-                    rigid_dynamic->setMass(m_mass);
-                    rigid_dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
-                    if (m_center_of_mass != Vector3::Zero)
+                    actor = physics->createRigidDynamic(pose);
+                    PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
+                    if (dynamic)
                     {
-                        PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
-                        PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
+                        dynamic->setMass(m_mass);
+                        dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+                        if (m_center_of_mass != Vector3::Zero)
+                        {
+                            PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                            PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
+                        }
+                        PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
+                        if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+                        if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+                        if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+                        if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+                        if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+                        if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+                        dynamic->setRigidDynamicLockFlags(flags);
                     }
-                    PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                    if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                    if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                    if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                    if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                    if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                    if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                    rigid_dynamic->setRigidDynamicLockFlags(flags);
                 }
-            
-                // add to scene
-                scene->addActor(*static_cast<PxRigidActor*>(m_body));
-                rigid_actor = static_cast<PxRigidActor*>(m_body);
-            }
-            
-            // update existing dynamic body properties
-            if (!needs_new_body && rigid_actor->is<PxRigidDynamic>())
-            {
-                PxRigidDynamic* rigid_dynamic = static_cast<PxRigidDynamic*>(m_body);
-                rigid_dynamic->setMass(m_mass);
-                if (m_center_of_mass != Vector3::Zero)
+
+                PxShape* shape       = nullptr;
+                PxMaterial* material = static_cast<PxMaterial*>(m_material);
+                switch (m_body_type)
                 {
-                    PxVec3 p = PxVec3(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
-                    PxRigidBodyExt::setMassAndUpdateInertia(*rigid_dynamic, m_mass, &p);
-                }
-                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                rigid_dynamic->setRigidDynamicLockFlags(flags);
-            }
-            
-            // remove existing shape
-            if (m_shape)
-            {
-                PxShape* shape = static_cast<PxShape*>(m_shape);
-                rigid_actor->detachShape(*shape);
-                shape->release();
-                m_shape = nullptr;
-            }
-            
-            // create material
-            PxMaterial* material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
-            
-            // create new shape based on shape type
-            switch (m_body_type)
-            {
-                case BodyType::Box:
-                {
-                    Vector3 scale = GetEntity()->GetScale();
-                    PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
-                    m_shape = physics->createShape(geometry, *material);
-                    break;
-                }
-                case BodyType::Sphere:
-                {
-                    Vector3 scale = GetEntity()->GetScale();
-                    float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
-                    PxSphereGeometry geometry(radius);
-                    m_shape = physics->createShape(geometry, *material);
-                    break;
-                }
-                case BodyType::Plane:
-                {
-                    PxPlaneGeometry geometry;
-                    m_shape = physics->createShape(geometry, *material);
-                    static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                    break;
-                }
-                case BodyType::Capsule:
-                {
-                    Vector3 scale     = GetEntity()->GetScale();
-                    float radius      = max(scale.x, scale.z) * 0.5f;
-                    float half_height = scale.y * 0.5f;
-                    PxCapsuleGeometry geometry(radius, half_height);
-                    m_shape = physics->createShape(geometry, *material);
-                    static_cast<PxShape*>(m_shape)->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                    break;
-                }
-                case BodyType::Mesh:
-                {
-                    Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-                    if (!renderable)
+                    case BodyType::Box:
                     {
-                        SP_LOG_ERROR("No Renderable component found for mesh shape");
+                        Vector3 scale = GetEntity()->GetScale();
+                        PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
+                        shape = physics->createShape(geometry, *material);
                         break;
                     }
-                
-                    // get geometry
-                    vector<uint32_t> indices;
-                    vector<RHI_Vertex_PosTexNorTan> vertices;
-                    renderable->GetGeometry(&indices, &vertices);
-                
-                    if (vertices.empty() || indices.empty())
+                    case BodyType::Sphere:
                     {
-                        SP_LOG_ERROR("Empty vertex or index data for mesh shape");
+                        Vector3 scale = GetEntity()->GetScale();
+                        float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
+                        PxSphereGeometry geometry(radius);
+                        shape = physics->createShape(geometry, *material);
                         break;
                     }
-
-                    // simplify geometry
-                    size_t target_index_count = 1024;
-                    geometry_processing::simplify(indices, vertices, target_index_count, false);
-
-                    // convert vertices to physx format
-                    vector<PxVec3> px_vertices;
-                    px_vertices.reserve(vertices.size());
-                    Vector3 _scale = GetEntity()->GetScale();
-                    for (const auto& vertex : vertices)
+                    case BodyType::Plane:
                     {
-                        PxVec3 scaled_vertex(
-                            vertex.pos[0] * _scale.x,
-                            vertex.pos[1] * _scale.y,
-                            vertex.pos[2] * _scale.z
-                        );
-                        px_vertices.emplace_back(scaled_vertex);
-                    }
-                
-                    // cooking parameters
-                    PxTolerancesScale scale;
-                    scale.length                           = 1.0f;                    // 1 unit = 1 meter
-                    scale.speed                            = Physics::GetGravity().y; // gravity is in meters per second
-                    PxCookingParams params(scale);         
-                    params.areaTestEpsilon                 = 0.06f * scale.length * scale.length;
-                    params.planeTolerance                  = 0.0007f;
-                    params.convexMeshCookingType           = PxConvexMeshCookingType::eQUICKHULL;
-                    params.suppressTriangleMeshRemapTable  = false;
-                    params.buildTriangleAdjacencies        = false;
-                    params.buildGPUData                    = false;
-                    params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-                    params.meshWeldTolerance               = 0.001f;
-                    params.meshAreaMinLimit                = 0.0f;
-                    params.meshEdgeLengthMaxLimit          = 500.0f;
-                    params.gaussMapLimit                   = 32;
-                    params.maxWeightRatioInTet             = FLT_MAX;
-                
-                    // create physx mesh
-                    PxShape* shape = nullptr;
-                    PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                    if (m_mass == 0.0f) // static: triangle mesh
-                    {
-                        // create triangle mesh description
-                        PxTriangleMeshDesc mesh_desc = {};
-                        mesh_desc.points.count       = static_cast<PxU32>(px_vertices.size());
-                        mesh_desc.points.stride      = sizeof(PxVec3);
-                        mesh_desc.points.data        = px_vertices.data();
-                        mesh_desc.triangles.count    = static_cast<PxU32>(indices.size() / 3);
-                        mesh_desc.triangles.stride   = 3 * sizeof(PxU32);
-                        mesh_desc.triangles.data     = indices.data();
-
-                        // validate
-                        if (!PxValidateTriangleMesh(params, mesh_desc))
-                        {
-                           SP_LOG_WARNING("Triangle mesh validation failed, the mesh is suboptimal so it will be skipped to ensure high performance");
-                           break;
-                        }
-
-                        // create triangle mesh
-                        PxTriangleMeshCookingResult::Enum condition;
-                        PxTriangleMesh* triangle_mesh = PxCreateTriangleMesh(params, mesh_desc, *insertion_callback, &condition);
-                        if (condition != PxTriangleMeshCookingResult::eSUCCESS)
-                        {
-                            SP_LOG_ERROR("Failed to create triangle mesh: %d", condition);
-                            break;
-                        }
-                
-                        // create triangle mesh geometry
-                        PxTriangleMeshGeometry geometry(triangle_mesh);
+                        PxPlaneGeometry geometry;
                         shape = physics->createShape(geometry, *material);
-                        triangle_mesh->release(); // shape takes ownership
+                        shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
+                        break;
                     }
-                    else // dynamic: convex mesh
+                    case BodyType::Capsule:
                     {
-                        // create convex mesh description
-                        PxConvexMeshDesc mesh_desc;
-                        mesh_desc.points.count  = static_cast<PxU32>(px_vertices.size());
-                        mesh_desc.points.stride = sizeof(PxVec3);
-                        mesh_desc.points.data   = px_vertices.data();
-                        mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
-                       
-                        // validate
-                        if (!PxValidateConvexMesh(params, mesh_desc))
-                        {
-                            SP_LOG_WARNING("Triangle mesh validation failed, the mesh is suboptimal so it will be skipped to ensure high performance");
-                            break;
-                        }
-
-                        // create convex mesh
-                        PxConvexMeshCookingResult::Enum condition;
-                        PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
-                        if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
-                        {
-                            SP_LOG_ERROR("Failed to create convex mesh: %d", condition);
-                            if (convex_mesh)
-                                convex_mesh->release();
-                            break;
-                        }
-                
-                        // create convex mesh geometry
-                        PxConvexMeshGeometry geometry(convex_mesh);
+                        Vector3 scale     = GetEntity()->GetScale();
+                        float radius      = max(scale.x, scale.z) * 0.5f;
+                        float half_height = scale.y * 0.5f;
+                        PxCapsuleGeometry geometry(radius, half_height);
                         shape = physics->createShape(geometry, *material);
-                        convex_mesh->release(); // shape takes ownership
+                        shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
+                        break;
                     }
-                
-                    if (shape)
+                    case BodyType::Mesh:
                     {
-                        if (PxShape* old_shape = static_cast<PxShape*>(m_shape))
+                        if (m_mesh)
                         {
-                            old_shape->release();
+                            if (m_mass == 0.0f)
+                            {
+                                PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh));
+                                shape = physics->createShape(geometry, *material);
+                            }
+                            else
+                            {
+                                PxConvexMeshGeometry geometry(static_cast<PxConvexMesh*>(m_mesh));
+                                shape = physics->createShape(geometry, *material);
+                            }
                         }
-
-                        m_shape = shape;
+                        break;
                     }
-                    else
-                    {
-                        SP_LOG_ERROR("Failed to create mesh shape");
-                    }
-                    break;
+                }
+                if (shape)
+                {
+                    shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                    actor->attachShape(*shape);
+                }
+                scene->addActor(*actor);
+                m_bodies.push_back(actor);
+            }
+        }
+        else
+        {
+            // update poses if not playing
+            if (!Engine::IsFlagSet(EngineMode::Playing))
+            {
+                for (size_t i = 0; i < instance_count; i++)
+                {
+                    math::Matrix transform = instances.empty() ? GetEntity()->GetMatrix() : instances[i];
+                    PxTransform pose(
+                        PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                        PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
+                    );
+                    static_cast<PxRigidActor*>(m_bodies[i])->setGlobalPose(pose);
                 }
             }
-            
-            // attach shape to body
-            if (m_shape)
-            {
-                PxShape* shape = static_cast<PxShape*>(m_shape);
-                shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
-                rigid_actor->attachShape(*shape);
-            }
-
-            // release material
-            material->release();
         }
     }
 }

@@ -466,6 +466,11 @@ namespace spartan
         m_bounding_box_dirty                    = true;
     }
 
+    void Renderable::SetInstance(const uint32_t index, const math::Matrix& transform)
+    {
+        m_instances[index] = transform;
+    }
+
     uint32_t Renderable::GetLodCount() const
     {
         return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());

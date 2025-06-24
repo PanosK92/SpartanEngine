@@ -70,8 +70,8 @@ namespace spartan
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const               { return m_instance_group_end_indices; }
         uint32_t GetInstanceGroupCount() const                                           { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
         const math::BoundingBox& GetBoundingBox() const                                  { return m_bounding_box;}
-        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances[index]; }
-        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group[index]; }
+        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances.empty()      ? math::BoundingBox::Undefined : m_bounding_box_instances[index]; }
+        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group.empty() ? math::BoundingBox::Undefined : m_bounding_box_instance_group[index]; }
 
         // material
         void SetMaterial(const std::shared_ptr<Material>& material);
@@ -81,6 +81,7 @@ namespace spartan
         Material* GetMaterial() const { return m_material; }
 
         // instancing
+        const std::vector<math::Matrix>& GetInstances() const   { return m_instances; }
         bool HasInstancing() const                              { return !m_instances.empty(); }
         RHI_Buffer* GetInstanceBuffer() const                   { return m_instance_buffer.get(); }
         math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
@@ -88,6 +89,7 @@ namespace spartan
         uint32_t GetInstanceGroupStartIndex(uint32_t group_index) const;
         uint32_t GetInstanceGroupCount(uint32_t group_index) const;
         void SetInstances(const std::vector<math::Matrix>& transforms);
+        void SetInstance(const uint32_t index, const math::Matrix& transform);
 
         // distance & visibility
         float GetDistanceSquared(const uint32_t instance_group_index = 0) const      { return m_distance_squared[instance_group_index]; }

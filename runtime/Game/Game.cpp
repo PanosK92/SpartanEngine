@@ -1019,10 +1019,9 @@ namespace spartan
                             renderable->SetMaterial(material);
                         }
                         
-                        if (Entity* body =  entity->GetChildByIndex(0))
+                        if (Entity* body = entity->GetChildByIndex(0))
                         {
                             Renderable* renderable = body->GetComponent<Renderable>();
-                
                             renderable->SetInstances(transforms);
                             renderable->SetMaxRenderDistance(render_distance_trees);
                 
@@ -1037,8 +1036,10 @@ namespace spartan
                                 material->SetResourceFilePath("project\\terrain\\tree_body_material" + string(EXTENSION_MATERIAL));
                             }
                             renderable->SetMaterial(material);
+
+                            // enable physics
+                            body->AddComponent<PhysicsBody>()->SetBodyType(BodyType::Mesh);
                         }
-                
                     }
                 }
                 
@@ -1074,6 +1075,9 @@ namespace spartan
                                 material->SetResourceFilePath(file_path);
                             }
                             renderable->SetMaterial(material);
+
+                            // enable physics
+                            rock_entity->AddComponent<PhysicsBody>()->SetBodyType(BodyType::Mesh);
                         }
                     }
                 }
