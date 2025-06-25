@@ -88,7 +88,7 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 
 The [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most of your questions, here are some of it's contents:
 
-- [Buildings](https://github.com/PanosK92/SpartanEngine/wiki/Buildings)
+- [Building](https://github.com/PanosK92/SpartanEngine/wiki/Building)
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/contributing.md)
 - [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
 
