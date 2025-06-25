@@ -40,48 +40,94 @@ float hash_instance_id(uint instance_id)
     return float(seed) / 4294967295.0; // normalize
 }
 
+// hash function to get pseudo-random value based on int2 coords
+float rand_float(int2 coords)
+{
+    uint seed = asuint(coords.x) * 374761393u + asuint(coords.y) * 668265263u; 
+    seed = (seed ^ (seed >> 13u)) * 1274126177u;
+    return float(seed & 0x00FFFFFFu) / float(0x01000000u);
+}
+
+// rotate UV around center (0.5, 0.5) by angle
+float2 rotate_uv(float2 uv, float angle)
+{
+    float cos_a = cos(angle);
+    float sin_a = sin(angle);
+    float2 centered = uv - 0.5f;
+    float2 rotated = float2(
+        centered.x * cos_a - centered.y * sin_a,
+        centered.x * sin_a + centered.y * cos_a
+    );
+    return rotated + 0.5f;
+}
+
+static float4 sample_reduce_tiling(uint texture_index, float2 uv, float3 world_pos)
+{
+    // get integer tile coordinates to hash from
+    int2 tile_coords = int2(floor(world_pos.x), floor(world_pos.z));
+
+    // get random rotation angle per tile in multiples of 90 degrees (0, 90, 180, 270)
+    float rnd   = rand_float(tile_coords);
+    float angle = floor(rnd * 4.0f) * PI_HALF;
+
+    // rotate uv inside tile
+    float2 tile_uv    = frac(uv);
+    float2 rotated_uv = rotate_uv(tile_uv, angle);
+
+    // recombine with integer tile coords to preserve tiling but rotated
+    float2 final_uv = float2(tile_coords) + rotated_uv;
+
+    // wrap final uv again to [0,1] so sample doesn't go out of bounds
+    final_uv = frac(final_uv);
+
+    // sample texture
+    return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), final_uv);
+}
+
 static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface)
 {
-    // sample base texture
-    float4 color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
+    float4 color;
 
     if (surface.is_terrain())
     {
-        // for the terrain, sample 2 more textures, rock and sand
-        float4 tex_rock = GET_TEXTURE(texture_index + 1).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
-        float4 tex_sand = GET_TEXTURE(texture_index + 2).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
-        
-        // compute slope and blend factors
+        // sample base color without tiling
+        color           = sample_reduce_tiling(texture_index, vertex.uv, vertex.position);
+        float4 tex_rock = sample_reduce_tiling(texture_index + 1, vertex.uv, vertex.position);
+        float4 tex_sand = sample_reduce_tiling(texture_index + 2, vertex.uv, vertex.position);
+
         const float sand_offset = 0.75f;
         const float rock_angle  = 45.0f * DEG_TO_RAD;
         float cos_slope         = dot(vertex.normal, float3(0, 1, 0));
         float slope             = saturate((cos(rock_angle) - cos_slope) / cos(rock_angle));
         float sand_factor       = saturate((vertex.position.y - sea_level) / sand_offset);
 
-        // compute the color
         float4 terrain = lerp(tex_rock, color, 1.0f - slope);
         color          = lerp(terrain, tex_sand, 1.0f - sand_factor);
     }
-    
-    // vegetation typically uses color variance
+    else
     {
-        const float variation_strength = 0.2f;                       // kind of visible variation
-        const float3 greener           = float3(0.05f, 0.4f, 0.03f); // richer green
-        const float3 yellower          = float3(0.45f, 0.4f, 0.15f); // bolder yellow
-        const float3 browner           = float3(0.3f, 0.15f, 0.08f); // deeper brown
-        
-        // blend based on variation value using lerps
-        float variation        = hash_instance_id(vertex.instance_id);
-        float3 variation_color = greener;                                                 // start with greener
-        variation_color        = lerp(variation_color, yellower, step(0.25f, variation)); // transition to yellower at 0.25
-        variation_color        = lerp(variation_color, browner, step(0.5f, variation));   // transition to browner at 0.5
+        // sample base color with tiling for non-terrain
+        color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
+    }
 
-        // apply
+    // vegetation variation stays the same
+    {
+        const float variation_strength = 0.2f;
+        const float3 greener           = float3(0.05f, 0.4f, 0.03f);
+        const float3 yellower          = float3(0.45f, 0.4f, 0.15f);
+        const float3 browner           = float3(0.3f,  0.15f, 0.08f);
+
+        float variation        = hash_instance_id(vertex.instance_id);
+        float3 variation_color = greener;
+        variation_color        = lerp(variation_color, yellower, step(0.25f, variation));
+        variation_color        = lerp(variation_color, browner, step(0.5f, variation));
+
         color.rgb = lerp(color.rgb, variation_color, variation_strength * (float)surface.color_variation_from_instance());
     }
 
     return color;
 }
+
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
