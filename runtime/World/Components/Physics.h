@@ -70,6 +70,7 @@ namespace spartan
         void Deserialize(FileStream* stream) override;
 
         // mass
+        constexpr static inline float mass_from_volume = FLT_MAX;
         float GetMass() const { return m_mass; }
         void SetMass(float mass);
 
@@ -116,18 +117,22 @@ namespace spartan
         float GetCapsuleVolume();
         float GetCapsuleRadius();
 
+        // static
+        bool IsStatic() const { return m_is_static; }
+        void SetStatic(bool is_static);
+
         // misc
         void Move(const math::Vector3& offset);
-        constexpr static inline float mass_auto = FLT_MAX;
 
     private:
         void Create();
         void CreateBodies();
 
-        float m_mass                   = 0.0f;
+        float m_mass                   = 0.001f;
         float m_friction               = 1.0f;
         float m_friction_rolling       = 0.002f;
         float m_restitution            = 0.2f;
+        bool m_is_static               = true;
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;

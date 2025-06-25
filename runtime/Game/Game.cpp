@@ -167,7 +167,7 @@ namespace spartan
                 
                 // add physics components
                 Physics* physics_body = default_metal_cube->AddComponent<Physics>();
-                physics_body->SetMass(Physics::mass_auto);
+                physics_body->SetMass(Physics::mass_from_volume);
                 physics_body->SetBodyType(BodyType::Box);
             }
 
@@ -182,7 +182,7 @@ namespace spartan
 
                     Physics* physics_body = entity->AddComponent<Physics>();
                     physics_body->SetBodyType(BodyType::Mesh);
-                    physics_body->SetMass(Physics::mass_auto);
+                    physics_body->SetMass(Physics::mass_from_volume);
                 }
             }
 
@@ -197,7 +197,7 @@ namespace spartan
 
                     Physics* physics_body = entity->AddComponent<Physics>();
                     physics_body->SetBodyType(BodyType::Mesh);
-                    physics_body->SetMass(Physics::mass_auto);
+                    physics_body->SetMass(Physics::mass_from_volume);
                 }
             }
 
@@ -213,7 +213,7 @@ namespace spartan
                     if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
                     {
                         Physics* physics_body = mesh_entity->AddComponent<Physics>();
-                        physics_body->SetMass(Physics::mass_auto);
+                        physics_body->SetMass(Physics::mass_from_volume);
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
@@ -1662,8 +1662,8 @@ namespace spartan
                         switch (doors[i - 1])
                         {
                             case Direction::Front: skip_dir = Direction::Back; break;
-                            case Direction::Back: skip_dir = Direction::Front; break;
-                            case Direction::Left: skip_dir = Direction::Right; break;
+                            case Direction::Back:  skip_dir = Direction::Front; break;
+                            case Direction::Left:  skip_dir = Direction::Right; break;
                             case Direction::Right: skip_dir = Direction::Left; break;
                             default: SP_ASSERT(false); break;
                         }

@@ -197,26 +197,22 @@ namespace spartan
             }
 
             // distance-based activation/deactivation
-            if (m_mass == 0.0f && m_body_type != BodyType::Controller)
+            if (IsStatic() && m_body_type != BodyType::Controller)
             {
                 if (Camera* camera = World::GetCamera())
                 {
                     const Vector3 camera_pos = camera->GetEntity()->GetPosition();
-                    PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
+                    PxScene* scene           = static_cast<PxScene*>(PhysicsWorld::GetScene());
             
-                    for (void* body : m_bodies)
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(m_bodies.size()); i++)
                     {
-                        PxRigidActor* actor   = static_cast<PxRigidActor*>(body);
-                        size_t instance_index = reinterpret_cast<size_t>(actor->userData);
-            
                         Renderable* renderable          = GetEntity()->GetComponent<Renderable>();
-                        const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(instance_index)) : renderable->GetBoundingBox();
+                        const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(i)) : renderable->GetBoundingBox();
                         const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
                         const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
-            
                         const float distance_deactivate = 80.0f;
                         const float distance_activate   = 40.0f;
-
+                        PxRigidActor* actor             = static_cast<PxRigidActor*>(m_bodies[i]);
                         if (distance_to_camera > distance_deactivate && actor->getScene())
                         {
                             scene->removeActor(*actor);
@@ -259,12 +255,92 @@ namespace spartan
 
     void Physics::SetMass(float mass)
     {
-        m_mass = max(mass, 0.0f);
+        // if mass is mass_from_volume (flt_max), approximate mass from volume
+        if (mass == mass_from_volume)
+        {
+            constexpr float density = 1000.0f; // kg/m³ (default density, e.g., water)
+            float volume = 0.0f;
+            Vector3 scale = GetEntity()->GetScale();
+    
+            switch (m_body_type)
+            {
+                case BodyType::Box:
+                {
+                    // volume = x * y * z
+                    volume = scale.x * scale.y * scale.z;
+                    break;
+                }
+                case BodyType::Sphere:
+                {
+                    // volume = (4/3) * π * r³, radius = max(x, y, z) / 2
+                    float radius = max(max(scale.x, scale.y), scale.z) * 0.5f;
+                    volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
+                    break;
+                }
+                case BodyType::Capsule:
+                {
+                    // volume = cylinder (π * r² * h) + two hemispheres ((4/3) * π * r³)
+                    float radius = max(scale.x, scale.z) * 0.5f;
+                    float cylinder_height = scale.y - 2.0f * radius; // height of cylindrical part
+                    float cylinder_volume = math::pi * radius * radius * cylinder_height;
+                    float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
+                    volume = cylinder_volume + sphere_volume;
+                    break;
+                }
+                case BodyType::Mesh:
+                {
+                    // approximate using bounding box volume
+                    Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+                    if (renderable)
+                    {
+                        BoundingBox bbox = renderable->GetBoundingBox();
+                        Vector3 extents = bbox.GetExtents();
+                        volume = extents.x * extents.y * extents.z * 8.0f; // extents are half-size
+                    }
+                    else
+                    {
+                        volume = 1.0f; // fallback volume (1 m³)
+                    }
+                    break;
+                }
+                case BodyType::Plane:
+                {
+                    // infinite plane, use default mass
+                    mass = 1.0f;
+                    volume = 0.0f; // skip volume-based calculation
+                    break;
+                }
+                case BodyType::Controller:
+                {
+                    // controller, use default mass (e.g., human-like)
+                    mass = 70.0f; // approximate human mass
+                    volume = 0.0f; // skip volume-based calculation
+                    break;
+                }
+            }
+    
+            // calculate mass from volume if applicable
+            if (volume > 0.0f)
+            {
+                mass = volume * density;
+            }
+        }
+    
+        // ensure minimum mass to avoid physx issues
+        m_mass = max(mass, 0.001f);
+    
+        // update mass for all dynamic bodies
         for (auto* body : m_bodies)
         {
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 dynamic->setMass(m_mass);
+                // update inertia if center of mass is set
+                if (m_center_of_mass != Vector3::Zero)
+                {
+                    PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
+                }
             }
         }
     }
@@ -527,6 +603,19 @@ namespace spartan
         return max(scale.x, scale.z) * 0.5f;
     }
 
+    void Physics::SetStatic(bool is_static)
+    {
+        // return if state hasn't changed
+        if (m_is_static == is_static)
+            return;
+    
+        // update static state
+        m_is_static = is_static;
+    
+        // recreate bodies to apply static/dynamic state
+        Create();
+    }
+
     void Physics::Move(const math::Vector3& offset)
     {
         if (m_body_type == BodyType::Controller && Engine::IsFlagSet(EngineMode::Playing))
@@ -545,7 +634,7 @@ namespace spartan
             GetEntity()->Translate(offset);
         }
     }
-    
+
     void Physics::Create()
     {
         PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
@@ -631,9 +720,9 @@ namespace spartan
                 }
 
                 // simplify geometry
-                float simplification_ratio = 0.15f; // keep 10% of the original indices
+                float simplification_ratio = 0.1f; // keep 10% of the original indices
                 size_t target_index_count  = static_cast<size_t>(indices.size() * simplification_ratio);
-                target_index_count         = max<size_t>(target_index_count, 256); // prevent over-simplification
+                target_index_count         = max<size_t>(target_index_count, 512); // prevent over-simplification
                 geometry_processing::simplify(indices, vertices, target_index_count, false);
 
                 // convert vertices to physx format
@@ -647,7 +736,7 @@ namespace spartan
 
                 // cooking parameters
                 PxTolerancesScale _scale;
-                _scale.length                          = 1.0f;                    // 1 unit = 1 meter
+                _scale.length                          = 1.0f;                         // 1 unit = 1 meter
                 _scale.speed                           = PhysicsWorld::GetGravity().y; // gravity is in meters per second
                 PxCookingParams params(_scale);         
                 params.areaTestEpsilon                 = 0.06f * _scale.length * _scale.length;
@@ -664,7 +753,7 @@ namespace spartan
                 params.maxWeightRatioInTet             = FLT_MAX;
 
                 PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                if (m_mass == 0.0f) // static: triangle mesh
+                if (IsStatic()) // static: triangle mesh
                 {
                     PxTriangleMeshDesc mesh_desc;
                     mesh_desc.points.count     = static_cast<PxU32>(px_vertices.size());
@@ -749,8 +838,8 @@ namespace spartan
                     PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
                     PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
                 );
-                PxRigidActor* actor;
-                if (m_mass == 0.0f)
+                PxRigidActor* actor = nullptr;
+                if (IsStatic())
                 {
                     actor = physics->createRigidStatic(pose);
                 }
@@ -818,7 +907,7 @@ namespace spartan
                     {
                         if (m_mesh)
                         {
-                            if (m_mass == 0.0f)
+                            if (IsStatic())
                             {
                                 PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh));
                                 shape = physics->createShape(geometry, *material);
@@ -837,11 +926,8 @@ namespace spartan
                     shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                     actor->attachShape(*shape);
                 }
+                actor->userData = reinterpret_cast<void*>(GetEntity());
                 scene->addActor(*actor);
-
-                // store the instance index in userData
-                actor->userData = reinterpret_cast<void*>(i);
-
                 m_bodies.push_back(actor);
             }
         }

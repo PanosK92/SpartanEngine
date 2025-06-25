@@ -521,7 +521,7 @@ void Properties::ShowPhysics(Physics* body) const
 
     if (component_begin("Physics", IconType::Component_PhysicsBody, body))
     {
-        //= REFLECT ==========================================================
+        // reflect
         float mass             = body->GetMass();
         float friction         = body->GetFriction();
         float friction_rolling = body->GetFrictionRolling();
@@ -533,7 +533,7 @@ void Properties::ShowPhysics(Physics* body) const
         bool freeze_rot_y      = static_cast<bool>(body->GetRotationLock().y);
         bool freeze_rot_z      = static_cast<bool>(body->GetRotationLock().z);
         Vector3 center_of_mass = body->GetCenterOfMass();
-        //====================================================================
+        bool is_static         = body->IsStatic(); // new: reflect static state
 
         // mass
         ImGui::Text("Mass (kg)");
@@ -592,25 +592,35 @@ void Properties::ShowPhysics(Physics* body) const
             }
         }
 
+        // static checkbox
+        ImGui::Text("Static");
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_static", &is_static);
+
         // center
         ImGui::Text("Shape Center");
         ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_center_x"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_y"); ImGui::InputFloat("Y", &center_of_mass.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_z"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
-        //= MAP ===============================================================================================================================================================================================
+        // map
         if (mass != body->GetMass())                                      body->SetMass(mass);
         if (friction != body->GetFriction())                              body->SetFriction(friction);
         if (friction_rolling != body->GetFrictionRolling())               body->SetFrictionRolling(friction_rolling);
         if (restitution != body->GetRestitution())                        body->SetRestitution(restitution);
-        if (freeze_pos_x != static_cast<bool>(body->GetPositionLock().x)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_y != static_cast<bool>(body->GetPositionLock().y)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_pos_z != static_cast<bool>(body->GetPositionLock().z)) body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
-        if (freeze_rot_x != static_cast<bool>(body->GetRotationLock().x)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_y != static_cast<bool>(body->GetRotationLock().y)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
-        if (freeze_rot_z != static_cast<bool>(body->GetRotationLock().z)) body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        if (freeze_pos_x != static_cast<bool>(body->GetPositionLock().x) ||
+            freeze_pos_y != static_cast<bool>(body->GetPositionLock().y) ||
+            freeze_pos_z != static_cast<bool>(body->GetPositionLock().z))
+        {
+            body->SetPositionLock(Vector3(static_cast<float>(freeze_pos_x), static_cast<float>(freeze_pos_y), static_cast<float>(freeze_pos_z)));
+        }
+        if (freeze_rot_x != static_cast<bool>(body->GetRotationLock().x) ||
+            freeze_rot_y != static_cast<bool>(body->GetRotationLock().y) ||
+            freeze_rot_z != static_cast<bool>(body->GetRotationLock().z))
+        {
+            body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
+        }
         if (center_of_mass != body->GetCenterOfMass())                    body->SetCenterOfMass(center_of_mass);
-        //=====================================================================================================================================================================================================
+        if (is_static != body->IsStatic())                                body->SetStatic(is_static); // new: map static state
     }
     component_end();
 }
