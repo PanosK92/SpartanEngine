@@ -561,23 +561,7 @@ namespace spartan
 
     bool Physics::IsGrounded() const
     {
-        PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
-        
-        if (m_body_type == BodyType::Controller)
-        {
-            if (!m_controller)
-                return false;
-    
-            PxControllerState state;
-            static_cast<PxController*>(m_controller)->getState(state);
-            return state.collisionFlags & PxControllerCollisionFlag::eCOLLISION_DOWN;
-        }
-        else
-        {
-            SP_LOG_WARNING("This method is not applicable for non-controller bodies.");
-        }
-
-        return false;
+        return GetGroundEntity() != nullptr; // eCOLLISION_DOWN is not very reliable (it can flicker), so we use raycasting as a fallback
     }
 
     Entity* Physics::GetGroundEntity() const
@@ -610,16 +594,23 @@ namespace spartan
         filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
     
         PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
+        if (!scene)
+            return nullptr;
+    
+        // get the actor used by the controller to avoid returning itself
+        PxRigidActor* actor_to_ignore = controller->getActor();
+    
         if (scene->raycast(ray_start, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter_data))
         { 
             for (PxU32 i = 0; i < hit.nbTouches; ++i)
             {
                 const PxRaycastHit& current_hit = hit.getTouch(i);
-                if (current_hit.actor)
-                {
-                    if (current_hit.actor->userData)
-                        return static_cast<Entity*>(current_hit.actor->userData);
-                }
+    
+                if (!current_hit.actor || current_hit.actor == actor_to_ignore)
+                    continue;
+    
+                if (current_hit.actor->userData)
+                    return static_cast<Entity*>(current_hit.actor->userData);
             }
         }
     
@@ -697,23 +688,38 @@ namespace spartan
                     return;
                 }
             }
+
             PxCapsuleControllerDesc desc;
-            desc.radius        = 0.5f;
-            desc.height        = 1.8f;
-            desc.climbingMode  = PxCapsuleClimbingMode::eEASY;
-            desc.stepOffset    = 0.8f;
-            desc.slopeLimit    = cosf(60.0f * math::deg_to_rad);
-            desc.contactOffset = 0.15f;
-            desc.position      = PxExtendedVec3(GetEntity()->GetPosition().x, GetEntity()->GetPosition().y, GetEntity()->GetPosition().z);
-            desc.upDirection   = PxVec3(0, 1, 0);
-            desc.material      = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
+            desc.radius           = 0.5f; // stable size for ground contact
+            desc.height           = 1.8f; // total height = height + 2 * radius
+            desc.climbingMode     = PxCapsuleClimbingMode::eEASY; // easier handling on steps/slopes
+            desc.stepOffset       = 0.3f; // keep under half a meter for better stepping
+            desc.slopeLimit       = cosf(60.0f * math::deg_to_rad); // 60° climbable slope
+            desc.contactOffset    = 0.1f; // allows early contact without tunneling
+            desc.upDirection      = PxVec3(0, 1, 0); // up is y
+            desc.nonWalkableMode  = PxControllerNonWalkableMode::ePREVENT_CLIMBING_AND_FORCE_SLIDING;
+            
+            // optional but recommended: disable callbacks unless needed
+            desc.reportCallback   = nullptr;
+            desc.behaviorCallback = nullptr;
+            
+            // apply initial position
+            const Vector3& pos = GetEntity()->GetPosition();
+            desc.position      = PxExtendedVec3(pos.x, pos.y, pos.z);
+            
+            // assign material
+            desc.material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
+            
+            // create controller
             m_controller = static_cast<PxControllerManager*>(controller_manager)->createController(desc);
             if (!m_controller)
             {
-                SP_LOG_ERROR("Failed to create capsule controller");
+                SP_LOG_ERROR("failed to create capsule controller");
                 desc.material->release();
                 return;
             }
+            
+            // cleanup
             desc.material->release();
         }
         else
