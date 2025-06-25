@@ -559,7 +559,7 @@ namespace spartan
         Create();
     }
 
-    bool Physics::RayTraceIsGrounded() const
+    bool Physics::IsGrounded() const
     {
         PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
         
@@ -574,10 +574,48 @@ namespace spartan
         }
         else
         {
-            SP_LOG_WARNING("RayTraceIsGrounded: This method is not applicable for non-controller bodies.");
+            SP_LOG_WARNING("This method is not applicable for non-controller bodies.");
         }
 
         return false;
+    }
+
+    Entity* Physics::GetGroundEntity() const
+    {
+        // check if body is a controller
+        if (m_body_type != BodyType::Controller)
+        {
+            SP_LOG_WARNING("This method is only applicable for controller bodies.");
+            return nullptr;
+        }
+    
+        if (!m_controller)
+            return nullptr;
+    
+        // get controller's current position
+        PxController* controller = static_cast<PxController*>(m_controller);
+        PxExtendedVec3 pos_ext   = controller->getPosition();
+        PxVec3 pos               = PxVec3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
+    
+        // ray start just below the controller
+        const float ray_length = 0.2f;
+        PxVec3 ray_start       = pos;
+        PxVec3 ray_dir         = PxVec3(0.0f, -1.0f, 0.0f);
+    
+        PxRaycastBuffer hit;
+        PxQueryFilterData filter_data;
+        filter_data.flags |= PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+    
+        PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
+        if (scene->raycast(ray_start, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter_data))
+        {
+            if (hit.block.actor && hit.block.actor->userData)
+            {
+                return static_cast<Entity*>(hit.block.actor->userData);
+            }
+        }
+    
+        return nullptr;
     }
 
     float Physics::GetCapsuleVolume()

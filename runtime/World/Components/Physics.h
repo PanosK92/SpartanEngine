@@ -110,8 +110,9 @@ namespace spartan
         BodyType GetBodyType() const { return m_body_type; }
         void SetBodyType(BodyType type);
 
-        // ray tracing
-        bool RayTraceIsGrounded() const;
+        // ground
+        bool IsGrounded() const;
+        Entity* GetGroundEntity() const;
 
         // dimensional properties
         float GetCapsuleVolume();

@@ -335,7 +335,7 @@ namespace spartan
         bool is_gamepad_connected = Input::IsGamepadConnected();
         bool is_playing           = Engine::IsFlagSet(EngineMode::Playing);
         bool has_physics_body     = m_physics_body_to_control != nullptr;
-        bool is_grounded          = has_physics_body ? m_physics_body_to_control->RayTraceIsGrounded() : false;
+        bool is_grounded          = has_physics_body ? m_physics_body_to_control->IsGrounded() : false;
         bool is_underwater        = GetEntity()->GetPosition().y <= 0.0f;
         m_is_walking              = false;
 
