@@ -1683,25 +1683,16 @@ namespace spartan
                     bool is_in_pool                 = default_camera->GetPosition().y < 1.6f;
                     AudioSource* active_source      = is_in_pool ? audio_source_water : audio_source_tiles;
                     AudioSource* inactive_source    = is_in_pool ? audio_source_tiles : audio_source_water;
-
+  
                     if (camera->IsWalking() && !active_source->IsPlaying())
                     {
                         active_source->Play();
-                        if (inactive_source->IsPlaying())
-                        {
-                            inactive_source->Stop();
-                        }
+                        inactive_source->Stop();
                     }
                     else if (!camera->IsWalking())
                     {
-                        if (audio_source_tiles->IsPlaying())
-                        {
-                            audio_source_tiles->Stop();
-                        }
-                        if (audio_source_water->IsPlaying())
-                        {
-                            audio_source_water->Stop();
-                        }
+                        audio_source_tiles->Stop();
+                        audio_source_water->Stop();
                     }
                 }
 

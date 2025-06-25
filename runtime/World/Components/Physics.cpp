@@ -585,7 +585,7 @@ namespace spartan
         // check if body is a controller
         if (m_body_type != BodyType::Controller)
         {
-            SP_LOG_WARNING("This method is only applicable for controller bodies.");
+            SP_LOG_WARNING("this method is only applicable for controller bodies.");
             return nullptr;
         }
     
@@ -598,20 +598,28 @@ namespace spartan
         PxVec3 pos               = PxVec3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
     
         // ray start just below the controller
-        const float ray_length = 0.2f;
+        const float ray_length = 1.8f;
         PxVec3 ray_start       = pos;
         PxVec3 ray_dir         = PxVec3(0.0f, -1.0f, 0.0f);
     
-        PxRaycastBuffer hit;
+        const PxU32 max_hits = 10;
+        PxRaycastHit hit_buffer[max_hits];
+        PxRaycastBuffer hit(hit_buffer, max_hits);
+    
         PxQueryFilterData filter_data;
-        filter_data.flags |= PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+        filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
     
         PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
         if (scene->raycast(ray_start, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter_data))
-        {
-            if (hit.block.actor && hit.block.actor->userData)
+        { 
+            for (PxU32 i = 0; i < hit.nbTouches; ++i)
             {
-                return static_cast<Entity*>(hit.block.actor->userData);
+                const PxRaycastHit& current_hit = hit.getTouch(i);
+                if (current_hit.actor)
+                {
+                    if (current_hit.actor->userData)
+                        return static_cast<Entity*>(current_hit.actor->userData);
+                }
             }
         }
     
