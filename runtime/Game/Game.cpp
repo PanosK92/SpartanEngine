@@ -1053,7 +1053,7 @@ namespace spartan
                     // generate instances
                     {
                         vector<Matrix> transforms;
-                        terrain->GenerateTransforms(&transforms, rock_count, TerrainProp::Tree, -2.0f);
+                        terrain->GenerateTransforms(&transforms, rock_count, TerrainProp::Rock, -1.0f);
                         
                         if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
                         {

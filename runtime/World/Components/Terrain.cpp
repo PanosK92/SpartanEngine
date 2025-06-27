@@ -711,24 +711,33 @@ namespace spartan
     {
         bool rotate_match_surface_normal = false;                        // don't rotate to match the surface normal
         float max_slope                  = 0.0f;                         // don't allow slope
-        float terrain_offset             = 0.0f;                         // place exactly on the terrain
-        float height_min                 = parameters::level_sea;        // min allowed height is sea level
+        float terrain_offset             = offset_y;                     // 0.0f places exactly on the terrain
+        float height_min                 = parameters::level_sea;        // sea level
         float height_max                 = numeric_limits<float>::max(); // no height limit
     
         if (terrain_prop == TerrainProp::Tree)
         {
-            max_slope                   = 30.0f * math::deg_to_rad;    // tighter slope for trees in harsh, Everest-like snowy conditions
-            terrain_offset              = offset_y;                    // push the tree slightly into the ground
-            height_min                  = 5.0f;                        // trees start just below snow level (230 m)
-            height_max                  = parameters::level_snow + 20; // stop a bit above the snow
+            max_slope                   = 30.0f * math::deg_to_rad;     // tighter slope for trees in harsh
+            height_min                  = parameters::level_sea + 5.0f; // a bit above sea level
+            height_max                  = parameters::level_snow + 20;  // stop a bit above the snow
         }
-        
-        if (terrain_prop == TerrainProp::Grass)
+        else if (terrain_prop == TerrainProp::Grass)
         {
-            max_slope                   = 45.0f * math::deg_to_rad; // moderate slope for grass in snowy, high-altitude conditions
-            rotate_match_surface_normal = true;                     // small plants align with terrain normal
-            height_min                  = 0.5f;
-            height_max                  = parameters::level_snow;   // stop when snow shows up
+            max_slope                   = 45.0f * math::deg_to_rad;     // moderate slope for grass in snowy, high-altitude conditions
+            rotate_match_surface_normal = true;                         // small plants align with terrain normal
+            height_min                  = parameters::level_sea + 5.0f; // a bit above sea level
+            height_max                  = parameters::level_snow;       // stop when snow shows up
+        }
+        else if (terrain_prop == TerrainProp::Rock)
+        {
+            max_slope                   = 60.0f * math::deg_to_rad;      // moderate slope for grass in snowy, high-altitude conditions
+            rotate_match_surface_normal = true;                          // small plants align with terrain normal
+            height_min                  = parameters::level_sea - 10.0f; // can spawn underwater
+            height_max                  = numeric_limits<float>::max();  // can spawn at any height
+        }
+        else
+        {
+            SP_ASSERT_MSG(false, "Unknown terrain prop type for Terrain::GenerateTransforms");
         }
     
         *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max);
