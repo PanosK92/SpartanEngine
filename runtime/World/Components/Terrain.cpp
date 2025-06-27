@@ -104,67 +104,66 @@ namespace spartan
         
             // step 1: filter acceptable triangles using precomputed data
             vector<uint32_t> acceptable_triangles;
+            acceptable_triangles.reserve(triangle_data.size());
+        
+            for (uint32_t i = 0; i < triangle_data.size(); i++)
             {
-                acceptable_triangles.reserve(triangle_data.size());
-        
-                for (uint32_t i = 0; i < triangle_data.size(); i++)
+                if (triangle_data[i].slope_radians <= max_slope_radians &&
+                    triangle_data[i].height_min >= height_min &&
+                    triangle_data[i].height_max <= height_max)
                 {
-                    if (triangle_data[i].slope_radians <= max_slope_radians &&
-                        triangle_data[i].height_min >= height_min &&
-                        triangle_data[i].height_max <= height_max)
-                    {
-                        acceptable_triangles.push_back(i);
-                    }
-                }
-        
-                if (acceptable_triangles.empty())
-                {
-                    SP_LOG_WARNING("No acceptable triangles found for the given criteria");
-                    return {};
+                    acceptable_triangles.push_back(i);
                 }
             }
         
-            // step 2: prepare output vector and mutex
-            vector<Matrix> transforms;
-            transforms.reserve(transform_count);
-            mutex mtx;
+            if (acceptable_triangles.empty())
+            {
+                SP_LOG_WARNING("No acceptable triangles found for the given criteria");
+                return {};
+            }
         
-            // step 3: parallel placement
-            auto place_mesh = [&acceptable_triangles, &transforms, &mtx, rotate_to_match_surface_normal, terrain_offset](uint32_t start_index, uint32_t end_index)
+            // step 2: pre-allocate output vector
+            vector<Matrix> transforms(transform_count);
+        
+            // step 3: parallel placement without mutex by direct assignment
+            auto place_mesh = [&](uint32_t start_index, uint32_t end_index)
             {
                 thread_local mt19937 generator(random_device{}());
-                uniform_int_distribution<> triangle_dist(0, static_cast<uint32_t>(acceptable_triangles.size() - 1));
-                uniform_real_distribution<float> barycentric_dist(0.0f, 1.0f);
+                const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
+                uniform_int_distribution<> triangle_dist(0, tri_count - 1);
+                uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
-        
-                vector<Matrix> local_transforms;
-                local_transforms.reserve(end_index - start_index);
         
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
                     uint32_t tri_idx        = acceptable_triangles[triangle_dist(generator)];
                     const TriangleData& tri = triangle_data[tri_idx];
-                
-                    float u = barycentric_dist(generator);
-                    float v = barycentric_dist(generator);
-                    if (u + v > 1.0f)
-                    {
-                        u = 1.0f - u;
-                        v = 1.0f - v;
-                    }
-                
-                    Vector3 position             = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, terrain_offset, 0.0f);
-                    Quaternion rotate_to_normal  = rotate_to_match_surface_normal ? tri.rotation_to_normal : Quaternion::Identity;
-                    Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
-                    Quaternion rotation          = rotate_to_normal * random_y_rotation;
-                    Matrix transform             = Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position); // simplified, since scale is 1.0
-                    local_transforms.push_back(transform);
-                }
         
-                // merge local transforms into the shared vector
-                lock_guard<mutex> lock(mtx);
-                transforms.insert(transforms.end(), local_transforms.begin(), local_transforms.end());
+                    // compute barycentric coordinates
+                    float r1      = dist(generator);
+                    float r2      = dist(generator);
+                    float sqrt_r1 = sqrtf(r1);
+                    float u       = 1.0f - sqrt_r1;
+                    float v       = r2 * sqrt_r1;
+        
+                    Vector3 position = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, terrain_offset, 0.0f);
+        
+                    Quaternion rotation;
+                    if (rotate_to_match_surface_normal)
+                    {
+                        Quaternion rotate_to_normal  = tri.rotation_to_normal;
+                        Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                        rotation                     = rotate_to_normal * random_y_rotation;
+                    }
+                    else
+                    {
+                        rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                    }
+        
+                    transforms[i] = Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
+                }
             };
+        
             ThreadPool::ParallelLoop(place_mesh, transform_count);
         
             return transforms;
