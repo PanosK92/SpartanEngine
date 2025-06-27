@@ -988,7 +988,7 @@ namespace spartan
                 {
                     shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("tree");
-                    entity->SetScale(0.05f);
+                    entity->SetScale(0.04f);
                 
                     // generate instances
                     {

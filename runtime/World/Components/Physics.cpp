@@ -116,7 +116,7 @@ namespace spartan
 
     void Physics::OnTick()
     {
-         // controller
+        // map transform from physx to engine and vice versa
         if (m_body_type == BodyType::Controller)
         {
             if (Engine::IsFlagSet(EngineMode::Playing))
@@ -141,86 +141,83 @@ namespace spartan
                 m_velocity = Vector3::Zero;
             }
         }
-        else // regular bodies
+        else if (!m_is_static)
         {
             Renderable* renderable                = GetEntity()->GetComponent<Renderable>();
             const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
             bool has_instances                    = !instances.empty();
 
-            if (!renderable->HasInstancing()) // temp fix as things seem to break for instanced bodies
+            for (size_t i = 0; i < m_bodies.size(); i++)
             {
-                for (size_t i = 0; i < m_bodies.size(); i++)
-                {
-                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]);
+                PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]);
 
-                    if (Engine::IsFlagSet(EngineMode::Playing))
+                if (Engine::IsFlagSet(EngineMode::Playing))
+                {
+                    PxTransform pose       = actor->getGlobalPose();
+                    math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                    if (has_instances && renderable && i < instances.size())
                     {
-                        PxTransform pose = actor->getGlobalPose();
-                        math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                        if (has_instances && renderable && i < instances.size())
-                        {
-                            renderable->SetInstance(static_cast<uint32_t>(i), transform);
-                        }
-                        else if (i == 0)
-                        {
-                            GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                            GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                        }
+                        renderable->SetInstance(static_cast<uint32_t>(i), transform);
+                    }
+                    else if (i == 0)
+                    {
+                        GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
+                        GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                    }
+                }
+                else
+                {
+                    math::Matrix transform;
+                    if (has_instances && i < instances.size())
+                    {
+                        transform = instances[i];
+                    }
+                    else if (i == 0)
+                    {
+                        transform = GetEntity()->GetMatrix();
                     }
                     else
                     {
-                        math::Matrix transform;
-                        if (has_instances && i < instances.size())
-                        {
-                            transform = instances[i];
-                        }
-                        else if (i == 0)
-                        {
-                            transform = GetEntity()->GetMatrix();
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                        PxTransform pose(
-                            PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                            PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                        );
-                        actor->setGlobalPose(pose);
-                        if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
-                        {
-                            dynamic->setLinearVelocity(PxVec3(0, 0, 0));
-                            dynamic->setAngularVelocity(PxVec3(0, 0, 0));
-                        }
+                        continue;
+                    }
+                    PxTransform pose(
+                        PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                        PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
+                    );
+                    actor->setGlobalPose(pose);
+                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+                    {
+                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
                     }
                 }
             }
+        }
 
-            // distance-based activation/deactivation
-            if (IsStatic() && m_body_type != BodyType::Controller)
+        // distance-based activation/deactivation
+        if (m_body_type != BodyType::Controller && m_is_static)
+        {
+            if (Camera* camera = World::GetCamera())
             {
-                if (Camera* camera = World::GetCamera())
+                const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+                PxScene* scene           = static_cast<PxScene*>(PhysicsWorld::GetScene());
+        
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_bodies.size()); i++)
                 {
-                    const Vector3 camera_pos = camera->GetEntity()->GetPosition();
-                    PxScene* scene           = static_cast<PxScene*>(PhysicsWorld::GetScene());
-            
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(m_bodies.size()); i++)
+                    Renderable* renderable          = GetEntity()->GetComponent<Renderable>();
+                    const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(i)) : renderable->GetBoundingBox();
+                    const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
+                    const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
+                    const float distance_deactivate = 80.0f;
+                    const float distance_activate   = 40.0f;
+                    PxRigidActor* actor             = static_cast<PxRigidActor*>(m_bodies[i]);
+                    if (distance_to_camera > distance_deactivate && actor->getScene())
                     {
-                        Renderable* renderable          = GetEntity()->GetComponent<Renderable>();
-                        const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(i)) : renderable->GetBoundingBox();
-                        const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
-                        const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
-                        const float distance_deactivate = 80.0f;
-                        const float distance_activate   = 40.0f;
-                        PxRigidActor* actor             = static_cast<PxRigidActor*>(m_bodies[i]);
-                        if (distance_to_camera > distance_deactivate && actor->getScene())
-                        {
-                            scene->removeActor(*actor);
-                        }
-                        else if (distance_to_camera <= distance_activate && !actor->getScene())
-                        {
-                            scene->addActor(*actor);
-                        }
+                        scene->removeActor(*actor);
+                    }
+                    else if (distance_to_camera <= distance_activate && !actor->getScene())
+                    {
+                        scene->addActor(*actor);
                     }
                 }
             }

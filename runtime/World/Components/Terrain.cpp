@@ -452,7 +452,7 @@ namespace spartan
             vector<Vector3> original_positions = positions;
         
             auto erode_range = [&](uint32_t start_index, uint32_t end_index)
-                {
+            {
                mt19937 gen(random_device{}() + start_index);
                uniform_real_distribution<float> dist(0.0f, 1.0f);
         
