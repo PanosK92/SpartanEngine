@@ -43,7 +43,8 @@ namespace spartan
 {
     namespace parameters
     {
-        const float sea_level               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
+        const float level_sea               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
+        const float level_snow              = 230.0f;
         const uint32_t smoothing_iterations = 1;         // applied on the height map
         const uint32_t density              = 3;         // determines the number of positions extracted out of the height map (that means more triangles later down the line)
         const uint32_t scale                = 4;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
@@ -59,7 +60,8 @@ namespace spartan
             Vector3 v1_minus_v0;
             Vector3 v2_minus_v0;
             float slope_radians;
-            float min_height;
+            float height_min;
+            float height_max;
             Quaternion rotation_to_normal;
         };
         static vector<TriangleData> triangle_data;
@@ -83,19 +85,20 @@ namespace spartan
         
                     Vector3 normal                = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
                     float slope_radians           = acos(Vector3::Dot(normal, Vector3::Up));
-                    float min_height              = min({v0.y, v1.y, v2.y});
+                    float height_min              = min({v0.y, v1.y, v2.y});
+                    float height_max              = max({v0.y, v1.y, v2.y});
                     Vector3 v1_minus_v0           = v1 - v0;
                     Vector3 v2_minus_v0           = v2 - v0;
                     Quaternion rotation_to_normal = Quaternion::FromToRotation(Vector3::Up, normal);
         
-                    triangle_data[i] = { normal, v0, v1_minus_v0, v2_minus_v0, slope_radians, min_height, rotation_to_normal };
+                    triangle_data[i] = { normal, v0, v1_minus_v0, v2_minus_v0, slope_radians, height_min, height_max, rotation_to_normal };
                 }
             };
         
             ThreadPool::ParallelLoop(compute_triangle, triangle_count);
         }
 
-        vector<Matrix> find_transforms(uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal, float terrain_offset, float min_height)
+        vector<Matrix> find_transforms(uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal, float terrain_offset, float height_min, float height_max)
         {
             SP_ASSERT(!triangle_data.empty());
         
@@ -106,15 +109,17 @@ namespace spartan
         
                 for (uint32_t i = 0; i < triangle_data.size(); i++)
                 {
-                    if (triangle_data[i].slope_radians <= max_slope_radians && triangle_data[i].min_height >= min_height)
+                    if (triangle_data[i].slope_radians <= max_slope_radians &&
+                        triangle_data[i].height_min >= height_min &&
+                        triangle_data[i].height_max <= height_max)
                     {
-                        acceptable_triangles.push_back(i); // store triangle index
+                        acceptable_triangles.push_back(i);
                     }
                 }
         
                 if (acceptable_triangles.empty())
                 {
-                    SP_LOG_WARNING("No acceptable triangles found for the given criteria.");
+                    SP_LOG_WARNING("No acceptable triangles found for the given criteria");
                     return {};
                 }
             }
@@ -621,7 +626,7 @@ namespace spartan
             }
         }
 
-        void generate_normals(const vector<uint32_t>& /*terrain_indices*/, vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, uint32_t width, uint32_t height)
+        void generate_normals(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, uint32_t width, uint32_t height)
         {
             SP_ASSERT_MSG(!terrain_vertices.empty(), "Vertices are empty");
         
@@ -705,26 +710,29 @@ namespace spartan
 
     void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop, float offset_y)
     {
-        bool rotate_match_surface_normal = false; // don't rotate to match the surface normal
-        float max_slope                  = 0.0f;  // don't allow slope
-        float terrain_offset             = 0.0f;  // place exactly on the terrain
-        float min_height                 = 0.0f;  // spawn at sea level= 0.0f; // spawn at sea level
+        bool rotate_match_surface_normal = false;                        // don't rotate to match the surface normal
+        float max_slope                  = 0.0f;                         // don't allow slope
+        float terrain_offset             = 0.0f;                         // place exactly on the terrain
+        float height_min                 = parameters::level_sea;        // min allowed height is sea level
+        float height_max                 = numeric_limits<float>::max(); // no height limit
     
         if (terrain_prop == TerrainProp::Tree)
         {
-            max_slope                   = 30.0f * math::deg_to_rad;
-            terrain_offset              = offset_y; // push the tree slightly into the ground
-            min_height                  = 6.0f;
+            max_slope                   = 30.0f * math::deg_to_rad;    // tighter slope for trees in harsh, Everest-like snowy conditions
+            terrain_offset              = offset_y;                    // push the tree slightly into the ground
+            height_min                  = 5.0f;                        // trees start just below snow level (230 m)
+            height_max                  = parameters::level_snow + 20; // stop a bit above the snow
         }
-    
+        
         if (terrain_prop == TerrainProp::Grass)
         {
-            max_slope                   = 40.0f * math::deg_to_rad;
-            rotate_match_surface_normal = true; // small plants tend to grow towards the sun but they can have some wonky angles
-            min_height                  = 0.5f;
+            max_slope                   = 45.0f * math::deg_to_rad; // moderate slope for grass in snowy, high-altitude conditions
+            rotate_match_surface_normal = true;                     // small plants align with terrain normal
+            height_min                  = 0.5f;
+            height_max                  = parameters::level_snow;   // stop when snow shows up
         }
     
-        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, min_height);
+        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max);
     }
 
     void Terrain::SaveToFile(const char* file_path)
@@ -936,7 +944,7 @@ namespace spartan
             // 5. compute normals and tangents
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
-                generate_normals(m_indices, m_vertices, dense_width, dense_height);
+                generate_normals(m_vertices, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
