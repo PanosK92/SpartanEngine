@@ -99,10 +99,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_gi                 = tex_uav4[thread_id.xy].rgb;
     float shadow_mask                  = tex[thread_id.xy].r;
 
-    // modulate specular light source with their respective outcoming energy
-    float3 fresnel      = F_Schlick(surface.F0, get_f90(surface), n_dot_v);
-    specular_ssr.rgb   *= fresnel;
-    specular_gi        *= fresnel;
+    // modulate specular light source with the outcoming energy
+    specular_ssr.rgb   *= F;
+    specular_gi        *= F;
     specular_skysphere *= specular_energy * shadow_mask;
 
     // combine the diffuse light
