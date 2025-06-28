@@ -219,7 +219,7 @@ namespace spartan
                 }
             }
 
-            shared_ptr<Entity> water(const Vector3& position, float dimension, uint32_t density, Color color, float tiling)
+            shared_ptr<Entity> water(const Vector3& position, float dimension, uint32_t density, Color color, float tiling, float normal_strength)
             {
                 // entity
                 shared_ptr<Entity> water = World::CreateEntity();
@@ -243,7 +243,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
                     material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest (it works in the small liminal space world)
-                    material->SetProperty(MaterialProperty::Normal,              0.4f);
+                    material->SetProperty(MaterialProperty::Normal,              normal_strength);
                     material->SetProperty(MaterialProperty::TextureTilingX,      tiling);
                     material->SetProperty(MaterialProperty::TextureTilingY,      tiling);
                 }
@@ -980,7 +980,7 @@ namespace spartan
                 const float dimension          = 8000; // meters
                 const uint32_t density         = 64;   // geometric
                 const Color forest_water_color = Color(0.0f / 255.0f, 150.0f / 255.0f, 70.0f / 255.0f, 220.0f / 255.0f);
-                entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f);
+                entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f, 0.1f);
                 
                 // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
@@ -1525,7 +1525,7 @@ namespace spartan
                     if (is_pool)
                     {
                         Color pool_color = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
-                        auto water_entity = entities::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f);
+                        auto water_entity = entities::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
                         water_entity->SetParent(room_entity);
                     }
                     

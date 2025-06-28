@@ -42,43 +42,41 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // get resolution
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    
+
     // create surface
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
-    
+
     // skip sky
     if (surface.is_sky())
         return;
-    
-    // compute view dir and fresnel
+
+    // compute view direction and uv
     float3 view_dir = -surface.camera_to_pixel;
-    float n_dot_v   = saturate(dot(surface.normal, view_dir));
-    float3 fresnel  = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
-    
-    // get background color (refraction), always needed for transparency
-    float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
+    float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
+
+    // background (used when no refraction or blending base)
     float3 background = tex2[thread_id.xy].rgb;
-    
+
+    // optional refraction (distorted background)
+    float3 refraction = background;
     if (surface.is_transparent())
     {
         float ior          = surface.ior > 0.0f ? surface.ior : default_ior;
-        float3 refract_dir = refract(-view_dir, surface.normal, 1.0f / ior);
+        float3 refract_dir = refract(view_dir, surface.normal, 1.0f / ior);
         float2 uv_offset   = refract_dir.xy * refraction_strength * (1.0f - surface.roughness);
         float2 refract_uv  = clamp(uv + uv_offset, 0.0f, 1.0f);
-        background         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
+        refraction         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
     }
-    
-    // get reflection (SSR)
-    float3 reflection = tex[thread_id.xy].rgb;
-    
-    // fresnel mix between background (refraction) and reflection
-    float3 surface_color = lerp(background, reflection, fresnel);
-    
-    // blend surface color over background using surface.alpha
-    // but remember: background is already 'behind' the surface
+
+    // fresnel blend between reflection and refraction
+    float n_dot_v        = saturate(dot(surface.normal, view_dir));
+    float3 fresnel       = saturate(fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness));
+    float3 reflection    = tex[thread_id.xy].rgb;
+    float3 surface_color = reflection * fresnel + refraction * (1.0f - fresnel);
+
+    // blend surface color over original background using surface alpha
     float3 final_color = lerp(background, surface_color, surface.alpha);
-    
-    // write to output
+
     tex_uav[thread_id.xy] += float4(final_color, surface.alpha);
 }

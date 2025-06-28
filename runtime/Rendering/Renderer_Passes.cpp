@@ -120,7 +120,7 @@ namespace spartan
             }
 
             // image based lighting
-            Pass_Light_ImageBased(cmd_list_present);       // ibl from skysphere and global illumination
+            Pass_Light_ImageBased(cmd_list_present);                 // ibl from skysphere and global illumination
             Pass_ScreenSpaceReflectionsRefraction(cmd_list_present); // ssr
 
             // render -> output resolution
@@ -630,9 +630,9 @@ namespace spartan
     {
         static bool cleared = false;
 
-        RHI_Texture* tex_render         = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_render_opaque  = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
-        RHI_Texture* tex_ssr            = GetRenderTarget(Renderer_RenderTarget::ssr);
+        RHI_Texture* tex_frame             = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::ssr);
+        RHI_Texture* tex_refraction_source = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
 
         cmd_list->BeginTimeblock("screen_space_reflections_refraction");
         {
@@ -641,14 +641,14 @@ namespace spartan
                 cmd_list->BeginMarker("reflection_trace");
                 {
                     // do any pending barriers as we don't have control over fidelityfx sssr
-                    tex_render->SetLayout(RHI_Image_Layout::General, cmd_list);
+                    tex_frame->SetLayout(RHI_Image_Layout::General, cmd_list);
                     cmd_list->InsertPendingBarrierGroup();
                     cmd_list->RenderPassEnd();
                 
                     RHI_VendorTechnology::SSSR_Dispatch(
                         cmd_list,
                         GetOption<float>(Renderer_Option::ResolutionScale),
-                        tex_render, // source of reflection
+                        tex_frame, // source of reflection
                         GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                         GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
                         GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
@@ -678,10 +678,10 @@ namespace spartan
 
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);                                                     // in - reflection
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque)); // in - refraction
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_render);                                                  // out
-                cmd_list->Dispatch(tex_render);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);               // in - reflection
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);             // out
+                cmd_list->Dispatch(tex_frame);
             }
             cmd_list->EndMarker();
         }
