@@ -349,7 +349,6 @@ namespace spartan
         bool is_playing           = Engine::IsFlagSet(EngineMode::Playing);
         bool has_physics_body     = m_physics_body_to_control != nullptr;
         bool is_grounded          = has_physics_body ? m_physics_body_to_control->IsGrounded() : false;
-        bool is_underwater        = GetEntity()->GetPosition().y <= 0.0f;
 
         m_is_walking = (button_move_forward || button_move_backward || button_move_left || button_move_right) && is_grounded;
         
@@ -424,12 +423,12 @@ namespace spartan
             // Keyboard and gamepad movement direction
             if (is_controlled)
             {
-                if (button_move_forward) movement_direction += GetEntity()->GetForward();
+                if (button_move_forward)  movement_direction += GetEntity()->GetForward();
                 if (button_move_backward) movement_direction += GetEntity()->GetBackward();
-                if (button_move_right) movement_direction += GetEntity()->GetRight();
-                if (button_move_left) movement_direction += GetEntity()->GetLeft();
-                if (button_move_up) movement_direction += Vector3::Up;
-                if (button_move_down) movement_direction += Vector3::Down;
+                if (button_move_right)    movement_direction += GetEntity()->GetRight();
+                if (button_move_left)     movement_direction += GetEntity()->GetLeft();
+                if (button_move_up)       movement_direction += Vector3::Up;
+                if (button_move_down)     movement_direction += Vector3::Down;
             }
             else if (is_gamepad_connected)
             {
@@ -529,19 +528,7 @@ namespace spartan
             {
                 if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
                 {
-                    Vector3 displacement = m_movement_speed * delta_time * 10.0f;
-                    if (is_underwater)
-                    {
-                        float submerged_height   = -GetEntity()->GetPosition().y;
-                        float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
-                        float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                        Vector3 buoyancy         = -(1.03f * PhysicsWorld::GetGravity().y * volume) * 2500.0f * delta_time;
-                        displacement             += buoyancy;
-                        Vector3 velocity         = m_movement_speed;
-                        float drag_force         = 0.5f * 1.03f * velocity.LengthSquared() * 0.34f * 200.0f * delta_time;
-                        displacement             -= velocity.Normalized() * drag_force;
-                    }
-                    m_physics_body_to_control->Move(displacement);
+                    m_physics_body_to_control->Move(m_movement_speed * delta_time * 10.0f);
                 }
                 else if (is_grounded)
                 {
@@ -554,23 +541,6 @@ namespace spartan
                     }
                     Vector3 force = (target_velocity - velocity) * force_multiplier;
                     m_physics_body_to_control->ApplyForce(force, PhysicsForce::Constant);
-                }
-                if (is_underwater)
-                {
-                    float submerged_height   = -GetEntity()->GetPosition().y;
-                    float submerged_fraction = min(max(submerged_height / 1.8f, 0.0f), 1.0f);
-                    float volume             = m_physics_body_to_control->GetCapsuleVolume() * submerged_fraction * (0.8f / 1.03f);
-                    Vector3 buoyancy         = -(1.03f * PhysicsWorld::GetGravity().y * volume);
-                    m_physics_body_to_control->ApplyForce(buoyancy * 2500.0f, PhysicsForce::Constant);
-                    float velocity_y         = m_physics_body_to_control->GetLinearVelocity().y;
-                    float drag_force_y       = 0.5f * 1.03f * velocity_y * velocity_y * 0.34f;
-                    if (velocity_y > 0)
-                    {
-                        drag_force_y = -drag_force_y;
-                    }
-                    m_physics_body_to_control->ApplyForce(Vector3(0.0f, drag_force_y, 0.0f) * 200.0f, PhysicsForce::Constant);
-                    Vector3 velocity = m_physics_body_to_control->GetLinearVelocity();
-                    m_physics_body_to_control->SetLinearVelocity(Vector3(m_movement_speed.x * 20.0f, velocity.y, m_movement_speed.z * 20.0f));
                 }
             }
             else if (has_physics_body)
