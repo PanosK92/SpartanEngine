@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -209,6 +209,19 @@ Default - enabled
 ``False`` - API debugging is displayed as normal.
 )");
   bool debugOutputMute;
+
+  DOCUMENT(R"(Define a soft memory limit which some APIs may aim to keep overhead under where
+possible. Anything above this limit will where possible be saved directly to disk during capture.
+This will cause increased disk space use (which may cause a capture to fail if disk space is
+exhausted) as well as slower capture times.
+
+Not all memory allocations may be deferred like this so it is not a guarantee of a memory limit.
+
+Units are in MBs, suggested values would range from 200MB to 1000MB.
+
+Default - 0 Megabytes
+)");
+  uint32_t softMemoryLimit;
 };
 
 DECLARE_REFLECTION_STRUCT(CaptureOptions);

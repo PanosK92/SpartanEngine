@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  * Copyright (c) 2014 Crytek
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -149,12 +149,6 @@ public:
   typedef T value_type;
 
   rdcarray() : elems(NULL), allocatedCount(0), usedCount(0) {}
-  rdcarray(size_t count)
-  {
-    elems = NULL;
-    allocatedCount = usedCount = 0;
-    resize(count);
-  }
   ~rdcarray()
   {
     // clear will destruct the actual elements still existing
@@ -333,7 +327,7 @@ public:
   {
     const size_t lastIdx = size();
     reserve(size() + 1);
-    new(elems + lastIdx) T(std::forward<ConstructArgs...>(args)...);
+    new(elems + lastIdx) T(std::forward<ConstructArgs>(args)...);
     setUsedCount(usedCount + 1);
   }
 
@@ -459,7 +453,7 @@ public:
       for(size_t i = 0; i < count; i++)
       {
         // if this was one used previously, destruct it
-        if(i < oldSize)
+        if(offs + i < oldSize)
           ItemDestroyHelper<T>::destroyRange(elems + offs + i, 1);
 
         // then copy construct the new value
@@ -644,8 +638,25 @@ public:
     return -1;
   }
 
+  template <class U>
+  int32_t indexOf(const U &el, size_t first = 0, size_t last = ~0U) const
+  {
+    for(size_t i = first; i < usedCount && i < last; i++)
+    {
+      if(elems[i] == el)
+        return (int32_t)i;
+    }
+
+    return -1;
+  }
+
   // return true if an element is found
   bool contains(const T &el) const { return indexOf(el) != -1; }
+  template <class U>
+  bool contains(const U &el) const
+  {
+    return indexOf(el) != -1;
+  }
   // remove the first occurrence of an element
   void removeOne(const T &el)
   {
@@ -889,6 +900,11 @@ public:
   size_t size() const { return N; }
   size_t byteSize() const { return N * sizeof(T); }
   int32_t count() const { return (int32_t)N; }
+  void clear()
+  {
+    for(size_t i = 0; i < N; i++)
+      elems[i] = T();
+  }
   // find the first occurrence of an element
   int32_t indexOf(const T &el, size_t first = 0, size_t last = ~0U) const
   {

@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -65,13 +65,13 @@ extern "C" const char GitVersionHash[41];
 
 // The friendly name of the distribution that packaged this build
 #if !defined(DISTRIBUTION_NAME)
-//#define DISTRIBUTION_NAME "DistributionName"
+// #define DISTRIBUTION_NAME "DistributionName"
 #endif
 
 // An arbitrary distribution version string. If set, this should include the major and minor
 // version numbers in it.
 #if !defined(DISTRIBUTION_VERSION)
-//#define DISTRIBUTION_VERSION "MAJ.MIN-foo.4b"
+// #define DISTRIBUTION_VERSION "MAJ.MIN-foo.4b"
 #endif
 
 // Set to an URL or email of who produced this build and should be the first point of contact for
@@ -79,7 +79,7 @@ extern "C" const char GitVersionHash[41];
 // If you're distributing builds for the public then do update this to point to your bugtracker or
 // similar.
 #if !defined(DISTRIBUTION_CONTACT)
-//#define DISTRIBUTION_CONTACT "https://distribution.example/packages/renderdoc"
+// #define DISTRIBUTION_CONTACT "https://distribution.example/packages/renderdoc"
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +94,7 @@ extern "C" const char GitVersionHash[41];
 // upstream and should not be modified downstream. You can set DISTRIBUTION_VERSION to include any
 // arbitrary release marker or package version you wish.
 #define RENDERDOC_VERSION_MAJOR 1
-#define RENDERDOC_VERSION_MINOR 21
+#define RENDERDOC_VERSION_MINOR 39
 
 #define RDOC_INTERNAL_VERSION_STRINGIZE2(a) #a
 #define RDOC_INTERNAL_VERSION_STRINGIZE(a) RDOC_INTERNAL_VERSION_STRINGIZE2(a)

@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -202,356 +202,6 @@ If the value is 0, strip cutting is disabled.
   Topology topology = Topology::Unknown;
 };
 
-// immediate indicates either a root parameter (not in a table), or static samplers
-// rootElement is the index in the original root signature that this descriptor came from.
-
-DOCUMENT("Describes the details of a D3D12 resource view - any one of UAV, SRV, RTV or DSV.");
-struct View
-{
-  DOCUMENT("");
-  View() = default;
-  View(uint32_t binding) : bind(binding) {}
-  View(const View &) = default;
-  View &operator=(const View &) = default;
-
-  bool operator==(const View &o) const
-  {
-    return bind == o.bind && tableIndex == o.tableIndex && resourceId == o.resourceId &&
-           type == o.type && viewFormat == o.viewFormat && swizzle == o.swizzle &&
-           bufferFlags == o.bufferFlags && bufferStructCount == o.bufferStructCount &&
-           elementByteSize == o.elementByteSize && firstElement == o.firstElement &&
-           numElements == o.numElements && counterResourceId == o.counterResourceId &&
-           counterByteOffset == o.counterByteOffset && firstMip == o.firstMip &&
-           numMips == o.numMips && numSlices == o.numSlices && firstSlice == o.firstSlice;
-  }
-  bool operator<(const View &o) const
-  {
-    if(!(bind == o.bind))
-      return bind < o.bind;
-    if(!(tableIndex == o.tableIndex))
-      return tableIndex < o.tableIndex;
-    if(!(resourceId == o.resourceId))
-      return resourceId < o.resourceId;
-    if(!(type == o.type))
-      return type < o.type;
-    if(!(viewFormat == o.viewFormat))
-      return viewFormat < o.viewFormat;
-    if(!(swizzle == o.swizzle))
-      return swizzle < o.swizzle;
-    if(!(bufferFlags == o.bufferFlags))
-      return bufferFlags < o.bufferFlags;
-    if(!(bufferStructCount == o.bufferStructCount))
-      return bufferStructCount < o.bufferStructCount;
-    if(!(elementByteSize == o.elementByteSize))
-      return elementByteSize < o.elementByteSize;
-    if(!(firstElement == o.firstElement))
-      return firstElement < o.firstElement;
-    if(!(numElements == o.numElements))
-      return numElements < o.numElements;
-    if(!(counterResourceId == o.counterResourceId))
-      return counterResourceId < o.counterResourceId;
-    if(!(counterByteOffset == o.counterByteOffset))
-      return counterByteOffset < o.counterByteOffset;
-    if(!(firstMip == o.firstMip))
-      return firstMip < o.firstMip;
-    if(!(numMips == o.numMips))
-      return numMips < o.numMips;
-    if(!(numSlices == o.numSlices))
-      return numSlices < o.numSlices;
-    if(!(firstSlice == o.firstSlice))
-      return firstSlice < o.firstSlice;
-    return false;
-  }
-  DOCUMENT("The shader register that this view is bound to.");
-  uint32_t bind = ~0U;
-  DOCUMENT("The index in the the parent descriptor table where this descriptor came from.");
-  uint32_t tableIndex = ~0U;
-
-  DOCUMENT("The :class:`ResourceId` of the underlying resource the view refers to.");
-  ResourceId resourceId;
-  DOCUMENT("The :class:`TextureType` of the view type.");
-  TextureType type;
-  DOCUMENT(R"(The format cast that the view uses.
-
-:type: ResourceFormat
-)");
-  ResourceFormat viewFormat;
-
-  DOCUMENT(R"(The swizzle applied to a texture by the view.
-
-:type: TextureSwizzle4
-)");
-  TextureSwizzle4 swizzle;
-  DOCUMENT(R"(``True`` if this binding element is dynamically used.
-
-If set to ``False`` this means that the binding was available to the shader but during execution it
-was not referenced. The data gathered for setting this variable is conservative, meaning that only
-accesses through arrays will have this calculated to reduce the required feedback bandwidth - single
-non-arrayed descriptors may have this value set to ``True`` even if the shader did not use them,
-since single descriptors may only be dynamically skipped by control flow.
-)");
-  bool dynamicallyUsed = true;
-  DOCUMENT("The :class:`D3DBufferViewFlags` set for the buffer.");
-  D3DBufferViewFlags bufferFlags = D3DBufferViewFlags::NoFlags;
-  DOCUMENT("If the view has a hidden counter, this stores the current value of the counter.");
-  uint32_t bufferStructCount = 0;
-  DOCUMENT(R"(The byte size of a single element in the view. Either the byte size of
-:data:`viewFormat`, or the structured buffer element size, as appropriate.
-)");
-  uint32_t elementByteSize = 0;
-  DOCUMENT("Valid for buffers - the first element to be used in the view.");
-  uint64_t firstElement = 0;
-  DOCUMENT("Valid for buffers - the number of elements to be used in the view.");
-  uint32_t numElements = 1;
-
-  DOCUMENT("The :class:`ResourceId` of the resource where the hidden buffer counter is stored.");
-  ResourceId counterResourceId;
-  DOCUMENT("The byte offset in :data:`counterResourceId` where the counter is stored.");
-  uint64_t counterByteOffset = 0;
-
-  DOCUMENT("Valid for textures - the highest mip that is available through the view.");
-  uint32_t firstMip = 0;
-  DOCUMENT("Valid for textures - the number of mip levels in the view.");
-  uint32_t numMips = 1;
-
-  DOCUMENT("Valid for texture arrays or 3D textures - the first slice available through the view.");
-  uint32_t firstSlice = 0;
-  DOCUMENT("Valid for texture arrays or 3D textures - the number of slices in the view.");
-  uint32_t numSlices = 1;
-
-  DOCUMENT("The minimum mip-level clamp applied when sampling this texture.");
-  float minLODClamp = 0.0f;
-};
-
-DOCUMENT("Describes the details of a sampler descriptor.");
-struct Sampler
-{
-  DOCUMENT("");
-  Sampler() = default;
-  Sampler(uint32_t binding) : bind(binding) {}
-  Sampler(const Sampler &) = default;
-  Sampler &operator=(const Sampler &) = default;
-
-  bool operator==(const Sampler &o) const
-  {
-    return bind == o.bind && tableIndex == o.tableIndex && addressU == o.addressU &&
-           addressV == o.addressV && addressW == o.addressW && borderColor == o.borderColor &&
-           compareFunction == o.compareFunction && filter == o.filter &&
-           maxAnisotropy == o.maxAnisotropy && maxLOD == o.maxLOD && minLOD == o.minLOD &&
-           mipLODBias == o.mipLODBias;
-  }
-  bool operator<(const Sampler &o) const
-  {
-    if(!(bind == o.bind))
-      return bind < o.bind;
-    if(!(tableIndex == o.tableIndex))
-      return tableIndex < o.tableIndex;
-    if(!(addressU == o.addressU))
-      return addressU < o.addressU;
-    if(!(addressV == o.addressV))
-      return addressV < o.addressV;
-    if(!(addressW == o.addressW))
-      return addressW < o.addressW;
-    if(!(borderColor == o.borderColor))
-      return borderColor < o.borderColor;
-    if(!(compareFunction == o.compareFunction))
-      return compareFunction < o.compareFunction;
-    if(!(filter == o.filter))
-      return filter < o.filter;
-    if(!(maxAnisotropy == o.maxAnisotropy))
-      return maxAnisotropy < o.maxAnisotropy;
-    if(!(maxLOD == o.maxLOD))
-      return maxLOD < o.maxLOD;
-    if(!(minLOD == o.minLOD))
-      return minLOD < o.minLOD;
-    if(!(mipLODBias == o.mipLODBias))
-      return mipLODBias < o.mipLODBias;
-    return false;
-  }
-  DOCUMENT("The shader register that this sampler is bound to.");
-  uint32_t bind = ~0U;
-  DOCUMENT("The index in the the parent descriptor table where this descriptor came from.");
-  uint32_t tableIndex = ~0U;
-
-  DOCUMENT("The :class:`AddressMode` in the U direction.");
-  AddressMode addressU = AddressMode::Wrap;
-  DOCUMENT("The :class:`AddressMode` in the V direction.");
-  AddressMode addressV = AddressMode::Wrap;
-  DOCUMENT("The :class:`AddressMode` in the W direction.");
-  AddressMode addressW = AddressMode::Wrap;
-  DOCUMENT(R"(The RGBA border color.
-
-:type: Tuple[float,float,float,float]
-)");
-  rdcfixedarray<float, 4> borderColor = {0.0f, 0.0f, 0.0f, 0.0f};
-  DOCUMENT("The :class:`CompareFunction` for comparison samplers.");
-  CompareFunction compareFunction = CompareFunction::AlwaysTrue;
-  DOCUMENT(R"(The filtering mode.
-
-:type: TextureFilter
-)");
-  TextureFilter filter;
-  DOCUMENT("The maximum anisotropic filtering level to use.");
-  uint32_t maxAnisotropy = 0;
-  DOCUMENT("The maximum mip level that can be used.");
-  float maxLOD = 0.0f;
-  DOCUMENT("The minimum mip level that can be used.");
-  float minLOD = 0.0f;
-  DOCUMENT("A bias to apply to the calculated mip level before sampling.");
-  float mipLODBias = 0.0f;
-
-  DOCUMENT(R"(Check if the border color is used in this D3D12 sampler.
-
-:return: ``True`` if the border color is used, ``False`` otherwise.
-:rtype: bool
-)");
-  bool UseBorder() const
-  {
-    return addressU == AddressMode::ClampBorder || addressV == AddressMode::ClampBorder ||
-           addressW == AddressMode::ClampBorder;
-  }
-};
-
-DOCUMENT("Describes the details of a constant buffer view descriptor.");
-struct ConstantBuffer
-{
-  DOCUMENT("");
-  ConstantBuffer() = default;
-  ConstantBuffer(uint32_t binding) : bind(binding) {}
-  ConstantBuffer(const ConstantBuffer &) = default;
-  ConstantBuffer &operator=(const ConstantBuffer &) = default;
-
-  bool operator==(const ConstantBuffer &o) const
-  {
-    return bind == o.bind && tableIndex == o.tableIndex && resourceId == o.resourceId &&
-           byteOffset == o.byteOffset && byteSize == o.byteSize && rootValues == o.rootValues;
-  }
-  bool operator<(const ConstantBuffer &o) const
-  {
-    if(!(bind == o.bind))
-      return bind < o.bind;
-    if(!(tableIndex == o.tableIndex))
-      return tableIndex < o.tableIndex;
-    if(!(resourceId == o.resourceId))
-      return resourceId < o.resourceId;
-    if(!(byteOffset == o.byteOffset))
-      return byteOffset < o.byteOffset;
-    if(!(byteSize == o.byteSize))
-      return byteSize < o.byteSize;
-    if(!(rootValues == o.rootValues))
-      return rootValues < o.rootValues;
-    return false;
-  }
-  DOCUMENT("The shader register that this constant buffer is bound to.");
-  uint32_t bind = ~0U;
-  DOCUMENT("The index in the the parent descriptor table where this descriptor came from.");
-  uint32_t tableIndex = ~0U;
-
-  DOCUMENT("The :class:`ResourceId` of the underlying buffer resource.");
-  ResourceId resourceId;
-  DOCUMENT("The byte offset where the buffer view starts in the underlying buffer.");
-  uint64_t byteOffset = 0;
-  DOCUMENT("How many bytes are in this constant buffer view.");
-  uint32_t byteSize = 0;
-
-  DOCUMENT(R"(If :data:`immediate` is ``True`` and this is a root constant, this contains the root
-values set as interpreted as a series of DWORD values.
-
-:type: List[int]
-)");
-  rdcarray<uint32_t> rootValues;
-};
-
-DOCUMENT("Contains information for a single root signature element range");
-struct RootSignatureRange
-{
-  DOCUMENT("");
-  RootSignatureRange() = default;
-  RootSignatureRange(const RootSignatureRange &) = default;
-  RootSignatureRange &operator=(const RootSignatureRange &) = default;
-
-  bool operator==(const RootSignatureRange &o) const
-  {
-    return immediate == o.immediate && rootSignatureIndex == o.rootSignatureIndex &&
-           visibility == o.visibility && registerSpace == o.registerSpace &&
-           dynamicallyUsedCount == o.dynamicallyUsedCount && firstUsedIndex == o.firstUsedIndex &&
-           lastUsedIndex == o.lastUsedIndex && constantBuffers == o.constantBuffers &&
-           samplers == o.samplers && views == o.views;
-  }
-  bool operator<(const RootSignatureRange &o) const
-  {
-    if(!(immediate == o.immediate))
-      return immediate < o.immediate;
-    if(!(rootSignatureIndex == o.rootSignatureIndex))
-      return rootSignatureIndex < o.rootSignatureIndex;
-    if(!(visibility == o.visibility))
-      return visibility < o.visibility;
-    if(!(registerSpace == o.registerSpace))
-      return registerSpace < o.registerSpace;
-    if(!(dynamicallyUsedCount == o.dynamicallyUsedCount))
-      return dynamicallyUsedCount < o.dynamicallyUsedCount;
-    if(!(firstUsedIndex == o.firstUsedIndex))
-      return firstUsedIndex < o.firstUsedIndex;
-    if(!(lastUsedIndex == o.lastUsedIndex))
-      return lastUsedIndex < o.lastUsedIndex;
-    if(!(constantBuffers == o.constantBuffers))
-      return constantBuffers < o.constantBuffers;
-    if(!(samplers == o.samplers))
-      return samplers < o.samplers;
-    if(!(views == o.views))
-      return views < o.views;
-    return false;
-  }
-
-  DOCUMENT("``True`` if this root element is a root constant (i.e. not in a table).");
-  bool immediate = false;
-  DOCUMENT("The index in the original root signature that this descriptor came from.");
-  uint32_t rootSignatureIndex = ~0U;
-  DOCUMENT("The :class:`BindType` contained by this element.");
-  BindType type = BindType::Unknown;
-  DOCUMENT("The :class:`ShaderStageMask` of this element.");
-  ShaderStageMask visibility = ShaderStageMask::All;
-  DOCUMENT("The register space of this element.");
-  uint32_t registerSpace;
-  DOCUMENT(R"(Lists how many bindings in :data:`views` are dynamically used. Useful to avoid
-redundant iteration to determine whether any bindings are present.
-
-For more information see :data:`D3D12View.dynamicallyUsed`.
-)");
-  uint32_t dynamicallyUsedCount = ~0U;
-  DOCUMENT(R"(Gives the index of the first binding in :data:`views` that is dynamically used. Useful
-to avoid redundant iteration in very large descriptor arrays with a small subset that are used.
-
-For more information see :data:`D3D12View.dynamicallyUsed`.
-)");
-  int32_t firstUsedIndex = 0;
-  DOCUMENT(R"(Gives the index of the first binding in :data:`views` that is dynamically used. Useful
-to avoid redundant iteration in very large descriptor arrays with a small subset that are used.
-
-.. note::
-  This may be set to a higher value than the number of bindings, if no dynamic use information is
-  available. Ensure that this is an additional check on the bind and the count is still respected.
-
-For more information see :data:`D3D12View.dynamicallyUsed`.
-)");
-  int32_t lastUsedIndex = 0x7fffffff;
-  DOCUMENT(R"(The constant buffers in this range.
-
-:type: List[D3D12ConstantBuffer]
-)");
-  rdcarray<ConstantBuffer> constantBuffers;
-  DOCUMENT(R"(The samplers in this range.
-
-:type: List[D3D12Sampler]
-)");
-  rdcarray<Sampler> samplers;
-  DOCUMENT(R"(The SRVs or UAVs in this range.
-
-:type: List[D3D12View]
-)");
-  rdcarray<View> views;
-};
-
 DOCUMENT("Describes a D3D12 shader stage.");
 struct Shader
 {
@@ -568,11 +218,6 @@ struct Shader
 :type: ShaderReflection
 )");
   ShaderReflection *reflection = NULL;
-  DOCUMENT(R"(The bindpoint mapping data to match :data:`reflection`.
-
-:type: ShaderBindpointMapping
-)");
-  ShaderBindpointMapping bindpointMapping;
 
   DOCUMENT("A :class:`ShaderStage` identifying which stage this shader is bound to.");
   ShaderStage stage = ShaderStage::Vertex;
@@ -623,7 +268,12 @@ written.
   uint64_t writtenCountByteOffset = 0;
 };
 
-DOCUMENT("Describes the stream-out state in the PSO.");
+DOCUMENT(R"(Describes the stream-out state in the PSO.
+
+.. data:: NoRasterization
+
+  Value for :data:`rasterizedStream` that indicates no stream is being rasterized.
+)");
 struct StreamOut
 {
   DOCUMENT("");
@@ -636,6 +286,17 @@ struct StreamOut
 :type: List[D3D12StreamOutBind]
 )");
   rdcarray<StreamOutBind> outputs;
+
+  DOCUMENT(R"(Which stream-out stream is being used for rasterization.
+
+If the value is :data:`NoRasterization` then no stream has been selected for rasterization.
+
+:type: int
+)");
+  uint32_t rasterizedStream = 0;
+
+  // D3D11_SO_NO_RASTERIZED_STREAM
+  static const uint32_t NoRasterization = ~0U;
 };
 
 DOCUMENT("Describes the rasterizer state in the PSO.");
@@ -655,7 +316,7 @@ struct RasterizerState
 )");
   bool frontCCW = false;
   DOCUMENT("The fixed depth bias value to apply to z-values.");
-  int32_t depthBias = 0;
+  float depthBias = 0.0f;
   DOCUMENT(R"(The clamp value for calculated depth bias from :data:`depthBias` and
 :data:`slopeScaledDepthBias`
 )");
@@ -664,12 +325,8 @@ struct RasterizerState
   float slopeScaledDepthBias = 0.0f;
   DOCUMENT("``True`` if pixels outside of the near and far depth planes should be clipped.");
   bool depthClip = false;
-  DOCUMENT("``True`` if the quadrilateral MSAA algorithm should be used on MSAA targets.");
-  bool multisampleEnable = false;
-  DOCUMENT(
-      "``True`` if lines should be anti-aliased. Ignored if :data:`multisampleEnable` is "
-      "``False``.");
-  bool antialiasedLines = false;
+  DOCUMENT("The line rasterization mode.");
+  LineRaster lineRasterMode = LineRaster::Default;
   DOCUMENT(R"(A sample count to force rasterization to when UAV rendering or rasterizing, or 0 to
 not force any sample count.
 )");
@@ -824,15 +481,15 @@ struct OM
 
   DOCUMENT(R"(The bound render targets.
 
-:type: List[D3D12View]
+:type: List[Descriptor]
 )");
-  rdcarray<View> renderTargets;
+  rdcarray<Descriptor> renderTargets;
 
   DOCUMENT(R"(The currently bound depth-stencil target.
 
-:type: D3D12View
+:type: Descriptor
 )");
-  View depthTarget = D3D12Pipe::View(0);
+  Descriptor depthTarget;
   DOCUMENT("``True`` if depth access to the depth-stencil target is read-only.");
   bool depthReadOnly = false;
   DOCUMENT("``True`` if stenncil access to the depth-stencil target is read-only.");
@@ -893,6 +550,219 @@ struct ResourceData
   rdcarray<ResourceState> states;
 };
 
+DOCUMENT("Contains the structure of a single range within a root table definition.");
+struct RootTableRange
+{
+  DOCUMENT("");
+  RootTableRange() = default;
+  RootTableRange(const RootTableRange &) = default;
+  RootTableRange &operator=(const RootTableRange &) = default;
+
+  bool operator==(const RootTableRange &o) const
+  {
+    return category == o.category && space == o.space && baseRegister == o.baseRegister &&
+           count == o.count && tableByteOffset == o.tableByteOffset;
+  }
+  bool operator<(const RootTableRange &o) const
+  {
+    if(!(category == o.category))
+      return category < o.category;
+    if(!(space == o.space))
+      return space < o.space;
+    if(!(baseRegister == o.baseRegister))
+      return baseRegister < o.baseRegister;
+    if(!(count == o.count))
+      return count < o.count;
+    if(!(tableByteOffset == o.tableByteOffset))
+      return tableByteOffset < o.tableByteOffset;
+    return false;
+  }
+  DOCUMENT(R"(The descriptor category specified in this range.
+
+:type: DescriptorCategory
+)");
+  DescriptorCategory category = DescriptorCategory::Unknown;
+
+  DOCUMENT(R"(The register space of this range.
+
+:type: int
+)");
+  uint32_t space = 0;
+
+  DOCUMENT(R"(The first register in this range.
+
+:type: int
+)");
+  uint32_t baseRegister = 0;
+
+  DOCUMENT(R"(The number of registers in this range.
+
+:type: int
+)");
+  uint32_t count = 0;
+
+  DOCUMENT(R"(The offset in bytes from the start of the table as defined in :class:`D3D12RootParam`.
+
+:type: int
+)");
+  uint32_t tableByteOffset = 0;
+
+  DOCUMENT(R"(Whether or not this table was appended after the previous, leading to an auto-calculated
+offset in :data:`tableByteOffset`.
+
+:type: bool
+)");
+  bool appended = false;
+};
+
+DOCUMENT("Contains the structure and content of a single root parameter.");
+struct RootParam
+{
+  DOCUMENT("");
+  RootParam() = default;
+  RootParam(const RootParam &) = default;
+  RootParam &operator=(const RootParam &) = default;
+
+  bool operator==(const RootParam &o) const
+  {
+    return visibility == o.visibility && heap == o.heap && heapByteOffset == o.heapByteOffset &&
+           tableRanges == o.tableRanges && descriptor == o.descriptor && constants == o.constants;
+  }
+  bool operator<(const RootParam &o) const
+  {
+    if(!(visibility == o.visibility))
+      return visibility < o.visibility;
+    if(!(heap == o.heap))
+      return heap < o.heap;
+    if(!(heapByteOffset == o.heapByteOffset))
+      return heapByteOffset < o.heapByteOffset;
+    if(!(tableRanges == o.tableRanges))
+      return tableRanges < o.tableRanges;
+    if(!(descriptor == o.descriptor))
+      return descriptor < o.descriptor;
+    if(!(constants == o.constants))
+      return constants < o.constants;
+    return false;
+  }
+
+  DOCUMENT(R"(The shader stage that can access this parameter.
+
+:type: ShaderStageMask
+)");
+  ShaderStageMask visibility;
+
+  DOCUMENT(R"(For a root constant parameter, the words defined.
+
+:type: bytes
+)");
+  bytebuf constants;
+
+  DOCUMENT(R"(For a root descriptor parameter, the descriptor itself.
+
+:type: Descriptor
+)");
+  Descriptor descriptor;
+
+  DOCUMENT(R"(For a root table parameter, the descriptor heap bound to this parameter. See
+:data:`heapByteOffset` and :data:`tableRanges`.
+
+:type: ResourceId
+)");
+  ResourceId heap;
+
+  DOCUMENT(R"(For a root table parameter, the byte offset into the descriptor heap bound to this
+parameter. See :data:`heap` and :data:`tableRanges`.
+
+:type: ResourceId
+)");
+  uint32_t heapByteOffset = 0;
+
+  DOCUMENT(R"(For a root table parameter, the descriptor ranges that define this table. See
+:data:`heap` and :data:`heapByteOffset`.
+
+:type: List[D3D12RootTableRange]
+)");
+  rdcarray<RootTableRange> tableRanges;
+};
+
+DOCUMENT("Contains the details of a single static sampler in a root signature.");
+struct StaticSampler
+{
+  DOCUMENT("");
+  StaticSampler() = default;
+  StaticSampler(const StaticSampler &) = default;
+  StaticSampler &operator=(const StaticSampler &) = default;
+
+  bool operator==(const StaticSampler &o) const
+  {
+    return visibility == o.visibility && space == o.space && reg == o.reg &&
+           descriptor == o.descriptor;
+  }
+  bool operator<(const StaticSampler &o) const
+  {
+    if(!(visibility == o.visibility))
+      return visibility < o.visibility;
+    if(!(space == o.space))
+      return space < o.space;
+    if(!(reg == o.reg))
+      return reg < o.reg;
+    if(!(descriptor == o.descriptor))
+      return descriptor < o.descriptor;
+    return false;
+  }
+
+  DOCUMENT(R"(The shader stage that can access this sampler.
+
+:type: ShaderStageMask
+)");
+  ShaderStageMask visibility;
+
+  DOCUMENT(R"(The register space of this sampler.
+
+:type: int
+)");
+  uint32_t space = 0;
+
+  DOCUMENT(R"(The register number of this sampler.
+
+:type: int
+)");
+  uint32_t reg = 0;
+
+  DOCUMENT(R"(The details of the sampler descriptor itself.
+
+:type: SamplerDescriptor
+)");
+  SamplerDescriptor descriptor;
+};
+
+DOCUMENT("Contains the root signature structure and root parameters.");
+struct RootSignature
+{
+  DOCUMENT("");
+  RootSignature() = default;
+  RootSignature(const RootSignature &) = default;
+  RootSignature &operator=(const RootSignature &) = default;
+
+  DOCUMENT(R"(The :class:`ResourceId` of the root signature object.
+
+:type: ResourceId
+)");
+  ResourceId resourceId;
+
+  DOCUMENT(R"(The parameters in this root signature.
+    
+:type: List[D3D12RootParam]
+)");
+  rdcarray<RootParam> parameters;
+
+  DOCUMENT(R"(The static samplers defined in this root signature.
+    
+:type: List[D3D12StaticSampler]
+)");
+  rdcarray<StaticSampler> staticSamplers;
+};
+
 DOCUMENT("The full current D3D12 pipeline state.");
 struct State
 {
@@ -905,14 +775,17 @@ struct State
   DOCUMENT("The :class:`ResourceId` of the pipeline state object.");
   ResourceId pipelineResourceId;
 
-  DOCUMENT("The :class:`ResourceId` of the root signature object.");
-  ResourceId rootSignatureResourceId;
-
-  DOCUMENT(R"(The root signature, as a range per element.
+  DOCUMENT(R"(The descriptor heaps currently bound.
     
-:type: List[D3D12RootSignatureRange]
+:type: List[ResourceId]
 )");
-  rdcarray<RootSignatureRange> rootElements;
+  rdcarray<ResourceId> descriptorHeaps;
+
+  DOCUMENT(R"(Details of the root signature structure and root parameters.
+    
+:type: D3D12RootSignature
+)");
+  RootSignature rootSignature;
 
   DOCUMENT(R"(The input assembly pipeline stage.
 
@@ -950,6 +823,16 @@ struct State
 :type: D3D12Shader
 )");
   Shader computeShader;
+  DOCUMENT(R"(The amplification shader stage.
+
+:type: D3D12Shader
+)");
+  Shader ampShader;
+  DOCUMENT(R"(The mesh shader stage.
+
+:type: D3D12Shader
+)");
+  Shader meshShader;
 
   DOCUMENT(R"(The stream-out pipeline stage.
 
@@ -982,10 +865,6 @@ DECLARE_REFLECTION_STRUCT(D3D12Pipe::Layout);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::VertexBuffer);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::IndexBuffer);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::InputAssembly);
-DECLARE_REFLECTION_STRUCT(D3D12Pipe::View);
-DECLARE_REFLECTION_STRUCT(D3D12Pipe::Sampler);
-DECLARE_REFLECTION_STRUCT(D3D12Pipe::ConstantBuffer);
-DECLARE_REFLECTION_STRUCT(D3D12Pipe::RootSignatureRange);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::Shader);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::StreamOutBind);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::StreamOut);
@@ -996,4 +875,8 @@ DECLARE_REFLECTION_STRUCT(D3D12Pipe::BlendState);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::OM);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::ResourceState);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::ResourceData);
+DECLARE_REFLECTION_STRUCT(D3D12Pipe::RootTableRange);
+DECLARE_REFLECTION_STRUCT(D3D12Pipe::RootParam);
+DECLARE_REFLECTION_STRUCT(D3D12Pipe::StaticSampler);
+DECLARE_REFLECTION_STRUCT(D3D12Pipe::RootSignature);
 DECLARE_REFLECTION_STRUCT(D3D12Pipe::State);

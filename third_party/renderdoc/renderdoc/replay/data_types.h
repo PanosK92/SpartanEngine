@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  * Copyright (c) 2014 Crytek
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -375,14 +375,12 @@ texel.
       case ResourceFormatType::Undefined: break;
       case ResourceFormatType::Regular: return compByteWidth * compCount;
       case ResourceFormatType::BC1:
-      case ResourceFormatType::BC4:
-        return 8;    // 8 bytes for 4x4 block
+      case ResourceFormatType::BC4: return 8;    // 8 bytes for 4x4 block
       case ResourceFormatType::BC2:
       case ResourceFormatType::BC3:
       case ResourceFormatType::BC5:
       case ResourceFormatType::BC6:
-      case ResourceFormatType::BC7:
-        return 16;    // 16 bytes for 4x4 block
+      case ResourceFormatType::BC7: return 16;    // 16 bytes for 4x4 block
       case ResourceFormatType::ETC2: return 8;
       case ResourceFormatType::EAC:
         if(compCount == 1)
@@ -390,9 +388,8 @@ texel.
         else if(compCount == 2)
           return 16;    // two channel RG11 EAC
         else
-          return 16;    // RGBA8 EAC
-      case ResourceFormatType::ASTC:
-        return 16;    // ASTC is always 128 bits per block
+          return 16;                               // RGBA8 EAC
+      case ResourceFormatType::ASTC: return 16;    // ASTC is always 128 bits per block
       case ResourceFormatType::R10G10B10A2:
       case ResourceFormatType::R11G11B10:
       case ResourceFormatType::R9G9B9E5: return 4;
@@ -406,8 +403,7 @@ texel.
       case ResourceFormatType::D32S8:
         return 5;    // we define the size as tightly packed, so 5 bytes.
       case ResourceFormatType::S8:
-      case ResourceFormatType::A8:
-        return 1;
+      case ResourceFormatType::A8: return 1;
       // can't give a sensible answer for YUV formats as the texel varies.
       case ResourceFormatType::YUV8: return compCount;
       case ResourceFormatType::YUV10:
@@ -599,6 +595,50 @@ typically it is one parent to many derived.
 };
 
 DECLARE_REFLECTION_STRUCT(ResourceDescription);
+
+DOCUMENT("A description of a descriptor store.");
+struct DescriptorStoreDescription
+{
+  DOCUMENT("");
+  DescriptorStoreDescription() = default;
+  DescriptorStoreDescription(const DescriptorStoreDescription &) = default;
+  DescriptorStoreDescription &operator=(const DescriptorStoreDescription &) = default;
+
+  bool operator==(const DescriptorStoreDescription &o) const { return resourceId == o.resourceId; }
+  bool operator<(const DescriptorStoreDescription &o) const
+  {
+    if(!(resourceId == o.resourceId))
+      return resourceId < o.resourceId;
+    return false;
+  }
+
+  DOCUMENT(R"(The unique :class:`ResourceId` that identifies this descriptor store.
+
+:type: ResourceId
+)");
+  ResourceId resourceId;
+
+  DOCUMENT(R"(For descriptor stores which contain desriptors all of identical size, the size of each
+descriptor. Descriptors are assumed to be tightly packed so stride is equal to size.
+
+:type: int
+)");
+  uint32_t descriptorByteSize = 1;
+
+  DOCUMENT(R"(The byte offset within the store to the first descriptor.
+
+:type: int
+)");
+  uint32_t firstDescriptorOffset = 0;
+
+  DOCUMENT(R"(The number of descriptors within this storage object.
+
+:type: int
+)");
+  uint32_t descriptorCount = 0;
+};
+
+DECLARE_REFLECTION_STRUCT(DescriptorStoreDescription);
 
 DOCUMENT("A description of a buffer resource.");
 struct BufferDescription
@@ -894,13 +934,13 @@ struct ConstantBindStats
   static const size_t BucketCount = 31;
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT(R"(A list where the Nth element contains the number of calls that bound N buffers.
 
@@ -941,13 +981,13 @@ struct SamplerBindStats
   }
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT(R"(A list where the Nth element contains the number of calls that bound N samplers.
 
@@ -985,13 +1025,13 @@ struct ResourceBindStats
   }
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT(R"(A list with one element for each type in :class:`TextureType`.
 
@@ -1031,13 +1071,13 @@ struct ResourceUpdateStats
   static const size_t BucketCount = 31;
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many of :data:`calls` were mapped pointers written by the CPU.");
-  uint32_t clients;
+  uint32_t clients = 0;
 
   DOCUMENT("How many of :data:`calls` were batched updates written in the command queue.");
-  uint32_t servers;
+  uint32_t servers = 0;
 
   DOCUMENT(R"(A list with one element for each type in :class:`TextureType`.
 
@@ -1082,11 +1122,11 @@ struct DrawcallStats
   static const size_t BucketCount = 16;
 
   DOCUMENT("How many draw calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
   DOCUMENT("How many of :data:`calls` were instanced.");
-  uint32_t instanced;
+  uint32_t instanced = 0;
   DOCUMENT("How many of :data:`calls` were indirect.");
-  uint32_t indirect;
+  uint32_t indirect = 0;
 
   DOCUMENT(R"(A :class:`bucketed <BucketType>` list over the number of instances in the draw.
       
@@ -1204,16 +1244,16 @@ struct ShaderChangeStats
   }
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT("How many calls made no change due to the existing bind being identical.");
-  uint32_t redundants;
+  uint32_t redundants = 0;
 };
 
 DECLARE_REFLECTION_STRUCT(ShaderChangeStats);
@@ -1227,16 +1267,16 @@ struct BlendStats
   BlendStats &operator=(const BlendStats &) = default;
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT("How many calls made no change due to the existing bind being identical.");
-  uint32_t redundants;
+  uint32_t redundants = 0;
 };
 
 DECLARE_REFLECTION_STRUCT(BlendStats);
@@ -1250,16 +1290,16 @@ struct DepthStencilStats
   DepthStencilStats &operator=(const DepthStencilStats &) = default;
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT("How many calls made no change due to the existing bind being identical.");
-  uint32_t redundants;
+  uint32_t redundants = 0;
 };
 
 DECLARE_REFLECTION_STRUCT(DepthStencilStats);
@@ -1273,16 +1313,16 @@ struct RasterizationStats
   RasterizationStats &operator=(const RasterizationStats &) = default;
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT("How many calls made no change due to the existing bind being identical.");
-  uint32_t redundants;
+  uint32_t redundants = 0;
 
   DOCUMENT(R"(A list where the Nth element contains the number of calls that bound N viewports.
     
@@ -1308,13 +1348,13 @@ struct OutputTargetStats
   OutputTargetStats &operator=(const OutputTargetStats &) = default;
 
   DOCUMENT("How many function calls were made.");
-  uint32_t calls;
+  uint32_t calls = 0;
 
   DOCUMENT("How many objects were bound.");
-  uint32_t sets;
+  uint32_t sets = 0;
 
   DOCUMENT("How many objects were unbound.");
-  uint32_t nulls;
+  uint32_t nulls = 0;
 
   DOCUMENT(R"(A list where the Nth element contains the number of calls that bound N targets.
 
@@ -1796,12 +1836,6 @@ with software rendering, or with some functionality disabled due to lack of supp
 )");
   bool degraded = false;
 
-  DOCUMENT(R"(``True`` if the driver mutates shader reflection structures from event to event.
-Currently this is only true for OpenGL where the superfluous indirect in the binding model must be
-worked around by re-sorting bindings.
-)");
-  bool shadersMutable = false;
-
   DOCUMENT("(``True`` if the API supports shader debugging.");
   bool shaderDebugging = false;
 
@@ -2239,3 +2273,23 @@ struct Thumbnail
 };
 
 DECLARE_REFLECTION_STRUCT(Thumbnail);
+
+DOCUMENT(
+    "Contains the properties used to select which fragment to debug, used as an input to "
+    "DebugPixel.");
+struct DebugPixelInputs
+{
+  DOCUMENT("");
+  DebugPixelInputs() : sample(~0U), primitive(~0U), view(~0U) {}
+  DebugPixelInputs(const DebugPixelInputs &) = default;
+  DebugPixelInputs &operator=(const DebugPixelInputs &) = default;
+
+  DOCUMENT("The multi-sampled sample.");
+  uint32_t sample;
+  DOCUMENT("The primitive index.");
+  uint32_t primitive;
+  DOCUMENT("The layered or multiview rendering view index.");
+  uint32_t view;
+};
+
+DECLARE_REFLECTION_STRUCT(DebugPixelInputs);

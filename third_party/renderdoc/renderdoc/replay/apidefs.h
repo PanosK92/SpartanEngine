@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,10 +82,9 @@
 #define RENDERDOC_CC __cdecl
 
 #elif defined(RENDERDOC_PLATFORM_LINUX) || defined(RENDERDOC_PLATFORM_APPLE) || \
-    defined(RENDERDOC_PLATFORM_ANDROID) || defined(RENDERDOC_PLATFORM_GGP) ||   \
-    defined(RENDERDOC_PLATFORM_SWITCH)
+    defined(RENDERDOC_PLATFORM_ANDROID) || defined(RENDERDOC_PLATFORM_SWITCH)
 
-#define RENDERDOC_EXPORT_API __attribute__((visibility("default")))
+#define RENDERDOC_EXPORT_API __attribute__((visibility("default"), used))
 #define RENDERDOC_IMPORT_API
 
 #define RENDERDOC_CC
@@ -199,44 +198,42 @@ constexpr inline unsigned int arraydim()
 
 #define ENUM_ARRAY_SIZE(enum_name) int(enum_name::Count)
 
-// clang-format makes a even more of a mess of this multi-line macro than it usually does, for some
-// reason. So we just disable it since it's still readable and this isn't really the intended case
-// we are using clang-format for.
+#define BITMASK_OPERATORS(enum_name)                                             \
+                                                                                 \
+  constexpr inline enum_name operator|(enum_name a, enum_name b)                 \
+  {                                                                              \
+    typedef typename std::underlying_type<enum_name>::type etype;                \
+    return enum_name(etype(a) | etype(b));                                       \
+  }                                                                              \
+                                                                                 \
+  constexpr inline EnumCastHelper<enum_name> operator&(enum_name a, enum_name b) \
+  {                                                                              \
+    typedef typename std::underlying_type<enum_name>::type etype;                \
+    return EnumCastHelper<enum_name>(enum_name(etype(a) & etype(b)));            \
+  }                                                                              \
+                                                                                 \
+  constexpr inline enum_name operator~(enum_name a)                              \
+  {                                                                              \
+    typedef typename std::underlying_type<enum_name>::type etype;                \
+    return enum_name(~etype(a));                                                 \
+  }                                                                              \
+                                                                                 \
+  inline enum_name &operator|=(enum_name &a, enum_name b)                        \
+  {                                                                              \
+    return a = a | b;                                                            \
+  }                                                                              \
+                                                                                 \
+  inline enum_name &operator&=(enum_name &a, enum_name b)                        \
+  {                                                                              \
+    return a = a & b;                                                            \
+  }
 
-// clang-format off
-#define BITMASK_OPERATORS(enum_name)                                           \
-                                                                               \
-constexpr inline enum_name operator|(enum_name a, enum_name b)                 \
-{                                                                              \
-  typedef typename std::underlying_type<enum_name>::type etype;                \
-  return enum_name(etype(a) | etype(b));                                       \
-}                                                                              \
-                                                                               \
-constexpr inline EnumCastHelper<enum_name> operator&(enum_name a, enum_name b) \
-{                                                                              \
-  typedef typename std::underlying_type<enum_name>::type etype;                \
-  return EnumCastHelper<enum_name>(enum_name(etype(a) & etype(b)));            \
-}                                                                              \
-                                                                               \
-constexpr inline enum_name operator~(enum_name a)                              \
-{                                                                              \
-  typedef typename std::underlying_type<enum_name>::type etype;                \
-  return enum_name(~etype(a));                                                 \
-}                                                                              \
-                                                                               \
-inline enum_name &operator|=(enum_name &a, enum_name b)                        \
-{ return a = a | b; }                                                          \
-                                                                               \
-inline enum_name &operator&=(enum_name &a, enum_name b)                        \
-{ return a = a & b; }
-
-#define ITERABLE_OPERATORS(enum_name)                                          \
-                                                                               \
-inline enum_name operator++(enum_name &a)                                      \
-{                                                                              \
-  typedef typename std::underlying_type<enum_name>::type etype;                \
-  return a = enum_name(etype(a)+1);                                            \
-}
-// clang-format on
+#define ITERABLE_OPERATORS(enum_name)                             \
+                                                                  \
+  inline enum_name operator++(enum_name &a)                       \
+  {                                                               \
+    typedef typename std::underlying_type<enum_name>::type etype; \
+    return a = enum_name(etype(a) + 1);                           \
+  }
 
 #endif

@@ -39,8 +39,9 @@ using namespace std;
 
 namespace spartan
 {
-    static RENDERDOC_API_1_5_0* rdc_api = nullptr;
-    static void* rdc_module             = nullptr;
+    static RENDERDOC_Version rdc_version = eRENDERDOC_API_Version_1_6_0;
+    static RENDERDOC_API_1_6_0* rdc_api  = nullptr;
+    static void* rdc_module              = nullptr;
 
 #if defined(_WIN32) // windows
     static vector<wstring> get_renderdoc_dll_paths()
@@ -176,10 +177,10 @@ namespace spartan
             SP_ASSERT_MSG(false, "Not implemented");
 #endif
             SP_ASSERT_MSG(rdc_get_api != nullptr, "Failed to RENDERDOC_GetAPI function address from renderdoc.dll");
-            SP_ASSERT_MSG(rdc_get_api(eRENDERDOC_API_Version_1_5_0, (void**)&rdc_api) != 0, "Failed to get RenderDoc API pointer");
+            SP_ASSERT_MSG(rdc_get_api(rdc_version, (void**)&rdc_api) != 0, "Failed to get RenderDoc API pointer");
         }
 
-        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc API has not been initialised");
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc API has not been initialized");
 
         // disable muting of validation/debug layer messages
         rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);

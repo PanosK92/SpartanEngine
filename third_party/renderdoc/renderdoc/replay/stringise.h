@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,7 +55,7 @@ rdcstr ToStr(const T &el)
   constexpr rdcliteral empty_ret = STRING_LITERAL(#type "(0)");  \
   static_assert(std::is_same<const type &, decltype(el)>::value, \
                 "Type in macro doesn't match el");               \
-  (void)(enumType) el;                                           \
+  (void)(enumType)el;                                            \
   switch(el)                                                     \
   {                                                              \
     default: break;
@@ -89,7 +89,7 @@ rdcstr ToStr(const T &el)
   static_assert(std::is_same<const type &, decltype(el)>::value, \
                 "Type in macro doesn't match el");               \
   uint64_t local = (uint64_t)el;                                 \
-  (void)(enumType) el;                                           \
+  (void)(enumType)el;                                            \
   rdcstr ret;
 
 #define STRINGISE_BITFIELD_VALUE(b) \

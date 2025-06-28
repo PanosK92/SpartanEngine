@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  * Copyright (c) 2014 Crytek
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,7 +43,8 @@ struct VertexAttribute
 
   bool operator==(const VertexAttribute &o) const
   {
-    return enabled == o.enabled && floatCast == o.floatCast && format == o.format &&
+    return enabled == o.enabled && floatCast == o.floatCast &&
+           boundShaderInput == o.boundShaderInput && format == o.format &&
            !memcmp(&genericValue, &o.genericValue, sizeof(genericValue)) &&
            vertexBufferSlot == o.vertexBufferSlot && byteOffset == o.byteOffset;
   }
@@ -53,6 +54,8 @@ struct VertexAttribute
       return enabled < o.enabled;
     if(!(floatCast == o.floatCast))
       return floatCast < o.floatCast;
+    if(!(boundShaderInput == o.boundShaderInput))
+      return boundShaderInput < o.boundShaderInput;
     if(!(format == o.format))
       return format < o.format;
     if(memcmp(&genericValue, &o.genericValue, sizeof(genericValue)) < 0)
@@ -72,6 +75,15 @@ This is because they were specified with an integer format but glVertexAttribFor
 glVertexAttribIFormat) so they will be cast.
 )");
   bool floatCast = false;
+
+  DOCUMENT(R"(This lists which shader input is bound to this attribute, as an index in the
+:data:`ShaderReflection.inputSignature` list.
+
+If any value is set to ``-1`` then the attribute is unbound.
+
+:type: int
+)");
+  int32_t boundShaderInput = -1;
 
   DOCUMENT(R"(The format describing how the vertex attribute is interpreted.
 
@@ -206,11 +218,6 @@ struct Shader
 :type: ShaderReflection
 )");
   ShaderReflection *reflection = NULL;
-  DOCUMENT(R"(The bindpoint mapping data to match :data:`reflection`.
-
-:type: ShaderBindpointMapping
-)");
-  ShaderBindpointMapping bindpointMapping;
 
   DOCUMENT("A :class:`ShaderStage` identifying which stage this shader is bound to.");
   ShaderStage stage = ShaderStage::Vertex;
@@ -260,237 +267,40 @@ struct FixedVertexProcessing
   bool clipNegativeOneToOne = false;
 };
 
-DOCUMENT("Describes the details of a texture.");
-struct Texture
+DOCUMENT("Describes the a texture completeness issue of a descriptor.");
+struct TextureCompleteness
 {
   DOCUMENT("");
-  Texture() = default;
-  Texture(const Texture &) = default;
-  Texture &operator=(const Texture &) = default;
+  TextureCompleteness() = default;
+  TextureCompleteness(const TextureCompleteness &) = default;
+  TextureCompleteness &operator=(const TextureCompleteness &) = default;
 
-  bool operator==(const Texture &o) const
+  bool operator==(const TextureCompleteness &o) const
   {
-    return resourceId == o.resourceId && firstMip == o.firstMip && numMips == o.numMips &&
-           type == o.type && swizzle == o.swizzle && depthReadChannel == o.depthReadChannel;
+    return descriptorByteOffset == o.descriptorByteOffset && completeStatus == o.completeStatus;
   }
-  bool operator<(const Texture &o) const
+  bool operator<(const TextureCompleteness &o) const
   {
-    if(!(resourceId == o.resourceId))
-      return resourceId < o.resourceId;
-    if(!(firstMip == o.firstMip))
-      return firstMip < o.firstMip;
-    if(!(numMips == o.numMips))
-      return numMips < o.numMips;
-    if(!(type == o.type))
-      return type < o.type;
-    if(!(swizzle == o.swizzle))
-      return swizzle < o.swizzle;
-    if(!(depthReadChannel == o.depthReadChannel))
-      return depthReadChannel < o.depthReadChannel;
-    return false;
+    return descriptorByteOffset < o.descriptorByteOffset;
   }
-  DOCUMENT("The :class:`ResourceId` of the underlying resource the view refers to.");
-  ResourceId resourceId;
-  DOCUMENT("Valid for textures - the first mip that is available.");
-  uint32_t firstMip = 0;
-  DOCUMENT("Valid for textures - the number of mips that are available.");
-  uint32_t numMips = 0;
-  DOCUMENT("The :class:`TextureType` of the texture.");
-  TextureType type = TextureType::Unknown;
 
-  DOCUMENT(R"(The swizzle applied to a texture.
-
-:type: TextureSwizzle4
+  DOCUMENT(R"(The byte offset in the GL descriptor storage of the problematic descriptor
 )");
-  TextureSwizzle4 swizzle;
-  DOCUMENT(R"(The channel to read from in a depth-stencil texture.
-
-``-1`` for non depth-stencil textures.
-
-``0`` if depth should be read.
-
-``1`` if stencil should be read.
-)");
-  int32_t depthReadChannel = -1;
+  uint64_t descriptorByteOffset = 0;
 
   DOCUMENT(R"(The details of the texture's (in)completeness. If this string is empty, the texture is
 complete. Otherwise it contains an explanation of why the texture is believed to be incomplete.
 )");
   rdcstr completeStatus;
-};
 
-DOCUMENT("Describes the sampler properties of a texture.");
-struct Sampler
-{
-  DOCUMENT("");
-  Sampler() = default;
-  Sampler(const Sampler &) = default;
-  Sampler &operator=(const Sampler &) = default;
+  DOCUMENT(R"(The details of any type conflict on this binding. This can happen if
+multiple uniforms are pointing to the same binding but with different types. In this case it is
+impossible to disambiguate which binding was used.
 
-  bool operator==(const Sampler &o) const
-  {
-    return resourceId == o.resourceId && addressS == o.addressS && addressT == o.addressT &&
-           addressR == o.addressR && borderColor == o.borderColor &&
-           compareFunction == o.compareFunction && filter == o.filter &&
-           seamlessCubeMap == o.seamlessCubeMap && maxAnisotropy == o.maxAnisotropy &&
-           maxLOD == o.maxLOD && minLOD == o.minLOD && mipLODBias == o.mipLODBias;
-  }
-  bool operator<(const Sampler &o) const
-  {
-    if(!(resourceId == o.resourceId))
-      return resourceId < o.resourceId;
-    if(!(addressS == o.addressS))
-      return addressS < o.addressS;
-    if(!(addressT == o.addressT))
-      return addressT < o.addressT;
-    if(!(addressR == o.addressR))
-      return addressR < o.addressR;
-    if(!(borderColor == o.borderColor))
-      return borderColor < o.borderColor;
-    if(!(compareFunction == o.compareFunction))
-      return compareFunction < o.compareFunction;
-    if(!(filter == o.filter))
-      return filter < o.filter;
-    if(!(seamlessCubeMap == o.seamlessCubeMap))
-      return seamlessCubeMap < o.seamlessCubeMap;
-    if(!(maxAnisotropy == o.maxAnisotropy))
-      return maxAnisotropy < o.maxAnisotropy;
-    if(!(maxLOD == o.maxLOD))
-      return maxLOD < o.maxLOD;
-    if(!(minLOD == o.minLOD))
-      return minLOD < o.minLOD;
-    if(!(mipLODBias == o.mipLODBias))
-      return mipLODBias < o.mipLODBias;
-    return false;
-  }
-  DOCUMENT("The :class:`ResourceId` of the sampler object, if a separate one is set.");
-  ResourceId resourceId;
-  DOCUMENT("The :class:`AddressMode` in the S direction.");
-  AddressMode addressS = AddressMode::Wrap;
-  DOCUMENT("The :class:`AddressMode` in the T direction.");
-  AddressMode addressT = AddressMode::Wrap;
-  DOCUMENT("The :class:`AddressMode` in the R direction.");
-  AddressMode addressR = AddressMode::Wrap;
-  DOCUMENT(R"(The RGBA border color.
-  
-:type: Tuple[float,float,float,float]
+If this string is empty, no conflict is present. Otherwise it contains the bindings which are
+in conflict and their types.
 )");
-  rdcfixedarray<float, 4> borderColor = {0.0f, 0.0f, 0.0f, 0.0f};
-  DOCUMENT("The :class:`CompareFunction` for comparison samplers.");
-  CompareFunction compareFunction = CompareFunction::AlwaysTrue;
-  DOCUMENT(R"(The filtering mode.
-
-:type: TextureFilter
-)");
-  TextureFilter filter;
-  DOCUMENT("``True`` if seamless cubemap filtering is enabled for this texture.");
-  bool seamlessCubeMap = false;
-  DOCUMENT("The maximum anisotropic filtering level to use.");
-  float maxAnisotropy = 0.0f;
-  DOCUMENT("The maximum mip level that can be used.");
-  float maxLOD = 0.0f;
-  DOCUMENT("The minimum mip level that can be used.");
-  float minLOD = 0.0f;
-  DOCUMENT("A bias to apply to the calculated mip level before sampling.");
-  float mipLODBias = 0.0f;
-
-  DOCUMENT(R"(Check if the border color is used in this OpenGL sampler.
-
-:return: ``True`` if the border color is used, ``False`` otherwise.
-:rtype: bool
-)");
-  bool UseBorder() const
-  {
-    return addressS == AddressMode::ClampBorder || addressT == AddressMode::ClampBorder ||
-           addressR == AddressMode::ClampBorder;
-  }
-};
-
-DOCUMENT("Describes the properties of a buffer.");
-struct Buffer
-{
-  DOCUMENT("");
-  Buffer() = default;
-  Buffer(const Buffer &) = default;
-  Buffer &operator=(const Buffer &) = default;
-
-  bool operator==(const Buffer &o) const
-  {
-    return resourceId == o.resourceId && byteOffset == o.byteOffset && byteSize == o.byteSize;
-  }
-  bool operator<(const Buffer &o) const
-  {
-    if(!(resourceId == o.resourceId))
-      return resourceId < o.resourceId;
-    if(!(byteOffset == o.byteOffset))
-      return byteOffset < o.byteOffset;
-    if(!(byteSize == o.byteSize))
-      return byteSize < o.byteSize;
-    return false;
-  }
-  DOCUMENT("The :class:`ResourceId` of the buffer object.");
-  ResourceId resourceId;
-  DOCUMENT("The byte offset from the start of the buffer.");
-  uint64_t byteOffset = 0;
-  DOCUMENT("The byte size of the buffer.");
-  uint64_t byteSize = 0;
-};
-
-DOCUMENT("Describes the properties of a load/store image.");
-struct ImageLoadStore
-{
-  DOCUMENT("");
-  ImageLoadStore() = default;
-  ImageLoadStore(const ImageLoadStore &) = default;
-  ImageLoadStore &operator=(const ImageLoadStore &) = default;
-
-  bool operator==(const ImageLoadStore &o) const
-  {
-    return resourceId == o.resourceId && mipLevel == o.mipLevel && layered == o.layered &&
-           slice == o.slice && type == o.type && readAllowed == o.readAllowed &&
-           writeAllowed == o.writeAllowed && imageFormat == o.imageFormat;
-  }
-  bool operator<(const ImageLoadStore &o) const
-  {
-    if(!(resourceId == o.resourceId))
-      return resourceId < o.resourceId;
-    if(!(mipLevel == o.mipLevel))
-      return mipLevel < o.mipLevel;
-    if(!(layered == o.layered))
-      return layered < o.layered;
-    if(!(slice == o.slice))
-      return slice < o.slice;
-    if(!(type == o.type))
-      return type < o.type;
-    if(!(readAllowed == o.readAllowed))
-      return readAllowed < o.readAllowed;
-    if(!(writeAllowed == o.writeAllowed))
-      return writeAllowed < o.writeAllowed;
-    if(!(imageFormat == o.imageFormat))
-      return imageFormat < o.imageFormat;
-    return false;
-  }
-  DOCUMENT("The :class:`ResourceId` of the texture object.");
-  ResourceId resourceId;
-  DOCUMENT("The mip of the texture that's used in the attachment.");
-  uint32_t mipLevel = 0;
-  DOCUMENT(R"(``True`` if multiple layers are bound together to the image.
-``False`` if only one layer is bound.
-)");
-  bool layered = false;
-  DOCUMENT("The slice of the texture that's used in the attachment.");
-  uint32_t slice = 0;
-  DOCUMENT("The :class:`TextureType` of the texture.");
-  TextureType type = TextureType::Unknown;
-  DOCUMENT("``True`` if loading from the image is allowed.");
-  bool readAllowed = false;
-  DOCUMENT("``True`` if storing to the image is allowed.");
-  bool writeAllowed = false;
-  DOCUMENT(R"(The format that the image is bound as.
-
-:type: ResourceFormat
-)");
-  ResourceFormat imageFormat;
+  rdcstr typeConflict;
 };
 
 DOCUMENT("Describes the current feedback state.");
@@ -663,46 +473,6 @@ struct StencilState
   StencilFace backFace;
 };
 
-DOCUMENT("Describes the state of a framebuffer attachment.");
-struct Attachment
-{
-  DOCUMENT("");
-  Attachment() = default;
-  Attachment(const Attachment &) = default;
-  Attachment &operator=(const Attachment &) = default;
-
-  bool operator==(const Attachment &o) const
-  {
-    return resourceId == o.resourceId && slice == o.slice && numSlices == o.numSlices &&
-           mipLevel == o.mipLevel && swizzle == o.swizzle;
-  }
-  bool operator<(const Attachment &o) const
-  {
-    if(!(resourceId == o.resourceId))
-      return resourceId < o.resourceId;
-    if(!(slice == o.slice))
-      return slice < o.slice;
-    if(!(mipLevel == o.mipLevel))
-      return mipLevel < o.mipLevel;
-    if(!(swizzle == o.swizzle))
-      return swizzle < o.swizzle;
-    return false;
-  }
-  DOCUMENT("The :class:`ResourceId` of the texture bound to this attachment.");
-  ResourceId resourceId;
-  DOCUMENT("The slice of the texture that's used in the attachment.");
-  uint32_t slice = 0;
-  DOCUMENT("The number of slices of the texture that are used in the attachment.");
-  uint32_t numSlices = 1;
-  DOCUMENT("The mip of the texture that's used in the attachment.");
-  uint32_t mipLevel = 0;
-  DOCUMENT(R"(The swizzle applied to the texture.
-
-:type: TextureSwizzle4
-)");
-  TextureSwizzle4 swizzle;
-};
-
 DOCUMENT("Describes the contents of a framebuffer object.");
 struct FBO
 {
@@ -715,19 +485,19 @@ struct FBO
   ResourceId resourceId;
   DOCUMENT(R"(The framebuffer color attachments.
 
-:type: List[GLAttachment]
+:type: List[Descriptor]
 )");
-  rdcarray<Attachment> colorAttachments;
+  rdcarray<Descriptor> colorAttachments;
   DOCUMENT(R"(The framebuffer depth attachment.
 
-:type: GLAttachment
+:type: Descriptor
 )");
-  Attachment depthAttachment;
+  Descriptor depthAttachment;
   DOCUMENT(R"(The framebuffer stencil attachment.
 
-:type: GLAttachment
+:type: Descriptor
 )");
-  Attachment stencilAttachment;
+  Descriptor stencilAttachment;
 
   DOCUMENT(R"(The draw buffer indices into the :data:`colorAttachments` attachment list.
 
@@ -869,39 +639,29 @@ struct State
 )");
   FixedVertexProcessing vertexProcessing;
 
-  DOCUMENT(R"(The currently bound textures.
+  DOCUMENT(R"(The virtual descriptor storage.
 
-:type: List[GLTexture]
+:type: ResourceId
 )");
-  rdcarray<Texture> textures;
-  DOCUMENT(R"(The currently bound samplers.
+  ResourceId descriptorStore;
 
- :type: List[GLSampler]
+  DOCUMENT(R"(The number of descriptors in the virtual descriptor storage.
+
+:type: int
 )");
-  rdcarray<Sampler> samplers;
+  uint32_t descriptorCount = 0;
 
-  DOCUMENT(R"(The currently bound atomic buffers.
+  DOCUMENT(R"(The byte size of a descriptor in the virtual descriptor storage.
 
-:type: List[GLBuffer]
+:type: int
 )");
-  rdcarray<Buffer> atomicBuffers;
-  DOCUMENT(R"(The currently bound uniform buffers.
- 
-:type: List[GLBuffer]
+  uint32_t descriptorByteSize = 0;
+
+  DOCUMENT(R"(Texture completeness issues of descriptors in the descriptor store.
+
+:type: GLTextureCompleteness
 )");
-  rdcarray<Buffer> uniformBuffers;
-
-  DOCUMENT(R"(The currently bound shader storage buffers.
-
-:type: List[GLBuffer]
-)");
-  rdcarray<Buffer> shaderStorageBuffers;
-
-  DOCUMENT(R"(The currently bound load/store images.
-
-:type: List[GLImageLoadStore]
-)");
-  rdcarray<ImageLoadStore> images;
+  rdcarray<TextureCompleteness> textureCompleteness;
 
   DOCUMENT(R"(The transform feedback stage.
 
@@ -947,16 +707,12 @@ DECLARE_REFLECTION_STRUCT(GLPipe::VertexBuffer);
 DECLARE_REFLECTION_STRUCT(GLPipe::VertexInput);
 DECLARE_REFLECTION_STRUCT(GLPipe::Shader);
 DECLARE_REFLECTION_STRUCT(GLPipe::FixedVertexProcessing);
-DECLARE_REFLECTION_STRUCT(GLPipe::Texture);
-DECLARE_REFLECTION_STRUCT(GLPipe::Sampler);
-DECLARE_REFLECTION_STRUCT(GLPipe::Buffer);
-DECLARE_REFLECTION_STRUCT(GLPipe::ImageLoadStore);
+DECLARE_REFLECTION_STRUCT(GLPipe::TextureCompleteness);
 DECLARE_REFLECTION_STRUCT(GLPipe::Feedback);
 DECLARE_REFLECTION_STRUCT(GLPipe::RasterizerState);
 DECLARE_REFLECTION_STRUCT(GLPipe::Rasterizer);
 DECLARE_REFLECTION_STRUCT(GLPipe::DepthState);
 DECLARE_REFLECTION_STRUCT(GLPipe::StencilState);
-DECLARE_REFLECTION_STRUCT(GLPipe::Attachment);
 DECLARE_REFLECTION_STRUCT(GLPipe::FBO);
 DECLARE_REFLECTION_STRUCT(GLPipe::BlendState);
 DECLARE_REFLECTION_STRUCT(GLPipe::FrameBuffer);

@@ -1,7 +1,7 @@
 /******************************************************************************
  * The MIT License (MIT)
  *
- * Copyright (c) 2019-2022 Baldur Karlsson
+ * Copyright (c) 2019-2025 Baldur Karlsson
  * Copyright (c) 2014 Crytek
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,11 +30,28 @@
 
 #include "apidefs.h"
 
+#if defined(RDOC_SELFCAPTURE_LIMITEDAPI)
+
+#define RENDERDOC_AllocArrayMem RDOCSELF_AllocArrayMem
+#define RENDERDOC_FreeArrayMem RDOCSELF_FreeArrayMem
+#define RENDERDOC_GetDefaultCaptureOptions RDOCSELF_GetDefaultCaptureOptions
+#define RENDERDOC_NeedVulkanLayerRegistration RDOCSELF_NeedVulkanLayerRegistration
+#define RENDERDOC_UpdateVulkanLayerRegistration RDOCSELF_UpdateVulkanLayerRegistration
+#define RENDERDOC_ExecuteAndInject RDOCSELF_ExecuteAndInject
+#define RENDERDOC_InjectIntoProcess RDOCSELF_InjectIntoProcess
+#define RENDERDOC_GetCommitHash RDOCSELF_GetCommitHash
+#define RENDERDOC_InitialiseReplay RDOCSELF_InitialiseReplay
+#define RENDERDOC_ShutdownReplay RDOCSELF_ShutdownReplay
+
+#endif
+
 // this #define can be used to mark a program as a 'replay' program which should not be captured.
 // Any program used for such purpose must define and export this symbol in the main exe or one dll
 // that will be loaded before renderdoc.dll is loaded.
-#define REPLAY_PROGRAM_MARKER() \
-  extern "C" RENDERDOC_EXPORT_API void RENDERDOC_CC renderdoc__replay__marker() {}
+#define REPLAY_PROGRAM_MARKER()                                                 \
+  extern "C" RENDERDOC_EXPORT_API void RENDERDOC_CC renderdoc__replay__marker() \
+  {                                                                             \
+  }
 // declare ResourceId extremely early so that it can be referenced in structured_data.h
 
 DOCUMENT("");
@@ -156,20 +173,6 @@ inline const WindowingData CreateWaylandWindowingData(wl_display *display, wl_su
   return ret;
 }
 
-DOCUMENT(R"(Create a :class:`WindowingData` for a GGP application.
-
-:return: A :class:`WindowingData` corresponding to the given system.
-:rtype: WindowingData
-)");
-inline const WindowingData CreateGgpWindowingData()
-{
-  WindowingData ret = {};
-
-  ret.system = WindowingSystem::GGP;
-
-  return ret;
-}
-
 DOCUMENT(R"(Create a :class:`WindowingData` for an Android ``ANativeWindow`` handle.
 
 :param ANativeWindow window: The native ``ANativeWindow`` handle for this window.
@@ -239,17 +242,6 @@ outputs.
 )");
   virtual void SetMeshDisplay(const MeshDisplay &config) = 0;
 
-  DOCUMENT(R"(Sets the dimensions of the output, useful only for headless outputs that don't have a
-backing window which don't have any implicit dimensions. This allows configuring a virtual viewport
-which is useful for operations like picking vertices that depends on the output dimensions.
-
-.. note:: For outputs with backing windows, this will be ignored.
-
-:param int width: The width to use.
-:param int height: The height to use.
-)");
-  virtual void SetDimensions(int32_t width, int32_t height) = 0;
-
   DOCUMENT(R"(Read the output texture back as byte data. Primarily useful for headless outputs where
 the output data is not displayed anywhere natively.
 
@@ -291,6 +283,26 @@ Should only be called for texture outputs.
 )");
   virtual ResultDetails AddThumbnail(WindowingData window, ResourceId textureId,
                                      const Subresource &sub, CompType typeCast) = 0;
+
+  DOCUMENT(R"(Draws a thumbnail for a particular texture with sensible defaults and returns an RGBA8
+byte buffer for display. This does not render to a window but internally to a texture which is read
+back from the GPU.
+
+Should only be called for texture outputs.
+
+:param int width: The width of the desired thumbnail.
+:param int height: The height of the desired thumbnail.
+:param ResourceId textureId: The texture ID to display in the thumbnail preview.
+:param Subresource sub: The subresource within this texture to use.
+:param CompType typeCast: If possible interpret the texture with this type instead of its normal
+  type. If set to :data:`CompType.Typeless` then no cast is applied, otherwise where allowed the
+  texture data will be reinterpreted - e.g. from unsigned integers to floats, or to unsigned
+  normalised values.
+:return: A buffer with the thumbnail RGBA8 data if successful, or empty if something went wrong.
+:rtype: bytes
+)");
+  virtual bytebuf DrawThumbnail(int32_t width, int32_t height, ResourceId textureId,
+                                const Subresource &sub, CompType typeCast) = 0;
 
   DOCUMENT(R"(Render to the window handle specified when the output was created.
 
@@ -529,6 +541,45 @@ capture's API.
 )");
   virtual const PipeState &GetPipelineState() = 0;
 
+  DOCUMENT(R"(Retrieve the contents of a number of descriptors in a descriptor store. Multiple
+ranges within the store can be queried at once, and are returned in a contiguous array.
+
+:param ResourceId descriptorStore: The descriptor store to be queried from.
+:param List[DescriptorRange] ranges: The descriptor ranges to query.
+:return: The contents of the descriptors specified.
+:rtype: List[Descriptor]
+)");
+  virtual rdcarray<Descriptor> GetDescriptors(ResourceId descriptorStore,
+                                              const rdcarray<DescriptorRange> &ranges) = 0;
+
+  DOCUMENT(R"(Retrieve the contents of a number of sampler descriptors in a descriptor store.
+Multiple ranges within the store can be queried at once, and are returned in a contiguous array.
+
+:param ResourceId descriptorStore: The descriptor store to be queried from.
+:param List[DescriptorRange] ranges: The descriptor ranges to query.
+:return: The contents of the descriptors specified.
+:rtype: List[SamplerDescriptor]
+)");
+  virtual rdcarray<SamplerDescriptor> GetSamplerDescriptors(
+      ResourceId descriptorStore, const rdcarray<DescriptorRange> &ranges) = 0;
+
+  DOCUMENT(R"(Retrieve the descriptor accesses that happened at the current event.
+
+:return: The descriptor accesses.
+:rtype: List[DescriptorAccess]
+)");
+  virtual const rdcarray<DescriptorAccess> &GetDescriptorAccess() = 0;
+
+  DOCUMENT(R"(Retrieve the logical locations for descriptors in a given descriptor store.
+
+:param ResourceId descriptorStore: The descriptor store to be queried from.
+:param List[DescriptorRange] ranges: The descriptor ranges to query.
+:return: The descriptor logical locations.
+:rtype: List[DescriptorLogicalLocation]
+)");
+  virtual rdcarray<DescriptorLogicalLocation> GetDescriptorLocations(
+      ResourceId descriptorStore, const rdcarray<DescriptorRange> &ranges) = 0;
+
   DOCUMENT(R"(Retrieve the list of possible disassembly targets for :meth:`DisassembleShader`. The
 values are implementation dependent but will always include a default target first which is the
 native disassembly of the shader. Further options may be available for additional diassembly views
@@ -671,6 +722,11 @@ See :meth:`BuildTargetShader`, :meth:`RemoveReplacement`.
 )");
   virtual void ReplaceResource(ResourceId original, ResourceId replacement) = 0;
 
+  DOCUMENT(R"(Clear any cached data from previous replays and ensure subsequent replays fully
+re-initialise any data, including e.g. bindless feedback, printf results or mesh output data.
+)");
+  virtual void ClearReplayCache() = 0;
+
   DOCUMENT(R"(Remove any previously specified replacement for an object.
 
 See :meth:`ReplaceResource`.
@@ -773,6 +829,13 @@ are only used as intermediary elements.
 :rtype: List[BufferDescription]
 )");
   virtual const rdcarray<BufferDescription> &GetBuffers() = 0;
+
+  DOCUMENT(R"(Retrieve the list of descriptor storage objects alive in the capture.
+
+:return: The list of descriptor storage objects in the capture.
+:rtype: List[DescriptorStoreDescription]
+)");
+  virtual const rdcarray<DescriptorStoreDescription> &GetDescriptorStores() = 0;
 
   DOCUMENT(R"(Retrieve a list of any newly generated diagnostic messages.
 
@@ -930,15 +993,16 @@ bucket when the pixel values are divided between ``minval`` and ``maxval``.
 
 :param int x: The x co-ordinate.
 :param int y: The y co-ordinate.
-:param int sample: The multi-sampled sample. Ignored if non-multisampled texture.
-:param int primitive: Debug the pixel from this primitive if there's ambiguity. If set to
+:param DebugPixelInputs inputs: Specific properties to select which fragment to debug e.g.
+  sample: The multi-sampled sample. Ignored if non-multisampled texture.
+  primitive: Debug the pixel from this primitive if there's ambiguity. If set to
   :data:`NoPreference` then a random fragment writing to the given co-ordinate is debugged.
-:return: The resulting trace resulting from debugging. Destroy with
-  :meth:`FreeTrace`.
+  view: Debug the fragment writing to this view for layered or multiview rendering, 
+  ignored if set to :data:`NoPreference`.
+:return: The resulting trace resulting from debugging. Destroy with :meth:`FreeTrace`.
 :rtype: ShaderDebugTrace
 )");
-  virtual ShaderDebugTrace *DebugPixel(uint32_t x, uint32_t y, uint32_t sample,
-                                       uint32_t primitive) = 0;
+  virtual ShaderDebugTrace *DebugPixel(uint32_t x, uint32_t y, const DebugPixelInputs &inputs) = 0;
 
   DOCUMENT(R"(Retrieve a debugging trace from running a compute thread.
 
@@ -950,6 +1014,17 @@ bucket when the pixel values are divided between ``minval`` and ``maxval``.
 )");
   virtual ShaderDebugTrace *DebugThread(const rdcfixedarray<uint32_t, 3> &groupid,
                                         const rdcfixedarray<uint32_t, 3> &threadid) = 0;
+
+  DOCUMENT(R"(Retrieve a debugging trace from running a mesh shader.
+
+:param Tuple[int,int,int] groupid: A list containing the 3D workgroup index.
+:param Tuple[int,int,int] threadid: A list containing the 3D thread index within the workgroup.
+:return: The resulting trace resulting from debugging. Destroy with
+  :meth:`FreeTrace`.
+:rtype: ShaderDebugTrace
+)");
+  virtual ShaderDebugTrace *DebugMeshThread(const rdcfixedarray<uint32_t, 3> &groupid,
+                                            const rdcfixedarray<uint32_t, 3> &threadid) = 0;
 
   DOCUMENT(R"(Continue a shader's debugging with a given shader debugger instance. This will run an
 implementation defined number of steps and then return those steps in a list. This may be a fixed
@@ -1141,6 +1216,7 @@ The details of the types of messages that can be received are listed under
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value when a long blocking message is coming through, e.g. a capture copy. Can be ``None`` if no
   progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: The message that was received.
 :rtype: TargetControlMessage
 )");
@@ -1241,6 +1317,7 @@ separate thread.
   fail.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value for the resolver process. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: The result of the operation.
 :rtype: ResultDetails
 )");
@@ -1372,6 +1449,7 @@ the capture must be available on the machine where the replay happens.
 :param str filename: The path to the file on the local system.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value for the copy. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: The path on the remote system where the capture was saved temporarily.
 :rtype: str
 )");
@@ -1385,6 +1463,7 @@ This function will block until the copy is fully complete, or an error has occur
 :param str localpath: The local path where the file should be saved.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value for the copy. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 )");
   virtual void CopyCaptureFromRemote(const rdcstr &remotepath, const rdcstr &localpath,
                                      RENDERDOC_ProgressCallback progress) = 0;
@@ -1407,6 +1486,7 @@ or an error has occurred.
 :param ReplayOptions opts: The options controlling how the capture should be replayed.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value for the opening. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: A tuple containing the status of opening the capture, whether success or failure, and the
   resulting :class:`ReplayController` handle if successful.
 :rtype: Tuple[ResultDetails,ReplayController]
@@ -1449,6 +1529,7 @@ empty or unrecognised.
 :param str filetype: The format of the given file.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value if an import step occurs. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: The result of the operation.
 :rtype: ResultDetails
 )");
@@ -1465,6 +1546,7 @@ For the :paramref:`OpenBuffer.filetype` parameter, see :meth:`OpenFile`.
 :param str filetype: The format of the given file.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value if an import step occurs. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: The result of the operation.
 :rtype: ResultDetails
 )");
@@ -1498,6 +1580,7 @@ representation back to native RDC.
   again. If ``None`` then structured data will be fetched if not already present and used.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value for the conversion. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: The result of the operation.
 :rtype: ResultDetails
 )");
@@ -1585,6 +1668,7 @@ by the :class:`ReplayController`.
 :param ReplayOptions opts: The options controlling how the capture should be replayed.
 :param ProgressCallback progress: A callback that will be repeatedly called with an updated progress
   value for the opening. Can be ``None`` if no progress is desired.
+  Callback function signature must match :func:`ProgressCallback`.
 :return: A tuple containing the status of opening the capture, whether success or failure, and the
   resulting :class:`ReplayController` handle if successful.
 :rtype: Tuple[ResultDetails,ReplayController]
@@ -1864,8 +1948,10 @@ This function will block until a remote connection tells the server to shut down
 :param int port: The port to listen on, or ``0`` to listen on the default port.
 :param KillCallback killReplay: A callback that returns a ``bool`` indicating if the server should
   be shut down or not.
+  Callback function signature must match :func:`KillCallback`.
 :param PreviewWindowCallback previewWindow: A callback that returns information for a preview window
   when the server wants to display some preview of the ongoing replay.
+  Callback function signature must match :func:`PreviewWindowCallback`.
 )");
 extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_BecomeRemoteServer(
     const rdcstr &listenhost, uint16_t port, RENDERDOC_KillCallback killReplay,
@@ -1965,6 +2051,15 @@ DOCUMENT(R"(Where supported by operating system and permissions, inject into a r
 extern "C" RENDERDOC_API ExecuteResult RENDERDOC_CC
 RENDERDOC_InjectIntoProcess(uint32_t pid, const rdcarray<EnvironmentModification> &env,
                             const rdcstr &capturefile, const CaptureOptions &opts, bool waitForExit);
+
+DOCUMENT(R"(When debugging RenderDoc it can be useful to capture itself by doing a side-build with a
+temporary name. This function checks to see if a given self-hosted DLL is available.
+
+:param str dllname: The name of the self-hosted capture module.
+:return: Whether the specified dll is loaded, ready for self-hosted capture.
+:rtype: bool
+)");
+extern "C" RENDERDOC_API bool RENDERDOC_CC RENDERDOC_CanSelfHostedCapture(const rdcstr &dllname);
 
 DOCUMENT(R"(When debugging RenderDoc it can be useful to capture itself by doing a side-build with a
 temporary name. This function wraps up the use of the in-application API to start a capture.
@@ -2165,10 +2260,6 @@ extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_SetColors(FloatVector darkC
 DOCUMENT("INTERNAL: Check remote Android package for requirements");
 extern "C" RENDERDOC_API void RENDERDOC_CC RENDERDOC_CheckAndroidPackage(
     const rdcstr &URL, const rdcstr &packageAndActivity, AndroidFlags *flags);
-
-DOCUMENT("INTERNAL: Patch an APK to add debuggable flag.");
-extern "C" RENDERDOC_API AndroidFlags RENDERDOC_CC RENDERDOC_MakeDebuggablePackage(
-    const rdcstr &URL, const rdcstr &packageAndActivity, RENDERDOC_ProgressCallback progress);
 
 DOCUMENT("An interface for enumerating and controlling remote devices.");
 struct IDeviceProtocolController
