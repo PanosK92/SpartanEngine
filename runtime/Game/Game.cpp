@@ -232,7 +232,7 @@ namespace spartan
                     material->SetObjectName("material_water");
                     material->SetResourceFilePath("water" + string(EXTENSION_MATERIAL));
 
-                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f)); // pool water color
+                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); // pool water color
                     material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
                     material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
