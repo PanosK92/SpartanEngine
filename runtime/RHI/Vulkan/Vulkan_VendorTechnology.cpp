@@ -1331,7 +1331,7 @@ namespace spartan
     void RHI_VendorTechnology::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
         const float resolution_scale,
-        RHI_Texture* tex_color,
+        RHI_Texture* tex_reflection_source,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
         RHI_Texture* tex_normal,
@@ -1345,7 +1345,7 @@ namespace spartan
 
         // set resources
         amd::ssr::description_dispatch.commandList        = amd::to_cmd_list(cmd_list);
-        amd::ssr::description_dispatch.color              = amd::to_resource(tex_color,                 L"sssr_color");
+        amd::ssr::description_dispatch.color              = amd::to_resource(tex_reflection_source,     L"sssr_reflection_source");
         amd::ssr::description_dispatch.depth              = amd::to_resource(tex_depth,                 L"sssr_depth");
         amd::ssr::description_dispatch.motionVectors      = amd::to_resource(tex_velocity,              L"sssr_velocity");
         amd::ssr::description_dispatch.normal             = amd::to_resource(tex_normal,                L"sssr_normal");
@@ -1355,8 +1355,8 @@ namespace spartan
         amd::ssr::description_dispatch.output             = amd::to_resource(tex_output,                L"sssr_output");
  
         // set render size
-        amd::ssr::description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_color->GetWidth()  * resolution_scale);
-        amd::ssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
+        amd::ssr::description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_reflection_source->GetWidth()  * resolution_scale);
+        amd::ssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_reflection_source->GetHeight() * resolution_scale);
 
         // set sssr specific parameters
         amd::ssr::description_dispatch.motionVectorScale.x                  = 1.0f; // expects [-0.5, 0.5] range
@@ -1605,19 +1605,19 @@ namespace spartan
         amd::set_float16(amd::gi::description_dispatch_gi.prevProjection, amd::projection_previous);
 
         // set resources
-        amd::gi::description_dispatch_gi.environmentMap   = amd::to_resource(amd::texture_skybox.get(),                         L"brixelizer_gi_environment");
-        amd::gi::description_dispatch_gi.prevLitOutput    = amd::to_resource(tex_frame,                                         L"brixelizer_gi_lit_output_previous"); // linear
-        amd::gi::description_dispatch_gi.depth            = amd::to_resource(tex_depth,                                         L"brixelizer_gi_depth");
-        amd::gi::description_dispatch_gi.historyDepth     = amd::to_resource(amd::gi::texture_depth_previous.get(),  L"brixelizer_gi_depth_previous");
-        amd::gi::description_dispatch_gi.normal           = amd::to_resource(tex_normal,                                        L"brixelizer_gi_normal");
-        amd::gi::description_dispatch_gi.historyNormal    = amd::to_resource(amd::gi::texture_normal_previous.get(), L"brixelizer_gi_normal_previous");
-        amd::gi::description_dispatch_gi.roughness        = amd::to_resource(tex_material,                                      L"brixelizer_gi_roughness");
-        amd::gi::description_dispatch_gi.motionVectors    = amd::to_resource(tex_velocity,                                      L"brixelizer_gi_velocity");
-        amd::gi::description_dispatch_gi.noiseTexture     = amd::to_resource(tex_noise[cb_frame->frame % tex_noise.size()],     L"brixelizer_gi_noise");
-        amd::gi::description_dispatch_gi.outputDiffuseGI  = amd::to_resource(tex_diffuse_gi,                                    L"brixelizer_gi_diffuse_gi");
-        amd::gi::description_dispatch_gi.outputSpecularGI = amd::to_resource(tex_specular_gi,                                   L"brixelizer_gi_specular_gi");
-        amd::gi::description_dispatch_gi.sdfAtlas         = amd::to_resource(amd::gi::texture_sdf_atlas.get(),       L"brixelizer_gi_sdf_atlas");
-        amd::gi::description_dispatch_gi.bricksAABBs      = amd::to_resource(amd::gi::buffer_brick_aabbs.get(),      L"brixelizer_gi_brick_aabbs");
+        amd::gi::description_dispatch_gi.environmentMap   = amd::to_resource(amd::texture_skybox.get(),                     L"brixelizer_gi_environment");
+        amd::gi::description_dispatch_gi.prevLitOutput    = amd::to_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous"); // linear
+        amd::gi::description_dispatch_gi.depth            = amd::to_resource(tex_depth,                                     L"brixelizer_gi_depth");
+        amd::gi::description_dispatch_gi.historyDepth     = amd::to_resource(amd::gi::texture_depth_previous.get(),         L"brixelizer_gi_depth_previous");
+        amd::gi::description_dispatch_gi.normal           = amd::to_resource(tex_normal,                                    L"brixelizer_gi_normal");
+        amd::gi::description_dispatch_gi.historyNormal    = amd::to_resource(amd::gi::texture_normal_previous.get(),        L"brixelizer_gi_normal_previous");
+        amd::gi::description_dispatch_gi.roughness        = amd::to_resource(tex_material,                                  L"brixelizer_gi_roughness");
+        amd::gi::description_dispatch_gi.motionVectors    = amd::to_resource(tex_velocity,                                  L"brixelizer_gi_velocity");
+        amd::gi::description_dispatch_gi.noiseTexture     = amd::to_resource(tex_noise[cb_frame->frame % tex_noise.size()], L"brixelizer_gi_noise");
+        amd::gi::description_dispatch_gi.outputDiffuseGI  = amd::to_resource(tex_diffuse_gi,                                L"brixelizer_gi_diffuse_gi");
+        amd::gi::description_dispatch_gi.outputSpecularGI = amd::to_resource(tex_specular_gi,                               L"brixelizer_gi_specular_gi");
+        amd::gi::description_dispatch_gi.sdfAtlas         = amd::to_resource(amd::gi::texture_sdf_atlas.get(),              L"brixelizer_gi_sdf_atlas");
+        amd::gi::description_dispatch_gi.bricksAABBs      = amd::to_resource(amd::gi::buffer_brick_aabbs.get(),             L"brixelizer_gi_brick_aabbs");
         for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
         {
             amd::gi::description_dispatch_gi.cascadeAABBTrees[i] = amd::gi::description_update.resources.cascadeResources[i].aabbTree;

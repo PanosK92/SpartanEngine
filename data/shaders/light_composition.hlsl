@@ -45,30 +45,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // during the compute pass, fill in the sky pixels
     if (surface.is_sky() && pass_is_opaque())
     {
-        light_emissive       = tex3.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
+        light_emissive       = tex2.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         alpha                = 0.0f;
         distance_from_camera = FLT_MAX_16;
     }
     // for the opaque pass, fill in the opaque pixels, and for the transparent pass, fill in the transparent pixels
     else if ((pass_is_opaque() && surface.is_opaque()) || (pass_is_transparent() && surface.is_transparent()))
     {
-        light_diffuse        = tex4.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
-        light_specular       = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+        light_diffuse        = tex3.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+        light_specular       = tex4.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
         light_emissive       = surface.emissive * surface.albedo * 10.0f;
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
-        
-        // refraction
-        if (surface.is_transparent())
-        {
-            const float strength = 0.01f;
-
-            float3 normal_view          = world_to_view(surface.normal, false);
-            float2 refraction_uv_offset = normal_view.xy * strength;
-            float2 refracted_uv         = saturate(surface.uv + refraction_uv_offset);
-
-            light_refraction = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), refracted_uv, 0).rgb;
-        }
     }
 
     // fog
@@ -76,11 +64,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // atmospheric
         float max_mip     = pass_get_f3_value().x;
         float fog_density = pass_get_f3_value().y;
-        float3 sky_color  = tex3.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
+        float3 sky_color  = tex2.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
         light_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density * sky_color;
 
         // volumetric
-        light_atmospheric += tex6.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb; // already uses sky color
+        light_atmospheric += tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb; // already uses sky color
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend

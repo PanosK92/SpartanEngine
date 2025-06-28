@@ -76,7 +76,7 @@ namespace spartan
         static void SSSR_Dispatch(
             RHI_CommandList* cmd_list,
             const float resolution_scale,
-            RHI_Texture* tex_color,
+            RHI_Texture* tex_reflection_source,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_motion_vectors,
             RHI_Texture* tex_normal,

@@ -189,6 +189,7 @@ namespace spartan
         occlusion_c,
         icon_c,
         dithering_c,
+        apply_reflections_refraction_c,
         max
     };
     
@@ -211,10 +212,10 @@ namespace spartan
         light_shadow,
         light_volumetric,
         frame_render,
+        frame_render_opaque,
         frame_output,
         frame_output_2,
         source_gi,
-        source_refraction,
         ssao,
         ssr,
         sss,

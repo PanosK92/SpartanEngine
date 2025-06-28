@@ -33,7 +33,7 @@ float3 get_dominant_specular_direction(float3 normal, float3 reflection, float r
 
 float3 sample_environment(float2 uv, float mip_level, float mip_max)
 {
-    return tex4.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
+    return tex3.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
 float get_blend_weight(float value, float smoothness)
@@ -41,19 +41,16 @@ float get_blend_weight(float value, float smoothness)
     return saturate((value + smoothness) / (smoothness * 2.0f));
 }
 
-float3 combine_specular_sources(float4 specular_ssr, float3 specular_gi, float3 specular_sky)
+float3 combine_specular_sources(float3 specular_gi, float3 specular_sky)
 {
     const float smoothness = 0.5f; // aka blend region size
     
     // get weights for each source
-    float ssr_alpha  = saturate(specular_ssr.a / 0.2f);
-    float ssr_weight = get_blend_weight(ssr_alpha, smoothness);
     float gi_weight  = get_blend_weight(luminance(specular_gi), smoothness);
 
     // blend
     float3 result = specular_sky;                               // start with sky as base
     result        = lerp(result, specular_gi, gi_weight);       // blend in gi
-    result        = lerp(result, specular_ssr.rgb, ssr_weight); // blend in ssr
     
     return result;
 }
@@ -78,7 +75,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // diffuse and specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
-    const float2 envBRDF         = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
+    const float2 envBRDF         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
     const float3 diffuse_energy  = compute_diffuse_energy(specular_energy, surface.metallic);
 
@@ -94,13 +91,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
     float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(diffuse_normal), mip_count_environment, mip_count_environment);
-    float4 specular_ssr                = tex2[thread_id.xy].rgba;
-    float3 diffuse_gi                  = tex_uav3[thread_id.xy].rgb;
-    float3 specular_gi                 = tex_uav4[thread_id.xy].rgb;
     float shadow_mask                  = tex[thread_id.xy].r;
+    float3 diffuse_gi                  = tex_uav2[thread_id.xy].rgb;
+    float3 specular_gi                 = tex_uav3[thread_id.xy].rgb;
 
     // modulate specular light source with the outcoming energy
-    specular_ssr.rgb   *= F;
     specular_gi        *= F;
     specular_skysphere *= specular_energy * shadow_mask;
 
@@ -108,8 +103,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     shadow_mask        = max(0.5f, shadow_mask); // GI is not as good, so never go full dark
     float3 diffuse_ibl = diffuse_skysphere * surface.occlusion * shadow_mask + diffuse_gi;
 
-    // combine all the specular light, fallback order: ssr -> gi -> skysphere
-    float3 specular_ibl = combine_specular_sources(specular_ssr, specular_gi, specular_skysphere);
+    // combine all the specular light, fallback order: gi -> skysphere
+    float3 specular_ibl = combine_specular_sources(specular_gi, specular_skysphere);
     
     // combine the diffuse and specular light
     float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + specular_ibl;

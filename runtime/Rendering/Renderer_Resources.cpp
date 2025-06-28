@@ -198,12 +198,9 @@ namespace spartan
         if (create_render)
         {
             // frame
-            render_target(Renderer_RenderTarget::frame_render) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render");
-
-            // sources
             {
-                render_target(Renderer_RenderTarget::source_gi)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1,                    format_standard, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,                           "source_gi");
-                render_target(Renderer_RenderTarget::source_refraction) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, compute_mip_count(1), format_standard, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "source_refraction_ssr");
+                render_target(Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render");
+                render_target(Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
             }
 
             // g-buffer
@@ -246,6 +243,7 @@ namespace spartan
             { 
                 render_target(Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render / 4, height_render / 4, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
             }
+            render_target(Renderer_RenderTarget::source_gi) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, format_standard, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "source_gi");
         }
 
         // resolution - output
@@ -497,6 +495,10 @@ namespace spartan
         // dithering
         shader(Renderer_Shader::dithering_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::dithering_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "dithering.hlsl", async);
+
+        // dithering
+        shader(Renderer_Shader::apply_reflections_refraction_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::apply_reflections_refraction_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "apply_reflections_refraction.hlsl", async);
     }
 
     void Renderer::CreateFonts()

@@ -97,7 +97,7 @@ namespace spartan
                 //Pass_Occlusion(cmd_list_graphics_secondary);
                 Pass_Depth_Prepass(cmd_list_present);
                 Pass_GBuffer(cmd_list_present, is_transparent);
-                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // temp till I fix the GPU crash
+                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // temp till I fix the gpu crash
                 { 
                     Pass_ShadowMaps(cmd_list_present);
                 }
@@ -107,6 +107,7 @@ namespace spartan
                 Pass_Light(cmd_list_present, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_GlobalIllumination(cmd_list_present);          // compute global illumination
                 Pass_Light_Composition(cmd_list_present, is_transparent); // compose all light (diffuse, specular, etc).
+                cmd_list_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
             }
 
             // transparents
@@ -118,9 +119,9 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_present, is_transparent);
             }
 
-            // apply skysphere, ssr and global illumination
-            Pass_ScreenSpaceReflections(cmd_list_present);
-            Pass_Light_ImageBased(cmd_list_present);
+            // image based lighting
+            Pass_Light_ImageBased(cmd_list_present);       // ibl from skysphere and global illumination
+            Pass_ScreenSpaceReflectionsRefraction(cmd_list_present); // ssr
 
             // render -> output resolution
             Pass_Upscale(cmd_list_present);
@@ -625,45 +626,66 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_ScreenSpaceReflections(RHI_CommandList* cmd_list)
+    void Renderer::Pass_ScreenSpaceReflectionsRefraction(RHI_CommandList* cmd_list)
     {
         static bool cleared = false;
 
-        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::ssr);
+        RHI_Texture* tex_render         = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_render_opaque  = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
+        RHI_Texture* tex_ssr            = GetRenderTarget(Renderer_RenderTarget::ssr);
 
-        if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
-        { 
-            cmd_list->BeginTimeblock("screen_space_reflections");
-            {
-                // do any pending barriers as we don't have control over fidelityfx sssr
-                GetRenderTarget(Renderer_RenderTarget::source_refraction)->SetLayout(RHI_Image_Layout::General, cmd_list);
-                cmd_list->InsertPendingBarrierGroup();
-                cmd_list->RenderPassEnd();
-
-                RHI_VendorTechnology::SSSR_Dispatch(
-                    cmd_list,
-                    GetOption<float>(Renderer_Option::ResolutionScale),
-                    GetRenderTarget(Renderer_RenderTarget::source_refraction),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
-                    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular),
-                    tex_out
-                );
-
-                cleared = false;
-            }
-            cmd_list->EndTimeblock();
-        }
-        else if (!cleared)
+        cmd_list->BeginTimeblock("screen_space_reflections_refraction");
         {
-            cmd_list->ClearTexture(tex_out, Color::standard_transparent);
-            cleared = true;
-        }
+            if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
+            { 
+                cmd_list->BeginMarker("reflection_trace");
+                {
+                    // do any pending barriers as we don't have control over fidelityfx sssr
+                    tex_render->SetLayout(RHI_Image_Layout::General, cmd_list);
+                    cmd_list->InsertPendingBarrierGroup();
+                    cmd_list->RenderPassEnd();
+                
+                    RHI_VendorTechnology::SSSR_Dispatch(
+                        cmd_list,
+                        GetOption<float>(Renderer_Option::ResolutionScale),
+                        tex_render, // source of reflection
+                        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
+                        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
+                        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
+                        GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
+                        GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular),
+                        tex_ssr
+                    );
 
-        // wait for vendor tech to finish writing to the texture
-        cmd_list->InsertBarrierReadWrite(tex_out);
+                    // wait for vendor tech to finish writing to the texture
+                    cmd_list->InsertBarrierReadWrite(tex_ssr);
+                
+                    cleared = false;
+                }
+                cmd_list->EndMarker();
+            }
+            else if (!cleared)
+            {
+                cmd_list->ClearTexture(tex_ssr, Color::standard_transparent);
+                cleared = true;
+            }
+
+            cmd_list->BeginMarker("apply_reflections_refraction");
+            {
+                RHI_PipelineState pso;
+                pso.name             = "apply_reflections_refraction";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::apply_reflections_refraction_c);
+
+                cmd_list->SetPipelineState(pso);
+                SetCommonTextures(cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);                                                     // in - reflection
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::frame_render_opaque)); // in - refraction
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_render);                                                  // out
+                cmd_list->Dispatch(tex_render);
+            }
+            cmd_list->EndMarker();
+        }
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)
@@ -974,7 +996,6 @@ namespace spartan
         RHI_Shader* shader_c              = GetShader(Renderer_Shader::light_composition_c);
         RHI_Texture* tex_out              = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_skysphere        = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_refraction       = GetRenderTarget(Renderer_RenderTarget::source_refraction);
         RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
@@ -996,18 +1017,13 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,  GetStandardTexture(Renderer_StandardTexture::Foam));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_diffuse);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_specular);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex6, tex_light_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
 
             // render
             cmd_list->Dispatch(tex_out);
-
-            // create sampling source for refraction
-            cmd_list->Blit(tex_out, tex_refraction, false);
-            Pass_Downscale(cmd_list, tex_refraction, Renderer_DownsampleFilter::Average); // emulate roughness for refraction
         }
         cmd_list->EndTimeblock();
     }
@@ -1030,10 +1046,11 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_out);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2,    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::light_shadow));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::ssr));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex4,    GetRenderTarget(Renderer_RenderTarget::skysphere));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             // set pass constants
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
