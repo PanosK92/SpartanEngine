@@ -97,7 +97,7 @@ namespace spartan
                 //Pass_Occlusion(cmd_list_graphics_secondary);
                 Pass_Depth_Prepass(cmd_list_present);
                 Pass_GBuffer(cmd_list_present, is_transparent);
-                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // temp till I fix the gpu crash
+                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // temp till I fix the gpu crash in the forest world
                 { 
                     Pass_ShadowMaps(cmd_list_present);
                 }

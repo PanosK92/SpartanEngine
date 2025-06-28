@@ -75,8 +75,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 reflection    = tex[thread_id.xy].rgb;
     float3 surface_color = reflection * fresnel + refraction * (1.0f - fresnel);
 
-    // blend surface color over original background using surface alpha
-    float3 final_color = lerp(background, surface_color, surface.alpha);
-
-    tex_uav[thread_id.xy] += float4(final_color, surface.alpha);
+    tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
 }
