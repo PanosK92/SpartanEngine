@@ -47,6 +47,7 @@ namespace spartan
         Capsule,
         Mesh,
         Controller,
+        Water,
         Max
     };
 

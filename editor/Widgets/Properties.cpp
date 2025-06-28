@@ -580,7 +580,8 @@ void Properties::ShowPhysics(Physics* body) const
                 "Plane",
                 "Capsule",
                 "Mesh",
-                "Controller"
+                "Controller",
+                "Water"
             };
 
             ImGui::Text("Body Type");

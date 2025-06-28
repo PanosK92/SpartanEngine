@@ -222,6 +222,82 @@ namespace spartan
                 }
             }
         }
+
+        // handle water body buoyancy
+        if (m_body_type == BodyType::Water && Engine::IsFlagSet(EngineMode::Playing))
+        {
+            float water_density       = 1000.0f; // Default water density (kg/m³)
+            PxScene* scene            = static_cast<PxScene*>(PhysicsWorld::GetScene());
+            PxRigidActor* water_actor = static_cast<PxRigidActor*>(m_bodies[0]);
+            PxShape* shape;
+            water_actor->getShapes(&shape, 1);
+            if (!shape)
+                return;
+
+            // perform overlap query
+            PxGeometryHolder geometry = shape->getGeometry();
+            PxTransform shape_pose = water_actor->getGlobalPose();
+            PxOverlapBufferN<10> hit_buffer; // 10 overllaping actors max
+            PxQueryFilterData filter_data;
+            filter_data.flags = PxQueryFlag::eDYNAMIC | PxQueryFlag::eSTATIC;// dynamic and static (controller)
+            if (scene->overlap(geometry.any(), shape_pose, hit_buffer, filter_data))
+            {
+                for (PxU32 i = 0; i < hit_buffer.nbTouches; ++i)
+                {
+                    PxOverlapHit& hit = hit_buffer.touches[i];
+                    PxRigidActor* other_actor = hit.actor;
+                    if (!other_actor || other_actor == water_actor)
+                        continue;
+
+                    // get other enity
+                    Entity* other_entity = static_cast<Entity*>(other_actor->userData);
+                    if (!other_entity)
+                        continue;
+
+                    // get other entity's physics component
+                    Physics* other_physics = other_entity->GetComponent<Physics>();
+                    if (!other_physics)
+                        continue;
+
+                    // calculate submerged volume (approximate using bounding box)
+                    Renderable* other_renderable = other_entity->GetComponent<Renderable>();
+                    if (!other_renderable)
+                        continue;
+
+                    BoundingBox bbox   = other_renderable->GetBoundingBox();
+                    Vector3 extents    = bbox.GetExtents();
+                    float total_volume = extents.x * extents.y * extents.z * 8.0f; // extents are half-size
+
+                    // determine submersion ratio
+                    Vector3 water_pos      = GetEntity()->GetPosition();
+                    float water_surface_y  = water_pos.y;
+                    Vector3 other_pos      = other_entity->GetPosition();
+                    float object_bottom_y  = other_pos.y - extents.y;
+                    float object_top_y     = other_pos.y + extents.y;
+                    float submerged_height = min(water_surface_y - object_bottom_y, 2.0f * extents.y);
+                    submerged_height       = max(submerged_height, 0.0f); // ensure non-negative
+                    float submersion_ratio = submerged_height / (2.0f * extents.y);
+                    float submerged_volume = total_volume * submersion_ratio;
+
+                    // calculate buoyancy force: F_b = ρ * V_submerged * g
+                    float gravity_magnitude  = -PhysicsWorld::GetGravity().y; // positive magnitude
+                    float buoyancy_magnitude = water_density * submerged_volume * gravity_magnitude;
+                    Vector3 buoyancy_force(0.0f, buoyancy_magnitude, 0.0f);
+
+                    // apply buoyancy force
+                    if (other_physics->GetBodyType() == BodyType::Controller)
+                    {
+                        // adjust controller velocity for buoyancy
+                        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+                        other_physics->m_velocity.y += (buoyancy_magnitude / other_physics->GetMass()) * delta_time;
+                    }
+                    else
+                    {
+                        other_physics->ApplyForce(buoyancy_force, PhysicsForce::Constant);
+                    }
+                }
+            }
+        }
     }
 
     void Physics::Serialize(FileStream* stream)
@@ -967,6 +1043,15 @@ namespace spartan
                                 shape = physics->createShape(geometry, *material);
                             }
                         }
+                        break;
+                    }
+                    case BodyType::Water:
+                    {
+                        Vector3 extents = renderable->GetBoundingBox().GetExtents();
+                        PxBoxGeometry geometry(extents.x, extents.y, extents.z);
+                        shape = physics->createShape(geometry, *material);
+                        shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false); // disable simulation
+                        shape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);     // enable trigger
                         break;
                     }
                 }

@@ -276,17 +276,21 @@ namespace spartan
                 
                         // create a child entity, add a renderable, and this mesh tile to it
                         {
-                            shared_ptr<Entity> entity = World::CreateEntity();
-                            entity->SetObjectName(name);
-                            entity->SetParent(water);
-                            entity->SetPosition(tile_offsets[tile_index]);
+                            shared_ptr<Entity> entity_tile = World::CreateEntity();
+                            entity_tile->SetObjectName(name);
+                            entity_tile->SetParent(water);
+                            entity_tile->SetPosition(tile_offsets[tile_index]);
                 
-                            if (Renderable* renderable = entity->AddComponent<Renderable>())
+                            if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
                             {
                                 renderable->SetMesh(mesh.get());
                                 renderable->SetMaterial(material);
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                             }
+
+                            // enable buoyancy
+                           //Physics* physics = entity_tile->AddComponent<Physics>();
+                           //physics->SetBodyType(BodyType::Water);
                         }
                     }
                 }
