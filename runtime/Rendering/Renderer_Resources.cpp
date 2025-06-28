@@ -1,4 +1,4 @@
-#/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -263,8 +263,8 @@ namespace spartan
         if (!render_target(Renderer_RenderTarget::lut_brdf_specular))
         {
             // lookup tables
-            render_target(Renderer_RenderTarget::lut_brdf_specular)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R8G8_Unorm,         RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
-            render_target(Renderer_RenderTarget::lut_atmosphere_scatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 256, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
+            render_target(Renderer_RenderTarget::lut_brdf_specular)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1,  1, RHI_Format::R8G8_Unorm,         RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
+            render_target(Renderer_RenderTarget::lut_atmosphere_scatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
 
             // misc
             render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, format_standard,        RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");

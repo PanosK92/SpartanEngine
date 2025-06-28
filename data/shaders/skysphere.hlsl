@@ -114,9 +114,6 @@ float intersect_sphere(float3 origin, float3 direction, float3 center, float rad
         return -1.0;
 }
 
-static const int lut_width  = 256;
-static const int lut_height = 256;
-
 float3 compute_optical_depth(float3 position, float3 direction, float t_max, int num_samples)
 {
     float ds = t_max / num_samples;
@@ -138,68 +135,78 @@ float3 compute_optical_depth(float3 position, float3 direction, float t_max, int
 }
 
 #ifdef LUT
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+[numthreads(8, 8, 8)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= lut_width || thread_id.y >= lut_height)
+    // get 3d lut dimensions
+    uint3 lut_dimensions;
+    tex3d_uav.GetDimensions(lut_dimensions.x, lut_dimensions.y, lut_dimensions.z);
+
+    // early out if thread is out of bounds
+    if (thread_id.x >= lut_dimensions.x || thread_id.y >= lut_dimensions.y || thread_id.z >= lut_dimensions.z)
         return;
 
-    // map thread ID to height and cos_theta
-    float height    = (float)thread_id.y / (lut_height - 1) * atmosphere_height; // 0 to 100e3
-    float cos_theta = (float)thread_id.x / (lut_width - 1) * 2.0 - 1.0;         // -1 to 1
+    // map to height and view zenith
+    float height     = (float)thread_id.y / (lut_dimensions.y - 1) * atmosphere_height;
+    float cos_theta  = -((float)thread_id.x / (lut_dimensions.x - 1) * 2.0 - 1.0);
+    float sin_theta  = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
+    float3 view_dir  = float3(sin_theta, cos_theta, 0.0); // pointing up by default
 
-    // compute view direction (assuming up_direction is (0, 1, 0))
-    float sin_theta    = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
-    float3 view_direction = float3(sin_theta, cos_theta, 0.0); // Simplified, adjust if needed
+    // compute sun direction from zenith (thread_id.z) using spherical coords
+    float sun_zenith = (float)thread_id.z / (lut_dimensions.z - 1) * 2.0 - 1.0;
+    float theta_sun  = acos(clamp(sun_zenith, -1.0, 1.0));
+    float phi_sun    = 0.0; // fixed azimuth (could extend to more in the future)
 
-    // position at this height
+    float sin_theta_sun = sin(theta_sun);
+    float3 sun_dir = float3(
+        sin_theta_sun * cos(phi_sun),
+        cos(theta_sun),
+        sin_theta_sun * sin(phi_sun)
+    );
+
+    // position above earth at this height
     float3 position = earth_center + float3(0, earth_radius + height, 0);
 
-    // get sun direction (assume it’s passed via a buffer or constant for this example)
-    Light light;
-    Surface surface;
-    light.Build(0, surface); // Assuming index 0 is your sun
-    float3 sun_direction = -light.forward;
-
-    // compute view ray optical depth
-    float t_max_view = intersect_sphere(position, view_direction, earth_center, earth_radius + atmosphere_height);
+    // compute optical depth along view ray
+    float t_max_view = intersect_sphere(position, view_dir, earth_center, earth_radius + atmosphere_height);
     if (t_max_view < 0)
-        t_max_view = atmosphere_height; // Default to full atmosphere if no intersection
-    float3 optical_depth_view = compute_optical_depth(position, view_direction, t_max_view, num_view_samples);
+        t_max_view = atmosphere_height;
 
-    // compute sun ray optical depth
-    float s_earth = intersect_sphere(position, sun_direction, earth_center, earth_radius);
+    float3 optical_depth_view = compute_optical_depth(position, view_dir, t_max_view, num_view_samples);
+
+    // compute optical depth along sun ray
+    float s_earth = intersect_sphere(position, sun_dir, earth_center, earth_radius);
     float3 optical_depth_sun;
     if (s_earth > 0)
     {
-        optical_depth_sun = 1e6; // Large value to simulate full occlusion
+        optical_depth_sun = 1e6; // blocked by earth
     }
     else
     {
-        float s_max = intersect_sphere(position, sun_direction, earth_center, earth_radius + atmosphere_height);
+        float s_max = intersect_sphere(position, sun_dir, earth_center, earth_radius + atmosphere_height);
         if (s_max < 0)
             optical_depth_sun = 1e6;
         else
-            optical_depth_sun = compute_optical_depth(position, sun_direction, s_max, num_sun_samples);
+            optical_depth_sun = compute_optical_depth(position, sun_dir, s_max, num_sun_samples);
     }
 
-    // compute scattering phase
-    float cos_theta_phase = dot(view_direction, sun_direction);
+    // scattering phase
+    float cos_theta_phase = dot(view_dir, sun_dir);
     float phase_rayleigh  = (3.0 / (16.0 * PI)) * (1.0 + cos_theta_phase * cos_theta_phase);
     float phase_mie       = (1.0 - g_mie * g_mie) / (4.0 * PI * pow(1.0 + g_mie * g_mie - 2.0 * g_mie * cos_theta_phase, 1.5));
 
-    // compute transmission
+    // transmission
     float3 t_view = exp(-optical_depth_view);
     float3 t_sun  = exp(-optical_depth_sun);
 
-    // compute scattering integrals
+    // scattering integrals
     float density_rayleigh   = exp(-height / h_rayleigh);
     float density_mie        = exp(-height / h_mie);
     float3 integral_rayleigh = density_rayleigh * phase_rayleigh * t_sun * t_view;
     float3 integral_mie      = density_mie * phase_mie * t_sun * t_view;
 
-    // store in LUT (Rayleigh RGB, Mie scalar in A)
-    tex_uav[thread_id.xy] = float4(integral_rayleigh, integral_mie.x);
+    // store to 3d lut
+    tex3d_uav[thread_id.xyz] = float4(integral_rayleigh, integral_mie.x);
 }
 #else
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -249,7 +256,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             float v             = height / atmosphere_height;  // 0 to 1
 
             // sample lut
-            float4 lut_value   = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), float2(u, v), 0);
+            float sun_zenith   = dot(sun_direction, up_direction);
+            float w            = (sun_zenith + 1.0) * 0.5;
+            float3 lut_coords  = float3(u, v, w); // as before but now 3D
+            float4 lut_value   = tex3d.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), lut_coords, 0);
             integral_rayleigh += lut_value.rgb * ds;
             integral_mie      += float3(lut_value.a, lut_value.a, lut_value.a) * ds; // mie is scalar in lut
         }

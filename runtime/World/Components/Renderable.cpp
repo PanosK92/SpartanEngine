@@ -320,6 +320,8 @@ namespace spartan
             m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
             SP_ASSERT(m_bounding_box_mesh != BoundingBox::Undefined);
         }
+
+        OnTick(); // update bounding boxes, frustum and distance culling
     }
 
     void Renderable::SetMesh(const MeshType type)

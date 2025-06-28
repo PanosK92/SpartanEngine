@@ -237,7 +237,7 @@ namespace spartan
             // perform overlap query
             PxGeometryHolder geometry = shape->getGeometry();
             PxTransform shape_pose = water_actor->getGlobalPose();
-            PxOverlapBufferN<10> hit_buffer; // 10 overllaping actors max
+            PxOverlapBufferN<10> hit_buffer; // 10 overlapping actors max
             PxQueryFilterData filter_data;
             filter_data.flags = PxQueryFlag::eDYNAMIC | PxQueryFlag::eSTATIC;// dynamic and static (controller)
             if (scene->overlap(geometry.any(), shape_pose, hit_buffer, filter_data))
@@ -249,16 +249,21 @@ namespace spartan
                     if (!other_actor || other_actor == water_actor)
                         continue;
 
-                    // get other enity
+                    // get other entity
                     Entity* other_entity = static_cast<Entity*>(other_actor->userData);
                     if (!other_entity)
                         continue;
-
+                    
                     // get other entity's physics component
                     Physics* other_physics = other_entity->GetComponent<Physics>();
                     if (!other_physics)
                         continue;
-
+                    
+                    // skip static bodies, unless it's a controller
+                    BodyType body_type = other_physics->GetBodyType();
+                    if (other_physics->IsStatic() && body_type != BodyType::Controller)
+                        continue;
+                    
                     // calculate submerged volume (approximate using bounding box)
                     Renderable* other_renderable = other_entity->GetComponent<Renderable>();
                     if (!other_renderable)
@@ -284,8 +289,21 @@ namespace spartan
                     float buoyancy_magnitude = water_density * submerged_volume * gravity_magnitude;
                     Vector3 buoyancy_force(0.0f, buoyancy_magnitude, 0.0f);
 
+                    // apply vertical damping
+                    float damping            = 2.0f; 
+                    float vertical_velocity  = other_physics->GetLinearVelocity().y;
+                    float drag_force         = -vertical_velocity * damping * other_physics->GetMass();
+                    buoyancy_force.y        += drag_force;
+
+                    // floaty movement to emulate turbulence
+                    float float_strength  = 0.1f;        // how strong the effect is (tweakable)
+                    float float_speed     = 1.5f;        // how fast it bobs (Hz-ish)
+                    float time            = static_cast<float>(Timer::GetTimeSec());
+                    float bob_force       = sin(time * float_speed + reinterpret_cast<uintptr_t>(other_entity) * 0.01f) * float_strength;
+                    buoyancy_force.y     += bob_force * other_physics->GetMass(); // scale by mass to be frame-rate stable
+
                     // apply buoyancy force
-                    if (other_physics->GetBodyType() == BodyType::Controller)
+                    if (body_type == BodyType::Controller)
                     {
                         // adjust controller velocity for buoyancy
                         float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
@@ -293,6 +311,7 @@ namespace spartan
                     }
                     else
                     {
+                        // apply buoyancy only to dynamic bodies
                         other_physics->ApplyForce(buoyancy_force, PhysicsForce::Constant);
                     }
                 }
@@ -1048,6 +1067,7 @@ namespace spartan
                     case BodyType::Water:
                     {
                         Vector3 extents = renderable->GetBoundingBox().GetExtents();
+                        extents.y       = max(extents.y, 0.1f); // ensure non-zero height
                         PxBoxGeometry geometry(extents.x, extents.y, extents.z);
                         shape = physics->createShape(geometry, *material);
                         shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false); // disable simulation

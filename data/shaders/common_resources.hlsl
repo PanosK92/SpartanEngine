@@ -155,12 +155,13 @@ Texture2D tex3  : register(t9);
 Texture2D tex4  : register(t10);
 Texture2D tex5  : register(t11);
 Texture2D tex6  : register(t12);
+Texture3D tex3d : register(t13);
 
 // bindless arrays
-Texture2D material_textures[]                            : register(t13, space1);
-StructuredBuffer<MaterialParameters> material_parameters : register(t14, space2);
-StructuredBuffer<LightParameters> light_parameters       : register(t15, space3);
-StructuredBuffer<aabb> aabbs                             : register(t16, space4);
+Texture2D material_textures[]                            : register(t14, space1);
+StructuredBuffer<MaterialParameters> material_parameters : register(t15, space2);
+StructuredBuffer<LightParameters> light_parameters       : register(t16, space3);
+StructuredBuffer<aabb> aabbs                             : register(t17, space4);
 SamplerComparisonState samplers_comparison[]             : register(s0,  space5);
 SamplerState samplers[]                                  : register(s1,  space6);
 
@@ -169,10 +170,11 @@ RWTexture2D<float4> tex_uav                                : register(u0);
 RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);
 RWTexture2D<float4> tex_uav4                               : register(u3);
-RWTexture2DArray<float4> tex_uav_sss                       : register(u4);
-RWStructuredBuffer<uint> visibility                        : register(u5);
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u6); // used by FidelityFX SPD
-globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u7); // used by FidelityFX SPD
+RWTexture3D<float4> tex3d_uav                              : register(u4);
+RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
+RWStructuredBuffer<uint> visibility                        : register(u6);
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
+globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
 
 // buffers
 [[vk::push_constant]]

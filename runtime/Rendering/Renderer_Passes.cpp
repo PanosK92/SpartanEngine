@@ -794,7 +794,7 @@ namespace spartan
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_scatter);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
                 cmd_list->Dispatch(tex_environment);
             }
 
@@ -1100,7 +1100,7 @@ namespace spartan
             pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
             cmd_list->SetPipelineState(pso);
         
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_scatter);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
             cmd_list->Dispatch(tex_lut_atmosphere_scatter);
         
             // for the lifetime of the engine, this will be read as an srv, so transition here
