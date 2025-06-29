@@ -67,11 +67,10 @@ static bool is_identity_matrix(matrix m)
     const float epsilon = 1e-5f;
 
     return
-        abs(m._m00 - 1.0f) < epsilon && abs(m._m11 - 1.0f) < epsilon && abs(m._m22 - 1.0f) < epsilon && abs(m._m33 - 1.0f) < epsilon &&
-        abs(m._m01) < epsilon && abs(m._m02) < epsilon && abs(m._m03) < epsilon &&
-        abs(m._m10) < epsilon && abs(m._m12) < epsilon && abs(m._m13) < epsilon &&
-        abs(m._m20) < epsilon && abs(m._m21) < epsilon && abs(m._m23) < epsilon &&
-        abs(m._m30) < epsilon && abs(m._m31) < epsilon && abs(m._m32) < epsilon;
+        all(abs(m[0] - float4(1, 0, 0, 0)) < epsilon) &&
+        all(abs(m[1] - float4(0, 1, 0, 0)) < epsilon) &&
+        all(abs(m[2] - float4(0, 0, 1, 0)) < epsilon) &&
+        all(abs(m[3] - float4(0, 0, 0, 1)) < epsilon);
 }
 
 // create a 3x3 rotation matrix using Rodrigues' rotation formula

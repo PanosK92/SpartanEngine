@@ -284,96 +284,85 @@ Warning Options:
     class DirecXShaderCompiler
     {
     public:
-        static IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
+         static IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
         {
-            // initialize (only happens once)
-            static IDxcUtils* m_utils        = nullptr;
+            // static dxc interfaces
+            static IDxcUtils* m_utils = nullptr;
             static IDxcCompiler3* m_compiler = nullptr;
-            if (!m_compiler)
-            {
-                DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));
-                DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils));
 
-                // try to get the version information
-                IDxcVersionInfo* version_info = nullptr;
-                HRESULT hr = m_compiler->QueryInterface(&version_info);
-                if (SUCCEEDED(hr) && version_info)
+            // initialize compiler and utils
+            if (!m_compiler || !m_utils)
+            {
+                if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler))) ||
+                    FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils))))
                 {
-                    UINT32 major, minor;
+                    SP_LOG_ERROR("Failed to create DirectXShaderCompiler interfaces");
+                    return nullptr;
+                }
+
+                // log version info
+                IDxcVersionInfo* version_info = nullptr;
+                if (SUCCEEDED(m_compiler->QueryInterface(&version_info)))
+                {
+                    UINT32 major = 0, minor = 0;
                     version_info->GetVersion(&major, &minor);
 
-                    // format the version string
                     std::ostringstream stream;
                     stream << major << "." << minor;
-
                     Settings::RegisterThirdPartyLib("DirectXShaderCompiler", stream.str(), "https://github.com/microsoft/DirectXShaderCompiler");
+
                     version_info->Release();
                 }
                 else
                 {
-                    SP_LOG_ERROR("Failed to get library version");
+                    SP_LOG_ERROR("Failed to get DirectXShaderCompiler version info");
                 }
             }
 
-            // get shader source
-            DxcBuffer dxc_buffer = {};
+            // create blob from source
             IDxcBlobEncoding* blob_encoding = nullptr;
+            if (FAILED(m_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))
             {
-                if (FAILED(m_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))
-                {
-                    SP_LOG_ERROR("Failed to load shader source.");
-                    return nullptr;
-                }
-
-                dxc_buffer.Ptr      = blob_encoding->GetBufferPointer();
-                dxc_buffer.Size     = blob_encoding->GetBufferSize();
-                dxc_buffer.Encoding = DXC_CP_ACP; // assume BOM says UTF8 or UTF16 or this is ANSI text
+                SP_LOG_ERROR("Failed to create shader blob from source.");
+                return nullptr;
             }
 
-            // convert arguments to wstring
-            std::vector<std::wstring> arguments_wstring;
-            arguments_wstring.reserve(arguments.size());
-            for (const std::string& str : arguments)
+            DxcBuffer dxc_buffer = {};
+            dxc_buffer.Ptr       = blob_encoding->GetBufferPointer();
+            dxc_buffer.Size      = blob_encoding->GetBufferSize();
+            dxc_buffer.Encoding  = DXC_CP_UTF8;
+
+            // convert args to wide strings
+            std::vector<std::wstring> arguments_wstring(arguments.size());
+            std::vector<LPCWSTR> arguments_lpcwstr(arguments.size());
+            for (size_t i = 0; i < arguments.size(); ++i)
             {
-                arguments_wstring.emplace_back(FileSystem::StringToWstring(str));
+                arguments_wstring[i] = FileSystem::StringToWstring(arguments[i]);
+                arguments_lpcwstr[i] = arguments_wstring[i].c_str();
             }
 
-            // convert arguments to LPCWSTR
-            std::vector<LPCWSTR> arguments_lpcwstr;
-            arguments_lpcwstr.reserve(arguments.size());
-            for (const std::wstring& wstr : arguments_wstring)
-            {
-                arguments_lpcwstr.emplace_back(wstr.c_str());
-            }
-
-            // compile
+            // compile shader
             IDxcResult* dxc_result = nullptr;
-            m_compiler->Compile
-            (
-                &dxc_buffer,                                     // source text to compile
-                arguments_lpcwstr.data(),                        // array of pointers to arguments
-                static_cast<uint32_t>(arguments_lpcwstr.size()), // number of arguments
-                nullptr,                                         // don't use an include handler
-                IID_PPV_ARGS(&dxc_result)                        // IDxcResult: status, buffer, and errors
+            HRESULT hr = m_compiler->Compile(
+                &dxc_buffer,
+                arguments_lpcwstr.data(),
+                static_cast<uint32_t>(arguments_lpcwstr.size()),
+                nullptr, // optionally pass a real include handler
+                IID_PPV_ARGS(&dxc_result)
             );
 
-            // check for errors
-            if (!error_check(dxc_result))
+            // release the source blob
+            blob_encoding->Release();
+
+            if (FAILED(hr) || !error_check(dxc_result))
             {
+                SP_LOG_ERROR("Shader compilation failed.");
                 if (dxc_result)
                 {
                     dxc_result->Release();
                     dxc_result = nullptr;
                 }
             }
-
-            // These are probably handled by something else.
-            // Hence when you try to delete them, you get a dangling pointer crash.
-            // Ideally you just use ComPtr, but that's Windows specific.
-            // Let it be for now.
-            // blob_encoding;
-            // m_utils
-            // m_compiler
 
             return dxc_result;
         }
