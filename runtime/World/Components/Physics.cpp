@@ -226,7 +226,7 @@ namespace spartan
         // handle water body buoyancy
         if (m_body_type == BodyType::Water && Engine::IsFlagSet(EngineMode::Playing))
         {
-            float water_density       = 1000.0f; // Default water density (kg/m³)
+            float water_density       = 1000.0f; // default water density (kg/m³)
             PxScene* scene            = static_cast<PxScene*>(PhysicsWorld::GetScene());
             PxRigidActor* water_actor = static_cast<PxRigidActor*>(m_bodies[0]);
             PxShape* shape;
@@ -239,7 +239,8 @@ namespace spartan
             PxTransform shape_pose = water_actor->getGlobalPose();
             PxOverlapBufferN<10> hit_buffer; // 10 overlapping actors max
             PxQueryFilterData filter_data;
-            filter_data.flags = PxQueryFlag::eDYNAMIC | PxQueryFlag::eSTATIC;// dynamic and static (controller)
+            filter_data.flags = PxQueryFlag::eDYNAMIC | PxQueryFlag::eSTATIC; // dynamic and static (controller)
+            
             if (scene->overlap(geometry.any(), shape_pose, hit_buffer, filter_data))
             {
                 for (PxU32 i = 0; i < hit_buffer.nbTouches; ++i)
@@ -248,74 +249,40 @@ namespace spartan
                     PxRigidActor* other_actor = hit.actor;
                     if (!other_actor || other_actor == water_actor)
                         continue;
-
-                    // get other entity
+            
                     Entity* other_entity = static_cast<Entity*>(other_actor->userData);
                     if (!other_entity)
                         continue;
-                    
-                    // get other entity's physics component
+            
                     Physics* other_physics = other_entity->GetComponent<Physics>();
                     if (!other_physics)
                         continue;
-                    
-                    // skip static bodies, unless it's a controller
+            
                     BodyType body_type = other_physics->GetBodyType();
                     if (other_physics->IsStatic() && body_type != BodyType::Controller)
                         continue;
-                    
-                    // calculate submerged volume (approximate using bounding box)
-                    Renderable* other_renderable = other_entity->GetComponent<Renderable>();
-                    if (!other_renderable)
-                        continue;
-
-                    BoundingBox bbox   = other_renderable->GetBoundingBox();
-                    Vector3 extents    = bbox.GetExtents();
-                    float total_volume = extents.x * extents.y * extents.z * 8.0f; // extents are half-size
-
-                    // determine submersion ratio
-                    Vector3 water_pos      = GetEntity()->GetPosition();
-                    float water_surface_y  = water_pos.y;
-                    Vector3 other_pos      = other_entity->GetPosition();
-                    float object_bottom_y  = other_pos.y - extents.y;
-                    float object_top_y     = other_pos.y + extents.y;
-                    float submerged_height = min(water_surface_y - object_bottom_y, 2.0f * extents.y);
-                    submerged_height       = max(submerged_height, 0.0f); // ensure non-negative
-                    float submersion_ratio = submerged_height / (2.0f * extents.y);
-                    float submerged_volume = total_volume * submersion_ratio;
-
-                    // calculate buoyancy force: F_b = ρ * V_submerged * g
-                    float gravity_magnitude  = -PhysicsWorld::GetGravity().y; // positive magnitude
-                    float buoyancy_magnitude = water_density * submerged_volume * gravity_magnitude;
-                    Vector3 buoyancy_force(0.0f, buoyancy_magnitude, 0.0f);
-
-                    // apply vertical damping
-                    float damping            = 2.0f; 
-                    float vertical_velocity  = other_physics->GetLinearVelocity().y;
-                    float drag_force         = -vertical_velocity * damping * other_physics->GetMass();
-                    buoyancy_force.y        += drag_force;
-
-                    // floaty movement to emulate turbulence
-                    float float_strength  = 0.1f;        // how strong the effect is (tweakable)
-                    float float_speed     = 1.5f;        // how fast it bobs (Hz-ish)
-                    float time            = static_cast<float>(Timer::GetTimeSec());
-                    float bob_force       = sin(time * float_speed + reinterpret_cast<uintptr_t>(other_entity) * 0.01f) * float_strength;
-                    buoyancy_force.y     += bob_force * other_physics->GetMass(); // scale by mass to be frame-rate stable
-
-                    // apply buoyancy force
+            
+                    float vertical_velocity             = other_physics->GetLinearVelocity().y;
+                    float mass                          = other_physics->GetMass();
+                    float delta_time                    = static_cast<float>(Timer::GetDeltaTimeSec());
+                    const float desired_upward_velocity = 1.2f;
+                    float velocity_error                = desired_upward_velocity - vertical_velocity;
+                    float force_to_apply                = velocity_error * mass / delta_time;
+                    const float max_force               = 500.0f;
+                    force_to_apply                      = clamp(force_to_apply, -max_force, max_force);
+                    Vector3 buoyancy_force(0.0f, force_to_apply, 0.0f);
+            
                     if (body_type == BodyType::Controller)
                     {
-                        // adjust controller velocity for buoyancy
-                        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                        other_physics->m_velocity.y += (buoyancy_magnitude / other_physics->GetMass()) * delta_time;
+                        other_physics->m_velocity.y += (force_to_apply / mass) * delta_time;
                     }
                     else
                     {
-                        // apply buoyancy only to dynamic bodies
                         other_physics->ApplyForce(buoyancy_force, PhysicsForce::Constant);
                     }
                 }
             }
+
         }
     }
 
@@ -1067,9 +1034,19 @@ namespace spartan
                     case BodyType::Water:
                     {
                         Vector3 extents = renderable->GetBoundingBox().GetExtents();
-                        extents.y       = max(extents.y, 0.1f); // ensure non-zero height
-                        PxBoxGeometry geometry(extents.x, extents.y, extents.z);
+
+                        // controls the body overlap volume
+                        const float height_extent = 2.0f;
+                    
+                        // build geometry that extends downward from the water surface
+                        PxBoxGeometry geometry(extents.x, height_extent * 0.5f, extents.z);
+                    
+                        // offset the shape so its top aligns with the visual water surface
+                        PxTransform offset(PxVec3(0.0f, -height_extent * 0.5f, 0.0f));
+                    
+                        // create shape and assign offset
                         shape = physics->createShape(geometry, *material);
+                        shape->setLocalPose(offset);
                         shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false); // disable simulation
                         shape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);     // enable trigger
                         break;

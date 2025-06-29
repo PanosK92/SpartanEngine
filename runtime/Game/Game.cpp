@@ -289,8 +289,8 @@ namespace spartan
                             }
 
                             // enable buoyancy
-                           //Physics* physics = entity_tile->AddComponent<Physics>();
-                           //physics->SetBodyType(BodyType::Water);
+                           Physics* physics = entity_tile->AddComponent<Physics>();
+                           physics->SetBodyType(BodyType::Water);
                         }
                     }
                 }
