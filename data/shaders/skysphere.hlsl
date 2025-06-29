@@ -39,7 +39,7 @@ static const float3 beta_rayleigh    = float3(5.802e-6, 13.558e-6, 33.1e-6); // 
 static const float3 beta_mie         = float3(2.0e-5, 2.0e-5, 2.0e-5);       // m^-1, mie scattering with no wavelength bias
 static const float g_mie             = 0.76;                                 // mie phase asymmetry factor, average for earth
 static const int num_view_samples    = 8;                                    // samples along view ray
-static const int num_sun_samples     = 256;                                  // samples along sun ray
+static const int num_sun_samples     = 1024;                                 // samples along sun ray
 
 struct sun
 {
@@ -84,13 +84,11 @@ struct stars
         float brightness = 0.0;
         if (is_night)
         {
-            float2 star_uv = uv * 100.0f;
-            float2 hash    = hash22(star_uv);
-            brightness     = step(0.999f, hash.x);
-            float twinkle  = 0.5f + 0.5f * sin((float)buffer_frame.time * 2.0 + hash.y * 6.28318f);
-            brightness    *= twinkle;
-            float star_factor = saturate(-sun_elevation * 10.0f);
-            brightness   *= star_factor;
+            float2 star_uv     = uv * 100.0f;
+            float2 hash        = hash22(star_uv);
+            brightness         = step(0.999f, hash.x);
+            float star_factor  = saturate(-sun_elevation * 10.0f);
+            brightness        *= star_factor;
         }
         
         return float3(brightness, brightness, brightness);

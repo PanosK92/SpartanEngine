@@ -36,7 +36,7 @@ static float get_snow_blend_factor(float3 position_world, float3 normal_world)
 
     // add perlin noise for organic snow level variation
     float2 noise_coords  = position_world.xz * noise_scale;
-    float noise          = get_noise_perlin(noise_coords); // [0, 1]
+    float noise          = noise_perlin(noise_coords); // [0, 1]
     noise                = noise * 2.0f - 1.0f; // remap to [-1, 1]
     distance_to_snow    += noise * noise_strength; // perturb snow level
 

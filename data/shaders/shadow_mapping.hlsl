@@ -76,7 +76,7 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth)
 {
     float shadow_factor   = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(surface.pos);
+    float temporal_offset = noise_interleaved_gradient(surface.pos);
     float temporal_angle  = temporal_offset * PI2;
     float penumbra        = compute_penumbra(light, temporal_angle, sample_coords, receiver_depth);
 

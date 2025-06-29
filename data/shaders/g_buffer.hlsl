@@ -29,24 +29,6 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
-float hash_instance_id(uint instance_id)
-{
-    uint seed = instance_id * 16777619u;
-    seed = (seed ^ 61u) ^ (seed >> 16u);
-    seed *= 9u;
-    seed = seed ^ (seed >> 4u);
-    seed *= 0x27d4eb2du;
-    seed = seed ^ (seed >> 15u);
-    return float(seed) / 4294967295.0; // normalize
-}
-
-// hash function to get pseudo-random value based on int2 coords
-float rand_float(int2 coords)
-{
-    uint seed = asuint(coords.x) * 374761393u + asuint(coords.y) * 668265263u; 
-    seed = (seed ^ (seed >> 13u)) * 1274126177u;
-    return float(seed & 0x00FFFFFFu) / float(0x01000000u);
-}
 
 // rotate UV around center (0.5, 0.5) by angle
 float2 rotate_uv(float2 uv, float angle)
@@ -67,7 +49,7 @@ static float4 sample_reduce_tiling(uint texture_index, float2 uv, float3 world_p
     int2 tile_coords = int2(floor(world_pos.x), floor(world_pos.z));
 
     // get random rotation angle per tile in multiples of 90 degrees (0, 90, 180, 270)
-    float rnd   = rand_float(tile_coords);
+    float rnd   = hash(tile_coords);
     float angle = floor(rnd * 4.0f) * PI_HALF;
 
     // rotate uv inside tile
@@ -177,7 +159,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
             static const float3 vegetation_yellower   = float3(0.45f, 0.4f, 0.15f);
             static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);
             const float vegetation_variation_strength = 0.15f;
-            float variation                           = hash_instance_id(vertex.instance_id);
+            float variation                           = hash(vertex.instance_id);
 
             // --- grass-specific tint based on local blade height and instance variation ---
             if (surface.is_grass_blade())
@@ -240,7 +222,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
             float time       = (float)buffer_frame.time;
             float2 uv_offset = direction * speed * time;
             float2 noise_uv  = (vertex.uv + uv_offset) * 5.0f; // scale UVs for wave size
-            float noise      = get_noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
+            float noise      = noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
             float is_water   = (float) surface.is_water();
             float angle      = noise * PI2 * is_water; // map noise [0,1] to angle [0, 2π] for water only
     

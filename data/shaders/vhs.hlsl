@@ -69,7 +69,7 @@ static const float noise_scale               = 200.0;
 // helper functions
 float v2random(float2 uv)
 {
-    return get_noise_perlin(uv * noise_scale);
+    return noise_perlin(uv * noise_scale);
 }
 
 float2x2 rotate2D(float t)
