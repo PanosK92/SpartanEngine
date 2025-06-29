@@ -57,6 +57,7 @@ namespace spartan
 
     Physics::Physics(Entity* entity) : Component(entity)
     {
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_static, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction_rolling, float);
