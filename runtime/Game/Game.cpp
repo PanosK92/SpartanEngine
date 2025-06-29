@@ -1137,8 +1137,8 @@ namespace spartan
                     material->SetProperty(MaterialProperty::IsGrassBlade,         1.0f);
                     material->SetProperty(MaterialProperty::Roughness,            1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.4f);
-                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.4f);
+                    material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.2f);
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.1f);
                     material->SetColor(Color::standard_white);
                     renderable->SetMaterial(material);
                 
