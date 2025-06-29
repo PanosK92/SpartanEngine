@@ -31,7 +31,7 @@ float3 get_fog_atmospheric(const float camera_to_pixel_length, const float pixel
     // parameters
     const float g_fog_radius     = 150.0f;  // how far away from the camera the fog starts
     const float g_fog_fade_rate  = 0.05f;   // higher values make the fog fade in more abruptly
-    const float g_fog_max_height = 200.0f;  // maximum height where fog is visible
+    const float g_fog_max_height = 250.0f;  // maximum height where fog is visible
     const float g_fog_min_height = -50.0f;  // height where fog starts to appear
     const float g_height_falloff = 1.5f;    // how quickly fog fades with height (higher = sharper transition)
     
