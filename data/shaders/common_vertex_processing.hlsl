@@ -62,6 +62,18 @@ static float3 extract_position(matrix transform)
     return float3(transform._31, transform._32, transform._33);
 }
 
+static bool is_identity_matrix(matrix m)
+{
+    const float epsilon = 1e-5f;
+
+    return
+        abs(m._m00 - 1.0f) < epsilon && abs(m._m11 - 1.0f) < epsilon && abs(m._m22 - 1.0f) < epsilon && abs(m._m33 - 1.0f) < epsilon &&
+        abs(m._m01) < epsilon && abs(m._m02) < epsilon && abs(m._m03) < epsilon &&
+        abs(m._m10) < epsilon && abs(m._m12) < epsilon && abs(m._m13) < epsilon &&
+        abs(m._m20) < epsilon && abs(m._m21) < epsilon && abs(m._m23) < epsilon &&
+        abs(m._m30) < epsilon && abs(m._m31) < epsilon && abs(m._m32) < epsilon;
+}
+
 // create a 3x3 rotation matrix using Rodrigues' rotation formula
 static float3x3 rotation_matrix(float3 axis, float angle)
 {
@@ -317,20 +329,18 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // vertex processing - local space
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
 
-    // compute the final world transform
-    bool is_instanced         = instance_id != 0;                   // not ideal as you can have instancing with instance_id = 0, however it's very performant branching due to predictability
-    matrix transform_instance = input.instance_transform;           // identity for non-instanced
+    // compute world transform
+    matrix transform_instance = input.instance_transform;                // identity for non-instanced
+    bool is_instanced         = !is_identity_matrix(transform_instance); // in case an instance transform is identity, this will still work
     transform                 = mul(transform, transform_instance);
     matrix full               = pass_get_transform_previous();
-
-    matrix<float, 3, 3> temp  = (float3x3)full;                     // clip the last row as it has encoded data in the first two elements
-    matrix transform_previous = matrix(                             // manually construct a matrix that can be multiplied with another matrix
+    matrix<float, 3, 3> temp  = (float3x3)full;                          // clip the last row as it has encoded data in the first two elements
+    matrix transform_previous = matrix(                                  // manually construct a matrix that can be multiplied with another matrix
         temp._m00, temp._m01, temp._m02, 0.0f,
         temp._m10, temp._m11, temp._m12, 0.0f,
         temp._m20, temp._m21, temp._m22, 0.0f,
         0.0f,      0.0f,      0.0f,      1.0f
     );
-
     transform_previous = is_instanced ? mul(transform_previous, transform_instance) : full;
 
     // transform to world space

@@ -178,7 +178,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
             static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);
             const float vegetation_variation_strength = 0.15f;
             float variation                           = hash_instance_id(vertex.instance_id);
-        
+
             // --- grass-specific tint based on local blade height and instance variation ---
             if (surface.is_grass_blade())
             {
@@ -189,8 +189,8 @@ gbuffer main_ps(gbuffer_vertex vertex)
         
                 // blend between greener, yellower, browner based on variation
                 float3 variation_color = vegetation_greener;
-                variation_color = lerp(variation_color, vegetation_yellower, step(0.33f, variation));
-                variation_color = lerp(variation_color, vegetation_browner, step(0.66f, variation));
+                variation_color        = lerp(variation_color, vegetation_yellower, step(0.33f, variation));
+                variation_color        = lerp(variation_color, vegetation_browner, step(0.66f, variation));
         
                 // blend base tint with variation color, weighted by global variation strength
                 grass_tint = lerp(grass_tint, variation_color, vegetation_variation_strength);

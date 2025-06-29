@@ -237,9 +237,9 @@ namespace spartan
                         }
 
                         // set push constants
-                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
                         m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                         m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
+                        m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
                         m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                         cmd_list->PushConstants(m_pcb_pass_cpu);
     

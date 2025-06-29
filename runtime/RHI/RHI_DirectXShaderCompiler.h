@@ -269,14 +269,14 @@ Warning Options:
             SP_LOG_ERROR("Failed to get error buffer");
         }
 
-        // Release error buffer
+        // release error buffer
         if (error_buffer)
         {
             error_buffer->Release();
             error_buffer = nullptr;
         }
 
-        // Return status
+        // return status
         dxc_result->GetStatus(&result);
         return result == S_OK;
     }
