@@ -208,37 +208,31 @@ struct vertex_processing
 
     static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, float width_percent, uint instance_id)
     {
-        if (surface.is_grass_blade())
-        {
-            const float3 up    = float3(0, 1, 0);
-            const float3 right = float3(1, 0, 0);
+        if (!surface.is_grass_blade())
+            return;
     
-            // Replace flat normals with curved ones
-            const float total_curvature = 60.0f * DEG_TO_RAD;            // total angle from left to right
-            float t                     = (width_percent - 0.5f) * 2.0f; // map [0, 1] to [-1, 1]
-            float harsh_factor          = t * t * t;                     // cubic function for sharper transition
-            float curve_angle           = harsh_factor * (total_curvature / 2.0f);
-            float3x3 curvature_rotation = rotation_matrix(up, curve_angle);
-            input.normal                = mul(curvature_rotation, input.normal);
-            input.tangent               = mul(curvature_rotation, input.tangent);
+        const float3 up    = float3(0, 1, 0);
+        const float3 right = float3(1, 0, 0);
     
-            // Bend due to gravity
-            float random_lean           = get_hash(instance_id) * 1.0f;
-            curve_angle                 = random_lean * vertex.height_percent;
-            float3x3 gravity_rotation   = rotation_matrix(right, curve_angle);
-            input.position.xyz          = mul(gravity_rotation, input.position.xyz);
-            input.normal                = mul(gravity_rotation, input.normal);
-            input.tangent               = mul(gravity_rotation, input.tangent);
+        // replace flat normals with curved ones
+        const float total_curvature = 60.0f * DEG_TO_RAD;
+        float t                     = (width_percent - 0.5f) * 2.0f;
+        float harsh_factor          = t * t * t;
+        float curve_angle           = harsh_factor * (total_curvature / 2.0f);
+        float3x3 curvature_rotation = rotation_matrix(up, curve_angle);
+        input.normal                = mul(curvature_rotation, input.normal);
+        input.tangent               = mul(curvature_rotation, input.tangent);
     
-            // Bend due to wind
-            curve_angle                 = get_noise_perlin((float)buffer_frame.time * 1.0f) * 0.2f;
-            float3x3 wind_rotation      = rotation_matrix(right, curve_angle);
-            input.position.xyz          = mul(wind_rotation, input.position.xyz);
-            input.normal                = mul(wind_rotation, input.normal);
-            input.tangent               = mul(wind_rotation, input.tangent);
-        }
+        // gravity + wind bend
+        float random_lean      = get_hash(instance_id);
+        float gravity_angle    = random_lean * vertex.height_percent;
+        float wind_angle       = get_noise_perlin((float)buffer_frame.time) * 0.2f;
+        float3x3 bend_rotation = rotation_matrix(right, gravity_angle + wind_angle);
+        input.position.xyz     = mul(bend_rotation, input.position.xyz);
+        input.normal           = mul(bend_rotation, input.normal);
+        input.tangent          = mul(bend_rotation, input.tangent);
     }
-    
+ 
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, float width_percent, uint instance_id, float time_offset = 0.0f)
     {
         float time  = (float)buffer_frame.time + time_offset;
@@ -317,8 +311,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
     float3 position_transform = extract_position(transform); // bottom-left of the grass blade
-    float width_percent       = (input.position.xyz.x) / GetMaterial().local_width;
-    vertex.height_percent     = (input.position.xyz.y - position_transform.x) / GetMaterial().local_height;
+    float width_percent       = (input.position.xyz.x) / material.local_width;
+    vertex.height_percent     = (input.position.xyz.y - position_transform.x) / material.local_height;
 
     // vertex processing - local space
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
@@ -328,6 +322,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     matrix transform_instance = input.instance_transform;           // identity for non-instanced
     transform                 = mul(transform, transform_instance);
     matrix full               = pass_get_transform_previous();
+
     matrix<float, 3, 3> temp  = (float3x3)full;                     // clip the last row as it has encoded data in the first two elements
     matrix transform_previous = matrix(                             // manually construct a matrix that can be multiplied with another matrix
         temp._m00, temp._m01, temp._m02, 0.0f,
@@ -335,6 +330,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
         temp._m20, temp._m21, temp._m22, 0.0f,
         0.0f,      0.0f,      0.0f,      1.0f
     );
+
     transform_previous = is_instanced ? mul(transform_previous, transform_instance) : full;
 
     // transform to world space
