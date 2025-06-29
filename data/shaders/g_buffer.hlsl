@@ -112,21 +112,6 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
         color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
     }
 
-    // vegetation variation stays the same
-    {
-        const float variation_strength = 0.2f;
-        const float3 greener           = float3(0.05f, 0.4f, 0.03f);
-        const float3 yellower          = float3(0.45f, 0.4f, 0.15f);
-        const float3 browner           = float3(0.3f,  0.15f, 0.08f);
-
-        float variation        = hash_instance_id(vertex.instance_id);
-        float3 variation_color = greener;
-        variation_color        = lerp(variation_color, yellower, step(0.25f, variation));
-        variation_color        = lerp(variation_color, browner, step(0.5f, variation));
-
-        color.rgb = lerp(color.rgb, variation_color, variation_strength * (float)surface.color_variation_from_instance());
-    }
-
     return color;
 }
 
@@ -185,17 +170,45 @@ gbuffer main_ps(gbuffer_vertex vertex)
             albedo            *= albedo_sample;
         }
 
-        // height based color
+        // dynamic vegetation coloring (grass blades, trees, etc.)
         {
-            // local space height, for the grass blades
-            const float3 grass_base  = float3(0.0f, 0.05f, 0.005f);  // darker base - emulate occlusion
-            const float3 grass_tip   = float3(0.02f, 0.15f, 0.015f); // darker tip
-            const float3 grass_tint  = lerp(grass_base, grass_tip, smoothstep(0, 1, vertex.height_percent));
-            albedo.rgb               = lerp(albedo.rgb, grass_tint, (float)surface.is_grass_blade());
-
-            // world space height, for everything
+            // color vaiation based on instance id
+            static const float3 vegetation_greener    = float3(0.05f, 0.4f, 0.03f);
+            static const float3 vegetation_yellower   = float3(0.45f, 0.4f, 0.15f);
+            static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);
+            const float vegetation_variation_strength = 0.15f;
+            float variation                           = hash_instance_id(vertex.instance_id);
+        
+            // --- grass-specific tint based on local blade height and instance variation ---
+            if (surface.is_grass_blade())
+            {
+                const float3 grass_base = float3(0.0f, 0.05f, 0.005f);
+                const float3 grass_tip  = float3(0.02f, 0.15f, 0.015f);
+                float t = smoothstep(0, 1, vertex.height_percent);
+                float3 grass_tint = lerp(grass_base, grass_tip, t);
+        
+                // blend between greener, yellower, browner based on variation
+                float3 variation_color = vegetation_greener;
+                variation_color = lerp(variation_color, vegetation_yellower, step(0.33f, variation));
+                variation_color = lerp(variation_color, vegetation_browner, step(0.66f, variation));
+        
+                // blend base tint with variation color, weighted by global variation strength
+                grass_tint = lerp(grass_tint, variation_color, vegetation_variation_strength);
+        
+                albedo.rgb = lerp(albedo.rgb, grass_tint, 1.0f);
+            }
+            else // trees and other vegetation variation
+            {
+                float3 variation_color = vegetation_greener;
+                variation_color        = lerp(variation_color, vegetation_yellower, step(0.25f, variation));
+                variation_color        = lerp(variation_color, vegetation_browner, step(0.5f, variation));
+        
+                albedo.rgb = lerp(albedo.rgb, variation_color, vegetation_variation_strength * (float)surface.color_variation_from_instance());
+            }
+        
+            // --- snow blending based on world-space height and normal ---
             float snow_blend_factor = get_snow_blend_factor(vertex.position, vertex.normal);
-            albedo.rgb              = lerp(albedo.rgb, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
+            albedo.rgb = lerp(albedo.rgb, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
         }
         
         // alpha testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
