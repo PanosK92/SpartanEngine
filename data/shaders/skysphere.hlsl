@@ -33,8 +33,8 @@ static const float h_mie             = 1200.0;                           // mie 
 static const float3 beta_rayleigh    = float3(5.8e-6, 13.5e-6, 33.1e-6); // rayleigh scattering coefficients (m^-1)
 static const float3 beta_mie         = float3(2e-5, 2e-5, 2e-5);         // mie scattering coefficients (m^-1)
 static const float g_mie             = 0.8;                              // mie phase asymmetry factor
-static const int num_view_samples    = 64;                               // samples along view ray
-static const int num_sun_samples     = 64;                               // samples along sun ray
+static const int num_view_samples    = 4;                                // samples along view ray
+static const int num_sun_samples     = 256;                              // samples along sun ray
 
 struct sun
 {
@@ -116,7 +116,7 @@ float intersect_sphere(float3 origin, float3 direction, float3 center, float rad
 
 float3 compute_optical_depth(float3 position, float3 direction, float t_max, int num_samples)
 {
-    float ds = t_max / num_samples;
+    float ds             = t_max / num_samples;
     float3 optical_depth = 0.0;
 
     for (int i = 0; i < num_samples; i++)
@@ -168,10 +168,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 position = earth_center + float3(0, earth_radius + height, 0);
 
     // compute optical depth along view ray
-    float t_max_view = intersect_sphere(position, view_dir, earth_center, earth_radius + atmosphere_height);
+    float t_max_view          = intersect_sphere(position, view_dir, earth_center, earth_radius + atmosphere_height);
     if (t_max_view < 0)
         t_max_view = atmosphere_height;
-
     float3 optical_depth_view = compute_optical_depth(position, view_dir, t_max_view, num_view_samples);
 
     // compute optical depth along sun ray
@@ -202,8 +201,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // scattering integrals
     float density_rayleigh   = exp(-height / h_rayleigh);
     float density_mie        = exp(-height / h_mie);
-    float3 integral_rayleigh = density_rayleigh * phase_rayleigh * t_sun * t_view;
-    float3 integral_mie      = density_mie * phase_mie * t_sun * t_view;
+    float3 integral_rayleigh = density_rayleigh * phase_rayleigh * t_sun;
+    float3 integral_mie      = density_mie * phase_mie * t_sun;
 
     // store to 3d lut
     tex3d_uav[thread_id.xyz] = float4(integral_rayleigh, integral_mie.x);
@@ -244,24 +243,24 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
         for (int i = 0; i < num_view_samples; i++)
         {
-            float t = (i + 0.5) * ds;
+            float t         = (i + 0.5) * ds;
             float3 position = buffer_frame.camera_position + t * view_direction;
-            float height = length(position - earth_center) - earth_radius;
+            float height    = length(position - earth_center) - earth_radius;
             if (height < 0)
                 break;
-
-            // map to lut coordinates
-            float cos_theta_lut = dot(view_direction, up_direction); // Cosine of angle with zenith
-            float u             = (cos_theta_lut + 1.0) * 0.5; // -1 to 1 -> 0 to 1
-            float v             = height / atmosphere_height;  // 0 to 1
-
-            // sample lut
-            float sun_zenith   = dot(sun_direction, up_direction);
-            float w            = (sun_zenith + 1.0) * 0.5;
-            float3 lut_coords  = float3(u, v, w); // as before but now 3D
-            float4 lut_value   = tex3d.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), lut_coords, 0);
-            integral_rayleigh += lut_value.rgb * ds;
-            integral_mie      += float3(lut_value.a, lut_value.a, lut_value.a) * ds; // mie is scalar in lut
+            
+            // compute optical depth from camera to position
+            float3 optical_depth_view  = compute_optical_depth(buffer_frame.camera_position, view_direction, t, num_view_samples);
+            float3 t_view              = exp(-optical_depth_view);
+            float cos_theta_lut        = dot(view_direction, up_direction);
+            float u                    = (cos_theta_lut + 1.0) * 0.5;
+            float v                    = height / atmosphere_height;
+            float sun_zenith           = dot(sun_direction, up_direction);
+            float w                    = (sun_zenith + 1.0) * 0.5;
+            float3 lut_coords          = float3(u, v, w);
+            float4 lut_value           = tex3d.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), lut_coords, 0);
+            integral_rayleigh         += lut_value.rgb * ds * t_view;
+            integral_mie              += float3(lut_value.a, lut_value.a, lut_value.a) * ds * t_view;
         }
 
         atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light_color * light.intensity;
