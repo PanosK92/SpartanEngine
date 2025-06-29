@@ -35,31 +35,25 @@ namespace spartan
 {
     string PhysicalDevice::decode_api_version(const uint32_t version)
     {
-        char buffer[256];
-
-        // vulkan version convention
         uint32_t major = (version >> 22);
         uint32_t minor = (version >> 12) & 0x3ff;
         uint32_t patch = version & 0xfff;
-        sprintf(buffer, "%d.%d.%d", major, minor, patch);
-
-        return buffer;
+        return to_string(major) + "." + to_string(minor) + "." + to_string(patch);;
     }
 
     string PhysicalDevice::decode_driver_version(const uint32_t version)
     {
         if (IsNvidia())
         {
-            char buffer[256];
-
             uint32_t major     = (version >> 22) & 0x3ff;
             uint32_t minor     = (version >> 14) & 0x0ff;
             uint32_t secondary = (version >> 6)  & 0x0ff;
             uint32_t tertiary  = version         & 0x003f;
-
-            sprintf(buffer, "%d.%d.%d.%d", major, minor, secondary, tertiary);
-
-            return buffer;
+        
+            return to_string(major) + "." +
+                   to_string(minor) + "." +
+                   to_string(secondary) + "." +
+                   to_string(tertiary);
         }
 
         if (IsAmd())
@@ -102,14 +96,10 @@ namespace spartan
 
         if (IsIntel())
         {
-            char buffer[256];
-
             uint32_t major = (version >> 14);
             uint32_t minor = version & 0x3fff;
-
-            sprintf(buffer, "%d.%d", major, minor);
-
-            return buffer;
+        
+            return to_string(major) + "." + to_string(minor);
         }
 
         return "Unable to determine driver version";

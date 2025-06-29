@@ -78,10 +78,10 @@ namespace spartan
         // runs when the entity is being loaded
         virtual void Deserialize(FileStream* stream) {}
 
-        //= TYPE ===================================
+        //= TYPE =========================
         template <typename T>
-        static constexpr ComponentType TypeToEnum();
-        //==========================================
+        static ComponentType TypeToEnum();
+        //================================
 
         //= PROPERTIES ==============================================================
         ComponentType GetType()          const { return m_type; }

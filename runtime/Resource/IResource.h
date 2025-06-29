@@ -89,7 +89,7 @@ namespace spartan
 
         // type
         template <typename T>
-        static constexpr ResourceType TypeToEnum();
+        static ResourceType TypeToEnum();
 
         ResourceState GetResourceState() const { return m_resource_state; }
 

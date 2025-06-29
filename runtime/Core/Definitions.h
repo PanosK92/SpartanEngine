@@ -169,16 +169,8 @@ static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
 // non - DLL-interface class 'class_1' used as base for DLL-interface class 'class_2'
 // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=msvc-170
 
-#pragma warning(disable: 4506) 
-// no definition for inline function 'function'
-// https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=msvc-170
-
-#pragma warning(disable: 4996) 
-// 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead.
-// https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-3-c4996?view=msvc-170
-
 #pragma warning(disable: 26110) 
-// Caller failing to hold lock <lock> before calling function <func>
+// caller failing to hold lock <lock> before calling function <func>
 // https://docs.microsoft.com/en-us/cpp/code-quality/c26110?view=msvc-170
 //===================================================================================================================
 

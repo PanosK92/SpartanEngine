@@ -43,7 +43,7 @@ namespace spartan::math
     string Vector3::ToString() const
     {
         char buffer[200];
-        sprintf(buffer, "X:%f, Y:%f, Z:%f", x, y, z);
+        sprintf_s(buffer, sizeof(buffer), "X:%f, Y:%f, Z:%f", x, y, z);
         return string(buffer);
     }
 

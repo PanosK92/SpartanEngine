@@ -19,9 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======
+//= INCLUDES ===
 #include "pch.h"
-//==================
+//==============
 
 //= NAMESPACES =====
 using namespace std;
@@ -29,16 +29,15 @@ using namespace std;
 
 //= Based on ==========================================================================//
 // http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/index.htm //
-// Heading    -> Yaw        -> Y-axis                                                       //
-// Attitude    -> Pitch    -> X-axis                                                       //
-// Bank        -> Roll        -> Z-axis                                                       //
+// Heading  -> Yaw        -> Y-axis                                                    //
+// Attitude -> Pitch    -> X-axis                                                      //
+// Bank     -> Roll        -> Z-axis                                                   //
 //=====================================================================================//
 
 namespace spartan::math
 {
     const Quaternion Quaternion::Identity(0.0f, 0.0f, 0.0f, 1.0f);
 
-    //= FROM ==================================================================================
     void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
     {
         *this = Matrix(
@@ -48,12 +47,11 @@ namespace spartan::math
             0.0f, 0.0f, 0.0f, 1.0f
         ).GetRotation();
     }
-    //========================================================================================
 
     string Quaternion::ToString() const
     {
         char tempBuffer[200];
-        sprintf(tempBuffer, "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
+        sprintf_s(tempBuffer, sizeof(tempBuffer), "X:%f, Y:%f, Z:%f, W:%f", x, y, z, w);
         return string(tempBuffer);
     }
 }

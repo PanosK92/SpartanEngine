@@ -121,25 +121,27 @@ namespace spartan
     void Log::Write(const char* text, const LogType type)
     {
         SP_ASSERT_MSG(text != nullptr, "Text is null");
-
+    
         // lock mutex
         static mutex log_mutex;
         lock_guard<mutex> guard(log_mutex);
-
+    
         // add time to the text
-        auto t  = time(nullptr);
-        auto tm = *localtime(&t);
+        auto t = time(nullptr);
+        tm tm_struct{};
+        localtime_s(&tm_struct, &t);
+    
         ostringstream oss;
-        oss << put_time(&tm, "[%H:%M:%S]");
+        oss << put_time(&tm_struct, "[%H:%M:%S]");
         const string final_text = oss.str() + ": " + string(text);
-
+    
         // log to file if requested or if an in-engine logger is not available
         if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
         {
             logs.emplace_back(final_text, type);
             write_to_file(final_text, type);
         }
-
+    
         if (logger)
         {
             logger->Log(final_text, static_cast<uint32_t>(type));

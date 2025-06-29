@@ -44,47 +44,60 @@ namespace spartan
         {
             if (FIICCPROFILE* icc_profile = FreeImage_GetICCProfile(bitmap))
             {
-                int i, tag_count, tag_ofs, tag_size;
-                unsigned char* icc, * tag, * icc_end;
-                char tag_data[256];
-
-                if (!icc_profile->data)
+                if (!icc_profile->data || icc_profile->size < 132) // minimal size check for header + tag count
                     return false;
-
-                icc = static_cast<unsigned char*>(icc_profile->data);
+        
+                auto icc = static_cast<unsigned char*>(icc_profile->data);
+        
+                // check for "acsp" signature at bytes 36-39
                 if (icc[36] != 'a' || icc[37] != 'c' || icc[38] != 's' || icc[39] != 'p')
-                    return false; // not an ICC file
-
-                icc_end = icc + icc_profile->size;
-                tag_count = icc[128 + 0] * 0x1000000 + icc[128 + 1] * 0x10000 + icc[128 + 2] * 0x100 + icc[128 + 3];
-
-                // search for 'desc' tag
-                for (i = 0; i < tag_count; i++)
+                    return false;
+        
+                unsigned char* icc_end = icc + icc_profile->size;
+        
+                // read tag_count (big endian)
+                uint32_t tag_count = (icc[128] << 24) | (icc[129] << 16) | (icc[130] << 8) | icc[131];
+        
+                constexpr int header_size = 128;
+                constexpr int tag_record_size = 12;
+                char tag_data[256] = {};
+        
+                for (uint32_t i = 0; i < tag_count; ++i)
                 {
-                    tag = icc + 128 + 4 + i * 12;
-                    if (tag > icc_end)
-                        return false; // invalid ICC file
-
-                    // check for a desc flag
+                    unsigned char* tag = icc + header_size + 4 + i * tag_record_size;
+        
+                    if (tag + tag_record_size > icc_end)
+                        return false; // invalid ICC file, tag record out of bounds
+        
+                    // check tag signature "desc"
                     if (memcmp(tag, "desc", 4) == 0)
                     {
-                        tag_ofs = tag[4] * 0x1000000 + tag[5] * 0x10000 + tag[6] * 0x100 + tag[7];
-                        tag_size = tag[8] * 0x1000000 + tag[9] * 0x10000 + tag[10] * 0x100 + tag[11];
-
-                        if (static_cast<uint32_t>(tag_ofs + tag_size) > icc_profile->size)
-                            return false; // invalid ICC file
-
-                        strncpy(tag_data, (char*)(icc + tag_ofs + 12), min(255, tag_size - 12));
-                        if (strcmp(tag_data, "sRGB IEC61966-2.1") == 0 || strcmp(tag_data, "sRGB IEC61966-2-1") == 0 || strcmp(tag_data, "sRGB IEC61966") == 0 || strcmp(tag_data, "* wsRGB") == 0)
+                        // read tag offset and size (big endian)
+                        uint32_t tag_ofs  = (tag[4] << 24) | (tag[5] << 16) | (tag[6] << 8) | tag[7];
+                        uint32_t tag_size = (tag[8] << 24) | (tag[9] << 16) | (tag[10] << 8) | tag[11];
+        
+                        if (tag_ofs + tag_size > static_cast<uint32_t>(icc_profile->size) || tag_size < 12)
+                            return false; // invalid tag offset or size
+        
+                        // copy the string data after the 12-byte header of the 'desc' tag, up to 255 chars safely
+                        uint32_t string_len = min(255u, tag_size - 12);
+                        strncpy_s(tag_data, sizeof(tag_data), reinterpret_cast<char*>(icc + tag_ofs + 12), string_len);
+                        tag_data[string_len] = '\0'; // ensure null termination
+        
+                        // check for sRGB profile names
+                        if (strcmp(tag_data, "sRGB IEC61966-2.1") == 0 ||
+                            strcmp(tag_data, "sRGB IEC61966-2-1") == 0 ||
+                            strcmp(tag_data, "sRGB IEC61966") == 0 ||
+                            strcmp(tag_data, "* wsRGB") == 0)
+                        {
                             return true;
-
+                        }
+        
                         return false;
                     }
                 }
-
-                return false;
             }
-
+        
             return false;
         }
 

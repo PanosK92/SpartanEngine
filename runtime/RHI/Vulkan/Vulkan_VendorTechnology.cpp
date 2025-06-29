@@ -472,16 +472,23 @@ namespace spartan
             return adjusted;
         }
 
-        const char* convert_wchar_to_char(const wchar_t* wchar_str)
+        string convert_wchar_to_char(const wchar_t* wchar_str)
         {
-            // get the required size for the multibyte string
-            size_t size_needed = wcstombs(nullptr, wchar_str, 0) + 1;
+            if (!wchar_str)
+                return {};
         
-            // allocate memory for the multibyte string
-            char* char_str = new char[size_needed];
+            size_t size_needed = 0;
+            errno_t err = wcstombs_s(&size_needed, nullptr, 0, wchar_str, 0);
+            if (err != 0 || size_needed == 0)
+                return {};
         
-            // convert the wchar_t string to a multibyte string
-            wcstombs(char_str, wchar_str, size_needed);
+            string char_str(size_needed, '\0'); // size_needed includes null terminator
+        
+            err = wcstombs_s(&size_needed, &char_str[0], size_needed, wchar_str, size_needed - 1);
+            if (err != 0)
+                return {};
+        
+            char_str.resize(size_needed - 1); // remove null terminator from string length
         
             return char_str;
         }
@@ -552,7 +559,7 @@ namespace spartan
                          resource.resourceDescription.mipCount,
                          to_rhi_format(resource.resourceDescription.format),
                          RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
-                         convert_wchar_to_char(resource.name)
+                         convert_wchar_to_char(resource.name).c_str()
                     );
                 
                     resource = description_shared_resources.dilatedDepth;
@@ -564,7 +571,7 @@ namespace spartan
                         resource.resourceDescription.mipCount,
                         to_rhi_format(resource.resourceDescription.format),
                         RHI_Texture_Srv | RHI_Texture_Uav,
-                        convert_wchar_to_char(resource.name)
+                        convert_wchar_to_char(resource.name).c_str()
                     );
                 
                     resource = description_shared_resources.dilatedMotionVectors;
@@ -576,7 +583,7 @@ namespace spartan
                          resource.resourceDescription.mipCount, 
                          to_rhi_format(resource.resourceDescription.format),
                          RHI_Texture_Srv | RHI_Texture_Uav,
-                         convert_wchar_to_char(resource.name)
+                         convert_wchar_to_char(resource.name).c_str()
                     );
                 }
                 
