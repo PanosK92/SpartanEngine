@@ -380,7 +380,7 @@ float get_noise_random(float2 uv)
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-// spartan Engine take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
+// spartan take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
 float get_noise_interleaved_gradient(float2 screen_pos, bool temporal = true)
 {
     // temporal factor
@@ -407,24 +407,16 @@ float get_noise_perlin(float x)
 
 float get_noise_perlin(float2 x)
 {
-    float2 i = floor(x); // integer part (grid cell corners)
-    float2 f = frac(x);  // fractional part (position within cell)
-    
-    // smooth interpolation factor
-    f = f * f * (3.0 - 2.0 * f);
-    
-    // compute hash values at the four corners
-    float n00 = get_hash(i.x + get_hash(i.y));             // bottom-left
-    float n10 = get_hash(i.x + 1.0 + get_hash(i.y));       // bottom-right
-    float n01 = get_hash(i.x + get_hash(i.y + 1.0));       // top-left
-    float n11 = get_hash(i.x + 1.0 + get_hash(i.y + 1.0)); // top-right
-    
-    // interpolate along x-axis
-    float nx0 = lerp(n00, n10, f.x);
-    float nx1 = lerp(n01, n11, f.x);
-    
-    // interpolate along y-axis
-    return lerp(nx0, nx1, f.y);
+    float2 i = floor(x);
+    float2 f = frac(x);
+    float2 u = f * f * (3.0f - 2.0f * f); // smoothing
+
+    float a = get_hash(i.x + get_hash(i.y));
+    float b = get_hash(i.x + 1.0f + get_hash(i.y));
+    float c = get_hash(i.x + get_hash(i.y + 1.0f));
+    float d = get_hash(i.x + 1.0f + get_hash(i.y + 1.0f));
+
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
 }
 
 /*------------------------------------------------------------------------------

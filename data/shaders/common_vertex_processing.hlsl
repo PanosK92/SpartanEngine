@@ -62,17 +62,18 @@ static float3 extract_position(matrix transform)
     return float3(transform._31, transform._32, transform._33);
 }
 
-static float3 rotate_around_axis(float3 axis, float angle, float3 v)
+// create a 3x3 rotation matrix using Rodrigues' rotation formula
+static float3x3 rotation_matrix(float3 axis, float angle)
 {
     float c = cos(angle);
     float s = sin(angle);
     float t = 1.0f - c;
-
+    
     // normalize the axis to ensure proper rotation
     axis = normalize(axis);
-
+    
     // rodrigues' rotation formula
-    float3x3 rotation = float3x3(
+    return float3x3(
         t * axis.x * axis.x + c,
         t * axis.x * axis.y - s * axis.z,
         t * axis.x * axis.z + s * axis.y,
@@ -85,8 +86,6 @@ static float3 rotate_around_axis(float3 axis, float angle, float3 v)
         t * axis.y * axis.z + s * axis.x,
         t * axis.z * axis.z + c
     );
-
-    return mul(rotation, v);
 }
 
 struct vertex_processing
@@ -213,46 +212,50 @@ struct vertex_processing
         {
             const float3 up    = float3(0, 1, 0);
             const float3 right = float3(1, 0, 0);
-
-            // replace flat normals with curved ones
+    
+            // Replace flat normals with curved ones
             const float total_curvature = 60.0f * DEG_TO_RAD;            // total angle from left to right
             float t                     = (width_percent - 0.5f) * 2.0f; // map [0, 1] to [-1, 1]
             float harsh_factor          = t * t * t;                     // cubic function for sharper transition
             float curve_angle           = harsh_factor * (total_curvature / 2.0f);
-            input.normal                = rotate_around_axis(up, curve_angle, input.normal);
-            input.tangent               = rotate_around_axis(up, curve_angle, input.tangent);
-
-            // bend due to gravity
-            float random_lean  = get_hash(instance_id) * 1.0f;
-            curve_angle        = random_lean * vertex.height_percent;
-            input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
-            input.normal       = rotate_around_axis(right, curve_angle, input.normal);
-            input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
-
-            // bend due to wind
-            curve_angle        = get_noise_perlin((float)buffer_frame.time * 1.0f) * 0.2f;
-            input.position.xyz = rotate_around_axis(right, curve_angle, input.position.xyz);
-            input.normal       = rotate_around_axis(right, curve_angle, input.normal);
-            input.tangent      = rotate_around_axis(right, curve_angle, input.tangent);
+            float3x3 curvature_rotation = rotation_matrix(up, curve_angle);
+            input.normal                = mul(curvature_rotation, input.normal);
+            input.tangent               = mul(curvature_rotation, input.tangent);
+    
+            // Bend due to gravity
+            float random_lean           = get_hash(instance_id) * 1.0f;
+            curve_angle                 = random_lean * vertex.height_percent;
+            float3x3 gravity_rotation   = rotation_matrix(right, curve_angle);
+            input.position.xyz          = mul(gravity_rotation, input.position.xyz);
+            input.normal                = mul(gravity_rotation, input.normal);
+            input.tangent               = mul(gravity_rotation, input.tangent);
+    
+            // Bend due to wind
+            curve_angle                 = get_noise_perlin((float)buffer_frame.time * 1.0f) * 0.2f;
+            float3x3 wind_rotation      = rotation_matrix(right, curve_angle);
+            input.position.xyz          = mul(wind_rotation, input.position.xyz);
+            input.normal                = mul(wind_rotation, input.normal);
+            input.tangent               = mul(wind_rotation, input.tangent);
         }
     }
-
+    
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, float width_percent, uint instance_id, float time_offset = 0.0f)
     {
         float time  = (float)buffer_frame.time + time_offset;
         float3 wind = buffer_frame.wind;
 
         // wind simulation
-        if (surface.is_grass_blade())
+        float distance_to_camera = fast_length(position_world - buffer_frame.camera_position);
+        if (surface.is_grass_blade() && distance_to_camera <= 300.0f)
         {
-            const float wind_direction_scale      = 0.05f; // Scale for wind direction noise (larger scale = broader patterns)
-            const float wind_direction_time_scale = 0.05f; // Speed of wind direction animation
-            const float wind_strength_scale       = 0.25f; // Scale for wind strength noise
-            const float wind_strength_time_scale  = 2.0f;  // Speed of wind strength animation (faster for more dynamic changes)
-            const float wind_strength_amplitude   = 2.0f;  // Amplifies the wind strength noise
-            const float min_wind_lean             = 0.25f; // Minimum grass lean angle
-            const float max_wind_lean             = 1.0f;  // Maximum grass lean angle
-            const float gust_scale                = 0.01f; // Scale for global gust noise (slower for broad gusts)
+            const float wind_direction_scale      = 0.05f; // scale for wind direction noise (larger scale = broader patterns)
+            const float wind_direction_time_scale = 0.05f; // speed of wind direction animation
+            const float wind_strength_scale       = 0.25f; // scale for wind strength noise
+            const float wind_strength_time_scale  = 2.0f;  // speed of wind strength animation (faster for more dynamic changes)
+            const float wind_strength_amplitude   = 2.0f;  // amplifies the wind strength noise
+            const float min_wind_lean             = 0.25f; // minimum grass lean angle
+            const float max_wind_lean             = 1.0f;  // maximum grass lean angle
+            const float gust_scale                = 0.01f; // scale for global gust noise (slower for broad gusts)
             
             // global wind strength modulation (simulates gusts and lulls)
             float global_wind_strength = get_noise_perlin(float2(time * gust_scale, 0.0f));
@@ -261,7 +264,7 @@ struct vertex_processing
             // 2D noise for wind direction
             float2 noise_pos_dir = position_world.xz * wind_direction_scale + float2(time * wind_direction_time_scale, 0.0f);
             float wind_direction = get_noise_perlin(noise_pos_dir);
-            wind_direction       = remap(wind_direction, -1.0f, 1.0f, 0.0f, 6.2832f); // remap to [0, 2π]
+            wind_direction       = remap(wind_direction, -1.0f, 1.0f, 0.0f, PI2); // remap to [0, 2π]
             
             // 2D noise for wind strength
             float2 noise_pos_strength = position_world.xz * wind_strength_scale + float2(time * wind_strength_time_scale, 0.0f);
@@ -281,12 +284,13 @@ struct vertex_processing
             float curve_angle  = (wind_lean_angle / total_height) * vertex.height_percent;
             
             // rotate position, normal, and tangent around the axis
-            float3 base_position = position_world - position_local; // base of the blade
+            float3x3 rotation    = rotation_matrix(rotation_axis, curve_angle);
+            float3 base_position = position_world - position_local;
             float3 local_pos     = position_world - base_position;
-            local_pos            = rotate_around_axis(rotation_axis, curve_angle, local_pos);
+            local_pos            = mul(rotation, local_pos);
             position_world       = base_position + local_pos;
-            vertex.normal        = rotate_around_axis(rotation_axis, curve_angle, vertex.normal);
-            vertex.tangent       = rotate_around_axis(rotation_axis, curve_angle, vertex.tangent);
+            vertex.normal        = mul(rotation, vertex.normal);
+            vertex.tangent       = mul(rotation, vertex.tangent);
         }
         
         if (surface.has_wind_animation() && !surface.is_grass_blade()) // grass has it's own wind (need to unify)
