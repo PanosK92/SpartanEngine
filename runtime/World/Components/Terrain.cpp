@@ -1,4 +1,4 @@
-/*
+ï»¿/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -200,7 +200,7 @@ namespace spartan
             // compute area in square meters
             float area_m2 = width * depth;
         
-            // convert to square kilometers (1 km² = 1,000,000 m²)
+            // convert to square kilometers (1 kmÂ² = 1,000,000 mÂ²)
             return area_m2 / 1000000.0f;
         }
 
@@ -694,6 +694,107 @@ namespace spartan
         
             ThreadPool::ParallelLoop(compute_vertex_data, static_cast<uint32_t>(terrain_vertices.size()));
         }
+
+        void apply_perlin_noise(vector<Vector3>& positions, uint32_t width, uint32_t height, float amplitude = 5.0f, float frequency = 0.01f, uint32_t octaves = 4, float persistence = 1.0f)
+        {
+            auto fade = [](float t) -> float
+            {
+                return t * t * t * (t * (t * 6 - 15) + 10); // 6t^5 - 15t^4 + 10t^3
+            };
+        
+            auto lerp = [](float a, float b, float t) -> float
+            {
+                return a + t * (b - a);
+            };
+        
+            // initialize permutation table and gradients
+            vector<uint8_t> permutation(512);
+            vector<Vector2> gradients(256);
+            {
+                mt19937 gen(random_device{}());
+                uniform_real_distribution<float> dist(-1.0f, 1.0f);
+        
+                for (uint32_t i = 0; i < 256; ++i)
+                {
+                    permutation[i] = static_cast<uint8_t>(i);
+        
+                    // generate normalized gradient vectors
+                    Vector2 grad(dist(gen), dist(gen));
+                    gradients[i] = grad.Normalized();
+                }
+        
+                for (uint32_t i = 0; i < 256; ++i)
+                {
+                    permutation[256 + i] = permutation[i];
+                }
+        
+                // shuffle
+                for (uint32_t i = 255; i > 0; --i)
+                {
+                    uniform_int_distribution<uint32_t> dist(0, i);
+                    uint32_t j = dist(gen);
+                    swap(permutation[i], permutation[j]);
+                    permutation[256 + i] = permutation[i];
+                }
+            }
+        
+            auto perlin_noise = [&](float x, float z) -> float
+            {
+                int X = static_cast<int>(floor(x)) & 255;
+                int Z = static_cast<int>(floor(z)) & 255;
+                x -= floor(x);
+                z -= floor(z);
+        
+                float u = fade(x);
+                float v = fade(z);
+        
+                int aa = permutation[permutation[X] + Z];
+                int ab = permutation[permutation[X] + Z + 1];
+                int ba = permutation[permutation[X + 1] + Z];
+                int bb = permutation[permutation[X + 1] + Z + 1];
+        
+                float grad00 = gradients[aa & 255].x * x + gradients[aa & 255].y * z;
+                float grad10 = gradients[ba & 255].x * (x - 1) + gradients[ba & 255].y * z;
+                float grad01 = gradients[ab & 255].x * x + gradients[ab & 255].y * (z - 1);
+                float grad11 = gradients[bb & 255].x * (x - 1) + gradients[bb & 255].y * (z - 1);
+        
+                float lerp_x0 = lerp(grad00, grad10, u);
+                float lerp_x1 = lerp(grad01, grad11, u);
+                return lerp(lerp_x0, lerp_x1, v); // returns in range ~[-1,1]
+            };
+        
+            auto apply_noise = [&](uint32_t start_index, uint32_t end_index)
+            {
+                for (uint32_t index = start_index; index < end_index; ++index)
+                {
+                    uint32_t x = index % width;
+                    uint32_t z = index / width;
+        
+                    float scaled_x = static_cast<float>(x) * frequency;
+                    float scaled_z = static_cast<float>(z) * frequency;
+        
+                    float noise_value       = 0.0f;
+                    float current_amplitude = amplitude;
+                    float current_frequency = 1.0f;
+                    float max_amplitude     = 0.0f;
+        
+                    for (uint32_t octave = 0; octave < octaves; ++octave)
+                    {
+                        float n = perlin_noise(scaled_x * current_frequency, scaled_z * current_frequency);
+                        noise_value += n * current_amplitude;
+        
+                        max_amplitude += current_amplitude;
+                        current_amplitude *= persistence;
+                        current_frequency *= 2.0f;
+                    }
+        
+                    noise_value /= max_amplitude; // normalize to [-1,1] range
+                    positions[index].y += noise_value * amplitude; // apply final amplitude
+                }
+            };
+        
+            ThreadPool::ParallelLoop(apply_noise, width * height);
+        }
     }
 
     Terrain::Terrain(Entity* entity) : Component(entity)
@@ -883,7 +984,7 @@ namespace spartan
         m_is_generating = true;
     
         // start progress tracking
-        uint32_t job_count = 8;
+        uint32_t job_count = 9;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
     
         // define cache file path
@@ -933,14 +1034,21 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 3. apply hydraulic and wind erosion
+            // 3. Apply Perlin noise
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying Perlin noise...");
+                apply_perlin_noise(positions, dense_width, dense_height);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 4. apply hydraulic and wind erosion
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic and wind erosion...");
                 apply_erosion(positions, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 4. compute vertices and indices
+            // 5. compute vertices and indices
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating vertices and indices...");
                 m_vertices.resize(dense_width * dense_height);
@@ -949,21 +1057,21 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 5. compute normals and tangents
+            // 6. compute normals and tangents
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
                 generate_normals(m_vertices, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 6. compute triangle data for placement
+            // 7. compute triangle data for placement
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
                 compute_triangle_data(m_vertices, m_indices);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 7. split into tiles
+            // 8. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
                 spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, parameters::tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
