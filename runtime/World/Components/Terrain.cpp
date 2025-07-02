@@ -98,7 +98,7 @@ namespace spartan
             ThreadPool::ParallelLoop(compute_triangle, triangle_count);
         }
 
-        vector<Matrix> find_transforms(uint32_t transform_count, float max_slope_radians, bool rotate_to_match_surface_normal, float terrain_offset, float height_min, float height_max)
+        vector<Matrix> find_transforms(const uint32_t transform_count, const float max_slope_radians, const bool rotate_to_match_surface_normal, const float terrain_offset, const float height_min, const float height_max, const float scale_min, const float scale_max, const bool scale_by_slope)
         {
             SP_ASSERT(!triangle_data.empty());
         
@@ -133,6 +133,7 @@ namespace spartan
                 uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
+                uniform_real_distribution<float> scale_dist(scale_min, scale_max);
         
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
@@ -145,7 +146,6 @@ namespace spartan
                     float sqrt_r1 = sqrtf(r1);
                     float u       = 1.0f - sqrt_r1;
                     float v       = r2 * sqrt_r1;
-        
                     Vector3 position = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, terrain_offset, 0.0f);
         
                     Quaternion rotation;
@@ -159,8 +159,18 @@ namespace spartan
                     {
                         rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
                     }
+
+                    float scale = scale_dist(generator);
+                    if (scale_by_slope)
+                    {
+                        // in real life, larger rocks tend to settle on flatter terrain,
+                        // while steeper slopes hold smaller debris or fragments
+                        float slope_normalized = tri.slope_radians / max_slope_radians;
+                        slope_normalized       = clamp(slope_normalized, 0.0f, 1.0f);
+                        scale                  = lerp(scale_max, scale_min, slope_normalized);
+                    }
         
-                    transforms[i] = Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
+                    transforms[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
                 }
             };
         
@@ -813,14 +823,19 @@ namespace spartan
         bool rotate_match_surface_normal = false;                        // don't rotate to match the surface normal
         float max_slope                  = 0.0f;                         // don't allow slope
         float terrain_offset             = offset_y;                     // 0.0f places exactly on the terrain
-        float height_min                 = parameters::level_sea;        // sea level
+        float height_min                 = parameters::level_sea;        // start spawning at sea level
         float height_max                 = numeric_limits<float>::max(); // no height limit
+        float scale_min                  = 0.0f;
+        float scale_max                  = 1.0f;
+        bool scale_by_slope              = false;                        // relevant for rocks (in real life, larger rocks tend to settle on flatter terrain)
     
         if (terrain_prop == TerrainProp::Tree)
         {
-            max_slope                   = 30.0f * math::deg_to_rad;     // tighter slope for trees in harsh
-            height_min                  = parameters::level_sea + 5.0f; // a bit above sea level
-            height_max                  = parameters::level_snow + 20;  // stop a bit above the snow
+            max_slope  = 30.0f * math::deg_to_rad;     // tighter slope for trees in harsh
+            height_min = parameters::level_sea + 5.0f; // a bit above sea level
+            height_max = parameters::level_snow + 20;  // stop a bit above the snow
+            scale_min  = 0.8f;
+            scale_max  = 1.5f;
         }
         else if (terrain_prop == TerrainProp::Grass)
         {
@@ -828,6 +843,8 @@ namespace spartan
             rotate_match_surface_normal = true;                         // small plants align with terrain normal
             height_min                  = parameters::level_sea + 5.0f; // a bit above sea level
             height_max                  = parameters::level_snow;       // stop when snow shows up
+            scale_min                   = 1.0f;
+            scale_max                   = 1.5f;
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
@@ -835,13 +852,16 @@ namespace spartan
             rotate_match_surface_normal = true;                          // small plants align with terrain normal
             height_min                  = parameters::level_sea - 10.0f; // can spawn underwater
             height_max                  = numeric_limits<float>::max();  // can spawn at any height
+            scale_min                   = 0.1f;
+            scale_max                   = 1.5f;
+            scale_by_slope              = true;
         }
         else
         {
             SP_ASSERT_MSG(false, "Unknown terrain prop type for Terrain::GenerateTransforms");
         }
     
-        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max);
+        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max, scale_min, scale_max, scale_by_slope);
     }
 
     void Terrain::SaveToFile(const char* file_path)
