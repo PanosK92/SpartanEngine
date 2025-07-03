@@ -120,10 +120,10 @@ namespace spartan
                 update_matrices = true;
             }
 
-            // the directiona light follows the camera, so it also need to updated if it moves
+            // it follows the camera, so it also need to updated if it moves
             if (Camera* camera = World::GetCamera())
             {
-                update_matrices = camera->GetEntity()->GetTimeSinceLastTransform() < 0.1f;
+                update_matrices = camera->GetEntity()->GetTimeSinceLastTransform() < 0.1f ? true : update_matrices;
             }
         }
 
