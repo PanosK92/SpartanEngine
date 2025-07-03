@@ -98,7 +98,17 @@ namespace spartan
             ThreadPool::ParallelLoop(compute_triangle, triangle_count);
         }
 
-        vector<Matrix> find_transforms(const uint32_t transform_count, const float max_slope_radians, const bool rotate_to_match_surface_normal, const float terrain_offset, const float height_min, const float height_max, const float scale_min, const float scale_max, const bool scale_by_slope)
+        vector<Matrix> find_transforms(
+            const uint32_t transform_count,
+            const float max_slope_radians,             // the maximum slope in radians that is acceptable for placing the mesh
+            const bool rotate_to_match_surface_normal, // if true, the mesh will be rotated to match the surface normal of the terrain
+            const float terrain_offset,                // the offset to apply to the terrain height, useful for placing meshes a bit below the terrain surface
+            const float height_min,                    // the minimum height of the terrain to place the mesh
+            const float height_max,                    // the maximum height of the terrain to place the mesh
+            const float scale_min,                     // the minimum scale of the mesh
+            const float scale_max,                     // the maximum scale of the mesh
+            const bool scale_by_slope                  // in real life, larger rocks tend to settle on flatter terrain, while steeper slopes hold smaller debris or fragments
+        )
         {
             SP_ASSERT(!triangle_data.empty());
         
@@ -140,31 +150,36 @@ namespace spartan
                     uint32_t tri_idx        = acceptable_triangles[triangle_dist(generator)];
                     const TriangleData& tri = triangle_data[tri_idx];
         
-                    // compute barycentric coordinates
-                    float r1      = dist(generator);
-                    float r2      = dist(generator);
-                    float sqrt_r1 = sqrtf(r1);
-                    float u       = 1.0f - sqrt_r1;
-                    float v       = r2 * sqrt_r1;
-                    Vector3 position = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, terrain_offset, 0.0f);
-        
-                    Quaternion rotation;
-                    if (rotate_to_match_surface_normal)
+                    Vector3 position = Vector3::Zero;
                     {
-                        Quaternion rotate_to_normal  = tri.rotation_to_normal;
-                        Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
-                        rotation                     = rotate_to_normal * random_y_rotation;
-                    }
-                    else
-                    {
-                        rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                        // compute barycentric coordinates
+                        float r1      = dist(generator);
+                        float r2      = dist(generator);
+                        float sqrt_r1 = sqrtf(r1);
+                        float u       = 1.0f - sqrt_r1;
+                        float v       = r2 * sqrt_r1;
+                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, terrain_offset, 0.0f);
                     }
 
+                    // rotation
+                    Quaternion rotation;
+                    {
+                        if (rotate_to_match_surface_normal)
+                        {
+                            Quaternion rotate_to_normal  = tri.rotation_to_normal;
+                            Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                            rotation                     = rotate_to_normal * random_y_rotation;
+                        }
+                        else
+                        {
+                            rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
+                        }
+                    }
+
+                    // scale
                     float scale = scale_dist(generator);
                     if (scale_by_slope)
                     {
-                        // in real life, larger rocks tend to settle on flatter terrain,
-                        // while steeper slopes hold smaller debris or fragments
                         float slope_normalized = tri.slope_radians / max_slope_radians;
                         slope_normalized       = clamp(slope_normalized, 0.0f, 1.0f);
                         scale                  = lerp(scale_max, scale_min, slope_normalized);
@@ -858,7 +873,7 @@ namespace spartan
         }
         else
         {
-            SP_ASSERT_MSG(false, "Unknown terrain prop type for Terrain::GenerateTransforms");
+            SP_ASSERT_MSG(false, "Unknown terrain prop type for GenerateTransforms");
         }
     
         *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max, scale_min, scale_max, scale_by_slope);

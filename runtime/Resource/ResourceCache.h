@@ -78,9 +78,9 @@ namespace spartan
             if (!resource)
                 return nullptr;
 
-            // if cached, return the cached resource
-            if (IsCached(resource->GetResourceFilePath(), resource->GetResourceType()))
-                return GetByPath<T>(resource->GetResourceFilePath());
+            // return cached resource if it already exists
+            if (std::shared_ptr<T> existing = GetByPath<T>(resource->GetResourceFilePath()))
+                return existing;
 
             // if not, cache it and return the cached resource
             std::lock_guard<std::mutex> guard(GetMutex());
@@ -97,36 +97,26 @@ namespace spartan
                 return nullptr;
             }
 
-            // check if the resource is already loaded
+            // return cached resource if it already exists
             const std::string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-            if (IsCached(name, IResource::TypeToEnum<T>()))
-                return GetByName<T>(name);
+            if (std::shared_ptr<T> existing = GetByPath<T>(file_path))
+                return existing;
 
             // create new resource
             std::shared_ptr<T> resource = std::make_shared<T>();
-
             if (flags != 0)
             {
                 resource->SetFlags(flags);
             }
-
-            // set a default file path in case it's not overridden by LoadFromFile()
             resource->SetResourceFilePath(file_path);
-
-            // load
             resource->LoadFromFile(file_path);
-
-            // returned cached reference which is guaranteed to be around after deserialization
-            return Cache<T>(resource);
+            return Cache<T>(resource); // cache and return
         }
 
         template <class T>
         static void Remove(std::shared_ptr<T>& resource)
         {
             if (!resource)
-                return;
-
-            if (!IsCached(resource->GetObjectName(), resource->GetResourceType()))
                 return;
 
             GetResources().erase
@@ -160,10 +150,6 @@ namespace spartan
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
 
     private:
-        static bool IsCached(const uint64_t resource_id);
-        static bool IsCached(const std::string& file_path, const ResourceType resource_type);
-
-        // event handlers
         static void Serialize();
         static void Deserialize();
     };

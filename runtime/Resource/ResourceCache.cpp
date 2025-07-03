@@ -59,37 +59,6 @@ namespace spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER_STATIC(Deserialize));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Shutdown));
     }
-
-    bool ResourceCache::IsCached(const string& file_path, const ResourceType resource_type)
-    {
-        SP_ASSERT(!file_path.empty());
-
-        lock_guard<mutex> guard(m_mutex);
-
-        for (shared_ptr<IResource>& resource : m_resources)
-        {
-            if (resource->GetResourceType() != resource_type)
-                continue;
-
-            if (file_path == resource->GetResourceFilePath())
-                return true;
-        }
-
-        return false;
-    }
-
-    bool ResourceCache::IsCached(const uint64_t resource_id)
-    {
-        lock_guard<mutex> guard(m_mutex);
-
-        for (shared_ptr<IResource>& resource : m_resources)
-        {
-            if (resource_id == resource->GetObjectId())
-                return true;
-        }
-
-        return false;
-    }
     
 	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
     {
