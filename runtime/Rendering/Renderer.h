@@ -214,6 +214,5 @@ namespace spartan
         static bool m_bindless_abbs_dirty;
         static bool m_bindless_materials_dirty;
         static bool m_bindless_lights_dirty;
-        static bool m_atmospheric_scattering_lut_dirty;
     };
 }

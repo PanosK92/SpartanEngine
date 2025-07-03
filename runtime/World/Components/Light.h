@@ -129,6 +129,9 @@ namespace spartan
         void SetScreenSpaceShadowsSliceIndex(const uint32_t index) { m_index = index; }
         uint32_t GetScreenSpaceShadowsSliceIndex() const           { return m_index; }
 
+        // misc
+        bool NeedsLutAtmosphericScatteringUpdate() const;
+
     private:
         void UpdateMatrices();
         void ComputeViewMatrix();

@@ -49,7 +49,6 @@ namespace spartan
 {
     array<Renderer_DrawCall, renderer_max_entities> Renderer::m_draw_calls;
     uint32_t Renderer::m_draw_call_count;
-    bool Renderer::m_atmospheric_scattering_lut_dirty = true;
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
@@ -80,10 +79,9 @@ namespace spartan
                 brdf_produced = true;
             }
 
-            if (m_atmospheric_scattering_lut_dirty)
+            if (World::GetDirectionalLight() ? World::GetDirectionalLight()->NeedsLutAtmosphericScatteringUpdate() : false)
             {
                 Pass_Lut_AtmosphericScattering(cmd_list_present);
-                m_atmospheric_scattering_lut_dirty = false;
             }
         }
 
