@@ -95,10 +95,7 @@ namespace spartan
                 //Pass_Occlusion(cmd_list_graphics_secondary);
                 Pass_Depth_Prepass(cmd_list_present);
                 Pass_GBuffer(cmd_list_present, is_transparent);
-                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // temp till I fix the gpu crash in the forest world
-                { 
-                    Pass_ShadowMaps(cmd_list_present);
-                }
+                Pass_ShadowMaps(cmd_list_present);
                 Pass_Skysphere(cmd_list_present);
                 Pass_ScreenSpaceShadows(cmd_list_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_present);
@@ -217,7 +214,7 @@ namespace spartan
                         const Renderer_DrawCall& draw_call = m_draw_calls[i];
                         Renderable* renderable             = draw_call.renderable;
                         Material* material                 = renderable->GetMaterial();
-                        if (!material || material->IsTransparent())
+                        if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows))
                             continue;
 
                         // set pso
@@ -246,25 +243,30 @@ namespace spartan
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
+                            uint32_t lod_index = renderable->GetLodCount() - 1;
+
                             if (renderable->HasInstancing())
                             {
                                 SP_ASSERT(draw_call.instance_count < renderable->GetInstanceBuffer()->GetElementCount());
 
                                 cmd_list->DrawIndexed(
-                                    renderable->GetIndexCount(draw_call.lod_index),
-                                    renderable->GetIndexOffset(draw_call.lod_index),
-                                    renderable->GetVertexOffset(draw_call.lod_index),
+                                    renderable->GetIndexCount(lod_index),
+                                    renderable->GetIndexOffset(lod_index),
+                                    renderable->GetVertexOffset(lod_index),
                                     draw_call.instance_index,
                                     draw_call.instance_count
                                 );
                             }
                             else
                             {
-                                cmd_list->DrawIndexed(
-                                    renderable->GetIndexCount(draw_call.lod_index),
-                                    renderable->GetIndexOffset(draw_call.lod_index),
-                                    renderable->GetVertexOffset(draw_call.lod_index)
-                                );
+                                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // find fix: non instanced draw calls will crash the forest
+                                { 
+                                    cmd_list->DrawIndexed(
+                                        renderable->GetIndexCount(lod_index),
+                                        renderable->GetIndexOffset(lod_index),
+                                        renderable->GetVertexOffset(lod_index)
+                                    );
+                                }
                             }
                         }
                     }
@@ -638,11 +640,11 @@ namespace spartan
             { 
                 cmd_list->BeginMarker("reflection_trace");
                 {
-                    // do any pending barriers as we don't have control over fidelityfx sssr
+                    // do any pending barriers as we don't have control over vendor tech
                     tex_frame->SetLayout(RHI_Image_Layout::General, cmd_list);
-                    cmd_list->InsertPendingBarrierGroup();
                     cmd_list->RenderPassEnd();
-                
+                    cmd_list->InsertPendingBarrierGroup();
+
                     RHI_VendorTechnology::SSSR_Dispatch(
                         cmd_list,
                         GetOption<float>(Renderer_Option::ResolutionScale),
@@ -667,6 +669,8 @@ namespace spartan
                 cmd_list->ClearTexture(tex_ssr, Color::standard_transparent);
                 cleared = true;
             }
+
+            cmd_list->InsertBarrierReadWrite(tex_frame);
 
             cmd_list->BeginMarker("apply_reflections_refraction");
             {
