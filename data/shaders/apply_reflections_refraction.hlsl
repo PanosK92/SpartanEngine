@@ -27,15 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float refraction_strength = 0.02f;
 static const float default_ior         = 1.333f;
 
-float3 fresnel_schlick_roughness(float cos_theta, float3 F0, float roughness)
-{
-    // schlick's approximation: F = F0 + (1 - F0) * (1 - cos_theta)^5
-    float3 F = F0 + (1.0f - F0) * pow(1.0f - cos_theta, 5.0f);
-    
-    // adjust for roughness: interpolate between F0 and max(1 - roughness, F0)
-    return F0 + (max(float3(1.0f - roughness, 1.0f - roughness, 1.0f - roughness), F0) - F0) * pow(1.0f - cos_theta, 5.0f);
-}
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -69,11 +60,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         refraction         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
     }
 
-    // fresnel blend between reflection and refraction
+    // add reflections and refraction
     float n_dot_v        = saturate(dot(surface.normal, view_dir));
-    float3 fresnel       = saturate(fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness));
     float3 reflection    = tex[thread_id.xy].rgb;
-    float3 surface_color = reflection * fresnel + refraction * (1.0f - fresnel);
+    float2 brdf          = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).rg;
+    float3 surface_color = reflection * (surface.F0 * brdf.x + brdf.y) + refraction;
 
     tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
 }

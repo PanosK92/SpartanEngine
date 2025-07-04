@@ -680,9 +680,10 @@ namespace spartan
 
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);               // in - reflection
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);             // out
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);                                                   // in - reflection
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source);                                     // in - refraction
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);                                                 // out
                 cmd_list->Dispatch(tex_frame);
             }
             cmd_list->EndMarker();

@@ -29,7 +29,6 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
-
 // rotate UV around center (0.5, 0.5) by angle
 float2 rotate_uv(float2 uv, float angle)
 {
@@ -251,9 +250,9 @@ gbuffer main_ps(gbuffer_vertex vertex)
     // occlusion, roughness, metalness, height sample
     {
         float4 packed_sample  = sample_texture(vertex, material_texture_index_packed, surface);
-        occlusion             = packed_sample.r;
-        roughness            *= packed_sample.g;
-        metalness            *= packed_sample.b;
+        occlusion             = lerp(occlusion, packed_sample.r, material_has_texture_occlusion(material) ? 1.0f : 0.0f);
+        roughness            *= lerp(1.0f,      packed_sample.g, material_has_texture_roughness(material) ? 1.0f : 0.0f);
+        metalness            *= lerp(1.0f,      packed_sample.b, material_has_texture_metalness(material) ? 1.0f : 0.0f);
     }
     
     // specular anti-aliasing - also increases cache hits for certain subsqeuent passes
