@@ -1063,8 +1063,7 @@ namespace spartan
                             Renderable* renderable = rock_entity->GetComponent<Renderable>();
                             renderable->SetInstances(transforms);
                             renderable->SetMaxRenderDistance(render_distance_trees);
-                            renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space are enough
-                
+
                             // create material
                             shared_ptr<Material> material = make_shared<Material>();
                             {
