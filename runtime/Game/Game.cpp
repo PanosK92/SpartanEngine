@@ -233,7 +233,7 @@ namespace spartan
                     material->SetResourceFilePath("water" + string(EXTENSION_MATERIAL));
 
                     material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); // pool water color
-                    material->SetTexture(MaterialTextureType::Normal,            "project\\terrain\\water_normal.jpeg");
+                    material->SetTexture(MaterialTextureType::Normal,            "project\\materials\\water\\water_normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
                     material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
                     material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
@@ -942,30 +942,30 @@ namespace spartan
                         shared_ptr<Material> material = terrain->GetMaterial();
 
                         // set properties
-                        material->SetResourceFilePath(string("project\\terrain\\material_terrain") + string(EXTENSION_MATERIAL));
+                        material->SetResourceFilePath(string("project\\materials\\material_terrain") + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain,      1.0f);
                         material->SetProperty(MaterialProperty::TextureTilingX, 2000.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY, 2000.0f);
 
                         // set textures
-                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\ground\\albedo.png",    0);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\ground\\normal.png",    0);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\ground\\roughness.png", 0);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\ground\\occlusion.png", 0);
-                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\rock\\albedo.png",      1);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\rock\\normal.png",      1);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\rock\\roughness.png",   1);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\rock\\occlusion.png",   1);
-                        material->SetTexture(MaterialTextureType::Height,    "project\\terrain\\rock\\height.png",      1);
-                        material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\sand\\albedo.png",      2);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\sand\\normal.png",      2);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\sand\\roughness.png",   2);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\sand\\occlusion.png",   2);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\ground\\albedo.png",    0);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\ground\\normal.png",    0);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\ground\\roughness.png", 0);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\ground\\occlusion.png", 0);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\rock\\albedo.png",      1);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\rock\\normal.png",      1);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\rock\\roughness.png",   1);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\rock\\occlusion.png",   1);
+                        material->SetTexture(MaterialTextureType::Height,    "project\\materials\\rock\\height.png",      1);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\sand\\albedo.png",      2);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\sand\\normal.png",      2);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\sand\\roughness.png",   2);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\sand\\occlusion.png",   2);
                         material->SetProperty(MaterialProperty::Tessellation, 0.0f);
                     }
                     
                     // generate a terrain from a height map
-                    shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\terrain\\height_map.png", RHI_Texture_KeepData);
+                    shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png", RHI_Texture_KeepData);
                     terrain->SetHeightMap(height_map.get());
                     terrain->Generate();
 
@@ -988,7 +988,7 @@ namespace spartan
                 
                 // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_tree\\tree.fbx", flags))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags))
                 {
                     shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("tree");
@@ -1010,9 +1010,9 @@ namespace spartan
                             shared_ptr<Material> material = make_shared<Material>();
                             {
                                 material->SetObjectName("tree_leaf");
-                                material->SetTexture(MaterialTextureType::Color,                    "project\\terrain\\model_tree\\Twig_Base_Material_2.png");
-                                material->SetTexture(MaterialTextureType::Normal,                   "project\\terrain\\model_tree\\Twig_Normal.png");
-                                material->SetTexture(MaterialTextureType::AlphaMask,                "project\\terrain\\model_tree\\Twig_Opacity_Map.jpg");
+                                material->SetTexture(MaterialTextureType::Color,                    "project\\models\\tree\\Twig_Base_Material_2.png");
+                                material->SetTexture(MaterialTextureType::Normal,                   "project\\models\\tree\\Twig_Normal.png");
+                                material->SetTexture(MaterialTextureType::AlphaMask,                "project\\models\\tree\\Twig_Opacity_Map.jpg");
                                 material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
                                 material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
                                 material->SetProperty(MaterialProperty::SubsurfaceScattering,       0.1f);
@@ -1033,12 +1033,11 @@ namespace spartan
                             shared_ptr<Material> material = make_shared<Material>();
                             {
                                 material->SetObjectName("tree_body");
-                                material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_tree\\tree_bark_diffuse.png");
-                                material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_tree\\tree_bark_normal.png");
-                                material->SetTexture(MaterialTextureType::Roughness, "project\\terrain\\model_tree\\tree_bark_roughness.png");
-                                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                                material->SetResourceFilePath("project\\terrain\\tree_body_material" + string(EXTENSION_MATERIAL));
+                                material->SetTexture(MaterialTextureType::Color,     "project\\models\\tree\\tree_bark_diffuse.png");
+                                material->SetTexture(MaterialTextureType::Normal,    "project\\models\\tree\\tree_bark_normal.png");
+                                material->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
                             }
+                            material->SetResourceFilePath("project\\temp\\tree_body" + string(EXTENSION_MATERIAL)); // filepath needed for caching - inconvenient - fix
                             renderable->SetMaterial(material);
 
                             // enable physics
@@ -1048,36 +1047,34 @@ namespace spartan
                 }
                 
                 // rock
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\terrain\\model_rock\\rock.obj"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj"))
                 {
                     shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("rock");
-                    entity->SetScale(0.7f);
-                
+                    entity->SetScale(4.0f);
+
                     // generate instances
                     {
                         vector<Matrix> transforms;
-                        terrain->GenerateTransforms(&transforms, rock_count, TerrainProp::Rock, -1.0f);
+                        terrain->GenerateTransforms(&transforms, rock_count, TerrainProp::Rock, -0.25f);
                         
-                        if (Entity* rock_entity = entity->GetDescendantByName("Group38189"))
+                        if (Entity* rock_entity = entity->GetDescendantByName("untitled"))
                         {
                             Renderable* renderable = rock_entity->GetComponent<Renderable>();
                             renderable->SetInstances(transforms);
                             renderable->SetMaxRenderDistance(render_distance_trees);
-                            renderable->SetFlag(RenderableFlags::CastsShadows, false); // small things are taken care of from screen space shadows
+                            renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space are enough
                 
                             // create material
                             shared_ptr<Material> material = make_shared<Material>();
                             {
                                 material->SetObjectName("rock");
-                                material->SetTexture(MaterialTextureType::Color,     "project\\terrain\\model_rock\\albedo.jpg");
-                                material->SetTexture(MaterialTextureType::Normal,    "project\\terrain\\model_rock\\normal.jpg");
-                                material->SetTexture(MaterialTextureType::Occlusion, "project\\terrain\\model_rock\\occlusion.jpg");
-                                material->SetProperty(MaterialProperty::Roughness,1.0f);
-                                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                                const string file_path = "project\\terrain\\rock_material" + string(EXTENSION_MATERIAL);
-                                material->SetResourceFilePath(file_path);
+                                material->SetTexture(MaterialTextureType::Color,     "project\\models\\rock_2\\albedo.png");
+                                material->SetTexture(MaterialTextureType::Normal,    "project\\models\\rock_2\\normal.png");
+                                material->SetTexture(MaterialTextureType::Roughness, "project\\models\\rock_2\\roughness.png");
+                                material->SetTexture(MaterialTextureType::Occlusion, "project\\models\\rock_2\\occlusion.png");
                             }
+                            material->SetResourceFilePath("project\\temp\\rock_material" + string(EXTENSION_MATERIAL)); // filepath needed for caching - inconvenient - fix
                             renderable->SetMaterial(material);
 
                             // enable physics
