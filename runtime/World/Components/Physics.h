@@ -130,6 +130,9 @@ namespace spartan
         void Create();
         void CreateBodies();
 
+        void RemoveBodies();
+        void RemoveShapes();
+
         float m_mass                   = 0.001f;
         float m_friction               = 1.0f;
         float m_friction_rolling       = 0.002f;
@@ -142,11 +145,11 @@ namespace spartan
         BodyType m_body_type           = BodyType::Max;
         uint32_t terrain_width         = 0;
         uint32_t terrain_length        = 0;
-        void* m_shape                  = nullptr;
         void* m_controller             = nullptr;
         void* m_material               = nullptr;
         void* m_mesh                   = nullptr;
-        std::vector<void*> m_bodies; // multiple bodies to allow for instancing support
+        std::vector<void*> m_bodies    = { nullptr };
+        std::vector<void*> m_shapes    = { nullptr };
         std::vector<PhysicsBodyMeshData> m_mesh_data;
     };
 }

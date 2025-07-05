@@ -80,39 +80,15 @@ namespace spartan
 
     void Physics::OnRemove()
     {
-        // controller
         if (m_controller)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
+            m_material   = nullptr;
         }
 
-        // bodies
-        for (auto* body : m_bodies)
-        {
-            PxRigidActor* actor = static_cast<PxRigidActor*>(body);
-            PxScene* scene      = static_cast<PxScene*>(PhysicsWorld::GetScene());
-            if (actor->getScene())
-            {
-                scene->removeActor(*actor);
-            }
-            actor->release();
-        }
-        m_bodies.clear();
-
-        // shape
-        if (m_shape)
-        {
-            static_cast<PxShape*>(m_shape)->release();
-            m_shape = nullptr;
-        }
-
-        // material
-        if (m_material)
-        {
-            static_cast<PxMaterial*>(m_material)->release();
-            m_material = nullptr;
-        }
+        RemoveBodies();
+        RemoveShapes();
     }
 
     void Physics::OnTick()
@@ -392,14 +368,17 @@ namespace spartan
         // update mass for all dynamic bodies
         for (auto* body : m_bodies)
         {
-            if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
-            {
-                dynamic->setMass(m_mass);
-                // update inertia if center of mass is set
-                if (m_center_of_mass != Vector3::Zero)
+            if (body)
+            { 
+                if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
                 {
-                    PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
-                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
+                    dynamic->setMass(m_mass);
+                    // update inertia if center of mass is set
+                    if (m_center_of_mass != Vector3::Zero)
+                    {
+                        PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                        PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
+                    }
                 }
             }
         }
@@ -410,21 +389,10 @@ namespace spartan
         if (m_friction == friction)
             return;
     
-        m_friction = friction;
-
-        PxShape* shape = static_cast<PxShape*>(m_shape);
-        if (shape)
+        if (m_material)
         {
-            PxMaterial* material = nullptr;
-            shape->getMaterials(&material, 1);
-            if (material)
-            {
-                material->setStaticFriction(m_friction);
-            }
-            else
-            {
-                SP_LOG_WARNING("SetFriction: No material found for shape.");
-            }
+            m_friction = friction;
+            static_cast<PxMaterial*>(m_material)->setStaticFriction(m_friction);
         }
     }
 
@@ -432,22 +400,11 @@ namespace spartan
     {
         if (m_friction_rolling == friction_rolling)
             return;
-    
-        m_friction_rolling = friction_rolling;
-    
-        PxShape* shape = static_cast<PxShape*>(m_shape);
-        if (shape)
+
+        if (m_material)
         {
-            PxMaterial* material = nullptr;
-            shape->getMaterials(&material, 1);
-            if (material)
-            {
-                material->setDynamicFriction(m_friction_rolling);
-            }
-            else
-            {
-                SP_LOG_WARNING("SetFrictionRolling: No material found for shape.");
-            }
+            m_friction_rolling = friction_rolling;
+            static_cast<PxMaterial*>(m_material)->setDynamicFriction(m_friction_rolling);
         }
     }
 
@@ -455,22 +412,11 @@ namespace spartan
     {
         if (m_restitution == restitution)
             return;
-    
-        m_restitution = restitution;
-    
-        PxShape* shape = static_cast<PxShape*>(m_shape);
-        if (shape)
+
+        if (m_material)
         {
-            PxMaterial* material = nullptr;
-            shape->getMaterials(&material, 1);
-            if (material)
-            {
-                material->setRestitution(m_restitution);
-            }
-            else
-            {
-                SP_LOG_WARNING("SetRestitution: No material found for shape.");
-            }
+            m_restitution = restitution;
+            static_cast<PxMaterial*>(m_material)->setRestitution(m_restitution);
         }
     }
 
@@ -737,6 +683,20 @@ namespace spartan
         PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         PxScene* scene     = static_cast<PxScene*>(PhysicsWorld::GetScene());
 
+        // release existing state
+        {
+            RemoveBodies();
+            RemoveShapes();
+            if (m_material)
+            {
+                static_cast<PxMaterial*>(m_material)->release();
+                m_material = nullptr;
+            }
+        }
+
+        m_material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
+
+        // body/controller
         if (m_body_type == BodyType::Controller)
         {
             if (!controller_manager)
@@ -768,7 +728,7 @@ namespace spartan
             desc.position      = PxExtendedVec3(pos.x, pos.y, pos.z);
             
             // assign material
-            desc.material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
+            desc.material = static_cast<PxMaterial*>(m_material);
             
             // create controller
             m_controller = static_cast<PxControllerManager*>(controller_manager)->createController(desc);
@@ -784,33 +744,6 @@ namespace spartan
         }
         else
         {
-            // bodies
-            for (auto* body : m_bodies)
-            {
-                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
-                PxShape* shape;
-                actor->getShapes(&shape, 1);
-                if (shape)
-                {
-                    actor->detachShape(*shape);
-                    shape->release();
-                }
-                if (actor->getScene())
-                {
-                    scene->removeActor(*actor);
-                }
-                actor->release();
-            }
-            m_bodies.clear();
-
-            // material
-            if (m_material)
-            {
-                static_cast<PxMaterial*>(m_material)->release();
-                m_material = nullptr;
-            }
-            m_material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
-
             // mesh
             if (m_body_type == BodyType::Mesh)
             {
@@ -930,19 +863,9 @@ namespace spartan
 
         if (m_bodies.size() != instance_count)
         {
-            // clean up existing bodies
-            for (auto* body : m_bodies)
-            {
-                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
-                if (actor->getScene())
-                {
-                    scene->removeActor(*actor);
-                }
-                actor->release();
-            }
-            m_bodies.clear();
-
-            // create new bodies
+            // create bodies and shapes
+            m_bodies.resize(instance_count, nullptr);
+            m_shapes.resize(instance_count, nullptr);
             for (size_t i = 0; i < instance_count; i++)
             {
                 math::Matrix transform = instances.empty() ? GetEntity()->GetMatrix() : instances[i];
@@ -979,7 +902,7 @@ namespace spartan
                     }
                 }
 
-                PxShape* shape       = nullptr;
+                PxShape*& shape      = *reinterpret_cast<PxShape**>(&m_shapes);
                 PxMaterial* material = static_cast<PxMaterial*>(m_material);
                 switch (m_body_type)
                 {
@@ -1021,7 +944,9 @@ namespace spartan
                         {
                             if (IsStatic())
                             {
-                                PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh));
+                                Vector3 scale = instance_count > 1 ? instances[i].GetScale() : Vector3::One;
+                                PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // this is a runtime transform, cheap for statics but it won't be reflected for the internal baked shape (raycasts etc)
+                                PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
                                 shape = physics->createShape(geometry, *material);
                             }
                             else
@@ -1060,7 +985,8 @@ namespace spartan
                 }
                 actor->userData = reinterpret_cast<void*>(GetEntity());
                 scene->addActor(*actor);
-                m_bodies.push_back(actor);
+
+                m_bodies[i] = actor;
             }
         }
         else
@@ -1079,5 +1005,35 @@ namespace spartan
                 }
             }
         }
+    }
+
+    void Physics::RemoveBodies()
+    {
+        for (auto* body : m_bodies)
+        {
+            if (body)
+            {
+                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
+                PxScene* scene      = static_cast<PxScene*>(PhysicsWorld::GetScene());
+                if (actor->getScene())
+                {
+                    scene->removeActor(*actor);
+                }
+                actor->release();
+            }
+        }
+        m_bodies.clear();
+    }
+
+    void Physics::RemoveShapes()
+    {
+        for (auto* shape : m_shapes)
+        {
+            if (shape)
+            { 
+                static_cast<PxShape*>(shape)->release();
+            }
+        }
+        m_shapes.clear();
     }
 }
