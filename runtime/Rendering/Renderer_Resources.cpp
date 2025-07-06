@@ -180,7 +180,7 @@ namespace spartan
         auto compute_mip_count = [&width_render, &height_render](const uint32_t smallest_dimension)
         {
             uint32_t max_dimension = max(width_render, height_render);
-            uint32_t mip_count     = 1; // start with the base level
+            uint32_t mip_count     = 1;
         
             while (max_dimension > smallest_dimension)
             {

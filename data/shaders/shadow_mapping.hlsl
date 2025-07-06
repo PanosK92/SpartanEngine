@@ -134,7 +134,7 @@ float compute_shadow(Surface surface, Light light)
             // for directional lights, blend with the far cascade
             if (light.is_directional())
             {
-                float blend_input = max(abs(near_ndc.x), abs(near_ndc.y));
+                float blend_input          = max(abs(near_ndc.x), abs(near_ndc.y));
                 float cascade_blend_factor = smoothstep(g_shadow_cascade_blend_threshold, 1.0f, blend_input);
                 if (cascade_blend_factor > 0.0f)
                 {

@@ -42,10 +42,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky())
         return;
 
-    // compute view direction and uv
-    float3 view_dir = -surface.camera_to_pixel;
-    float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
-
+    // compute common values
+    float3 view_dir         = -surface.camera_to_pixel;
+    float2 uv               = (thread_id.xy + 0.5f) / resolution_out;
+    float depth_transparent = linearize_depth(surface.depth);
+    
     // refraction
     float3 background = tex2[thread_id.xy].rgb;
     float3 refraction = background;
@@ -57,11 +58,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float2 refract_uv = uv + uv_offset;
 
         float3 refracted   = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
-        float opaque_depth = tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r;
-        float blend_amount = (opaque_depth < surface.depth + 0.01f);
+        float depth_opaque = tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r;
+        float blend_amount = (depth_opaque < depth_transparent);
         
         refraction = lerp(background, refracted, blend_amount);
     }
+
+    // fade refraction/transparency with depth, to fake light not going deep enough
+    float depth_opaque  = tex4.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r;
+    float water_depth   = max( linearize_depth(depth_opaque) - depth_transparent, 0.0f);
+    float fade          = saturate(1.0f - water_depth * 0.08f); 
+    refraction         *= fade;
     
     // add reflections and refraction
     float n_dot_v        = saturate(dot(surface.normal, view_dir));

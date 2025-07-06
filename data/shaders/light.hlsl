@@ -80,7 +80,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (!surface.is_sky() && light.intensity > 0.0f)
     {
         // shadows
-        if (light.has_shadows())
+        if (light.has_shadows() && surface.is_opaque())
         {
             // shadow maps
             shadow = compute_shadow(surface, light);
