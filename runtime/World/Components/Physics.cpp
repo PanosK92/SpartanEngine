@@ -84,11 +84,31 @@ namespace spartan
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
-            m_material   = nullptr;
+            m_material   = nullptr; // the controller owns the material
         }
 
-        RemoveBodies();
-        RemoveShapes();
+        for (auto* body : m_bodies)
+        {
+            if (body)
+            {
+                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
+                PxScene* scene      = static_cast<PxScene*>(PhysicsWorld::GetScene());
+        
+                if (actor->getScene())
+                {
+                    scene->removeActor(*actor);
+                }
+
+                actor->release();
+            }
+        }
+        m_bodies.clear();
+
+        if (PxMaterial* material = static_cast<PxMaterial*>(m_material))
+        {
+            material->release();
+            m_material = nullptr;
+        }
     }
 
     void Physics::OnTick()
@@ -680,20 +700,13 @@ namespace spartan
 
     void Physics::Create()
     {
+        // clear previous state
+        OnRemove();
+
         PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         PxScene* scene     = static_cast<PxScene*>(PhysicsWorld::GetScene());
 
-        // release existing state
-        {
-            RemoveBodies();
-            RemoveShapes();
-            if (m_material)
-            {
-                static_cast<PxMaterial*>(m_material)->release();
-                m_material = nullptr;
-            }
-        }
-
+        // material - shared across all shapes (if multiple shapes are used)
         m_material = physics->createMaterial(m_friction, m_friction_rolling, m_restitution);
 
         // body/controller
@@ -865,7 +878,6 @@ namespace spartan
         {
             // create bodies and shapes
             m_bodies.resize(instance_count, nullptr);
-            m_shapes.resize(instance_count, nullptr);
             for (size_t i = 0; i < instance_count; i++)
             {
                 math::Matrix transform = instances.empty() ? GetEntity()->GetMatrix() : instances[i];
@@ -902,7 +914,7 @@ namespace spartan
                     }
                 }
 
-                PxShape*& shape      = *reinterpret_cast<PxShape**>(&m_shapes);
+                PxShape* shape       = nullptr;
                 PxMaterial* material = static_cast<PxMaterial*>(m_material);
                 switch (m_body_type)
                 {
@@ -1005,35 +1017,5 @@ namespace spartan
                 }
             }
         }
-    }
-
-    void Physics::RemoveBodies()
-    {
-        for (auto* body : m_bodies)
-        {
-            if (body)
-            {
-                PxRigidActor* actor = static_cast<PxRigidActor*>(body);
-                PxScene* scene      = static_cast<PxScene*>(PhysicsWorld::GetScene());
-                if (actor->getScene())
-                {
-                    scene->removeActor(*actor);
-                }
-                actor->release();
-            }
-        }
-        m_bodies.clear();
-    }
-
-    void Physics::RemoveShapes()
-    {
-        for (auto* shape : m_shapes)
-        {
-            if (shape)
-            { 
-                static_cast<PxShape*>(shape)->release();
-            }
-        }
-        m_shapes.clear();
     }
 }
