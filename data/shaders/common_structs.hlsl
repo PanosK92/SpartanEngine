@@ -114,9 +114,9 @@ struct Surface
         occlusion = sample_material.a;
         if (is_ssao_enabled())
         {
-            int2 coords = clamp(int2(position_screen), int2(0, 0), int2(resolution_out) - 1);
-            occlusion   = min(sample_material.a, tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0).r); // combine occlusion with material occlusion
+            occlusion = min(sample_material.a, tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0).r); // combine occlusion with material occlusion
         }
+        occlusion *= float(sample_albedo.a == 1.0f); // kill ssao for transparents as refraction can't distort UVs and SSAO isn't sampled with those UVs
 
         position               = get_position(depth, uv);
         camera_to_pixel        = position - buffer_frame.camera_position.xyz;
