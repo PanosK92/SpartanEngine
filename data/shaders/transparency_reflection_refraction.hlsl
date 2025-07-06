@@ -29,14 +29,9 @@ static const float default_ior         = 1.333f;
 
 float3 apply_water_absorption(float3 color, float depth)
 {
-    // Absorption coefficients for RGB (approximate, in 1/meters)
-    // Red is absorbed most, blue least
-    float3 absorption = float3(0.1f, 0.05f, 0.02f); // Red, Green, Blue
-
-    // Apply Beer's law: I = I0 * e^(-absorption * depth)
-    float3 attenuated_color = color * exp(-absorption * depth);
-
-    return attenuated_color;
+    // absorption coefficients for RGB (approximate, in 1/meters)
+    float3 absorption = float3(0.1f, 0.05f, 0.02f); // red, green, blue
+    return color * exp(-absorption * depth);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -64,23 +59,20 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 refraction = background;
     if (surface.is_transparent())
     {
-        // scale distortion based on distance to camera
-        float inv_dist    = saturate(1.0f / (surface.camera_to_pixel_length + 0.0001f));
-        float2 uv_offset  = world_to_view(surface.normal, false).xy * refraction_strength * inv_dist;
-        float2 refract_uv = uv + uv_offset;
-
+        // refraction
+        float inv_dist     = saturate(1.0f / (surface.camera_to_pixel_length + 0.0001f));
+        float2 uv_offset   = world_to_view(surface.normal, false).xy * refraction_strength * inv_dist;
+        float2 refract_uv  = uv + uv_offset;
         float3 refracted   = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
-        float depth_opaque = tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r;
-        float blend_amount = (depth_opaque < depth_transparent);
-        
-        refraction = lerp(background, refracted, blend_amount);
+        float depth_opaque = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r);
+        float blend_amount = (depth_opaque > depth_transparent);
+        refraction         = lerp(background, refracted, blend_amount);
+
+        // absorption: the deeper the water, the more light is absorbed, and the color shifts and becomes less transparent
+        float water_depth = max(depth_opaque - depth_transparent, 0.0f);
+        refraction        = apply_water_absorption(refraction, water_depth);
     }
 
-    // emulate the fact that the deeper the water is, the more opaque it becomes and changes color
-    float depth_opaque  = tex4.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r;
-    float water_depth   = max(linearize_depth(depth_opaque) - depth_transparent, 0.0f);
-    refraction          = apply_water_absorption(refraction, water_depth);
-    
     // add reflections and refraction
     float n_dot_v        = saturate(dot(surface.normal, view_dir));
     float3 reflection    = tex[thread_id.xy].rgb;

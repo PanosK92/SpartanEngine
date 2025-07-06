@@ -191,7 +191,7 @@ namespace spartan
         occlusion_c,
         icon_c,
         dithering_c,
-        apply_reflections_refraction_c,
+        transparency_reflection_refraction_c,
         max
     };
     
@@ -271,6 +271,7 @@ namespace spartan
         Gizmo_light_spot,
         Gizmo_audio_source,
         Foam,
+        Caustics,
         Black,
         White,
         Max

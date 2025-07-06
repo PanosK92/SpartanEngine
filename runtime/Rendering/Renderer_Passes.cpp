@@ -116,7 +116,7 @@ namespace spartan
 
             // image based lighting
             Pass_Light_ImageBased(cmd_list_present);                 // ibl from skysphere and global illumination
-            Pass_ScreenSpaceReflectionsRefraction(cmd_list_present); // ssr
+            Pass_TransparencyReflectionRefraction(cmd_list_present); // ssr
 
             // render -> output resolution
             Pass_Upscale(cmd_list_present);
@@ -644,7 +644,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Pass_ScreenSpaceReflectionsRefraction(RHI_CommandList* cmd_list)
+    void Renderer::Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list)
     {
         static bool cleared = false;
 
@@ -652,11 +652,11 @@ namespace spartan
         RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::ssr);
         RHI_Texture* tex_refraction_source = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
 
-        cmd_list->BeginTimeblock("screen_space_reflections_refraction");
+        cmd_list->BeginTimeblock("transparency_reflection_refraction");
         {
             if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             { 
-                cmd_list->BeginMarker("reflection_trace");
+                cmd_list->BeginMarker("ssr");
                 {
                     // do any pending barriers as we don't have control over vendor tech
                     tex_frame->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -690,11 +690,11 @@ namespace spartan
 
             cmd_list->InsertBarrierReadWrite(tex_frame);
 
-            cmd_list->BeginMarker("apply_reflections_refraction");
+            cmd_list->BeginMarker("apply");
             {
                 RHI_PipelineState pso;
                 pso.name             = "apply_reflections_refraction";
-                pso.shaders[Compute] = GetShader(Renderer_Shader::apply_reflections_refraction_c);
+                pso.shaders[Compute] = GetShader(Renderer_Shader::transparency_reflection_refraction_c);
 
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list);
@@ -702,6 +702,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex5, GetStandardTexture(Renderer_StandardTexture::Caustics));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);             // out
                 cmd_list->Dispatch(tex_frame);
             }

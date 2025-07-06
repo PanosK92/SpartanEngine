@@ -495,8 +495,8 @@ namespace spartan
         shader(Renderer_Shader::dithering_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "dithering.hlsl", async);
 
         // dithering
-        shader(Renderer_Shader::apply_reflections_refraction_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::apply_reflections_refraction_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "apply_reflections_refraction.hlsl", async);
+        shader(Renderer_Shader::transparency_reflection_refraction_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::transparency_reflection_refraction_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "transparency_reflection_refraction.hlsl", async);
     }
 
     void Renderer::CreateFonts()
@@ -566,7 +566,9 @@ namespace spartan
 
     void Renderer::CreateStandardTextures()
     {
-        const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
+        const string dir_texture   = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
+        const string dir_materials = "project\\materials\\";
+
         #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
         // blue noise textures with 2 channels, each channel containing a different pattern
@@ -589,10 +591,15 @@ namespace spartan
             standard_texture(Renderer_StandardTexture::Gizmo_audio_source)      = make_shared<RHI_Texture>(dir_texture + "audio.png");
         }
 
+        // water
+        {
+            standard_texture(Renderer_StandardTexture::Foam)      = make_shared<RHI_Texture>(dir_materials + "water\\foam.jpg");
+            standard_texture(Renderer_StandardTexture::Caustics)  = make_shared<RHI_Texture>(dir_materials + "water\\caustics.jpeg");
+        }
+
         // misc
         {
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
-            standard_texture(Renderer_StandardTexture::Foam)         = make_shared<RHI_Texture>(dir_texture + "foam.jpg");
         }
 
         // black and white
