@@ -1441,7 +1441,7 @@ namespace spartan
                 const float ROOM_HEIGHT = 100.0f;
                 const float DOOR_WIDTH  = 2.0f;
                 const float DOOR_HEIGHT = 5.0f;
-                const int NUM_ROOMS     = 100; // might not reach this number if the path gets boxed in
+                const int NUM_ROOMS     = 100; // might not reach this number if the path gets boxed in (meets itself)
                 
                 // direction enum
                 enum class Direction { Front, Back, Left, Right, Max };

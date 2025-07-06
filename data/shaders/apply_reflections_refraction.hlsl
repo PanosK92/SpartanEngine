@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float refraction_strength = 0.05f;
+static const float refraction_strength = 0.3f;
 static const float default_ior         = 1.333f;
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -51,9 +51,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 refraction = background;
     if (surface.is_transparent())
     {
-        float2 uv_offset  = saturate(world_to_view(surface.normal, false).xy * refraction_strength);
+        // scale distortion based on distance to camera
+        float inv_dist    = saturate(1.0f / (surface.camera_to_pixel_length + 0.0001f));
+        float2 uv_offset  = world_to_view(surface.normal, false).xy * refraction_strength * inv_dist;
         float2 refract_uv = uv + uv_offset;
-        
+
         float3 refracted   = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
         float opaque_depth = tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r;
         float blend_amount = (opaque_depth < surface.depth + 0.01f);
