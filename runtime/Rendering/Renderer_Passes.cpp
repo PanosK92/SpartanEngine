@@ -243,7 +243,25 @@ namespace spartan
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                            uint32_t lod_index = renderable->GetLodCount() - 1;
+                            // determine lod based on distance to camera
+                            uint32_t lod_index = 0;
+                            {
+                                constexpr float lod_threshold_near  = 5.0f * 5.0f;   // squared units
+                                constexpr float lod_threshold_mid   = 20.0f * 20.0f;
+                                constexpr float lod_threshold_far   = 60.0f * 60.0f;
+                            
+                                float d2 = draw_call.distance_squared;
+                                uint32_t lod_count = renderable->GetLodCount();
+                            
+                                if (d2 < lod_threshold_near)
+                                    lod_index = 0;
+                                else if (d2 < lod_threshold_mid)
+                                    lod_index = min(1u, lod_count - 1);
+                                else if (d2 < lod_threshold_far)
+                                    lod_index = min(2u, lod_count - 1);
+                                else
+                                    lod_index = lod_count - 1;
+                            }
 
                             if (renderable->HasInstancing())
                             {

@@ -116,7 +116,8 @@ struct Surface
         {
             occlusion = min(sample_material.a, tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0).r); // combine occlusion with material occlusion
         }
-        occlusion *= float(sample_albedo.a == 1.0f); // kill ssao for transparents as refraction can't distort UVs and SSAO isn't sampled with those UVs
+        // disable ssao for transparents (it has already been applied to the opaque light)
+        occlusion = lerp(1.0f, occlusion, float(sample_albedo.a == 1.0f));
 
         position               = get_position(depth, uv);
         camera_to_pixel        = position - buffer_frame.camera_position.xyz;
