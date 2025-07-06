@@ -377,8 +377,8 @@ namespace spartan
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
     {
         // acquire resources
-        RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);        // render resolution - base depth
-        RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output); // output resolution
+        RHI_Texture* tex_depth        = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);               // render resolution - base depth
+        RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output); // output resolution
    
         // deduce rasterizer state
         bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
@@ -680,10 +680,11 @@ namespace spartan
 
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);                                                   // in - reflection
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source);                                     // in - refraction
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);               // in - reflection
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);                                                 // out
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);             // out
                 cmd_list->Dispatch(tex_frame);
             }
             cmd_list->EndMarker();
@@ -1799,7 +1800,7 @@ namespace spartan
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Alpha);
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
         pso.render_target_color_textures[0]  = tex_out;
-        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
+        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
         cmd_list->SetPipelineState(pso);
 
         // set transform
@@ -1845,7 +1846,7 @@ namespace spartan
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
             pso.render_target_color_textures[0]  = tex_out;
             pso.clear_color[0]                   = rhi_color_load;
-            pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_output);
+            pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
             pso.primitive_toplogy                = RHI_PrimitiveTopology::LineList;
             cmd_list->SetPipelineState(pso);
 

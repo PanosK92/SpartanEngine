@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float refraction_strength = 0.02f;
+static const float refraction_strength = 0.05f;
 static const float default_ior         = 1.333f;
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -46,20 +46,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 view_dir = -surface.camera_to_pixel;
     float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
 
-    // background (used when no refraction or blending base)
+    // refraction
     float3 background = tex2[thread_id.xy].rgb;
-
-    // optional refraction (distorted background)
     float3 refraction = background;
     if (surface.is_transparent())
     {
-        float ior          = surface.ior > 0.0f ? surface.ior : default_ior;
-        float3 refract_dir = refract(view_dir, surface.normal, 1.0f / ior);
-        float2 uv_offset   = refract_dir.xy * refraction_strength * (1.0f - surface.roughness);
-        float2 refract_uv  = clamp(uv + uv_offset, 0.0f, 1.0f);
-        refraction         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
+        float2 uv_offset  = saturate(world_to_view(surface.normal, false).xy * refraction_strength);
+        float2 refract_uv = uv + uv_offset;
+        
+        float3 refracted   = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
+        float opaque_depth = tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r;
+        float blend_amount = (opaque_depth < surface.depth + 0.01f);
+        
+        refraction = lerp(background, refracted, blend_amount);
     }
-
+    
     // add reflections and refraction
     float n_dot_v        = saturate(dot(surface.normal, view_dir));
     float3 reflection    = tex[thread_id.xy].rgb;

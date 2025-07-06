@@ -204,7 +204,7 @@ namespace spartan
         gbuffer_depth,
         gbuffer_depth_occluders,
         gbuffer_depth_occluders_hiz,
-        gbuffer_depth_output,
+        gbuffer_depth_opaque_output,
         lut_brdf_specular,
         lut_atmosphere_scatter,
         light_diffuse,

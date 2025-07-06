@@ -207,11 +207,11 @@ namespace spartan
             {
                 uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
 
-                render_target(Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags | RHI_Texture_Uav,                         "gbuffer_color");
-                render_target(Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_Uav,                         "gbuffer_normal");
-                render_target(Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags | RHI_Texture_Uav,                         "gbuffer_material");
-                render_target(Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16_Float,       flags | RHI_Texture_Uav,                         "gbuffer_velocity");
-                render_target(Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags | RHI_Texture_Srv | RHI_Texture_ClearBlit, "gbuffer_depth");
+                render_target(Renderer_RenderTarget::gbuffer_color)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags | RHI_Texture_Uav, "gbuffer_color");
+                render_target(Renderer_RenderTarget::gbuffer_normal)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_Uav, "gbuffer_normal");
+                render_target(Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8G8B8A8_Unorm,     flags | RHI_Texture_Uav, "gbuffer_material");
+                render_target(Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16_Float,       flags | RHI_Texture_Uav, "gbuffer_velocity");
+                render_target(Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float,          flags,                   "gbuffer_depth");
             }
 
             // light
@@ -256,7 +256,7 @@ namespace spartan
             // misc
             render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, compute_mip_count(1), format_standard,            RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
             render_target(Renderer_RenderTarget::outline)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,                    RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
-            render_target(Renderer_RenderTarget::gbuffer_depth_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,                    RHI_Format::D32_Float,      RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_output");
+            render_target(Renderer_RenderTarget::gbuffer_depth_opaque_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,             RHI_Format::D32_Float,      RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_opaque_output");
         }
 
         // resolution - fixed (created once)

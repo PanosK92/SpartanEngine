@@ -228,7 +228,6 @@ float get_depth(const float2 uv)
     return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
 
-
 float linearize_depth(const float z)
 {
     float near = buffer_frame.camera_near;
