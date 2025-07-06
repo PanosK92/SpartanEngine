@@ -107,7 +107,8 @@ namespace spartan
             const float height_max,                    // the maximum height of the terrain to place the mesh
             const float scale_min,                     // the minimum scale of the mesh
             const float scale_max,                     // the maximum scale of the mesh
-            const bool scale_by_slope                  // in real life, larger rocks tend to settle on flatter terrain, while steeper slopes hold smaller debris or fragments
+            const bool scale_by_slope,                 // in real life, larger rocks tend to settle on flatter terrain, while steeper slopes hold smaller debris or fragments
+            const float height_jitter                  // the amount of height jitter to apply to the mesh placement, useful for adding some organic variation instead of getting perfect lines
         )
         {
             SP_ASSERT(!triangle_data.empty());
@@ -115,21 +116,27 @@ namespace spartan
             // step 1: filter acceptable triangles using precomputed data
             vector<uint32_t> acceptable_triangles;
             acceptable_triangles.reserve(triangle_data.size());
-        
-            for (uint32_t i = 0; i < triangle_data.size(); i++)
             {
-                if (triangle_data[i].slope_radians <= max_slope_radians &&
-                    triangle_data[i].height_min >= height_min &&
-                    triangle_data[i].height_max <= height_max)
+                mt19937 generator(random_device{}());
+                uniform_real_distribution<float> jitter_dist(0.0f, height_jitter);
+                float jitter_amount = jitter_dist(generator);
+
+                for (uint32_t i = 0; i < triangle_data.size(); i++)
                 {
-                    acceptable_triangles.push_back(i);
+                    if (triangle_data[i].slope_radians <= max_slope_radians &&
+                        triangle_data[i].height_min >= height_min - jitter_amount &&
+                        triangle_data[i].height_max <= height_max + jitter_amount)
+                    {
+                        acceptable_triangles.push_back(i);
+                        jitter_amount = jitter_dist(generator);
+                    }
                 }
-            }
         
-            if (acceptable_triangles.empty())
-            {
-                SP_LOG_WARNING("No acceptable triangles found for the given criteria");
-                return {};
+                if (acceptable_triangles.empty())
+                {
+                    SP_LOG_WARNING("No acceptable triangles found for the given criteria");
+                    return {};
+                }
             }
         
             // step 2: pre-allocate output vector
@@ -138,7 +145,7 @@ namespace spartan
             // step 3: parallel placement without mutex by direct assignment
             auto place_mesh = [&](uint32_t start_index, uint32_t end_index)
             {
-                thread_local mt19937 generator(random_device{}());
+                mt19937 generator(random_device{}());
                 const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
                 uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
@@ -149,7 +156,8 @@ namespace spartan
                 {
                     uint32_t tri_idx        = acceptable_triangles[triangle_dist(generator)];
                     const TriangleData& tri = triangle_data[tri_idx];
-        
+
+                    // position
                     Vector3 position = Vector3::Zero;
                     {
                         // compute barycentric coordinates
@@ -843,6 +851,7 @@ namespace spartan
         float scale_min                  = 0.0f;
         float scale_max                  = 1.0f;
         bool scale_by_slope              = false;                        // relevant for rocks (in real life, larger rocks tend to settle on flatter terrain)
+        float height_variation           = 0.0f;
     
         if (terrain_prop == TerrainProp::Tree)
         {
@@ -860,6 +869,7 @@ namespace spartan
             height_max                  = parameters::level_snow;       // stop when snow shows up
             scale_min                   = 1.0f;
             scale_max                   = 1.5f;
+            height_variation            = 5.0f;                        // ensure grass doesn't hit a min or max limit and form a perfect line
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
@@ -876,7 +886,7 @@ namespace spartan
             SP_ASSERT_MSG(false, "Unknown terrain prop type for GenerateTransforms");
         }
     
-        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max, scale_min, scale_max, scale_by_slope);
+        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max, scale_min, scale_max, scale_by_slope, height_variation);
     }
 
     void Terrain::SaveToFile(const char* file_path)

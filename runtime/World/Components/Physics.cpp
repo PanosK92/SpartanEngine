@@ -874,102 +874,100 @@ namespace spartan
         const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
         size_t instance_count                 = instances.empty() ? 1 : instances.size();
 
-        if (m_bodies.size() != instance_count)
+        // create bodies and shapes
+        m_bodies.resize(instance_count, nullptr);
+        for (size_t i = 0; i < instance_count; i++)
         {
-            // create bodies and shapes
-            m_bodies.resize(instance_count, nullptr);
-            for (size_t i = 0; i < instance_count; i++)
+            math::Matrix transform = instances.empty() ? GetEntity()->GetMatrix() : instances[i];
+            PxTransform pose(
+                PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
+            );
+            PxRigidActor* actor = nullptr;
+            if (IsStatic())
             {
-                math::Matrix transform = instances.empty() ? GetEntity()->GetMatrix() : instances[i];
-                PxTransform pose(
-                    PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                    PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                );
-                PxRigidActor* actor = nullptr;
-                if (IsStatic())
+                actor = physics->createRigidStatic(pose);
+            }
+            else
+            {
+                actor = physics->createRigidDynamic(pose);
+                PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
+                if (dynamic)
                 {
-                    actor = physics->createRigidStatic(pose);
+                    dynamic->setMass(m_mass);
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+                    if (m_center_of_mass != Vector3::Zero)
+                    {
+                        PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                        PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
+                    }
+                    PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
+                    if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+                    if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+                    if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+                    if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+                    if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+                    if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+                    dynamic->setRigidDynamicLockFlags(flags);
                 }
-                else
+            }
+        
+            PxShape* shape       = nullptr;
+            PxMaterial* material = static_cast<PxMaterial*>(m_material);
+            switch (m_body_type)
+            {
+                case BodyType::Box:
                 {
-                    actor = physics->createRigidDynamic(pose);
-                    PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
-                    if (dynamic)
-                    {
-                        dynamic->setMass(m_mass);
-                        dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
-                        if (m_center_of_mass != Vector3::Zero)
-                        {
-                            PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
-                            PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
-                        }
-                        PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                        if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                        if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                        if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                        if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                        if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                        if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                        dynamic->setRigidDynamicLockFlags(flags);
-                    }
+                    Vector3 scale = GetEntity()->GetScale();
+                    PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
+                    shape = physics->createShape(geometry, *material);
+                    break;
                 }
-
-                PxShape* shape       = nullptr;
-                PxMaterial* material = static_cast<PxMaterial*>(m_material);
-                switch (m_body_type)
+                case BodyType::Sphere:
                 {
-                    case BodyType::Box:
+                    Vector3 scale = GetEntity()->GetScale();
+                    float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
+                    PxSphereGeometry geometry(radius);
+                    shape = physics->createShape(geometry, *material);
+                    break;
+                }
+                case BodyType::Plane:
+                {
+                    PxPlaneGeometry geometry;
+                    shape = physics->createShape(geometry, *material);
+                    shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
+                    break;
+                }
+                case BodyType::Capsule:
+                {
+                    Vector3 scale     = GetEntity()->GetScale();
+                    float radius      = max(scale.x, scale.z) * 0.5f;
+                    float half_height = scale.y * 0.5f;
+                    PxCapsuleGeometry geometry(radius, half_height);
+                    shape = physics->createShape(geometry, *material);
+                    shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
+                    break;
+                }
+                case BodyType::Mesh:
+                {
+                    if (m_mesh)
                     {
-                        Vector3 scale = GetEntity()->GetScale();
-                        PxBoxGeometry geometry(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
-                        shape = physics->createShape(geometry, *material);
-                        break;
-                    }
-                    case BodyType::Sphere:
-                    {
-                        Vector3 scale = GetEntity()->GetScale();
-                        float radius  = max(max(scale.x, scale.y), scale.z) * 0.5f;
-                        PxSphereGeometry geometry(radius);
-                        shape = physics->createShape(geometry, *material);
-                        break;
-                    }
-                    case BodyType::Plane:
-                    {
-                        PxPlaneGeometry geometry;
-                        shape = physics->createShape(geometry, *material);
-                        shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                        break;
-                    }
-                    case BodyType::Capsule:
-                    {
-                        Vector3 scale     = GetEntity()->GetScale();
-                        float radius      = max(scale.x, scale.z) * 0.5f;
-                        float half_height = scale.y * 0.5f;
-                        PxCapsuleGeometry geometry(radius, half_height);
-                        shape = physics->createShape(geometry, *material);
-                        shape->setLocalPose(PxTransform(PxVec3(0, 0, 0), PxQuat(PxHalfPi, PxVec3(0, 0, 1))));
-                        break;
-                    }
-                    case BodyType::Mesh:
-                    {
-                        if (m_mesh)
+                        if (IsStatic())
                         {
-                            if (IsStatic())
-                            {
-                                Vector3 scale = instance_count > 1 ? instances[i].GetScale() : Vector3::One;
-                                PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // this is a runtime transform, cheap for statics but it won't be reflected for the internal baked shape (raycasts etc)
-                                PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
-                                shape = physics->createShape(geometry, *material);
-                            }
-                            else
-                            {
-                                PxConvexMeshGeometry geometry(static_cast<PxConvexMesh*>(m_mesh));
-                                shape = physics->createShape(geometry, *material);
-                            }
+                            Vector3 scale = instance_count > 1 ? instances[i].GetScale() : Vector3::One;
+                            PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // this is a runtime transform, cheap for statics but it won't be reflected for the internal baked shape (raycasts etc)
+                            PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
+                            shape = physics->createShape(geometry, *material);
                         }
-                        break;
+                        else
+                        {
+                            PxConvexMeshGeometry geometry(static_cast<PxConvexMesh*>(m_mesh));
+                            shape = physics->createShape(geometry, *material);
+                        }
                     }
-                    case BodyType::Water:
+                    break;
+                }
+                case BodyType::Water:
                     {
                         Vector3 extents = renderable->GetBoundingBox().GetExtents();
 
@@ -989,33 +987,16 @@ namespace spartan
                         shape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);     // enable trigger
                         break;
                     }
-                }
-                if (shape)
-                {
-                    shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
-                    actor->attachShape(*shape);
-                }
-                actor->userData = reinterpret_cast<void*>(GetEntity());
-                scene->addActor(*actor);
-
-                m_bodies[i] = actor;
             }
-        }
-        else
-        {
-            // update poses if not playing
-            if (!Engine::IsFlagSet(EngineMode::Playing))
+            if (shape)
             {
-                for (size_t i = 0; i < instance_count; i++)
-                {
-                    math::Matrix transform = instances.empty() ? GetEntity()->GetMatrix() : instances[i];
-                    PxTransform pose(
-                        PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                        PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                    );
-                    static_cast<PxRigidActor*>(m_bodies[i])->setGlobalPose(pose);
-                }
+                shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                actor->attachShape(*shape);
             }
+            actor->userData = reinterpret_cast<void*>(GetEntity());
+            scene->addActor(*actor);
+        
+            m_bodies[i] = actor;
         }
     }
 }
