@@ -169,11 +169,9 @@ namespace spartan
 
     void Renderer::CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic)
     {
-        // get render resolution
+        // get render and output resolutions
         uint32_t width_render  = static_cast<uint32_t>(GetResolutionRender().x);
         uint32_t height_render = static_cast<uint32_t>(GetResolutionRender().y);
-
-        // get output resolution
         uint32_t width_output  = static_cast<uint32_t>(GetResolutionOutput().x);
         uint32_t height_output = static_cast<uint32_t>(GetResolutionOutput().y);
 

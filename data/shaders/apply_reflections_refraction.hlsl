@@ -27,6 +27,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float refraction_strength = 0.3f;
 static const float default_ior         = 1.333f;
 
+float3 apply_water_absorption(float3 color, float depth)
+{
+    // Absorption coefficients for RGB (approximate, in 1/meters)
+    // Red is absorbed most, blue least
+    float3 absorption = float3(0.1f, 0.05f, 0.02f); // Red, Green, Blue
+
+    // Apply Beer's law: I = I0 * e^(-absorption * depth)
+    float3 attenuated_color = color * exp(-absorption * depth);
+
+    return attenuated_color;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -47,7 +59,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 uv               = (thread_id.xy + 0.5f) / resolution_out;
     float depth_transparent = linearize_depth(surface.depth);
     
-    // refraction
+    // background/transparency/refraction
     float3 background = tex2[thread_id.xy].rgb;
     float3 refraction = background;
     if (surface.is_transparent())
@@ -64,11 +76,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         refraction = lerp(background, refracted, blend_amount);
     }
 
-    // fade refraction/transparency with depth, to fake light not going deep enough
+    // emulate the fact that the deeper the water is, the more opaque it becomes and changes color
     float depth_opaque  = tex4.SampleLevel(samplers[sampler_bilinear_clamp], surface.uv, 0.0f).r;
-    float water_depth   = max( linearize_depth(depth_opaque) - depth_transparent, 0.0f);
-    float fade          = saturate(1.0f - water_depth * 0.08f); 
-    refraction         *= fade;
+    float water_depth   = max(linearize_depth(depth_opaque) - depth_transparent, 0.0f);
+    refraction          = apply_water_absorption(refraction, water_depth);
     
     // add reflections and refraction
     float n_dot_v        = saturate(dot(surface.normal, view_dir));
