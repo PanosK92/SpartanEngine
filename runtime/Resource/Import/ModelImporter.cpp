@@ -347,7 +347,6 @@ namespace spartan
                 {
                     opacity.r = 0.5f;
                     material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                    material->SetProperty(MaterialProperty::Ior, Material::EnumToIor(MaterialIor::Glass));
                 }
             }
 

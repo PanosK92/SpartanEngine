@@ -235,7 +235,6 @@ namespace spartan
                     material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); // pool water color
                     material->SetTexture(MaterialTextureType::Normal,            "project\\materials\\water\\normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
-                    material->SetProperty(MaterialProperty::Ior,                 Material::EnumToIor(MaterialIor::Water));
                     material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
                     material->SetProperty(MaterialProperty::WorldSpaceUv,        1.0f); // mesh size independent tiling
@@ -336,14 +335,6 @@ namespace spartan
             
                 // body
                 {
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Windows_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::Ior, 1.45f);
-                        }
-                    }
-                    
                     if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
                     {
                         if (Material* material = body->GetComponent<Renderable>()->GetMaterial())

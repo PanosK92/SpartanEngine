@@ -25,12 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // constants
 static const float refraction_strength = 0.3f;
-static const float default_ior         = 1.333f;
 
+// emulates the fact that deeper water is less transparent and shifts the color towards blue
 float3 apply_water_absorption(float3 color, float depth)
 {
-    // absorption coefficients for RGB (approximate, in 1/meters)
-    float3 absorption = float3(0.1f, 0.05f, 0.02f); // red, green, blue
+    float3 absorption = float3(0.1f, 0.05f, 0.02f); // absorption coefficients for rgb (approximate, in 1/meters)
     return color * exp(-absorption * depth);
 }
 
@@ -65,12 +64,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float2 refract_uv  = uv + uv_offset;
         float3 refracted   = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
         float depth_opaque = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r);
-        float blend_amount = (depth_opaque > depth_transparent);
-        refraction         = lerp(background, refracted, blend_amount);
+        float water_depth  = max(depth_opaque - depth_transparent, 0.0f);
+        refraction         = lerp(background, refracted, saturate(water_depth * 100.0f));
 
-        // absorption: the deeper the water, the more light is absorbed, and the color shifts and becomes less transparent
-        float water_depth = max(depth_opaque - depth_transparent, 0.0f);
-        refraction        = apply_water_absorption(refraction, water_depth);
+        // absorption
+        refraction = apply_water_absorption(refraction, water_depth);
     }
 
     // add reflections and refraction

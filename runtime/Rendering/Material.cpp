@@ -56,7 +56,6 @@ namespace spartan
                 case MaterialProperty::ColorG:                     return "color_g";
                 case MaterialProperty::ColorB:                     return "color_b";
                 case MaterialProperty::ColorA:                     return "color_a";
-                case MaterialProperty::Ior:                        return "ior";
                 case MaterialProperty::Roughness:                  return "roughness";
                 case MaterialProperty::Metalness:                  return "metalness";
                 case MaterialProperty::Normal:                     return "normal";
@@ -257,7 +256,6 @@ namespace spartan
         SetProperty(MaterialProperty::TextureTilingX, 1.0f);
         SetProperty(MaterialProperty::TextureTilingY, 1.0f);
         SetProperty(MaterialProperty::WorldHeight,    1.0f);
-        SetProperty(MaterialProperty::Ior,            Material::EnumToIor(MaterialIor::Air));
         SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
     }
 
@@ -687,11 +685,6 @@ namespace spartan
 
             // transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
             m_properties[static_cast<uint32_t>(MaterialProperty::Roughness)] = value * 0.5f;
-        }
-
-        if (property_type == MaterialProperty::Ior)
-        {
-            value = clamp(value, Material::EnumToIor(MaterialIor::Air), Material::EnumToIor(MaterialIor::Diamond));
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;

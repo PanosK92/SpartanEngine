@@ -168,13 +168,13 @@ namespace spartan
 
         uint32_t flags    = 0;
         float local_width = 0.0f;
-        float ior         = 1.0f;
+        float padding;
         float subsurface_scattering;
 
         float sheen;
-        float local_height = 0.0f;
+        float local_height   = 0.0f;
         float world_space_uv = 0.0f;
-        float padding;
+        float padding2;
 
         float anisotropic;
         float anisotropic_rotation;

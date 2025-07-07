@@ -62,7 +62,6 @@ namespace spartan
         Metalness,                  // defines the surface as dielectric or metallic
         Normal,                     // normal map texture for simulating surface details
         Height,                     // height map texture for surface tessellation
-        Ior,                        // index of refraction for the material
         SubsurfaceScattering,       // simulates light passing through translucent materials
         TextureTilingX,             // tiling factor of the texture along the X-axis
         TextureTilingY,             // tiling factor of the texture along the Y-axis

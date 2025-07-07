@@ -886,7 +886,6 @@ namespace spartan
                 properties[count].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
                 properties[count].sheen                 = material->GetProperty(MaterialProperty::Sheen);
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                properties[count].ior                   = material->GetProperty(MaterialProperty::Ior);
                 properties[count].world_space_uv        = material->GetProperty(MaterialProperty::WorldSpaceUv);
 
                 // flags

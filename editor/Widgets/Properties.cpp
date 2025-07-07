@@ -739,12 +739,6 @@ void Properties::ShowMaterial(Material* material) const
                             float min = 0.0f;
                             float max = 1.0f;
 
-                            if (mat_property == MaterialProperty::Ior)
-                            {
-                                min = 1.0f;
-                                max = 2.4f; // diamond
-                            }
-
                             // this custom slider already has a unique id
                             ImGuiSp::draw_float_wrap("", &value, 0.004f, min, max);
                         }
@@ -777,27 +771,6 @@ void Properties::ShowMaterial(Material* material) const
             show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
             show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
             show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
-        }
-        
-        // index of refraction
-        {
-            static vector<string> ior_types =
-            {
-                "Air",
-                "Water",
-                "Eyes",
-                "Glass",
-                "Sapphire",
-                "Diamond"
-            };
-        
-            ImGui::Text("IOR");
-            ImGui::SameLine(column_pos_x);
-            uint32_t ior_index = static_cast<uint32_t>(Material::IorToEnum(material->GetProperty(MaterialProperty::Ior)));
-            if (ImGuiSp::combo_box("##material_ior", ior_types, &ior_index))
-            {
-                material->SetProperty(MaterialProperty::Ior, static_cast<float>(Material::EnumToIor(static_cast<MaterialIor>(ior_index))));
-            }
         }
         
         // uv

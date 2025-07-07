@@ -41,7 +41,6 @@ struct Surface
     float  anisotropic_rotation;
     float  sheen;
     float  subsurface_scattering;
-    float  ior;
     float  occlusion;
     float3 emissive;
     float3 F0;
@@ -72,7 +71,7 @@ struct Surface
     bool is_tessellated()                { return flags & uint(1U << 13); }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
-    bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f && ior != 1.0f; } // the ior is to avoid treating alpha tested objects as transparent
+    bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }
     
     void Build(uint2 position_screen, float2 resolution_out, bool use_albedo, bool replace_color_with_one)
     {
@@ -103,7 +102,6 @@ struct Surface
         clearcoat_roughness   = material.clearcoat_roughness;
         sheen                 = material.sheen;
         subsurface_scattering = material.subsurface_scattering;
-        ior                   = material.ior;
         specular_energy       = 1.0f;
         diffuse_energy        = 1.0f;
 
