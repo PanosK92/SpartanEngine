@@ -214,25 +214,18 @@ namespace spartan
                         const Renderer_DrawCall& draw_call = m_draw_calls[i];
                         Renderable* renderable             = draw_call.renderable;
                         Material* material                 = renderable->GetMaterial();
-                        if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows))
-                            continue;
-
                         const float shadow_distance = renderable->GetMaxShadowDistance();
-                        if (draw_call.distance_squared > shadow_distance * shadow_distance)
+                        if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
                             continue;
 
-                        // set pso
+                        // set pixel shader
                         {
-                            cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                            if (light->GetLightType() == LightType::Directional && array_index > 0)
-                            {
-                                pso.shaders[RHI_Shader_Type::Pixel] = nullptr; // no pixel shader for directional light cascades beyond index 0
-                            }
-                            else
-                            {
-                                pso.shaders[RHI_Shader_Type::Pixel] = material->IsAlphaTested() ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
-                            }
-                            cmd_list->SetPipelineState(pso);
+                           RHI_Shader* current_shader          = pso.shaders[RHI_Shader_Type::Pixel];
+                           bool is_first_cascade               = array_index == 0;
+                           bool is_alpha_tested_mat            = material->IsAlphaTested();
+                           bool should_use_ps                  = is_first_cascade && is_alpha_tested_mat;
+                           pso.shaders[RHI_Shader_Type::Pixel] = should_use_ps ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
+                           cmd_list->SetPipelineState(pso);
                         }
 
                         // set push constants
@@ -244,15 +237,17 @@ namespace spartan
     
                         // draw
                         {
+                            cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
                             // determine lod based on distance to camera
                             uint32_t lod_index = 0;
                             {
-                                constexpr float lod_threshold_near  = 5.0f * 5.0f;   // squared units
-                                constexpr float lod_threshold_mid   = 20.0f * 20.0f;
-                                constexpr float lod_threshold_far   = 60.0f * 60.0f;
+                                // squared units
+                                static const float lod_threshold_near = 5.0f  * 5.0f;
+                                static const float lod_threshold_mid  = 20.0f * 20.0f;
+                                static const float lod_threshold_far  = 60.0f * 60.0f;
                             
                                 float d2 = draw_call.distance_squared;
                                 uint32_t lod_count = renderable->GetLodCount();
@@ -269,8 +264,6 @@ namespace spartan
 
                             if (renderable->HasInstancing())
                             {
-                                SP_ASSERT(draw_call.instance_count < renderable->GetInstanceBuffer()->GetElementCount());
-
                                 cmd_list->DrawIndexed(
                                     renderable->GetIndexCount(lod_index),
                                     renderable->GetIndexOffset(lod_index),

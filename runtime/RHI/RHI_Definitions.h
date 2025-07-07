@@ -317,11 +317,9 @@ namespace spartan
         Max
     };
 
-    static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
+    static uint64_t rhi_hash_combine(uint64_t a, uint64_t b)
     {
-        // xxHash is probably the best hashing lib out there.
-        // To avoid having it as yet another dependency, we'll do this instead:
-        return seed ^ (x + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+        return a * 31 + b;
     }
 
     static uint32_t rhi_format_to_bits_per_channel(const RHI_Format format)
