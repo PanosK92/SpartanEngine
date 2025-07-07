@@ -48,31 +48,30 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky())
         return;
 
-    // compute common values
-    float3 view_dir         = -surface.camera_to_pixel;
-    float2 uv               = (thread_id.xy + 0.5f) / resolution_out;
-    float depth_transparent = linearize_depth(surface.depth);
-    
     // background/transparency/refraction
     float3 background = tex2[thread_id.xy].rgb;
     float3 refraction = background;
-    if (surface.is_transparent())
+    if (surface.is_water())
     {
+        // compute common values
+        float2 uv               = (thread_id.xy + 0.5f) / resolution_out;
+        float depth_transparent = linearize_depth(surface.depth);
+
         // refraction
         float inv_dist     = saturate(1.0f / (surface.camera_to_pixel_length + 0.0001f));
         float2 uv_offset   = world_to_view(surface.normal, false).xy * refraction_strength * inv_dist;
         float2 refract_uv  = uv + uv_offset;
         float3 refracted   = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
         float depth_opaque = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r);
-        float water_depth  = max(depth_opaque - depth_transparent, 0.0f);
-        refraction         = lerp(background, refracted, saturate(water_depth * 100.0f));
+        refraction         = lerp(background, refracted, float(depth_opaque > depth_transparent));
 
         // absorption
-        refraction = apply_water_absorption(refraction, water_depth);
+        float water_depth = max(depth_opaque - depth_transparent, 0.0f);
+        refraction        = apply_water_absorption(refraction, water_depth);
     }
 
     // add reflections and refraction
-    float n_dot_v        = saturate(dot(surface.normal, view_dir));
+    float n_dot_v        = saturate(dot(surface.normal, surface.camera_to_pixel));
     float3 reflection    = tex[thread_id.xy].rgb;
     float2 brdf          = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).rg;
     float3 surface_color = reflection * (surface.F0 * brdf.x + brdf.y) + refraction;

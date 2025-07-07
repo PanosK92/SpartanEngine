@@ -1503,7 +1503,8 @@ namespace spartan
                     room_entity->SetPosition(offset); // set room position
                     
                     // random chance for pool (lowered floor)
-                    const float pool_depth = 0.5f;
+                    const float pool_depth   = 1.0f; // how far the floor drops
+                    const float water_height = 0.5f; // height of water surface
                     uniform_real_distribution<float> dist(0.0f, 1.0f);
                     const bool is_pool  = dist(rng) < 0.5f;             // 50% chance for lowered floor
                     const float floor_y = is_pool ? -pool_depth : 0.0f; // lower floor
@@ -1516,7 +1517,7 @@ namespace spartan
                     if (is_pool)
                     {
                         Color pool_color = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
-                        auto water_entity = entities::water(Vector3(0, -floor_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
+                        auto water_entity = entities::water(Vector3(0, water_height, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
                         water_entity->SetParent(room_entity);
                     }
                     
