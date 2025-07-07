@@ -514,7 +514,7 @@ namespace spartan
                     {
                         // only if in frustum, calculate distance
                         m_distance_squared[group_index] = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                        m_is_visible[group_index]       = m_distance_squared[group_index] <= m_max_render_distance * m_max_render_distance;
+                        m_is_visible[group_index]       = m_distance_squared[group_index] <= m_max_distance_render * m_max_distance_render;
                     }
                     else
                     {
@@ -532,7 +532,7 @@ namespace spartan
                 {
                     // only if in frustum, calculate distance
                     m_distance_squared[0] = Vector3::DistanceSquared(camera_position, bounding_box.GetClosestPoint(camera_position));
-                    m_is_visible[0]       = m_distance_squared[0]  <= m_max_render_distance * m_max_render_distance;
+                    m_is_visible[0]       = m_distance_squared[0]  <= m_max_distance_render * m_max_distance_render;
                 }
                 else
                 {

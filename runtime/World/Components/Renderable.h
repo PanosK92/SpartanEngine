@@ -91,10 +91,16 @@ namespace spartan
         void SetInstances(const std::vector<math::Matrix>& transforms);
         void SetInstance(const uint32_t index, const math::Matrix& transform);
 
+        // render distance
+        float GetMaxRenderDistance() const                         { return m_max_distance_render; }
+        void SetMaxRenderDistance(const float max_render_distance) { m_max_distance_render = max_render_distance; }
+
+        // shadow distance
+        float GetMaxShadowDistance() const                         { return m_max_distance_shadow; }
+        void SetMaxShadowDistance(const float max_shadow_distance) { m_max_distance_shadow = max_shadow_distance; }
+
         // distance & visibility
         float GetDistanceSquared(const uint32_t instance_group_index = 0) const      { return m_distance_squared[instance_group_index]; }
-        float GetMaxRenderDistance() const                                           { return m_max_render_distance; }
-        void SetMaxRenderDistance(const float max_render_distance)                   { m_max_render_distance = max_render_distance; }
         bool IsVisible(const uint32_t instance_group_index = 0) const                { return m_is_visible[instance_group_index]; }
         void SetVisible(const bool visible, const uint32_t instance_group_index = 0) { m_is_visible[instance_group_index] = visible; }
 
@@ -133,7 +139,8 @@ namespace spartan
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
         // visibility & lods
-        float m_max_render_distance                                 = FLT_MAX;
+        float m_max_distance_render                                 = FLT_MAX;
+        float m_max_distance_shadow                                = FLT_MAX;
         std::array<float, renderer_max_entities> m_distance_squared = { 0.0f };
         std::array<bool, renderer_max_entities> m_is_visible        = { false };
         std::array<uint32_t, renderer_max_entities> m_lod_indices   = { 0 };

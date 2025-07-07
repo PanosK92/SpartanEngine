@@ -217,6 +217,10 @@ namespace spartan
                         if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows))
                             continue;
 
+                        const float shadow_distance = renderable->GetMaxShadowDistance();
+                        if (draw_call.distance_squared > shadow_distance * shadow_distance)
+                            continue;
+
                         // set pso
                         {
                             cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));

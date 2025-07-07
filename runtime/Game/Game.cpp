@@ -858,8 +858,9 @@ namespace spartan
                 const float render_distance_trees = 1'500.0f;
                 const float render_distance_grass = 750.0f;
                 const uint32_t grass_blade_count  = 33'000'000; // above 33 million it will hit a max buffer size validation layer error (still works but it's risky)
-                const uint32_t tree_count         = 3'000;      // too many are actually distracting (because naturally occupy too much screen space)
-                const uint32_t rock_count         = 3'000;      // these are small and on the ground, we can have more
+                const uint32_t tree_count         = 8'000;
+                const uint32_t rock_count         = 5'000;      // these are small and on the ground, we can have more
+                const float shadow_distance       = 150.0f;     // tree and rock shadow distance (from the player)
 
                 // sun/lighting/mood
                 entities::sun(true);
@@ -996,6 +997,7 @@ namespace spartan
                 
                             renderable->SetInstances(transforms);
                             renderable->SetMaxRenderDistance(render_distance_trees);
+                            renderable->SetMaxShadowDistance(shadow_distance);
                 
                             // create material
                             shared_ptr<Material> material = make_shared<Material>();
@@ -1019,7 +1021,8 @@ namespace spartan
                             Renderable* renderable = body->GetComponent<Renderable>();
                             renderable->SetInstances(transforms);
                             renderable->SetMaxRenderDistance(render_distance_trees);
-                
+                            renderable->SetMaxShadowDistance(shadow_distance);
+
                             // create material
                             shared_ptr<Material> material = make_shared<Material>();
                             {
@@ -1054,6 +1057,7 @@ namespace spartan
                             Renderable* renderable = rock_entity->GetComponent<Renderable>();
                             renderable->SetInstances(transforms);
                             renderable->SetMaxRenderDistance(render_distance_trees);
+                            renderable->SetMaxShadowDistance(shadow_distance);
 
                             // create material
                             shared_ptr<Material> material = make_shared<Material>();
