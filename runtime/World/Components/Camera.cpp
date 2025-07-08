@@ -524,7 +524,6 @@ namespace spartan
         if (has_physics_body && is_playing)
         {
             m_physics_body_to_control->Crouch(is_crouching);
-            SP_LOG_INFO("%s", is_crouching ? "true" : "false")
         }
         
         // Behavior: Apply Movement
