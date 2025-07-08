@@ -1190,7 +1190,7 @@ namespace spartan
             
                     // get bounding box
                     const BoundingBox& aabb_world = renderable->GetBoundingBox();
-
+                    
                     // compute screen-space area and store it
                     float screen_area = compute_screen_space_area(aabb_world);
                     areas.push_back({i, screen_area});

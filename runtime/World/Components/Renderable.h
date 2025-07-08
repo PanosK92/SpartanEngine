@@ -70,8 +70,8 @@ namespace spartan
         const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const               { return m_instance_group_end_indices; }
         uint32_t GetInstanceGroupCount() const                                           { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
         const math::BoundingBox& GetBoundingBox() const                                  { return m_bounding_box;}
-        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances.empty()      ? math::BoundingBox::Undefined : m_bounding_box_instances[index]; }
-        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group.empty() ? math::BoundingBox::Undefined : m_bounding_box_instance_group[index]; }
+        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances.empty()      ? math::BoundingBox::Unit : m_bounding_box_instances[index]; }
+        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group.empty() ? math::BoundingBox::Unit : m_bounding_box_instance_group[index]; }
 
         // material
         void SetMaterial(const std::shared_ptr<Material>& material);
@@ -120,8 +120,8 @@ namespace spartan
         Mesh* m_mesh                          = nullptr;
         uint32_t m_sub_mesh_index             = 0;
         bool m_bounding_box_dirty             = true;
-        math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Undefined;
-        math::BoundingBox m_bounding_box      = math::BoundingBox::Undefined;
+        math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Unit;
+        math::BoundingBox m_bounding_box      = math::BoundingBox::Unit;
         std::vector<math::BoundingBox> m_bounding_box_instances;
         std::vector<math::BoundingBox> m_bounding_box_instance_group;
 

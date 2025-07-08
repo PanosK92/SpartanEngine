@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Game/Game.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
-#include "../Rendering/Renderer.h"
 #include "../Core/ProgressTracker.h"
 #include "Components/Renderable.h"
 #include "Components/Camera.h"
@@ -50,7 +49,7 @@ namespace spartan
         mutex entity_access_mutex;
         bool resolve                = false;
         bool was_in_editor_mode     = false;
-        BoundingBox bounding_box    = BoundingBox::Undefined;
+        BoundingBox bounding_box    = BoundingBox::Unit;
         shared_ptr<Entity> camera   = nullptr;
         shared_ptr<Entity> light    = nullptr;
         uint32_t audio_source_count = 0;
@@ -377,7 +376,7 @@ namespace spartan
         }
 
         resolve      = true;
-        bounding_box = BoundingBox::Undefined;
+        bounding_box = BoundingBox::Unit;
     }
 
     vector<shared_ptr<Entity>> World::GetRootEntities()
@@ -433,11 +432,6 @@ namespace spartan
 
     BoundingBox& World::GetBoundingBox()
     {
-        if (bounding_box == BoundingBox::Undefined)
-        {
-            compute_bounding_box();
-        }
-
         return bounding_box;
     }
 

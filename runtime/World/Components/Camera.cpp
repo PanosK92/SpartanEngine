@@ -127,10 +127,8 @@ namespace spartan
 
     bool Camera::IsInViewFrustum(const BoundingBox& bounding_box) const
     {
-        SP_ASSERT(bounding_box != BoundingBox::Undefined);
         const Vector3 center  = bounding_box.GetCenter();
         const Vector3 extents = bounding_box.GetExtents();
-        SP_ASSERT(!center.IsNaN() && !extents.IsNaN());
 
         return m_frustum.IsVisible(center, extents);
     }

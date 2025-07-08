@@ -37,10 +37,6 @@ namespace spartan::math
 
     float Ray::HitDistance(const BoundingBox& box) const
     {
-        // If undefined, no hit (infinite distance)
-        if (box == BoundingBox::Undefined)
-            return std::numeric_limits<float>::infinity();
-        
         // check for ray origin being inside the box
         if (box.Intersects(m_origin) == Intersection::Inside)
             return 0.0f;

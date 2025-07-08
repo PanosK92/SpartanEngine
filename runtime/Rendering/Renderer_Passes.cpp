@@ -443,7 +443,7 @@ namespace spartan
                     }
                 }
     
-                // set pass constants
+                // pass constants
                 {
                     bool is_tessellated    = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                     bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
@@ -461,26 +461,13 @@ namespace spartan
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                    if (renderable->HasInstancing())
-                    {
-                        SP_ASSERT(draw_call.instance_count < renderable->GetInstanceBuffer()->GetElementCount());
-
-                        cmd_list->DrawIndexed(
-                            renderable->GetIndexCount(draw_call.lod_index),
-                            renderable->GetIndexOffset(draw_call.lod_index),
-                            renderable->GetVertexOffset(draw_call.lod_index),
-                            draw_call.instance_index,
-                            draw_call.instance_count
-                        );
-                    }
-                    else
-                    {
-                        cmd_list->DrawIndexed(
-                            renderable->GetIndexCount(draw_call.lod_index),
-                            renderable->GetIndexOffset(draw_call.lod_index),
-                            renderable->GetVertexOffset(draw_call.lod_index)
-                        );
-                    }
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(draw_call.lod_index),
+                        renderable->GetIndexOffset(draw_call.lod_index),
+                        renderable->GetVertexOffset(draw_call.lod_index),
+                        renderable->HasInstancing() ? draw_call.instance_index : 0,
+                        renderable->HasInstancing() ? draw_call.instance_count : 1
+                    );
 
                     // at this point, we don't want clear in case another render pass is implicitly started
                     pso.clear_depth = rhi_depth_load;
@@ -555,8 +542,7 @@ namespace spartan
                     }
                 }
 
-    
-                // set pass constants
+                // pass constants
                 {
                     Entity* entity           = renderable->GetEntity();
                     m_pcb_pass_cpu.transform = entity->GetMatrix();
@@ -573,24 +559,13 @@ namespace spartan
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
-                    if (renderable->HasInstancing())
-                    {
-                        cmd_list->DrawIndexed(
-                            renderable->GetIndexCount(draw_call.lod_index),
-                            renderable->GetIndexOffset(draw_call.lod_index),
-                            renderable->GetVertexOffset(draw_call.lod_index),
-                            draw_call.instance_index,
-                            draw_call.instance_count
-                        );
-                    }
-                    else
-                    {
-                        cmd_list->DrawIndexed(
-                            renderable->GetIndexCount(draw_call.lod_index),
-                            renderable->GetIndexOffset(draw_call.lod_index),
-                            renderable->GetVertexOffset(draw_call.lod_index)
-                        );
-                    }
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(draw_call.lod_index),
+                        renderable->GetIndexOffset(draw_call.lod_index),
+                        renderable->GetVertexOffset(draw_call.lod_index),
+                        renderable->HasInstancing() ? draw_call.instance_index : 0,
+                        renderable->HasInstancing() ? draw_call.instance_count : 1
+                    );
 
                     // at this point, we don't want clear in case another render pass is implicitly started
                     pso.clear_depth = rhi_depth_load;

@@ -260,7 +260,7 @@ namespace spartan
                     }
                     else // transformed instances
                     {
-                        m_bounding_box = BoundingBox::Undefined;
+                        m_bounding_box = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
                         m_bounding_box_instances.clear();
                         m_bounding_box_instances.reserve(m_instances.size());
                         m_bounding_box_instances.resize(m_instances.size());
@@ -279,7 +279,7 @@ namespace spartan
                             for (const uint32_t group_end_index : m_instance_group_end_indices)
                             {
                                 // loop through the instances in this group
-                                BoundingBox bounding_box_group = BoundingBox::Undefined;
+                                BoundingBox bounding_box_group = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
                                 for (uint32_t i = start_index; i < group_end_index; i++)
                                 {
                                     BoundingBox bounding_box_instance = m_bounding_box_mesh * (transform * m_instances[i]);
@@ -318,7 +318,6 @@ namespace spartan
             vector<RHI_Vertex_PosTexNorTan> vertices;
             mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
             m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-            SP_ASSERT(m_bounding_box_mesh != BoundingBox::Undefined);
         }
 
         OnTick(); // update bounding boxes, frustum and distance culling

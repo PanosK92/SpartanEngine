@@ -254,31 +254,46 @@ namespace spartan
         
         if (GetOption<bool>(Renderer_Option::Aabb))
         {
-            auto get_color = [](Renderable* renderable)
+            auto get_color = [](Renderable* renderable, const uint32_t instance_group_index)
             {
                 const Color color_visible  = Color::standard_renderer_lines;
                 const Color color_occluded = Color(1.0f, 0.0f, 0.0f, 1.0f);
 
-                return renderable->IsVisible() ? color_visible : color_occluded;
+                return renderable->IsVisible(instance_group_index) ? color_visible : color_occluded;
             };
 
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
-                if (entity)
-                { 
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                if (!entity)
+                    continue;
+            
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                {
+                    if (Camera* camera = World::GetCamera())
                     {
+                        const Vector3 camera_position = camera->GetEntity()->GetPosition();
                         if (!renderable->HasInstancing())
-                        { 
-                            DrawBox(renderable->GetBoundingBox(), get_color(renderable));
+                        {
+                            const BoundingBox& bounding_box = renderable->GetBoundingBox();
+                            const float distance = bounding_box.GetClosestPoint(camera_position).Distance(camera_position);
+            
+                            if (distance > renderable->GetMaxRenderDistance())
+                                continue;
+            
+                            DrawBox(bounding_box, get_color(renderable, 0));
                         }
                         else
                         {
-                            uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
-                            for (uint32_t group_index = 0; group_index < group_count; group_index++)
+                            const uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
+            
+                            for (uint32_t instance_group_index = 0; instance_group_index < group_count; instance_group_index++)
                             {
-                                const BoundingBox& bounding_box_group = renderable->GetBoundingBoxInstanceGroup(group_index);
-                                DrawBox(bounding_box_group, get_color(renderable));
+                                const BoundingBox& bounding_box_group = renderable->GetBoundingBoxInstanceGroup(instance_group_index);
+                                const float distance = bounding_box_group.GetClosestPoint(camera_position).Distance(camera_position);
+                                if (distance > renderable->GetMaxRenderDistance())
+                                    continue;
+            
+                                DrawBox(bounding_box_group, get_color(renderable, instance_group_index));
                             }
                         }
                     }

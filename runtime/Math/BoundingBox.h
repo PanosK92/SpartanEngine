@@ -102,7 +102,8 @@ namespace spartan
             const Vector3& GetMin() const { return m_min; }
             const Vector3& GetMax() const { return m_max; }
 
-            static const BoundingBox Undefined;
+            static const BoundingBox Zero;
+            static const BoundingBox Unit;
 
         private:
             Vector3 m_min;
