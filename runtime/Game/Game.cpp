@@ -858,14 +858,16 @@ namespace spartan
                 const float render_distance_trees = 1'500.0f;
                 const float render_distance_grass = 750.0f;
                 const uint32_t grass_blade_count  = 33'000'000; // above 33 million it will hit a max buffer size validation layer error (still works but it's risky)
-                const uint32_t tree_count         = 8'000;
+                const uint32_t tree_count         = 5'000;
                 const uint32_t rock_count         = 5'000;      // these are small and on the ground, we can have more
                 const float shadow_distance       = 150.0f;     // tree and rock shadow distance (from the player)
 
                 // sun/lighting/mood
                 entities::sun(true);
-                default_light_directional->GetComponent<Light>()->SetIntensity(50'000.0f);
-                default_light_directional->GetComponent<Light>()->SetTemperature(7'000.0f); // kelvin - warm light
+                Light* sun = default_light_directional->GetComponent<Light>();
+                sun->SetIntensity(50'000.0f);
+                sun->SetTemperature(7'000.0f); // kelvin - warm light
+                sun->SetFlag(LightFlags::Volumetric, false);
 
                 entities::camera(Vector3(-810.8645f, 55.4595f, 618.8524f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
