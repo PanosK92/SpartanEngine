@@ -198,23 +198,27 @@ namespace spartan
             {
                 const Vector3 camera_pos = camera->GetEntity()->GetPosition();
                 PxScene* scene           = static_cast<PxScene*>(PhysicsWorld::GetScene());
-        
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_bodies.size()); i++)
+
+                if (Renderable* renderable = GetEntity()->GetComponent<Renderable>())
                 {
-                    Renderable* renderable          = GetEntity()->GetComponent<Renderable>();
-                    const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(i)) : renderable->GetBoundingBox();
-                    const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
-                    const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
-                    const float distance_deactivate = 80.0f;
-                    const float distance_activate   = 40.0f;
-                    PxRigidActor* actor             = static_cast<PxRigidActor*>(m_bodies[i]);
-                    if (distance_to_camera > distance_deactivate && actor->getScene())
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(m_bodies.size()); i++)
                     {
-                        scene->removeActor(*actor);
-                    }
-                    else if (distance_to_camera <= distance_activate && !actor->getScene())
-                    {
-                        scene->addActor(*actor);
+                        if (PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]))
+                        { 
+                            const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(i)) : renderable->GetBoundingBox();
+                            const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
+                            const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
+                            const float distance_deactivate = 80.0f;
+                            const float distance_activate   = 40.0f;
+                            if (distance_to_camera > distance_deactivate && actor->getScene())
+                            {
+                                scene->removeActor(*actor);
+                            }
+                            else if (distance_to_camera <= distance_activate && !actor->getScene())
+                            {
+                                scene->addActor(*actor);
+                            }
+                        }
                     }
                 }
             }

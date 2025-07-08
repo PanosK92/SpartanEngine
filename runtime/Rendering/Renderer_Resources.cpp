@@ -651,12 +651,13 @@ namespace spartan
 
         standard_material = make_shared<Material>();
         standard_material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // set resource file path so it can be used by the resource cache
-        standard_material->SetProperty(MaterialProperty::TextureTilingX, 10.0f);
-        standard_material->SetProperty(MaterialProperty::TextureTilingY, 10.0f);
+        standard_material->SetProperty(MaterialProperty::TextureTilingX, 1.0f);
+        standard_material->SetProperty(MaterialProperty::TextureTilingY, 1.0f);
         standard_material->SetProperty(MaterialProperty::ColorR,         1.0f);
         standard_material->SetProperty(MaterialProperty::ColorG,         1.0f);
         standard_material->SetProperty(MaterialProperty::ColorB,         1.0f);
         standard_material->SetProperty(MaterialProperty::ColorA,         1.0f);
+        standard_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f);
         standard_material->SetTexture(MaterialTextureType::Color,        Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
     }
 
