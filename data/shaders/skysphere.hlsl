@@ -24,11 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-//= includes =========
-#include "common.hlsl"
-//====================
-
-// constants
 static const float3 up_direction     = float3(0, 1, 0);                      // up direction
 static const float3 earth_center     = float3(0, -6371e3, 0);                // earth center at -radius (meters), y-up
 static const float earth_radius      = 6371e3;                               // earth radius in meters
@@ -200,66 +195,67 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
 
-    float2 uv             = (float2(thread_id.xy) + 0.5f) / resolution;
+    // common values
+    float2 uv             = (float2(thread_id.xy)) / resolution;
     float phi             = uv.x * PI2;
     float theta           = -uv.y * PI;
     float sin_theta       = sin(theta);
     float cos_theta       = cos(theta);
     float3 view_direction = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
 
+    // light
     Light light;
     Surface surface;
     light.Build(0, surface);
     float3 sun_direction = -light.forward;
     float3 light_color   = light.color;
 
+    // integration
     float3 atmosphere_color = 0.0f;
+    float t_max = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
+    if (t_max < 0)
     {
-        float t_max = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
-        if (t_max < 0)
-        {
-            tex_uav[thread_id.xy] = float4(atmosphere_color, 1.0f);
-            return;
-        }
+        tex_uav[thread_id.xy] = float4(atmosphere_color, 1.0f);
+        return;
+    }    
+    float ds                  = t_max / num_view_samples;
+    float cos_theta_lut       = dot(view_direction, up_direction);
+    float u                   = saturate((cos_theta_lut + 1.0f) * 0.5f);
+    float sun_zenith          = dot(sun_direction, up_direction);
+    float w                   = saturate((sun_zenith + 1.0f) * 0.5f);
+    float3 optical_depth_view = compute_optical_depth(buffer_frame.camera_position, view_direction, t_max, num_view_samples);
+    float3 t_view             = exp(-optical_depth_view);
+    float3 integral_rayleigh = 0.0f;
+    float3 integral_mie      = 0.0f;
+    [unroll]
+    for (int i = 0; i < num_view_samples; i++)
+    {
+        float t         = (i + 0.5f) * ds;
+        float3 position = buffer_frame.camera_position + t * view_direction;
+        float height    = length(position - earth_center) - earth_radius;
+        if (height < 0)
+            break;
 
-        float ds = t_max / num_view_samples;
-        float3 integral_rayleigh = 0.0;
-        float3 integral_mie = 0.0;
-
-        for (int i = 0; i < num_view_samples; i++)
-        {
-            float t         = (i + 0.5) * ds;
-            float3 position = buffer_frame.camera_position + t * view_direction;
-            float height    = length(position - earth_center) - earth_radius;
-            if (height < 0)
-                break;
-            
-            float3 optical_depth_view = compute_optical_depth(buffer_frame.camera_position, view_direction, t, num_view_samples);
-            float3 t_view             = exp(-optical_depth_view);
-            float cos_theta_lut       = dot(view_direction, up_direction);
-            float u                   = saturate((cos_theta_lut + 1.0) * 0.5);
-            float v                   = saturate(height / atmosphere_height);
-            float sun_zenith          = dot(sun_direction, up_direction);
-            float w                   = saturate((sun_zenith + 1.0) * 0.5);
-            float3 lut_coords         = saturate(float3(u, v, w));
-            float4 lut_value          = tex3d.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), lut_coords, 0);
-            integral_rayleigh        += lut_value.rgb * ds * t_view;
-            integral_mie             += float3(lut_value.a, lut_value.a, lut_value.a) * ds * t_view;
-        }
-
-        atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light_color * light.intensity;
+        float v            = saturate(height / atmosphere_height);
+        float3 lut_coords  = float3(u, v, w);
+        float4 lut_value   = tex3d.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), lut_coords, 0);
+        integral_rayleigh += lut_value.rgb * ds * t_view;
+        integral_mie      += lut_value.a.xxx * ds * t_view;
     }
+    atmosphere_color = (beta_rayleigh * integral_rayleigh + beta_mie * integral_mie) * light_color * light.intensity;
 
+    // artistic touches (starts, moon, sun)
     float3 sun_color      = sun::compute_color(view_direction, sun_direction, light_color);
     float3 star_color     = stars::compute_color(uv, sun_direction);
-    float3 moon_color     = 0.0;
+    float3 moon_color     = 0.0f;
     float3 moon_direction = -sun_direction;
-    if (dot(moon_direction, up_direction) > 0)
+    if (dot(moon_direction, up_direction) > 0.0f)
     {
         float3 moon_disc = sun::compute_mie_scatter_color(view_direction, moon_direction, 0.001f, -0.997f, light_color);
-        moon_color       = moon_disc * float3(0.5, 0.65, 1.0);
+        moon_color       = moon_disc * float3(0.5f, 0.65f, 1.0f);
     }
 
-    tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color + moon_color, 1.0);
+    // out
+    tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color + moon_color, 1.0f);
 }
 #endif

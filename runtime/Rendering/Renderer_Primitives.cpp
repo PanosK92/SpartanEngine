@@ -214,7 +214,7 @@ namespace spartan
                         { 
                             if (light->GetLightType() == LightType::Directional)
                             {
-                                Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * 1000.0f;
+                                Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * FLT_MAX;
                                 DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
                             }
                             else if (light->GetLightType() == LightType::Point)
