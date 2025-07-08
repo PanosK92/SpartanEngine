@@ -52,6 +52,10 @@ namespace spartan
 {
     namespace
     {
+        const float distance_deactivate = 80.0f;
+        const float distance_activate   = 40.0f;
+        float standing_height           = 1.8f;
+        float crouch_height             = 0.8f;
         void* controller_manager = nullptr;
     }
 
@@ -208,8 +212,6 @@ namespace spartan
                             const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(i)) : renderable->GetBoundingBox();
                             const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
                             const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
-                            const float distance_deactivate = 80.0f;
-                            const float distance_activate   = 40.0f;
                             if (distance_to_camera > distance_deactivate && actor->getScene())
                             {
                                 scene->removeActor(*actor);
@@ -612,7 +614,7 @@ namespace spartan
         PxVec3 pos               = PxVec3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
     
         // ray start just below the controller
-        const float ray_length = 1.8f;
+        const float ray_length = standing_height;
         PxVec3 ray_start       = pos;
         PxVec3 ray_dir         = PxVec3(0.0f, -1.0f, 0.0f);
     
@@ -702,6 +704,20 @@ namespace spartan
         }
     }
 
+    void Physics::Crouch(const bool crouch)
+    {
+        if (m_body_type != BodyType::Controller || !m_controller || !Engine::IsFlagSet(EngineMode::Playing))
+            return;
+
+        // make the capsule shorter
+        PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+        controller->resize(crouch ? crouch_height : standing_height);
+
+        // adjust position to keep feet grounded
+        PxExtendedVec3 pos = controller->getPosition();
+        GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
+    }
+
     void Physics::Create()
     {
         // clear previous state
@@ -728,7 +744,7 @@ namespace spartan
 
             PxCapsuleControllerDesc desc;
             desc.radius           = 0.5f; // stable size for ground contact
-            desc.height           = 1.8f; // total height = height + 2 * radius
+            desc.height           = standing_height;
             desc.climbingMode     = PxCapsuleClimbingMode::eEASY; // easier handling on steps/slopes
             desc.stepOffset       = 0.3f; // keep under half a meter for better stepping
             desc.slopeLimit       = cosf(60.0f * math::deg_to_rad); // 60° climbable slope

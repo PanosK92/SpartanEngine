@@ -125,6 +125,7 @@ namespace spartan
 
         // misc
         void Move(const math::Vector3& offset);
+        void Crouch(const bool crouch);
 
     private:
         void Create();

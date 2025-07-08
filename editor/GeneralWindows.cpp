@@ -374,9 +374,10 @@ namespace
             {(char*)"Ctrl+S",       (char*)"Save world"},
             {(char*)"Ctrl+L",       (char*)"Load world"},
             {(char*)"Right click",  (char*)"Enable first person camera control"},
-            {(char*)"W, A, S, D",   (char*)"Move camera"},
-            {(char*)"Q, E",         (char*)"Change camera elevation"},
-            {(char*)"F",            (char*)"Center camera on object"},
+            {(char*)"W, A, S, D",   (char*)"Camera movement"},
+            {(char*)"Q, E",         (char*)"Camera elevation"},
+            {(char*)"F",            (char*)"Camera entity focus"},
+            {(char*)"Ctrl",         (char*)"Camera crouch"},
             {(char*)"Alt+Enter",    (char*)"Toggle fullscreen viewport"},
             {(char*)"Ctrl+Z",       (char*)"Undo"},
             {(char*)"Ctrl+Shift+Z", (char*)"Redo"}

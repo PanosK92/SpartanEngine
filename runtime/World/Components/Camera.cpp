@@ -336,6 +336,7 @@ namespace spartan
         bool button_move_down       = Input::GetKey(KeyCode::E);
         bool button_sprint          = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Left_Shoulder);
         bool button_jump            = Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South);
+        bool button_crouch          = Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Button_East); // Left Ctrl or O button
         bool mouse_right_click_down = Input::GetKeyDown(KeyCode::Click_Right);
         bool mouse_right_click      = Input::GetKey(KeyCode::Click_Right);
         bool mouse_in_viewport      = Input::GetMouseIsInViewport();
@@ -347,8 +348,8 @@ namespace spartan
         bool is_playing           = Engine::IsFlagSet(EngineMode::Playing);
         bool has_physics_body     = m_physics_body_to_control != nullptr;
         bool is_grounded          = has_physics_body ? m_physics_body_to_control->IsGrounded() : false;
-
-        m_is_walking = (button_move_forward || button_move_backward || button_move_left || button_move_right) && is_grounded;
+        bool is_crouching         = button_crouch && is_grounded;
+        m_is_walking              = (button_move_forward || button_move_backward || button_move_left || button_move_right) && is_grounded;
         
         // Behavior: Control Activation and Cursor Handling
         {
@@ -517,6 +518,13 @@ namespace spartan
             {
                 m_jump_time = 0.0f;
             }
+        }
+
+        // Behavior: Crouching
+        if (has_physics_body && is_playing)
+        {
+            m_physics_body_to_control->Crouch(is_crouching);
+            SP_LOG_INFO("%s", is_crouching ? "true" : "false")
         }
         
         // Behavior: Apply Movement
