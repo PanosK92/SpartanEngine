@@ -140,9 +140,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // volumetric
     if (light.is_volumetric())
     {
-        float max_mip    = pass_get_f3_value().z;
-        float3 sky_color = tex.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
-        volumetric_fog   = compute_volumetric_fog(surface, light, thread_id.xy) * sky_color * 0.025f;
+        volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
     }
 
     // to avoid clearing the buffers with API calls (and introducing memory barriers), we clear them via not accumulating on the first light

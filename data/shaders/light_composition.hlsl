@@ -61,14 +61,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // fog
     {
-        // atmospheric
         float max_mip     = pass_get_f3_value().x;
-        float fog_density = pass_get_f3_value().y;
-        float3 sky_color  = tex2.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
-        light_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density * sky_color;
-
-        // volumetric
-        light_atmospheric += tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb; // already uses sky color
+        float fog_density = pass_get_f3_value().y * 0.5f;
+    
+        float3 sky_color    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5f), max_mip).rgb;
+        float fog_amount    = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density;
+        float3 fog_emissive = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb; // aka volumetric/godrays, coming from lights lighting up the fog
+        
+        light_atmospheric = fog_amount * (sky_color + fog_emissive);
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
