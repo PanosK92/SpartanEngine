@@ -55,7 +55,7 @@ namespace spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
     }
 
-    void Renderer::ProduceFrame(RHI_CommandList* cmd_list_present, RHI_CommandList* cmd_list_graphics_secondary)
+    void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute)
     {
         SP_PROFILE_CPU();
 
@@ -75,78 +75,78 @@ namespace spartan
             static bool brdf_produced = false;
             if (!brdf_produced)
             {
-                Pass_Lut_BrdfSpecular(cmd_list_present);
+                Pass_Lut_BrdfSpecular(cmd_list_graphics_present);
                 brdf_produced = true;
             }
 
             if (World::GetDirectionalLight() ? World::GetDirectionalLight()->NeedsLutAtmosphericScatteringUpdate() : false)
             {
-                Pass_Lut_AtmosphericScattering(cmd_list_present);
+                Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
             }
         }
 
         if (Camera* camera = World::GetCamera())
         {
-            Pass_VariableRateShading(cmd_list_present);
+            Pass_VariableRateShading(cmd_list_graphics_present);
 
             // opaques
             {
                 bool is_transparent = false;
-                //Pass_Occlusion(cmd_list_graphics_secondary);
-                Pass_Depth_Prepass(cmd_list_present);
-                Pass_GBuffer(cmd_list_present, is_transparent);
-                Pass_ShadowMaps(cmd_list_present);
-                Pass_Skysphere(cmd_list_present);
-                Pass_ScreenSpaceShadows(cmd_list_present);
-                Pass_ScreenSpaceAmbientOcclusion(cmd_list_present);
-                Pass_Light(cmd_list_present, is_transparent);             // compute diffuse and specular buffers
-                Pass_Light_GlobalIllumination(cmd_list_present);          // compute global illumination
-                Pass_Light_Composition(cmd_list_present, is_transparent); // compose all light (diffuse, specular, etc).
-                cmd_list_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+                //Pass_Occlusion(cmd_list_compute);
+                Pass_Depth_Prepass(cmd_list_graphics_present);
+                Pass_GBuffer(cmd_list_graphics_present, is_transparent);
+                Pass_ShadowMaps(cmd_list_graphics_present);
+                Pass_Skysphere(cmd_list_graphics_present);
+                Pass_ScreenSpaceShadows(cmd_list_graphics_present);
+                Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
+                Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
+                Pass_Light_GlobalIllumination(cmd_list_graphics_present);          // compute global illumination
+                Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
+                cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
             }
 
             // transparents
             if (m_transparents_present)
             {
                 bool is_transparent = true;
-                Pass_GBuffer(cmd_list_present, is_transparent);
-                Pass_Light(cmd_list_present, is_transparent);
-                Pass_Light_Composition(cmd_list_present, is_transparent);
+                Pass_GBuffer(cmd_list_graphics_present, is_transparent);
+                Pass_Light(cmd_list_graphics_present, is_transparent);
+                Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
             }
 
             // image based lighting
-            Pass_Light_ImageBased(cmd_list_present);                 // ibl from skysphere and global illumination
-            Pass_TransparencyReflectionRefraction(cmd_list_present); // ssr
+            Pass_Light_ImageBased(cmd_list_graphics_present);                 // ibl from skysphere and global illumination
+            Pass_TransparencyReflectionRefraction(cmd_list_graphics_present); // ssr
 
             // render -> output resolution
-            Pass_Upscale(cmd_list_present);
+            Pass_Upscale(cmd_list_graphics_present);
 
             // post-process
             {
                 // game
-                Pass_PostProcess(cmd_list_present);
+                Pass_PostProcess(cmd_list_graphics_present);
 
                 // editor
-                Pass_Grid(cmd_list_present, rt_output);
-                Pass_Lines(cmd_list_present, rt_output);
-                Pass_Outline(cmd_list_present, rt_output);
-                Pass_Icons(cmd_list_present, rt_output);
+                Pass_Grid(cmd_list_graphics_present, rt_output);
+                Pass_Lines(cmd_list_graphics_present, rt_output);
+                Pass_Outline(cmd_list_graphics_present, rt_output);
+                Pass_Icons(cmd_list_graphics_present, rt_output);
             }
         }
         else
         {
-            cmd_list_present->ClearTexture(rt_output, Color::standard_black);
+            cmd_list_graphics_present->ClearTexture(rt_output, Color::standard_black);
         }
 
-        Pass_Text(cmd_list_present, rt_output);
+        Pass_Text(cmd_list_graphics_present, rt_output);
 
         // perform early transitions (so the next frame doesn't have to wait)
-        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
-        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_present);
+        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
     }
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
@@ -297,8 +297,6 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
-        cmd_list->Begin();
-
         cmd_list->BeginTimeblock("occlusion");
         {
             // get resources

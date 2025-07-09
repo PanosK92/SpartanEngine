@@ -287,10 +287,15 @@ namespace spartan
         RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
         dynamic_resolution();
 
-        // begin the main/present command list
+        // begin the graphics/present command list
         RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
         m_cmd_list_present        = queue_graphics->NextCommandList();
         m_cmd_list_present->Begin();
+
+        // begin the secondary/compute command list
+        //RHI_Queue* queue_compute          = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
+        //RHI_CommandList* cmd_list_compute = queue_compute->NextCommandList();
+        //cmd_list_compute->Begin();
 
         // build draw calls and determine occluders
         BuildDrawCallsAndOccluders(m_cmd_list_present);
@@ -301,8 +306,7 @@ namespace spartan
         // produce a frame (or not, if minimized), this is where the expensive work happens
         if (!Window::IsMinimized() && m_initialized_resources)
         { 
-            RHI_CommandList* cmd_list_graphics_secondary = nullptr;//queue_graphics->NextCommandList();
-            ProduceFrame(m_cmd_list_present, cmd_list_graphics_secondary);
+            ProduceFrame(m_cmd_list_present, nullptr);
         }
 
         // blit to back buffer when not in editor mode
