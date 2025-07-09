@@ -358,57 +358,83 @@ namespace
         }
     }
 
-    namespace shortcuts
+    namespace controls
     {
         bool visible = false;
-
+    
         struct Shortcut
         {
-            char* shortcut;
-            char* usage;
+            const char* shortcut;
+            const char* description;
         };
-
-        static const Shortcut shortcuts[] =
+    
+        static const Shortcut editor_shortcuts[] =
         {
-            {(char*)"Ctrl+P",       (char*)"Open shortcuts & input reference window"},
-            {(char*)"Ctrl+S",       (char*)"Save world"},
-            {(char*)"Ctrl+L",       (char*)"Load world"},
-            {(char*)"Right click",  (char*)"Enable first person camera control"},
-            {(char*)"W, A, S, D",   (char*)"Camera movement"},
-            {(char*)"Q, E",         (char*)"Camera elevation"},
-            {(char*)"F",            (char*)"Camera entity focus"},
-            {(char*)"Ctrl",         (char*)"Camera crouch"},
-            {(char*)"Alt+Enter",    (char*)"Toggle fullscreen viewport"},
-            {(char*)"Ctrl+Z",       (char*)"Undo"},
-            {(char*)"Ctrl+Shift+Z", (char*)"Redo"}
+            { "Ctrl+P",       "Open shortcuts & input reference window" },
+            { "Ctrl+S",       "Save world"                              },
+            { "Ctrl+L",       "Load world"                              },
+            { "Ctrl+Z",       "Undo"                                    },
+            { "Ctrl+Shift+Z", "Redo"                                    },
+            { "Alt+Enter",    "Toggle fullscreen viewport"              }
+        };
+    
+        static const Shortcut camera_controls[] =
+        {
+            { "Right click",  "Enable first person camera control" },
+            { "W, A, S, D",   "Camera movement"                    },
+            { "Q, E",         "Camera elevation"                   },
+            { "F",            "Camera entity focus"                },
+            { "Ctrl",         "Camera crouch"                      }
         };
 
+        void show_shortcut_table(const char* label, const Shortcut* shortcuts, size_t count)
+        {
+            if (ImGui::BeginTable(label, 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+            {
+                ImGui::TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
+        
+                for (size_t i = 0; i < count; i++)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted(shortcuts[i].shortcut);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextUnformatted(shortcuts[i].description);
+                }
+        
+                ImGui::EndTable();
+            }
+        }
+        
         void window()
         {
             if (!visible)
                 return;
-
+        
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowFocus();
-            ImGui::Begin("Shortcuts & Input Reference", &visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+            ImGui::Begin("Controls", &visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
             {
-                const float col_a = 220.0f;
-                const float col_b = 20.0f;
-
-                {
-                    ImGui::NewLine();
-                    ImGui::SameLine(col_b);
-                    ImGui::Text("Shortcut");
-                    ImGui::SameLine(col_a);
-                    ImGui::Text("Usage");
-
-                    for (const Shortcut& shortcut : shortcuts)
-                    {
-                        ImGui::BulletText(shortcut.shortcut);
-                        ImGui::SameLine(col_a);
-                        ImGui::Text(shortcut.usage);
-                    }
-                }
+                float table_width = 400.0f;
+                float spacing = ImGui::GetStyle().ItemSpacing.x;
+                float available = ImGui::GetContentRegionAvail().x;
+        
+                bool side_by_side = available >= (table_width * 2.0f + spacing);
+        
+                ImGui::BeginGroup();
+                ImGui::Text("Editor");
+                show_shortcut_table("editor_shortcuts", editor_shortcuts, std::size(editor_shortcuts));
+                ImGui::EndGroup();
+        
+                if (side_by_side)
+                    ImGui::SameLine();
+        
+                ImGui::BeginGroup();
+                ImGui::Text("Camera");
+                show_shortcut_table("camera_controls", camera_controls, std::size(camera_controls));
+                ImGui::EndGroup();
             }
             ImGui::End();
         }
@@ -418,7 +444,7 @@ namespace
     {
         const char* world_names[] =
         {
-            "1. Open world forest with car (millions of Ghost of Tsushima grass blades) - very demanding - basically a stress test",
+            "1. Open world forest (millions of Ghost of Tsushima grass blades) - extremely demanding",
             "2. Liminal Space (shifts your frequency to a nearby reality) - light",
             "3. Showroom (Gran Turismo 7 brand central) - light",
             "4. Sponza 4k (high-resolution textures & meshes) - demanding",
@@ -490,10 +516,10 @@ namespace
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("World selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    ImGui::Text("Select the world you would like to load and click \"Ok\"");
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Note for non-devs: This is an active dev branch, updated daily with experimental features. It's not necessarily");
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "stable or QA-tested like a full game. Think of it as a live tech demo focused on stability, not a published game.");
-            
+                    const char* prompt_text  = "Select the world you would like to load and click \"Ok\". Controls are listed under View > Controls.";
+                    const char* warning_text = "For non-devs: this is a dev build, this means it's raw, experimental, and not guaranteed to behave.";
+                    ImGui::Text(prompt_text);
+
                     // calculate maximum width of world names and text strings
                     float max_width = 0.0f;
                     for (const char* name : world_names)
@@ -501,8 +527,8 @@ namespace
                         ImVec2 size = ImGui::CalcTextSize(name);
                         max_width   = max(max_width, size.x);
                     }
-                    //max_width = max(max_width, ImGui::CalcTextSize(prompt_text).x);
-                    //max_width = max(max_width, ImGui::CalcTextSize(warning_text).x);
+                    max_width = max(max_width, ImGui::CalcTextSize(prompt_text).x);
+                    max_width = max(max_width, ImGui::CalcTextSize(warning_text).x);
             
                     // add padding for list box frame and scrollbar
                     float padding         = ImGui::GetStyle().FramePadding.x * 2;
@@ -512,7 +538,9 @@ namespace
                     // list box with dynamic width
                     ImGui::ListBox("##list_box", &world_index, world_names, IM_ARRAYSIZE(world_names), IM_ARRAYSIZE(world_names));
                     ImGui::PopItemWidth();
-                    
+
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), warning_text);
+
                     // button
                     if (ImGuiSp::button_centered_on_line("Ok"))
                     {
@@ -566,15 +594,13 @@ void GeneralWindows::Tick()
         introduction::window();
         sponsor::window();
         about::window();
-        shortcuts::window();
+        controls::window();
     }
 
     // shortcuts
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::P))
     {
-        if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::P))
-        {
-            shortcuts::visible = !shortcuts::visible;
-        }
+        controls::visible = !controls::visible;
     }
 }
 
@@ -593,7 +619,7 @@ bool* GeneralWindows::GetVisiblityWindowAbout()
     return &about::visible;
 }
 
-bool* GeneralWindows::GetVisiblityWindowShortcuts()
+bool* GeneralWindows::GetVisiblityWindowControls()
 {
-    return &shortcuts::visible;
+    return &controls::visible;
 }

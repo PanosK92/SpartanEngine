@@ -163,7 +163,7 @@ namespace
         {
             if (ImGui::BeginMenu("View"))
             {
-                if (ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", GeneralWindows::GetVisiblityWindowShortcuts()))
+                if (ImGui::MenuItem("Controls", "Ctrl+P", GeneralWindows::GetVisiblityWindowControls()))
                 {
 
                 }

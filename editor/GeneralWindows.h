@@ -33,5 +33,5 @@ public:
     static void SetVisibilityWorlds(const bool visibility);
 
     static bool* GetVisiblityWindowAbout();
-    static bool* GetVisiblityWindowShortcuts();
+    static bool* GetVisiblityWindowControls();
 };

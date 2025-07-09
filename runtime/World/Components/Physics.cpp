@@ -709,16 +709,17 @@ namespace spartan
     {
         if (m_body_type != BodyType::Controller || !m_controller || !Engine::IsFlagSet(EngineMode::Playing))
             return;
-    
+
+        // resize the capsule
         PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
         const float current_height      = controller->getHeight();
         const float target_height       = crouch ? crouch_height : standing_height;
         const float delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
         const float speed               = 10.0f;
-        const float lerped_height       = math::lerp(current_height, target_height, 1.0f - exp(-speed * delta_time));
-    
+        const float lerped_height       = math::lerp(current_height, target_height, 1.0f - exp(-speed * delta_time));  
         controller->resize(lerped_height);
-    
+
+        // ensure bottom of the capsule is touching the ground
         PxExtendedVec3 pos = controller->getPosition();
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }
