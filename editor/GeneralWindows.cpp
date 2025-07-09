@@ -380,11 +380,11 @@ namespace
     
         static const Shortcut camera_controls[] =
         {
-            { "Right click",  "Enable first person camera control" },
-            { "W, A, S, D",   "Camera movement"                    },
-            { "Q, E",         "Camera elevation"                   },
-            { "F",            "Camera entity focus"                },
-            { "Ctrl",         "Camera crouch"                      }
+            { "Right click",  "Enable first-person control" },
+            { "W, A, S, D",   "Movement"                    },
+            { "Q, E",         "Elevation"                   },
+            { "F",            "Entity focus"                },
+            { "Ctrl",         "Crouch"                      }
         };
 
         void show_shortcut_table(const char* label, const Shortcut* shortcuts, size_t count)

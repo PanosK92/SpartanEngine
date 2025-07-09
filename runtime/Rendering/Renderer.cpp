@@ -1172,7 +1172,8 @@ namespace spartan
                 };
             
                 // temporary storage for draw call areas
-                struct DrawCallArea {
+                struct DrawCallArea
+                {
                     uint32_t index;
                     float area;
                 };

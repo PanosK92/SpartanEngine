@@ -88,45 +88,44 @@ namespace
         }
     }
 
-    bool component_begin(const string& name, const IconType icon_enum, Component* component_instance, bool options = true, const bool removable = true)
+    bool component_begin(const string& name, Component* component_instance, bool options = true, const bool removable = true)
     {
-        // collapsible contents
+        // draw header first so we get its screen rect
         ImGui::PushFont(Editor::font_bold);
         const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
-
-        // component Icon - top left
-        ImGui::SameLine();
-        ImGui::Spacing();
-        ImGui::SameLine();
-
-        // component Options - top right
+    
         if (options)
         {
-            const float icon_width = 16.0f;
-            const auto original_pen_y = ImGui::GetCursorPosY();
-
-            ImGui::SetCursorPosY(original_pen_y + 5.0f);
-            ImGuiSp::image(icon_enum, 15,ImGui::Style::color_accent_1);
-            ImGui::SameLine(ImGui::GetContentRegionAvail().x - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
-
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
-            if (ImGuiSp::image_button(nullptr, IconType::Component_Options, icon_width, false))
+            // gear icon constants
+            const float icon_size = 24.0f; // square icon size
+            const float offset_x  = 43.0f; // distance from right edge
+            const float offset_y  = 2.0f;  // distance from top edge
+    
+            // get top-right of last item (the header)
+            const ImVec2 header_min = ImGui::GetItemRectMin();
+            const ImVec2 header_max = ImGui::GetItemRectMax();
+    
+            // place gear icon in top-right of header with padding
+            ImVec2 icon_pos;
+            icon_pos.x = header_max.x - offset_x;
+            icon_pos.y = header_min.y + offset_y;
+    
+            ImGui::SetCursorScreenPos(icon_pos);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
+            if (ImGuiSp::image_button(nullptr, IconType::Component_Options, icon_size, false))
             {
                 context_menu_id = name;
                 ImGui::OpenPopup(context_menu_id.c_str());
             }
-            ImGui::PopStyleColor(1);
-
-            if (component_instance)
+            ImGui::PopStyleColor();
+    
+            if (component_instance && context_menu_id == name)
             {
-                if (context_menu_id == name)
-                {
-                    component_context_menu_options(context_menu_id, component_instance, removable);
-                }
+                component_context_menu_options(context_menu_id, component_instance, removable);
             }
         }
-
+    
         return collapsed;
     }
 
@@ -201,7 +200,7 @@ void Properties::Inspect(const shared_ptr<Material> material)
 
 void Properties::ShowEntity(shared_ptr<Entity> entity) const 
 {
-    if (component_begin("Entity", IconType::Component_Transform, nullptr, true, false))
+    if (component_begin("Entity", nullptr, true, false))
     {
         // toggle for Active state
         bool is_active = entity->GetActive();
@@ -248,7 +247,7 @@ void Properties::ShowLight(spartan::Light* light) const
     if (!light)
         return;
 
-    if (component_begin("Light", IconType::Component_Light, light))
+    if (component_begin("Light", light))
     {
         //= REFLECT ==========================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
@@ -385,7 +384,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
     if (!renderable)
         return;
 
-    if (component_begin("Renderable", IconType::Component_Renderable, renderable))
+    if (component_begin("Renderable", renderable))
     {
         //= REFLECT =======================================================================
         string name_mesh              = renderable->GetMeshName();
@@ -519,7 +518,7 @@ void Properties::ShowPhysics(Physics* body) const
     const float step_fast       = 0.1f;
     const auto precision        = "%.3f";
 
-    if (component_begin("Physics", IconType::Component_PhysicsBody, body))
+    if (component_begin("Physics", body))
     {
         // reflect
         float mass             = body->GetMass();
@@ -631,7 +630,7 @@ void Properties::ShowMaterial(Material* material) const
     if (!material)
         return;
 
-    if (component_begin("Material", IconType::Component_Material, nullptr, false))
+    if (component_begin("Material", nullptr, false))
     {
         //= REFLECT ================================================
         math::Vector2 tiling = Vector2(
@@ -841,7 +840,7 @@ void Properties::ShowCamera(Camera* camera) const
     if (!camera)
         return;
 
-    if (component_begin("Camera", IconType::Component_Camera, camera))
+    if (component_begin("Camera", camera))
     {
         //= REFLECT ======================================================================
         static vector<string> projection_types = { "Perspective", "Orthographic" };
@@ -907,7 +906,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
     if (!terrain)
         return;
 
-    if (component_begin("Terrain", IconType::Component_Terrain, terrain))
+    if (component_begin("Terrain", terrain))
     {
         //= REFLECT =====================
         float min_y = terrain->GetMinY();
@@ -968,7 +967,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     if (!audio_source)
         return;
 
-    if (component_begin("Audio Source", IconType::Component_AudioSource, audio_source))
+    if (component_begin("Audio Source", audio_source))
     {
         //= REFLECT ==============================================
         string audio_clip_name = audio_source->GetAudioClipName();

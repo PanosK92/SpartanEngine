@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "RHI/RHI_Texture.h"
 #include "Rendering/Renderer.h"
-#include "Rendering/Mesh.h"
 #include "World/World.h"
 #include "Resource/ResourceCache.h"
 #include "Core/ThreadPool.h"
