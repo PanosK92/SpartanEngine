@@ -54,8 +54,9 @@ namespace spartan
     {
         const float distance_deactivate = 80.0f;
         const float distance_activate   = 40.0f;
-        float standing_height           = 1.8f;
-        float crouch_height             = 0.8f;
+        const float standing_height     = 1.8f;
+        const float crouch_height       = 0.7f;
+
         void* controller_manager = nullptr;
     }
 
@@ -708,12 +709,16 @@ namespace spartan
     {
         if (m_body_type != BodyType::Controller || !m_controller || !Engine::IsFlagSet(EngineMode::Playing))
             return;
-
-        // make the capsule shorter
+    
         PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
-        controller->resize(crouch ? crouch_height : standing_height);
-
-        // adjust position to keep feet grounded
+        const float current_height      = controller->getHeight();
+        const float target_height       = crouch ? crouch_height : standing_height;
+        const float delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
+        const float speed               = 10.0f;
+        const float lerped_height       = math::lerp(current_height, target_height, 1.0f - exp(-speed * delta_time));
+    
+        controller->resize(lerped_height);
+    
         PxExtendedVec3 pos = controller->getPosition();
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }

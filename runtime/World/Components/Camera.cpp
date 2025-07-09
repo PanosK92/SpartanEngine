@@ -351,7 +351,7 @@ namespace spartan
         bool is_crouching         = button_crouch && is_grounded;
         m_is_walking              = (button_move_forward || button_move_backward || button_move_left || button_move_right) && is_grounded;
         
-        // Behavior: Control Activation and Cursor Handling
+        // behavior: control activation and cursor handling
         {
             bool control_initiated  = mouse_right_click_down && mouse_in_viewport;
             bool control_maintained = mouse_right_click && is_controlled;
@@ -378,7 +378,7 @@ namespace spartan
             }
         }
     
-        // Behavior: Mouse Look and Movement Direction Calculation
+        // behavior: mouse Look and movement direction calculation
         Vector3 movement_direction = Vector3::Zero;
         if (is_controlled || is_gamepad_connected)
         {
@@ -444,7 +444,7 @@ namespace spartan
             movement_direction.Normalize();
         }
     
-        // Behavior: Speed Adjustment
+        // behavior: speed adjustment
         {
             m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
             m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
@@ -462,7 +462,7 @@ namespace spartan
             }
         }
     
-        // Behavior: Physical Body Animation
+        // behavior: physical body animation
         if (GetFlag(CameraFlags::PhysicalBodyAnimation) && is_playing && has_physics_body && is_grounded)
         {
             static Vector3 base_local_position = GetEntity()->GetPositionLocal();
@@ -471,14 +471,14 @@ namespace spartan
             static float breathe_timer         = 0.0f;
     
             float velocity_magnitude = m_physics_body_to_control->GetLinearVelocity().Length();
-            if (velocity_magnitude > 0.01f) // Walking head bob
+            if (velocity_magnitude > 0.01f) // walking head bob
             {
                 bob_timer           += delta_time * velocity_magnitude * 2.0f;
                 float bob_amplitude  = 0.04f;
                 bob_offset.y         = sin(bob_timer) * bob_amplitude;
                 bob_offset.x         = cos(bob_timer) * bob_amplitude * 0.5f;
             }
-            else // Breathing effect when resting
+            else // breathing effect when resting
             {
                 breathe_timer               += delta_time * 0.5f;
                 float breathe_amplitude      = 0.0025f;
@@ -490,7 +490,7 @@ namespace spartan
             GetEntity()->SetPositionLocal(base_local_position + bob_offset);
         }
     
-        // Behavior: Jumping
+        // behavior: jumping
         {
             if (has_physics_body && is_playing && is_grounded && button_jump)
             {
@@ -520,13 +520,13 @@ namespace spartan
             }
         }
 
-        // Behavior: Crouching
+        // behavior: crouching
         if (has_physics_body && is_playing)
         {
             m_physics_body_to_control->Crouch(is_crouching);
         }
         
-        // Behavior: Apply Movement
+        // behavior: apply Movement
         if (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && is_grounded))
         {
             if (has_physics_body && is_playing)
