@@ -1157,15 +1157,18 @@ namespace spartan
                 auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
                 {
                     // project aabb to screen space using camera function
-                    math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
+                    float area = 0.0f;
+                    if (Camera* camera = World::GetCamera())
+                    { 
+                        math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
                 
-                    // compute screen-space dimensions using rectangle's left, top, right, bottom
-                    float width  = rect_screen.right  - rect_screen.left;
-                    float height = rect_screen.bottom - rect_screen.top;
-                
-                    // compute area and ensure it's non-negative
-                    float area = width * height;
-                    return area > 0.0f ? area : 0.0f;
+                        // compute screen-space dimensions using rectangle's left, top, right, bottom
+                        float width  = rect_screen.right  - rect_screen.left;
+                        float height = rect_screen.bottom - rect_screen.top;
+                        area         = clamp(width * height, 0.0f, numeric_limits<float>::max());
+                    }
+
+                    return area;
                 };
             
                 // temporary storage for draw call areas
