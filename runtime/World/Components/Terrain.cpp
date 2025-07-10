@@ -473,16 +473,16 @@ namespace spartan
             }
         }
 
-        void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 100'000)
+        void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 150'000)
         {
             const float inertia           = 0.02f;
-            const float sediment_capacity = 1.0f;
-            const float erode_speed       = 0.7f;
+            const float sediment_capacity = 0.5f;
+            const float erode_speed       = 0.4f;
             const float deposit_speed     = 0.5f;
             const float evaporate_speed   = 0.01f;
             const float gravity           = 2.0f;
             const float max_steps         = 75.0f;
-            const float min_slope         = 0.005f;
+            const float min_slope         = 0.08f;
             const float max_height_delta  = 3.0f;
         
             mutex positions_mutex;
@@ -490,18 +490,22 @@ namespace spartan
         
             auto erode_range = [&](uint32_t start_index, uint32_t end_index)
             {
-               mt19937 gen(random_device{}() + start_index);
-               uniform_real_distribution<float> dist(0.0f, 1.0f);
-        
+                mt19937 gen(random_device{}() + start_index);
+                uniform_real_distribution<float> dist(0.0f, 1.0f);
+                uniform_real_distribution<float> capacity_dist(0.3f, 0.7f);   // vary sediment capacity
+                uniform_real_distribution<float> velocity_dist(-0.2f, 0.2f); // random initial velocity
+                uniform_real_distribution<float> water_dist(1.2f, 2.0f);
+
                 for (uint32_t iter = start_index; iter < end_index; ++iter)
                 {
                     float pos_x      = dist(gen) * (width - 1);
                     float pos_z      = dist(gen) * (height - 1);
-                    float velocity_x = 0.0f;
-                    float velocity_z = 0.0f;
-                    float water      = 1.0f;
+                    float velocity_x = velocity_dist(gen);
+                    float velocity_z = velocity_dist(gen);
+                    float water      = water_dist(gen);
                     float sediment   = 0.0f;
                     float speed      = 0.0f;
+                    float capacity   = capacity_dist(gen);
         
                     for (int step = 0; step < max_steps && water > 0.0f; step++)
                     {
