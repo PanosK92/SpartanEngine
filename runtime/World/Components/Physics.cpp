@@ -322,9 +322,15 @@ namespace spartan
         if (mass == mass_from_volume)
         {
             constexpr float density = 1000.0f; // kg/m³ (default density, e.g., water)
-            float volume = 0.0f;
-            Vector3 scale = GetEntity()->GetScale();
-    
+            float volume            = 0.0f;
+            Vector3 scale           = GetEntity()->GetScale();
+
+            if (m_body_type == BodyType::Max)
+            {
+                SP_LOG_WARNING("This call will be ignored. You need to set the body type before setting mass from volume.");
+                return;
+            }
+
             switch (m_body_type)
             {
                 case BodyType::Box:
@@ -337,17 +343,17 @@ namespace spartan
                 {
                     // volume = (4/3) * π * r³, radius = max(x, y, z) / 2
                     float radius = max(max(scale.x, scale.y), scale.z) * 0.5f;
-                    volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
+                    volume       = (4.0f / 3.0f) * math::pi * radius * radius * radius;
                     break;
                 }
                 case BodyType::Capsule:
                 {
-                    // volume = cylinder (π * r² * h) + two hemispheres ((4/3) * π * r³)
-                    float radius = max(scale.x, scale.z) * 0.5f;
+                    // volume             = cylinder (π * r² * h) + two hemispheres ((4/3) * π * r³)
+                    float radius          = max(scale.x, scale.z) * 0.5f;
                     float cylinder_height = scale.y - 2.0f * radius; // height of cylindrical part
                     float cylinder_volume = math::pi * radius * radius * cylinder_height;
-                    float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
-                    volume = cylinder_volume + sphere_volume;
+                    float sphere_volume   = (4.0f / 3.0f) * math::pi * radius * radius * radius;
+                    volume                = cylinder_volume + sphere_volume;
                     break;
                 }
                 case BodyType::Mesh:
@@ -369,15 +375,15 @@ namespace spartan
                 case BodyType::Plane:
                 {
                     // infinite plane, use default mass
-                    mass = 1.0f;
+                    mass   = 1.0f;
                     volume = 0.0f; // skip volume-based calculation
                     break;
                 }
                 case BodyType::Controller:
                 {
                     // controller, use default mass (e.g., human-like)
-                    mass = 70.0f; // approximate human mass
-                    volume = 0.0f; // skip volume-based calculation
+                    mass   = 70.0f; // approximate human mass
+                    volume = 0.0f;  // skip volume-based calculation
                     break;
                 }
             }
@@ -389,8 +395,8 @@ namespace spartan
             }
         }
     
-        // ensure minimum mass to avoid physx issues
-        m_mass = max(mass, 0.001f);
+        // ensure safe physx mass range
+        m_mass = min(max(mass, 0.001f), 10000.0f);
     
         // update mass for all dynamic bodies
         for (auto* body : m_bodies)
@@ -827,10 +833,10 @@ namespace spartan
                 params.planeTolerance                  = 0.0007f;
                 params.convexMeshCookingType           = PxConvexMeshCookingType::eQUICKHULL;
                 params.suppressTriangleMeshRemapTable  = false;
-                params.buildTriangleAdjacencies        = false;
+                params.buildTriangleAdjacencies        = true;
                 params.buildGPUData                    = false;
                 params.meshPreprocessParams           |= PxMeshPreprocessingFlag::eWELD_VERTICES;
-                params.meshWeldTolerance               = 0.001f;
+                params.meshWeldTolerance               = 0.01f;
                 params.meshAreaMinLimit                = 0.0f;
                 params.meshEdgeLengthMaxLimit          = 500.0f;
                 params.gaussMapLimit                   = 32;
@@ -868,11 +874,8 @@ namespace spartan
                     mesh_desc.points.stride = sizeof(PxVec3);
                     mesh_desc.points.data   = px_vertices.data();
                     mesh_desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
-                    if (!PxValidateConvexMesh(params, mesh_desc))
-                    {
-                        SP_LOG_WARNING("Convex mesh validation failed");
-                        return;
-                    }
+
+                    // create
                     PxConvexMeshCookingResult::Enum condition;
                     m_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
                     if (!m_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)

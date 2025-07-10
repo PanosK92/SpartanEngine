@@ -207,13 +207,14 @@ namespace spartan
                     // name, position, rotate
                     shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("material_ball");
-                    entity->SetPosition(Vector3(0.0f, 0.8f, 0.0f));
+                    entity->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
                     entity->SetRotation(Quaternion::Identity);
 
                     // add physics
                     Physics* physics_body = entity->AddComponent<Physics>();
-                    physics_body->SetMass(Physics::mass_from_volume);
+                    physics_body->SetStatic(false);
                     physics_body->SetBodyType(BodyType::Mesh);
+                    physics_body->SetMass(100.0f);
                 }
             }
 

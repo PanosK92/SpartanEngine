@@ -351,9 +351,9 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // compute (world-space) uv
     float3 abs_normal = abs(vertex.normal); // absolute normal for weights
     float3 weights    = abs_normal / (abs_normal.x + abs_normal.y + abs_normal.z + 0.0001f); // normalize weights, avoid division by zero
-    float2 uv_xy      = vertex.position.xy / material.tiling + material.offset;              // xy plane (walls facing Z)
-    float2 uv_xz      = vertex.position.xz / material.tiling + material.offset;              // xz plane (floor/ceiling)
-    float2 uv_yz      = vertex.position.yz / material.tiling + material.offset;              // yz plane (walls facing X)
+    float2 uv_xy      = float2(-vertex.position.x, vertex.position.y) / material.tiling + material.offset;
+    float2 uv_xz      = float2(-vertex.position.x, vertex.position.z) / material.tiling + material.offset;
+    float2 uv_yz      = float2(-vertex.position.y, vertex.position.z) / material.tiling + material.offset;
     float2 world_uv   = uv_xy * weights.z + uv_xz * weights.y + uv_yz * weights.x;
     float2 mesh_uv    = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
     vertex.uv         = lerp(mesh_uv, world_uv, material.world_space_uv);
