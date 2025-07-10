@@ -108,9 +108,7 @@ namespace spartan
                 Renderable* renderable = default_floor->AddComponent<Renderable>();
                 renderable->SetMesh(MeshType::Quad);
                 renderable->SetDefaultMaterial();
-                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingX, default_floor->GetScale().x);
-                renderable->GetMaterial()->SetProperty(MaterialProperty::TextureTilingY, default_floor->GetScale().z);
-                
+
                 // add physics components
                 Physics* physics_body = default_floor->AddComponent<Physics>();
                 physics_body->SetBodyType(BodyType::Plane);
@@ -203,19 +201,19 @@ namespace spartan
 
             void material_ball(const Vector3& position)
             {
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf"))
+                uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf", flags))
                 {
+                    // name, position, rotate
                     shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                     entity->SetObjectName("material_ball");
-                    entity->SetPosition(position);
+                    entity->SetPosition(Vector3(0.0f, 0.8f, 0.0f));
                     entity->SetRotation(Quaternion::Identity);
 
-                    if (auto mesh_entity = entity->GetDescendantByName("Object_2"))
-                    {
-                        Physics* physics_body = mesh_entity->AddComponent<Physics>();
-                        physics_body->SetMass(Physics::mass_from_volume);
-                        physics_body->SetBodyType(BodyType::Mesh);
-                    }
+                    // add physics
+                    Physics* physics_body = entity->AddComponent<Physics>();
+                    physics_body->SetMass(Physics::mass_from_volume);
+                    physics_body->SetBodyType(BodyType::Mesh);
                 }
             }
 
@@ -1702,6 +1700,19 @@ namespace spartan
                 }
             }
         }
+
+        namespace basic
+        {
+            void create()
+            {
+                entities::camera();
+                entities::floor();
+                entities::sun(true);
+                entities::material_ball(Vector3::Zero);
+
+                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+            }
+        }
     }
 
     void Game::Shutdown()
@@ -1765,6 +1776,7 @@ namespace spartan
                 case DefaultWorld::Subway:       worlds::create_subway_gi_test(); break;
                 case DefaultWorld::GranTurismo:  worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
+                case DefaultWorld::Basic:        worlds::basic::create();         break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
             }
 

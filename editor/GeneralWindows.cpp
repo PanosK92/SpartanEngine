@@ -370,12 +370,12 @@ namespace
     
         static const Shortcut editor_shortcuts[] =
         {
-            { "Ctrl+P",       "Open shortcuts & input reference window" },
-            { "Ctrl+S",       "Save world"                              },
-            { "Ctrl+L",       "Load world"                              },
-            { "Ctrl+Z",       "Undo"                                    },
-            { "Ctrl+Shift+Z", "Redo"                                    },
-            { "Alt+Enter",    "Toggle fullscreen viewport"              }
+            { "Ctrl+P",       "Toggle this window"         },
+            { "Ctrl+S",       "Save world"                 },
+            { "Ctrl+L",       "Load world"                 },
+            { "Ctrl+Z",       "Undo"                       },
+            { "Ctrl+Shift+Z", "Redo"                       },
+            { "Alt+Enter",    "Toggle fullscreen viewport" }
         };
     
         static const Shortcut camera_controls[] =
@@ -450,7 +450,8 @@ namespace
             "4. Sponza 4k (high-resolution textures & meshes) - demanding",
             "5. Subway (gi test, no lights, only emissive textures) - moderate",
             "6. Doom E1M1 (classic level recreation) - light",
-            "7. Minecraft (blocky aesthetic) - light"
+            "7. Minecraft (blocky aesthetic) - light",
+            "8. Basic (light, camera, floor) - light"
         };
 
         int world_index = 0;

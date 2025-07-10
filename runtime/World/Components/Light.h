@@ -100,8 +100,8 @@ namespace spartan
         float GetIntensityWatt() const;
 
         // bias
-        static float GetBias()            { return -0.003f; }
-        static float GetBiasSlopeScaled() { return -2.0f; }
+        static float GetBias()            { return -0.0005f; }
+        static float GetBiasSlopeScaled() { return -1.0f; }
 
         // range
         void SetRange(float range);
@@ -155,7 +155,5 @@ namespace spartan
         float m_range              = 32.0f;
         float m_angle_rad          = math::deg_to_rad * 30.0f;
         uint32_t m_index           = 0;
-        float m_shadow_extent_near = 0.0f;
-        float m_shadow_extent_far  = 0.0f;
     };
 }

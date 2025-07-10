@@ -32,6 +32,7 @@ namespace spartan
         Subway,
         Doom,
         Minecraft,
+        Basic,
         Max
     };
 

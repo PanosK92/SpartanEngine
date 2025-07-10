@@ -742,6 +742,4 @@ namespace spartan
     {
         return standard_material;
     }
-
-    
 }

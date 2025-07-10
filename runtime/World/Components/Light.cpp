@@ -38,6 +38,11 @@ namespace spartan
 {
     namespace
     {
+        // directional shadows parameters
+        const float cascade_near_half_extent = 20.0f;
+        const float cascade_far_half_extent  = 256.0f;
+        const float cascade_depth            = 1'000.0f;
+
         float get_sensible_range(const LightType type)
         {
             if (type == LightType::Directional)
@@ -395,17 +400,14 @@ namespace spartan
     
             // both near and far cascades follow the camera
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
-            Vector3 position   = camera_pos + GetEntity()->GetForward();
+            Vector3 position   = camera_pos - GetEntity()->GetForward() * cascade_depth * 0.5f;
             m_matrix_view[0]   = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
             m_matrix_view[1]   = m_matrix_view[0];
     
             // compute shadow extents inline
             if (texture_width > 0)
             {
-                m_shadow_extent_near = 50.0f;  // fixed 20 meters half-extent
-                m_shadow_extent_far  = 500.0f; // fixed 200 meters half-extent
-    
-                float extents[2] = { m_shadow_extent_near, m_shadow_extent_far };
+                float extents[2] = { cascade_near_half_extent, cascade_far_half_extent };
     
                 for (int i = 0; i < 2; i++)
                 {
@@ -429,24 +431,22 @@ namespace spartan
     
    void Light::ComputeProjectionMatrix()
     {
-        if (m_light_type == LightType::Directional)
+       if (m_light_type == LightType::Directional)
         {
             Camera* camera = World::GetCamera();
             if (!camera)
                 return;
 
-            const float cascade_depth = 1'000.0f;
-
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -m_shadow_extent_near, m_shadow_extent_near, // left, right
-                -m_shadow_extent_near, m_shadow_extent_near, // bottom, top,
-                -cascade_depth * 0.5f, cascade_depth * 0.5f  // near, far
+                -cascade_near_half_extent, cascade_near_half_extent, // left, right
+                -cascade_near_half_extent, cascade_near_half_extent, // bottom, top
+                cascade_depth, 0.0f                                  // reverse-z near plane, far plane 0
             );
 
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
-                -m_shadow_extent_far, m_shadow_extent_far,
-                -m_shadow_extent_far, m_shadow_extent_far,
-                -cascade_depth * 0.5f, cascade_depth * 0.5f
+                -cascade_far_half_extent, cascade_far_half_extent,
+                -cascade_far_half_extent, cascade_far_half_extent,
+                cascade_depth, 0.0f
             );
 
             m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], cascade_depth);
