@@ -38,7 +38,7 @@ namespace spartan
 {
     namespace
     {
-        // directional shadows parameters
+        // directional matrix parameters
         const float cascade_near_half_extent = 20.0f;
         const float cascade_far_half_extent  = 256.0f;
         const float cascade_depth            = 1'000.0f;
