@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // constants
 static const float refraction_strength = 0.3f;
 
-// emulates the fact that deeper water is less transparent and shifts the color towards blue
+// emulates the fact that deep water gets more blue because of absorption
 float3 apply_water_absorption(float3 color, float depth)
 {
     float3 absorption = float3(0.1f, 0.05f, 0.02f); // absorption coefficients for rgb (approximate, in 1/meters)
@@ -75,6 +75,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 reflection    = tex[thread_id.xy].rgb;
     float2 brdf          = tex3.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).rg;
     float3 surface_color = reflection * (surface.F0 * brdf.x + brdf.y) + refraction;
-
+ 
     tex_uav[thread_id.xy] += float4(surface_color, 0.0f);
 }

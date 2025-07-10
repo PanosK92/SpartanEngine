@@ -275,7 +275,7 @@ namespace spartan
                     const float max_force               = 500.0f;
                     force_to_apply                      = clamp(force_to_apply, -max_force, max_force);
                     Vector3 buoyancy_force(0.0f, force_to_apply, 0.0f);
-            
+
                     if (body_type == BodyType::Controller)
                     {
                         other_physics->m_velocity.y += (force_to_apply / mass) * delta_time;
@@ -318,7 +318,7 @@ namespace spartan
 
     void Physics::SetMass(float mass)
     {
-        // if mass is mass_from_volume (flt_max), approximate mass from volume
+        // approximate mass from volume
         if (mass == mass_from_volume)
         {
             constexpr float density = 1000.0f; // kg/m³ (default density, e.g., water)

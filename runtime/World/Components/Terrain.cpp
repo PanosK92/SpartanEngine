@@ -492,7 +492,7 @@ namespace spartan
             {
                 mt19937 gen(random_device{}() + start_index);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
-                uniform_real_distribution<float> capacity_dist(0.3f, 0.7f);   // vary sediment capacity
+                uniform_real_distribution<float> capacity_dist(0.3f, 0.7f);  // vary sediment capacity
                 uniform_real_distribution<float> velocity_dist(-0.2f, 0.2f); // random initial velocity
                 uniform_real_distribution<float> water_dist(1.2f, 2.0f);
 
