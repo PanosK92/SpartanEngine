@@ -1592,7 +1592,7 @@ namespace spartan
                 };
             
                 generate_path(generate_path, {0, 0}, NUM_ROOMS - 1);
-                int actual_rooms = path.size();
+                int actual_rooms = static_cast<int>(path.size());
             
                 // doors
                 vector<Direction> doors(actual_rooms);

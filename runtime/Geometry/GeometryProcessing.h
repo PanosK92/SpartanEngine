@@ -223,51 +223,45 @@ namespace spartan::geometry_processing
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
     {
         size_t vertex_count = vertices.size();
-        size_t index_count  = indices.size();
+        size_t index_count = indices.size();
     
-        // create a remap table
-        std::vector<unsigned int> remap(index_count);
-        size_t vertex_count_optimized = meshopt_generateVertexRemap(remap.data(), 
-                                                            indices.data(),
-                                                            index_count,
-                                                            vertices.data(),
-                                                            vertex_count,
-                                                            sizeof(RHI_Vertex_PosTexNorTan));
+        // Step 1: Vertex Remapping (even with Assimp, ensure optimal)
+        std::vector<unsigned int> remap(vertex_count);
+        size_t vertex_count_optimized = meshopt_generateVertexRemap(remap.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
     
-        // note: when we import with Assimp, JoinIdenticalVertices is used, so we don't need to remove duplicates here
+        std::vector<uint32_t> indices_remapped(index_count);
+        meshopt_remapIndexBuffer(indices_remapped.data(), indices.data(), index_count, remap.data());
+        indices = std::move(indices_remapped);
     
-        // optimization #1: improve the locality of the vertices
+        std::vector<RHI_Vertex_PosTexNorTan> vertices_remapped(vertex_count_optimized);
+        meshopt_remapVertexBuffer(vertices_remapped.data(), vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan), remap.data());
+        vertices = std::move(vertices_remapped);
+        vertex_count = vertex_count_optimized;
+    
+        // Step 2: Simplify first to reduce complexity
+        auto get_target_index_count = [](size_t index_count)
+        {
+            if (index_count > 100000) return static_cast<size_t>(index_count * 0.1f);
+            if (index_count > 50000)  return static_cast<size_t>(index_count * 0.3f);
+            if (index_count > 20000)  return static_cast<size_t>(index_count * 0.5f);
+            if (index_count > 10000)  return static_cast<size_t>(index_count * 0.7f);
+            return index_count;
+        };
+    
+        simplify(indices, vertices, get_target_index_count(index_count), false);  // Assume this uses meshopt_simplify
+    
+        // Update counts after simplify
+        index_count  = indices.size();
+        vertex_count = vertices.size();
+    
+        // Step 3: Vertex Cache Optimization
         meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
     
-        // optimization #2: reduce pixel overdraw
-        meshopt_optimizeOverdraw(indices.data(), indices.data(), index_count, &(vertices[0].pos[0]), vertex_count, sizeof(RHI_Vertex_PosTexNorTan), 1.05f);
+        // Step 4: Overdraw Optimization
+        meshopt_optimizeOverdraw(indices.data(), indices.data(), index_count, &vertices[0].pos[0], vertex_count, sizeof(RHI_Vertex_PosTexNorTan), 1.05f);
     
-        // optimization #3: optimize access to the vertex buffer
+        // Step 5: Vertex Fetch Optimization
         meshopt_optimizeVertexFetch(vertices.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
-    
-        // optimization #4: create a simplified version of the mesh while trying to maintain the topology
-        {
-            auto get_target_index_count = [](size_t index_count)
-            {
-                std::tuple<float, size_t> aggressiveness_table[] =
-                {
-                    { 0.2f, 60000 },  // ultra aggressive (20000 triangles * 3)
-                    { 0.4f, 30000 },  // aggressive (10000 triangles * 3)
-                    { 0.6f, 15000 },  // balanced (5000 triangles * 3)
-                    { 0.8f, 7500  }   // gentle (2500 triangles * 3)
-                };
-            
-                for (const auto& [reduction_percentage, index_threshold] : aggressiveness_table)
-                {
-                    if (index_count > index_threshold)
-                        return static_cast<size_t>(index_count * reduction_percentage);
-                }
-        
-                return index_count; // native
-            };
-        
-            simplify(indices, vertices, get_target_index_count(indices.size()), false);
-        }
     }
 
     static void split_surface_into_tiles(
