@@ -281,10 +281,10 @@ Warning Options:
         return result == S_OK;
     }
 
-    class DirecXShaderCompiler
+    class DirectXShaderCompiler
     {
     public:
-         static IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
+        static IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
         {
             // static dxc interfaces
             static IDxcUtils* m_utils = nullptr;

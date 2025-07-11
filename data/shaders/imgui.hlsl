@@ -4,7 +4,7 @@ Copyright(c) 2015-2025 Panos Karabelas
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
 
@@ -72,29 +72,32 @@ float4 main_ps(vertex input) : SV_Target
 
     // sample texture
     float4 color_texture;
-    float mip_level   = mip_array.x;
-    float array_level = mip_array.y;
-    if (array_level > 0.0f)
-    {
-        float3 uv_array = float3(input.uv, array_level);
-        color_texture = point_sampling
-            ? tex_light_depth.SampleLevel(samplers[sampler_point_wrap], uv_array, mip_level)
-            : tex_light_depth.SampleLevel(samplers[sampler_bilinear_wrap], uv_array, mip_level);
-    }
-    else
-    {
-        color_texture = point_sampling
-            ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip_level)
-            : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip_level);
-    }
+    float mip_level             = mip_array.x;
+    float array_level           = mip_array.y;
+    float is_array              = array_level > 0.0f ? 1.0f : 0.0f;
+    float3 uv_array             = float3(input.uv, array_level);
+    float4 sample_point_wrap    = is_array ? tex_light_depth.SampleLevel(samplers[sampler_point_wrap], uv_array, mip_level) : tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip_level);
+    float4 sample_bilinear_wrap = is_array ? tex_light_depth.SampleLevel(samplers[sampler_bilinear_wrap], uv_array, mip_level) : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip_level);
+    color_texture               = lerp(sample_bilinear_wrap, sample_point_wrap, float(point_sampling));
 
     // visualization
-    color_texture.rgb *= lerp(float3(1.0f, 1.0f, 1.0f), channels.rgb, is_visualized);
-    color_texture.a    = lerp(color_texture.a, lerp(1.0f, color_texture.a, channels.w), is_visualized);
-    color_texture      = lerp(color_texture, abs(color_texture), is_visualized * absolute);
-    color_texture.rgb  = lerp(color_texture.rgb, pack(color_texture.rgb), is_visualized * packed);
-    color_texture.rgb  = lerp(color_texture.rgb, linear_to_srgb(color_texture.rgb), is_visualized * gamma_correct);
-    color_texture.rgb *= lerp(1.0f, 10.0f, is_visualized * boost);
+    float4 color_original = color_texture;
+    uint num_channels     = channel_r + channel_g + channel_b + channel_a;
+    float f_visualized    = float(is_visualized);
+    float val             = dot(color_texture, channels);
+    float3 rgb_single     = val.xxx;
+    float a_single        = 1.0f;
+    float3 rgb_multi      = color_texture.rgb * channels.rgb;
+    float a_multi         = lerp(1.0f, color_texture.a, channels.a);
+    float is_single       = num_channels == 1u ? 1.0f : 0.0f;
+    float3 rgb_vis        = lerp(rgb_multi, rgb_single, is_single);
+    float a_vis           = lerp(a_multi, a_single, is_single);
+    color_texture         = lerp(color_original, float4(rgb_vis, a_vis), f_visualized);
+
+    color_texture      = lerp(color_texture, abs(color_texture), f_visualized * float(absolute));
+    color_texture.rgb  = lerp(color_texture.rgb, pack(color_texture.rgb), f_visualized * float(packed));
+    color_texture.rgb  = lerp(color_texture.rgb, linear_to_srgb(color_texture.rgb), f_visualized * float(gamma_correct));
+    color_texture.rgb *= lerp(1.0f, 10.0f, f_visualized * float(boost));
 
     // final
     float4 color = input.color * color_texture;

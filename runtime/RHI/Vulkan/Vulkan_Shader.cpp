@@ -146,7 +146,7 @@ namespace spartan
         }
 
         // compile
-        if (IDxcResult* dxc_result = DirecXShaderCompiler::Compile(m_preprocessed_source, arguments))
+        if (IDxcResult* dxc_result = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments))
         {
             // get compiled shader buffer
             IDxcBlob* shader_buffer = nullptr;
