@@ -19,20 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ========================
 #include "pch.h"
 #include "Camera.h"
 #include "Renderable.h"
 #include "Window.h"
 #include "Physics.h"
 #include "../Entity.h"
-#include "../World.h"
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
-#include "../../Physics/PhysicsWorld.h"
-//=====================================
+//===================================
 
 //= NAMESPACES ===============
 using namespace spartan::math;

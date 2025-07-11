@@ -483,7 +483,7 @@ namespace spartan
         m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
         if (Camera* camera = World::GetCamera())
         {
-            m_cb_frame_cpu.view_projection_previous_unjittered =  m_cb_frame_cpu.view_projection_unjittered;
+            m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
             m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view * camera->GetProjectionMatrix();
             m_cb_frame_cpu.camera_near                         = camera->GetNearPlane();
             m_cb_frame_cpu.camera_far                          = camera->GetFarPlane();
