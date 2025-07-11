@@ -57,7 +57,7 @@ float3 F_Schlick(const float3 f0, float3 f90, float v_dot_h)
 
 float3 get_f90(Surface surface)
 {
-    return lerp(1.0f, surface.F0, surface.metallic);
+    return 1.0f;
 }
 
 float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha2)
@@ -69,12 +69,12 @@ float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha2)
 }
 
 float V_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
-    {
+{
     float cos2  = cos_theta_m * cos_theta_m;
     float sin2  = (1.0 - cos2);
     float s_x   = alpha_x * cos_phi;
     float s_y   = alpha_y * sin_phi;
-    return 1.0 / max(cos_theta_m + sqrt(cos2 + (s_x * s_x + s_y * s_y) * sin2), 0.001);
+    return 1.0 / max(cos_theta_m + sqrt(cos2 + (s_x * s_x + s_y * s_y)), 0.001);
 }
 
 // [Kelemen 2001, "A microfacet based coupled specular-matte brdf model with importance sampling"]
@@ -115,12 +115,12 @@ float D_GGX_Anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float c
     float sin2  = (1.0 - cos2);
     float r_x   = cos_phi / alpha_x;
     float r_y   = sin_phi / alpha_y;
-    float d     = cos2 + sin2 * (r_x * r_x + r_y * r_y);
+    float d     = cos2 + (cos_phi * cos_phi) / (alpha_x * alpha_x) + (sin_phi * sin_phi) / (alpha_y * alpha_y);
     return saturate_16(1.0 / (PI * alpha_x * alpha_y * d * d));
 }
 
 float D_Charlie(float roughness, float NoH)
- {
+{
     // Estevez and Kulla 2017, "Production Friendly Microfacet Sheen BRDF"
     float invAlpha  = 1.0 / roughness;
     float cos2h     = NoH * NoH;
@@ -142,7 +142,7 @@ float3 compute_diffuse_energy(float3 F, float metallic)
 float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
     float alpha_ggx     = D_GGX_Alpha(surface.roughness);
-    float  visibility   = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, surface.alpha * surface.alpha);
+    float  visibility   = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, alpha_ggx * alpha_ggx);
     float  distribution = D_GGX(angular_info.n_dot_h, alpha_ggx * alpha_ggx);
     float3 fresnel      = F_Schlick(surface.F0, get_f90(surface), angular_info.v_dot_h);
 
@@ -166,7 +166,7 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     t                = normalize(mul(float3(direction, 0.0f), TBN).xyz); // compute direction derived tangent
     b                = normalize(cross(surface.normal, t));              // re-compute bitangent
 
-    float alpha_ggx = surface.roughness;
+    float alpha_ggx = D_GGX_Alpha(surface.roughness);
     float aspect    = sqrt(1.0 - surface.anisotropic * 0.9);
     float ax        = alpha_ggx / aspect;
     float ay        = alpha_ggx * aspect;
@@ -175,7 +175,7 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     
     // specular anisotropic BRDF
     float D  = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
-    float V  = V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH);
+    float V  = V_GGX_anisotropic_2cos(angular_info.n_dot_l, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH);
     float3 F = F_Schlick(surface.F0, get_f90(surface), angular_info.l_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
@@ -186,8 +186,7 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
 
 float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
 {
-    float roughness_alpha         = surface.clearcoat_roughness * surface.clearcoat_roughness;
-    float roughness_alpha_squared = roughness_alpha * roughness_alpha;
+    float roughness_alpha_squared = surface.clearcoat_roughness * surface.clearcoat_roughness;
     
     float D  = D_GGX(angular_info.n_dot_h, roughness_alpha_squared);
     float V  = V_Kelemen(angular_info.v_dot_h);

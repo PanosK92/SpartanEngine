@@ -1320,18 +1320,18 @@ namespace spartan
 
             void create()
             {
-                // shared material for all surfaces (floor, walls, ceiling)
+                // shared material for surfaces
                 shared_ptr<Material> tile_material = make_shared<Material>();
-                tile_material->SetResourceFilePath(string("project\\materials\\material_floor_tile") + string(EXTENSION_MATERIAL));
-                tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
-                tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
-                tile_material->SetTexture(MaterialTextureType::Metalness,    "project\\materials\\tile_white\\metallic.png");
-                tile_material->SetTexture(MaterialTextureType::Roughness,    "project\\materials\\tile_white\\roughness.png");
-                tile_material->SetTexture(MaterialTextureType::Occlusion,    "project\\materials\\tile_white\\ao.png");
-                tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f); // surface independent UVs
+                tile_material->SetResourceFilePath("project\\materials\\material_floor_tile" + string(EXTENSION_MATERIAL));
+                tile_material->SetTexture(MaterialTextureType::Color, "project\\materials\\tile_white\\albedo.png");
+                tile_material->SetTexture(MaterialTextureType::Normal, "project\\materials\\tile_white\\normal.png");
+                tile_material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\tile_white\\metallic.png");
+                tile_material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\tile_white\\roughness.png");
+                tile_material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\tile_white\\ao.png");
+                tile_material->SetProperty(MaterialProperty::WorldSpaceUv, 1.0f);
                 tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
                 tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
-
+            
                 // pool light mesh
                 shared_ptr<Entity> entity_pool_light = nullptr;
                 uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
@@ -1340,215 +1340,197 @@ namespace spartan
                 {
                     entity_pool_light = mesh->GetRootEntity().lock();
                     entity_pool_light->SetObjectName("pool_light");
-                    entity_pool_light->SetScale(0.5f);                            // what looks good
-                    entity_pool_light->SetPosition(Vector3(0.0f, 1000.0f, 0.0f)); // hide it as this specific light won't be used in the level (it will be the blueprint)
-                    entity_pool_light->GetChildByIndex(3)->SetActive(false);      // there is an extra child that we don't need
-
+                    entity_pool_light->SetScale(0.5f);
+                    entity_pool_light->SetPosition(Vector3(0.0f, 1000.0f, 0.0f)); // hide blueprint
+                    entity_pool_light->GetChildByIndex(3)->SetActive(false);
+            
                     // outer metallic ring
                     shared_ptr<Material> material_metal = make_shared<Material>();
-                    material_metal->SetResourceFilePath(string("project\\materials\\material_metal") + string(EXTENSION_MATERIAL));
+                    material_metal->SetResourceFilePath("project\\materials\\material_metal" + string(EXTENSION_MATERIAL));
                     material_metal->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_metal->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle")->GetComponent<Renderable>()->SetMaterial(material_metal);
-
+            
                     // inner light paraboloid
                     shared_ptr<Material> material_paraboloid = make_shared<Material>();
-                    material_paraboloid->SetResourceFilePath(string("project\\materials\\material_paraboloid") + string(EXTENSION_MATERIAL));
+                    material_paraboloid->SetResourceFilePath("project\\materials\\material_paraboloid" + string(EXTENSION_MATERIAL));
                     material_paraboloid->SetTexture(MaterialTextureType::Emission, "project\\models\\pool_light\\emissive.png");
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_paraboloid->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle.001")->GetComponent<Renderable>()->SetMaterial(material_paraboloid);
-
-                    // add a point light source
-                    {
-                        Entity* light_source = entity_pool_light->GetChildByIndex(2);
-                        light_source->SetPositionLocal(Vector3(0.0f, 0.0f, -0.5f)); // a bit in front of the light
-
-                        Light* light = light_source->AddComponent<Light>();
-                        light->SetLightType(LightType::Point);
-                        light->SetIntensity(2500.0f);   // 2,500 lumens, bright for a small pool light
-                        light->SetTemperature(5500.0f); // 5,500K, cool white
-                        light->SetRange(15.0f);         // 15 meters, suitable for pool illumination in water
-                        light->SetFlag(LightFlags::Shadows,            false);
-                        light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                    }
+            
+                    // point light
+                    Entity* light_source = entity_pool_light->GetChildByIndex(2);
+                    light_source->SetPositionLocal(Vector3(0.0f, 0.0f, -0.5f));
+                    Light* light = light_source->AddComponent<Light>();
+                    light->SetLightType(LightType::Point);
+                    light->SetIntensity(2500.0f);
+                    light->SetTemperature(5500.0f);
+                    light->SetRange(15.0f);
+                    light->SetFlag(LightFlags::Shadows, false);
+                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 }
-
-                // adjust renderer options
-                {
-                    Renderer::SetOption(Renderer_Option::PerformanceMetrics,  0.0f);
-                    Renderer::SetOption(Renderer_Option::Lights,              0.0f);
-                    Renderer::SetOption(Renderer_Option::GlobalIllumination,  0.0f);
-                    Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
-                    Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
-                    Renderer::SetOption(Renderer_Option::Grid,                0.0f);
-                    Renderer::SetOption(Renderer_Option::Vhs,                 1.0f);
-                }
-
+            
+                // renderer options
+                Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
+                Renderer::SetOption(Renderer_Option::Lights, 0.0f);
+                Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f);
+                Renderer::SetOption(Renderer_Option::Dithering, 0.0f);
+                Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
+                Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+                Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
+            
                 // camera
-                {
-                    entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
-
-                    shared_ptr<Entity> entity_hum = World::CreateEntity();
-                    entity_hum->SetObjectName("audio_hum_electric");
-                    entity_hum->SetParent(default_camera);
-                    AudioSource* audio_source = entity_hum->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\hum_electric.wav");
-                    audio_source->SetLoop(true);
-                    audio_source->SetVolume(0.25f);
-
-                    // entity for tile footsteps
-                    shared_ptr<Entity> entity_tiles = World::CreateEntity();
-                    entity_tiles->SetObjectName("audio_footsteps_tiles");
-                    entity_tiles->SetParent(default_camera);
-                    AudioSource* audio_source_tiles = entity_tiles->AddComponent<AudioSource>();
-                    audio_source_tiles->SetAudioClip("project\\music\\footsteps_tiles.wav");
-                    audio_source_tiles->SetPlayOnStart(false);
-
-                    // entity for water footsteps
-                    shared_ptr<Entity> entity_water = World::CreateEntity();
-                    entity_water->SetObjectName("audio_footsteps_water");
-                    entity_water->SetParent(default_camera);
-                    AudioSource* audio_source_water = entity_water->AddComponent<AudioSource>();
-                    audio_source_water->SetAudioClip("project\\music\\footsteps_water.wav");
-                    audio_source_water->SetPlayOnStart(false);
-
-                    // flashlight
-                    flashlight = World::CreateEntity();
-                    {
-                        flashlight->SetObjectName("flashlight");
-                        flashlight->SetPosition(Vector3(0.0f, 1.7f, 0.0f));
-                        flashlight->SetParent(default_camera);
-
-                        Light* light = flashlight->AddComponent<Light>();
-                        light->SetLightType(LightType::Point);
-                        light->SetColor(Color::light_light_bulb);
-                        light->SetRange(50.0f);       // meters
-                        light->SetIntensity(4750.0f); // lumens
-                        light->SetFlag(LightFlags::Volumetric,         false);
-                        light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                        light->SetFlag(LightFlags::Shadows,            false);
-                    }
-                }
-
+                entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
+            
+                // audio hum
+                shared_ptr<Entity> entity_hum = World::CreateEntity();
+                entity_hum->SetObjectName("audio_hum_electric");
+                entity_hum->SetParent(default_camera);
+                AudioSource* audio_source = entity_hum->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\hum_electric.wav");
+                audio_source->SetLoop(true);
+                audio_source->SetVolume(0.25f);
+            
+                // tile footsteps
+                shared_ptr<Entity> entity_tiles = World::CreateEntity();
+                entity_tiles->SetObjectName("audio_footsteps_tiles");
+                entity_tiles->SetParent(default_camera);
+                AudioSource* audio_source_tiles = entity_tiles->AddComponent<AudioSource>();
+                audio_source_tiles->SetAudioClip("project\\music\\footsteps_tiles.wav");
+                audio_source_tiles->SetPlayOnStart(false);
+            
+                // water footsteps
+                shared_ptr<Entity> entity_water = World::CreateEntity();
+                entity_water->SetObjectName("audio_footsteps_water");
+                entity_water->SetParent(default_camera);
+                AudioSource* audio_source_water = entity_water->AddComponent<AudioSource>();
+                audio_source_water->SetAudioClip("project\\music\\footsteps_water.wav");
+                audio_source_water->SetPlayOnStart(false);
+            
+                // flashlight
+                flashlight = World::CreateEntity();
+                flashlight->SetObjectName("flashlight");
+                flashlight->SetPosition(Vector3(0.0f, 1.7f, 0.0f));
+                flashlight->SetParent(default_camera);
+                Light* light = flashlight->AddComponent<Light>();
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color::light_light_bulb);
+                light->SetRange(50.0f);
+                light->SetIntensity(4750.0f);
+                light->SetFlag(LightFlags::Volumetric, false);
+                light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                light->SetFlag(LightFlags::Shadows, false);
+            
                 // constants
                 const float ROOM_WIDTH  = 40.0f;
                 const float ROOM_DEPTH  = 40.0f;
                 const float ROOM_HEIGHT = 100.0f;
                 const float DOOR_WIDTH  = 2.0f;
                 const float DOOR_HEIGHT = 5.0f;
-                const int NUM_ROOMS     = 100; // might not reach this number if the path gets boxed in (meets itself)
-                
+                const int   NUM_ROOMS   = 100;
+            
                 // direction enum
                 enum class Direction { Front, Back, Left, Right, Max };
             
-                // mersenne twister random number generator
+                // rng
                 mt19937 rng(random_device{}());
                 auto rand_int = [&](int max)
                 {
                     uniform_int_distribution<int> dist(0, max - 1);
                     return dist(rng);
                 };
-                
+            
+                // create surface lambda
                 auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, shared_ptr<Entity> parent)
                 {
                     auto entity = World::CreateEntity();
-                    
                     entity->SetObjectName(name);
                     entity->SetPosition(pos);
                     entity->SetScale(scale);
-                    entity->SetParent(parent); // set parent to room entity
-                    
+                    entity->SetParent(parent);
                     auto renderable = entity->AddComponent<Renderable>();
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetMaterial(tile_material);
-                    
                     auto physics_body = entity->AddComponent<Physics>();
                     physics_body->SetMass(0.0f);
                     physics_body->SetBodyType(BodyType::Box);
                 };
-                
-                // lambda for creating a door on a specified wall
+            
+                // create door lambda
                 auto create_door = [&](Direction dir, const Vector3& offset, shared_ptr<Entity> parent)
                 {
-                    string base_name  = "wall_" + to_string(static_cast<int>(dir) + 1);
-                    bool isFb         = (dir == Direction::Front || dir == Direction::Back);
-                    float wall_pos    = (dir == Direction::Front || dir == Direction::Left) ? -0.5f : 0.5f;
-                    wall_pos         *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
-                    
-                    // top section (above door)
+                    string base_name = "wall_" + to_string(static_cast<int>(dir) + 1);
+                    bool isFb = (dir == Direction::Front || dir == Direction::Back);
+                    float wall_pos = (dir == Direction::Front || dir == Direction::Left) ? -0.5f : 0.5f;
+                    wall_pos *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
+            
+                    // top
                     create_surface((base_name + "_top").c_str(),
                         Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
                         Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH),
                         parent);
-                    
-                    // bottom sections
-                    float dim    = isFb ? ROOM_WIDTH : ROOM_DEPTH;
+            
+                    // sides
+                    float dim = isFb ? ROOM_WIDTH : ROOM_DEPTH;
                     float side_w = (dim - DOOR_WIDTH) / 2;
-                    float l_pos  = isFb ? (-dim / 2 + side_w / 2) : (-dim / 2 + side_w / 2);
-                    float r_pos  = isFb ? (dim / 2 - side_w / 2) : (dim / 2 - side_w / 2);
-                    
+                    float l_pos = -dim / 2 + side_w / 2;
+                    float r_pos = dim / 2 - side_w / 2;
+            
                     create_surface((base_name + "_left").c_str(),
                         Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
                         parent);
-                    
+            
                     create_surface((base_name + "_right").c_str(),
                         Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
                         parent);
                 };
-                
-                // lambda for creating a room
+            
+                // create room lambda
                 auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset, int room_index)
                 {
-                     // create parent entity for the room
                     auto room_entity = World::CreateEntity();
                     room_entity->SetObjectName("room_" + to_string(room_index));
-                    room_entity->SetPosition(offset); // set room position
-                    
-                    // random chance for pool (lowered floor)
-                    const float pool_depth   = 1.0f; // how far the floor drops
-                    const float water_height = 0.5f; // height of water surface
+                    room_entity->SetPosition(offset);
+            
+                    // pool chance
                     uniform_real_distribution<float> dist(0.0f, 1.0f);
-                    const bool is_pool  = dist(rng) < 0.5f;             // 50% chance for lowered floor
-                    const float floor_y = is_pool ? -pool_depth : 0.0f; // lower floor
-                    
+                    bool is_pool  = dist(rng) < 0.5f;
+                    float floor_y = is_pool ? -0.5f : 0.0f;
+            
                     // floor and ceiling
                     create_surface("floor", Vector3(0, floor_y, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
                     create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
-                    
-                    // spawn water if floor is lowered
+            
+                    // water
                     if (is_pool)
                     {
-                        Color pool_color = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
-                        auto water_entity = entities::water(Vector3(0, water_height, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
-                        water_entity->SetParent(room_entity);
+                        float water_distance = 0.5f; // distance from floor
+                        float water_y        = floor_y + 0.5f + water_distance;
+                        Color pool_color     = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
+                        auto water           = entities::water(Vector3(0, water_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
+                        water->SetParent(room_entity);
                     }
-                    
-                    // wall configurations
-                    struct WallConfig
+
+                    // wall configs
+                    const struct WallConfig
                     {
                         Vector3 pos;
                         Vector3 scale;
+                    } walls[] = {
+                        {Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), {ROOM_WIDTH, ROOM_HEIGHT, 1}}, // front
+                        {Vector3(0, ROOM_HEIGHT / 2, ROOM_DEPTH / 2), {ROOM_WIDTH, ROOM_HEIGHT, 1}}, // back
+                        {Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), {1, ROOM_HEIGHT, ROOM_DEPTH}}, // left
+                        {Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), {1, ROOM_HEIGHT, ROOM_DEPTH}} // right
                     };
-                    
-                    const WallConfig walls[] =
-                    {
-                        { Vector3(0, ROOM_HEIGHT / 2, -ROOM_DEPTH / 2), Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // FRONT
-                        { Vector3(0, ROOM_HEIGHT / 2, ROOM_DEPTH / 2),  Vector3(ROOM_WIDTH, ROOM_HEIGHT, 1) }, // BACK
-                        { Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }, // LEFT
-                        { Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), Vector3(1, ROOM_HEIGHT, ROOM_DEPTH) }   // RIGHT
-                    };
-                    
-                    // create walls
+            
                     for (int i = 0; i < 4; ++i)
                     {
                         Direction dir = static_cast<Direction>(i);
-                        
-                        if (dir == skip_dir)
-                            continue;
-
+                        if (dir == skip_dir) continue;
+            
                         if (dir == door_dir)
                         {
                             create_door(dir, Vector3(0, 0, 0), room_entity);
@@ -1556,117 +1538,94 @@ namespace spartan
                         else
                         {
                             string name = "wall_" + to_string(i + 1);
-                            create_surface(name.c_str(), walls[i].pos, walls[i].scale, room_entity); // add light for full walls
+                            create_surface(name.c_str(), walls[i].pos, walls[i].scale, room_entity);
                         }
-
-                        // decorate with a light
-                        bool is_side_wall = (dir == Direction::Left || dir == Direction::Right);
-                        if (is_side_wall)
+            
+                        // light on side walls
+                        if (dir == Direction::Left || dir == Direction::Right)
                         {
                             const float height = 1.5f;
-
                             shared_ptr<Entity> light_clone = entity_pool_light->Clone();
-                            light_clone->SetObjectName(string("pool_light_") + to_string(i));
+                            light_clone->SetObjectName("pool_light_" + to_string(i));
                             light_clone->SetParent(room_entity);
                             light_clone->SetScale(0.5f);
-                            
-                            // set position on the wall
-                            light_clone->SetPositionLocal(Vector3(walls[i].pos.x,height, walls[i].pos.z));
-                            
-                            // compute inward direction (from wall position to room center)
-                            Vector3 wall_pos     = Vector3(walls[i].pos.x, height, walls[i].pos.z);
-                            Vector3 room_center  = Vector3(room_entity->GetPosition().x, height, room_entity->GetPosition().z);
-                            Vector3 direction    = (room_center - wall_pos).Normalized();
-                            //direction           *= -1.0f; // invert direction to match 3D model orientation
-                            
-                            // set look-at rotation
+                            light_clone->SetPositionLocal(Vector3(walls[i].pos.x, height, walls[i].pos.z));
+                            Vector3 direction = (Vector3(0, height, 0) - Vector3(walls[i].pos.x, height, walls[i].pos.z)).Normalized();
                             light_clone->SetRotation(Quaternion::FromLookRotation(direction, Vector3::Up));
-
-                            light_clone->SetActive(false); // disable for now
+                            light_clone->SetActive(false);
                         }
                     }
                 };
-                
+            
                 // procedural generation
-                Vector3 offsets[NUM_ROOMS];
-                Direction doors[NUM_ROOMS];
-                int actual_rooms = 1; // track number of rooms generated, start with 1 for first room
-                
-                // generate a random path on a 2d grid
+                vector<pair<int, int>> path;
                 set<pair<int, int>> occupied;
-                vector<pair<int, int>> path(NUM_ROOMS);
-                path[0] = {0, 0}; // start at origin
-                occupied.insert({0, 0});
-                
-                for (int i = 1; i < NUM_ROOMS; ++i)
+            
+                auto generate_path = [&](auto&& self, pair<int, int> pos, int remaining) -> bool
                 {
-                    Direction available[4] = { Direction::Front, Direction::Back, Direction::Left, Direction::Right };
-                    int count = 4;
-                    
-                    // keep trying until we find a free spot
-                    while (count > 0)
+                    path.push_back(pos);
+                    occupied.insert(pos);
+                    if (remaining == 0) return true;
+            
+                    vector<Direction> dirs = { Direction::Front, Direction::Back, Direction::Left, Direction::Right };
+                    shuffle(dirs.begin(), dirs.end(), rng);
+            
+                    for (Direction dir : dirs)
                     {
-                        int pick = rand_int(count);
-                        Direction dir = available[pick];
-                        pair<int, int> next_pos = path[i - 1];
-                        
-                        // move in the chosen direction
+                        pair<int, int> next = pos;
                         switch (dir)
                         {
-                            case Direction::Front: next_pos.second -= 1; break;
-                            case Direction::Back:  next_pos.second += 1; break;
-                            case Direction::Left:  next_pos.first -= 1; break;
-                            case Direction::Right: next_pos.first += 1; break;
-                            default: SP_ASSERT(false); break;
+                            case Direction::Front: next.second -= 1; break;
+                            case Direction::Back: next.second += 1; break;
+                            case Direction::Left: next.first -= 1; break;
+                            case Direction::Right: next.first += 1; break;
                         }
-                        
-                        // if position is free, use it
-                        if (occupied.find(next_pos) == occupied.end())
+                        if (occupied.find(next) == occupied.end())
                         {
-                            path[i] = next_pos;
-                            occupied.insert(next_pos);
-                            doors[i - 1] = dir; // door from previous room to this one
-                            actual_rooms++;
-                            break;
-                        }
-                        // remove the direction we tried
-                        else
-                        {
-                            available[pick] = available[--count];
+                            if (self(self, next, remaining - 1)) return true;
                         }
                     }
-                    
-                    // if no directions work, stop
-                    if (count == 0)
-                    {
-                        break;
-                    }
-                }
-                
-                // set door for the last room (leads nowhere)
-                doors[actual_rooms - 1] = static_cast<Direction>(rand_int(4));
-                
-                // convert path to offsets and create rooms
-                for (int i = 0; i < actual_rooms; ++i)
+            
+                    path.pop_back();
+                    occupied.erase(pos);
+                    return false;
+                };
+            
+                generate_path(generate_path, {0, 0}, NUM_ROOMS - 1);
+                int actual_rooms = path.size();
+            
+                // doors
+                vector<Direction> doors(actual_rooms);
+                for (int i = 1; i < actual_rooms; i++)
                 {
-                    offsets[i] = Vector3(path[i].first * ROOM_WIDTH, 0, path[i].second * ROOM_DEPTH);
-                    
-                    // first room has no skip_dir, others skip the direction they came from
+                    auto prev = path[i - 1];
+                    auto curr = path[i];
+                    int dx = curr.first - prev.first;
+                    int dz = curr.second - prev.second;
+                    if (dx == 1) doors[i - 1] = Direction::Right;
+                    else if (dx == -1) doors[i - 1] = Direction::Left;
+                    else if (dz == 1) doors[i - 1] = Direction::Back;
+                    else if (dz == -1) doors[i - 1] = Direction::Front;
+                }
+            
+                doors[actual_rooms - 1] = static_cast<Direction>(rand_int(4));
+            
+                // create rooms
+                for (int i = 0; i < actual_rooms; i++)
+                {
+                    Vector3 offset = Vector3(path[i].first * ROOM_WIDTH, 0, path[i].second * ROOM_DEPTH);
                     Direction skip_dir = (i == 0) ? Direction::Max : Direction::Max;
                     if (i > 0)
                     {
-                        // determine skip_dir based on door from previous room
                         switch (doors[i - 1])
                         {
                             case Direction::Front: skip_dir = Direction::Back; break;
-                            case Direction::Back:  skip_dir = Direction::Front; break;
-                            case Direction::Left:  skip_dir = Direction::Right; break;
+                            case Direction::Back: skip_dir = Direction::Front; break;
+                            case Direction::Left: skip_dir = Direction::Right; break;
                             case Direction::Right: skip_dir = Direction::Left; break;
-                            default: SP_ASSERT(false); break;
                         }
                     }
-                    
-                    create_room(doors[i], skip_dir, offsets[i], i);
+                    create_room(doors[i], skip_dir, offset, i);
                 }
             }
 

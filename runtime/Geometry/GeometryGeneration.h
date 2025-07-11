@@ -335,7 +335,7 @@ namespace spartan::geometry_generation
         using namespace math;
     
         // constants
-        const float grass_width    = 0.2f;  // base width
+        const float grass_width    = 0.1f;  // base width
         const float grass_height   = 1.0f;  // blade height
         const float thinning_start = 0.4f;  // thinning start (0=base, 1=top)
         const float thinning_power = 1.0f;  // thinning sharpness
