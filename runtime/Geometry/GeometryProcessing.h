@@ -223,37 +223,40 @@ namespace spartan::geometry_processing
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)
     {
         size_t vertex_count = vertices.size();
-        size_t index_count = indices.size();
+        size_t index_count  = indices.size();
     
-        // Step 1: Vertex Remapping (even with Assimp, ensure optimal)
-        std::vector<unsigned int> remap(vertex_count);
-        size_t vertex_count_optimized = meshopt_generateVertexRemap(remap.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
-    
-        std::vector<uint32_t> indices_remapped(index_count);
-        meshopt_remapIndexBuffer(indices_remapped.data(), indices.data(), index_count, remap.data());
-        indices = std::move(indices_remapped);
-    
-        std::vector<RHI_Vertex_PosTexNorTan> vertices_remapped(vertex_count_optimized);
-        meshopt_remapVertexBuffer(vertices_remapped.data(), vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan), remap.data());
-        vertices = std::move(vertices_remapped);
-        vertex_count = vertex_count_optimized;
-    
-        // Step 2: Simplify first to reduce complexity
-        auto get_target_index_count = [](size_t index_count)
+        // Step 1: Vertex Remapping
         {
-            if (index_count > 100000) return static_cast<size_t>(index_count * 0.1f);
-            if (index_count > 50000)  return static_cast<size_t>(index_count * 0.3f);
-            if (index_count > 20000)  return static_cast<size_t>(index_count * 0.5f);
-            if (index_count > 10000)  return static_cast<size_t>(index_count * 0.7f);
-            return index_count;
-        };
+            std::vector<unsigned int> remap(vertex_count);
+            size_t vertex_count_optimized = meshopt_generateVertexRemap(remap.data(), indices.data(), index_count, vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan));
     
-        simplify(indices, vertices, get_target_index_count(index_count), false);  // Assume this uses meshopt_simplify
+            std::vector<uint32_t> indices_remapped(index_count);
+            meshopt_remapIndexBuffer(indices_remapped.data(), indices.data(), index_count, remap.data());
+            indices = std::move(indices_remapped);
     
-        // Update counts after simplify
-        index_count  = indices.size();
-        vertex_count = vertices.size();
-    
+            std::vector<RHI_Vertex_PosTexNorTan> vertices_remapped(vertex_count_optimized);
+            meshopt_remapVertexBuffer(vertices_remapped.data(), vertices.data(), vertex_count, sizeof(RHI_Vertex_PosTexNorTan), remap.data());
+            vertices     = std::move(vertices_remapped);
+            vertex_count = vertex_count_optimized;
+        }
+
+        // Step 2: Simplify first to reduce complexity
+        {
+            auto get_target_index_count = [](size_t index_count)
+            {
+                if (index_count > 100000) return static_cast<size_t>(index_count * 0.1f);
+                if (index_count > 50000)  return static_cast<size_t>(index_count * 0.3f);
+                if (index_count > 20000)  return static_cast<size_t>(index_count * 0.5f);
+                if (index_count > 10000)  return static_cast<size_t>(index_count * 0.7f);
+                return index_count;
+            };
+
+            simplify(indices, vertices, get_target_index_count(index_count), false);
+
+            index_count  = indices.size();
+            vertex_count = vertices.size();
+        }
+
         // Step 3: Vertex Cache Optimization
         meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
     

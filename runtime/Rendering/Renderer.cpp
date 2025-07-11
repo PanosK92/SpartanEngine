@@ -491,6 +491,8 @@ namespace spartan
             m_cb_frame_cpu.camera_position                     = camera->GetEntity()->GetPosition();
             m_cb_frame_cpu.camera_forward                      = camera->GetEntity()->GetForward();
             m_cb_frame_cpu.camera_right                        = camera->GetEntity()->GetRight();
+            m_cb_frame_cpu.camera_fov                          = camera->GetFovHorizontalRad();
+            m_cb_frame_cpu.camera_aperture                     = camera->GetAperture();
             m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                 ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
         }
@@ -506,7 +508,6 @@ namespace spartan
         m_cb_frame_cpu.hdr_max_nits                = Display::GetLuminanceMax();
         m_cb_frame_cpu.hdr_white_point             = GetOption<float>(Renderer_Option::WhitePoint);
         m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
-        m_cb_frame_cpu.directional_light_intensity = World::GetDirectionalLight() ? World::GetDirectionalLight()->GetIntensityWatt() : 1.0f;
         m_cb_frame_cpu.camera_exposure             = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
         // these must match what common_buffer.hlsl is reading

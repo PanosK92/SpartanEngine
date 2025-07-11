@@ -44,7 +44,7 @@ struct FrameBufferData
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
     
-    float padding;
+    float camera_aperture;
     float delta_time;
     uint frame;
     uint options;
@@ -64,8 +64,9 @@ struct FrameBufferData
     float resolution_scale;
     
     double time;
-    float2 padding2;
-
+    float camera_fov;
+    float padding;
+    
     float3 wind;
     float gamma;
 

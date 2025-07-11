@@ -52,7 +52,7 @@ namespace spartan
         math::Vector2 taa_jitter_current;
         math::Vector2 taa_jitter_previous;
 
-        float directional_light_intensity;
+        float camera_aperture;
         float delta_time;
         uint32_t frame;
         uint32_t options;
@@ -72,7 +72,8 @@ namespace spartan
         float resolution_scale;
 
         double time;
-        math::Vector2 alpha_tested;
+        float camera_fov;
+        float padding;
 
         math::Vector3 wind;
         float gamma;
