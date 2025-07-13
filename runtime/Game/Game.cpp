@@ -632,7 +632,10 @@ namespace spartan
                     audio_source_door->Play();
             
                     // disable/enable windshield
-                    default_car_window->SetActive(!inside_the_car);
+                    if (default_car_window)
+                    {
+                        default_car_window->SetActive(!inside_the_car);
+                    }
                 }
             
                 // change car view

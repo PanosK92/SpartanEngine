@@ -98,7 +98,7 @@ namespace spartan
         SP_ASSERT(foundation);
 
         // physics
-        physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale(), true, nullptr);
+        physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale(), false, nullptr);
         SP_ASSERT(physics);
 
         // scene
