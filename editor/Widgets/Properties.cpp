@@ -202,7 +202,7 @@ void Properties::ShowEntity(shared_ptr<Entity> entity) const
 {
     if (component_begin("Entity", nullptr, true, false))
     {
-        // toggle for Active state
+        // toggle for active state
         bool is_active = entity->GetActive();
         if (ImGui::Checkbox("Active", &is_active))
         {
@@ -215,9 +215,32 @@ void Properties::ShowEntity(shared_ptr<Entity> entity) const
         Vector3 scale       = entity->GetScaleLocal();
         //===============================================
 
-        // convert current rotation to euler angles for display
-        static Vector3 last_frame_euler = rotation.ToEulerAngles();
-        Vector3 current_euler           = last_frame_euler;
+        // per-entity tracking rotation handling
+        static std::unordered_map<uintptr_t, Vector3> last_euler_map;
+        uintptr_t entity_id = reinterpret_cast<uintptr_t>(entity.get());
+
+        // normalize for safety in comparisons
+        rotation.Normalize();
+
+        // sync if externally changed or uninitialized
+        auto it = last_euler_map.find(entity_id);
+        if (it != last_euler_map.end())
+        {
+            Quaternion expected = Quaternion::FromEulerAngles(it->second);
+            expected.Normalize();
+            float dot_abs = std::abs(rotation.Dot(expected));
+            if (dot_abs < 0.9999f)
+            {   // threshold for ~2-3 degrees difference
+                it->second = rotation.ToEulerAngles();
+            }
+        } else
+        {
+            last_euler_map[entity_id] = rotation.ToEulerAngles();
+        }
+
+        // now use the (possibly updated) per-entity euler
+        Vector3& last_frame_euler = last_euler_map[entity_id];
+        Vector3 current_euler     = last_frame_euler;
 
         ImGui::AlignTextToFramePadding();
         ImGuiSp::vector3("Position (m)", position);
