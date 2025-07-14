@@ -140,7 +140,7 @@ namespace spartan
 
         // visibility & lods
         float m_max_distance_render                                 = FLT_MAX;
-        float m_max_distance_shadow                                = FLT_MAX;
+        float m_max_distance_shadow                                 = FLT_MAX;
         std::array<float, renderer_max_entities> m_distance_squared = { 0.0f };
         std::array<bool, renderer_max_entities> m_is_visible        = { false };
         std::array<uint32_t, renderer_max_entities> m_lod_indices   = { 0 };

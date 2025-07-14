@@ -115,7 +115,7 @@ float D_GGX_Anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float c
     float sin2  = (1.0 - cos2);
     float r_x   = cos_phi / alpha_x;
     float r_y   = sin_phi / alpha_y;
-    float d     = cos2 + (cos_phi * cos_phi) / (alpha_x * alpha_x) + (sin_phi * sin_phi) / (alpha_y * alpha_y);
+    float d     = cos2 + sin2 * (r_x * r_x + r_y * r_y);
     return saturate_16(1.0 / (PI * alpha_x * alpha_y * d * d));
 }
 
@@ -160,7 +160,7 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     find_best_axis_vectors(surface.normal, t, b);
     float3x3 TBN = float3x3(t, b, surface.normal);
 
-    // rotate tangent and bitagent
+    // rotate tangent and bitangent
     float rotation   = max(surface.anisotropic_rotation * PI2, FLT_MIN); // convert material property to a full rotation
     float2 direction = float2(cos(rotation), sin(rotation));             // convert rotation to direction
     t                = normalize(mul(float3(direction, 0.0f), TBN).xyz); // compute direction derived tangent
@@ -170,17 +170,31 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     float aspect    = sqrt(1.0 - surface.anisotropic * 0.9);
     float ax        = alpha_ggx / aspect;
     float ay        = alpha_ggx * aspect;
-    float XdotH     = dot(t, angular_info.h);
-    float YdotH     = dot(b, angular_info.h);
-    
-    // specular anisotropic BRDF
-    float D  = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
-    float V  = V_GGX_anisotropic_2cos(angular_info.n_dot_l, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH);
+    float ax2       = ax * ax;
+    float ay2       = ay * ay;
+
+    // Assuming angular_info includes view_dir and light_dir fields (add if necessary: float3 view_dir, light_dir)
+    float ToV = dot(t, angular_info.v);
+    float BoV = dot(b, angular_info.v);
+    float ToL = dot(t, angular_info.l);
+    float BoL = dot(b, angular_info.l);
+
+    // Height-correlated anisotropic visibility
+    float GGXV = angular_info.n_dot_l * sqrt(ax2 * ToV * ToV + ay2 * BoV * BoV + angular_info.n_dot_v * angular_info.n_dot_v);
+    float GGXL = angular_info.n_dot_v * sqrt(ax2 * ToL * ToL + ay2 * BoL * BoL + angular_info.n_dot_l * angular_info.n_dot_l);
+    float V    = 0.5 / max(GGXV + GGXL, 1e-5);
+
+    // Distribution (using h for anisotropic D)
+    float XdotH = dot(t, angular_info.h);
+    float YdotH = dot(b, angular_info.h);
+    float D     = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
+
+    // Fresnel
     float3 F = F_Schlick(surface.F0, get_f90(surface), angular_info.l_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     surface.specular_energy *= F;
-    
+
     return D * V * F;
 }
 

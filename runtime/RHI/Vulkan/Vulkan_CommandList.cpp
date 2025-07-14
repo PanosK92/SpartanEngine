@@ -1830,7 +1830,7 @@ namespace spartan
         barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
         barrier.subresourceRange.aspectMask     = get_aspect_mask(texture->GetFormat());
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount     = texture->GetDepth();
+        barrier.subresourceRange.layerCount     = texture->GetType() == RHI_Texture_Type::Type3D ? 1 : texture->GetDepth();
         VkImageMemoryBarrier2 barriers[rhi_max_mip_count];
 
         if (texture->HasPerMipViews())
