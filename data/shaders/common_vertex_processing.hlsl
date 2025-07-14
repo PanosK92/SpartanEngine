@@ -193,9 +193,9 @@ struct vertex_processing
         float3 base_wind_dir              = normalize(wind + float3(1e-6f, 0.0f, 1e-6f));
         float base_wind_magnitude         = length(wind);
         float scaled_gust_scale           = 0.01f * (1.0f + base_wind_magnitude);        // base slow, +mag for quicker gust cycles
-        float scaled_strength_time_scale  = 2.0f * base_wind_magnitude;                  // faster strength noise
         float scaled_direction_time_scale = 0.05f * (1.0f + base_wind_magnitude / 2.0f); // milder scale for direction to avoid chaos
-    
+        float3 instance_up                = normalize(transform[1].xyz);
+        
         // wind simulation
         float distance_to_camera = fast_length(position_world - buffer_frame.camera_position);
         if (surface.is_grass_blade() && distance_to_camera <= 300.0f)
@@ -212,13 +212,13 @@ struct vertex_processing
             global_wind_strength       = remap(global_wind_strength, -1.0f, 1.0f, 0.5f, 1.5f); // varies between 0.5x and 1.5x strength
             
             // base wind direction from buffer, with noise variation
-            float base_wind_angle = atan2(base_wind_dir.z, base_wind_dir.x);
-            float2 noise_pos_dir = position_world.xz * wind_direction_scale + float2(time * scaled_direction_time_scale, 0.0f);
+            float base_wind_angle    = atan2(base_wind_dir.z, base_wind_dir.x);
+            float2 noise_pos_dir     = position_world.xz * wind_direction_scale + float2(time * scaled_direction_time_scale, 0.0f);
             float wind_direction_var = noise_perlin(noise_pos_dir);
-            float wind_direction = base_wind_angle + remap(wind_direction_var, -1.0f, 1.0f, -wind_direction_variation, wind_direction_variation);
+            float wind_direction     = base_wind_angle + remap(wind_direction_var, -1.0f, 1.0f, -wind_direction_variation, wind_direction_variation);
             
             // 2D noise for wind strength
-            float2 noise_pos_strength = position_world.xz * wind_strength_scale + float2(time * scaled_strength_time_scale, 0.0f);
+            float2 noise_pos_strength = position_world.xz * wind_strength_scale + float2(time * base_wind_magnitude, 0.0f);
             float wind_strength_noise = noise_perlin(noise_pos_strength) * wind_strength_amplitude * global_wind_strength;
             
             // calculate wind lean angle with cubic easing for natural bending
@@ -228,7 +228,6 @@ struct vertex_processing
             
             // wind direction vector and rotation axis
             float3 wind_dir      = float3(cos(wind_direction), 0, sin(wind_direction));
-            float3 instance_up   = normalize(transform[1].xyz);
             float3 rotation_axis = normalize(cross(instance_up, wind_dir));
             
             // apply wind bend based on height
@@ -248,33 +247,26 @@ struct vertex_processing
         if (surface.has_wind_animation() && !surface.is_grass_blade()) // grass has its own wind (now unified via buffer)
         {
             const float sway_extent       = 0.2f; // maximum sway amplitude
-            float sway_speed              = 2.0f * base_wind_magnitude; // sway frequency scaled
             const float noise_scale       = 0.1f; // scale of low-frequency noise
             const float flutter_intensity = 0.1f; // intensity of fluttering
         
-            // normalize wind direction and calculate magnitude (already done above, but kept local for clarity)
-            float3 wind_direction = base_wind_dir;
-            float wind_magnitude  = base_wind_magnitude;
-        
             // base sinusoidal sway
             float phase_offset = float(instance_id) * 0.25f * PI; // unique phase per instance
-            float base_wave    = sin(time * sway_speed + phase_offset);
+            float base_wave    = sin(time * base_wind_magnitude + phase_offset);
         
             // add low-frequency perlin noise for smooth directional variation
             float low_freq_noise        = noise_perlin(time * noise_scale * (1.0f + base_wind_magnitude / 2.0f) + instance_id * 0.1f);
             float directional_variation = lerp(-0.5f, 0.5f, low_freq_noise); // smooth variation
         
-            // Fix original bug: add perpendicular variation to avoid invalid float + float3 addition
-            // Assuming horizontal wind, create perpendicular vector in XZ plane
-            float3 perp_dir = normalize(cross(wind_direction, float3(0.0f, 1.0f, 0.0f)));
-            float3 adjusted_wind_direction = normalize(wind_direction + directional_variation * perp_dir);
+            float3 perp_dir                = normalize(cross(base_wind_dir, instance_up));
+            float3 adjusted_wind_direction = normalize(base_wind_dir + directional_variation * perp_dir);
         
             // add high-frequency flutter (localized and rapid movement)
-            float flutter = sin(position_world.x * 10.0f + time * (15.0f * (1.0f + base_wind_magnitude))) * flutter_intensity;
+            float flutter = sin(position_world.x * 10.0f + time * (5.0f * (1.0f + base_wind_magnitude))) * flutter_intensity;
         
             // combine all factors for sway
             float combined_wave = base_wave + flutter;
-            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * vertex.height_percent * wind_magnitude;
+            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * vertex.height_percent * base_wind_magnitude;
         
             // apply the calculated sway to the vertex
             position_world += sway_offset;

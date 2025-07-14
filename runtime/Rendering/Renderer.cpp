@@ -156,12 +156,12 @@ namespace spartan
             SetOption(Renderer_Option::SelectionOutline,            1.0f);
             SetOption(Renderer_Option::Grid,                        1.0f);
             SetOption(Renderer_Option::Lights,                      1.0f);
-            SetOption(Renderer_Option::PhysicsWorld,                     0.0f);
+            SetOption(Renderer_Option::PhysicsWorld,                0.0f);
             SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
             SetOption(Renderer_Option::Dithering,                   0.0f);
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
 
-            SetWind(Vector3(1.0f, 0.0f, 0.5f));
+            SetWind(Vector3(1.0f, 0.0f, 0.5f) * 2.5f);
         }
 
         // resolution

@@ -339,7 +339,7 @@ namespace spartan::geometry_generation
         const float grass_height   = 1.0f;  // blade height
         const float thinning_start = 0.4f;  // thinning start (0=base, 1=top)
         const float thinning_power = 1.0f;  // thinning sharpness
-        const float back_offset_z  = 0.01f; // small offset for back face to avoid z-fighting
+        const float back_offset_z  = 0.02f; // small offset for back face to avoid z-fighting
     
         // clear output vectors
         vertices->clear();
@@ -372,7 +372,7 @@ namespace spartan::geometry_generation
         // back face z offset and inverted winding to avoid z-fighting and normals flipped
         for (int face = 0; face < 2; ++face)
         {
-            float z_offset = (face == 0) ? 0.0f : -back_offset_z;
+            float z_offset    = (face == 0) ? 0.0f : -back_offset_z;
             float normal_flip = (face == 0) ? 1.0f : -1.0f;
     
             for (uint32_t i = 0; i <= segment_count; ++i)
