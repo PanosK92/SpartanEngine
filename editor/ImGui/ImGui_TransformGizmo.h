@@ -66,6 +66,19 @@ namespace ImGui::TransformGizmo
         style.ScaleLineCircleSize        = 7.0f;
     }
 
+    static spartan::math::Matrix create_row_major_matrix(const spartan::math::Vector3& position, const spartan::math::Quaternion& rotation, const spartan::math::Vector3& scale)
+    {
+        const spartan::math::Matrix rotation_matrix = spartan::math::Matrix::CreateRotation(rotation).Transposed();
+
+        return spartan::math::Matrix
+        (
+            scale.x * rotation_matrix.m00, scale.y * rotation_matrix.m01, scale.z * rotation_matrix.m02, position.x,
+            scale.x * rotation_matrix.m10, scale.y * rotation_matrix.m11, scale.z * rotation_matrix.m12, position.y,
+            scale.x * rotation_matrix.m20, scale.y * rotation_matrix.m21, scale.z * rotation_matrix.m22, position.z,
+            0.0f,                    0.0f                   , 0.0f,                    1.0f
+        );
+    }
+
     static void tick()
     {
         if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
@@ -114,7 +127,7 @@ namespace ImGui::TransformGizmo
         spartan::math::Vector3 position        = entity->GetPosition();
         spartan::math::Vector3 scale           = entity->GetScale();
         spartan::math::Quaternion rotation     = entity->GetRotation();
-        spartan::math::Matrix transform_matrix = spartan::math::Matrix::GenerateRowFirst(position, rotation, scale);
+        spartan::math::Matrix transform_matrix = create_row_major_matrix(position, rotation, scale);
 
         // set viewport rectangle
         ImGuizmo::SetDrawlist();
