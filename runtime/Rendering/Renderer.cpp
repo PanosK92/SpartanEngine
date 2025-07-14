@@ -1094,7 +1094,7 @@ namespace spartan
                                 
                                 // validate draw call (critical as anything wrong can cause GPU crashes)
                                 SP_ASSERT_MSG(instance_index < total_instance_count,                    "instance start index exceeds total instance count");
-                                SP_ASSERT_MSG(instance_count > 0,                                       "instance count is zero after clamping");
+                                SP_ASSERT_MSG(instance_count > 0,                                       "instance count is zero");
                                 SP_ASSERT_MSG(instance_index + instance_count <= total_instance_count,  "instance range exceeds total instance count");
                                 SP_ASSERT_MSG(instance_index < buffer_instance_count,                   "instance start index exceeds instance buffer capacity");
                                 SP_ASSERT_MSG(instance_index + instance_count <= buffer_instance_count, "instance range exceeds instance buffer capacity");

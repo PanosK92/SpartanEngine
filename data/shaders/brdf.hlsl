@@ -173,23 +173,22 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     float ax2       = ax * ax;
     float ay2       = ay * ay;
 
-    // Assuming angular_info includes view_dir and light_dir fields (add if necessary: float3 view_dir, light_dir)
     float ToV = dot(t, angular_info.v);
     float BoV = dot(b, angular_info.v);
     float ToL = dot(t, angular_info.l);
     float BoL = dot(b, angular_info.l);
 
-    // Height-correlated anisotropic visibility
+    // height-correlated anisotropic visibility
     float GGXV = angular_info.n_dot_l * sqrt(ax2 * ToV * ToV + ay2 * BoV * BoV + angular_info.n_dot_v * angular_info.n_dot_v);
     float GGXL = angular_info.n_dot_v * sqrt(ax2 * ToL * ToL + ay2 * BoL * BoL + angular_info.n_dot_l * angular_info.n_dot_l);
     float V    = 0.5 / max(GGXV + GGXL, 1e-5);
 
-    // Distribution (using h for anisotropic D)
+    // distribution (using h for anisotropic d)
     float XdotH = dot(t, angular_info.h);
     float YdotH = dot(b, angular_info.h);
     float D     = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
 
-    // Fresnel
+    // fresnel
     float3 F = F_Schlick(surface.F0, get_f90(surface), angular_info.l_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
