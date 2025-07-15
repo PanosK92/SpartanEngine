@@ -62,7 +62,6 @@ float compute_gtao(uint2 pos, float2 resolution_out)
 
     Surface surface;
     surface.Build(pos, resolution_out, true, false);
-    const float roughness = surface.roughness;
 
     const float noise_gradient_temporal           = noise_interleaved_gradient(pos);
     const float offset_spatial                    = get_offset_non_temporal(pos);
@@ -70,19 +69,14 @@ float compute_gtao(uint2 pos, float2 resolution_out)
     const float offset_rotation_temporal          = rotations[buffer_frame.frame % 6];
     const float ray_offset                        = frac(offset_spatial + offset_temporal) + (hash(origin_uv) * 2.0f - 1.0f) * 0.25f;
     const float2 texel_size                       = 1.0f / resolution_out;
-    const float viewspace_z                       = origin_position.z; // assume positive Z
-    const float3 pix_center_pos                   = origin_position;
-    const float3 view_vec                         = normalize(-pix_center_pos);
-    const float effect_radius                     = g_ao_radius;
-    const float sample_distribution_power         = 1.0f;
-    const float thin_occluder_compensation        = 0.0f;
-    const float falloff_range                     = 0.6f * effect_radius;
-    const float falloff_from                      = effect_radius - falloff_range;
+    const float3 view_vec                         = normalize(-origin_position);
+    const float falloff_range                     = 0.6f * g_ao_radius;
+    const float falloff_from                      = g_ao_radius - falloff_range;
     const float falloff_mul                       = -1.0f / falloff_range;
     const float falloff_add                       = falloff_from / falloff_range + 1.0f;
     float3 pos_right                              = get_position_view_space(origin_uv + float2(texel_size.x, 0));
     float pixel_dir_rb_viewspace_size_at_center_z = length(pos_right - origin_position);
-    float screenspace_radius                      = effect_radius / pixel_dir_rb_viewspace_size_at_center_z;
+    float screenspace_radius                      = g_ao_radius / pixel_dir_rb_viewspace_size_at_center_z;
     float visibility                              = saturate((10.0f - screenspace_radius) / 100.0f) * 0.5f;
     const float pixel_too_close_threshold         = 1.3f;
     const float min_s                             = pixel_too_close_threshold / screenspace_radius;
@@ -90,6 +84,7 @@ float compute_gtao(uint2 pos, float2 resolution_out)
     const float noise_sample                      = ray_offset;
 
     float projected_normal_vec_length = 1.0f;
+    [unroll]
     for (uint slice = 0; slice < g_directions; slice++)
     {
         float slice_k = (float(slice) + noise_slice) / float(g_directions);
@@ -113,13 +108,13 @@ float compute_gtao(uint2 pos, float2 resolution_out)
         float horizon_cos0 = low_horizon_cos0;
         float horizon_cos1 = low_horizon_cos1;
 
+        [unroll]
         for (uint step = 0; step < g_steps; step++)
         {
-            float step_base_noise = float(slice + step * g_steps) * 0.6180339887498948482f;
-            float step_noise = frac(noise_sample + step_base_noise);
-            float s = (step + step_noise) / float(g_steps);
-            s = pow(s, sample_distribution_power);
-            s += min_s;
+            float step_base_noise  = float(slice + step * g_steps) * 0.6180339887498948482f;
+            float step_noise       = frac(noise_sample + step_base_noise);
+            float s                = (step + step_noise) / float(g_steps);
+            s                     += min_s;
 
             float2 sample_offset       = s * omega;
             float sample_offset_length = length(sample_offset);
@@ -129,13 +124,13 @@ float compute_gtao(uint2 pos, float2 resolution_out)
 
             float2 sample_screen_pos0  = origin_uv + sample_offset;
             float3 sample_pos0         = get_position_view_space(sample_screen_pos0);
-            float3 sample_delta0       = sample_pos0 - pix_center_pos;
+            float3 sample_delta0       = sample_pos0 - origin_position;
             float sample_dist0         = length(sample_delta0);
             float3 sample_horizon_vec0 = sample_delta0 / sample_dist0;
 
             float2 sample_screen_pos1  = origin_uv - sample_offset;
             float3 sample_pos1         = get_position_view_space(sample_screen_pos1);
-            float3 sample_delta1       = sample_pos1 - pix_center_pos;
+            float3 sample_delta1       = sample_pos1 - origin_position;
             float sample_dist1         = length(sample_delta1);
             float3 sample_horizon_vec1 = sample_delta1 / sample_dist1;
 
