@@ -35,6 +35,7 @@ static const float rotations[]    = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0
 static const uint g_directions = 4;
 static const uint g_steps      = 3;
 
+// Helper functions for noise offsets, fast math approximations
 float get_offset_non_temporal(uint2 screen_pos)
 {
     int2 position = (int2)(screen_pos);
@@ -48,14 +49,20 @@ float XeGTAO_FastSqrt(float x)
 
 float XeGTAO_FastACos(float in_x)
 {
-    float x = abs(in_x);
-    float res = -0.156583f * x + PI_HALF;
-    res *= XeGTAO_FastSqrt(1.0f - x);
+    float x    = abs(in_x);
+    float res  = -0.156583f * x + PI_HALF;
+    res       *= XeGTAO_FastSqrt(1.0f - x);
     return (in_x >= 0) ? res : PI - res;
 }
 
-float compute_gtao(uint2 pos, float2 resolution_out)
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+
+    // setup: fetch pixel UV, view-space position/normal, build surface, compute noise/jitter for temporal stability
+    uint2 pos                    = thread_id.xy;
     const float2 origin_uv       = (pos + 0.5f) / resolution_out;
     const float3 origin_position = get_position_view_space(origin_uv);
     const float3 origin_normal   = get_normal_view_space(origin_uv);
@@ -83,16 +90,17 @@ float compute_gtao(uint2 pos, float2 resolution_out)
     const float noise_slice                       = noise_gradient_temporal + offset_rotation_temporal;
     const float noise_sample                      = ray_offset;
 
+    // loop over slice directions to accumulate visibility
     float projected_normal_vec_length = 1.0f;
     [unroll]
     for (uint slice = 0; slice < g_directions; slice++)
     {
-        float slice_k = (float(slice) + noise_slice) / float(g_directions);
-        float phi     = slice_k * PI;
-        float cos_phi = cos(phi);
-        float sin_phi = sin(phi);
-        float2 omega  = float2(cos_phi, -sin_phi) * screenspace_radius;
-
+        // slice setup: compute rotated direction (omega), project normal onto slice plane, compute bent normal angle (n)
+        float slice_k                    = (float(slice) + noise_slice) / float(g_directions);
+        float phi                        = slice_k * PI;
+        float cos_phi                    = cos(phi);
+        float sin_phi                    = sin(phi);
+        float2 omega                     = float2(cos_phi, -sin_phi) * screenspace_radius;
         const float3 direction_vec       = float3(cos_phi, sin_phi, 0.0f);
         const float3 ortho_direction_vec = direction_vec - dot(direction_vec, view_vec) * view_vec;
         const float3 axis_vec            = normalize(cross(ortho_direction_vec, view_vec));
@@ -102,12 +110,11 @@ float compute_gtao(uint2 pos, float2 resolution_out)
         float cos_norm                   = saturate(dot(projected_normal_vec, view_vec) / projected_normal_vec_length);
         float n                          = sign_norm * XeGTAO_FastACos(cos_norm);
 
+        // find horizon angles: initialize baselines, then sample along slice to update max horizon cosines
         float low_horizon_cos0 = cos(n + PI_HALF);
         float low_horizon_cos1 = cos(n - PI_HALF);
-
-        float horizon_cos0 = low_horizon_cos0;
-        float horizon_cos1 = low_horizon_cos1;
-
+        float horizon_cos0     = low_horizon_cos0;
+        float horizon_cos1     = low_horizon_cos1;
         [unroll]
         for (uint step = 0; step < g_steps; step++)
         {
@@ -147,31 +154,21 @@ float compute_gtao(uint2 pos, float2 resolution_out)
             horizon_cos1 = max(horizon_cos1, shc1);
         }
 
-        float h0 = -XeGTAO_FastACos(horizon_cos1);
-        float h1 = XeGTAO_FastACos(horizon_cos0);
-        h0       = n + clamp(h0 - n, -PI_HALF, PI_HALF);
-        h1       = n + clamp(h1 - n, -PI_HALF, PI_HALF);
-
-        float iarc0             = (cos_norm + 2.0f * h0 * sin(n) - cos(2.0f * h0 - n)) / 4.0f;
-        float iarc1             = (cos_norm + 2.0f * h1 * sin(n) - cos(2.0f * h1 - n)) / 4.0f;
+        // compute slice occlusion/visibility: Convert horizons to angles, clamp to hemisphere, integrate analytically
+        float h0                = -XeGTAO_FastACos(horizon_cos1);
+        float h1                = XeGTAO_FastACos(horizon_cos0);
+        h0                      = n + clamp(h0 - n, -PI_HALF, PI_HALF);
+        h1                      = n + clamp(h1 - n, -PI_HALF, PI_HALF);
+        float iarc0             = (cos_norm + 2.0f * h0 * sin(n) - cos(2.0f * h0 - n)) * 0.25f;
+        float iarc1             = (cos_norm + 2.0f * h1 * sin(n) - cos(2.0f * h1 - n)) * 0.25f;
         float local_visibility  = projected_normal_vec_length * (iarc0 + iarc1);
         visibility             += local_visibility;
     }
 
+    // finalize visibility: average over slices, apply bias correction, intensity power, and clamp
     visibility                  /= float(g_directions);
     projected_normal_vec_length = lerp(projected_normal_vec_length, 1.0f, 0.05f);
     visibility                  = pow(visibility, g_ao_intensity);
-    visibility                  = max(0.03f, visibility);
 
-    return visibility;
-}
-
-[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
-{
-    float2 resolution_out;
-    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-
-    float visibility = compute_gtao(thread_id.xy, resolution_out);
     tex_uav[thread_id.xy] = visibility;
 }
