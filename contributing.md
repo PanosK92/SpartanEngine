@@ -17,7 +17,7 @@ This platform offers you the freedom to explore, experiment, and excel. Make the
 
 # What to do
 - Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
-- You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 300+ members, where you can ask for ideas on what to contribute.
+- You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 600+ members, where you can ask for ideas on what to contribute.
 - Another great approach is to simply run the engine, see what doesn't work or could be improved.
 
 # Coding style

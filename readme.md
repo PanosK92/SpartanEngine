@@ -3,7 +3,7 @@
 
 <p>Spartan Engine is one of the most advanced one-man game engines out there, it even comes with a <a href="https://www.youtube.com/@panos_karabelas">podcast</a>. It is built for research and experimentation, ideal for industry veterans, not individuals looking to build a game.</p>
 
-<p>What started as a simple portfolio project helped me learn, land jobs, make friends, and grow my network. Since then, it has evolved beyond anything I imagined, now backed by a thriving Discord community with over 500 members, including seasoned professionals and a dedicated jobs channel.</p>
+<p>What started as a simple portfolio project helped me learn, land jobs, make friends, and grow my network. Since then, it has evolved beyond anything I imagined, now backed by a thriving Discord community with over 600 members, including seasoned professionals and a dedicated jobs channel.</p>
 
 <p>You can benefit from this project the same way I did. That is why there are incredible <a href="https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor">contribution perks</a> to help you get started, grow your skills, and build something meaningful. The most capable and ambitious contributors will get direct support from me to reach their potential.</p>
 
@@ -11,7 +11,7 @@
 
 - <img align="left" width="32" src="https://i.pinimg.com/736x/99/65/5e/99655e9fe24eb0a7ea38de683cedb735.jpg"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">X</a>.
   
-- <img align="left" width="32" height="32" src="https://e7.pngegg.com/pngimages/705/535/png-clipart-computer-icons-discord-logo-discord-icon-rectangle-logo.png">For a community like no other, join our group of 500+ members on [discord](https://discord.gg/TG5r2BS).
+- <img align="left" width="32" height="32" src="https://e7.pngegg.com/pngimages/705/535/png-clipart-computer-icons-discord-logo-discord-icon-rectangle-logo.png">For a community like no other, join our group of 600+ members on [discord](https://discord.gg/TG5r2BS).
   
 - <img align="left" width="32" height="32" src="https://cdn-icons-png.flaticon.com/512/25/25231.png">For issues and anything directly related to the project, feel free to open an issue.
   
