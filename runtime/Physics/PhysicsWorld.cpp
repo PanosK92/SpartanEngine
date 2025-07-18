@@ -148,7 +148,7 @@ namespace spartan
         {
             // simulation
             {
-                const float  fixed_time_step   = 1.0f / settings::hz;
+                const float  fixed_time_step  = 1.0f / settings::hz;
                 static float accumulated_time = 0.0f;
 
                 // accumulate delta time
@@ -179,7 +179,7 @@ namespace spartan
                 MovePickedBody();
             }
         }
-        else if (Renderer::GetOption<bool>(Renderer_Option::PhysicsWorld))
+        else if (Renderer::GetOption<bool>(Renderer_Option::Physics))
         {
             const PxRenderBuffer& rb = scene->getRenderBuffer(); // accessing while the simulation is running can result in undefined behavior
             for (PxU32 i = 0; i < rb.getNbLines(); i++)

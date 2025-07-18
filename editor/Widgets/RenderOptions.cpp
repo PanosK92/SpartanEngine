@@ -436,13 +436,14 @@ void RenderOptions::OnTickVisible()
                 }
             }
 
-            option_check_box("Performance Metrics", Renderer_Option::PerformanceMetrics);
+            option_check_box("Performance metrics", Renderer_Option::PerformanceMetrics);
             option_check_box("Transform",           Renderer_Option::TransformHandle);
             option_check_box("Selection outline",   Renderer_Option::SelectionOutline);
             option_check_box("Lights",              Renderer_Option::Lights);
+            option_check_box("Audio sources",       Renderer_Option::AudioSources);
             option_check_box("Grid",                Renderer_Option::Grid);
             option_check_box("Picking ray",         Renderer_Option::PickingRay);
-            option_check_box("Physics",             Renderer_Option::PhysicsWorld);
+            option_check_box("Physics",             Renderer_Option::Physics);
             option_check_box("AABBs",               Renderer_Option::Aabb);
             option_check_box("Wireframe",           Renderer_Option::Wireframe);
         }

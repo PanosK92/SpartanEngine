@@ -58,12 +58,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float depth_transparent = linearize_depth(surface.depth);
 
         // refraction
-        float inv_dist     = saturate(1.0f / (surface.camera_to_pixel_length + 0.0001f));
-        float2 uv_offset   = world_to_view(surface.normal, false).xy * refraction_strength * inv_dist;
-        float2 refract_uv  = uv + uv_offset;
-        float3 refracted   = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).rgb;
-        float depth_opaque = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refract_uv, 0.0f).r);
-        refraction         = lerp(background, refracted, float(depth_opaque > depth_transparent));
+        float inv_dist      = saturate(1.0f / (surface.camera_to_pixel_length + FLT_MIN));
+        float2 uv_offset    = world_to_view(surface.normal, false).xy * refraction_strength * inv_dist;
+        float2 refracted_uv = uv + uv_offset;
+        float3 refracted    = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).rgb;
+        float depth_opaque  = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).r);
+        refraction          = lerp(background, refracted, float(depth_opaque > depth_transparent));
 
         // absorption
         float water_depth = max(depth_opaque - depth_transparent, 0.0f);
