@@ -57,7 +57,7 @@ namespace spartan::geometry_processing
         register_meshoptimizer();
     
         // starting parameters
-        float  error                  = 0.01f; // initial error tolerance
+        float  error                  = 0.01f;
         size_t index_count            = indices.size();
         size_t current_triangle_count = index_count / 3;
     
@@ -93,7 +93,7 @@ namespace spartan::geometry_processing
             }
     
             // lock vertices near bounding box edges
-            const float edge_tolerance = 0.01f; // adjust based on terrain scale
+            const float edge_tolerance = 0.01f;
             size_t      locked_count   = 0;
             for (size_t i = 0; i < vertex_count; ++i)
             {
@@ -113,7 +113,7 @@ namespace spartan::geometry_processing
         attr_buffer.reserve(vertex_count * 2); // 2 components per uv
         for (const auto& v : vertices)
         {
-            attr_buffer.push_back(v.tex[0]); // assuming tex is float[2] or vector2
+            attr_buffer.push_back(v.tex[0]);
             attr_buffer.push_back(v.tex[1]);
         }
         const float* vertex_attributes = attr_buffer.data();
@@ -135,21 +135,21 @@ namespace spartan::geometry_processing
                 break;
     
             size_t index_count_new = meshopt_simplifyWithAttributes(
-                indices_simplified.data(),              // destination for simplified indices
-                indices.data(),                         // source indices
-                index_count,                            // current index count
-                &vertices[0].pos[0],                    // vertex position data
-                vertex_count,                           // vertex count
-                sizeof(RHI_Vertex_PosTexNorTan),        // vertex stride
-                vertex_attributes,                      // attribute data start
-                attr_stride,                            // attribute stride per vertex
-                attr_weights,                           // weights array
-                attr_count,                             // total components
-                locks,                                  // vertex lock array or nullptr
-                target_index_count,                     // desired index count
-                error,                                  // error tolerance
-                0,                                      // options (default)
-                &lod_error                              // output error
+                indices_simplified.data(),       // destination for simplified indices
+                indices.data(),                  // source indices
+                index_count,                     // current index count
+                &vertices[0].pos[0],             // vertex position data
+                vertex_count,                    // vertex count
+                sizeof(RHI_Vertex_PosTexNorTan), // vertex stride
+                vertex_attributes,               // attribute data start
+                attr_stride,                     // attribute stride per vertex
+                attr_weights,                    // weights array
+                attr_count,                      // total components
+                locks,                           // vertex lock array or nullptr
+                target_index_count,              // desired index count
+                error,                           // error tolerance
+                0,                               // options (default)
+                &lod_error                       // output error
             );
     
             // update indices and triangle count
