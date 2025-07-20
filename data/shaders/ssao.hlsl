@@ -35,24 +35,35 @@ static const float rotations[]    = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0
 static const uint g_directions = 4;
 static const uint g_steps      = 3;
 
-// Helper functions for noise offsets, fast math approximations
-float get_offset_non_temporal(uint2 screen_pos)
+// Helper function to compute rotation matrix from one vector to another
+float3x3 rotation_from_to(float3 from, float3 to)
 {
-    int2 position = (int2)(screen_pos);
-    return 0.25 * (float)((position.y - position.x) & 3);
-}
-
-float XeGTAO_FastSqrt(float x)
-{
-    return (float)(asfloat(0x1fbd1df5 + (asint(x) >> 1)));
-}
-
-float XeGTAO_FastACos(float in_x)
-{
-    float x    = abs(in_x);
-    float res  = -0.156583f * x + PI_HALF;
-    res       *= XeGTAO_FastSqrt(1.0f - x);
-    return (in_x >= 0) ? res : PI - res;
+    from = normalize(from);
+    to = normalize(to);
+    float cos_theta = dot(from, to);
+    if (cos_theta > 0.9999f)
+    {
+        return float3x3(1,0,0, 0,1,0, 0,0,1);
+    }
+    if (cos_theta < -0.9999f)
+    {
+        return float3x3(-1,0,0, 0,-1,0, 0,0,-1);
+    }
+    float3 axis = normalize(cross(from, to));
+    float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+    float omc = 1.0f - cos_theta;
+    float x = axis.x, y = axis.y, z = axis.z;
+    float3x3 mat;
+    mat._11 = cos_theta + x * x * omc;
+    mat._12 = x * y * omc - z * sin_theta;
+    mat._13 = x * z * omc + y * sin_theta;
+    mat._21 = y * x * omc + z * sin_theta;
+    mat._22 = cos_theta + y * y * omc;
+    mat._23 = y * z * omc - x * sin_theta;
+    mat._31 = z * x * omc - y * sin_theta;
+    mat._32 = z * y * omc + x * sin_theta;
+    mat._33 = cos_theta + z * z * omc;
+    return mat;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -71,7 +82,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(pos, resolution_out, true, false);
 
     const float noise_gradient_temporal           = noise_interleaved_gradient(pos);
-    const float offset_spatial                    = get_offset_non_temporal(pos);
+    const float offset_spatial                    = 0.25 * (float)((pos.y - pos.x) & 3);
     const float offset_temporal                   = offsets[buffer_frame.frame % 4];
     const float offset_rotation_temporal          = rotations[buffer_frame.frame % 6];
     const float ray_offset                        = frac(offset_spatial + offset_temporal) + (hash(origin_uv) * 2.0f - 1.0f) * 0.25f;
@@ -91,6 +102,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float noise_sample                      = ray_offset;
 
     // loop over slice directions to accumulate visibility
+    float3 bent_normal_v = 0.0f;
     float projected_normal_vec_length = 1.0f;
     [unroll]
     for (uint slice = 0; slice < g_directions; slice++)
@@ -108,7 +120,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float sign_norm                  = sign(dot(ortho_direction_vec, projected_normal_vec));
         projected_normal_vec_length      = length(projected_normal_vec);
         float cos_norm                   = saturate(dot(projected_normal_vec, view_vec) / projected_normal_vec_length);
-        float n                          = sign_norm * XeGTAO_FastACos(cos_norm);
+        float n                          = sign_norm * fast_acos(cos_norm);
 
         // find horizon angles: initialize baselines, then sample along slice to update max horizon cosines
         float low_horizon_cos0 = cos(n + PI_HALF);
@@ -125,7 +137,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
             float2 sample_offset       = s * omega;
             float sample_offset_length = length(sample_offset);
-            float mip_level            = 0.0f; // no mips
 
             sample_offset = round(sample_offset) * texel_size;
 
@@ -154,15 +165,24 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             horizon_cos1 = max(horizon_cos1, shc1);
         }
 
-        // compute slice occlusion/visibility: Convert horizons to angles, clamp to hemisphere, integrate analytically
-        float h0                = -XeGTAO_FastACos(horizon_cos1);
-        float h1                = XeGTAO_FastACos(horizon_cos0);
+        // compute slice occlusion/visibility: convert horizons to angles, clamp to hemisphere, integrate analytically
+        float h0                = -fast_acos(horizon_cos1);
+        float h1                = fast_acos(horizon_cos0);
         h0                      = n + clamp(h0 - n, -PI_HALF, PI_HALF);
         h1                      = n + clamp(h1 - n, -PI_HALF, PI_HALF);
         float iarc0             = (cos_norm + 2.0f * h0 * sin(n) - cos(2.0f * h0 - n)) * 0.25f;
         float iarc1             = (cos_norm + 2.0f * h1 * sin(n) - cos(2.0f * h1 - n)) * 0.25f;
         float local_visibility  = projected_normal_vec_length * (iarc0 + iarc1);
         visibility             += local_visibility;
+
+        // Bent normal computation (based on Algorithm 2 from Jimenez et al., 2016)
+        float t0 = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
+        float t1 = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
+        float3 bent_normal_l = float3(cos_phi * t0, sin_phi * t0, -t1);  // Local bent normal, z flipped for handedness
+
+        // Rotate to view space
+        float3x3 rot_mat = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
+        bent_normal_v += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
     }
 
     // finalize visibility: average over slices, apply bias correction, intensity power, and clamp
@@ -170,5 +190,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     projected_normal_vec_length = lerp(projected_normal_vec_length, 1.0f, 0.05f);
     visibility                  = pow(visibility, g_ao_intensity);
 
-    tex_uav[thread_id.xy] = visibility;
+    // finalize bent normal: normalize the accumulator
+    float3 bent_normal = normalize(bent_normal_v);
+
+    tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }

@@ -69,10 +69,7 @@ float  pack(float value)    { return value * 0.5f + 0.5f; }
 ------------------------------------------------------------------------------*/
 float fast_sqrt(float x)
 {
-    int i = asint(x);
-    i = 0x1FBD1DF5 + (i >> 1);
-    
-    return asfloat(i);
+    return (float)(asfloat(0x1fbd1df5 + (asint(x) >> 1)));
 }
 
 float fast_length(float3 v)
@@ -97,6 +94,14 @@ float fast_sin(float x)
 float fast_cos(float x)
 {
    return abs(abs(x) / PI2 % 4 - 2) - 1;
+}
+
+float fast_acos(float in_x)
+{
+    float x   = abs(in_x);
+    float res = -0.156583f * x + PI_HALF;
+    res      *= fast_sqrt(1.0f - x);
+    return (in_x >= 0) ? res : PI - res;
 }
 
 /*------------------------------------------------------------------------------

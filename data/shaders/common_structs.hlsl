@@ -49,6 +49,7 @@ struct Surface
     float  depth;
     float3 position;
     float3 normal;
+    float3 bent_normal;
     float3 camera_to_pixel;
     float  camera_to_pixel_length;
     float3 specular_energy;
@@ -106,13 +107,17 @@ struct Surface
         diffuse_energy        = 1.0f;
 
         // roughness is authored as perceptual roughness, as is convention
-        roughness_alpha       = roughness * roughness;
+        roughness_alpha = roughness * roughness;
 
         // ssao
-        occlusion = sample_material.a;
+        bent_normal = float3(0, 1, 0);
+        occlusion   = sample_material.a;
         if (is_ssao_enabled())
         {
-            occlusion = min(sample_material.a, tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0).r); // combine occlusion with material occlusion
+            float4 normal_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+            bent_normal          = normal_sample.rgb;
+            bent_normal.y        = max(bent_normal.y, 0.01f); // clamp at horizon to avoid in door areas samppling sky colors
+            occlusion            = min(sample_material.a, normal_sample.a); // combine occlusion with material occlusion
         }
         // disable ssao for transparents (it has already been applied to the opaque light)
         occlusion = lerp(1.0f, occlusion, float(sample_albedo.a == 1.0f));

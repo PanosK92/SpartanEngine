@@ -79,18 +79,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
     const float3 diffuse_energy  = compute_diffuse_energy(specular_energy, surface.metallic);
 
-    // bias normal for diffuse sampling to ensure it points above the horizon, see Pass_Skysphere() to understand why.
-    float3 diffuse_normal = surface.normal;
-    diffuse_normal.y      = max(diffuse_normal.y, 0.01f); // clamp y to slightly positive to avoid horizon
-    diffuse_normal        = normalize(diffuse_normal);    // renormalize after clamping
-    
     // sample all the textures
-    const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
-    float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
+    const float3 reflection            = reflect(surface.camera_to_pixel, surface.bent_normal);
+    float3 dominant_specular_direction = get_dominant_specular_direction(surface.bent_normal, reflection, surface.roughness);
     float mip_count_environment        = pass_get_f3_value().x;
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
     float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
-    float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(diffuse_normal), mip_count_environment, mip_count_environment);
+    float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.bent_normal), mip_count_environment, mip_count_environment);
     float shadow_mask                  = tex[thread_id.xy].r;
     float3 diffuse_gi                  = tex_uav2[thread_id.xy].rgb;
     float3 specular_gi                 = tex_uav3[thread_id.xy].rgb;

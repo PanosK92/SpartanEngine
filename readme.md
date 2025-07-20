@@ -55,7 +55,7 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 - Fast dual paraboloid point lights.
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
 - Unified deferred rendering with transparency (BSDF with same render path).
-- Atmospheric scattering, real-time filtering and image-based lighting.
+- Atmospheric scattering, real-time filtering and image-based lighting (with bent normals).
 - Real-time global illumination (FidelityFX Brixelizer GI).
 - Screen space shadows (Bend Studio's Days Gone).
 - Screen space ambient occlusion (XeGTAO).
