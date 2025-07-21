@@ -787,9 +787,7 @@ namespace spartan
                 cmd_list->Dispatch(tex_environment);
             }
 
-            // 2. filter all mip levels (top half only, uv.y <= 0.5) to cover the visible upper hemisphere
-            // (zenith to horizon). The bottom half is below the horizon, invisible, and mostly black in the
-            // atmospheric scattering shader, so we skip it to reduce dispatch costs
+            // 2. filter all mip levels
             {
                 // filtering can sample from any mip, so we need to generate the mip chain
                 Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
@@ -811,10 +809,7 @@ namespace spartan
             
                     const uint32_t resolution_x = tex_environment->GetWidth() >> mip_level;
                     const uint32_t resolution_y = tex_environment->GetHeight() >> mip_level;
-                    cmd_list->Dispatch(
-                        static_cast<uint32_t>(ceil(static_cast<float>(resolution_x) / 8)),
-                        static_cast<uint32_t>(ceil(static_cast<float>(resolution_y / 2.0f) / 8)) // dispatch top half only
-                    );
+                    cmd_list->Dispatch(tex_environment);
                     cmd_list->InsertBarrierReadWrite(tex_environment);
                 }
             }
