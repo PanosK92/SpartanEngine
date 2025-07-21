@@ -665,28 +665,15 @@ namespace spartan
         {
             // set the mood
             entities::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            entities::sun(false);
+            entities::sun(true);
+            default_light_directional->GetComponent<Light>()->SetIntensity(120000.0f); // lux
             entities::music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
-            // point light
-            {
-                shared_ptr<Entity> entity = World::CreateEntity();
-                entity->SetObjectName("light_point");
-                entity->SetPosition(Vector3(0.0f, 7.5f, 0.0f));
-
-                Light* light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_light_bulb);
-                light->SetRange(39.66f);
-                light->SetIntensity(LightIntensity::bulb_500_watt);
-                light->SetFlag(LightFlags::Volumetric, false); // volumetric fog looks bad with point lights
-            }
-
             const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
-            const float scale      = 2.0f; // I actually walked in sponza, it's that big
+            const float scale      = 2.0f; // actually walked in sponza, it's that big
 
-            // 3d model - Sponza
+            // 3d model - sponza
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
