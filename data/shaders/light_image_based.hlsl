@@ -31,11 +31,6 @@ float3 get_dominant_specular_direction(float3 normal, float3 reflection, float r
     return lerp(normal, reflection, alpha);
 }
 
-float3 sample_environment(float2 uv, float mip_level, float mip_max)
-{
-    return tex3.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
-}
-
 float get_blend_weight(float value, float smoothness)
 {
     return saturate((value + smoothness) / (smoothness * 2.0f));
@@ -84,8 +79,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.bent_normal, reflection, surface.roughness);
     float mip_count_environment        = pass_get_f3_value().x;
     float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
-    float3 specular_skysphere          = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level, mip_count_environment);
-    float3 diffuse_skysphere           = sample_environment(direction_sphere_uv(surface.bent_normal), mip_count_environment, mip_count_environment);
+    float3 specular_skysphere          = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
+    float3 diffuse_skysphere           = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
     float shadow_mask                  = tex[thread_id.xy].r;
     float3 diffuse_gi                  = tex_uav2[thread_id.xy].rgb;
     float3 specular_gi                 = tex_uav3[thread_id.xy].rgb;

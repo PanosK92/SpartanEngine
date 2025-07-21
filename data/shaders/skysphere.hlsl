@@ -24,19 +24,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float3 up_direction     = float3(0, 1, 0);                      // up direction
-static const float3 earth_center     = float3(0, -6371e3, 0);                // earth center at -radius (meters), y-up
-static const float earth_radius      = 6371e3;                               // earth radius in meters
-static const float atmosphere_height = 100e3;                                // atmosphere thickness in meters
-static const float h_rayleigh        = 7994.0;                               // rayleigh scale height in meters
-static const float h_mie             = 1200.0;                               // mie scale height in meters
-static const float3 beta_rayleigh    = float3(5.802e-6, 13.558e-6, 33.1e-6); // m^-1, rayleigh scattering coefficients
-static const float beta_mie_scatter  = 3.996e-6;                             // m^-1, mie scattering
-static const float beta_mie_abs      = 4.40e-6;                              // m^-1, mie absorption
-static const float3 beta_ozone_abs   = float3(0.650e-6, 1.881e-6, 0.085e-6); // m^-1, ozone absorption
-static const float g_mie             = 0.80;                                 // mie phase asymmetry factor
-static const int num_view_samples    = 16;                                   // samples along view ray
-static const int num_sun_samples     = 1024;                                 // samples along sun ray
+static const float3 up_direction              = float3(0, 1, 0);                      // up direction
+static const float3 earth_center              = float3(0, -6371e3, 0);                // earth center at -radius (meters), y-up
+static const float earth_radius               = 6371e3;                               // earth radius in meters
+static const float atmosphere_height          = 100e3;                                // atmosphere thickness in meters
+static const float h_rayleigh                 = 7994.0;                               // rayleigh scale height in meters
+static const float h_mie                      = 1200.0;                               // mie scale height in meters
+static const float3 beta_rayleigh             = float3(5.802e-6, 13.558e-6, 33.1e-6); // m^-1, rayleigh scattering coefficients
+static const float beta_mie_scatter           = 3.996e-6;                             // m^-1, mie scattering
+static const float beta_mie_abs               = 4.40e-6;                              // m^-1, mie absorption
+static const float3 beta_ozone_abs            = float3(0.650e-6, 1.881e-6, 0.085e-6); // m^-1, ozone absorption
+static const float g_mie                      = 0.80;                                 // mie phase asymmetry factor
+static const int num_view_samples             = 16;                                   // samples along view ray
+static const int num_sun_samples              = 1024;                                 // samples along sun ray
+static const float lower_hemisphere_intensity = 0.5f;
 
 struct sun
 {
@@ -219,7 +220,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float t_max = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
     if (t_max < 0)
     {
-        tex_uav[thread_id.xy] = float4(atmosphere_color, 1.0f);
+        tex_uav[thread_id.xy] = float4(lower_hemisphere_intensity, lower_hemisphere_intensity, lower_hemisphere_intensity, 1.0f);
         return;
     }    
     float ds         = t_max / num_view_samples;

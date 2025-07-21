@@ -13,7 +13,7 @@ all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
@@ -29,13 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const float g_ao_radius    = 3.0f;
 static const float g_ao_intensity = 1.0f;
 static const float offsets[]      = { 0.0f, 0.5f, 0.25f, 0.75f };
-static const float rotations[]    = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
+static const float rotations[]    = { 0.1666f, 0.8333f, 0.5f, 0.6666f, 0.3333f, 0.0f };
 
 // adaptive sampling constants
 static const uint g_directions = 4;
 static const uint g_steps      = 3;
 
-// Helper function to compute rotation matrix from one vector to another
 float3x3 rotation_from_to(float3 from, float3 to)
 {
     from = normalize(from);
@@ -175,14 +174,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float local_visibility  = projected_normal_vec_length * (iarc0 + iarc1);
         visibility             += local_visibility;
 
-        // Bent normal computation (based on Algorithm 2 from Jimenez et al., 2016)
-        float t0 = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
-        float t1 = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
-        float3 bent_normal_l = float3(cos_phi * t0, sin_phi * t0, -t1);  // Local bent normal, z flipped for handedness
+        // bent normal computation (based on Algorithm 2 from Jimenez et al., 2016)
+        float t0             = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
+        float t1             = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
+        float3 bent_normal_l = float3(cos_phi * t0, sin_phi * t0, -t1);  // local bent normal, z flipped for handedness
 
-        // Rotate to view space
+        // Rotate to view space (keep for accuracy, per XeGTAO/Alg 2)
         float3x3 rot_mat = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
-        bent_normal_v += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
+        bent_normal_v   += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
     }
 
     // finalize visibility: average over slices, apply bias correction, intensity power, and clamp
@@ -192,6 +191,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // finalize bent normal: normalize the accumulator
     float3 bent_normal = normalize(bent_normal_v);
+    bent_normal        = mul(bent_normal, (float3x3)buffer_frame.view_inverted);
 
     tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }

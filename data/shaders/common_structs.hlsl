@@ -116,7 +116,6 @@ struct Surface
         {
             float4 normal_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
             bent_normal          = normal_sample.rgb;
-            bent_normal.y        = max(bent_normal.y, 0.01f); // clamp at horizon to avoid in door areas samppling sky colors
             occlusion            = min(sample_material.a, normal_sample.a); // combine occlusion with material occlusion
         }
         // disable ssao for transparents (it has already been applied to the opaque light)
