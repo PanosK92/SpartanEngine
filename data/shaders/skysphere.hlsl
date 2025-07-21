@@ -274,7 +274,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (is_below_horizon)
     {
-        atmosphere_color *= 0.5f;
+        atmosphere_color *= 0.3f;
         sun_color         = 0.0f;
         star_color        = 0.0f;
         moon_color        = 0.0f;
