@@ -1073,8 +1073,6 @@ namespace spartan
             cmd_list->InsertBarrier(tex_lut_brdf_specular->GetRhiResource(), tex_lut_brdf_specular->GetFormat(), 0, 1, 1, RHI_Image_Layout::Shader_Read);
         }
         cmd_list->EndTimeblock();
-
-      
     }
 
     void Renderer::Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list)
