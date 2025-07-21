@@ -130,7 +130,7 @@ namespace spartan
         uint32_t GetScreenSpaceShadowsSliceIndex() const           { return m_index; }
 
         // misc
-        bool NeedsLutAtmosphericScatteringUpdate() const;
+        bool NeedsSkysphereUpdate() const;
 
     private:
         void UpdateMatrices();

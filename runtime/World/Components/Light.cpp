@@ -352,25 +352,25 @@ namespace spartan
         UpdateMatrices();
     }
 
-    bool Light::NeedsLutAtmosphericScatteringUpdate() const
+    bool Light::NeedsSkysphereUpdate() const
     {
         if (m_light_type != LightType::Directional)
             return false;
 
         static Quaternion last_rotation           = Quaternion::Identity;
         static Color last_color_rgb               = Color::standard_black;
-        static float last_intensity_lumens_lux    = std::numeric_limits<float>::max();
+        static float last_intensity_lumens_lux    = numeric_limits<float>::max();
     
         Quaternion current_rotation = GetEntity() ? GetEntity()->GetRotation() : Quaternion::Identity;
     
         bool rotation_changed  = current_rotation != last_rotation;
         bool color_changed     = m_color_rgb != last_color_rgb;
-        bool intensity_changed = std::abs(m_intensity_lumens_lux - last_intensity_lumens_lux) > 0.01f;
+        bool intensity_changed = abs(m_intensity_lumens_lux - last_intensity_lumens_lux) > 0.01f;
     
         if (rotation_changed || color_changed || intensity_changed)
         {
-            last_rotation              = current_rotation;
-            last_color_rgb             = m_color_rgb;
+            last_rotation             = current_rotation;
+            last_color_rgb            = m_color_rgb;
             last_intensity_lumens_lux = m_intensity_lumens_lux;
             return true;
         }

@@ -71,6 +71,7 @@ namespace spartan
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
         // render lookup tables (once per session)
+        bool update_skysphere = World::GetDirectionalLight() ? World::GetDirectionalLight()->NeedsSkysphereUpdate() : false;
         {
             static bool brdf_produced = false;
             if (!brdf_produced)
@@ -79,7 +80,7 @@ namespace spartan
                 brdf_produced = true;
             }
 
-            if (World::GetDirectionalLight() ? World::GetDirectionalLight()->NeedsLutAtmosphericScatteringUpdate() : false)
+            if (update_skysphere)
             {
                 Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
             }
@@ -96,7 +97,10 @@ namespace spartan
                 Pass_Depth_Prepass(cmd_list_graphics_present);
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_ShadowMaps(cmd_list_graphics_present);
-                Pass_Skysphere(cmd_list_graphics_present);
+                if (update_skysphere)
+                {
+                    Pass_Skysphere(cmd_list_graphics_present);
+                }
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
                 Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
@@ -763,11 +767,8 @@ namespace spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        Light* light = World::GetDirectionalLight();
-        if (!light)
-            return;
-    
-        RHI_Texture* tex_environment            = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        Light* light                            = World::GetDirectionalLight();
+        RHI_Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
 
         cmd_list->BeginTimeblock("skysphere");
@@ -782,35 +783,35 @@ namespace spartan
                 m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
-                cmd_list->Dispatch(tex_environment);
+                cmd_list->Dispatch(tex_skysphere);
             }
 
             // 2. filter all mip levels
             {
                 // filtering can sample from any mip, so we need to generate the mip chain
-                Pass_Downscale(cmd_list, tex_environment, Renderer_DownsampleFilter::Average);
+                Pass_Downscale(cmd_list, tex_skysphere, Renderer_DownsampleFilter::Average);
 
                 RHI_PipelineState pso;
                 pso.name             = "skysphere_filter";
                 pso.shaders[Compute] = GetShader(Renderer_Shader::light_integration_environment_filter_c);
                 cmd_list->SetPipelineState(pso);
             
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_environment);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_skysphere);
             
-                for (uint32_t mip_level = 1; mip_level < tex_environment->GetMipCount(); mip_level++)
+                for (uint32_t mip_level = 1; mip_level < tex_skysphere->GetMipCount(); mip_level++)
                 {
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_environment, mip_level, 1);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere, mip_level, 1);
             
                     // Set pass constants
-                    m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(tex_environment->GetMipCount()), 0.0f);
+                    m_pcb_pass_cpu.set_f3_value(static_cast<float>(mip_level), static_cast<float>(tex_skysphere->GetMipCount()), 0.0f);
                     cmd_list->PushConstants(m_pcb_pass_cpu);
             
-                    const uint32_t resolution_x = tex_environment->GetWidth() >> mip_level;
-                    const uint32_t resolution_y = tex_environment->GetHeight() >> mip_level;
-                    cmd_list->Dispatch(tex_environment);
-                    cmd_list->InsertBarrierReadWrite(tex_environment);
+                    const uint32_t resolution_x = tex_skysphere->GetWidth() >> mip_level;
+                    const uint32_t resolution_y = tex_skysphere->GetHeight() >> mip_level;
+                    cmd_list->Dispatch(tex_skysphere);
+                    cmd_list->InsertBarrierReadWrite(tex_skysphere);
                 }
             }
         }
