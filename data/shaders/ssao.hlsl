@@ -135,8 +135,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
             float2 sample_offset       = s * omega;
             float sample_offset_length = length(sample_offset);
-
-            sample_offset = round(sample_offset) * texel_size;
+            sample_offset              = round(sample_offset) * texel_size;
 
             float2 sample_screen_pos0  = origin_uv + sample_offset;
             float3 sample_pos0         = get_position_view_space(sample_screen_pos0);
@@ -155,9 +154,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
             float shc0 = dot(sample_horizon_vec0, view_vec);
             float shc1 = dot(sample_horizon_vec1, view_vec);
-
-            shc0 = lerp(low_horizon_cos0, shc0, weight0);
-            shc1 = lerp(low_horizon_cos1, shc1, weight1);
+            shc0       = lerp(low_horizon_cos0, shc0, weight0);
+            shc1       = lerp(low_horizon_cos1, shc1, weight1);
 
             horizon_cos0 = max(horizon_cos0, shc0);
             horizon_cos1 = max(horizon_cos1, shc1);
@@ -173,12 +171,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float local_visibility  = projected_normal_vec_length * (iarc0 + iarc1);
         visibility             += local_visibility;
 
-        // bent normal computation (based on Algorithm 2 from Jimenez et al., 2016)
+        // bent normal computation
         float t0             = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
         float t1             = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
         float3 bent_normal_l = float3(cos_phi * t0, sin_phi * t0, -t1);  // local bent normal, z flipped for handedness
 
-        // Rotate to view space (keep for accuracy, per XeGTAO/Alg 2)
+        // rotate to view space
         float3x3 rot_mat = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
         bent_normal_v   += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
     }
@@ -187,9 +185,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     visibility /= float(g_directions);
     visibility  = pow(visibility, g_ao_intensity);
 
-    // finalize bent normal: normalize the accumulator
-    float3 bent_normal = normalize(bent_normal_v);
-    bent_normal        = normalize(mul(bent_normal, (float3x3)buffer_frame.view_inverted));
+    // finalize bent normal
+    float3 bent_normal = normalize(mul(normalize(bent_normal_v), (float3x3)buffer_frame.view_inverted));
 
     tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }

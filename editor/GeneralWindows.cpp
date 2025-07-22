@@ -449,9 +449,8 @@ namespace
             "3. Showroom (Gran Turismo 7 brand central) - light",
             "4. Sponza 4k (high-resolution textures & meshes) - demanding",
             "5. Subway (gi test, no lights, only emissive textures) - moderate",
-            "6. Doom E1M1 (classic level recreation) - light",
-            "7. Minecraft (blocky aesthetic) - light",
-            "8. Basic (light, camera, floor) - light"
+            "6. Minecraft (blocky aesthetic) - light",
+            "7. Basic (light, camera, floor) - light"
         };
 
         int world_index = 0;

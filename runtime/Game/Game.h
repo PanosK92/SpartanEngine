@@ -30,7 +30,6 @@ namespace spartan
         GranTurismo,
         Sponza,
         Subway,
-        Doom,
         Minecraft,
         Basic,
         Max

@@ -755,36 +755,6 @@ namespace spartan
             }
         }
 
-        void create_doom_e1m1()
-        {
-             entities::camera(Vector3(-100.0f, 15.0f, -32.0f), Vector3(0.0f, 90.0f, 0.0f));
-             entities::sun(true);
-             entities::music("project\\music\\doom_e1m1.wav");
-
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
-            {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
-                entity->SetObjectName("doom_e1m1");
-                entity->SetPosition(Vector3(0.0f, 14.0f, -355.5300f));
-                entity->SetScale(Vector3(0.1f, 0.1f, 0.1f));
-
-                // nothing is double sided, so we need to disable culling to get proper shadows
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
-                {
-                    if (Renderable* renderable = entity_it->GetComponent<Renderable>())
-                    {
-                        renderable->GetMaterial()->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-
-                        // add physics as well
-                        Physics* physics_body = entity_it->AddComponent<Physics>();
-                        physics_body->SetBodyType(BodyType::Mesh);
-                    }
-                }
-            }
-        }
-
         void create_minecraft()
         {
              entities::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
@@ -1720,7 +1690,6 @@ namespace spartan
             switch (default_world)
             {
                 case DefaultWorld::Forest:       worlds::forest::create();        break;
-                case DefaultWorld::Doom:         worlds::create_doom_e1m1();      break;
                 case DefaultWorld::Minecraft:    worlds::create_minecraft();      break;
                 case DefaultWorld::Sponza:       worlds::create_sponza_4k();      break;
                 case DefaultWorld::Subway:       worlds::create_subway_gi_test(); break;
