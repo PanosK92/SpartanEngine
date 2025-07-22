@@ -55,9 +55,7 @@ namespace spartan
         AddResourceDirectory(ResourceDirectory::Textures,       data_dir + "textures");
 
         // subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER_STATIC(Serialize));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER_STATIC(Deserialize));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Shutdown));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER_STATIC(Shutdown));
     }
     
 	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)

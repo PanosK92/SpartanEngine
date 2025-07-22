@@ -31,11 +31,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Matrix.h"
 //===============================
 
+namespace pugi
+{
+    class xml_node;
+}
+
 namespace spartan
 {
-    class FileStream;
     class Renderable;
-    
+
     class Entity : public SpartanObject
     {
     public:
@@ -51,7 +55,7 @@ namespace spartan
         void Tick();    // runs every frame
 
         // io
-        void Serialize(FileStream* stream);
+        void Serialize(pugi::xml_node& node);
         void Deserialize(FileStream* stream, std::shared_ptr<Entity> parent);
 
         // active

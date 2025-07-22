@@ -27,7 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Physics.h"
 #include "Components/AudioSource.h"
 #include "Components/Terrain.h"
-#include "../IO/FileStream.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //=================================
 
 //= NAMESPACES ===============
@@ -141,19 +143,40 @@ namespace spartan
         m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
     }
 
-    void Entity::Serialize(FileStream* stream)
+    void Entity::Serialize(pugi::xml_node& node)
     {
-        // BASIC DATA
+        // CORE DATA
         {
-            stream->Write(m_is_active);
-            stream->Write(m_object_id);
-            stream->Write(m_object_name);
-            stream->Write(m_position_local);
-            stream->Write(m_rotation_local);
-            stream->Write(m_scale_local);
-            stream->Write(!m_parent.expired() ? m_parent.lock()->GetObjectId() : 0);
+            node.append_attribute("name")   = m_object_name.c_str();
+            node.append_attribute("id")     = m_object_id;
+            node.append_attribute("active") = m_is_active;
+
+            {
+                std::stringstream ss;
+                ss << m_position_local.x << " " << m_position_local.y << " " << m_position_local.z;
+                node.append_attribute("position") = ss.str().c_str();
+            }
+
+            {
+                std::stringstream ss;
+                ss << m_rotation_local.x << " " << m_rotation_local.y << " " << m_rotation_local.z << " " << m_rotation_local.w;
+                node.append_attribute("rotation") = ss.str().c_str();
+            }
+
+            {
+                std::stringstream ss;
+                ss << m_scale_local.x << " " << m_scale_local.y << " " << m_scale_local.z;
+                node.append_attribute("scale") = ss.str().c_str();
+            }
+
+            for (Entity* child : m_children)
+            {
+                pugi::xml_node child_node = node.append_child("Entity");
+                child->Serialize(child_node);
+            }
         }
 
+        /*
         // COMPONENTS
         {
             for (shared_ptr<Component>& component : m_components)
@@ -177,33 +200,13 @@ namespace spartan
                 }
             }
         }
-
-        // CHILDREN
-        {
-            vector<Entity*>& children = GetChildren();
-
-            // children count
-            stream->Write(static_cast<uint32_t>(children.size()));
-
-            // children IDs
-            for (Entity* child : children)
-            {
-                stream->Write(child->GetObjectId());
-            }
-
-            // children
-            for (Entity* child : children)
-            {
-                if (child)
-                {
-                    child->Serialize(stream);
-                }
-            }
         }
+        */
     }
 
     void Entity::Deserialize(FileStream* stream, shared_ptr<Entity> parent)
     {
+        /*
         // BASIC DATA
         {
             stream->Read(&m_is_active);
@@ -282,6 +285,7 @@ namespace spartan
         }
 
         World::Resolve();
+        */
     }
 
     bool Entity::GetActive() const
@@ -300,13 +304,13 @@ namespace spartan
 
         switch (type)
         {
-            case ComponentType::AudioSource: component = static_cast<Component*>(AddComponent<AudioSource>());   break;
-            case ComponentType::Camera:      component = static_cast<Component*>(AddComponent<Camera>());        break;
-            case ComponentType::Light:       component = static_cast<Component*>(AddComponent<Light>());         break;
-            case ComponentType::Renderable:  component = static_cast<Component*>(AddComponent<Renderable>());    break;
-            case ComponentType::Physics: component = static_cast<Component*>(AddComponent<Physics>());   break;
-            case ComponentType::Terrain:     component = static_cast<Component*>(AddComponent<Terrain>());       break;
-            default:                         component = nullptr;                                               break;
+            case ComponentType::AudioSource: component = static_cast<Component*>(AddComponent<AudioSource>()); break;
+            case ComponentType::Camera:      component = static_cast<Component*>(AddComponent<Camera>());      break;
+            case ComponentType::Light:       component = static_cast<Component*>(AddComponent<Light>());       break;
+            case ComponentType::Renderable:  component = static_cast<Component*>(AddComponent<Renderable>());  break;
+            case ComponentType::Physics:     component = static_cast<Component*>(AddComponent<Physics>());     break;
+            case ComponentType::Terrain:     component = static_cast<Component*>(AddComponent<Terrain>());     break;
+            default:                         component = nullptr;                                              break;
         }
 
         SP_ASSERT(component != nullptr);

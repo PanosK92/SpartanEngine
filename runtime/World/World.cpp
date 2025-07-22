@@ -31,6 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //==================================
 
 //= NAMESPACES ===============
@@ -206,55 +209,44 @@ namespace spartan
     bool World::SaveToFile(const string& file_path_in)
     {
         // add scene file extension to the filepath if it's missing
-        auto file_path = file_path_in;
+        string file_path = file_path_in;
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
         {
             file_path += EXTENSION_WORLD;
         }
+        name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
-        name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        file_path = file_path;
+        // create XML document
+        pugi::xml_document doc;
+        pugi::xml_node world_node = doc.append_child("World");
+        world_node.append_attribute("name") = name.c_str();
 
-        // notify subsystems that need to save data
-        SP_FIRE_EVENT(EventType::WorldSaveStart);
-
-        // create a prefab file
-        auto file = make_unique<FileStream>(file_path, FileStream_Write);
-        if (!file->IsOpen())
-        {
-            SP_LOG_ERROR("Failed to open file.");
-            return false;
-        }
-
-        // only save root entities as they will also save their descendants
+        // get root entities, save them, and they will save their children recursively
         vector<shared_ptr<Entity>> root_actors = GetRootEntities();
-        const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
+        const uint32_t root_entity_count       = static_cast<uint32_t>(root_actors.size());
 
         // start progress tracking and timing
         const Stopwatch timer;
         ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
 
-        // save root entity count
-        file->Write(root_entity_count);
-
-        // save root entity IDs
+        // write to xml node
         for (shared_ptr<Entity>& root : root_actors)
         {
-            file->Write(root->GetObjectId());
-        }
-
-        // save root entities
-        for (shared_ptr<Entity>& root : root_actors)
-        {
-            root->Serialize(file.get());
+            pugi::xml_node entity_node = world_node.append_child("Entity");
+            root->Serialize(entity_node);
             ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
-        // report time
-        SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
+        // save to xml node
+        bool saved = doc.save_file(file_path.c_str(), "  ", pugi::format_indent);
+        if (!saved)
+        {
+            SP_LOG_ERROR("Failed to save XML file.");
+            return false;
+        }
 
-        // notify subsystems waiting for us to finish
-        SP_FIRE_EVENT(EventType::WorldSavedEnd);
+        // log
+        SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
         return true;
     }
@@ -281,9 +273,6 @@ namespace spartan
 
         name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
-        // notify subsystems that need to load data
-        SP_FIRE_EVENT(EventType::WorldLoadStart);
-
         // load root entity count
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
@@ -307,8 +296,6 @@ namespace spartan
 
         // report time
         SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
-
-        SP_FIRE_EVENT(EventType::WorldLoadEnd);
 
         return true;
     }
