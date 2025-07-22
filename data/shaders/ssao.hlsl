@@ -102,24 +102,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // loop over slice directions to accumulate visibility
     float3 bent_normal_v = 0.0f;
-    float projected_normal_vec_length = 1.0f;
     [unroll]
     for (uint slice = 0; slice < g_directions; slice++)
     {
         // slice setup: compute rotated direction (omega), project normal onto slice plane, compute bent normal angle (n)
-        float slice_k                    = (float(slice) + noise_slice) / float(g_directions);
-        float phi                        = slice_k * PI;
-        float cos_phi                    = cos(phi);
-        float sin_phi                    = sin(phi);
-        float2 omega                     = float2(cos_phi, -sin_phi) * screenspace_radius;
-        const float3 direction_vec       = float3(cos_phi, sin_phi, 0.0f);
-        const float3 ortho_direction_vec = direction_vec - dot(direction_vec, view_vec) * view_vec;
-        const float3 axis_vec            = normalize(cross(ortho_direction_vec, view_vec));
-        float3 projected_normal_vec      = origin_normal - axis_vec * dot(origin_normal, axis_vec);
-        float sign_norm                  = sign(dot(ortho_direction_vec, projected_normal_vec));
-        projected_normal_vec_length      = length(projected_normal_vec);
-        float cos_norm                   = saturate(dot(projected_normal_vec, view_vec) / projected_normal_vec_length);
-        float n                          = sign_norm * fast_acos(cos_norm);
+        float slice_k                     = (float(slice) + noise_slice) / float(g_directions);
+        float phi                         = slice_k * PI;
+        float cos_phi                     = cos(phi);
+        float sin_phi                     = sin(phi);
+        float2 omega                      = float2(cos_phi, -sin_phi) * screenspace_radius;
+        const float3 direction_vec        = float3(cos_phi, sin_phi, 0.0f);
+        const float3 ortho_direction_vec  = direction_vec - dot(direction_vec, view_vec) * view_vec;
+        const float3 axis_vec             = normalize(cross(ortho_direction_vec, view_vec));
+        float3 projected_normal_vec       = origin_normal - axis_vec * dot(origin_normal, axis_vec);
+        float sign_norm                   = sign(dot(ortho_direction_vec, projected_normal_vec));
+        float projected_normal_vec_length = length(projected_normal_vec);
+        float cos_norm                    = saturate(dot(projected_normal_vec, view_vec) / projected_normal_vec_length);
+        float n                           = sign_norm * fast_acos(cos_norm);
 
         // find horizon angles: initialize baselines, then sample along slice to update max horizon cosines
         float low_horizon_cos0 = cos(n + PI_HALF);
@@ -184,14 +183,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         bent_normal_v   += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
     }
 
-    // finalize visibility: average over slices, apply bias correction, intensity power, and clamp
-    visibility                  /= float(g_directions);
-    projected_normal_vec_length = lerp(projected_normal_vec_length, 1.0f, 0.05f);
-    visibility                  = pow(visibility, g_ao_intensity);
+    // finalize visibility
+    visibility /= float(g_directions);
+    visibility  = pow(visibility, g_ao_intensity);
 
     // finalize bent normal: normalize the accumulator
     float3 bent_normal = normalize(bent_normal_v);
-    bent_normal        = mul(bent_normal, (float3x3)buffer_frame.view_inverted);
+    bent_normal        = normalize(mul(bent_normal, (float3x3)buffer_frame.view_inverted));
 
     tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }
