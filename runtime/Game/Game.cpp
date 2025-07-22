@@ -897,23 +897,23 @@ namespace spartan
                         // set properties
                         material->SetResourceFilePath(string("project\\materials\\material_terrain") + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain,      1.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingX, 2000.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY, 2000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX, 250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY, 250.0f);
 
                         // set textures
-                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\ground\\albedo.png",    0);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\ground\\normal.png",    0);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\ground\\roughness.png", 0);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\ground\\occlusion.png", 0);
-                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\rock\\albedo.png",      1);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\rock\\normal.png",      1);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\rock\\roughness.png",   1);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\rock\\occlusion.png",   1);
-                        material->SetTexture(MaterialTextureType::Height,    "project\\materials\\rock\\height.png",      1);
-                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\sand\\albedo.png",      2);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\sand\\normal.png",      2);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\sand\\roughness.png",   2);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\sand\\occlusion.png",   2);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\whispy_grass_meadow\\albedo.png",    0);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\whispy_grass_meadow\\normal.png",    0);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\whispy_grass_meadow\\roughness.png", 0);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\whispy_grass_meadow\\occlusion.png", 0);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\rock\\albedo.png",                   1);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\rock\\normal.png",                   1);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\rock\\roughness.png",                1);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\rock\\occlusion.png",                1);
+                        material->SetTexture(MaterialTextureType::Height,    "project\\materials\\rock\\height.png",                   1);
+                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\sand\\albedo.png",                   2);
+                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\sand\\normal.png",                   2);
+                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\sand\\roughness.png",                2);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\sand\\occlusion.png",                2);
                         material->SetProperty(MaterialProperty::Tessellation, 0.0f);
                     }
                     
