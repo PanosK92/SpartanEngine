@@ -47,7 +47,6 @@ namespace spartan
     {
         vector<shared_ptr<Entity>> entities;
         vector<shared_ptr<Entity>> entities_lights; // entities subset that contains only lights
-        string name;
         string file_path;
         mutex entity_access_mutex;
         bool resolve                = false;
@@ -199,19 +198,23 @@ namespace spartan
         entities_lights.clear();
         camera = nullptr;
         light  = nullptr;
-        name.clear();
         file_path.clear();
         
         // mark for resolve
         resolve = true;
     }
 
-    bool World::SaveToFile(const string& file_path)
+    bool World::SaveToFile(string file_path)
     {
+        if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
+        {
+            file_path += string(EXTENSION_WORLD);
+        }
+
         // create xml document
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
-        world_node.append_attribute("name") = name.c_str();
+        world_node.append_attribute("name") = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
 
         // get root entities, save them, and they will save their children recursively
         vector<shared_ptr<Entity>> root_actors = GetRootEntities();
@@ -265,8 +268,6 @@ namespace spartan
             SP_LOG_ERROR("No 'World' node found.");
             return false;
         }
-
-        name = world_node.attribute("name").as_string();
 
         // count root entities for progress tracking
         uint32_t root_entity_count = 0;
@@ -400,9 +401,9 @@ namespace spartan
         return entities_lights;
     }
 
-    const string World::GetName()
+    string World::GetName()
     {
-        return name;
+        return FileSystem::GetFileNameFromFilePath(file_path);
     }
 
     const string& World::GetFilePath()

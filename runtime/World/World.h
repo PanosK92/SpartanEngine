@@ -39,7 +39,7 @@ namespace spartan
         static void Tick();
 
         // io
-        static bool SaveToFile(const std::string& filePath);
+        static bool SaveToFile(std::string filePath);
         static bool LoadFromFile(const std::string& file_path);
 
         // entities
@@ -54,7 +54,7 @@ namespace spartan
         // misc
         static void Clear();
         static void Resolve();
-        static const std::string GetName();
+        static std::string GetName();
         static const std::string& GetFilePath();
         static math::BoundingBox& GetBoundingBox();
         static Camera* GetCamera();
