@@ -85,7 +85,7 @@ namespace spartan
 
         // properties
         float m_min_y = -64.0f;
-        float m_max_y = 512.0f;
+        float m_max_y = 800.0f;
 
         // members
         uint32_t m_width                  = 0; 

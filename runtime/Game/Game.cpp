@@ -828,7 +828,7 @@ namespace spartan
                 sun->SetTemperature(7'000.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, false);
 
-                entities::camera(Vector3(-810.8645f, 55.4595f, 618.8524f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::camera(Vector3(-1437.9974f, 329.2f, 2144.2534f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
                 Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 
