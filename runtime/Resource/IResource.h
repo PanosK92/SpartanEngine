@@ -40,7 +40,7 @@ namespace spartan
         Animation,
         Font,
         Shader,
-        Max,
+        Max
     };
 
     enum class ResourceState
@@ -63,9 +63,9 @@ namespace spartan
             m_object_name        = FileSystem::GetFileNameWithoutExtensionFromFilePath(m_resource_file_path);
         }
         
-        ResourceType GetResourceType()            const { return m_resource_type; }
-        const char* GetResourceTypeCstr()         const { return typeid(*this).name(); }
-        const std::string& GetResourceFilePath()  const { return m_resource_file_path; }
+        ResourceType GetResourceType()           const { return m_resource_type; }
+        const char* GetResourceTypeCstr()        const { return typeid(*this).name(); }
+        const std::string& GetResourceFilePath() const { return m_resource_file_path; }
         const std::string GetResourceDirectory() const { return FileSystem::GetDirectoryFromFilePath(m_resource_file_path); }
 
         // flags

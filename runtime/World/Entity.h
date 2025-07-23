@@ -55,8 +55,8 @@ namespace spartan
         void Tick();    // runs every frame
 
         // io
-        void Serialize(pugi::xml_node& node);
-        void Deserialize(pugi::xml_node& node);
+        void Save(pugi::xml_node& node);
+        void Load(pugi::xml_node& node);
 
         // active
         bool GetActive() const;

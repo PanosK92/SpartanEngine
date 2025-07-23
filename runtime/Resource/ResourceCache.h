@@ -26,8 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Logging/Log.h"
 #include <mutex>
 #include "../Rendering/Material.h"
-#include <algorithm>
 //================================
+
+namespace pugi
+{
+    class xml_node;
+}
 
 namespace spartan
 {
@@ -149,8 +153,8 @@ namespace spartan
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
 
-    private:
-        static void Serialize();
-        static void Deserialize();
+        // io
+        static void Save(pugi::xml_node& node);
+        static void Load(pugi::xml_node& node);
     };
 }

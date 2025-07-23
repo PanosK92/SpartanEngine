@@ -143,7 +143,7 @@ namespace spartan
         m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
     }
 
-    void Entity::Serialize(pugi::xml_node& node)
+    void Entity::Save(pugi::xml_node& node)
     {
         // self
         {
@@ -179,11 +179,11 @@ namespace spartan
         for (Entity* child : m_children)
         {
             pugi::xml_node child_node = node.append_child("Entity");
-            child->Serialize(child_node);
+            child->Save(child_node);
         }
     }
 
-    void Entity::Deserialize(pugi::xml_node& node)
+    void Entity::Load(pugi::xml_node& node)
     {
         // self
         {
@@ -219,7 +219,7 @@ namespace spartan
         for (pugi::xml_node child_node = node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
         {
             shared_ptr<Entity> child = World::CreateEntity();
-            child->Deserialize(child_node);
+            child->Load(child_node);
             child->SetParent(World::GetEntityById(GetObjectId()));
         }
     }

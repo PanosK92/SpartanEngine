@@ -19,12 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES =========================
 #include "pch.h"
 #include "World.h"
 #include "Entity.h"
+#include "../Resource/ResourceCache.h"
 #include "../Game/Game.h"
-#include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
 #include "Components/Renderable.h"
@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//==================================
+//====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -211,28 +211,45 @@ namespace spartan
             file_path += string(EXTENSION_WORLD);
         }
 
-        // create xml document
+        // start timing
+        const Stopwatch timer;
+
+        // create document
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name") = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
 
-        // get root entities, save them, and they will save their children recursively
-        vector<shared_ptr<Entity>> root_actors = GetRootEntities();
-        const uint32_t root_entity_count       = static_cast<uint32_t>(root_actors.size());
-
-        // start progress tracking and timing
-        const Stopwatch timer;
-        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
-
-        // write to xml node
-        for (shared_ptr<Entity>& root : root_actors)
+        // resources
         {
-            pugi::xml_node entity_node = world_node.append_child("Entity");
-            root->Serialize(entity_node);
-            ProgressTracker::GetProgress(ProgressType::World).JobDone();
+            // node
+            pugi::xml_node resources_node = world_node.append_child("Resources");
+
+            // write resources to node
+            ResourceCache::Save(resources_node);
         }
 
-        // save to xml node
+        // entities
+        {
+            // node
+            pugi::xml_node entities_node = world_node.append_child("Entities");
+
+            // get root entities, save them, and they will save their children recursively
+            vector<shared_ptr<Entity>> root_actors = GetRootEntities();
+            const uint32_t root_entity_count       = static_cast<uint32_t>(root_actors.size());
+
+            // progress tracking
+            ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
+
+            // write entities to node
+            for (shared_ptr<Entity>& root : root_actors)
+            {
+                pugi::xml_node entity_node = entities_node.append_child("Entity");
+                root->Save(entity_node);
+                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+            }
+        }
+
+        // save to file
         bool saved = doc.save_file(file_path.c_str(), "  ", pugi::format_indent);
         if (!saved)
         {
@@ -249,8 +266,10 @@ namespace spartan
     bool World::LoadFromFile(const string& file_path_)
     {
         Clear();
-
         file_path = file_path_;
+
+        // start timing
+        const Stopwatch timer;
 
         // load xml document
         pugi::xml_document doc;
@@ -269,23 +288,45 @@ namespace spartan
             return false;
         }
 
-        // count root entities for progress tracking
-        uint32_t root_entity_count = 0;
-        for (pugi::xml_node entity_node = world_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+        // resources
         {
-            ++root_entity_count;
+            // get node
+            pugi::xml_node resources_node = world_node.child("Resources");
+
+            // read and load resources from node
+            if (resources_node)
+            {
+                ResourceCache::Load(resources_node);
+            }
         }
 
-        // start progress tracking and timing
-        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
-        const Stopwatch timer;
-
-        // load root entities (they will load their descendants recursively)
-        for (pugi::xml_node entity_node = world_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+        // entities
         {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->Deserialize(entity_node);
-            ProgressTracker::GetProgress(ProgressType::World).JobDone();
+            // get node
+            pugi::xml_node entities_node = world_node.child("Entities");
+            if (!entities_node)
+            {
+                SP_LOG_ERROR("No 'Entities' node found.");
+                return false;
+            }
+
+            // count root entities for progress tracking
+            uint32_t root_entity_count = 0;
+            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+            {
+                ++root_entity_count;
+            }
+
+            // progress tracking
+            ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
+
+            // load root entities (they will load their descendants recursively)
+            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+            {
+                shared_ptr<Entity> entity = World::CreateEntity();
+                entity->Load(entity_node);
+                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+            }
         }
 
         // report time
