@@ -175,10 +175,6 @@ namespace spartan
             }
         }
 
-        // parent
-        Entity* parent = m_parent.lock().get();
-        node.append_attribute("parent_id") = (parent != nullptr) ? parent->GetObjectId() : 0;
-
         // children
         for (Entity* child : m_children)
         {
@@ -219,15 +215,12 @@ namespace spartan
             }
         }
 
-        // parent
-        uint64_t parent_id = node.attribute("parent_id").as_ullong(0);
-        SetParent(World::GetEntityById(parent_id));
-
         // children
         for (pugi::xml_node child_node = node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
         {
             shared_ptr<Entity> child = World::CreateEntity();
             child->Deserialize(child_node);
+            child->SetParent(World::GetEntityById(GetObjectId()));
         }
     }
 
