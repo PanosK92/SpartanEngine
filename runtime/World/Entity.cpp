@@ -145,12 +145,12 @@ namespace spartan
 
     void Entity::Serialize(pugi::xml_node& node)
     {
-        // CORE DATA
+        // self
         {
-            node.append_attribute("name")   = m_object_name.c_str();
-            node.append_attribute("id")     = m_object_id;
-            node.append_attribute("active") = m_is_active;
-
+            node.append_attribute("name")      = m_object_name.c_str();
+            node.append_attribute("id")        = m_object_id;
+            node.append_attribute("active")    = m_is_active;
+            
             {
                 std::stringstream ss;
                 ss << m_position_local.x << " " << m_position_local.y << " " << m_position_local.z;
@@ -169,123 +169,66 @@ namespace spartan
                 node.append_attribute("scale") = ss.str().c_str();
             }
 
-            for (Entity* child : m_children)
+            // components
             {
-                pugi::xml_node child_node = node.append_child("Entity");
-                child->Serialize(child_node);
+
             }
         }
 
-        /*
-        // COMPONENTS
+        // parent
+        Entity* parent = m_parent.lock().get();
+        node.append_attribute("parent_id") = (parent != nullptr) ? parent->GetObjectId() : 0;
+
+        // children
+        for (Entity* child : m_children)
         {
-            for (shared_ptr<Component>& component : m_components)
-            {
-                if (component)
-                {
-                    stream->Write(static_cast<uint32_t>(component->GetType()));
-                    stream->Write(component->GetObjectId());
-                }
-                else
-                {
-                    stream->Write(static_cast<uint32_t>(ComponentType::Max));
-                }
-            }
-
-            for (shared_ptr<Component>& component : m_components)
-            {
-                if (component)
-                {
-                    component->Serialize(stream);
-                }
-            }
+            pugi::xml_node child_node = node.append_child("Entity");
+            child->Serialize(child_node);
         }
-        }
-        */
     }
 
-    void Entity::Deserialize(FileStream* stream, shared_ptr<Entity> parent)
+    void Entity::Deserialize(pugi::xml_node& node)
     {
-        /*
-        // BASIC DATA
+        // self
         {
-            stream->Read(&m_is_active);
-            stream->Read(&m_object_id);
-            stream->Read(&m_object_name);
-            stream->Read(&m_position_local);
-            stream->Read(&m_rotation_local);
-            stream->Read(&m_scale_local);
+            m_is_active   = node.attribute("active").as_bool();
+            m_object_id   = node.attribute("id").as_ullong();
+            m_object_name = node.attribute("name").as_string();
 
-            uint64_t parent_entity_id = 0;
-            stream->Read(&parent_entity_id);
-            if (parent_entity_id != 0)
             {
-                if (const shared_ptr<Entity>& parent = World::GetEntityById(parent_entity_id))
-                {
-                    parent->AddChild(this);
-                }
+                std::string pos_str = node.attribute("position").as_string();
+                std::stringstream ss(pos_str);
+                ss >> m_position_local.x >> m_position_local.y >> m_position_local.z;
             }
 
-            UpdateTransform();
+            {
+                std::string rot_str = node.attribute("rotation").as_string();
+                std::stringstream ss(rot_str);
+                ss >> m_rotation_local.x >> m_rotation_local.y >> m_rotation_local.z >> m_rotation_local.w;
+            }
+
+            {
+                std::string scale_str = node.attribute("scale").as_string();
+                std::stringstream ss(scale_str);
+                ss >> m_scale_local.x >> m_scale_local.y >> m_scale_local.z;
+            }
+
+            // components
+            {
+
+            }
         }
 
-        // COMPONENTS
+        // parent
+        uint64_t parent_id = node.attribute("parent_id").as_ullong(0);
+        SetParent(World::GetEntityById(parent_id));
+
+        // children
+        for (pugi::xml_node child_node = node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(m_components.size()); i++)
-            {
-                // type
-                uint32_t component_type = static_cast<uint32_t>(ComponentType::Max);
-                stream->Read(&component_type);
-
-                if (component_type != static_cast<uint32_t>(ComponentType::Max))
-                {
-                    // id
-                    uint64_t component_id = 0;
-                    stream->Read(&component_id);
-
-                    Component* component = AddComponent(static_cast<ComponentType>(component_type));
-                    component->SetObjectId(component_id);
-                }
-            }
-
-            for (shared_ptr<Component>& component : m_components)
-            {
-                if (component)
-                {
-                    component->Deserialize(stream);
-                }
-            }
-
-            SetParent(parent);
+            shared_ptr<Entity> child = World::CreateEntity();
+            child->Deserialize(child_node);
         }
-
-        // CHILDREN
-        {
-            // Children count
-            const uint32_t children_count = stream->ReadAs<uint32_t>();
-
-            // Children IDs
-            vector<weak_ptr<Entity>> children;
-            for (uint32_t i = 0; i < children_count; i++)
-            {
-                shared_ptr<Entity> child = World::CreateEntity();
-
-                child->SetObjectId(stream->ReadAs<uint64_t>());
-
-                children.emplace_back(child);
-            }
-
-            // Children
-            for (const auto& child : children)
-            {
-                child.lock()->Deserialize(stream, World::GetEntityById(m_object_id));
-            }
-
-            AcquireChildren();
-        }
-
-        World::Resolve();
-        */
     }
 
     bool Entity::GetActive() const

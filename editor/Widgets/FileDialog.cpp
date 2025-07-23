@@ -112,7 +112,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
 
         if (file_path)
         {
-            (*file_path) = FileSystem::GetDirectoryFromFilePath(m_current_path) + "/" + string(m_input_box);
+            (*file_path) = FileSystem::GetDirectoryFromFilePath(m_current_path) + string(m_input_box);
         }
     }
 
@@ -131,16 +131,16 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         ImGui::SetWindowFocus();
     }
 
-    // Directory navigation buttons
+    // directory navigation buttons
     {
-        // Go backwards
+        // go backwards
         if (ImGuiSp::button("<"))
         {
             m_current_path = FileSystem::GetParentDirectory(m_current_path);
             m_is_dirty     = true;
         }
 
-        // Display current path
+        // display current path
         ImGui::SameLine();
         ImGui::Text("%s", m_current_path.c_str());
     }

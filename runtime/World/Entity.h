@@ -56,7 +56,7 @@ namespace spartan
 
         // io
         void Serialize(pugi::xml_node& node);
-        void Deserialize(FileStream* stream, std::shared_ptr<Entity> parent);
+        void Deserialize(pugi::xml_node& node);
 
         // active
         bool GetActive() const;

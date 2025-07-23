@@ -206,17 +206,9 @@ namespace spartan
         resolve = true;
     }
 
-    bool World::SaveToFile(const string& file_path_in)
+    bool World::SaveToFile(const string& file_path)
     {
-        // add scene file extension to the filepath if it's missing
-        string file_path = file_path_in;
-        if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
-        {
-            file_path += EXTENSION_WORLD;
-        }
-        name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-
-        // create XML document
+        // create xml document
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name") = name.c_str();
@@ -253,44 +245,45 @@ namespace spartan
 
     bool World::LoadFromFile(const string& file_path_)
     {
-        file_path = file_path_;
-
-        if (!FileSystem::Exists(file_path))
-        {
-            SP_LOG_ERROR("\"%s\" was not found.", file_path.c_str());
-            return false;
-        }
-
-        // open file
-        unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
-        if (!file->IsOpen())
-        {
-            SP_LOG_ERROR("Failed to open \"%s\"", file_path.c_str());
-            return false;
-        }
-
         Clear();
 
-        name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        file_path = file_path_;
 
-        // load root entity count
-        const uint32_t root_entity_count = file->ReadAs<uint32_t>();
+        // load xml document
+        pugi::xml_document doc;
+        pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+        if (!result)
+        {
+            SP_LOG_ERROR("Failed to load XML file: %s", result.description());
+            return false;
+        }
+
+        // get world node
+        pugi::xml_node world_node = doc.child("World");
+        if (!world_node)
+        {
+            SP_LOG_ERROR("No 'World' node found.");
+            return false;
+        }
+
+        name = world_node.attribute("name").as_string();
+
+        // count root entities for progress tracking
+        uint32_t root_entity_count = 0;
+        for (pugi::xml_node entity_node = world_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+        {
+            ++root_entity_count;
+        }
 
         // start progress tracking and timing
         ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
         const Stopwatch timer;
 
-        // load root entity IDs
-        for (uint32_t i = 0; i < root_entity_count; i++)
+        // load root entities (they will load their descendants recursively)
+        for (pugi::xml_node entity_node = world_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
         {
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectId(file->ReadAs<uint64_t>());
-        }
-
-        // serialize root entities
-        for (uint32_t i = 0; i < root_entity_count; i++)
-        {
-            entities[i]->Deserialize(file.get(), nullptr);
+            entity->Deserialize(entity_node);
             ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
