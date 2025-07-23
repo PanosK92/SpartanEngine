@@ -527,7 +527,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         vector<string> paths_anything = FileSystem::GetFilesInDirectory(file_path);
         for (const string& anything : paths_anything)
         {
-            if (!FileSystem::IsEngineTextureFile(anything) && !FileSystem::IsEngineModelFile(anything))
+            if (!FileSystem::IsEngineModelFile(anything))
             {
                 m_items.emplace_back(anything, IconLoader::LoadFromFile(anything, IconType::Undefined));
             }

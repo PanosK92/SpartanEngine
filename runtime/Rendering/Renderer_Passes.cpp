@@ -1617,10 +1617,10 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const float radius, const uint32_t mip /*= rhi_all_mips*/)
+    void Renderer::Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip /*= rhi_all_mips*/)
     {
         // acquire shader
-        RHI_Shader* shader_c = GetShader(Renderer_Shader::blur_gaussian_c);
+        RHI_Shader* shader_c = GetShader(bilateral ? Renderer_Shader::blur_gaussian_bilaterial_c : Renderer_Shader::blur_gaussian_c);
 
         // compute thread group count
         const bool mip_requested            = mip != rhi_all_mips;
@@ -1903,7 +1903,7 @@ namespace spartan
                         // blur the color silhouette
                         {
                             const float radius = 30.0f;
-                            Pass_Blur(cmd_list, tex_outline, radius);
+                            Pass_Blur(cmd_list, tex_outline, false, radius);
                         }
                         
                         // combine color silhouette with frame

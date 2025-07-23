@@ -539,9 +539,6 @@ namespace spartan
                 return true;
         }
         
-        if (GetExtensionFromFilePath(path) == EXTENSION_TEXTURE)
-            return true;
-
         return false;
     }
 
@@ -609,11 +606,6 @@ namespace spartan
         return GetExtensionFromFilePath(path) == EXTENSION_WORLD;
     }
 
-    bool FileSystem::IsEngineTextureFile(const string& path)
-    {
-        return GetExtensionFromFilePath(path) == EXTENSION_TEXTURE;
-    }
-
     bool FileSystem::IsEngineAudioFile(const string& path)
     {
         return GetExtensionFromFilePath(path) == EXTENSION_AUDIO;
@@ -632,7 +624,6 @@ namespace spartan
                 IsEngineMaterialFile(path) ||
                 IsEngineMeshFile(path)     ||
                 IsEngineSceneFile(path)    ||
-                IsEngineTextureFile(path)  ||
                 IsEngineAudioFile(path)    ||
                 IsEngineShaderFile(path);
     }

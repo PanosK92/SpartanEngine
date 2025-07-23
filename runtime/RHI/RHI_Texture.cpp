@@ -241,66 +241,7 @@ namespace spartan
 
     void RHI_Texture::SaveToFile(const string& file_path)
     {
-        // if a file already exists, get the byte count
-        m_object_size = 0;
-        {
-            if (FileSystem::Exists(file_path))
-            {
-                auto file = make_unique<FileStream>(file_path, FileStream_Read);
-                if (file->IsOpen())
-                {
-                    file->Read(&m_object_size);
-                }
-            }
-        }
-
-        auto file = make_unique<FileStream>(file_path, FileStream_Write | FileStream_Append);
-        if (!file->IsOpen())
-            return;
-
-        // if the existing file has texture data but we don't, don't overwrite them
-        bool dont_overwrite_data = m_object_size != 0 && !HasData();
-        if (dont_overwrite_data)
-        {
-            file->Skip
-            (
-                sizeof(m_object_size) + // byte count
-                sizeof(m_depth)       + // array length
-                sizeof(m_mip_count)   + // mip count
-                m_object_size           // bytes
-            );
-        }
-        else
-        {
-            ComputeMemoryUsage();
-
-            // write mip info
-            file->Write(m_object_size);
-            file->Write(m_depth);
-            file->Write(m_mip_count);
-
-            // write mip data
-            for (RHI_Texture_Slice& slice : m_slices)
-            {
-                for (RHI_Texture_Mip& mip : slice.mips)
-                {
-                    file->Write(mip.bytes);
-                }
-            }
-
-            ClearData();
-        }
-
-        // write properties
-        file->Write(m_width);
-        file->Write(m_height);
-        file->Write(m_channel_count);
-        file->Write(m_bits_per_channel);
-        file->Write(static_cast<uint32_t>(m_type));
-        file->Write(static_cast<uint32_t>(m_format));
-        file->Write(m_flags);
-        file->Write(GetObjectId());
-        file->Write(GetResourceFilePath());
+        SP_LOG_WARNING("Saving custom textures to file is not supported (or needed) yet.");
     }
 
     void RHI_Texture::LoadFromFile(const string& file_path)
@@ -311,79 +252,25 @@ namespace spartan
             return;
         }
 
+        if (!FileSystem::IsSupportedImageFile(file_path))
+        {
+            SP_LOG_ERROR("Unsupported file format \"%s\".", file_path.c_str());
+            return;
+        }
+
         ProgressTracker::SetGlobalLoadingState(true);
 
+        ClearData();
         m_type            = RHI_Texture_Type::Type2D;
         m_depth           = 1;
         m_flags          |= RHI_Texture_Srv;
         m_object_name     = FileSystem::GetFileNameFromFilePath(file_path);
         m_resource_state  = ResourceState::LoadingFromDrive;
 
-        ClearData();
+        ImageImporter::Load(file_path, 0, this);
 
-        // load from drive
-        if (FileSystem::IsEngineTextureFile(file_path))
-        {
-            auto file = make_unique<FileStream>(file_path, FileStream_Read);
-            if (file->IsOpen())
-            {
-                // read mip info
-                file->Read(&m_object_size);
-                file->Read(&m_depth);
-                file->Read(&m_mip_count);
-
-                // read mip data
-                m_slices.resize(m_depth);
-                for (RHI_Texture_Slice& slice : m_slices)
-                {
-                    slice.mips.resize(m_mip_count);
-                    for (RHI_Texture_Mip& mip : slice.mips)
-                    {
-                        file->Read(&mip.bytes);
-                    }
-                }
-
-                // read properties
-                file->Read(&m_width);
-                file->Read(&m_height);
-                file->Read(&m_channel_count);
-                file->Read(&m_bits_per_channel);
-                file->Read(reinterpret_cast<uint32_t*>(&m_type));
-                file->Read(reinterpret_cast<uint32_t*>(&m_format));
-                file->Read(&m_flags);
-                SetObjectId(file->ReadAs<uint64_t>());
-                SetResourceFilePath(file->ReadAs<string>());
-            }
-        }
-        else if (FileSystem::IsSupportedImageFile(file_path))
-        {
-            vector<string> file_paths = { file_path };
-
-            // if this is an array, try to find all the textures
-            if (m_type == RHI_Texture_Type::Type2DArray)
-            {
-                string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
-                string file_path_no_extension = FileSystem::GetFilePathWithoutExtension(file_path);
-                string file_path_no_digit     = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
-
-                uint32_t index = 1;
-                string file_path_guess = file_path_no_digit + to_string(index) + file_path_extension;
-                while (FileSystem::Exists(file_path_guess))
-                {
-                    file_paths.emplace_back(file_path_guess);
-                    file_path_guess = file_path_no_digit + to_string(++index) + file_path_extension;
-                }
-            }
-
-            // load texture
-            for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
-            {
-                ImageImporter::Load(file_paths[slice_index], slice_index, this);
-            }
-
-            // set resource file path so it can be used by the resource cache.
-            SetResourceFilePath(file_path);
-        }
+        // set resource file path so it can be used by the resource cache.
+        SetResourceFilePath(file_path);
 
         ComputeMemoryUsage();
         m_resource_state = ResourceState::Max;

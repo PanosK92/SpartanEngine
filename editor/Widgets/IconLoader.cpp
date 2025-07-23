@@ -158,7 +158,7 @@ Icon* IconLoader::LoadFromFile(const string& file_path, IconType type /*Undefine
     }
 
     // the texture is new so load it
-    if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
+    if (FileSystem::IsSupportedImageFile(file_path))
     {
         lock_guard<mutex> guard(icon_mutex);
 
