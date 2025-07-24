@@ -115,12 +115,8 @@ namespace spartan
 
     void RHI_Queue::Wait(const bool flush)
     {
-        // ensure single-threaded access
-        unique_lock<mutex> lock;
-        if (ProgressTracker::IsLoading())
-        {
-            lock = unique_lock<mutex>(get_mutex(this));
-        }
+        // the engine can employ multiple threads for things like laoding assets, which will need staging buffers
+        lock_guard<mutex> lock(get_mutex(this));
 
         // ensure that any submitted command lists have completed execution
         for (auto& cmd_list : m_cmd_lists)
@@ -149,12 +145,8 @@ namespace spartan
 
     void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal)
     {
-        // when loading textures (other threads) the queue will be used to submit data for staging
-        unique_lock<mutex> lock;
-        if (ProgressTracker::IsLoading())
-        {
-            lock = unique_lock<mutex>(get_mutex(this));
-        }
+        // the engine can employ multiple threads for things like laoding assets, which will need staging buffers
+        lock_guard<mutex> lock(get_mutex(this));
     
         // wait semaphore setup
         VkSemaphoreSubmitInfo semaphores_list_wait[1] = {};
@@ -223,12 +215,8 @@ namespace spartan
 
     void RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
     {
-        // when loading textures (other threads) the queue will be used to submit data for staging
-        unique_lock<mutex> lock;
-        if (ProgressTracker::IsLoading())
-        {
-            lock = unique_lock<mutex>(get_mutex(this));
-        }
+        // the engine can employ multiple threads for things like laoding assets, which will need staging buffers
+        lock_guard<mutex> lock(get_mutex(this));
 
         // get semaphore vulkan resources
         array<VkSemaphore, 1> vk_wait_semaphores = { nullptr };

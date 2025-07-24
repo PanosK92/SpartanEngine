@@ -534,17 +534,80 @@ namespace spartan
             return numeric_limits<uint32_t>::max();
         }
 
-        void detect_queue_family_indices(VkPhysicalDevice device_physical)
+        bool detect_queue_family_indices(VkPhysicalDevice physical_device)
         {
             uint32_t queue_family_count = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(device_physical, &queue_family_count, nullptr);
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
 
-            vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-            vkGetPhysicalDeviceQueueFamilyProperties(device_physical, &queue_family_count, queue_families.data());
+            std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
 
-            index_graphics = get_queue_family_index(queue_families, VK_QUEUE_GRAPHICS_BIT);
-            index_compute  = get_queue_family_index(queue_families, VK_QUEUE_COMPUTE_BIT);
-            index_copy     = get_queue_family_index(queue_families, VK_QUEUE_TRANSFER_BIT);
+            auto get_family_index = [&](VkQueueFlagBits flags, uint32_t* out_index, const std::set<uint32_t>& exclude_indices = {}) -> bool 
+            {
+                // dedicated first
+                for (uint32_t i = 0; i < queue_family_count; ++i) 
+                {
+                    if (exclude_indices.count(i)) continue;
+                    const auto& props = queue_families[i];
+                    if ((props.queueFlags & flags) == flags) 
+                    { 
+                        // exact match for dedicated
+                        bool is_dedicated = true;
+                        if (flags == VK_QUEUE_COMPUTE_BIT) is_dedicated  = !(props.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+                        if (flags == VK_QUEUE_TRANSFER_BIT) is_dedicated = !(props.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT));
+                        if (is_dedicated) 
+                        {
+                            *out_index = i;
+                            return true;
+                        }
+                    }
+                }
+                // fallback to any supporting
+                for (uint32_t i = 0; i < queue_family_count; ++i) 
+                {
+                    if (exclude_indices.count(i)) continue;
+                    if (queue_families[i].queueFlags & flags) 
+                    {
+                        *out_index = i;
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            // graphics (no exclude, must support)
+            if (!get_family_index(VK_QUEUE_GRAPHICS_BIT, &index_graphics)) 
+            {
+                SP_LOG_ERROR("No graphics queue family.");
+                return false;
+            }
+
+            // compute (exclude graphics if possible)
+            std::set<uint32_t> exclude = {index_graphics};
+            if (!get_family_index(VK_QUEUE_COMPUTE_BIT, &index_compute, exclude)) 
+            {
+                if (!get_family_index(VK_QUEUE_COMPUTE_BIT, &index_compute)) 
+                { 
+                    // Fallback including graphics
+                    SP_LOG_ERROR("No compute queue family.");
+                    return false;
+                }
+                SP_LOG_INFO("Compute sharing graphics family %u.", index_graphics);
+            }
+
+            // copy (exclude graphics/compute if possible)
+            exclude = {index_graphics, index_compute};
+            if (!get_family_index(VK_QUEUE_TRANSFER_BIT, &index_copy, exclude)) 
+            {
+                if (!get_family_index(VK_QUEUE_TRANSFER_BIT, &index_copy)) 
+                {
+                    SP_LOG_ERROR("No copy queue family.");
+                    return false;
+                }
+                SP_LOG_INFO("Copy sharing family %u.", index_copy);
+            }
+
+            return true;
         }
 
         bool get_queue_family_index(VkQueueFlagBits queue_flags, const vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
