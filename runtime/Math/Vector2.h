@@ -172,6 +172,9 @@ namespace spartan::math
             return x != b.x || y != b.y;
         }
 
+        // return negation
+        Vector2 operator -() const { return Vector2(-x, -y); }
+
         [[nodiscard]] const float* Data() const { return &x; }
         std::string ToString() const;
 

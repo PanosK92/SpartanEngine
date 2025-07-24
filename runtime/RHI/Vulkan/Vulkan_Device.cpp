@@ -562,12 +562,14 @@ namespace spartan
                         }
                     }
                 }
+
                 // fallback to any supporting
                 for (uint32_t i = 0; i < queue_family_count; ++i) 
                 {
                     if (exclude_indices.count(i)) continue;
-                    if (queue_families[i].queueFlags & flags) 
+                    if (queue_families[i].queueFlags & flags)
                     {
+                        SP_LOG_WARNING("No dedicated queue family found for flags %u, using family %u instead.", flags, i);
                         *out_index = i;
                         return true;
                     }
@@ -667,7 +669,7 @@ namespace spartan
             }
             else
             {
-                SP_LOG_ERROR("Graphics queue not suported.");
+                SP_LOG_ERROR("Graphics queue not supported.");
                 return false;
             }
         
@@ -721,11 +723,11 @@ namespace spartan
             // allocator
             VmaAllocatorCreateInfo allocator_info = {};
             {
-                allocator_info.physicalDevice         = RHI_Context::device_physical;
-                allocator_info.device                 = RHI_Context::device;
-                allocator_info.instance               = RHI_Context::instance;
-                allocator_info.vulkanApiVersion       = version::used;
-                allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+                allocator_info.physicalDevice   = RHI_Context::device_physical;
+                allocator_info.device           = RHI_Context::device;
+                allocator_info.instance         = RHI_Context::instance;
+                allocator_info.vulkanApiVersion = version::used;
+                allocator_info.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
                 SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
             }
 

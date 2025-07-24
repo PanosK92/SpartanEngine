@@ -357,7 +357,7 @@ namespace spartan::math
             return !(*this == rhs);
         }
 
-        // Return negation.
+        // return negation
         Vector3 operator -() const { return Vector3(-x, -y, -z); }
 
         bool IsNaN() const { return std::isnan(x) || std::isnan(y) || std::isnan(z); }

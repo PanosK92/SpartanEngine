@@ -519,136 +519,148 @@ namespace spartan
                 }
             }
         }
-
-        void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 150'000)
+        
+        void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 50'000)
         {
-            const float inertia           = 0.02f;
-            const float sediment_capacity = 0.5f;
-            const float erode_speed       = 0.4f;
-            const float deposit_speed     = 0.5f;
-            const float evaporate_speed   = 0.01f;
-            const float gravity           = 2.0f;
-            const float max_steps         = 75.0f;
-            const float min_slope         = 0.08f;
-            const float max_height_delta  = 3.0f;
-        
-            mutex positions_mutex;
-            vector<Vector3> original_positions = positions;
-        
-            auto erode_range = [&](uint32_t start_index, uint32_t end_index)
+            auto get_height = [&positions, width, height](float x, float z) -> float
             {
-                mt19937 gen(random_device{}() + start_index);
-                uniform_real_distribution<float> dist(0.0f, 1.0f);
-                uniform_real_distribution<float> capacity_dist(0.3f, 0.7f);  // vary sediment capacity
-                uniform_real_distribution<float> velocity_dist(-0.2f, 0.2f); // random initial velocity
-                uniform_real_distribution<float> water_dist(1.2f, 2.0f);
-
-                for (uint32_t iter = start_index; iter < end_index; ++iter)
-                {
-                    float pos_x      = dist(gen) * (width - 1);
-                    float pos_z      = dist(gen) * (height - 1);
-                    float velocity_x = velocity_dist(gen);
-                    float velocity_z = velocity_dist(gen);
-                    float water      = water_dist(gen);
-                    float sediment   = 0.0f;
-                    float speed      = 0.0f;
-                    float capacity   = capacity_dist(gen);
+                int ix = static_cast<int>(floor(x));
+                int iz = static_cast<int>(floor(z));
+                float fx = x - static_cast<float>(ix);
+                float fz = z - static_cast<float>(iz);
+                ix = clamp(ix, 0, static_cast<int>(width) - 2);
+                iz = clamp(iz, 0, static_cast<int>(height) - 2);
         
-                    for (int step = 0; step < max_steps && water > 0.0f; step++)
-                    {
-                        int cell_x = static_cast<int>(pos_x);
-                        int cell_z = static_cast<int>(pos_z);
-                        float frac_x = pos_x - cell_x;
-                        float frac_z = pos_z - cell_z;
+                float h00 = positions[static_cast<size_t>(iz) * width + ix].y;
+                float h10 = positions[static_cast<size_t>(iz) * width + ix + 1].y;
+                float h01 = positions[static_cast<size_t>(iz + 1) * width + ix].y;
+                float h11 = positions[static_cast<size_t>(iz + 1) * width + ix + 1].y;
         
-                        uint32_t idx00 = cell_x + cell_z * width;
-                        uint32_t idx10 = idx00 + 1;
-                        uint32_t idx01 = idx00 + width;
-                        uint32_t idx11 = idx01 + 1;
-        
-                        float h00 = positions[idx00].y;
-                        float h10 = positions[idx10].y;
-                        float h01 = positions[idx01].y;
-                        float h11 = positions[idx11].y;
-        
-                        float h0 = h00 * (1 - frac_x) + h10 * frac_x;
-                        float h1 = h01 * (1 - frac_x) + h11 * frac_x;
-                        float particle_height = h0 * (1 - frac_z) + h1 * frac_z;
-        
-                        float grad_x = (h10 - h00) * (1 - frac_z) + (h11 - h01) * frac_z;
-                        float grad_z = (h01 - h00) * (1 - frac_x) + (h11 - h10) * frac_x;
-        
-                        velocity_x = velocity_x * inertia - grad_x * (1.0f - inertia);
-                        velocity_z = velocity_z * inertia - grad_z * (1.0f - inertia);
-        
-                        float speed_new = sqrt(velocity_x * velocity_x + velocity_z * velocity_z);
-                        if (speed_new > 0.0f) {
-                            velocity_x /= speed_new;
-                            velocity_z /= speed_new;
-                        }
-                        speed = speed_new;
-        
-                        float old_pos_x = pos_x;
-                        float old_pos_z = pos_z;
-                        pos_x += velocity_x;
-                        pos_z += velocity_z;
-        
-                        if (static_cast<int>(pos_x) == cell_x && static_cast<int>(pos_z) == cell_z)
-                            continue;
-        
-                        int new_cell_x = static_cast<int>(pos_x);
-                        int new_cell_z = static_cast<int>(pos_z);
-                        if (new_cell_x < 0 || new_cell_x >= static_cast<int>(width - 1) || new_cell_z < 0 || new_cell_z >= static_cast<int>(height - 1))
-                            break;
-        
-                        uint32_t new_idx = new_cell_x + new_cell_z * width;
-                        float new_height = positions[new_idx].y;
-        
-                        float slope = max(min_slope, (particle_height - new_height) / sqrt((pos_x - old_pos_x) * (pos_x - old_pos_x) + (pos_z - old_pos_z) * (pos_z - old_pos_z)));
-        
-                        float capacity = max(slope * speed * water * sediment_capacity, 0.01f);
-        
-                        float sediment_change = 0.0f;
-                        if (sediment > capacity)
-                        {
-                            sediment_change  = (sediment - capacity) * deposit_speed;
-                            sediment        -= sediment_change;
-                        } else
-                        {
-                            sediment_change  = min((capacity - sediment) * erode_speed, particle_height);
-                            sediment        += sediment_change;
-                        }
-
-                        float w00 = (1 - frac_x) * (1 - frac_z);
-                        float w10 = frac_x * (1 - frac_z);
-                        float w01 = (1 - frac_x) * frac_z;
-                        float w11 = frac_x * frac_z;
-        
-                        lock_guard<mutex> lock(positions_mutex);
-                        float new_y00 = positions[idx00].y - sediment_change * w00;
-                        float new_y10 = positions[idx10].y - sediment_change * w10;
-                        float new_y01 = positions[idx01].y - sediment_change * w01;
-                        float new_y11 = positions[idx11].y - sediment_change * w11;
-        
-                        positions[idx00].y = clamp<float>(new_y00, original_positions[idx00].y - max_height_delta, original_positions[idx00].y + max_height_delta);
-                        positions[idx10].y = clamp<float>(new_y10, original_positions[idx10].y - max_height_delta, original_positions[idx10].y + max_height_delta);
-                        positions[idx01].y = clamp<float>(new_y01, original_positions[idx01].y - max_height_delta, original_positions[idx01].y + max_height_delta);
-                        positions[idx11].y = clamp<float>(new_y11, original_positions[idx11].y - max_height_delta, original_positions[idx11].y + max_height_delta);
-        
-                        water *= (1.0f - evaporate_speed);
-                        if (speed < 0.01f)
-                            break;
-                    }
-        
-                    // apply wind erosion after every wind_interval iterations
-                    if ((iter + 1) % wind_interval == 0)
-                    {
-                        apply_wind_erosion(positions, width, height);
-                    }
-                }
+                float h0 = h00 + fx * (h10 - h00);
+                float h1 = h01 + fx * (h11 - h01);
+                return h0 + fz * (h1 - h0);
             };
         
-            ThreadPool::ParallelLoop(erode_range, iterations);
+            auto add_height = [&positions, width, height](float x, float z, float amount)
+            {
+                int ix = static_cast<int>(floor(x));
+                int iz = static_cast<int>(floor(z));
+                float fx = x - static_cast<float>(ix);
+                float fz = z - static_cast<float>(iz);
+                ix = clamp(ix, 0, static_cast<int>(width) - 2);
+                iz = clamp(iz, 0, static_cast<int>(height) - 2);
+        
+                float w00 = (1.0f - fx) * (1.0f - fz);
+                float w10 = fx * (1.0f - fz);
+                float w01 = (1.0f - fx) * fz;
+                float w11 = fx * fz;
+        
+                positions[static_cast<size_t>(iz) * width + ix].y += amount * w00;
+                positions[static_cast<size_t>(iz) * width + ix + 1].y += amount * w10;
+                positions[static_cast<size_t>(iz + 1) * width + ix].y += amount * w01;
+                positions[static_cast<size_t>(iz + 1) * width + ix + 1].y += amount * w11;
+            };
+        
+            auto get_gradient = [get_height](float x, float z) -> Vector2
+            {
+                float hx = (get_height(x + 1.0f, z) - get_height(x - 1.0f, z)) / 2.0f;
+                float hz = (get_height(x, z + 1.0f) - get_height(x, z - 1.0f)) / 2.0f;
+                return Vector2(hx, hz);
+            };
+        
+            // erosion parameters
+            const float inertia          = 0.05f;
+            const float capacity_factor  = 3.0f; 
+            const float min_slope        = 0.01f;
+            const float deposition_rate  = 0.1f; 
+            const float erosion_rate     = 0.3f; 
+            const float evaporation_rate = 0.05f;
+            const float gravity          = 4.0f; 
+            const uint32_t max_steps     = 30;   
+            const float wind_strength    = 0.3f; 
+        
+            // random number generation (unchanged)
+            mt19937 gen(random_device{}());
+            uniform_real_distribution<float> dist_x(1.0f, static_cast<float>(width) - 2.0f);
+            uniform_real_distribution<float> dist_z(1.0f, static_cast<float>(height) - 2.0f);
+        
+            for (uint32_t i = 0; i < iterations; ++i)
+            {
+                // apply wind erosion periodically
+                if (i % wind_interval == 0 && i != 0)
+                {
+                    apply_wind_erosion(positions, width, height, wind_strength);
+                }
+        
+                // hydraulic erosion: simulate a single droplet
+                float pos_x = dist_x(gen);
+                float pos_z = dist_z(gen);
+                Vector2 dir = Vector2::Zero;
+                float speed = 1.0f;
+                float water = 1.0f;
+                float sediment = 0.0f;
+        
+                for (uint32_t step = 0; step < max_steps; ++step)
+                {
+                    if (water < 0.01f)
+                        break;
+        
+                    float height = get_height(pos_x, pos_z);
+                    Vector2 gradient = get_gradient(pos_x, pos_z);
+                    float slope = gradient.Length();
+                    if (slope < min_slope)
+                        slope = min_slope;
+        
+                    // update direction
+                    Vector2 new_dir = -gradient.Normalized();
+                    dir = (dir * inertia + new_dir * (1.0f - inertia)).Normalized();
+        
+                    // Proposed new position
+                    float new_x = pos_x + dir.x;
+                    float new_z = pos_z + dir.y;
+                    float new_height = get_height(new_x, new_z);
+                    float delta_h = new_height - height;
+        
+                    // if moving uphill or stuck, deposit a fraction and stop (reduces spikes)
+                    if (delta_h >= 0.0f || dir.LengthSquared() < 0.0001f)
+                    {
+                        float deposit_amount = sediment * deposition_rate;  // only deposit a fraction, discard rest (reduce spikes)
+                        add_height(pos_x, pos_z, deposit_amount);
+                        break;
+                    }
+        
+                    // move droplet
+                    pos_x = new_x;
+                    pos_z = new_z;
+        
+                    // update speed
+                    speed = sqrt(speed * speed - gravity * delta_h);  // delta_h is negative downhill
+        
+                    // compute capacity
+                    float capacity = capacity_factor * water * speed * slope;
+        
+                    // erode or deposit
+                    if (sediment > capacity)
+                    {
+                        float deposit_amount = (sediment - capacity) * deposition_rate;
+                        add_height(pos_x, pos_z, deposit_amount);
+                        sediment -= deposit_amount;
+                    }
+                    else
+                    {
+                        float erode_amount = (capacity - sediment) * erosion_rate;
+                        erode_amount = min(erode_amount, -delta_h); // can't erode more than height diff
+                        add_height(pos_x, pos_z, -erode_amount);
+                        sediment += erode_amount;
+                    }
+        
+                    // evaporate water
+                    water *= (1.0f - evaporation_rate);
+                }
+            }
+        
+            // final wind erosion pass
+            apply_wind_erosion(positions, width, height, wind_strength);
         }
 
         void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, vector<uint32_t>& terrain_indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
@@ -1130,7 +1142,7 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 3. Apply Perlin noise
+            // 3. apply perlin noise
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying Perlin noise...");
                 apply_perlin_noise(positions, dense_width, dense_height);
