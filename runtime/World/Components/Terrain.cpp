@@ -49,6 +49,7 @@ namespace spartan
         const uint32_t density              = 3;         // determines the number of positions extracted out of the height map (that means more triangles later down the line)
         const uint32_t scale                = 6;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
         const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
+        const bool create_border            = true;      // if true, the terrain will have a natural border around it, useful for creating mountains or walls, prevents the player from falling off the terrain
     }
 
     namespace
@@ -309,9 +310,55 @@ namespace spartan
                     height_data_out = smoothed_height_data;
                 }
             }
+        
+            // optional third pass: create natural borders by raising edges to form mountains/walls with depth
+            if (parameters::create_border)
+            {
+                const uint32_t width  = height_texture->GetWidth();
+                const uint32_t height = height_texture->GetHeight();
+
+                // border parameters (tweak these as needed)
+                const uint32_t border_plateau_width = 25;     // width of the flat plateau at max height near the border (the "depth" or indentation X)
+                const uint32_t border_blend_width   = 20;     // width over which to blend down from max height inward (slope of the inner wall)
+                const float border_height_max       = 280.0f; // maximum height to raise borders (e.g., 1.5x original max for prominent mountains)
+
+                // parallel application of border height adjustment
+                auto apply_border = [&height_data_out, width, height, border_plateau_width, border_blend_width, border_height_max](uint32_t start_index, uint32_t end_index)
+                {
+                    for (uint32_t index = start_index; index < end_index; index++)
+                    {
+                        uint32_t x = index % width;
+                        uint32_t y = index / width;
+
+                        // compute minimum distance to any edge
+                        uint32_t dist_left   = x;
+                        uint32_t dist_right  = width - 1 - x;
+                        uint32_t dist_top    = y;
+                        uint32_t dist_bottom = height - 1 - y;
+                        uint32_t min_dist    = min({dist_left, dist_right, dist_top, dist_bottom});
+
+                        float height_increase = 0.0f;
+                        if (min_dist <= border_plateau_width)
+                        {
+                            // flat plateau at max height near the border
+                            height_increase = border_height_max;
+                        }
+                        else if (min_dist < border_plateau_width + border_blend_width)
+                        {
+                            // blend down inward from plateau to normal terrain
+                            float blend = 1.0f - static_cast<float>(min_dist - border_plateau_width) / static_cast<float>(border_blend_width);
+                            height_increase = blend * border_height_max;
+                        }
+
+                        // add to existing height for natural integration
+                        height_data_out[index] += height_increase;
+                    }
+                };
+
+                ThreadPool::ParallelLoop(apply_border, width * height);
+            }
         }
 
-        // increases the grid density of the height map using bilinear interpolation
         void densify_height_map(vector<float>& height_data, uint32_t width, uint32_t height, uint32_t density)
         {
             if (density <= 1)
