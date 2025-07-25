@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float3 srgb_to_linear(float3 color)
 {
     float3 linear_low  = color / 12.92;
-    float3 linear_high = pow((color + 0.055) / 1.055, buffer_frame.gamma);
+    float3 linear_high = pow((color + 0.055) / 1.055, 2.4f);
     float3 is_high     = step(0.0404482362771082, color);
     return lerp(linear_low, linear_high, is_high);
 }
@@ -32,7 +32,7 @@ float3 srgb_to_linear(float3 color)
 float3 linear_to_srgb(float3 color)
 {
     float3 srgb_low  = color * 12.92;
-    float3 srgb_high = 1.055 * pow(color, 1.0 / buffer_frame.gamma) - 0.055;
+    float3 srgb_high = 1.055 * pow(color, 1.0 / 2.4f) - 0.055;
     float3 is_high   = step(0.00313066844250063, color);
     return lerp(srgb_low, srgb_high, is_high);
 }

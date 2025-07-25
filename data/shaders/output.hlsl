@@ -23,10 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-//==========================================================================================
-// SDR TONEMAPPING
-//==========================================================================================
-
 float3 reinhard(float3 hdr, float k = 1.0f)
 {
     return hdr / (hdr + k);
@@ -98,10 +94,6 @@ float3 nautilus(float3 c)
     return clamp((c * (a * c + b)) / (c * (y * c + d) + e), 0.0, 1.0);
 }
 
-//==========================================================================================
-// ENTRY
-//==========================================================================================
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -113,7 +105,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // apply exposure
     color.rgb *= buffer_frame.camera_exposure;
 
-    // best used for sdr
+    // best used for sdr only
     switch (tone_mapping)
     {
         case 0:
@@ -139,6 +131,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     else // hdr
     {
+        // scale to max display nits
+        float peak_scale = buffer_frame.hdr_max_nits / buffer_frame.hdr_white_point;
+        float3 clamped   = color.rgb / peak_scale;
+        clamped          = clamped / (1.0f + clamped);
+        color.rgb        = clamped * peak_scale;
+
+        // convert to hdr10
         color.rgb  = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
     }
 
