@@ -1090,19 +1090,7 @@ namespace spartan
                                 uint32_t instance_count        = renderable->GetInstanceGroupCount(group_index);
                                 uint32_t total_instance_count  = renderable->GetInstanceCount();
                                 instance_count                 = min(instance_count, total_instance_count - instance_index);
-                                RHI_Buffer* buffer             = renderable->GetInstanceBuffer();
-                                uint32_t buffer_instance_count = buffer ? buffer->GetElementCount() : 0;
-                                
-                                // validate draw call (critical as anything wrong can cause GPU crashes)
-                                SP_ASSERT_MSG(instance_index < total_instance_count,                    "instance start index exceeds total instance count");
-                                SP_ASSERT_MSG(instance_count > 0,                                       "instance count is zero");
-                                SP_ASSERT_MSG(instance_index + instance_count <= total_instance_count,  "instance range exceeds total instance count");
-                                SP_ASSERT_MSG(instance_index < buffer_instance_count,                   "instance start index exceeds instance buffer capacity");
-                                SP_ASSERT_MSG(instance_index + instance_count <= buffer_instance_count, "instance range exceeds instance buffer capacity");
-                                
-                                if (instance_count == 0)
-                                    continue;
-                                
+
                                 Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
                                 draw_call.renderable           = renderable;
                                 draw_call.instance_group_index = group_index;
@@ -1116,12 +1104,16 @@ namespace spartan
                         }
                         else
                         {
-                            Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-                            draw_call.renderable         = renderable;
-                            draw_call.distance_squared   = renderable->GetDistanceSquared();
-                            draw_call.lod_index          = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
-                            draw_call.is_occluder        = false;
-                            draw_call.camera_visible     = renderable->IsVisible();
+                            Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
+                            draw_call.renderable           = renderable;
+                            draw_call.distance_squared     = renderable->GetDistanceSquared();
+                            draw_call.lod_index            = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                            draw_call.is_occluder          = false;
+                            draw_call.camera_visible       = renderable->IsVisible();
+                            draw_call.instance_group_index = 0;
+                            draw_call.instance_index       = 0;
+                            draw_call.instance_count       = 1;
+                            draw_call.is_occluder          = false;
                         }
                     }
                 }
