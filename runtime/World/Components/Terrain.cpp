@@ -43,13 +43,12 @@ namespace spartan
 {
     namespace parameters
     {
-        const float level_sea               = 0.0f;      // the height at which the sea level is 0.0f - this is an axiom of the engine
-        const float level_snow              = 400.0f;
-        const uint32_t smoothing_iterations = 1;         // applied on the height map
-        const uint32_t density              = 3;         // determines the number of positions extracted out of the height map (that means more triangles later down the line)
-        const uint32_t scale                = 6;         // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
-        const uint32_t tile_count           = 8 * scale; // the number of tiles in each dimension to split the terrain into
-        const bool create_border            = true;      // if true, the terrain will have a natural border around it, useful for creating mountains or walls, prevents the player from falling off the terrain
+        const float level_sea               = 0.0f;   // the height at which the sea level is 0.0f - this is an axiom of the engine
+        const float level_snow              = 400.0f; 
+        const uint32_t smoothing_iterations = 1;      // applied on the height map
+        const uint32_t density              = 3;      // determines the number of positions extracted out of the height map (that means more triangles later down the line)
+        const uint32_t scale                = 6;      // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
+        const bool create_border            = true;   // if true, the terrain will have a natural border around it, useful for creating mountains or walls, prevents the player from falling off the terrain
     }
 
     namespace
@@ -203,40 +202,35 @@ namespace spartan
             return transforms;
         }
 
-        float compute_terrain_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices)
+        float compute_surface_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices)
         {
-            if (vertices.empty())
-                return 0.0f;
+            float area_m2 = 0.0f;
         
-            // initialize min and max values for x and z coordinates
-            float min_x = numeric_limits<float>::max();
-            float max_x = numeric_limits<float>::lowest();
-            float min_z = numeric_limits<float>::max();
-            float max_z = numeric_limits<float>::lowest();
-        
-            // Iterate through all vertices to find the bounding box
-            for (const auto& vertex : vertices)
+            for (size_t i = 0; i + 2 < indices.size(); i += 3)
             {
-                float x = vertex.pos[0]; // x-coordinate
-                float z = vertex.pos[2]; // z-coordinate
+                const auto& v0 = vertices[indices[i + 0]].pos;
+                const auto& v1 = vertices[indices[i + 1]].pos;
+                const auto& v2 = vertices[indices[i + 2]].pos;
         
-                // update min and max values
-                min_x = min(x, min_x);
-                max_x = max(x, max_x);
-                min_z = min(z, min_z);
-                max_z = max(z, max_z);
+                // compute edges
+                Vector3 edge1 = { v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2] };
+                Vector3 edge2 = { v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2] };
+        
+                // cross product
+                Vector3 cross = {
+                    edge1.y * edge2.z - edge1.z * edge2.y,
+                    edge1.z * edge2.x - edge1.x * edge2.z,
+                    edge1.x * edge2.y - edge1.y * edge2.x
+                };
+        
+                // triangle area = 0.5 * length of cross product
+                float triangle_area = 0.5f * sqrtf(cross.x * cross.x + cross.y * cross.y + cross.z * cross.z);
+                area_m2 += triangle_area;
             }
         
-            // calculate width (x extent) and depth (z extent) in meters
-            float width = max_x - min_x;
-            float depth = max_z - min_z;
-        
-            // compute area in square meters
-            float area_m2 = width * depth;
-        
-            // convert to square kilometers (1 km² = 1,000,000 m²)
-            return area_m2 / 1000000.0f;
+            return area_m2 / 1'000'000.0f; // in km²
         }
+        
 
         // extracts height values from a texture and applies optional smoothing
         void get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y)
@@ -961,14 +955,14 @@ namespace spartan
             return;
         }
     
-        uint32_t width = GetWidth();
-        uint32_t height = GetHeight();
+        uint32_t width            = GetWidth();
+        uint32_t height           = GetHeight();
         uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
-        uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
-        uint32_t index_count = static_cast<uint32_t>(m_indices.size());
-        uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
-        uint32_t placement_count = static_cast<uint32_t>(triangle_data.size());
-        uint32_t offset_count = static_cast<uint32_t>(m_tile_offsets.size());
+        uint32_t vertex_count     = static_cast<uint32_t>(m_vertices.size());
+        uint32_t index_count      = static_cast<uint32_t>(m_indices.size());
+        uint32_t tile_count       = static_cast<uint32_t>(m_tile_vertices.size());
+        uint32_t placement_count  = static_cast<uint32_t>(triangle_data.size());
+        uint32_t offset_count     = static_cast<uint32_t>(m_tile_offsets.size());
     
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
@@ -978,7 +972,7 @@ namespace spartan
         file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&placement_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&offset_count), sizeof(uint32_t));
-    
+
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
@@ -1008,11 +1002,11 @@ namespace spartan
             return;
     
         uint32_t height_data_size = 0;
-        uint32_t vertex_count = 0;
-        uint32_t index_count = 0;
-        uint32_t tile_count = 0;
-        uint32_t placement_count = 0;
-        uint32_t offset_count = 0;
+        uint32_t vertex_count     = 0;
+        uint32_t index_count      = 0;
+        uint32_t tile_count       = 0;
+        uint32_t placement_count  = 0;
+        uint32_t offset_count     = 0;
     
         file.read(reinterpret_cast<char*>(&m_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_height), sizeof(uint32_t));
@@ -1021,8 +1015,8 @@ namespace spartan
         file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&placement_count), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&offset_count), sizeof(uint32_t)); 
-    
+        file.read(reinterpret_cast<char*>(&offset_count), sizeof(uint32_t));
+
         if (tile_count > 10000 || offset_count > 10000)
         {
             SP_LOG_ERROR("invalid tile_count (%u) or offset_count (%u) read from file, aborting load", tile_count, offset_count);
@@ -1182,19 +1176,26 @@ namespace spartan
             // 8. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
-                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, parameters::tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
+
+                m_area_km2                 = compute_surface_area_km2(m_vertices, m_indices);
+                float target_tile_area_km2 = 1.0f;
+                uint32_t tile_count        = 48;//static_cast<uint32_t>(std::ceil(m_area_km2 / target_tile_area_km2));
+                SP_LOG_INFO("Splitting terrain into %u tiles", tile_count);
+                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
+
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
                 SaveToFile(cache_file.c_str());
             }
         }
     
-        // initialize members
+        // compute certain properties
         m_height_samples = dense_width * dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
-    
-        // 8. create a mesh for each tile
+        m_area_km2       = compute_surface_area_km2(m_vertices, m_indices);
+
+        // 9. create a mesh for each tile
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
             m_mesh = make_shared<Mesh>();
@@ -1222,14 +1223,13 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
         }
     
-        m_area_km2      = compute_terrain_area_km2(m_vertices);
-        m_is_generating = false;
-    
         // clear everything but height and placement data
         m_vertices.clear();
         m_indices.clear();
         m_tile_vertices.clear();
         m_tile_indices.clear();
+
+        m_is_generating = false;
     }
 
     void Terrain::Clear()
