@@ -1086,20 +1086,15 @@ namespace spartan
                         {
                             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
-                                uint32_t instance_index        = renderable->GetInstanceGroupStartIndex(group_index);
-                                uint32_t instance_count        = renderable->GetInstanceGroupCount(group_index);
-                                uint32_t total_instance_count  = renderable->GetInstanceCount();
-                                instance_count                 = min(instance_count, total_instance_count - instance_index);
-
                                 Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
-                                draw_call.renderable           = renderable;
-                                draw_call.instance_group_index = group_index;
+                                draw_call.renderable           = renderable;                          
                                 draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                                draw_call.instance_index       = instance_index;
-                                draw_call.instance_count       = instance_count;
-                                draw_call.lod_index            = min(renderable->GetLodIndex(group_index), renderable->GetLodCount() - 1);
+                                draw_call.lod_index            = renderable->GetLodIndex(group_index);
                                 draw_call.is_occluder          = false;
                                 draw_call.camera_visible       = renderable->IsVisible(group_index);
+                                draw_call.instance_group_index = group_index;
+                                draw_call.instance_index       = renderable->GetInstanceGroupStartIndex(group_index);
+                                draw_call.instance_count       = renderable->GetInstanceGroupCount(group_index);
                             }
                         }
                         else
@@ -1107,13 +1102,12 @@ namespace spartan
                             Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
                             draw_call.renderable           = renderable;
                             draw_call.distance_squared     = renderable->GetDistanceSquared();
-                            draw_call.lod_index            = min(renderable->GetLodIndex(), renderable->GetLodCount() - 1);
+                            draw_call.lod_index            = renderable->GetLodIndex();
                             draw_call.is_occluder          = false;
                             draw_call.camera_visible       = renderable->IsVisible();
                             draw_call.instance_group_index = 0;
                             draw_call.instance_index       = 0;
                             draw_call.instance_count       = 1;
-                            draw_call.is_occluder          = false;
                         }
                     }
                 }

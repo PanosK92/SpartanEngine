@@ -38,6 +38,16 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace
+    {
+        template <typename T>
+        static void hash_combine(size_t& seed, const T& v)
+        {
+            std::hash<T> hasher;
+            seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+    }
+
     namespace grid_partitioning
     {
         // partitions instances into grid cells to enable spatial splitting and culling of non-visible chunks during instanced draws
@@ -52,32 +62,34 @@ namespace spartan
             {
                 return x == other.x && y == other.y && z == other.z;
             }
+
+            // deterministic chunk ordering
+            bool operator<(const GridKey& other) const
+            {
+                if (x != other.x) return x < other.x;
+                if (y != other.y) return y < other.y;
+                return z < other.z;
+            }
         };
-    
+
         struct GridKeyHash
         {
             size_t operator()(const GridKey& k) const
             {
-                size_t result = 0;
-                uint32_t ux = static_cast<uint32_t>(k.x);
-                uint32_t uy = static_cast<uint32_t>(k.y);
-                uint32_t uz = static_cast<uint32_t>(k.z);
-                for (uint32_t i = 0; i < (sizeof(uint32_t) * 8); i++)
-                {
-                    result |= ((ux & (1u << i)) << (2 * i)) |
-                              ((uy & (1u << i)) << (2 * i + 1)) |
-                              ((uz & (1u << i)) << (2 * i + 2));
-                }
-                return result;
+                size_t seed = 0;
+                hash_combine(seed, k.x);
+                hash_combine(seed, k.y);
+                hash_combine(seed, k.z);
+                return seed;
             }
-    
+        
             static GridKey get_key(const Vector3& position)
             {
                 return
                 {
-                    static_cast<int32_t>(floor(position.x / static_cast<float>(cell_size))),
-                    static_cast<int32_t>(floor(position.y / static_cast<float>(cell_size))),
-                    static_cast<int32_t>(floor(position.z / static_cast<float>(cell_size)))
+                    static_cast<int32_t>(std::floor(position.x / static_cast<float>(cell_size))),
+                    static_cast<int32_t>(std::floor(position.y / static_cast<float>(cell_size))),
+                    static_cast<int32_t>(std::floor(position.z / static_cast<float>(cell_size)))
                 };
             }
         };
@@ -109,67 +121,86 @@ namespace spartan
 
     namespace instancing
     {
+        string generate_instance_key(const vector<math::Matrix>& transforms, const string& renderable_name)
+        {
+            size_t hash_val = transforms.size();
+            for (const auto& m : transforms)
+            {
+                const float* data = m.Data();
+                for (int j = 0; j < 16; ++j)
+                {
+                    uint32_t bits;
+                    std::memcpy(&bits, &data[j], sizeof(float));
+                    hash_combine(hash_val, bits);
+                }
+            }
+            return renderable_name + "_" + std::to_string(hash_val);
+        }
+
         struct InstanceData
         {
             vector<math::Matrix> transforms;
             vector<uint32_t> group_end_indices;
             shared_ptr<RHI_Buffer> buffer;
         };
-        static unordered_map<string, InstanceData> instance_cache;
-
-        string generate_instance_key(const vector<math::Matrix>& transforms, const string& renderable_name)
+        
+        static unordered_map<string, weak_ptr<InstanceData>> instance_cache;
+        
+        shared_ptr<InstanceData> get_or_create_instance_data(const vector<math::Matrix>& transforms, const string& renderable_name)
         {
-            string hash;
-            size_t count = min(transforms.size(), size_t(10));
-            for (size_t i = 0; i < count; i++)
+            if (transforms.empty())
             {
-                for (int j = 0; j < 16; j++)
-                { 
-                    hash += to_string(transforms[i].Data()[j]).substr(0, 5);
-                }
+                return nullptr;  // or throw/log, depending on your error handling
             }
-
-            return renderable_name + "_" + to_string(std::hash<string>{}(hash));
-        }
-
-        InstanceData& get_or_create_instance_data(const vector<math::Matrix>& transforms, const string& renderable_name)
-        {
+        
             string key = generate_instance_key(transforms, renderable_name);
             auto it = instance_cache.find(key);
             if (it != instance_cache.end())
             {
-                SP_LOG_INFO("Reusing instance data for %s (key: %s)", renderable_name.c_str(), key.c_str());
-                return it->second;
+                auto data = it->second.lock();  // try to get strong ref
+                if (data)
+                {
+                    SP_LOG_INFO("Reusing instance data for %s (key: %s)", renderable_name.c_str(), key.c_str());
+                    return data;
+                }
+                else
+                {
+                    // expired, clean up
+                    instance_cache.erase(it);
+                }
             }
-
-            // create new instance data
-            InstanceData data;
-            data.transforms = transforms;
-            grid_partitioning::reorder_instances_into_cell_chunks(data.transforms, data.group_end_indices);
-
-            // transpose instances for row-major layout
+        
+            // create new
+            auto data = make_shared<InstanceData>();
+            data->transforms = transforms;
+            grid_partitioning::reorder_instances_into_cell_chunks(data->transforms, data->group_end_indices);
+        
+            // transpose for row-major
             vector<math::Matrix> instances_transposed;
-            instances_transposed.reserve(data.transforms.size());
-            for (const auto& instance : data.transforms)
+            instances_transposed.reserve(data->transforms.size());
+            for (const auto& instance : data->transforms)
             {
                 instances_transposed.push_back(instance.Transposed());
             }
-
-            // create instance buffer
-            data.buffer = make_shared<RHI_Buffer>(
+        
+            // create buffer
+            data->buffer = make_shared<RHI_Buffer>(
                 RHI_Buffer_Type::Instance,
                 sizeof(instances_transposed[0]),
                 static_cast<uint32_t>(instances_transposed.size()),
-                static_cast<void*>(&instances_transposed[0]),
+                static_cast<void*>(instances_transposed.data()),  // Use .data() for safety
                 false,
                 ("instance_buffer_" + renderable_name).c_str()
             );
-
+        
             // log
-            SP_LOG_INFO("Created instance data for %s: instances=%zu, groups=%zu, buffer_size=%u", renderable_name.c_str(), data.transforms.size(), data.group_end_indices.size(), data.buffer->GetElementCount());
-
-            instance_cache[key] = move(data);
-            return instance_cache[key];
+            SP_LOG_INFO("Created instance data for %s: instances=%zu, groups=%zu, buffer_size=%u", 
+                        renderable_name.c_str(), data->transforms.size(), data->group_end_indices.size(), data->buffer->GetElementCount());
+        
+            // onsert weak_ptr
+            instance_cache[key] = data;
+        
+            return data;
         }
     }
 
@@ -187,7 +218,7 @@ namespace spartan
     Renderable::~Renderable()
     {
         m_mesh = nullptr;
-        instancing::instance_cache.clear();
+        instancing::instance_cache.clear(); // not ideal as it's shared among all renderables
     }
 
     void Renderable::Serialize(FileStream* stream)
@@ -460,11 +491,11 @@ namespace spartan
 
     void Renderable::SetInstances(const vector<Matrix>& transforms)
     {
-        instancing::InstanceData& instance_data = instancing::get_or_create_instance_data(transforms, GetEntity()->GetObjectName());
-        m_instances                             = instance_data.transforms;
-        m_instance_group_end_indices            = instance_data.group_end_indices;
-        m_instance_buffer                       = instance_data.buffer;
-        m_bounding_box_dirty                    = true;
+        shared_ptr<instancing::InstanceData> instance_data = instancing::get_or_create_instance_data(transforms, GetEntity()->GetObjectName());
+        m_instances                                        = instance_data->transforms;
+        m_instance_group_end_indices                       = instance_data->group_end_indices;
+        m_instance_buffer                                  = instance_data->buffer;
+        m_bounding_box_dirty                               = true;
     }
 
     void Renderable::SetInstance(const uint32_t index, const math::Matrix& transform)

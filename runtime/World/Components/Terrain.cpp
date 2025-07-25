@@ -1176,16 +1176,12 @@ namespace spartan
             // 8. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
-
-                m_area_km2                 = compute_surface_area_km2(m_vertices, m_indices);
-                float target_tile_area_km2 = 1.0f;
-                uint32_t tile_count        = 48;//static_cast<uint32_t>(std::ceil(m_area_km2 / target_tile_area_km2));
-                SP_LOG_INFO("Splitting terrain into %u tiles", tile_count);
+                uint32_t tile_count = 16;
                 spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
-
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-                SaveToFile(cache_file.c_str());
             }
+
+            SaveToFile(cache_file.c_str());
         }
     
         // compute certain properties
