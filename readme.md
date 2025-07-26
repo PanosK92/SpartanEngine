@@ -62,7 +62,7 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 - Atmospheric scattering, real-time filtering and image-based lighting (with bent normals).
 - Real-time global illumination (FidelityFX Brixelizer GI).
 - Screen space shadows (Bend Studio's Days Gone).
-- Screen space ambient occlusion (XeGTAO).
+- Screen space ambient occlusion (XeGTAO + visibility bitfield).
 - Screen space reflections (FidelityFX SSSR).
 - Variable rate shading.
 - Upscaling (XeSS 2 & FSR 3).
