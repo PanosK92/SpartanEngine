@@ -35,13 +35,14 @@ API_INCLUDES = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
         "../third_party/fidelityfx",
-        "../third_party/xess"
+        "../third_party/xess",
+        "../third_party/vulkan_memory_allocator"
     }
 }
 
 API_EXCLUDES = {
-    d3d12  = { RUNTIME_DIR .. "/RHI/Vulkan/**" },
-    vulkan_linux = { RUNTIME_DIR .. "/RHI/D3D12/**" },
+    d3d12          = { RUNTIME_DIR .. "/RHI/Vulkan/**" },
+    vulkan_linux   = { RUNTIME_DIR .. "/RHI/D3D12/**" },
     vulkan_windows = { RUNTIME_DIR .. "/RHI/D3D12/**" },
 }
 
