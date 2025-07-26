@@ -67,10 +67,10 @@ float3x3 rotation_from_to(float3 from, float3 to)
 
 float compute_slice_visibility(float horizon_cos0, float horizon_cos1, float cos_norm, float n, out float h0, out float h1)
 {
-    h0 = -fast_acos(horizon_cos1);
-    h1 = fast_acos(horizon_cos0);
-    h0 = n + clamp(h0 - n, -PI_HALF, PI_HALF);
-    h1 = n + clamp(h1 - n, -PI_HALF, PI_HALF);
+    h0          = -fast_acos(horizon_cos1);
+    h1          = fast_acos(horizon_cos0);
+    h0          = n + clamp(h0 - n, -PI_HALF, PI_HALF);
+    h1          = n + clamp(h1 - n, -PI_HALF, PI_HALF);
     float iarc0 = (cos_norm + 2.0f * h0 * sin(n) - cos(2.0f * h0 - n)) * 0.25f;
     float iarc1 = (cos_norm + 2.0f * h1 * sin(n) - cos(2.0f * h1 - n)) * 0.25f;
     return iarc0 + iarc1;
@@ -186,12 +186,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
        visibility             += local_visibility;
 
        // compute bent normal
-       float3 bent_normal_l  = compute_slice_bent_normal(cos_phi, sin_phi, h0, h1, n);
+       float3 bent_normal_l  = compute_slice_bent_normal(cos_phi, sin_phi, h0, h1, n) * projected_normal_vec_length;
        float3x3 rot_mat      = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
-       bent_normal          += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
+       bent_normal          += mul(bent_normal_l, rot_mat) ;
     }
 
-    // normalize visibility
+    // normalize visibilityw
     visibility /= float(g_directions);
     visibility  = pow(visibility, g_ao_intensity);
 
