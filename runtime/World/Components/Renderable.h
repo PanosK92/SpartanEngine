@@ -141,9 +141,9 @@ namespace spartan
         // visibility & lods
         float m_max_distance_render                                 = FLT_MAX;
         float m_max_distance_shadow                                 = FLT_MAX;
-        std::array<float, renderer_max_entities> m_distance_squared = { 0.0f };
-        std::array<bool, renderer_max_entities> m_is_visible        = { false };
-        std::array<uint32_t, renderer_max_entities> m_lod_indices   = { 0 };
+        std::array<float, renderer_max_draw_calls> m_distance_squared = { 0.0f };
+        std::array<bool, renderer_max_draw_calls> m_is_visible        = { false };
+        std::array<uint32_t, renderer_max_draw_calls> m_lod_indices   = { 0 };
         uint64_t m_previous_lights                                  = 0; // lights whose frustums this renderable was in last frame
     };
 }

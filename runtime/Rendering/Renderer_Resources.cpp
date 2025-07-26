@@ -74,8 +74,8 @@ namespace spartan
         #define buffer(x) buffers[static_cast<uint8_t>(x)]
 
         // initialization values
-        uint32_t spd_counter_value    = 0;
-        array<Matrix, 1024> identity  = { Matrix::Identity };
+        uint32_t spd_counter_value                          = 0;
+        array<Matrix, renderer_max_instance_count> identity = { Matrix::Identity };
 
         buffer(Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame),                           element_count,                          nullptr,            true, "frame");
         buffer(Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    1,                                      &spd_counter_value, true, "spd_counter");

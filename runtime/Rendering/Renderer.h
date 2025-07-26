@@ -201,7 +201,7 @@ namespace spartan
         static uint32_t m_resource_index;
         static std::atomic<bool> m_initialized_resources;
         static std::mutex m_mutex_renderables;
-        static std::array<Renderer_DrawCall, renderer_max_entities> m_draw_calls;
+        static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;
         static uint32_t m_draw_call_count;
         static bool m_transparents_present;
         static RHI_CommandList* m_cmd_list_present;

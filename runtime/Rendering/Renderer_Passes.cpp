@@ -47,7 +47,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    array<Renderer_DrawCall, renderer_max_entities> Renderer::m_draw_calls;
+    array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls;
     uint32_t Renderer::m_draw_call_count;
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
