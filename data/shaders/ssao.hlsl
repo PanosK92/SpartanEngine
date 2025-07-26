@@ -24,16 +24,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // based on: XeGTAO - https://github.com/GameTechDev/XeGTAO
+// enchanced with visibility bitmasks from: SSAOVB - https://cdrinmatane.github.io/posts/ssaovb-code/
 
 // constants
-static const float g_ao_radius    = 3.0f;
+static const float g_ao_radius    = 2.0f;
 static const float g_ao_intensity = 1.0f;
-static const float offsets[]      = { 0.0f, 0.5f, 0.25f, 0.75f };
-static const float rotations[]    = { 0.1666f, 0.8333f, 0.5f, 0.6666f, 0.3333f, 0.0f };
-
-// adaptive sampling constants
-static const uint g_directions = 4;
-static const uint g_steps      = 3;
+static const uint g_directions    = 4;
+static const uint g_steps         = 3;
+static const uint g_sector_count  = 32;
+static const float g_thickness    = 1.0f;
+static const float g_offsets[]    = { 0.0f, 0.5f, 0.25f, 0.75f };
+static const float g_rotations[]  = { 0.1666f, 0.8333f, 0.5f, 0.6666f, 0.3333f, 0.0f };
 
 float3x3 rotation_from_to(float3 from, float3 to)
 {
@@ -83,6 +84,32 @@ float3 compute_slice_bent_normal(float cos_phi, float sin_phi, float h0, float h
     return float3(cos_phi * t0, sin_phi * t0, -t1); // local bent normal, z flipped for handedness
 }
 
+uint update_sectors(float minHorizon, float maxHorizon, uint globalOccludedBitfield)
+{
+    uint startHorizonInt         = uint(minHorizon * g_sector_count);
+    float angleHorizon           = (maxHorizon - minHorizon) * g_sector_count;
+    uint angleHorizonInt         = uint(ceil(angleHorizon));
+    uint angleHorizonBitfield    = angleHorizonInt > 0 ? (0xFFFFFFFFu >> (g_sector_count - angleHorizonInt)) : 0u;
+    uint currentOccludedBitfield = angleHorizonBitfield << startHorizonInt;
+    return globalOccludedBitfield | currentOccludedBitfield;
+}
+
+float2 fast_acos2(float2 x)
+{
+   return (-0.69813170*x*x - 0.87266463)*x + 1.57079633;
+}
+
+float2 get_front_back_horizons(float samplingDirection, float3 deltaPos, float3 view_vec, float n)
+{
+    float3 deltaPosBackface = deltaPos - view_vec * g_thickness;
+    float2 frontBackHorizon = float2(dot(normalize(deltaPos), view_vec), dot(normalize(deltaPosBackface), view_vec));
+    frontBackHorizon        = fast_acos2(frontBackHorizon);
+    frontBackHorizon        = saturate((samplingDirection * -frontBackHorizon - n + PI_HALF) / PI);
+    frontBackHorizon        = samplingDirection >= 0.0f ? frontBackHorizon.yx : frontBackHorizon.xy;
+    
+    return frontBackHorizon;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -101,15 +128,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // setup
     const float noise_gradient_temporal           = noise_interleaved_gradient(pos);
     const float offset_spatial                    = 0.25 * (float)((pos.y - pos.x) & 3);
-    const float offset_temporal                   = offsets[buffer_frame.frame % 4];
-    const float offset_rotation_temporal          = rotations[buffer_frame.frame % 6];
+    const float offset_temporal                   = g_offsets[buffer_frame.frame % 4];
+    const float offset_rotation_temporal          = g_rotations[buffer_frame.frame % 6];
     const float ray_offset                        = frac(offset_spatial + offset_temporal) + (hash(origin_uv) * 2.0f - 1.0f) * 0.25f;
     const float2 texel_size                       = 1.0f / resolution_out;
     const float3 view_vec                         = normalize(-origin_position);
     const float falloff_range                     = 0.6f * g_ao_radius;
     const float falloff_from                      = g_ao_radius - falloff_range;
-    const float falloff_mul                       = -1.0f / falloff_range;
-    const float falloff_add                       = falloff_from / falloff_range + 1.0f;
+    float falloff_mul                             = -1.0f / falloff_range;
+    float falloff_add                             = falloff_from / falloff_range + 1.0f;
     float3 pos_right                              = get_position_view_space(origin_uv + float2(texel_size.x, 0));
     float pixel_dir_rb_viewspace_size_at_center_z = length(pos_right - origin_position);
     float screenspace_radius                      = g_ao_radius / pixel_dir_rb_viewspace_size_at_center_z;
@@ -117,7 +144,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float min_s                             = pixel_too_close_threshold / screenspace_radius;
     const float noise_slice                       = noise_gradient_temporal + offset_rotation_temporal;
     const float noise_sample                      = ray_offset;
-
+    const float3x3 rot_mat                        = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
+    
     // loop over slice directions to accumulate visibility
     float visibility   = 0.0f;
     float3 bent_normal = 0.0f;
@@ -134,16 +162,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         const float3 ortho_direction_vec  = direction_vec - dot(direction_vec, view_vec) * view_vec;
         const float3 axis_vec             = normalize(cross(ortho_direction_vec, view_vec));
         float3 projected_normal_vec       = origin_normal - axis_vec * dot(origin_normal, axis_vec);
-        float sign_norm                   = sign(dot(ortho_direction_vec, projected_normal_vec));
-        float projected_normal_vec_length = length(projected_normal_vec) ;
+        float projected_normal_vec_length = length(projected_normal_vec);
         float cos_norm                    = saturate(dot(projected_normal_vec, view_vec) / projected_normal_vec_length);
+        float sign_norm                   = sign(dot(ortho_direction_vec, projected_normal_vec));
         float n                           = sign_norm * fast_acos(cos_norm);
 
-        // find horizon angles: initialize baselines, then sample along slice to update max horizon cosines
-        float low_horizon_cos0 = cos(n + PI_HALF);
-        float low_horizon_cos1 = cos(n - PI_HALF);
-        float horizon_cos0     = low_horizon_cos0;
-        float horizon_cos1     = low_horizon_cos1;
+        // find horizon angles
+        float low_horizon_cos0  = cos(n + PI_HALF);
+        float low_horizon_cos1  = cos(n - PI_HALF);
+        float horizon_cos0      = low_horizon_cos0;
+        float horizon_cos1      = low_horizon_cos1;
+        uint occlusion_bitfield = 0u;
         [unroll]
         for (uint step = 0; step < g_steps; step++)
         {
@@ -178,25 +207,33 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
             horizon_cos0 = max(horizon_cos0, shc0);
             horizon_cos1 = max(horizon_cos1, shc1);
+
+            // visibility bitmask for sample0 (negative dir)
+            float2 fbh0        = get_front_back_horizons(-1.0f, sample_delta0, view_vec, n);
+            occlusion_bitfield = update_sectors(fbh0.x, fbh0.y, occlusion_bitfield);
+
+            // visibility bitmask for sample1 (positive dir)
+            float2 fbh1        = get_front_back_horizons(1.0f, sample_delta1, view_vec, n);
+            occlusion_bitfield = update_sectors(fbh1.x, fbh1.y, occlusion_bitfield);
         }
 
-       // compute slice visibility
-       float h0, h1;
-       float local_visibility  = compute_slice_visibility(horizon_cos0, horizon_cos1, cos_norm, n, h0, h1) * projected_normal_vec_length;
+       // compute slice visibility using bitmask (bits correspond to indivudal slice sectors)
+       float local_visibility  = (1.0f - float(countbits(occlusion_bitfield)) / float(g_sector_count));
        visibility             += local_visibility;
 
        // compute bent normal
+       float h0, h1;
+       compute_slice_visibility(horizon_cos0, horizon_cos1, cos_norm, n, h0, h1);
        float3 bent_normal_l  = compute_slice_bent_normal(cos_phi, sin_phi, h0, h1, n) * projected_normal_vec_length;
-       float3x3 rot_mat      = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
-       bent_normal          += mul(bent_normal_l, rot_mat) ;
+       bent_normal          += mul(bent_normal_l, rot_mat);
     }
 
-    // normalize visibilityw
+    // normalize visibility
     visibility /= float(g_directions);
     visibility  = pow(visibility, g_ao_intensity);
 
     // project bent normal to world space and normalize
-    bent_normal = normalize(view_to_world(bent_normal, false));
+    bent_normal = normalize(view_to_world(normalize(bent_normal), false));
 
     tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }
