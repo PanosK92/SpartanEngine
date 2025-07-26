@@ -65,13 +65,31 @@ float3x3 rotation_from_to(float3 from, float3 to)
     return mat;
 }
 
+float compute_slice_visibility(float horizon_cos0, float horizon_cos1, float cos_norm, float n, out float h0, out float h1)
+{
+    h0 = -fast_acos(horizon_cos1);
+    h1 = fast_acos(horizon_cos0);
+    h0 = n + clamp(h0 - n, -PI_HALF, PI_HALF);
+    h1 = n + clamp(h1 - n, -PI_HALF, PI_HALF);
+    float iarc0 = (cos_norm + 2.0f * h0 * sin(n) - cos(2.0f * h0 - n)) * 0.25f;
+    float iarc1 = (cos_norm + 2.0f * h1 * sin(n) - cos(2.0f * h1 - n)) * 0.25f;
+    return iarc0 + iarc1;
+}
+
+float3 compute_slice_bent_normal(float cos_phi, float sin_phi, float h0, float h1, float n)
+{
+    float t0 = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
+    float t1 = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
+    return float3(cos_phi * t0, sin_phi * t0, -t1); // local bent normal, z flipped for handedness
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
 
-    // setup: fetch pixel UV, view-space position/normal, build surface, compute noise/jitter for temporal stability
+    // compute pixel vectors
     uint2 pos                    = thread_id.xy;
     const float2 origin_uv       = (pos + 0.5f) / resolution_out;
     const float3 origin_position = get_position_view_space(origin_uv);
@@ -80,6 +98,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     Surface surface;
     surface.Build(pos, resolution_out, true, false);
 
+    // setup
     const float noise_gradient_temporal           = noise_interleaved_gradient(pos);
     const float offset_spatial                    = 0.25 * (float)((pos.y - pos.x) & 3);
     const float offset_temporal                   = offsets[buffer_frame.frame % 4];
@@ -94,14 +113,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 pos_right                              = get_position_view_space(origin_uv + float2(texel_size.x, 0));
     float pixel_dir_rb_viewspace_size_at_center_z = length(pos_right - origin_position);
     float screenspace_radius                      = g_ao_radius / pixel_dir_rb_viewspace_size_at_center_z;
-    float visibility                              = saturate((10.0f - screenspace_radius) / 100.0f) * 0.5f;
     const float pixel_too_close_threshold         = 1.3f;
     const float min_s                             = pixel_too_close_threshold / screenspace_radius;
     const float noise_slice                       = noise_gradient_temporal + offset_rotation_temporal;
     const float noise_sample                      = ray_offset;
 
     // loop over slice directions to accumulate visibility
-    float3 bent_normal_v = 0.0f;
+    float visibility   = 0.0f;
+    float3 bent_normal = 0.0f;
     [unroll]
     for (uint slice = 0; slice < g_directions; slice++)
     {
@@ -116,7 +135,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         const float3 axis_vec             = normalize(cross(ortho_direction_vec, view_vec));
         float3 projected_normal_vec       = origin_normal - axis_vec * dot(origin_normal, axis_vec);
         float sign_norm                   = sign(dot(ortho_direction_vec, projected_normal_vec));
-        float projected_normal_vec_length = length(projected_normal_vec);
+        float projected_normal_vec_length = length(projected_normal_vec) ;
         float cos_norm                    = saturate(dot(projected_normal_vec, view_vec) / projected_normal_vec_length);
         float n                           = sign_norm * fast_acos(cos_norm);
 
@@ -161,32 +180,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             horizon_cos1 = max(horizon_cos1, shc1);
         }
 
-        // compute slice occlusion/visibility: convert horizons to angles, clamp to hemisphere, integrate analytically
-        float h0                = -fast_acos(horizon_cos1);
-        float h1                = fast_acos(horizon_cos0);
-        h0                      = n + clamp(h0 - n, -PI_HALF, PI_HALF);
-        h1                      = n + clamp(h1 - n, -PI_HALF, PI_HALF);
-        float iarc0             = (cos_norm + 2.0f * h0 * sin(n) - cos(2.0f * h0 - n)) * 0.25f;
-        float iarc1             = (cos_norm + 2.0f * h1 * sin(n) - cos(2.0f * h1 - n)) * 0.25f;
-        float local_visibility  = projected_normal_vec_length * (iarc0 + iarc1);
-        visibility             += local_visibility;
+       // compute slice visibility
+       float h0, h1;
+       float local_visibility  = compute_slice_visibility(horizon_cos0, horizon_cos1, cos_norm, n, h0, h1) * projected_normal_vec_length;
+       visibility             += local_visibility;
 
-        // bent normal computation
-        float t0             = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
-        float t1             = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
-        float3 bent_normal_l = float3(cos_phi * t0, sin_phi * t0, -t1);  // local bent normal, z flipped for handedness
-
-        // rotate to view space
-        float3x3 rot_mat = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
-        bent_normal_v   += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
+       // compute bent normal
+       float3 bent_normal_l  = compute_slice_bent_normal(cos_phi, sin_phi, h0, h1, n);
+       float3x3 rot_mat      = rotation_from_to(float3(0.0f, 0.0f, -1.0f), view_vec);
+       bent_normal          += mul(bent_normal_l, rot_mat) * projected_normal_vec_length;
     }
 
-    // finalize visibility
+    // normalize visibility
     visibility /= float(g_directions);
     visibility  = pow(visibility, g_ao_intensity);
 
-    // finalize bent normal
-    float3 bent_normal = normalize(mul(normalize(bent_normal_v), (float3x3)buffer_frame.view_inverted));
+    // project bent normal to world space and normalize
+    bent_normal = normalize(view_to_world(bent_normal, false));
 
     tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }
