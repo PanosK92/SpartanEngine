@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // enchanced with visibility bitmasks from: SSAOVB - https://cdrinmatane.github.io/posts/ssaovb-code/
 
 // constants
-static const float g_ao_radius    = 2.0f;
+static const float g_ao_radius    = 1.0f;
 static const float g_ao_intensity = 1.0f;
 static const uint g_directions    = 4;
 static const uint g_steps         = 3;

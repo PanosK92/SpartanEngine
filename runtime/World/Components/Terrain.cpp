@@ -537,24 +537,31 @@ namespace spartan
         
             auto add_height = [&positions, width, height](float x, float z, float amount)
             {
-                int ix = static_cast<int>(floor(x));
-                int iz = static_cast<int>(floor(z));
+                int ix   = static_cast<int>(floor(x));
+                int iz   = static_cast<int>(floor(z));
                 float fx = x - static_cast<float>(ix);
                 float fz = z - static_cast<float>(iz);
-                ix = clamp(ix, 0, static_cast<int>(width) - 2);
-                iz = clamp(iz, 0, static_cast<int>(height) - 2);
-        
+                ix       = clamp(ix, 0, static_cast<int>(width) - 2);
+                iz       = clamp(iz, 0, static_cast<int>(height) - 2);
+            
                 float w00 = (1.0f - fx) * (1.0f - fz);
                 float w10 = fx * (1.0f - fz);
                 float w01 = (1.0f - fx) * fz;
                 float w11 = fx * fz;
-        
-                positions[static_cast<size_t>(iz) * width + ix].y += amount * w00;
-                positions[static_cast<size_t>(iz) * width + ix + 1].y += amount * w10;
-                positions[static_cast<size_t>(iz + 1) * width + ix].y += amount * w01;
+            
+                positions[static_cast<size_t>(iz) * width + ix].y         += amount * w00;
+                positions[static_cast<size_t>(iz) * width + ix + 1].y     += amount * w10;
+                positions[static_cast<size_t>(iz + 1) * width + ix].y     += amount * w01;
                 positions[static_cast<size_t>(iz + 1) * width + ix + 1].y += amount * w11;
+            
+                // clamp heights to prevent extreme negative values
+                float min_height = parameters::level_sea - 50.0f; // minimum height to prevent extreme drops
+                positions[static_cast<size_t>(iz) * width + ix].y         = max(positions[static_cast<size_t>(iz) * width + ix].y, min_height);
+                positions[static_cast<size_t>(iz) * width + ix + 1].y     = max(positions[static_cast<size_t>(iz) * width + ix + 1].y, min_height);
+                positions[static_cast<size_t>(iz + 1) * width + ix].y     = max(positions[static_cast<size_t>(iz + 1) * width + ix].y, min_height);
+                positions[static_cast<size_t>(iz + 1) * width + ix + 1].y = max(positions[static_cast<size_t>(iz + 1) * width + ix + 1].y, min_height);
             };
-        
+                    
             auto get_gradient = [get_height](float x, float z) -> Vector2
             {
                 float hx = (get_height(x + 1.0f, z) - get_height(x - 1.0f, z)) / 2.0f;
@@ -564,14 +571,14 @@ namespace spartan
         
             // erosion parameters
             const float inertia          = 0.05f;
-            const float capacity_factor  = 3.0f; 
+            const float capacity_factor  = 3.0f;
             const float min_slope        = 0.01f;
-            const float deposition_rate  = 0.1f; 
-            const float erosion_rate     = 0.3f; 
+            const float deposition_rate  = 0.1f;
+            const float erosion_rate     = 0.3f;
             const float evaporation_rate = 0.05f;
-            const float gravity          = 4.0f; 
-            const uint32_t max_steps     = 30;   
-            const float wind_strength    = 0.3f; 
+            const float gravity          = 4.0f;
+            const uint32_t max_steps     = 30;
+            const float wind_strength    = 0.3f;
         
             // random number generation (unchanged)
             mt19937 gen(random_device{}());
@@ -587,11 +594,11 @@ namespace spartan
                 }
         
                 // hydraulic erosion: simulate a single droplet
-                float pos_x = dist_x(gen);
-                float pos_z = dist_z(gen);
-                Vector2 dir = Vector2::Zero;
-                float speed = 1.0f;
-                float water = 1.0f;
+                float pos_x    = dist_x(gen);
+                float pos_z    = dist_z(gen);
+                Vector2 dir    = Vector2::Zero;
+                float speed    = 1.0f;
+                float water    = 1.0f;
                 float sediment = 0.0f;
         
                 for (uint32_t step = 0; step < max_steps; ++step)
@@ -609,11 +616,11 @@ namespace spartan
                     Vector2 new_dir = -gradient.Normalized();
                     dir = (dir * inertia + new_dir * (1.0f - inertia)).Normalized();
         
-                    // Proposed new position
-                    float new_x = pos_x + dir.x;
-                    float new_z = pos_z + dir.y;
+                    // proposed new position
+                    float new_x      = pos_x + dir.x;
+                    float new_z      = pos_z + dir.y;
                     float new_height = get_height(new_x, new_z);
-                    float delta_h = new_height - height;
+                    float delta_h    = new_height - height;
         
                     // if moving uphill or stuck, deposit a fraction and stop (reduces spikes)
                     if (delta_h >= 0.0f || dir.LengthSquared() < 0.0001f)
