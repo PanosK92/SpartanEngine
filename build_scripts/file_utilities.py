@@ -67,22 +67,11 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
     # Check if file exists and get its size
     current_size = 0
     if os.path.exists(destination):
-        current_size = os.path.getsize(destination)
         if calculate_file_hash(destination) == expected_hash:
             print(f"File {destination} already exists with the correct hash. Skipping download.")
             return True
+        current_size = os.path.getsize(destination)
 
-    # Get file size from server
-    try:
-        response = requests.head(url, allow_redirects=True)
-        total_size = int(response.headers.get('content-length', 0))
-    except requests.RequestException as e:
-        print(f"Failed to get file size: {e}")
-        return False
-
-    # If file exists but size doesn't match total size, resume download
-    headers = {'Range': f'bytes={current_size}-'} if current_size > 0 else {}
-    
     @retry(
         stop=stop_after_attempt(max_retries),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -91,47 +80,76 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
     )
     def download_with_retry():
         nonlocal current_size
-        print(f"\nDownloading {destination} (Total size: {total_size:,} bytes, Starting from: {current_size:,} bytes)...")
+        headers = {'Range': f'bytes={current_size}-'} if current_size > 0 else {}
+        mode = 'ab' if current_size > 0 else 'wb'
         
-        # Initialize tqdm progress bar
-        t = tqdm(total=total_size, initial=current_size, unit='iB', unit_scale=True)
+        print(f"\nDownloading {destination} (Starting from: {current_size:,} bytes)...")
         
+        response = None
         try:
-            # Open connection with stream=True
-            with requests.get(url, stream=True, headers=headers, timeout=30) as response:
-                response.raise_for_status()  # Raise exception for bad status codes
-                
-                # Check if server supports range requests
-                if current_size > 0 and response.status_code != 206:  # 206 = Partial Content
-                    print("Server does not support range requests. Restarting download...")
-                    current_size = 0
-                    headers.clear()
-                    t.reset(total=total_size)
-                
-                # Open file in append mode if resuming, else write mode
-                mode = 'ab' if current_size > 0 else 'wb'
-                with open(destination, mode) as f:
-                    for chunk in response.iter_content(chunk_size):
-                        if chunk:  # Filter out keep-alive chunks
-                            f.write(chunk)
-                            t.update(len(chunk))
+            response = requests.get(url, stream=True, headers=headers, timeout=30)
+            response.raise_for_status()  # Raise exception for bad status codes
+            
+            # Determine total_size
+            total_size = None
+            if 'content-length' in response.headers:
+                remaining = int(response.headers['content-length'])
+            else:
+                remaining = None
+            
+            # Parse content-range if available
+            if 'content-range' in response.headers:
+                cr = response.headers['content-range']
+                total_str = cr.rsplit('/', 1)[-1]
+                if total_str.isdigit():
+                    total_size = int(total_str)
+            
+            # If content-length available but no total from range, compute it
+            if remaining is not None and total_size is None:
+                total_size = current_size + remaining
+            
+            # Check if server supports range requests
+            if current_size > 0 and response.status_code != 206:
+                print("Server does not support range requests. Restarting download from scratch...")
+                response.close()
+                # Truncate the file to zero
+                open(destination, 'wb').close()
+                current_size = 0
+                raise requests.RequestException("Restarting due to lack of range support")  # Trigger retry to restart
+            
+            # Print total size if known
+            if total_size is not None:
+                print(f"Total size detected: {total_size:,} bytes")
+            
+            # Now create tqdm with known total or None
+            t = tqdm(total=total_size, initial=current_size, unit='iB', unit_scale=True)
+            
+            # Open file and download
+            with open(destination, mode) as f:
+                for chunk in response.iter_content(chunk_size):
+                    if chunk:  # Filter out keep-alive chunks
+                        f.write(chunk)
+                        t.update(len(chunk))
         
         except requests.RequestException as e:
             print(f"Download failed: {e}. Retrying...")
             raise
         finally:
+            if response:
+                response.close()
             t.close()
         
-        # Verify file size after download
+        # Verify file size if known
         downloaded_size = os.path.getsize(destination)
-        if total_size > 0 and downloaded_size != total_size:
+        if total_size is not None and downloaded_size != total_size:
             print(f"Download incomplete: {downloaded_size:,} of {total_size:,} bytes downloaded.")
             raise requests.RequestException("Incomplete download")
         
         # Verify hash
-        if calculate_file_hash(destination) != expected_hash:
-            print("Hash mismatch. Downloaded file is corrupted.")
-            return False
+        downloaded_hash = calculate_file_hash(destination)
+        if downloaded_hash != expected_hash:
+            print(f"Hash mismatch. Expected: {expected_hash}, Got: {downloaded_hash}. Downloaded file is corrupted.")
+            raise requests.RequestException("Hash mismatch")
         
         print(f"Successfully downloaded {destination}.")
         return True
