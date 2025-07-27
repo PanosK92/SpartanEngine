@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // enchanced with visibility bitmasks from: SSAOVB - https://cdrinmatane.github.io/posts/ssaovb-code/
 
 // constants
-static const float g_ao_radius    = 1.0f;
+static const float g_ao_radius    = 1.5f;
 static const float g_ao_intensity = 1.0f;
 static const uint g_directions    = 4;
 static const uint g_steps         = 3;
@@ -84,14 +84,14 @@ float3 compute_slice_bent_normal(float cos_phi, float sin_phi, float h0, float h
     return float3(cos_phi * t0, sin_phi * t0, -t1); // local bent normal, z flipped for handedness
 }
 
-uint update_sectors(float minHorizon, float maxHorizon, uint globalOccludedBitfield)
+uint update_sectors(float minHorizon, float maxHorizon, uint globalOccludedbitmask)
 {
     uint startHorizonInt         = uint(minHorizon * g_sector_count);
     float angleHorizon           = (maxHorizon - minHorizon) * g_sector_count;
     uint angleHorizonInt         = uint(ceil(angleHorizon));
-    uint angleHorizonBitfield    = angleHorizonInt > 0 ? (0xFFFFFFFFu >> (g_sector_count - angleHorizonInt)) : 0u;
-    uint currentOccludedBitfield = angleHorizonBitfield << startHorizonInt;
-    return globalOccludedBitfield | currentOccludedBitfield;
+    uint angleHorizonbitmask    = angleHorizonInt > 0 ? (0xFFFFFFFFu >> (g_sector_count - angleHorizonInt)) : 0u;
+    uint currentOccludedbitmask = angleHorizonbitmask << startHorizonInt;
+    return globalOccludedbitmask | currentOccludedbitmask;
 }
 
 float2 fast_acos2(float2 x)
@@ -101,6 +101,7 @@ float2 fast_acos2(float2 x)
 
 float2 get_front_back_horizons(float samplingDirection, float3 deltaPos, float3 view_vec, float n)
 {
+    samplingDirection       = -samplingDirection; // flip to align with left-handed view space and Y-down
     float3 deltaPosBackface = deltaPos - view_vec * g_thickness;
     float2 frontBackHorizon = float2(dot(normalize(deltaPos), view_vec), dot(normalize(deltaPosBackface), view_vec));
     frontBackHorizon        = fast_acos2(frontBackHorizon);
@@ -172,7 +173,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float low_horizon_cos1  = cos(n - PI_HALF);
         float horizon_cos0      = low_horizon_cos0;
         float horizon_cos1      = low_horizon_cos1;
-        uint occlusion_bitfield = 0u;
+        uint occlusion_bitmask = 0u;
         [unroll]
         for (uint step = 0; step < g_steps; step++)
         {
@@ -208,17 +209,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             horizon_cos0 = max(horizon_cos0, shc0);
             horizon_cos1 = max(horizon_cos1, shc1);
 
-            // visibility bitmask for sample0 (negative dir)
-            float2 fbh0        = get_front_back_horizons(-1.0f, sample_delta0, view_vec, n);
-            occlusion_bitfield = update_sectors(fbh0.x, fbh0.y, occlusion_bitfield);
-
-            // visibility bitmask for sample1 (positive dir)
-            float2 fbh1        = get_front_back_horizons(1.0f, sample_delta1, view_vec, n);
-            occlusion_bitfield = update_sectors(fbh1.x, fbh1.y, occlusion_bitfield);
+            // visibility bitmask for sample0 (positive dir along +omega)
+            float2 fbh0       = get_front_back_horizons(1.0f, sample_delta0, view_vec, n);
+            occlusion_bitmask = update_sectors(fbh0.x, fbh0.y, occlusion_bitmask);
+            
+            // visibility bitmask for sample1 (negative dir along -omega)
+            float2 fbh1       = get_front_back_horizons(-1.0f, sample_delta1, view_vec, n);
+            occlusion_bitmask = update_sectors(fbh1.x, fbh1.y, occlusion_bitmask);
         }
 
        // compute slice visibility using bitmask (bits correspond to indivudal slice sectors)
-       float local_visibility  = (1.0f - float(countbits(occlusion_bitfield)) / float(g_sector_count));
+       float local_visibility  = (1.0f - float(countbits(occlusion_bitmask)) / float(g_sector_count));
        visibility             += local_visibility;
 
        // compute bent normal
