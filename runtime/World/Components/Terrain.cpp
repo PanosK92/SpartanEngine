@@ -555,7 +555,7 @@ namespace spartan
                 positions[static_cast<size_t>(iz + 1) * width + ix + 1].y += amount * w11;
             
                 // clamp heights to prevent extreme negative values
-                float min_height = parameters::level_sea - 50.0f; // minimum height to prevent extreme drops
+                float min_height = parameters::level_sea - 50.0f;
                 positions[static_cast<size_t>(iz) * width + ix].y         = max(positions[static_cast<size_t>(iz) * width + ix].y, min_height);
                 positions[static_cast<size_t>(iz) * width + ix + 1].y     = max(positions[static_cast<size_t>(iz) * width + ix + 1].y, min_height);
                 positions[static_cast<size_t>(iz + 1) * width + ix].y     = max(positions[static_cast<size_t>(iz + 1) * width + ix].y, min_height);

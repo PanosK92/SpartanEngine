@@ -679,6 +679,22 @@ namespace spartan
         return max(scale.x, scale.z) * 0.5f;
     }
 
+    Vector3 Physics::GetControllerTopLocal() const
+    {
+        if (m_body_type != BodyType::Controller || !m_controller)
+        {
+            SP_LOG_WARNING("Only applicable for controller bodies.");
+            return Vector3::Zero;
+        }
+        
+        PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+        float height                    = controller->getHeight();
+        float radius                    = controller->getRadius();
+        
+        // relative local position to the top of the capsule (from the capsule's center)
+        return Vector3(0.0f, (height * 0.5f) + radius, 0.0f);
+    }
+
     void Physics::SetStatic(bool is_static)
     {
         // return if state hasn't changed
@@ -760,7 +776,7 @@ namespace spartan
             desc.climbingMode     = PxCapsuleClimbingMode::eEASY; // easier handling on steps/slopes
             desc.stepOffset       = 0.3f; // keep under half a meter for better stepping
             desc.slopeLimit       = cosf(60.0f * math::deg_to_rad); // 60° climbable slope
-            desc.contactOffset    = 0.1f; // allows early contact without tunneling
+            desc.contactOffset    = 0.01f; // allows early contact without tunneling
             desc.upDirection      = PxVec3(0, 1, 0); // up is y
             desc.nonWalkableMode  = PxControllerNonWalkableMode::ePREVENT_CLIMBING_AND_FORCE_SLIDING;
             

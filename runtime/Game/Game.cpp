@@ -128,12 +128,12 @@ namespace spartan
                 physics_body->SetRestitution(0.1f);
                 physics_body->SetBodyType(BodyType::Controller);
 
-                // create the entity that will actual hold the camera component
+                // add a camera component
                 shared_ptr<Entity> camera = World::CreateEntity();
                 camera->SetObjectName("component_camera");
-                camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body);
+                camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body); // let the camera now that it should control the physics body
                 camera->SetParent(default_camera);
-                camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f)); // average european male
+                camera->SetPositionLocal(physics_body->GetControllerTopLocal());
                 camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
 

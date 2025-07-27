@@ -118,6 +118,7 @@ namespace spartan
         // dimensional properties
         float GetCapsuleVolume();
         float GetCapsuleRadius();
+        math::Vector3 GetControllerTopLocal() const;
 
         // static
         bool IsStatic() const { return m_is_static; }
