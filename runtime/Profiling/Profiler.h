@@ -33,12 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    enum class ProfilerGranularity
-    {
-        Light,
-        Full
-    };
-
     class Profiler
     {
     public:
@@ -79,10 +73,7 @@ namespace spartan
         static uint32_t m_rhi_bindings_render_target;
         static uint32_t m_rhi_bindings_texture_storage;
         static uint32_t m_rhi_bindings_pipeline;
-
-        // misc
-        static uint32_t m_descriptor_set_count;
-        static ProfilerGranularity GetGranularity();
+        static uint32_t m_rhi_descriptor_set_count;
 
     private:
         static void ReadTimeBlocks();

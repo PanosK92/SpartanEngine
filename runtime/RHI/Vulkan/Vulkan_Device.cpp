@@ -843,7 +843,7 @@ namespace spartan
             SP_ASSERT(descriptors::descriptor_pool == nullptr);
             SP_ASSERT_VK(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool));
 
-            Profiler::m_descriptor_set_count = 0;
+            Profiler::m_rhi_descriptor_set_count = 0;
         }
 
         void merge_descriptors(vector<RHI_Descriptor>& base_descriptors, const std::vector<RHI_Descriptor>& additional_descriptors)
@@ -1780,7 +1780,7 @@ namespace spartan
 
         // track allocations
         descriptors::allocated_descriptor_sets++;
-        Profiler::m_descriptor_set_count++;
+        Profiler::m_rhi_descriptor_set_count++;
     }
 
     void* RHI_Device::GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type)

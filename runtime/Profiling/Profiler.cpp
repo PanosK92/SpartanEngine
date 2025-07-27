@@ -53,14 +53,11 @@ namespace spartan
     uint32_t Profiler::m_rhi_bindings_render_target     = 0;
     uint32_t Profiler::m_rhi_bindings_texture_storage   = 0;
     uint32_t Profiler::m_rhi_bindings_pipeline          = 0;
-
-    // misc
-    uint32_t Profiler::m_descriptor_set_count = 0;
+    uint32_t Profiler::m_rhi_descriptor_set_count       = 0;
 
     namespace
     {
         // profiling options
-        ProfilerGranularity granularity = ProfilerGranularity::Light;
         const uint32_t max_timeblocks   = 256;
         bool profile_cpu                = true;
         bool profile_gpu                = true;
@@ -414,9 +411,9 @@ namespace spartan
         }
     }
 
-   void Profiler::DrawPerformanceMetrics()
+    void Profiler::DrawPerformanceMetrics()
     {
-        static char metrics_buffer[4096];
+        static string metrics_string;
         static float metrics_time_since_last_update = profiling_interval_sec;
     
         metrics_time_since_last_update += static_cast<float>(Timer::GetDeltaTimeSec());
@@ -424,89 +421,62 @@ namespace spartan
         {
             metrics_time_since_last_update = 0.0f;
     
-            snprintf(metrics_buffer, sizeof(metrics_buffer),
-                "FPS:\t\t\t%.1f\n"
-                "Time:\t\t%.2f ms\n"
-                "Frame:\t%llu\n\n"
-                "\t\t\t\tavg\t\t\tmin\t\t\tmax\t\tlast\n"
-                "Total:\t\t%05.2f\t\t%05.2f\t\t%05.2f\t\t%05.2f ms\n"
-                "CPU:\t\t%05.2f\t\t%05.2f\t\t%05.2f\t\t%05.2f ms\n"
-                "GPU:\t\t%05.2f\t\t%05.2f\t\t%05.2f\t\t%05.2f ms\n\n"
-                "GPU\n"
-                "Name:\t\t%s\n"
-                "Memory:\t%u/%u MB\n"
-                "API:\t\t\t\t%s\t%s\n"
-                "Driver:\t\t%s\t\t%s\n\n"
-                "CPU\n"
-                "Name:\t\t\t\t\t%s\n"
-                "Worker threads:\t%u/%u\n"
-                #ifdef __AVX2__
-                "AVX2:\t\t\t\t\t\tYes\n"
-                #else
-                "AVX2:\t\t\t\t\t\tNo\n"
-                #endif
-                "\nDisplay\n"
-                "Name:\t\t\t%s\n"
-                "Hz:\t\t\t\t\t%.1f\n"
-                "HDR:\t\t\t\t%s\n"
-                "Max nits:\t\t%u\n"
-                "Render:\t\t\t%u x %u - %.0f%%\n"
-                "Output:\t\t\t%u x %u\n"
-                "Viewport:\t\t%u x %u\n\n"
-                "Graphics API\n"
-                "Draw:\t\t\t\t\t\t\t\t\t\t%u\n"
-                "Index buffer bindings:\t\t%u\n"
-                "Vertex buffer bindings:\t\t%u\n"
-                "Barriers:\t\t\t\t\t\t\t\t\t%u\n"
-                "Bindings from pipelines:\t%u/%u\n"
-                "Descriptor set capacity:\t%u/%u",
-
-                m_fps,
-                time_frame_avg,
-                Renderer::GetFrameNumber(),
-
-                time_frame_avg, time_frame_min, time_frame_max, time_frame_last,
-                time_cpu_avg, time_cpu_min, time_cpu_max, time_cpu_last,
-                time_gpu_avg, time_gpu_min, time_gpu_max, time_gpu_last,
-
-                gpu_name.c_str(),
-                gpu_memory_used, gpu_memory_available,
-                RHI_Context::api_type_str.c_str(), gpu_api.c_str(),
-                RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName().c_str(), gpu_driver.c_str(),
-
-                cpu_name.c_str(),
-                ThreadPool::GetWorkingThreadCount(), ThreadPool::GetThreadCount(),
-
-                Display::GetName(),
-                Display::GetRefreshRate(),
-                Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
-                static_cast<uint32_t>(Display::GetLuminanceMax()),
-
-                static_cast<uint32_t>(Renderer::GetResolutionRender().x),
-                static_cast<uint32_t>(Renderer::GetResolutionRender().y),
-                Renderer::GetOption<float>(Renderer_Option::ResolutionScale) * 100.0f,
-
-                static_cast<uint32_t>(Renderer::GetResolutionOutput().x),
-                static_cast<uint32_t>(Renderer::GetResolutionOutput().y),
-                
-                static_cast<uint32_t>(Renderer::GetViewport().width),
-                static_cast<uint32_t>(Renderer::GetViewport().height),
-
-                m_rhi_draw,
-                m_rhi_bindings_buffer_index,
-                m_rhi_bindings_buffer_vertex,
-                m_rhi_pipeline_barriers,
-                m_rhi_bindings_pipeline, RHI_Device::GetPipelineCount(),
-                m_descriptor_set_count, rhi_max_descriptor_set_count
-            );
+            stringstream ss;
+            ss << fixed << setprecision(1);
+    
+            // fps and frame info
+            ss << "FPS:\t\t\t" << m_fps << "\n";
+            ss << setprecision(2);
+            ss << "Time:\t\t" << time_frame_avg << " ms\n";
+            ss << "Frame:\t" << Renderer::GetFrameNumber() << "\n\n";
+    
+            // timings table
+            ss << "\t\t\t\tavg\t\tmin\t\tmax\tlast\n";
+            ss << "Total:\t\t" << time_frame_avg << "\t\t" << time_frame_min << "\t\t" << time_frame_max << "\t\t" << time_frame_last << " ms\n";
+            ss << "CPU:\t\t" << time_cpu_avg << "\t\t" << time_cpu_min << "\t\t" << time_cpu_max << "\t\t" << time_cpu_last << " ms\n";
+            ss << "GPU:\t\t" << time_gpu_avg << "\t\t" << time_gpu_min << "\t\t" << time_gpu_max << "\t\t" << time_gpu_last << " ms\n\n";
+    
+            // gpu section
+            ss << "GPU\n";
+            ss << "Name:\t\t" << gpu_name << "\n";
+            ss << "Memory:\t" << gpu_memory_used << "/" << gpu_memory_available << " MB\n";
+            ss << "API:\t\t\t\t" << RHI_Context::api_type_str << "\t" << gpu_api << "\n";
+            ss << "Driver:\t\t" << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << "\n\n";
+    
+            // cpu section
+            ss << "CPU\n";
+            ss << "Name:\t\t\t\t\t" << cpu_name << "\n";
+            ss << "Worker threads:\t" << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << "\n";
+        #ifdef __AVX2__
+            ss << "AVX2:\t\t\t\t\t\tYes\n";
+        #else
+            ss << "AVX2:\t\t\t\t\t\tNo\n";
+        #endif
+            ss << "\n";
+    
+            // display section
+            ss << "Display\n";
+            ss << "Name:\t\t\t" << Display::GetName() << "\n";
+            ss << "Hz:\t\t\t\t\t" << Display::GetRefreshRate() << "\n";
+            ss << "HDR:\t\t\t\t" << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << "\n";
+            ss << "Max nits:\t\t" << static_cast<uint32_t>(Display::GetLuminanceMax()) << "\n";
+            ss << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << " x " << static_cast<uint32_t>(Renderer::GetResolutionRender().y) << " - " << (Renderer::GetOption<float>(Renderer_Option::ResolutionScale) * 100.0f) << "%\n";
+            ss << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << " x " << static_cast<uint32_t>(Renderer::GetResolutionOutput().y) << "\n";
+            ss << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width) << " x " << static_cast<uint32_t>(Renderer::GetViewport().height) << "\n\n";
+    
+            // graphics api section
+            ss << "Graphics API\n";
+            ss << "Draw:\t\t\t\t\t\t\t\t\t\t" << m_rhi_draw << "\n";
+            ss << "Index buffer bindings:\t\t" << m_rhi_bindings_buffer_index << "\n";
+            ss << "Vertex buffer bindings:\t\t" << m_rhi_bindings_buffer_vertex << "\n";
+            ss << "Barriers:\t\t\t\t\t\t\t\t\t" << m_rhi_pipeline_barriers << "\n";
+            ss << "Bindings from pipelines:\t" << m_rhi_bindings_pipeline << "/" << RHI_Device::GetPipelineCount() << "\n";
+            ss << "Descriptor set capacity:\t" << m_rhi_descriptor_set_count << "/" << rhi_max_descriptor_set_count;
+    
+            metrics_string = ss.str();
         }
     
-        // draw directly from the static buffer
-        Renderer::DrawString(string(metrics_buffer), math::Vector2(0.005f, 0.02f));
-    }
-
-    ProfilerGranularity Profiler::GetGranularity()
-    {
-        return granularity;
+        // draw directly from the static string
+        Renderer::DrawString(metrics_string, math::Vector2(0.005f, 0.02f));
     }
 }
