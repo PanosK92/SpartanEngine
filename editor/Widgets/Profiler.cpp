@@ -40,10 +40,14 @@ namespace
         const float duration    = time_block.GetDuration();
         const float fraction    = duration / 10.0f;
         const float width       = fraction * ImGui::GetContentRegionAvail().x;
-        const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram];
         const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
         const ImVec2 pos        = ImGui::GetCursorPos();
         const float text_height = ImGui::CalcTextSize(name, nullptr, true).y;
+
+        // Generate a unique color based on name hash
+        size_t hash_value = hash<string>{}(name);
+        float hue = static_cast<float>(hash_value % 360) / 360.0f;
+        ImVec4 color = ImColor::HSV(hue, 0.6f, 0.6f);
 
         // rectangle
         ImGui::GetWindowDrawList()->AddRectFilled(pos_screen, ImVec2(pos_screen.x + width, pos_screen.y + text_height), IM_COL32(color.x * 255, color.y * 255, color.z * 255, 255));
@@ -123,9 +127,9 @@ void Profiler::OnTickVisible()
     if (mode_sort == 1) // sort by Duration, descending
     {
         sort(time_blocks.begin(), time_blocks.end(), [](const spartan::TimeBlock& a, const spartan::TimeBlock& b)
-            {
-                return a.GetDuration() > b.GetDuration(); // Note: Changed from < to > for descending order
-            });
+        {
+            return a.GetDuration() > b.GetDuration();
+        });
     }
     else if (mode_sort == 0) // sort Alphabetically
     {
@@ -142,7 +146,7 @@ void Profiler::OnTickVisible()
             continue;
 
         if (!time_blocks[i].IsComplete())
-            return;
+            continue;
 
         show_time_block(time_blocks[i]);
     }
