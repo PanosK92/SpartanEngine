@@ -271,20 +271,10 @@ namespace spartan::geometry_processing
                 size_t triangle_count = index_count / 3;
                 float density         = static_cast<float>(triangle_count) / volume;
 
-                // set target based on density
-                size_t target_index_count = index_count; // default: no simplification
-                if (density > 1000.0f)
-                {
-                    target_index_count = static_cast<size_t>(index_count * 0.2f); // aggressive for very dense
-                }
-                else if (density > 500.0f)
-                {
-                    target_index_count = static_cast<size_t>(index_count * 0.4f); // moderate for medium density
-                }
-                else
-                {
-                    target_index_count = static_cast<size_t>(index_count * 0.8f); // conservative for low density
-                }
+                // compute reduction ratio based on density (linearly interpolate: ratio = 0.8 at density = 500, 0.2 at density = 1000)
+                float ratio                = 0.8f - (density - 500.0f) * (0.6f / 500.0f); // 0.6 = 0.8 - 0.2, 500 = 1000 - 500
+                ratio                      = std::max(0.2f, std::min(0.8f, ratio));       // clamp within a reasonable range
+                size_t target_index_count  = static_cast<size_t>(index_count * ratio);
 
                 simplify(indices, vertices, target_index_count, false);
 
@@ -292,9 +282,6 @@ namespace spartan::geometry_processing
                 vertex_count = vertices.size();
             }
         }
-
-        // update vertex_count if you remap post-simplify (optional)
-        vertex_count = vertices.size(); // May not change
 
         // step 3: vertex cache optimization
         meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
