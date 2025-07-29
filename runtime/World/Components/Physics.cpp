@@ -826,10 +826,16 @@ namespace spartan
                 }
 
                 // simplify geometry
-                float simplification_ratio = 0.1f; // keep 10% of the original indices
-                size_t target_index_count  = static_cast<size_t>(indices.size() * simplification_ratio);
-                target_index_count         = max<size_t>(target_index_count, 512); // prevent over-simplification
-                geometry_processing::simplify(indices, vertices, target_index_count, false);
+                const float volume        = renderable->GetBoundingBox().GetVolume();
+                const float max_volume    = 100000.0f;
+                const float volume_factor = clamp(volume / max_volume, 0.0f, 1.0f); // aka simplification ratio
+                size_t min_index_count    = min<size_t>(indices.size(), 256);
+                size_t target_index_count = clamp<size_t>(indices.size() * volume_factor, min_index_count, 16'000);
+                geometry_processing::simplify(indices, vertices, target_index_count, false, false);
+                if (target_index_count > 16000)
+                {
+                    SP_LOG_WARNING("Mesh '%s' was simplified to %d indices. It's still complex and may impact physics performance.", renderable->GetEntity()->GetObjectName().c_str(), target_index_count);
+                }
 
                 // convert vertices to physx format
                 vector<PxVec3> px_vertices;

@@ -63,7 +63,6 @@ namespace spartan
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
-        bool HasMesh() const { return m_mesh != nullptr; }
         bool IsSolid() const;
 
         // bounding box

@@ -94,7 +94,7 @@ namespace spartan
             Vector3 GetCenter() const  { return (m_max + m_min) * 0.5f; }
             Vector3 GetSize() const    { return m_max - m_min; }
             Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
-            float Volume() const
+            float GetVolume() const
             {
                 Vector3 size = GetSize();
                 return size.x * size.y * size.z;

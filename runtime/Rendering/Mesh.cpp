@@ -260,7 +260,7 @@ namespace spartan
         SubMesh sub_mesh;
         uint32_t current_sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size());
         m_sub_meshes.push_back(sub_mesh); // add it to the list so AddLod() can access it
-    
+
         // lod 0: original geometry
         {
             // optimize original geometry if flagged
@@ -275,7 +275,7 @@ namespace spartan
             // determine if it's solid
             m_sub_meshes[current_sub_mesh_index].is_solid = is_solid(*this, current_sub_mesh_index);
         }
-    
+
         // generate additional LODs if requested
         if (generate_lods && !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
         {
@@ -307,8 +307,9 @@ namespace spartan
                     size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_indices.size() * target_fraction));
             
                     // simplify geometry
+                    bool preserve_uvs   = true;
                     bool preserve_edges = m_flags & static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges);
-                    geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_edges);
+                    geometry_processing::simplify(lod_indices, lod_vertices, target_index_count, preserve_uvs, preserve_edges);
             
                     // check if simplification reduced the index count; if not, stop
                     if (lod_indices.size() >= prev_indices.size())

@@ -51,6 +51,7 @@ namespace spartan::geometry_processing
         std::vector<uint32_t>& indices,
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         size_t target_index_count,
+        const bool preserve_uvs,  // typically true, and false for anything that doesn't need to be rendererd, say physics meshes
         const bool preserve_edges // ideal for terrain tiles, where you want the edges to remain intact, so they meet with neighboring tiles
     )
     {
@@ -108,21 +109,27 @@ namespace spartan::geometry_processing
             }
         }
     
-        // prepare attribute buffer for uvs (packed as float2 per vertex)
+        // prepare attribute buffer for uvs (packed as float2 per vertex) if preserve_uvs is true
         std::vector<float> attr_buffer;
-        attr_buffer.reserve(vertex_count * 2); // 2 components per uv
-        for (const auto& v : vertices)
-        {
-            attr_buffer.push_back(v.tex[0]);
-            attr_buffer.push_back(v.tex[1]);
-        }
-        const float* vertex_attributes = attr_buffer.data();
-        size_t       attr_stride       = sizeof(float) * 2; // packed float2
+        const float* vertex_attributes = nullptr;
+        size_t attr_stride = 0;
+        size_t attr_count = 0;
+        static constexpr float uv_weights[2] = {0.5f, 0.5f}; // weights for uv components
+        const float* attr_weights = nullptr;
     
-        // weights for uv components (start with moderate; tune higher for better preservation)
-        static constexpr float uv_weights[2] = {0.5f, 0.5f}; // e.g., 1.0f for both if uvs are critical
-        const float*           attr_weights  = uv_weights;
-        size_t                 attr_count    = 2; // if adding normals: attr_count +=3; push nor.x/y/z, weights like {0.5f,0.5f,0.5f,0.5f for uv, 0.2f for normals}
+        if (preserve_uvs)
+        {
+            attr_buffer.reserve(vertex_count * 2); // 2 components per uv
+            for (const auto& v : vertices)
+            {
+                attr_buffer.push_back(v.tex[0]);
+                attr_buffer.push_back(v.tex[1]);
+            }
+            vertex_attributes = attr_buffer.data();
+            attr_stride = sizeof(float) * 2; // packed float2
+            attr_weights = uv_weights;
+            attr_count = 2; // uv components
+        }
     
         // get locks or nullptr
         const unsigned char* locks = preserve_edges && !vertex_locks.empty() ? vertex_locks.data() : nullptr;
@@ -204,12 +211,12 @@ namespace spartan::geometry_processing
             }
         }
     
-        // we early exit for 16 or less indices, but agressive simplification still has a small probability of collapsing to no indices - if that happens, assert and improve the function
+        // we early exit for 16 or less indices, but aggressive simplification still has a small probability of collapsing to no indices - if that happens, assert and improve the function
         SP_ASSERT(!indices.empty());
     
         // optimize the vertex buffer
         std::vector<RHI_Vertex_PosTexNorTan> new_vertices(vertices.size());
-        size_t                               new_vertex_count = meshopt_optimizeVertexFetch(
+        size_t new_vertex_count = meshopt_optimizeVertexFetch(
             new_vertices.data(),
             indices.data(),
             index_count,
@@ -276,7 +283,7 @@ namespace spartan::geometry_processing
                 ratio                      = std::max(0.2f, std::min(0.8f, ratio));       // clamp within a reasonable range
                 size_t target_index_count  = static_cast<size_t>(index_count * ratio);
 
-                simplify(indices, vertices, target_index_count, false);
+                simplify(indices, vertices, target_index_count, true, false);
 
                 index_count  = indices.size();
                 vertex_count = vertices.size();
