@@ -241,24 +241,62 @@ namespace spartan::geometry_processing
             vertex_count = vertex_count_optimized;
         }
 
-        // sStep 2: simplify first to reduce complexity
+        // step 2: simplify with density-based targeting
+        if (index_count > 30000)
         {
-            auto get_target_index_count = [](size_t index_count)
+            // compute bounding box for density calculation
+            float min_x = std::numeric_limits<float>::max();
+            float max_x = std::numeric_limits<float>::lowest();
+            float min_y = std::numeric_limits<float>::max();
+            float max_y = std::numeric_limits<float>::lowest();
+            float min_z = std::numeric_limits<float>::max();
+            float max_z = std::numeric_limits<float>::lowest();
+            for (const auto& vertex : vertices)
             {
-                if (index_count > 100000) return static_cast<size_t>(index_count * 0.1f);
-                if (index_count > 50000)  return static_cast<size_t>(index_count * 0.3f);
-                if (index_count > 20000)  return static_cast<size_t>(index_count * 0.5f);
-                if (index_count > 10000)  return static_cast<size_t>(index_count * 0.7f);
-                return index_count;
-            };
+                min_x = std::min(min_x, vertex.pos[0]);
+                max_x = std::max(max_x, vertex.pos[0]);
+                min_y = std::min(min_y, vertex.pos[1]);
+                max_y = std::max(max_y, vertex.pos[1]);
+                min_z = std::min(min_z, vertex.pos[2]);
+                max_z = std::max(max_z, vertex.pos[2]);
+            }
+            float extent_x = max_x - min_x;
+            float extent_y = max_y - min_y;
+            float extent_z = max_z - min_z;
+            float volume   = extent_x * extent_y * extent_z;
 
-            simplify(indices, vertices, get_target_index_count(index_count), false);
+            if (volume > 0.0f)
+            {
+                // compute triangle density (triangles per unit volume)
+                size_t triangle_count = index_count / 3;
+                float density         = static_cast<float>(triangle_count) / volume;
 
-            index_count  = indices.size();
-            vertex_count = vertices.size();
+                // set target based on density
+                size_t target_index_count = index_count; // default: no simplification
+                if (density > 1000.0f)
+                {
+                    target_index_count = static_cast<size_t>(index_count * 0.2f); // aggressive for very dense
+                }
+                else if (density > 500.0f)
+                {
+                    target_index_count = static_cast<size_t>(index_count * 0.4f); // moderate for medium density
+                }
+                else
+                {
+                    target_index_count = static_cast<size_t>(index_count * 0.8f); // conservative for low density
+                }
+
+                simplify(indices, vertices, target_index_count, false);
+
+                index_count  = indices.size();
+                vertex_count = vertices.size();
+            }
         }
 
-        // step 3: vertex Cache optimization
+        // update vertex_count if you remap post-simplify (optional)
+        vertex_count = vertices.size(); // May not change
+
+        // step 3: vertex cache optimization
         meshopt_optimizeVertexCache(indices.data(), indices.data(), index_count, vertex_count);
     
         // step 4: overdraw optimization
@@ -269,12 +307,12 @@ namespace spartan::geometry_processing
     }
 
     static void split_surface_into_tiles(
-    const std::vector<RHI_Vertex_PosTexNorTan>& terrain_vertices,
-    const std::vector<uint32_t>& terrain_indices,
-    const uint32_t tile_count,
-    std::vector<std::vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
-    std::vector<std::vector<uint32_t>>& tiled_indices,
-    std::vector<math::Vector3>& tile_offsets
+        const std::vector<RHI_Vertex_PosTexNorTan>& terrain_vertices,
+        const std::vector<uint32_t>& terrain_indices,
+        const uint32_t tile_count,
+        std::vector<std::vector<RHI_Vertex_PosTexNorTan>>& tiled_vertices,
+        std::vector<std::vector<uint32_t>>& tiled_indices,
+        std::vector<math::Vector3>& tile_offsets
     )
     {
         // find terrain bounds
