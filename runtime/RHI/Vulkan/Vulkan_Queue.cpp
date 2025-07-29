@@ -115,9 +115,6 @@ namespace spartan
 
     void RHI_Queue::Wait(const bool flush)
     {
-        // the engine can employ multiple threads for things like laoding assets, which will need staging buffers
-        lock_guard<mutex> lock(get_mutex(this));
-
         // ensure that any submitted command lists have completed execution
         for (auto& cmd_list : m_cmd_lists)
         {
@@ -139,6 +136,9 @@ namespace spartan
                 cmd_list->Begin();
             }
         }
+
+        // lock here, after the potential submit (above), to avoid a deadlock (shared mutex)
+        lock_guard<mutex> lock(get_mutex(this));
 
         SP_ASSERT_VK(vkQueueWaitIdle(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type))));
     }
