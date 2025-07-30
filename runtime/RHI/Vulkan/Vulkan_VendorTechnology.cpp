@@ -1366,8 +1366,8 @@ namespace spartan
         amd::ssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_reflection_source->GetHeight() * resolution_scale);
 
         // set sssr specific parameters
-        amd::ssr::description_dispatch.motionVectorScale.x                  = 1.0f; // expects [-0.5, 0.5] range
-        amd::ssr::description_dispatch.motionVectorScale.y                  = 1.0f; // expects [-0.5, 0.5] range, +Y as top-down
+        amd::ssr::description_dispatch.motionVectorScale.x                  = 0.25f;  // convert ndc x-velocity delta[-2, 2] to SSSR texture space [-0.5, 0.5] by dividing by 4
+        amd::ssr::description_dispatch.motionVectorScale.y                  = -0.25f; // convert ndc y-velocity delta[-2, 2] to [-0.5, 0.5] and flip Y (NDC +Y up to SSSR +Y down)
         amd::ssr::description_dispatch.normalUnPackMul                      = 1.0f;
         amd::ssr::description_dispatch.normalUnPackAdd                      = 0.0f;
         amd::ssr::description_dispatch.depthBufferThickness                 = 0.2f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
@@ -1375,13 +1375,13 @@ namespace spartan
         amd::ssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         amd::ssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running
         amd::ssr::description_dispatch.mostDetailedMip                      = 0;
-        amd::ssr::description_dispatch.temporalStabilityFactor              = 0.7f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        amd::ssr::description_dispatch.temporalStabilityFactor              = 0.6f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         amd::ssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         amd::ssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
         amd::ssr::description_dispatch.iblFactor                            = 0.0f;
         amd::ssr::description_dispatch.roughnessChannel                     = 0;
         amd::ssr::description_dispatch.isRoughnessPerceptual                = true;
-        amd::ssr::description_dispatch.roughnessThreshold                   = 0.8f;  // regions with a roughness value greater than this threshold won't spawn rays
+        amd::ssr::description_dispatch.roughnessThreshold                   = 0.5f;  // regions with a roughness value greater than this threshold won't spawn rays
 
         // set camera matrices
         amd::set_float16(amd::ssr::description_dispatch.view,               amd::view);

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // constants
 static const float g_ao_radius    = 1.5f;
 static const float g_ao_intensity = 1.0f;
-static const uint g_directions    = 4;
+static const uint g_directions    = 3;
 static const uint g_steps         = 3;
 static const uint g_sector_count  = 32;
 static const float g_thickness    = 1.0f;
