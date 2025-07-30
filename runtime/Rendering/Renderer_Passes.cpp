@@ -1241,6 +1241,10 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip_index_small, 1);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip_index_big, 1);
 
+                 // set pass constants
+                m_pcb_pass_cpu.set_f3_value(mip_index_small, 0.0f, 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
                 // Blend
                 uint32_t thread_group_count    = 8;
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(ceil(static_cast<float>(mip_width_large) / thread_group_count));

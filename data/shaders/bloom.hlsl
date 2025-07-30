@@ -30,7 +30,7 @@ float3 threshold(float3 color)
     const float MAX_BRIGHTNESS  = 60.0;
 
     color               = min(color, MAX_BRIGHTNESS);
-    float brightness    = dot(color, float3(0.2126, 0.7152, 0.0722));
+    float brightness    = dot(color, float3(0.2126, 0.7152, 0.0722)); // luminance for accuracy
     float soft          = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
     soft                = clamp(soft, 0, 2 * BLOOM_SOFT_KNEE);
     soft                = soft * soft / (4 * BLOOM_SOFT_KNEE + FLT_MIN);
@@ -38,7 +38,7 @@ float3 threshold(float3 color)
     contribution       /= max(brightness, FLT_MIN);
     color               = color * contribution;
 
-    // karis average for firefly reduction
+    // Karis average for firefly reduction
     float luma          = dot(color, float3(0.2126, 0.7152, 0.0722));
     color               /= (1.0 + luma);
 
@@ -47,7 +47,7 @@ float3 threshold(float3 color)
 
 float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
-    const float BLOOM_SPREAD = 0.5f;
+    float BLOOM_SPREAD = pass_get_f3_value().x; // Dynamic spread passed per mip for variable blurring
 
     // 9-tap tent filter for quality upsampling
     float3 c0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0, -1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
