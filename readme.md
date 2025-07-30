@@ -45,7 +45,7 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 
 | Showroom |
 |:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_gran_turismo.jpg"/><br>Gran Turismo 7 Brand Central |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom.png"/><br>Showroom (Gran Turismo 7 Brand Central) |
 
 # Features
 
