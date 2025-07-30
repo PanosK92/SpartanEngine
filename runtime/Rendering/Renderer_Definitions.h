@@ -189,6 +189,7 @@ namespace spartan
         ffx_spd_average_c,
         ffx_spd_min_c,
         ffx_spd_max_c,
+        ffx_spd_luminance_c,
         blit_c,
         occlusion_c,
         icon_c,
@@ -308,7 +309,8 @@ namespace spartan
     {
         Min,
         Max,
-        Average
+        Average,
+        Luminance
     };
 
     class Renderable;

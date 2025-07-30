@@ -1216,7 +1216,7 @@ namespace spartan
         cmd_list->EndMarker();
 
         // generate mips
-        Pass_Downscale(cmd_list, tex_bloom, Renderer_DownsampleFilter::Average);
+        Pass_Downscale(cmd_list, tex_bloom, Renderer_DownsampleFilter::Luminance);
 
         // starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1241,11 +1241,7 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip_index_small, 1);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip_index_big, 1);
 
-                 // set pass constants
-                m_pcb_pass_cpu.set_f3_value(mip_index_small, 0.0f, 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                // Blend
+                // blend
                 uint32_t thread_group_count    = 8;
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(ceil(static_cast<float>(mip_width_large) / thread_group_count));
                 uint32_t thread_group_count_y_ = static_cast<uint32_t>(ceil(static_cast<float>(mip_height_height) / thread_group_count));
@@ -1545,8 +1541,9 @@ namespace spartan
 
         // acquire shader
         Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
-        shader                 = filter == Renderer_DownsampleFilter::Min ? Renderer_Shader::ffx_spd_min_c : shader;
-        shader                 = filter == Renderer_DownsampleFilter::Max ? Renderer_Shader::ffx_spd_max_c : shader;
+        shader                 = filter == Renderer_DownsampleFilter::Min       ? Renderer_Shader::ffx_spd_min_c       : shader;
+        shader                 = filter == Renderer_DownsampleFilter::Max       ? Renderer_Shader::ffx_spd_max_c       : shader;
+        shader                 = filter == Renderer_DownsampleFilter::Luminance ? Renderer_Shader::ffx_spd_luminance_c : shader;
         RHI_Shader* shader_c   = GetShader(shader);
 
         cmd_list->BeginMarker("downscale");

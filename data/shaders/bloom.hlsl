@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 threshold(float3 color)
 {
-    const float BLOOM_THRESHOLD = 4.5;
+    const float BLOOM_THRESHOLD = 4.3;
     const float BLOOM_SOFT_KNEE = 0.5;
-    const float MAX_BRIGHTNESS  = 60.0;
+    const float MAX_BRIGHTNESS  = 10.0;
 
     color               = min(color, MAX_BRIGHTNESS);
     float brightness    = dot(color, float3(0.2126, 0.7152, 0.0722)); // luminance for accuracy
@@ -47,7 +47,7 @@ float3 threshold(float3 color)
 
 float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
-    float BLOOM_SPREAD = pass_get_f3_value().x; // dynamic spread passed per mip for variable blurring - this is to make the larger mips cover most of the 
+    const float BLOOM_SPREAD = 4.0f;
 
     // 9-tap tent filter for quality upsampling
     float3 c0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0, -1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);

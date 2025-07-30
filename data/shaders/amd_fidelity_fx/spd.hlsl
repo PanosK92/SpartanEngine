@@ -63,15 +63,32 @@ void SpdStoreIntermediate(AU1 x, AU1 y, AF4 value)
 
 AF4 SpdReduce4(AF4 s1, AF4 s2, AF4 s3, AF4 s4)
 {
+    AF4 output;
     #if AVERAGE
-        return (s1 + s2 + s3 + s4) * 0.25f;
+        output = (s1 + s2 + s3 + s4) * 0.25f;
     #elif MIN
-        return min(min(s1, s2), min(s3, s4));
+        output = min(min(s1, s2), min(s3, s4));
     #elif MAX
-        return max(max(s1, s2), max(s3, s4));
+        output = max(max(s1, s2), max(s3, s4));
+    #elif LUMINANCE
+        float3 luma_weights = float3(0.2126, 0.7152, 0.0722);
+        float l1            = dot(s1.rgb, luma_weights);
+        float l2            = dot(s2.rgb, luma_weights);
+        float l3            = dot(s3.rgb, luma_weights);
+        float l4            = dot(s4.rgb, luma_weights);
+        float w1            = 1.0 / (1.0 + l1);
+        float w2            = 1.0 / (1.0 + l2);
+        float w3            = 1.0 / (1.0 + l3);
+        float w4            = 1.0 / (1.0 + l4);
+        float weight_sum    = w1 + w2 + w3 + w4;
+        float3 weighted_avg = (w1 * s1.rgb + w2 * s2.rgb + w3 * s3.rgb + w4 * s4.rgb) / (weight_sum + FLT_MIN);
+        float avg_alpha     = (s1.a + s2.a + s3.a + s4.a) * 0.25f;
+        output              = float4(weighted_avg, avg_alpha);
     #endif
-    return 0.0f;
+    
+    return output;
 }
+
 void SpdIncreaseAtomicCounter(AU1 slice)
 {
     InterlockedAdd(g_atomic_counter[0], 1, spd_counter);
