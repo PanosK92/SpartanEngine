@@ -310,221 +310,109 @@ namespace spartan
 
     namespace car
     {
-        void create(const Vector3& position, const bool physics)
+        void create(const Vector3& position, const bool physics, shared_ptr<RHI_Texture> texture_paint_normal)
         {
-            const float car_scale   = 0.0180f;
-            const float wheel_scale = 0.3f;
-
             // load full detail model (no vertex/index optimizations)
             uint32_t mesh_flags = Mesh::GetDefaultFlags();
-            mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize); 
+            mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
             
-            if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf", mesh_flags))
+            if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags))
             {
-                shared_ptr<Entity> entity_car = mesh_car->GetRootEntity().lock();
-                entity_car->SetObjectName("geometry");
-                entity_car->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, -180.0f));
-                entity_car->SetScale(Vector3(car_scale));
-            
-                // the car is defined with a weird rotation (probably a bug with sketchfab auto converting to gltf)
-                // so we create a root which has no rotation and we parent the car to it, then attach the physics body to the root
-                default_car = World::CreateEntity();
-                default_car->SetObjectName("toyota_ae86_sprinter_trueno");
-                entity_car->SetParent(default_car);
-            
-                // body
+                default_car = mesh_car->GetRootEntity().lock();
+                default_car->SetObjectName("ferrari_laferrari");
+                default_car->SetScale(2.0f);
+                default_car->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
+
+                // material adjustments
                 {
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Primary_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
+                   // body main
+                   if (Material* material = default_car->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                       material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                       material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.5f);
+                       material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
+
+                       material->SetTexture(MaterialTextureType::Normal, texture_paint_normal);
+                       material->SetProperty(MaterialProperty::Normal, 0.08f);
+                       material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
+                       material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
+                   }
+
+                   // body metallic/carbon parts
+                   if (Material* material = default_car->GetDescendantByName("Object_10")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                   }
+
+                   // tires
+                   {
+                        if (Material* material = default_car->GetDescendantByName("Object_127")->GetComponent<Renderable>()->GetMaterial())
                         {
-                            material->SetColor(Color::material_aluminum);
-                            material->SetProperty(MaterialProperty::Roughness, 0.08f);
-                            material->SetProperty(MaterialProperty::Metalness, 0.15f);
-                            material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                            material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
+                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
                         }
-                    }
-                    
-                    if (Entity* body = entity_car->GetDescendantByName("CarBody_Mirror_0"))
-                    {
-                        if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetColor(Color::standard_black);
-                            material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                        }
-                    }
-                    
-                    // plastic
-                    {
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Secondary_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            }
-                        }
-
-                        if (Entity* body = entity_car->GetDescendantByName("CarBody_Trim1_0"))
-                        {
-                            if (Material* material = body->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetColor(Color::material_tire);
-                                material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                            }
-                        }
-                    }
-                }
-
-                // interior
-                {
-                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetTexture(MaterialTextureType::Roughness, nullptr);
-                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                    }
-
-                    if (Material* material = entity_car->GetDescendantByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::Roughness, 0.8f);
-                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                    }
-                }
-
-                // lights
-                {
-                    if (Material* material = entity_car->GetDescendantByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_glass);
-                        material->SetProperty(MaterialProperty::Roughness, 0.2f);
-                        material->SetTexture(MaterialTextureType::Emission, material->GetTexture(MaterialTextureType::Color));
-                    }
-
-                    // plastic covers
-                    if (Material* material = entity_car->GetDescendantByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Roughness, 0.35f);
-                        material->SetColor(Color::material_tire);
-                    }
-                }
-
-                // add physics body
-                if (physics)
-                {
-                    //PhysicsBody* physics_body = default_car->AddComponent<PhysicsBody>();
-                    //physics_body->SetCenterOfMass(Vector3(0.0f, 1.2f, 0.0f));
-                    //physics_body->SetBoundingBox(Vector3(3.0f, 1.9f, 7.0f));
-                    //physics_body->SetMass(960.0f); // http://www.j-garage.com/toyota/ae86.html
-                    //physics_body->SetBodyType(PhysicsBodyType::Vehicle);
-                    //physics_body->SetShapeType(PhysicsShape::Box);
-                    //
-                    //// disable car control (it's toggled via the gameplay code in Tick())
-                    //physics_body->GetCar()->SetControlEnabled(false);
-                    //
-                    //// set the steering wheel to the physics body so that it can rotate it
-                    //if (Entity* entity_steering_wheel = entity_car->GetDescendantByName("SteeringWheel_SteeringWheel_0"))
-                    //{
-                    //    physics_body->GetCar()->SetSteeringWheelTransform(entity_steering_wheel);
-                    //}
-                }
-
-                // disable entities
-                if (physics)
-                {
-                    // disable all the wheels since they have weird rotations, we will add our own
-                    {
-                        entity_car->GetDescendantByName("FL_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FL_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FL_Wheel_TireMaterial_0")->SetActive(false);
-                       
-
-                        entity_car->GetDescendantByName("FR_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FR_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("FR_Wheel_TireMaterial_0")->SetActive(false);
-                       
-
-                        entity_car->GetDescendantByName("RL_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RL_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RL_Wheel_TireMaterial_0")->SetActive(false);
                         
+                        if (Material* material = default_car->GetDescendantByName("Object_142")->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                        }
 
-                        entity_car->GetDescendantByName("RR_Wheel_RimMaterial_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RR_Wheel_Brake Disc_0")->SetActive(false);
-                        entity_car->GetDescendantByName("RR_Wheel_TireMaterial_0")->SetActive(false);
-                       
-                    }
+                        if (Material* material = default_car->GetDescendantByName("Object_157")->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                        }
+
+                        if (Material* material = default_car->GetDescendantByName("Object_172")->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                        }
+
+                   }
+
+                   // rims back
+                   if (Material* material = default_car->GetDescendantByName("Object_180")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                       material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                   }
+
+                   // rims front
+                   if (Material* material = default_car->GetDescendantByName("Object_150")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                       material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                   }
+
+                   // headlight and taillight glass
+                   if (Material* material = default_car->GetDescendantByName("Object_38")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                   }
+
+                   // front (windshield) and back (engine) glass
+                   if (Material* material = default_car->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                   }
+
+                   // side mirror glass
+                   if (Material* material = default_car->GetDescendantByName("Object_98")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                   }
+
+                   // engine block metal
+                   if (Material* material = default_car->GetDescendantByName("Object_14")->GetComponent<Renderable>()->GetMaterial())
+                   {
+                       material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                   }
                 }
-
-                // these have messed up rotations, fix later
-                entity_car->GetDescendantByName("FL_Caliper_BrakeCaliper_0")->SetActive(false);
-                entity_car->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->SetActive(false);
-                entity_car->GetDescendantByName("RL_Caliper_BrakeCaliper_0")->SetActive(false);
-                entity_car->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->SetActive(false);
-
-                // set the position last so that transforms all the way down to the new wheels are updated
-                default_car->SetPosition(position);
             }
-
-             // load our own wheel
-             if (physics)
-             { 
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
-                {
-                    shared_ptr<Entity> entity_wheel_root = mesh->GetRootEntity().lock();
-                    entity_wheel_root->SetScale(Vector3(wheel_scale));
-
-                    if (Entity* entity_wheel = entity_wheel_root->GetDescendantByName("wheel Low"))
-                    {
-                        // create material
-                        shared_ptr<Material> material = make_shared<Material>();
-                        material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
-                        material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
-
-                        // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                        const string file_path = "project\\models\\wheel" + string(EXTENSION_MATERIAL);
-                        material->SetResourceFilePath(file_path);
-
-                        // set material
-                        entity_wheel->GetComponent<Renderable>()->SetMaterial(material);
-                    }
-
-                    // add the wheels to the body
-                    {
-                        Physics* physics_body = default_car->AddComponent<Physics>();
-
-                        shared_ptr<Entity> wheel = entity_wheel_root;
-                        wheel->SetObjectName("wheel_fl");
-                        wheel->SetParent(default_car);
-                        //physics_body->GetCar()->SetWheelTransform(wheel.get(), 0);
-
-                        wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_fr");
-                        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                        wheel->SetParent(default_car);
-                        //physics_body->GetCar()->SetWheelTransform(wheel.get(), 1);
-
-                        wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_rl");
-                        wheel->SetParent(default_car);
-                       // physics_body->GetCar()->SetWheelTransform(wheel.get(), 2);
-
-                        wheel = entity_wheel_root->Clone();
-                        wheel->SetObjectName("wheel_rr");
-                        wheel->GetChildByIndex(0)->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 180.0f));
-                        wheel->GetChildByIndex(0)->SetPosition(Vector3(0.15f, 0.0f, 0.0f));
-                        wheel->SetParent(default_car);
-                        //physics_body->GetCar()->SetWheelTransform(wheel.get(), 3);
-                    }
-                }
-             }
 
             // sounds
             {
@@ -1151,17 +1039,19 @@ namespace spartan
 
         namespace showroom
         {
-            shared_ptr<RHI_Texture> icon_logo;
+            shared_ptr<RHI_Texture> texture_brand_logo;
+            shared_ptr<RHI_Texture> texture_paint_normal;
 
             void create()
             {
                 // gran turismo 7 brand central music
                 entities::music("project\\music\\gran_turismo.wav", 1.9f);
 
-                // logo
-                icon_logo = make_shared<RHI_Texture>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\logo.png");
+                // textures
+                texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
+                texture_paint_normal = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\paint_normal.png");
 
-                car::create(Vector3(0.0f, 0.08f, 0.0f), false);
+                car::create(Vector3(0.0f, 0.08f, 0.0f), false, texture_paint_normal);
 
                 // camera
                 {
@@ -1182,7 +1072,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::ColorR,              0.5f);
                     material->SetProperty(MaterialProperty::ColorG,              0.5f);
                     material->SetProperty(MaterialProperty::ColorB,              0.5f);
-                    material->SetProperty(MaterialProperty::Roughness,           0.0f);
+                    material->SetProperty(MaterialProperty::Roughness,           0.3f);
                     material->SetProperty(MaterialProperty::Metalness,           1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
@@ -1194,7 +1084,7 @@ namespace spartan
                 {
                     shared_ptr<Entity> entity = World::CreateEntity();
                     entity->SetObjectName("light_point_1");
-                    entity->SetPosition(Vector3(-5.0f, 7.5f, 5.0f));
+                    entity->SetPosition(Vector3(-5.0f, 4.5f, -5.0f));
 
                     Light* light = entity->AddComponent<Light>();
                     light->SetLightType(LightType::Point);
@@ -1209,7 +1099,7 @@ namespace spartan
                 {
                     shared_ptr<Entity> entity = World::CreateEntity();
                     entity->SetObjectName("light_point_2");
-                    entity->SetPosition(Vector3(5.0f, 7.5f, -5.0f));
+                    entity->SetPosition(Vector3(5.0f, 4.5f, -5.0f));
 
                     Light* light = entity->AddComponent<Light>();
                     light->SetLightType(LightType::Point);
@@ -1246,31 +1136,31 @@ namespace spartan
                     return string(buffer);
                 };
 
-              const float x       = 0.75f;
-              const float y       = 0.12f;
-              const float spacing = 0.02f;
+                const float x       = 0.75f;
+                const float y       = 0.05f;
+                const float spacing = 0.02f;
               
-              // car specs
-              Renderer::DrawString("Toyota AE86 Sprinter Trueno Zenki", Vector2(x, y));
-              Renderer::DrawString("Torque: " + format_float(149.0f) + " Nm", Vector2(x, y + spacing * 1));
-              Renderer::DrawString("Weight: " + format_float(940.0f) + " kg", Vector2(x, y + spacing * 2));
-              Renderer::DrawString("Power: " + format_float(95.0f) + " kW", Vector2(x, y + spacing * 3));
-              Renderer::DrawString("Top Speed: " + format_float(185.0f) + " km/h", Vector2(x, y + spacing * 4));
-              Renderer::DrawString("Engine: 1.6L Inline-4 DOHC", Vector2(x, y + spacing * 5));
-              Renderer::DrawString("Drivetrain: RWD", Vector2(x, y + spacing * 6));
-              Renderer::DrawString("0-100 km/h: " + format_float(8.5f) + " s", Vector2(x, y + spacing * 7));
-              Renderer::DrawString("Power/Weight: " + format_float(101.1f) + " kW/ton", Vector2(x, y + spacing * 8));
-              Renderer::DrawString("Production: 1983-1987", Vector2(x, y + spacing * 9));
-              Renderer::DrawString("Drift Icon: Star of Initial D", Vector2(x, y + spacing * 10));
-              
-              // description (with a gap)
-              Renderer::DrawString("The Toyota AE86 Sprinter Trueno, launched in 1983, is a lightweight", Vector2(x, y + spacing * 12));
-              Renderer::DrawString("rear-wheel-drive icon of the 1980s. Beloved for its balanced handling and", Vector2(x, y + spacing * 13));
-              Renderer::DrawString("affordability, it became a legend in drifting and motorsport, immortalized", Vector2(x, y + spacing * 14));
-              Renderer::DrawString("in car culture through media like Initial D.", Vector2(x, y + spacing * 15));
+                // car specs
+                Renderer::DrawString("Ferrari LaFerrari", Vector2(x, y));
+                Renderer::DrawString("Torque: " + format_float(900.0f) + " Nm", Vector2(x, y + spacing * 1));
+                Renderer::DrawString("Weight: " + format_float(1585.0f) + " kg", Vector2(x, y + spacing * 2));
+                Renderer::DrawString("Power: " + format_float(708.0f) + " kW", Vector2(x, y + spacing * 3)); // 963 PS
+                Renderer::DrawString("Top Speed: " + format_float(350.0f) + " km/h", Vector2(x, y + spacing * 4));
+                Renderer::DrawString("Engine: 6.3L V12 + HY-KERS", Vector2(x, y + spacing * 5));
+                Renderer::DrawString("Drivetrain: RWD", Vector2(x, y + spacing * 6));
+                Renderer::DrawString("0-100 km/h: " + format_float(2.6f) + " s", Vector2(x, y + spacing * 7));
+                Renderer::DrawString("Power/Weight: " + format_float(446.7f) + " kW/ton", Vector2(x, y + spacing * 8));
+                Renderer::DrawString("Production: 2013-2018", Vector2(x, y + spacing * 9));
+                Renderer::DrawString("Flagship Hypercar: Ferrari's Hybrid Masterpiece", Vector2(x, y + spacing * 10));
+                
+                // description (with a gap)
+                Renderer::DrawString("The LaFerrari is Ferrari's first hybrid hypercar, blending a 6.3L V12 with", Vector2(x, y + spacing * 12));
+                Renderer::DrawString("an electric motor via its HY-KERS system. It delivers extreme performance", Vector2(x, y + spacing * 13));
+                Renderer::DrawString("and razor-sharp dynamics, wrapped in a design that embodies pure", Vector2(x, y + spacing * 14));
+                Renderer::DrawString("Ferrari DNA. A limited-production icon of modern automotive engineering.", Vector2(x, y + spacing * 15));
 
-              // logo - this is in pixels (not screen space coordinates unlike the text, need to make everything use one space)
-              Renderer::DrawIcon(icon_logo.get(), Vector2(400.0f, 300.0f));
+                // logo - this is in pixels (not screen space coordinates unlike the text, need to make everything use one space)
+                Renderer::DrawIcon(texture_brand_logo.get(), Vector2(400.0f, 300.0f));
             }
         }
 
@@ -1637,14 +1527,15 @@ namespace spartan
 
     void Game::Shutdown()
     {
-        default_floor               = nullptr;
-        default_camera              = nullptr;
-        default_environment         = nullptr;
-        default_light_directional   = nullptr;
-        default_terrain             = nullptr;
-        default_car                 = nullptr;
-        default_metal_cube          = nullptr;
-        worlds::showroom::icon_logo = nullptr;
+        default_floor                          = nullptr;
+        default_camera                         = nullptr;
+        default_environment                    = nullptr;
+        default_light_directional              = nullptr;
+        default_terrain                        = nullptr;
+        default_car                            = nullptr;
+        default_metal_cube                     = nullptr;
+        worlds::showroom::texture_brand_logo   = nullptr;
+        worlds::showroom::texture_paint_normal = nullptr;
         meshes.clear();
     }
 

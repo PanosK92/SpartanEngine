@@ -1375,7 +1375,7 @@ namespace spartan
         amd::ssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         amd::ssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running
         amd::ssr::description_dispatch.mostDetailedMip                      = 0;
-        amd::ssr::description_dispatch.temporalStabilityFactor              = 0.6f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        amd::ssr::description_dispatch.temporalStabilityFactor              = 0.8f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         amd::ssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         amd::ssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
         amd::ssr::description_dispatch.iblFactor                            = 0.0f;
