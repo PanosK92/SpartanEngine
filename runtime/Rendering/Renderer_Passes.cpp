@@ -1234,7 +1234,7 @@ namespace spartan
             {
                 int mip_index_small   = i;
                 int mip_index_big     = i - 1;
-                int mip_width_large   = tex_bloom->GetWidth() >> mip_index_big;
+                int mip_width_large   = tex_bloom->GetWidth()  >> mip_index_big;
                 int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
 
                 // set textures

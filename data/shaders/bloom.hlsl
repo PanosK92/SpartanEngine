@@ -47,7 +47,7 @@ float3 threshold(float3 color)
 
 float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
-    float BLOOM_SPREAD = pass_get_f3_value().x; // Dynamic spread passed per mip for variable blurring
+    float BLOOM_SPREAD = pass_get_f3_value().x; // dynamic spread passed per mip for variable blurring - this is to make the larger mips cover most of the 
 
     // 9-tap tent filter for quality upsampling
     float3 c0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0, -1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
@@ -63,7 +63,6 @@ float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
     return c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8;
 }
 
-// shader entry points
 #if LUMINANCE
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
