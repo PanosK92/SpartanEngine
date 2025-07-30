@@ -25,46 +25,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float3 threshold(float3 color)
 {
-    const float BLOOM_THRESHOLD = 1.0; // the brightness level at which bloom starts to take effect
-    const float BLOOM_SOFT_KNEE = 0.5; // softens the transition into bloom, reducing harsh cutoffs
-    const float MAX_BRIGHTNESS  = 4.0; // caps the maximum brightness to prevent over-saturation in bloom
+    const float BLOOM_THRESHOLD = 4.5;
+    const float BLOOM_SOFT_KNEE = 0.5;
+    const float MAX_BRIGHTNESS  = 60.0;
 
     color               = min(color, MAX_BRIGHTNESS);
-    float brightness    = max(color.r, max(color.g, color.b));
+    float brightness    = dot(color, float3(0.2126, 0.7152, 0.0722));
     float soft          = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
     soft                = clamp(soft, 0, 2 * BLOOM_SOFT_KNEE);
     soft                = soft * soft / (4 * BLOOM_SOFT_KNEE + FLT_MIN);
     float contribution  = max(soft, brightness - BLOOM_THRESHOLD);
     contribution       /= max(brightness, FLT_MIN);
-    return color * contribution;
+    color               = color * contribution;
+
+    // karis average for firefly reduction
+    float luma          = dot(color, float3(0.2126, 0.7152, 0.0722));
+    color               /= (1.0 + luma);
+
+    return color;
 }
 
 float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
-    const float BLOOM_SPREAD = 3.0f;
+    const float BLOOM_SPREAD = 0.5f;
 
-    float4 offset = texel_size.xyxy * float4(-1, -1, 1, 1) * BLOOM_SPREAD;
+    // 9-tap tent filter for quality upsampling
+    float3 c0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0, -1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
+    float3 c1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0,  1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
+    float3 c2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 1.0, -1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
+    float3 c3 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 1.0,  1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
+    float3 c4 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0,  0.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
+    float3 c5 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 1.0,  0.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
+    float3 c6 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 0.0, -1.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
+    float3 c7 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 0.0,  1.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
+    float3 c8 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 0.0,  0.0) * BLOOM_SPREAD, 0).rgb * (4.0 / 16.0);
 
-    // 13-tap filter with extended reach
-    float3 a = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset.xy * 2, 0).rgb;
-    float3 b = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset.xy, 0).rgb;
-    float3 c = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(offset.x, 0), 0).rgb;
-    float3 d = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(offset.x, offset.w), 0).rgb;
-    float3 e = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0, offset.y), 0).rgb;
-    float3 f = src.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
-    float3 g = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0, offset.w), 0).rgb;
-    float3 h = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(offset.z, offset.y), 0).rgb;
-    float3 i = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(offset.z, 0), 0).rgb;
-    float3 j = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset.zw, 0).rgb;
-    float3 k = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset.zw * 2, 0).rgb;
-
-    // apply weights (gaussian-like)
-    float3 result = f * 0.25;
-    result += (c + e + g + i) * 0.125;
-    result += (b + d + h + j) * 0.0625;
-    result += (a + k) * 0.03125;
-
-    return result;
+    return c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8;
 }
 
 // shader entry points
@@ -99,13 +95,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 low_mip       = upsample_filter(tex, uv, texel_size);
     float3 high_mip      = tex_uav[thread_id.xy].rgb;
     
-    float blend_factor   = 0.5; // weight for low mip
-    float3 result        = lerp(high_mip, low_mip, blend_factor);
-
-    // Soft clamp to prevent over-brightening
-    float max_value = max(max(result.r, result.g), result.b) + FLT_MIN;
-    if (max_value > 1.0)
-        result *= 1.0 / max_value;
+    float3 result        = high_mip + low_mip; // additive for multi-scale accumulation
 
     tex_uav[thread_id.xy] = float4(saturate_16(result), 1.0);
 }
@@ -128,6 +118,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     tex_uav[thread_id.xy] = float4(saturate_16(result), color_frame.a);
 }
 #endif
-
-
-
