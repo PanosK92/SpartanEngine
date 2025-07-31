@@ -82,8 +82,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_skysphere          = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
     float3 diffuse_skysphere           = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
     float shadow_mask                  = tex[thread_id.xy].r;
-    float3 diffuse_gi                  = tex_uav2[thread_id.xy].rgb * 3.0f;
-    float3 specular_gi                 = tex_uav3[thread_id.xy].rgb * 3.0f;
+    float3 diffuse_gi                  = tex_uav2[thread_id.xy].rgb * 2.5f;
+    float3 specular_gi                 = tex_uav3[thread_id.xy].rgb;
 
     // modulate specular light source with the outcoming energy
     specular_gi        *= F;
