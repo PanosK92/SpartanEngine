@@ -30,6 +30,8 @@ static const float SENSOR_HEIGHT              = 24.0;   // in mm, assuming full-
 static const float EDGE_DETECTION_THRESHOLD   = 0.001f; // adjust to control edge sensitivity
 static const uint  AVERAGE_DEPTH_SAMPLE_COUNT = 10;
 static const float AVERAGE_DEPTH_RADIUS       = 0.5f;
+static const float GOLDEN_ANGLE               = 2.39996323f;
+static const int   SAMPLE_COUNT               = 32;     // fixed sample count for performance
 
 float compute_coc(float2 uv, float2 texel_size, float2 resolution, float focus_distance, float aperture)
 {
@@ -78,25 +80,32 @@ float gaussian_weight(float x, float sigma)
 
 float3 gaussian_blur(float2 uv, float coc, float2 texel_size)
 {
-    float sigma = max(1.0, coc * BLUR_RADIUS);
-    int samples = clamp(int(sigma * 0.5), 1, BLUR_RADIUS); // adaptive sampling
-
-    float3 color       = 0.0f;
-    float total_weight = FLT_MIN;
-    for (int i = -samples; i <= samples; i++)
+    float radius = coc * BLUR_RADIUS;
+    if (radius < 1.0f)
     {
-        for (int j = -samples; j <= samples; j++)
-        {
-            float2 offset  = float2(i, j) * texel_size;
-            float distance = length(float2(i, j));
-           
-            if (distance <= sigma)
-            {
-                float weight  = gaussian_weight(distance, sigma);
-                color        += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset, 0.0f).rgb * weight;
-                total_weight += weight;
-            }
-        }
+        return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
+    }
+
+    float sigma = radius / 3.0f; // for Gaussian falloff
+
+    float3 color = 0.0f;
+    float total_weight = 0.0f;
+
+    // center sample
+    float weight = gaussian_weight(0.0f, sigma);
+    color += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb * weight;
+    total_weight += weight;
+
+    float ang = 0.0f;
+    for (int i = 1; i < SAMPLE_COUNT; ++i)
+    {
+        ang += GOLDEN_ANGLE;
+        float r = sqrt((float)i / (float)(SAMPLE_COUNT - 1)) * radius; // quadratic distribution for better Gaussian approximation
+        float2 offset = float2(cos(ang), sin(ang)) * r * texel_size;
+
+        weight = gaussian_weight(r, sigma);
+        color += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset, 0.0f).rgb * weight;
+        total_weight += weight;
     }
 
     return color / total_weight;

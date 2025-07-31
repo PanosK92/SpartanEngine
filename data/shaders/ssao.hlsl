@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// based on: XeGTAO - https://github.com/GameTechDev/XeGTAO
-// enchanced with visibility bitmasks from: SSAOVB - https://cdrinmatane.github.io/posts/ssaovb-code/
+// spartan engine take on GTAO + Bent Normals + Visibility Bitmask
+// inspired from XeGTAO:                    https://github.com/GameTechDev/XeGTAO
+// enchanced with visibility bitmasks from: https://cdrinmatane.github.io/posts/ssaovb-code/
 
 // constants
 static const float g_ao_radius    = 1.5f;
@@ -81,14 +82,14 @@ float3 compute_slice_bent_normal(float cos_phi, float sin_phi, float h0, float h
 {
     float t0 = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
     float t1 = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
-    return float3(cos_phi * t0, sin_phi * t0, -t1); // local bent normal, z flipped for handedness
+    return float3(cos_phi * t0, sin_phi * t0, -t1); // local bent normal
 }
 
 uint update_sectors(float minHorizon, float maxHorizon, uint globalOccludedbitmask)
 {
-    uint startHorizonInt         = uint(minHorizon * g_sector_count);
-    float angleHorizon           = (maxHorizon - minHorizon) * g_sector_count;
-    uint angleHorizonInt         = uint(ceil(angleHorizon));
+    uint startHorizonInt        = uint(minHorizon * g_sector_count);
+    float angleHorizon          = (maxHorizon - minHorizon) * g_sector_count;
+    uint angleHorizonInt        = uint(ceil(angleHorizon));
     uint angleHorizonbitmask    = angleHorizonInt > 0 ? (0xFFFFFFFFu >> (g_sector_count - angleHorizonInt)) : 0u;
     uint currentOccludedbitmask = angleHorizonbitmask << startHorizonInt;
     return globalOccludedbitmask | currentOccludedbitmask;

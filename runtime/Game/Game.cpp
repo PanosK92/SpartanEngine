@@ -315,7 +315,7 @@ namespace spartan
             // load full detail model (no vertex/index optimizations)
             uint32_t mesh_flags = Mesh::GetDefaultFlags();
             mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-            
+
             if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags))
             {
                 default_car = mesh_car->GetRootEntity().lock();
@@ -330,7 +330,7 @@ namespace spartan
                    {
                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
                        material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                       material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.5f);
+                       material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
                        material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
 
                        material->SetTexture(MaterialTextureType::Normal, texture_paint_normal);
@@ -411,6 +411,14 @@ namespace spartan
                        material->SetProperty(MaterialProperty::Roughness, 0.4f);
                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
                    }
+                }
+
+                // physics
+                if (Entity* body = default_car->GetDescendantByName("Object_12"))
+                {
+                    //Physics* physics = body->AddComponent<Physics>();
+                    //physics->SetStatic(false);
+                    //physics->SetBodyType(BodyType::Mesh);
                 }
             }
 
