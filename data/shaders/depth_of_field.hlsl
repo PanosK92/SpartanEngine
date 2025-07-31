@@ -3,7 +3,7 @@
 //====================
 
 // constants
-static const float MAX_BLUR_RADIUS            = 15.0f;       // max blur extent in pixels
+static const float MAX_BLUR_RADIUS            = 10.0f;       // max blur extent in pixels
 static const float BASE_FOCAL_LENGTH          = 50.0;        // base lens focal length in mm
 static const float SENSOR_HEIGHT              = 24.0;        // sensor size in mm (full-frame)
 static const float EDGE_DETECTION_THRESHOLD   = 0.01f;       // sensitivity for edge detection

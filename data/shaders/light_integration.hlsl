@@ -21,7 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "common.hlsl"
+#include "brdf.hlsl"
 //====================
+
+float geometry_smith(float3 n, float3 v, float3 l, float roughness)
+{
+    float n_dot_v = saturate(dot(n, v));
+    float n_dot_l = saturate(dot(n, l));
+    float alpha   = D_GGX_Alpha(roughness);
+    float alpha2  = alpha * alpha;
+    float V       = V_SmithGGX(n_dot_v, n_dot_l, alpha2);
+    return 4.0 * n_dot_v * n_dot_l * V;
+}
 
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
 // efficient VanDerCorpus calculation
@@ -42,11 +53,11 @@ float2 hammersley(uint i, uint n)
 
 float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 {
-    float a = roughness * roughness;
+    const float alpha = D_GGX_Alpha(roughness);
     
-    float phi      = 2.0 * PI * Xi.x;
-    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    const float phi      = 2.0 * PI * Xi.x;
+    const float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (alpha * alpha - 1.0) * Xi.y));
+    const float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
     
     // from spherical coordinates to cartesian coordinates - halfway vector
     float3 H;
@@ -61,28 +72,6 @@ float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
     
     float3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
     return normalize(sampleVec);
-}
-
-float geometry_schlick_ggx(float NdotV, float roughness)
-{
-    // note that we use a different k for IBL
-    float a = roughness;
-    float k = (a * a) / 2.0;
-
-    float nom   = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-
-    return nom / denom;
-}
-
-float geometry_smith(float3 N, float3 V, float3 L, float roughness)
-{
-    float NdotV = saturate(dot(N, V));
-    float NdotL = saturate(dot(N, L));
-    float ggx2  = geometry_schlick_ggx(NdotV, roughness);
-    float ggx1  = geometry_schlick_ggx(NdotL, roughness);
-
-    return ggx1 * ggx2;
 }
 
 float2 integrate_brdf(float n_dot_v, float roughness)
@@ -124,14 +113,6 @@ float2 integrate_brdf(float n_dot_v, float roughness)
     B /= float(sample_count);
     
     return float2(A, B);
-}
-
-float distribution_ggx(float n_dot_h, float roughness)
-{
-    float a     = roughness * roughness;
-    float a2    = a * a;
-    float denom = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
-    return a2 / (PI * denom * denom);
 }
 
 float2 fibonacci_spiral(uint i, uint N)
@@ -180,10 +161,12 @@ float3 prefilter_environment(float2 uv)
             float v = 1.0 - (theta / PI);
 
             // PDF-based mip level selection
-            float D          = distribution_ggx(n_dot_h, roughness);
-            float pdf        = (D * n_dot_h / (4.0 * h_dot_v)) + 0.0001;
-            float sa_texel   = 4.0 * PI / (6.0 * base_resolution * base_resolution);
-            float sa_sample  = 1.0 / (float(sample_count) * pdf + 0.0001);
+            float alpha_ggx = D_GGX_Alpha(roughness);
+            float alpha2    = alpha_ggx * alpha_ggx;
+            float D         = D_GGX(n_dot_h, alpha2);
+            float pdf       = (D * n_dot_h / (4.0 * h_dot_v)) + 0.0001;
+            float sa_texel  = 4.0 * PI / (6.0 * base_resolution * base_resolution);
+            float sa_sample = 1.0 / (float(sample_count) * pdf + 0.0001);
             float mip_sample = roughness == 0.0 ? 0.0 : 0.5 * log2(sa_sample / sa_texel);
 
             // adjust mip_sample based on the resolution difference
@@ -234,4 +217,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     tex_uav[thread_id.xy] = color;
 }
-
