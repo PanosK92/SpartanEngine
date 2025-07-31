@@ -1,54 +1,36 @@
-/*
-Copyright(c) 2015-2025 Panos Karabelas
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-copies of the Software, and to permit persons to whom the Software is furnished
-to do so, subject to the following conditions :
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 //= INCLUDES =========
 #include "common.hlsl"
 //====================
 
 // constants
-static const float BLUR_RADIUS                = 10.0f;  // maximum radius of the blur
-static const float BASE_FOCAL_LENGTH          = 50.0;   // in mm, base focal length
-static const float SENSOR_HEIGHT              = 24.0;   // in mm, assuming full-frame sensor
-static const float EDGE_DETECTION_THRESHOLD   = 0.001f; // adjust to control edge sensitivity
-static const uint  AVERAGE_DEPTH_SAMPLE_COUNT = 10;
-static const float AVERAGE_DEPTH_RADIUS       = 0.5f;
-static const float GOLDEN_ANGLE               = 2.39996323f;
-static const int   SAMPLE_COUNT               = 32;     // fixed sample count for performance
+static const float MAX_BLUR_RADIUS            = 15.0f;       // max blur extent in pixels
+static const float BASE_FOCAL_LENGTH          = 50.0;        // base lens focal length in mm
+static const float SENSOR_HEIGHT              = 24.0;        // sensor size in mm (full-frame)
+static const float EDGE_DETECTION_THRESHOLD   = 0.01f;       // sensitivity for edge detection
+static const uint  AVERAGE_DEPTH_SAMPLE_COUNT = 10;          // samples for avg focus depth
+static const float AVERAGE_DEPTH_RADIUS       = 0.5f;        // radius for avg depth sampling
+static const float GOLDEN_ANGLE               = 2.39996323f; // angle for spiral sampling
+static const int   SAMPLE_COUNT               = 16;          // blur samples (perf/quality balance)
+static const float BACKGROUND_CLAMP_FACTOR    = 2.0f;        // background CoC clamp multiplier
+static const float COC_SCALE                  = 1.0f;        // overall CoC strength scalar
 
-float compute_coc(float2 uv, float2 texel_size, float2 resolution, float focus_distance, float aperture)
+float compute_coc(float2 uv, float2 texel_size, float2 resolution, float focus_distance, float aperture, float depth, bool compute_edge)
 {
-    float depth = get_linear_depth(uv);
-    
-    // edge detection
-    float depth_diff = 0;
-    for (int i = -1; i <= 1; i++)
+    float edge_factor = 0.0f;
+    if (compute_edge)
     {
-        for (int j = -1; j <= 1; j++)
+        float depth_diff = 0;
+        for (int i = -1; i <= 1; i++)
         {
-            float2 offset         = float2(i, j) * texel_size;
-            float neighbor_depth  = get_linear_depth(uv + offset);
-            depth_diff           += abs(depth - neighbor_depth);
+            for (int j = -1; j <= 1; j++)
+            {
+                float2 offset         = float2(i, j) * texel_size;
+                float neighbor_depth  = get_linear_depth(uv + offset);
+                depth_diff           += abs(depth - neighbor_depth);
+            }
         }
+        edge_factor = saturate(depth_diff / EDGE_DETECTION_THRESHOLD);
     }
-    float edge_factor = saturate(depth_diff / EDGE_DETECTION_THRESHOLD);
     
     // adjust focal length based on focus distance
     float focal_length = BASE_FOCAL_LENGTH * (1.0 + saturate(focus_distance / 100.0));
@@ -70,45 +52,49 @@ float compute_coc(float2 uv, float2 texel_size, float2 resolution, float focus_d
     // enhance coc for edges
     coc_pixels *= (1.0 + edge_factor);
     
-    return saturate(coc_pixels / 20.0); // normalize CoC
+    return saturate(coc_pixels / 20.0) * COC_SCALE; // normalize CoC
 }
 
-float gaussian_weight(float x, float sigma)
+float3 depth_aware_bokeh_blur(float2 uv, float center_coc, float center_depth, float focus_distance, float aperture, float2 texel_size, float2 resolution)
 {
-    return exp(-0.5 * (x * x) / (sigma * sigma)) / (sigma * sqrt(2.0 * 3.14159265));
-}
-
-float3 gaussian_blur(float2 uv, float coc, float2 texel_size)
-{
-    float radius = coc * BLUR_RADIUS;
-    if (radius < 1.0f)
+    if (center_coc < 0.01f) // early out for in-focus pixels to save performance
     {
         return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
     }
 
-    float sigma = radius / 3.0f; // for Gaussian falloff
-
-    float3 color = 0.0f;
-    float total_weight = 0.0f;
-
-    // center sample
-    float weight = gaussian_weight(0.0f, sigma);
-    color += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb * weight;
-    total_weight += weight;
+    float3 color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0.0f).rgb;
+    float total = 1.0f;
 
     float ang = 0.0f;
     for (int i = 1; i < SAMPLE_COUNT; ++i)
     {
         ang += GOLDEN_ANGLE;
-        float r = sqrt((float)i / (float)(SAMPLE_COUNT - 1)) * radius; // quadratic distribution for better Gaussian approximation
-        float2 offset = float2(cos(ang), sin(ang)) * r * texel_size;
+        
+        // sample radius quadratic for better distribution
+        float r          = sqrt((float)i / (float)(SAMPLE_COUNT - 1)) * MAX_BLUR_RADIUS;
+        float2 offset    = float2(cos(ang), sin(ang)) * r * texel_size;
+        float2 sample_uv = uv + offset;
 
-        weight = gaussian_weight(r, sigma);
-        color += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset, 0.0f).rgb * weight;
-        total_weight += weight;
+        float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0.0f).rgb;
+        float sample_depth  = get_linear_depth(sample_uv);
+        float sample_coc    = compute_coc(sample_uv, texel_size, resolution, focus_distance, aperture, sample_depth, false); // skip edge for perf
+
+        float sample_size = sample_coc * MAX_BLUR_RADIUS;
+        // clamp background CoC to prevent over-blending into foreground
+        if (sample_depth > center_depth)
+        {
+            sample_size = min(sample_size, center_coc * MAX_BLUR_RADIUS * BACKGROUND_CLAMP_FACTOR);
+        }
+
+        // soft contribution: does this sample's disk cover the center pixel?
+        float dist = r; // since r is in pixels
+        float m    = smoothstep(dist - 0.5f, dist + 0.5f, sample_size);
+
+        color += lerp(color / total, sample_color, m);
+        total += 1.0f;
     }
 
-    return color / total_weight;
+    return color / total;
 }
 
 float get_average_depth_circle(float2 center, float2 resolution_out)
@@ -140,11 +126,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float focal_depth = get_average_depth_circle(float2(0.5, 0.5f), resolution);
     float aperture    = pass_get_f3_value().x;
 
-    // do the actual blurring
-    float coc             = compute_coc(uv, texel_size, resolution, focal_depth, aperture);
-    float3 blurred_color  = gaussian_blur(uv, coc, texel_size);
+    // compute center values
+    float center_depth = get_linear_depth(uv);
+    float center_coc   = compute_coc(uv, texel_size, resolution, focal_depth, aperture, center_depth, true); // full edge for center
+
+    // do the actual blurring with depth awareness
+    float3 blurred_color  = depth_aware_bokeh_blur(uv, center_coc, center_depth, focal_depth, aperture, texel_size, resolution);
     float4 original_color = tex[thread_id.xy];
-    float3 final_color    = lerp(original_color.rgb, blurred_color, coc);
+    float3 final_color    = lerp(original_color.rgb, blurred_color, center_coc);
 
     tex_uav[thread_id.xy] = float4(final_color, original_color.a);
 }

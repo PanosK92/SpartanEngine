@@ -325,92 +325,129 @@ namespace spartan
 
                 // material adjustments
                 {
-                   // body main
-                   if (Material* material = default_car->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Roughness, 0.3f);
-                       material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                       material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
-                       material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
-
-                       material->SetTexture(MaterialTextureType::Normal, texture_paint_normal);
-                       material->SetProperty(MaterialProperty::Normal, 0.08f);
-                       material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
-                       material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
-                   }
-
-                   // body metallic/carbon parts
-                   if (Material* material = default_car->GetDescendantByName("Object_10")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                   }
-
-                   // tires
-                   {
-                        if (Material* material = default_car->GetDescendantByName("Object_127")->GetComponent<Renderable>()->GetMaterial())
+                    // body main
+                    if (Material* material = default_car->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                        material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
+                        material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
+                    
+                        material->SetTexture(MaterialTextureType::Normal, texture_paint_normal);
+                        material->SetProperty(MaterialProperty::Normal, 0.03f);
+                        material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
+                    }
+                    
+                    // body metallic/carbon parts
+                    if (Material* material = default_car->GetDescendantByName("Object_10")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    }
+                    
+                    // tires
+                    {
+                         if (Material* material = default_car->GetDescendantByName("Object_127")->GetComponent<Renderable>()->GetMaterial())
+                         {
+                             material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                         }
+                         
+                         if (Material* material = default_car->GetDescendantByName("Object_142")->GetComponent<Renderable>()->GetMaterial())
+                         {
+                             material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                         }
+                    
+                         if (Material* material = default_car->GetDescendantByName("Object_157")->GetComponent<Renderable>()->GetMaterial())
+                         {
+                             material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                         }
+                    
+                         if (Material* material = default_car->GetDescendantByName("Object_172")->GetComponent<Renderable>()->GetMaterial())
+                         {
+                             material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                         }
+                    
+                    }
+                    
+                    // rims back
+                    if (Material* material = default_car->GetDescendantByName("Object_180")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                    }
+                    
+                    // rims front
+                    if (Material* material = default_car->GetDescendantByName("Object_150")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                    }
+                    
+                    // headlight and taillight glass
+                    if (Material* material = default_car->GetDescendantByName("Object_38")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    }
+                    
+                    // front (windshield) and back (engine) glass
+                    if (Material* material = default_car->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    }
+                    
+                    // side mirror glass
+                    if (Material* material = default_car->GetDescendantByName("Object_98")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    }
+                    
+                    // engine block metal
+                    if (Material* material = default_car->GetDescendantByName("Object_14")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    }
+                    
+                    // brake disc metal
+                    {
+                        if (Material* material = default_car->GetDescendantByName("Object_129")->GetComponent<Renderable>()->GetMaterial())
                         {
-                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                            material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                            material->SetProperty(MaterialProperty::AnisotropicRotation, 0.2f);
                         }
-                        
-                        if (Material* material = default_car->GetDescendantByName("Object_142")->GetComponent<Renderable>()->GetMaterial())
+
+                        if (Material* material = default_car->GetDescendantByName("Object_144")->GetComponent<Renderable>()->GetMaterial())
                         {
-                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                            material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                            material->SetProperty(MaterialProperty::AnisotropicRotation, 0.2f);
                         }
 
-                        if (Material* material = default_car->GetDescendantByName("Object_157")->GetComponent<Renderable>()->GetMaterial())
+                        if (Material* material = default_car->GetDescendantByName("Object_174")->GetComponent<Renderable>()->GetMaterial())
                         {
-                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                            material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                            material->SetProperty(MaterialProperty::AnisotropicRotation, 0.2f);
                         }
 
-                        if (Material* material = default_car->GetDescendantByName("Object_172")->GetComponent<Renderable>()->GetMaterial())
+                        if (Material* material = default_car->GetDescendantByName("Object_159")->GetComponent<Renderable>()->GetMaterial())
                         {
-                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                            material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                            material->SetProperty(MaterialProperty::AnisotropicRotation, 0.2f);
                         }
+                    }
 
-                   }
-
-                   // rims back
-                   if (Material* material = default_car->GetDescendantByName("Object_180")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                       material->SetProperty(MaterialProperty::Roughness, 0.3f);
-                   }
-
-                   // rims front
-                   if (Material* material = default_car->GetDescendantByName("Object_150")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                       material->SetProperty(MaterialProperty::Roughness, 0.3f);
-                   }
-
-                   // headlight and taillight glass
-                   if (Material* material = default_car->GetDescendantByName("Object_38")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                   }
-
-                   // front (windshield) and back (engine) glass
-                   if (Material* material = default_car->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                   }
-
-                   // side mirror glass
-                   if (Material* material = default_car->GetDescendantByName("Object_98")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                   }
-
-                   // engine block metal
-                   if (Material* material = default_car->GetDescendantByName("Object_14")->GetComponent<Renderable>()->GetMaterial())
-                   {
-                       material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                       material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                   }
+                     // interior leather/plastic
+                    if (Material* material = default_car->GetDescendantByName("Object_90")->GetComponent<Renderable>()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Roughness, 0.75f);
+                    }
                 }
 
                 // physics
