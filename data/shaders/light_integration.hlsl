@@ -43,11 +43,11 @@ float2 hammersley(uint i, uint n)
 
 float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 {
-    const float alpha     = D_GGX_Alpha(roughness);
-   
-    const float phi       = 2.0 * PI * Xi.x;
-    const float cosTheta  = sqrt((1.0 - Xi.y) / (1.0 + (alpha * alpha - 1.0) * Xi.y));
-    const float sinTheta  = sqrt(1.0 - cosTheta * cosTheta);
+    const float alpha    = D_GGX_Alpha(roughness);
+                         
+    const float phi      = 2.0 * PI * Xi.x;
+    const float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (alpha * alpha - 1.0) * Xi.y));
+    const float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
    
     // from spherical coordinates to cartesian coordinates - halfway vector
     float3 H;
@@ -76,21 +76,21 @@ float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
     for(uint i = 0; i < sample_count; ++i)
     {
         // generates a sample vector that's biased towards the preferred alignment direction (importance sampling)
-        float2 Xi        = hammersley(i, sample_count);
-        float3 h         = importance_sample_ggx(Xi, n, roughness);
-        float3 l         = normalize(2.0 * dot(v, h) * h - v);
-        float n_dot_l    = saturate(l.z);
-        float n_dot_h    = saturate(h.z);
-        float v_dot_h    = saturate(dot(v, h));
+        float2 Xi     = hammersley(i, sample_count);
+        float3 h      = importance_sample_ggx(Xi, n, roughness);
+        float3 l      = normalize(2.0 * dot(v, h) * h - v);
+        float n_dot_l = saturate(l.z);
+        float n_dot_h = saturate(h.z);
+        float v_dot_h = saturate(dot(v, h));
         if(n_dot_l > 0.0)
         {
             // set up surface (only fields required by BRDF_Specular_Isotropic)
             Surface surface;
-            surface.roughness      = roughness;
-            surface.F0             = float3(f0_val, f0_val, f0_val);
-            surface.metallic       = 0.0f;
-            surface.diffuse_energy = float3(1.0f, 1.0f, 1.0f); // init (ignored in return value)
-            surface.specular_energy= float3(1.0f, 1.0f, 1.0f); // init (ignored in return value)
+            surface.roughness       = roughness;
+            surface.F0              = float3(f0_val, f0_val, f0_val);
+            surface.metallic        = 0.0f;
+            surface.diffuse_energy  = float3(1.0f, 1.0f, 1.0f); // init (ignored in return value)
+            surface.specular_energy = float3(1.0f, 1.0f, 1.0f); // init (ignored in return value)
             
             // angular (only fields required by BRDF_Specular_Isotropic)
             AngularInfo angular_info;
@@ -100,16 +100,18 @@ float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
             angular_info.v_dot_h = v_dot_h;
             
             // compute BRDF
-            float3 fs     = BRDF_Specular_Isotropic(surface, angular_info);
-            float brdf    = fs.r; // scalar (monochromatic assumption)
+            float3 fs  = BRDF_Specular_Isotropic(surface, angular_info);
+            float brdf = fs.r; // scalar (monochromatic assumption)
+            
             // pdf
-            float alpha   = D_GGX_Alpha(roughness);
-            float alpha2  = alpha * alpha;
-            float d       = D_GGX(n_dot_h, alpha2);
-            float pdf     = (d * n_dot_h / (4.0 * v_dot_h)) + 1e-5;
+            float alpha  = D_GGX_Alpha(roughness);
+            float alpha2 = alpha * alpha;
+            float d      = D_GGX(n_dot_h, alpha2);
+            float pdf    = (d * n_dot_h / (4.0 * v_dot_h)) + 1e-5;
+            
             // contribution
-            float contrib = brdf * n_dot_l / pdf;
-            integral     += contrib;
+            float contrib  = brdf * n_dot_l / pdf;
+            integral      += contrib;
         }
     }
     return integral / float(sample_count);
@@ -121,6 +123,7 @@ float2 integrate_brdf(float n_dot_v, float roughness)
     float int1 = integrate_brdf_scalar(n_dot_v, roughness, 1.0);
     float A    = int1 - int0;
     float B    = int0;
+    
     return float2(A, B);
 }
 

@@ -78,7 +78,7 @@ namespace spartan
             for (Entity* child_transform : entity->GetChildren())
             {
                 shared_ptr<Entity> clone_child = clone_entity_and_descendants(child_transform);
-                clone_child->SetParent(clone_self);
+                clone_child->SetParent(clone_self.get());
             }
 
             return clone_self;
@@ -96,11 +96,6 @@ namespace spartan
     Entity::~Entity()
     {
         m_components.fill(nullptr);
-    }
-
-    void Entity::Initialize()
-    {
-        UpdateTransform();
     }
 
     shared_ptr<Entity> Entity::Clone()
@@ -220,13 +215,13 @@ namespace spartan
         {
             shared_ptr<Entity> child = World::CreateEntity();
             child->Load(child_node);
-            child->SetParent(World::GetEntityById(GetObjectId()));
+            child->SetParent(World::GetEntityById(GetObjectId()).get());
         }
     }
 
-    bool Entity::GetActive() const
+    bool Entity::GetActive()
     {
-        if (shared_ptr<Entity> parent = GetParent())
+        if (Entity* parent = GetParent())
         {
             return m_is_active && parent->GetActive();
         }
@@ -278,22 +273,13 @@ namespace spartan
         m_matrix_local = Matrix(m_position_local, m_rotation_local, m_scale_local);
 
         // compute world transform
-        if (!m_parent.expired())
+        if (m_parent)
         {
-            m_matrix = m_matrix_local * m_parent.lock()->GetMatrix();
+            m_matrix = m_matrix_local * m_parent->GetMatrix();
         }
         else
         {
             m_matrix = m_matrix_local;
-        }
-
-        // mark update
-        m_time_since_last_transform_sec = 0.0f;
-
-        // update children
-        for (Entity* child : m_children)
-        {
-            child->UpdateTransform();
         }
 
         // update directions
@@ -308,6 +294,15 @@ namespace spartan
             m_right    = GetRotation() * Vector3::Right;
             m_left     = -m_right;
         }
+
+        // mark update
+        m_time_since_last_transform_sec = 0.0f;
+
+        // update children
+        for (Entity* child : m_children)
+        {
+            child->UpdateTransform();
+        }
     }
 
     void Entity::SetPosition(const Vector3& position)
@@ -315,7 +310,7 @@ namespace spartan
         if (GetPosition() == position)
             return;
 
-        SetPositionLocal(!HasParent() ? position : position * GetParent()->GetMatrix().Inverted());
+        SetPositionLocal(!GetParent() ? position : position * GetParent()->GetMatrix().Inverted());
     }
 
     void Entity::SetPositionLocal(const Vector3& position)
@@ -332,7 +327,7 @@ namespace spartan
         if (GetRotation() == rotation)
             return;
 
-        SetRotationLocal(!HasParent() ? rotation : rotation * GetParent()->GetRotation().Inverse());
+        SetRotationLocal(!GetParent() ? rotation : rotation * GetParent()->GetRotation().Inverse());
     }
 
     void Entity::SetRotationLocal(const Quaternion& rotation)
@@ -349,7 +344,7 @@ namespace spartan
         if (GetScale() == scale)
             return;
 
-        SetScaleLocal(!HasParent() ? scale : scale / GetParent()->GetScale());
+        SetScaleLocal(!GetParent() ? scale : scale / GetParent()->GetScale());
     }
 
     void Entity::SetScaleLocal(const Vector3& scale)
@@ -369,7 +364,7 @@ namespace spartan
 
     void Entity::Translate(const Vector3& delta)
     {
-        if (!HasParent())
+        if (!GetParent())
         {
             SetPositionLocal(m_position_local + delta);
         }
@@ -381,7 +376,7 @@ namespace spartan
 
     void Entity::Rotate(const Quaternion& delta)
     {
-        if (!HasParent())
+        if (!GetParent())
         {
             SetRotationLocal((delta * m_rotation_local).Normalized());
         }
@@ -410,12 +405,9 @@ namespace spartan
         return nullptr;
     }
 
-    void Entity::SetParent(weak_ptr<Entity> new_parent_in)
+    void Entity::SetParent(Entity* new_parent)
     {
         lock_guard lock(m_mutex_parent);
-
-        shared_ptr<Entity> new_parent = new_parent_in.lock();
-        shared_ptr<Entity> parent     = m_parent.lock();
 
         if (new_parent)
         {
@@ -424,7 +416,7 @@ namespace spartan
                 return;
         
             // early exit if the parent is already set
-            if (parent && parent->GetObjectId() == new_parent->GetObjectId())
+            if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
                 return;
         
             // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
@@ -441,10 +433,10 @@ namespace spartan
         }
         
         // remove the this as a child from the existing parent
-        if (parent)
+        if (m_parent)
         {
             bool update_child_with_null_parent = false;
-            parent->RemoveChild(this, update_child_with_null_parent);
+            m_parent->RemoveChild(this, update_child_with_null_parent);
         }
         
         // add this is a child to new parent
@@ -453,7 +445,7 @@ namespace spartan
             new_parent->AddChild(this);
         }
 
-        m_parent = new_parent_in;
+        m_parent = new_parent;
         UpdateTransform();
     }
 
@@ -489,8 +481,7 @@ namespace spartan
         // remove the child's parent
         if (update_child_with_null_parent)
         {
-            shared_ptr<Entity> null = nullptr;
-            child->SetParent(null);
+            child->SetParent(nullptr);
         }
     }
 
@@ -505,7 +496,7 @@ namespace spartan
         const vector<shared_ptr<Entity>>& entities = World::GetEntities();
         for (const shared_ptr<Entity>& possible_child : entities)
         {
-            if (!possible_child || !possible_child->HasParent() || possible_child->GetObjectId() == GetObjectId())
+            if (!possible_child || !possible_child->GetParent() || possible_child->GetObjectId() == GetObjectId())
                 continue;
 
             // if it's parent matches this transform
@@ -524,10 +515,10 @@ namespace spartan
     {
         SP_ASSERT(transform != nullptr);
 
-        if (m_parent.expired())
+        if (!m_parent)
             return false;
 
-        if (m_parent.lock()->GetObjectId() == transform->GetObjectId())
+        if (m_parent->GetObjectId() == transform->GetObjectId())
             return true;
 
         for (Entity* child : transform->GetChildren())
@@ -566,8 +557,8 @@ namespace spartan
         return nullptr;
     }
 
-    Matrix Entity::GetParentTransformMatrix() const
+    Matrix Entity::GetParentTransformMatrix()
     {
-        return HasParent() ? GetParent()->GetMatrix() : Matrix::Identity;
+        return GetParent() ? GetParent()->GetMatrix() : Matrix::Identity;
     }
 }

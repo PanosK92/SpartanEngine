@@ -246,7 +246,7 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<spartan::Entity> entity_ptr) c
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
-                dropped_entity->SetParent(entity_ptr);
+                dropped_entity->SetParent(entity_ptr.get());
             }
         }
     }
@@ -505,7 +505,7 @@ spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
     {
         if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {
-            entity->SetParent(selected_entity);
+            entity->SetParent(selected_entity.get());
         }
     }
 

@@ -108,7 +108,6 @@ namespace spartan
             return;
 
         SP_PROFILE_CPU();
-        lock_guard<mutex> lock(entity_access_mutex);
 
         // detect game toggling
         const bool started =  Engine::IsFlagSet(EngineMode::Playing) &&  was_in_editor_mode;
@@ -345,7 +344,6 @@ namespace spartan
         lock_guard lock(entity_access_mutex);
 
         shared_ptr<Entity> entity = make_shared<Entity>();
-        entity->Initialize();
         entities.push_back(entity);
 
         return entity;
@@ -391,7 +389,7 @@ namespace spartan
             }
 
             // if there was a parent, update it
-            if (shared_ptr<Entity> parent = entity_to_remove->GetParent())
+            if (Entity* parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
             }
@@ -409,7 +407,7 @@ namespace spartan
 
         for (shared_ptr<Entity>& entity : entities)
         {
-            if (!entity->HasParent())
+            if (!entity->GetParent())
             {
                 root_entities.emplace_back(entity);
             }

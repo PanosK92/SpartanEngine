@@ -46,7 +46,6 @@ namespace spartan
         Entity();
         ~Entity();
 
-        void Initialize();
         std::shared_ptr<Entity> Clone();
 
         // core
@@ -59,7 +58,7 @@ namespace spartan
         void Load(pugi::xml_node& node);
 
         // active
-        bool GetActive() const;
+        bool GetActive();
         void SetActive(const bool active) { m_is_active = active; }
 
         // adds a component of type T
@@ -147,7 +146,7 @@ namespace spartan
         //=============================================================
 
         //= HIERARCHY ===================================================================================
-        void SetParent(std::weak_ptr<Entity> new_parent);
+        void SetParent(Entity* new_parent);
         Entity* GetChildByIndex(uint32_t index);
         Entity* GetChildByName(const std::string& name);
         void AcquireChildren();
@@ -156,11 +155,10 @@ namespace spartan
         bool IsDescendantOf(Entity* transform) const;
         void GetDescendants(std::vector<Entity*>* descendants);
         Entity* GetDescendantByName(const std::string& name);
-        bool HasParent() const                    { return !m_parent.expired(); }
         bool HasChildren() const                  { return GetChildrenCount() > 0; }
         uint32_t GetChildrenCount() const         { return static_cast<uint32_t>(m_children.size()); }
-        Entity* GetRoot()                         { return HasParent() ? GetParent()->GetRoot() : this; }
-        std::shared_ptr<Entity> GetParent() const { return m_parent.lock(); }
+        Entity* GetRoot()                         { return m_parent ? GetParent()->GetRoot() : this; }
+        Entity* GetParent()                       { return m_parent; }
         std::vector<Entity*>& GetChildren()       { return m_children; }
         //===============================================================================================
 
@@ -175,7 +173,7 @@ namespace spartan
         std::array<std::shared_ptr<Component>, 13> m_components;
 
         void UpdateTransform();
-        math::Matrix GetParentTransformMatrix() const;
+        math::Matrix GetParentTransformMatrix();
 
         // local
         math::Vector3 m_position_local    = math::Vector3::Zero;
@@ -194,7 +192,7 @@ namespace spartan
         math::Vector3 m_right    = math::Vector3::Zero;
         math::Vector3 m_left     = math::Vector3::Zero;
 
-        std::weak_ptr<Entity> m_parent;  // the parent of this entity
+        Entity* m_parent = nullptr;      // the parent of this entity
         std::vector<Entity*> m_children; // the children of this entity
 
         // misc

@@ -830,7 +830,7 @@ namespace spartan
                 const float max_volume    = 100000.0f;
                 const float volume_factor = clamp(volume / max_volume, 0.0f, 1.0f); // aka simplification ratio
                 size_t min_index_count    = min<size_t>(indices.size(), 256);
-                size_t target_index_count = clamp<size_t>(indices.size() * volume_factor, min_index_count, 16'000);
+                size_t target_index_count = clamp<size_t>(static_cast<size_t>(indices.size() * volume_factor), min_index_count, 16'000);
                 geometry_processing::simplify(indices, vertices, target_index_count, false, false);
                 if (target_index_count > 16000)
                 {

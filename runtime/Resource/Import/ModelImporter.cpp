@@ -543,7 +543,7 @@ namespace spartan
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
         // set the transform of parent_node as the parent of the new_entity's transform
-        entity->SetParent(parent_entity);
+        entity->SetParent(parent_entity.get());
 
         // apply node transformation
         set_entity_transform(node, entity);
@@ -590,7 +590,7 @@ namespace spartan
                 entity = World::CreateEntity();
 
                 // set parent
-                entity->SetParent(node_entity);
+                entity->SetParent(node_entity.get());
 
                 // set name
                 node_name += "_" + to_string(i + 1); // set name

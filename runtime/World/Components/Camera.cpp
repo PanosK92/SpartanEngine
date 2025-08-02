@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "Window.h"
 #include "Physics.h"
+#include "Light.h"
 #include "../Entity.h"
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
@@ -335,10 +336,11 @@ namespace spartan
         bool button_sprint          = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Left_Shoulder);
         bool button_jump            = Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South);
         bool button_crouch          = Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Button_East); // Left Ctrl or O button
+        bool button_flashlight      = Input::GetKeyDown(KeyCode::F);
         bool mouse_right_click_down = Input::GetKeyDown(KeyCode::Click_Right);
         bool mouse_right_click      = Input::GetKey(KeyCode::Click_Right);
-        bool mouse_in_viewport      = Input::GetMouseIsInViewport();
 
+        bool mouse_in_viewport      = Input::GetMouseIsInViewport();
         // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
         bool is_controlled        = GetFlag(CameraFlags::IsControlled);
         bool wants_cursor_hidden  = GetFlag(CameraFlags::WantsCursorHidden);
@@ -524,7 +526,7 @@ namespace spartan
             m_physics_body_to_control->Crouch(is_crouching);
         }
         
-        // behavior: apply Movement
+        // behavior: apply movement
         if (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && is_grounded))
         {
             if (has_physics_body && is_playing)
@@ -553,6 +555,38 @@ namespace spartan
             else
             {
                 GetEntity()->Translate(m_movement_speed);
+            }
+        }
+
+        // behavior: flashlight
+        {
+            // create
+            if (GetFlag(CameraFlags::Flashlight) && !m_flashlight)
+            {
+                m_flashlight = World::CreateEntity().get();
+                m_flashlight->SetObjectName("flashlight");
+                m_flashlight->SetParent(GetEntity());
+
+                Light* light = m_flashlight->AddComponent<Light>();
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color::light_light_bulb);
+                light->SetRange(50.0f);
+                light->SetIntensity(4750.0f);
+                light->SetFlag(LightFlags::Volumetric, false);
+                light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                light->SetFlag(LightFlags::Shadows, false);
+            }
+
+            // toggle
+            if (button_flashlight)
+            {
+                SetFlag(CameraFlags::Flashlight, !GetFlag(CameraFlags::Flashlight));
+            }
+
+            // set active state
+            if (m_flashlight)
+            {
+                m_flashlight->SetActive(GetFlag(CameraFlags::Flashlight));
             }
         }
     }

@@ -132,7 +132,7 @@ namespace spartan
                 shared_ptr<Entity> camera = World::CreateEntity();
                 camera->SetObjectName("component_camera");
                 camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body); // let the camera now that it should control the physics body
-                camera->SetParent(default_camera);
+                camera->SetParent(default_camera.get());
                 camera->SetPositionLocal(physics_body->GetControllerTopLocal());
                 camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
@@ -276,7 +276,7 @@ namespace spartan
                         {
                             shared_ptr<Entity> entity_tile = World::CreateEntity();
                             entity_tile->SetObjectName(name);
-                            entity_tile->SetParent(water);
+                            entity_tile->SetParent(water.get());
                             entity_tile->SetPosition(tile_offsets[tile_index]);
                 
                             if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
@@ -465,7 +465,7 @@ namespace spartan
                 {
                     shared_ptr<Entity> sound = World::CreateEntity();
                     sound->SetObjectName("sound_start");
-                    sound->SetParent(default_car);
+                    sound->SetParent(default_car.get());
 
                     AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_start.wav");
@@ -477,7 +477,7 @@ namespace spartan
                 {
                     shared_ptr<Entity> sound = World::CreateEntity();
                     sound->SetObjectName("sound_idle");
-                    sound->SetParent(default_car);
+                    sound->SetParent(default_car.get());
 
                     AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_idle.wav");
@@ -489,7 +489,7 @@ namespace spartan
                 {
                     shared_ptr<Entity> sound = World::CreateEntity();
                     sound->SetObjectName("sound_door");
-                    sound->SetParent(default_car);
+                    sound->SetParent(default_car.get());
 
                     AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_door.wav");
@@ -534,7 +534,7 @@ namespace spartan
                     if (!inside_the_car)
                     {
                         camera = default_camera->GetChildByName("component_camera");
-                        camera->SetParent(default_car);
+                        camera->SetParent(default_car.get());
                         camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         camera->SetRotationLocal(Quaternion::Identity);
             
@@ -545,7 +545,7 @@ namespace spartan
                     else
                     {
                         camera = default_car->GetChildByName("component_camera");
-                        camera->SetParent(default_camera);
+                        camera->SetParent(default_camera.get());
                         camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
                         camera->SetRotationLocal(Quaternion::Identity);
             
@@ -773,13 +773,13 @@ namespace spartan
                 {
                     shared_ptr<Entity> entity = World::CreateEntity();
                     entity->SetObjectName("audio");
-                    entity->SetParent(default_terrain);
+                    entity->SetParent(default_terrain.get());
 
                     // footsteps grass
                     {
                         shared_ptr<Entity> sound = World::CreateEntity();
                         sound->SetObjectName("footsteps");
-                        sound->SetParent(entity);
+                        sound->SetParent(entity.get());
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\footsteps_grass.wav");
@@ -790,7 +790,7 @@ namespace spartan
                     {
                         shared_ptr<Entity> sound = World::CreateEntity();
                         sound->SetObjectName("forest_river");
-                        sound->SetParent(entity);
+                        sound->SetParent(entity.get());
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\forest_river.wav");
@@ -801,7 +801,7 @@ namespace spartan
                     {
                         shared_ptr<Entity> sound = World::CreateEntity();
                         sound->SetObjectName("wind");
-                        sound->SetParent(entity);
+                        sound->SetParent(entity.get());
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\wind.wav");
@@ -812,7 +812,7 @@ namespace spartan
                     {
                         shared_ptr<Entity> sound = World::CreateEntity();
                         sound->SetObjectName("underwater");
-                        sound->SetParent(entity);
+                        sound->SetParent(entity.get());
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\underwater.wav");
@@ -1211,8 +1211,6 @@ namespace spartan
 
         namespace liminal_space
         {
-            shared_ptr<Entity> flashlight;
-
             void create()
             {
                 // shared material for surfaces
@@ -1255,15 +1253,15 @@ namespace spartan
                     entity_pool_light->GetChildByName("Circle.001")->GetComponent<Renderable>()->SetMaterial(material_paraboloid);
             
                     // point light
-                    Entity* light_source = entity_pool_light->GetChildByIndex(2);
-                    light_source->SetPositionLocal(Vector3(0.0f, 0.0f, -0.5f));
-                    Light* light = light_source->AddComponent<Light>();
-                    light->SetLightType(LightType::Point);
-                    light->SetIntensity(2500.0f);
-                    light->SetTemperature(5500.0f);
-                    light->SetRange(15.0f);
-                    light->SetFlag(LightFlags::Shadows, false);
-                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                    //Entity* light_source = entity_pool_light->GetChildByIndex(2);
+                    //light_source->SetPositionLocal(Vector3(0.0f, 0.0f, -0.5f));
+                    //Light* light = light_source->AddComponent<Light>();
+                    //light->SetLightType(LightType::Point);
+                    //light->SetIntensity(2500.0f);
+                    //light->SetTemperature(5500.0f);
+                    //light->SetRange(15.0f);
+                    //light->SetFlag(LightFlags::Shadows, false);
+                    //light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 }
             
                 // renderer options
@@ -1277,11 +1275,12 @@ namespace spartan
             
                 // camera
                 entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
+                default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
             
                 // audio hum
                 shared_ptr<Entity> entity_hum = World::CreateEntity();
                 entity_hum->SetObjectName("audio_hum_electric");
-                entity_hum->SetParent(default_camera);
+                entity_hum->SetParent(default_camera.get());
                 AudioSource* audio_source = entity_hum->AddComponent<AudioSource>();
                 audio_source->SetAudioClip("project\\music\\hum_electric.wav");
                 audio_source->SetLoop(true);
@@ -1290,7 +1289,7 @@ namespace spartan
                 // tile footsteps
                 shared_ptr<Entity> entity_tiles = World::CreateEntity();
                 entity_tiles->SetObjectName("audio_footsteps_tiles");
-                entity_tiles->SetParent(default_camera);
+                entity_tiles->SetParent(default_camera.get());
                 AudioSource* audio_source_tiles = entity_tiles->AddComponent<AudioSource>();
                 audio_source_tiles->SetAudioClip("project\\music\\footsteps_tiles.wav");
                 audio_source_tiles->SetPlayOnStart(false);
@@ -1298,25 +1297,11 @@ namespace spartan
                 // water footsteps
                 shared_ptr<Entity> entity_water = World::CreateEntity();
                 entity_water->SetObjectName("audio_footsteps_water");
-                entity_water->SetParent(default_camera);
+                entity_water->SetParent(default_camera.get());
                 AudioSource* audio_source_water = entity_water->AddComponent<AudioSource>();
                 audio_source_water->SetAudioClip("project\\music\\footsteps_water.wav");
                 audio_source_water->SetPlayOnStart(false);
-            
-                // flashlight
-                flashlight = World::CreateEntity();
-                flashlight->SetObjectName("flashlight");
-                flashlight->SetPosition(Vector3(0.0f, 1.7f, 0.0f));
-                flashlight->SetParent(default_camera);
-                Light* light = flashlight->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_light_bulb);
-                light->SetRange(50.0f);
-                light->SetIntensity(4750.0f);
-                light->SetFlag(LightFlags::Volumetric, false);
-                light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                light->SetFlag(LightFlags::Shadows, false);
-            
+
                 // constants
                 const float ROOM_WIDTH  = 40.0f;
                 const float ROOM_DEPTH  = 40.0f;
@@ -1343,7 +1328,7 @@ namespace spartan
                     entity->SetObjectName(name);
                     entity->SetPosition(pos);
                     entity->SetScale(scale);
-                    entity->SetParent(parent);
+                    entity->SetParent(parent.get());
                     auto renderable = entity->AddComponent<Renderable>();
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetMaterial(tile_material);
@@ -1406,7 +1391,7 @@ namespace spartan
                         float water_y        = floor_y + 0.5f + water_distance;
                         Color pool_color     = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
                         auto water           = entities::water(Vector3(0, water_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
-                        water->SetParent(room_entity);
+                        water->SetParent(room_entity.get());
                     }
 
                     // wall configs
@@ -1442,7 +1427,7 @@ namespace spartan
                             const float height = 1.5f;
                             shared_ptr<Entity> light_clone = entity_pool_light->Clone();
                             light_clone->SetObjectName("pool_light_" + to_string(i));
-                            light_clone->SetParent(room_entity);
+                            light_clone->SetParent(room_entity.get());
                             light_clone->SetScale(0.5f);
                             light_clone->SetPositionLocal(Vector3(walls[i].pos.x, height, walls[i].pos.z));
                             Vector3 direction = (Vector3(0, height, 0) - Vector3(walls[i].pos.x, height, walls[i].pos.z)).Normalized();
@@ -1545,13 +1530,6 @@ namespace spartan
                         audio_source_tiles->Stop();
                         audio_source_water->Stop();
                     }
-                }
-
-                // flashlight
-                if (Input::GetKeyDown(KeyCode::F))
-                {
-                    flashlight->SetActive(!flashlight->GetActive());
-                    SP_LOG_INFO("Flashlight: %s", flashlight->GetActive() ? "On" : "Off");
                 }
             }
         }

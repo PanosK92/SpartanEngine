@@ -375,7 +375,8 @@ namespace
             { "Ctrl+L",       "Load world"                 },
             { "Ctrl+Z",       "Undo"                       },
             { "Ctrl+Shift+Z", "Redo"                       },
-            { "Alt+Enter",    "Toggle fullscreen viewport" }
+            { "Alt+Enter",    "Toggle fullscreen viewport" },
+            { "F",            "Entity focus"               }
         };
     
         static const Shortcut camera_controls[] =
@@ -383,7 +384,7 @@ namespace
             { "Right click",  "Enable first-person control" },
             { "W, A, S, D",   "Movement"                    },
             { "Q, E",         "Elevation"                   },
-            { "F",            "Entity focus"                },
+            { "F",            "Flashlight"                  },
             { "Ctrl",         "Crouch"                      }
         };
 
