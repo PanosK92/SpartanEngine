@@ -141,14 +141,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             
             // energy conservation - only non metals have diffuse
             light_diffuse *= surface.diffuse_energy * surface.alpha;
-            }
         }
-        
-        // volumetric
-        if (light.is_volumetric())
-        {
-        volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
-    }
+     }
+
+     // volumetric
+     if (light.is_volumetric())
+     {
+         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
+     }
     
     // accumulation
     float accumulate = !clear;

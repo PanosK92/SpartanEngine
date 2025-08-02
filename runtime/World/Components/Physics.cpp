@@ -50,6 +50,11 @@ using namespace physx;
 
 namespace spartan
 {
+    namespace vehicle
+    {
+        // it uses the new vehicle2 api
+    }
+
     namespace
     {
         const float distance_deactivate = 80.0f;

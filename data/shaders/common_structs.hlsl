@@ -206,6 +206,42 @@ struct Light
         return attenuation;
     }
 
+    float compute_attenuation_volumetric(const float3 vol_position)
+    {
+        float atten = 1.0f;
+
+        if (is_directional())
+        {
+            // keep sun-elevation atten for consistency, as it's global (no dist)
+            atten = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
+        }
+        else if (is_point() || is_spot())
+        {
+            float dist_to_vol = length(vol_position - position);
+            float atten_dist  = saturate(1.0f - dist_to_vol / far);
+            atten_dist       *= atten_dist;
+
+            atten = atten_dist;
+
+            if (is_spot())
+            {
+                float3 to_vol            = normalize(vol_position - position); // direction from light to point
+                float cos_outer          = cos(angle);
+                float cos_inner          = cos(angle * 0.9f);
+                float cos_outer_squared  = cos_outer * cos_outer;
+                float scale              = 1.0f / max(0.001f, cos_inner - cos_outer);
+                float offset             = -cos_outer * scale;
+                float cd                 = dot(to_vol, forward); // use per-sample direction
+                float atten_angle        = saturate(cd * scale + offset);
+                atten_angle              *= atten_angle;
+
+                atten *= atten_angle;
+            }
+        }
+
+        return atten;
+    }
+    
     float3 compute_direction(float3 light_position, float3 fragment_position)
     {
         float3 direction = 0.0f;

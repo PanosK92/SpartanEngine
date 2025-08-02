@@ -63,12 +63,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // sky color is used to light up the fog
         // occlusion is used to shadow it
         
-        float max_mip       = pass_get_f3_value().x;
-        float fog_density   = pass_get_f3_value().y * 0.5f;
-        float3 sky_color    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5), max_mip).rgb;
-        float fog_amount    = get_fog_atmospheric(distance_from_camera, surface.position.y) * fog_density;
-        float3 fog_emissive = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb; 
-        light_atmospheric   = fog_amount * (sky_color + fog_emissive);
+        float max_mip          = pass_get_f3_value().x;
+        float fog_density      = pass_get_f3_value().y * 0.5f;
+        float3 sky_color       = tex2.SampleLevel(samplers[sampler_trilinear_clamp], float2(0.5, 0.5), max_mip).rgb;
+        float fog_atmospheric  = get_fog_atmospheric(distance_from_camera, surface.position.y);
+        float3 fog_emissive    = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+        
+        // additive: ambient in-scatter + volumetric, then scale by density
+        float3 fog_inscatter   = fog_atmospheric * sky_color; // ambient part
+        light_atmospheric      = (fog_inscatter + fog_emissive) * fog_density;
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
