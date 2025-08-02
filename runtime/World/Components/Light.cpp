@@ -39,9 +39,9 @@ namespace spartan
     namespace
     {
         // directional matrix parameters
-        const float cascade_near_half_extent = 50.0f;
-        const float cascade_far_half_extent  = 2048.0f;
-        const float cascade_depth            = 1'000.0f;
+        const float cascade_near_half_extent = 20.0f;
+        const float cascade_far_half_extent  = 256.0f;
+        const float cascade_depth            = 1000.0f;
 
         float get_sensible_range(const LightType type)
         {
@@ -403,9 +403,9 @@ namespace spartan
         }
     }
     
-   void Light::ComputeProjectionMatrix()
+    void Light::ComputeProjectionMatrix()
     {
-       if (m_light_type == LightType::Directional)
+        if (m_light_type == LightType::Directional)
         {
             Camera* camera = World::GetCamera();
             if (!camera)
