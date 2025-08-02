@@ -110,16 +110,20 @@ struct Surface
         roughness_alpha = roughness * roughness;
 
         // ssao
-        bent_normal = float3(0, 1, 0);
-        occlusion   = sample_material.a;
-        if (is_ssao_enabled())
+        bent_normal          = float3(0, 1, 0);
+        occlusion            = sample_material.a;
+        bool is_fully_opaque = sample_albedo.a >= 0.999f;
+        if (is_ssao_enabled() && is_fully_opaque)
         {
             float4 normal_sample = tex_ssao.SampleLevel(samplers[sampler_point_clamp], uv, 0);
             bent_normal          = normal_sample.rgb;
-            occlusion            = min(sample_material.a, normal_sample.a); // combine occlusion with material occlusion
+            occlusion            = min(sample_material.a, normal_sample.a); // use the minimum of the ssao and material occlusion
         }
-        // disable ssao for transparents (it has already been applied to the opaque light)
-        occlusion = lerp(1.0f, occlusion, float(sample_albedo.a == 1.0f));
+        
+        if (!is_fully_opaque)
+        {
+            occlusion = 1.0f;
+        }
 
         position               = get_position(depth, uv);
         camera_to_pixel        = position - buffer_frame.camera_position.xyz;

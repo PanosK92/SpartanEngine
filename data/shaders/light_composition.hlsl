@@ -70,8 +70,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 fog_emissive    = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
         
         // additive: ambient in-scatter + volumetric, then scale by density
-        float3 fog_inscatter   = fog_atmospheric * sky_color; // ambient part
-        light_atmospheric      = (fog_inscatter + fog_emissive) * fog_density;
+        float3 fog_inscatter = fog_atmospheric * sky_color; // ambient part
+        light_atmospheric    = (fog_inscatter + fog_emissive) * fog_density;
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
