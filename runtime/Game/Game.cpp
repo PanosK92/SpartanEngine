@@ -694,9 +694,10 @@ namespace spartan
              entities::sun(true);
              entities::music();
 
-            // the entire minecraft world is a single mesh so don't generate any lods
+            // the entire minecraft world is a single mesh so don't optimize or generate lods (it will deteriorate a lot)
             uint32_t mesh_flags  = Mesh::GetDefaultFlags();
-            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // don't genereate and use LODs
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
