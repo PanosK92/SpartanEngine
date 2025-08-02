@@ -905,7 +905,7 @@ namespace spartan
                                 material->SetTexture(MaterialTextureType::AlphaMask,                "project\\models\\tree\\Twig_Opacity_Map.jpg");
                                 material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
                                 material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
-                                material->SetProperty(MaterialProperty::SubsurfaceScattering,       0.1f);
+                                material->SetProperty(MaterialProperty::SubsurfaceScattering,       0.0f);
                                 // create a file path for this material (required for the material to be able to be cached by the resource cache)
                                 material->SetResourceFilePath("project\\terrain\\tree_leaf_material" + string(EXTENSION_MATERIAL));
                             }
@@ -1026,7 +1026,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::Roughness,            1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.2f);
-                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.1f);
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                     material->SetColor(Color::standard_white);
                     renderable->SetMaterial(material);
                 

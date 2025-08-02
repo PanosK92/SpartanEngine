@@ -43,12 +43,12 @@ namespace spartan
 {
     namespace parameters
     {
-        const float level_sea               = 0.0f;   // the height at which the sea level is 0.0f - this is an axiom of the engine
-        const float level_snow              = 400.0f; 
-        const uint32_t smoothing_iterations = 1;      // applied on the height map
-        const uint32_t density              = 3;      // determines the number of positions extracted out of the height map (that means more triangles later down the line)
-        const uint32_t scale                = 6;      // the scale of the mesh, this determines the physical size of the terrain, it doesn't affect density
-        const bool create_border            = true;   // if true, the terrain will have a natural border around it, useful for creating mountains or walls, prevents the player from falling off the terrain
+        const float level_sea    = 0.0f;   // world height where sea level is set
+        const float level_snow   = 400.0f; // world height where snow starts
+        const uint32_t smoothing = 0;      // smoothing passes for height map spikes
+        const uint32_t density   = 3;      // positions per height map sample, affects mesh resolution
+        const uint32_t scale     = 6;      // physical size of the terrain mesh
+        const bool create_border = true;   // adds a natural border to block player exit
     }
 
     namespace
@@ -231,8 +231,6 @@ namespace spartan
             return area_m2 / 1'000'000.0f; // in km²
         }
         
-
-        // extracts height values from a texture and applies optional smoothing
         void get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y)
         {
             vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
@@ -264,7 +262,7 @@ namespace spartan
                 const uint32_t width  = height_texture->GetWidth();
                 const uint32_t height = height_texture->GetHeight();
         
-                for (uint32_t iteration = 0; iteration < parameters::smoothing_iterations; iteration++)
+                for (uint32_t iteration = 0; iteration < parameters::smoothing; iteration++)
                 {
                     vector<float> smoothed_height_data = height_data_out; // create a copy to store the smoothed data
         
@@ -312,12 +310,13 @@ namespace spartan
                 const uint32_t height = height_texture->GetHeight();
 
                 // border parameters (tweak these as needed)
-                const uint32_t border_plateau_width = 25;     // width of the flat plateau at max height near the border (the "depth" or indentation X)
-                const uint32_t border_blend_width   = 20;     // width over which to blend down from max height inward (slope of the inner wall)
-                const float border_height_max       = 280.0f; // maximum height to raise borders (e.g., 1.5x original max for prominent mountains)
+                const uint32_t border_backface_width = 2;      // width of the thin outer edge to push down for backface creation (prevents see-through from outside)
+                const uint32_t border_plateau_width  = 25;     // width of the flat plateau at max height inward from the backface
+                const uint32_t border_blend_width    = 20;     // width over which to blend down from max height further inward (slope of the inner wall)
+                const float border_height_max        = 280.0f; // maximum height to raise borders (e.g., 1.5x original max for prominent mountains)
 
-                // parallel application of border height adjustment
-                auto apply_border = [&height_data_out, width, height, border_plateau_width, border_blend_width, border_height_max](uint32_t start_index, uint32_t end_index)
+                // create the borders
+                auto apply_border = [&height_data_out, width, height, border_backface_width, border_plateau_width, border_blend_width, border_height_max, min_y](uint32_t start_index, uint32_t end_index)
                 {
                     for (uint32_t index = start_index; index < end_index; index++)
                     {
@@ -325,30 +324,33 @@ namespace spartan
                         uint32_t y = index / width;
 
                         // compute minimum distance to any edge
-                        uint32_t dist_left   = x;
-                        uint32_t dist_right  = width - 1 - x;
-                        uint32_t dist_top    = y;
-                        uint32_t dist_bottom = height - 1 - y;
-                        uint32_t min_dist    = min({dist_left, dist_right, dist_top, dist_bottom});
-
+                        uint32_t dist_left    = x;
+                        uint32_t dist_right   = width - 1 - x;
+                        uint32_t dist_top     = y;
+                        uint32_t dist_bottom  = height - 1 - y;
+                        uint32_t min_dist     = min({dist_left, dist_right, dist_top, dist_bottom});
                         float height_increase = 0.0f;
-                        if (min_dist <= border_plateau_width)
+                        if (min_dist < border_backface_width)
                         {
-                            // flat plateau at max height near the border
+                            // push down the thin outer edge to create a backface (set to min_y for a sharp drop, preventing see-through)
+                            height_data_out[index] = min_y;
+                            continue; // skip further processing for these pixels
+                        }
+                        else if (min_dist < border_backface_width + border_plateau_width)
+                        {
+                            // flat plateau at max height inward from the backface
                             height_increase = border_height_max;
                         }
-                        else if (min_dist < border_plateau_width + border_blend_width)
+                        else if (min_dist < border_backface_width + border_plateau_width + border_blend_width)
                         {
                             // blend down inward from plateau to normal terrain
-                            float blend = 1.0f - static_cast<float>(min_dist - border_plateau_width) / static_cast<float>(border_blend_width);
+                            float blend = 1.0f - static_cast<float>(min_dist - (border_backface_width + border_plateau_width)) / static_cast<float>(border_blend_width);
                             height_increase = blend * border_height_max;
                         }
-
                         // add to existing height for natural integration
                         height_data_out[index] += height_increase;
                     }
                 };
-
                 ThreadPool::ParallelLoop(apply_border, width * height);
             }
         }
