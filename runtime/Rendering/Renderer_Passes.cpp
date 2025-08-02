@@ -282,14 +282,11 @@ namespace spartan
                             }
                             else
                             {
-                                if (Game::GetLoadedWorld() != DefaultWorld::Forest) // find fix: non instanced draw calls will crash the forest
-                                { 
-                                    cmd_list->DrawIndexed(
-                                        renderable->GetIndexCount(lod_index),
-                                        renderable->GetIndexOffset(lod_index),
-                                        renderable->GetVertexOffset(lod_index)
-                                    );
-                                }
+                                cmd_list->DrawIndexed(
+                                    renderable->GetIndexCount(lod_index),
+                                    renderable->GetIndexOffset(lod_index),
+                                    renderable->GetVertexOffset(lod_index)
+                                );
                             }
                         }
                     }
