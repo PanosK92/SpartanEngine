@@ -578,7 +578,7 @@ namespace spartan
                 light->SetAngle(30.0f * math::deg_to_rad);
                 light->SetFlag(LightFlags::Volumetric, false);
                 light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                light->SetFlag(LightFlags::Shadows, false);
+                light->SetFlag(LightFlags::Shadows, true);
             }
 
             // toggle

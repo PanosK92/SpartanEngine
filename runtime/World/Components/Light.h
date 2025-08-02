@@ -62,8 +62,7 @@ namespace spartan
         Shadows            = 1U << 0,
         ShadowsScreenSpace = 1U << 1,
         Volumetric         = 1U << 2,
-        DayNightCycle      = 1U << 3, // only affects directional lights
-        ShadowDirty        = 1U << 4,
+        DayNightCycle      = 1U << 3 // only affects directional lights
     };
 
     class Light : public Component
@@ -136,6 +135,7 @@ namespace spartan
         void UpdateMatrices();
         void ComputeViewMatrix();
         void ComputeProjectionMatrix();
+        void CreateShadowMaps();
 
         // intensity
         LightIntensity m_intensity   = LightIntensity::bulb_500_watt;

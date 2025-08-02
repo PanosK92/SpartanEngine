@@ -97,9 +97,6 @@ namespace spartan
         SetRange(get_sensible_range(m_light_type));
         SetFlag(LightFlags::Shadows);
         SetFlag(LightFlags::ShadowsScreenSpace);
-        SetFlag(LightFlags::ShadowDirty);
-
-        m_entity_ptr->SetRotation(Quaternion::FromEulerAngles(35.0f, 0.0f, 0.0f));
     }
 
     void Light::OnTick()
@@ -135,29 +132,6 @@ namespace spartan
         if (update_matrices)
         {
             UpdateMatrices();
-        }
-
-        // create shadow maps
-        {
-            uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
-            RHI_Format format_depth = RHI_Format::D32_Float;
-            RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
-            uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
-            uint32_t array_length   = GetLightType() == LightType::Spot ? 1 : 2;
-            bool resolution_dirty   = (m_texture_depth ? m_texture_depth->GetWidth() : resolution) != resolution;
-
-            // spot light:        1 slice
-            // directional light: 2 slices for cascades
-            // point light:       2 slices for front and back paraboloid
-
-            if ((GetFlag(LightFlags::Shadows) && !m_texture_depth) || resolution_dirty)
-            {
-                m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
-            }
-            else if (!GetFlag(LightFlags::Shadows) && m_texture_depth)
-            {
-                m_texture_depth = nullptr;
-            }
         }
     }
 
@@ -382,7 +356,7 @@ namespace spartan
     {
         ComputeViewMatrix();
         ComputeProjectionMatrix();
-        SetFlag(LightFlags::ShadowDirty);
+        CreateShadowMaps();
 
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
@@ -456,13 +430,37 @@ namespace spartan
         {
             if (!m_texture_depth)
                 return;
-    
+
             const float near_plane   = 0.05f;
+            const float far_plane    = m_range;
             const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
             const float fov          = m_angle_rad * 2.0f;
-            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, m_range);
+            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, far_plane, near_plane);
             m_matrix_projection[0]   = projection;
             m_frustums[0]            = Frustum(m_matrix_view[0], projection, m_range - near_plane);
+        }
+    }
+
+    void Light::CreateShadowMaps()
+    {
+        uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
+        RHI_Format format_depth = RHI_Format::D32_Float;
+        RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
+        uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+        uint32_t array_length   = GetLightType() == LightType::Spot ? 1 : 2;
+        bool resolution_dirty   = (m_texture_depth ? m_texture_depth->GetWidth() : resolution) != resolution;
+
+        // spot light:        1 slice
+        // directional light: 2 slices for cascades
+        // point light:       2 slices for front and back paraboloid
+
+        if ((GetFlag(LightFlags::Shadows) && !m_texture_depth) || resolution_dirty)
+        {
+            m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
+        }
+        else if (!GetFlag(LightFlags::Shadows) && m_texture_depth)
+        {
+            m_texture_depth = nullptr;
         }
     }
 
