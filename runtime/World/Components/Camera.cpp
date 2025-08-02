@@ -563,15 +563,19 @@ namespace spartan
             // create
             if (GetFlag(CameraFlags::Flashlight) && !m_flashlight)
             {
+                // entity
                 m_flashlight = World::CreateEntity().get();
                 m_flashlight->SetObjectName("flashlight");
                 m_flashlight->SetParent(GetEntity());
+                m_flashlight->SetRotationLocal(Quaternion::Identity);
 
+                // component
                 Light* light = m_flashlight->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_light_bulb);
-                light->SetRange(50.0f);
-                light->SetIntensity(4750.0f);
+                light->SetLightType(LightType::Spot);
+                light->SetColor(Color(1.0f, 1.0f, 1.0f, 1.0f));
+                light->SetRange(100.0f);
+                light->SetIntensity(2000.0f);
+                light->SetAngle(30.0f * math::deg_to_rad);
                 light->SetFlag(LightFlags::Volumetric, false);
                 light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 light->SetFlag(LightFlags::Shadows, false);
