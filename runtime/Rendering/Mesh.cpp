@@ -277,7 +277,7 @@ namespace spartan
         }
 
         // generate additional LODs if requested
-        if (generate_lods && !(m_flags & static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
+        if (generate_lods && (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods)))
         {
             // store the original index count (for reference, but we'll base targets on previous LOD)
             size_t original_index_count = indices.size();
@@ -352,7 +352,8 @@ namespace spartan
         return
             static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData) |
             static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale) |
-            static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
+            static_cast<uint32_t>(MeshFlags::PostProcessOptimize)       |
+            static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
     }
 
     void Mesh::CreateGpuBuffers()

@@ -151,7 +151,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     
     // accumulation
-    float accumulate = !clear && !surface.is_transparent();
+    float accumulate = !clear;
     
     // shadow accumulation (multiplicative for visibility)
     float prev_shadow      = accumulate ? tex_uav3[thread_id.xy].r : 1.0f;

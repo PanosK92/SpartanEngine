@@ -312,10 +312,10 @@ namespace spartan
     {
         void create(const Vector3& position, const bool physics, shared_ptr<RHI_Texture> texture_paint_normal)
         {
-            // load full detail model (no vertex/index optimizations)
-            uint32_t mesh_flags = Mesh::GetDefaultFlags();
-            mesh_flags &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-
+            // load and render model at max geometry quality
+            uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);     // don't reduce vertex/index count
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // don't genereate and use LODs
             if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags))
             {
                 default_car = mesh_car->GetRootEntity().lock();
@@ -695,7 +695,9 @@ namespace spartan
              entities::music();
 
             // the entire minecraft world is a single mesh so don't generate any lods
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods)))
+            uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // don't genereate and use LODs
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("minecraft");
@@ -717,12 +719,12 @@ namespace spartan
 
         void create_subway_gi_test()
         {
-             entities::sun(false);
-             entities::camera();
+            entities::sun(false);
+            entities::camera();
             
             Renderer::SetOption(Renderer_Option::Grid, 0.0f);
             Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
-
+            
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
@@ -1224,11 +1226,11 @@ namespace spartan
                 tile_material->SetProperty(MaterialProperty::WorldSpaceUv, 1.0f);
                 tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
                 tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
-            
+
                 // pool light mesh
                 shared_ptr<Entity> entity_pool_light = nullptr;
                 uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                flags          |= static_cast<uint32_t>(MeshFlags::PostProcessDontGenerateLods); // already very simple
+                flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // already very simple
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\pool_light\\pool_light.blend", flags))
                 {
                     entity_pool_light = mesh->GetRootEntity().lock();

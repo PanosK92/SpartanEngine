@@ -40,7 +40,7 @@ namespace spartan
         ImportCombineMeshes             = 1 << 2,
         PostProcessNormalizeScale       = 1 << 3,
         PostProcessOptimize             = 1 << 4,
-        PostProcessDontGenerateLods     = 1 << 5,
+        PostProcessGenerateLods         = 1 << 5,
         PostProcessPreserveTerrainEdges = 1 << 6,
     };
 
@@ -99,8 +99,8 @@ namespace spartan
         bool IsSolid(const uint32_t sub_mesh_index) const     { return m_sub_meshes[sub_mesh_index].is_solid; }
 
         // lod dropoff
-        MeshLodDropoff GetLodDropoff() const                  { return m_lod_dropoff; }
-        void SetLodDropoff(const MeshLodDropoff dropoff)      { m_lod_dropoff = dropoff; }
+        MeshLodDropoff GetLodDropoff() const             { return m_lod_dropoff; }
+        void SetLodDropoff(const MeshLodDropoff dropoff) { m_lod_dropoff = dropoff; }
 
         // get counts
         uint32_t GetVertexCount() const;

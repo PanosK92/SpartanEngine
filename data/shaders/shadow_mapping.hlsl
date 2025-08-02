@@ -100,7 +100,7 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
 float compute_shadow(Surface surface, Light light)
 {
-    float shadow              = 1.0f;
+    float shadow = 1.0f;
 
     if (light.distance_to_pixel <= light.far)
     {
@@ -111,7 +111,7 @@ float compute_shadow(Surface surface, Light light)
 
         if (light.is_point())
         {
-            uint slice_index    = dot(light.forward, light.to_pixel) < 0.0f;
+            uint slice_index      = dot(light.forward, light.to_pixel) < 0.0f;
             float3 position_view  = mul(float4(position_world, 1.0f), light.transform[slice_index]).xyz;
             float3 ndc            = project_onto_paraboloid(position_view, light.near, light.far);
             float3 sample_coords  = float3(ndc_to_uv(ndc.xy), slice_index);
@@ -121,13 +121,13 @@ float compute_shadow(Surface surface, Light light)
         {
             // near cascade computation
             const uint near_cascade = 0;
-            float3 near_ndc       = world_to_ndc(position_world, light.transform[near_cascade]);
-            float2 near_uv        = ndc_to_uv(near_ndc);
-            float3 near_sample    = float3(near_uv, near_cascade);
-            float near_depth      = near_ndc.z;
+            float3 near_ndc         = world_to_ndc(position_world, light.transform[near_cascade]);
+            float2 near_uv          = ndc_to_uv(near_ndc);
+            float3 near_sample      = float3(near_uv, near_cascade);
+            float near_depth        = near_ndc.z;
 
             // check if pixel is within near cascade bounds
-            bool in_near_bounds   = abs(near_ndc.x) <= 1.0f && abs(near_ndc.y) <= 1.0f && near_ndc.z >= 0.0f && near_ndc.z <= 1.0f;
+            bool in_near_bounds = abs(near_ndc.x) <= 1.0f && abs(near_ndc.y) <= 1.0f && near_ndc.z >= 0.0f && near_ndc.z <= 1.0f;
             if (light.is_directional())
             {
                 // compute blend factor based on distance to near cascade edge
@@ -135,24 +135,24 @@ float compute_shadow(Surface surface, Light light)
                 float blend_factor = smoothstep(0.8f, 1.0f, blend_input); // blend from 0.8 to 1.0
 
                 // near cascade shadow
-                float near_shadow  = in_near_bounds ? vogel_depth(light, surface, near_sample, near_depth) : 1.0f;
+                float near_shadow = in_near_bounds ? vogel_depth(light, surface, near_sample, near_depth) : 1.0f;
 
                 // far cascade with larger offset
-                normal_offset_scale = 0.5f;
-                normal_offset_bias  = surface.normal * (1.0f - saturate(light.n_dot_l)) * normal_offset_scale;
-                position_world      = surface.position + normal_offset_bias;
+                normal_offset_scale    = 0.5f;
+                normal_offset_bias     = surface.normal * (1.0f - saturate(light.n_dot_l)) * normal_offset_scale;
+                position_world         = surface.position + normal_offset_bias;
                 const uint far_cascade = 1;
-                float3 far_ndc     = world_to_ndc(position_world, light.transform[far_cascade]);
-                float2 far_uv      = ndc_to_uv(far_ndc);
-                float3 far_sample  = float3(far_uv, far_cascade);
-                float far_depth    = far_ndc.z;
-                float far_shadow   = vogel_depth(light, surface, far_sample, far_depth);
+                float3 far_ndc         = world_to_ndc(position_world, light.transform[far_cascade]);
+                float2 far_uv          = ndc_to_uv(far_ndc);
+                float3 far_sample      = float3(far_uv, far_cascade);
+                float far_depth        = far_ndc.z;
+                float far_shadow       = vogel_depth(light, surface, far_sample, far_depth);
 
                 // blend between near and far cascades
-                float blended      = lerp(near_shadow, far_shadow, blend_factor);
+                float blended = lerp(near_shadow, far_shadow, blend_factor);
 
                 // ensure distant shadows are applied everywhere by taking the minimum visibility
-                shadow             = min(blended, far_shadow);
+                shadow = min(blended, far_shadow);
             }
             else // spot light
             {

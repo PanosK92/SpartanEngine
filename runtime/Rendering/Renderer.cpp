@@ -973,57 +973,78 @@ namespace spartan
 
     void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
     {
-        uint32_t count = 0;
+        // slot 0 is always the directional light (sky), as it affects everything and should be easily accessible in shaders
 
+        uint32_t count           = 0;
+        Light* first_directional = nullptr;
+    
+        auto fill_light = [&](Light* light, uint32_t index)
+        {
+            light->SetIndex(index);
+    
+            if (RHI_Texture* texture = light->GetDepthTexture())
+            {
+                for (uint32_t i = 0; i < texture->GetDepth(); i++)
+                {
+                    if (light->GetLightType() == LightType::Point)
+                    {
+                        m_bindless_lights[index].view_projection[i] = light->GetViewMatrix(i);
+                    }
+                    else
+                    {
+                        m_bindless_lights[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
+                    }
+                }
+            }
+    
+            m_bindless_lights[index].intensity  = light->GetIntensityWatt();
+            m_bindless_lights[index].range      = light->GetRange();
+            m_bindless_lights[index].angle      = light->GetAngle();
+            m_bindless_lights[index].color      = light->GetColor();
+            m_bindless_lights[index].position   = light->GetEntity()->GetPosition();
+            m_bindless_lights[index].direction  = light->GetEntity()->GetForward();
+            m_bindless_lights[index].flags      = 0;
+            m_bindless_lights[index].flags     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+            m_bindless_lights[index].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+            m_bindless_lights[index].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+            m_bindless_lights[index].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+            m_bindless_lights[index].flags     |= light->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
+            m_bindless_lights[index].flags     |= light->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
+        };
+    
         // cpu
         {
-            // clear
             m_bindless_lights.fill(Sb_Light());
-
-            // go through each light
+    
+            // find first directional light and put it at slot 0
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
                 if (Light* light = entity->GetComponent<Light>())
                 {
-                    light->SetIndex(count);
-
-                    // set light properties
-                    if (RHI_Texture* texture = light->GetDepthTexture())
+                    if (light->GetLightType() == LightType::Directional)
                     {
-                        for (uint32_t i = 0; i < texture->GetDepth(); i++)
-                        {
-                            if (light->GetLightType() == LightType::Point)
-                            {
-                                // we do paraboloid projection in the vertex shader so we only want the view here
-                                m_bindless_lights[count].view_projection[i] = light->GetViewMatrix(i);
-                            }
-                            else
-                            { 
-                                m_bindless_lights[count].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
-                            }
-                        }
+                        first_directional = light;
+                        fill_light(light, 0);
+                        count = 1;
+                        break;
                     }
-
-                    m_bindless_lights[count].intensity  = light->GetIntensityWatt();
-                    m_bindless_lights[count].range      = light->GetRange();
-                    m_bindless_lights[count].angle      = light->GetAngle();
-                    m_bindless_lights[count].color      = light->GetColor();
-                    m_bindless_lights[count].position   = light->GetEntity()->GetPosition();
-                    m_bindless_lights[count].direction  = light->GetEntity()->GetForward();
-                    m_bindless_lights[count].flags      = 0;
-                    m_bindless_lights[count].flags     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-                    m_bindless_lights[count].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-                    m_bindless_lights[count].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
-                    m_bindless_lights[count].flags     |= light->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
-                    // when changing the bit flags, ensure that you also update the Light struct in common_structs.hlsl, so that it reads those flags as expected
-
+                }
+            }
+    
+            // process all other lights, skipping the one already placed
+            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            {
+                if (Light* light = entity->GetComponent<Light>())
+                {
+                    if (light == first_directional)
+                        continue;
+    
+                    fill_light(light, count);
                     count++;
                 }
             }
         }
-
+    
         // gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
