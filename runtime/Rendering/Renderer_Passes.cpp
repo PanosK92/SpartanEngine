@@ -93,7 +93,7 @@ namespace spartan
             // opaques
             {
                 bool is_transparent = false;
-                //Pass_Occlusion(cmd_list_compute);
+                Pass_Occlusion(cmd_list_graphics_present);
                 Pass_Depth_Prepass(cmd_list_graphics_present);
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_ShadowMaps(cmd_list_graphics_present);
@@ -298,13 +298,16 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
+        if (!GetOption<bool>(Renderer_Option::OcclusionCulling))
+            return;
+
         cmd_list->BeginTimeblock("occlusion");
         {
             // get resources
             RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
             RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
 
-            // occluders
+            // render the occluders
             {
                 // set pipeline state for depth-only rendering
                 RHI_PipelineState pso;
@@ -356,7 +359,7 @@ namespace spartan
             Pass_Blit(cmd_list, tex_occluders, tex_occluders_hiz);
             Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
     
-            // occlusion
+            // do the actual occlusion
             {
                 // define pipeline state
                 RHI_PipelineState pso;
@@ -370,7 +373,12 @@ namespace spartan
                 m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
+                // set the visiblity buffer (where the occlusion results will be written)
                 cmd_list->SetBuffer(Renderer_BindingsUav::visibility, GetBuffer(Renderer_Buffer::Visibility));
+
+                // clearing and hi-jacking the diffuse gi texture - just for debugging purposes
+                cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi), Color::standard_black);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
 
                 // dispatch: ceil(aabb_count / 256) thread groups
                 uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
@@ -380,15 +388,19 @@ namespace spartan
         cmd_list->EndTimeblock();
 
         // perform occlusion queries and wait for the results to be ready
-        cmd_list->Submit(0, true);
-        cmd_list->WaitForExecution(false);
+        //cmd_list->Submit(0, true);
+        //cmd_list->WaitForExecution(false);
 
         // update the draw calls with the visibility results so all subsequent passes can use them
         uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::Visibility)->GetMappedData());
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             Renderer_DrawCall& draw_call = m_draw_calls[i];
-            draw_call.renderable->SetVisible(visibility_data[i], draw_call.instance_group_index);
+            if (!draw_call.is_occluder)
+            {
+                draw_call.camera_visible = visibility_data[i];
+                draw_call.renderable->SetVisible(draw_call.camera_visible);
+            }
         }
     }
 
@@ -524,7 +536,7 @@ namespace spartan
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
                 Renderable* renderable             = draw_call.renderable;
                 Material* material                 = renderable->GetMaterial();
-                if (!material || material->IsTransparent() != is_transparent_pass || !renderable->IsVisible(draw_call.instance_group_index) || !draw_call.camera_visible)
+                if (!material || material->IsTransparent() != is_transparent_pass || !draw_call.camera_visible)
                     continue;
     
                 // tessellation & culling

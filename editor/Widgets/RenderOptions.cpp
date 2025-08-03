@@ -446,6 +446,7 @@ void RenderOptions::OnTickVisible()
             option_check_box("Physics",             Renderer_Option::Physics);
             option_check_box("AABBs",               Renderer_Option::Aabb);
             option_check_box("Wireframe",           Renderer_Option::Wireframe);
+            option_check_box("Occlusion culling",   Renderer_Option::OcclusionCulling);
         }
 
         ImGui::EndTable();
