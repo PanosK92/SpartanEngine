@@ -256,6 +256,7 @@ namespace spartan
         DummyInstance,
         AABBs,
         Visibility,
+        VisibilityPrevious,
         Max
     };
 

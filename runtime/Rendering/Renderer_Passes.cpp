@@ -300,108 +300,194 @@ namespace spartan
     {
         if (!GetOption<bool>(Renderer_Option::OcclusionCulling))
             return;
-
+    
         cmd_list->BeginTimeblock("occlusion");
+    
+        // persistent visibility state across frames (since draw calls rebuild each frame)
+        struct VisibilityState
         {
-            // get resources
-            RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
-            RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
-
-            // render the occluders
+            bool     pending_query       = false;
+            uint32_t last_visible_frame  = 0;
+        };
+        static unordered_map<uint64_t, VisibilityState> visibility_states;
+    
+        // check pending queries from previous frame and update visibility
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        {
+            Renderer_DrawCall& draw_call = m_draw_calls[i];
+            uint64_t entity_id           = draw_call.renderable->GetEntity()->GetObjectId();
+            auto& state                  = visibility_states[entity_id]; // creates if missing
+    
+            if (state.pending_query)
             {
-                // set pipeline state for depth-only rendering
-                RHI_PipelineState pso;
-                pso.name                             = "occluders";
-                pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v);
-                pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-                pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-                pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-                pso.render_target_depth_texture      = tex_occluders;
-                pso.resolution_scale                 = true;
-                pso.clear_depth                      = 0.0f;
-
-                bool pipeline_set = false;
-                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                // if true, occluded (0 pixels); false, visible (>0) or not ready/not found
+                if (cmd_list->GetOcclusionQueryResult(entity_id))
                 {
-                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                    if (!draw_call.is_occluder)
-                        continue;
-
-                    if (!pipeline_set)
-                    {
-                        cmd_list->SetPipelineState(pso);
-                        pipeline_set = true;
-                    }
-
-                    // culling
+                    // occluded: set invisible (but conservative, only if sure; here we override to hidden)
+                    draw_call.camera_visible = false;
+                    draw_call.renderable->SetVisible(false);
+                }
+                else
+                {
+                    // visible or not ready: stay/set visible
+                    draw_call.camera_visible = true;
+                    state.last_visible_frame = m_cb_frame_cpu.frame;
+                    draw_call.renderable->SetVisible(true);
+                }
+    
+                state.pending_query = false;
+            }
+        }
+    
+        // get resources
+        RHI_Texture* tex_occluders     = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders);
+        RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+    
+        // render the occluders
+        {
+            // set pipeline state for depth-only rendering
+            RHI_PipelineState pso;
+            pso.name                              = "occluders";
+            pso.shaders[RHI_Shader_Type::Vertex]  = GetShader(Renderer_Shader::depth_prepass_v);
+            pso.rasterizer_state                  = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.blend_state                       = GetBlendState(Renderer_BlendState::Off);
+            pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+            pso.render_target_depth_texture       = tex_occluders;
+            pso.resolution_scale                  = true;
+            pso.clear_depth                       = 0.0f;
+    
+            bool pipeline_set = false;
+    
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+    
+                if (!draw_call.is_occluder)
+                    continue;
+    
+                if (!pipeline_set)
+                {
+                    cmd_list->SetPipelineState(pso);
+                    pipeline_set = true;
+                }
+    
+                // culling
+                Renderable* renderable = draw_call.renderable;
+                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
+                cmd_list->SetCullMode(cull_mode);
+    
+                // set pass constants
+                m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                // draw
+                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+    
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(draw_call.lod_index),
+                    renderable->GetIndexOffset(draw_call.lod_index),
+                    renderable->GetVertexOffset(draw_call.lod_index)
+                );
+            }
+        }
+    
+        // create mip chain
+        Pass_Blit(cmd_list, tex_occluders, tex_occluders_hiz);
+        Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Max);
+    
+        // do the actual occlusion
+        {
+            // define pipeline state
+            RHI_PipelineState pso;
+            pso.name             = "occlusion";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::occlusion_c);
+    
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
+    
+            // set aabb count
+            m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+            // set the visibility buffer (where the occlusion results will be written)
+            cmd_list->SetBuffer(Renderer_BindingsUav::visibility, GetBuffer(Renderer_Buffer::Visibility));
+    
+            // clearing and hi-jacking the diffuse gi texture - just for debugging purposes
+            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi), Color::standard_black);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
+    
+            // dispatch: ceil(aabb_count / 256) thread groups
+            uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
+            cmd_list->Dispatch(thread_group_count, 1, 1);
+        }
+    
+        // update the draw calls with the previous frame's visibility results
+        uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::VisibilityPrevious)->GetMappedData());
+    
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        {
+            Renderer_DrawCall& draw_call = m_draw_calls[i];
+            uint64_t entity_id           = draw_call.renderable->GetEntity()->GetObjectId();
+            auto& state                  = visibility_states[entity_id]; // creates if missing
+    
+            if (!draw_call.is_occluder && draw_call.camera_visible)
+            {
+                bool hi_z_visible = visibility_data[i];
+    
+                if (hi_z_visible || state.last_visible_frame >= m_cb_frame_cpu.frame - 1)
+                {
+                    draw_call.camera_visible = true;
+                }
+                else
+                {
+                    // conservative hybrid: unsure (recently visible but hi-z says no), issue query and assume visible for now
+                    // draw actual mesh for query (simple pso, depth test on, color write off)
+                    RHI_PipelineState query_pso;
+                    query_pso.name                              = "occlusion_query";
+                    query_pso.shaders[RHI_Shader_Type::Vertex]  = GetShader(Renderer_Shader::depth_prepass_v); // reuse for mesh
+                    query_pso.rasterizer_state                  = GetRasterizerState(Renderer_RasterizerState::Solid);
+                    query_pso.blend_state                       = GetBlendState(Renderer_BlendState::Off);
+                    query_pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual); // default read func
+                    query_pso.render_target_depth_texture       = tex_occluders; // test against current occluders
+                    cmd_list->SetPipelineState(query_pso);
+    
+                    // culling (match occluder logic)
                     Renderable* renderable = draw_call.renderable;
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
-                    cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
+                    cull_mode              = (query_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
     
                     // set pass constants
                     m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     cmd_list->PushConstants(m_pcb_pass_cpu);
     
-                    // draw
+                    // draw mesh with occlusion query
+                    cmd_list->BeginOcclusionQuery(entity_id);
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),
                         renderable->GetIndexOffset(draw_call.lod_index),
                         renderable->GetVertexOffset(draw_call.lod_index)
                     );
+                    cmd_list->EndOcclusionQuery();
+    
+                    state.pending_query      = true;
+                    draw_call.camera_visible = true; // conservative till result
+                }
+    
+                draw_call.renderable->SetVisible(draw_call.camera_visible);
+    
+                if (draw_call.camera_visible)
+                {
+                    state.last_visible_frame = m_cb_frame_cpu.frame;
                 }
             }
-    
-            // create mip chain
-            Pass_Blit(cmd_list, tex_occluders, tex_occluders_hiz);
-            Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
-    
-            // do the actual occlusion
-            {
-                // define pipeline state
-                RHI_PipelineState pso;
-                pso.name             = "occlusion";
-                pso.shaders[Compute] = GetShader(Renderer_Shader::occlusion_c);
-    
-                cmd_list->SetPipelineState(pso);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
-
-                // set aabb count
-                m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                // set the visiblity buffer (where the occlusion results will be written)
-                cmd_list->SetBuffer(Renderer_BindingsUav::visibility, GetBuffer(Renderer_Buffer::Visibility));
-
-                // clearing and hi-jacking the diffuse gi texture - just for debugging purposes
-                cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi), Color::standard_black);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
-
-                // dispatch: ceil(aabb_count / 256) thread groups
-                uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
-                cmd_list->Dispatch(thread_group_count, 1, 1);
-            }
         }
+    
         cmd_list->EndTimeblock();
-
-        // perform occlusion queries and wait for the results to be ready
-        //cmd_list->Submit(0, true);
-        //cmd_list->WaitForExecution(false);
-
-        // update the draw calls with the visibility results so all subsequent passes can use them
-        uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::Visibility)->GetMappedData());
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
-        {
-            Renderer_DrawCall& draw_call = m_draw_calls[i];
-            if (!draw_call.is_occluder)
-            {
-                draw_call.camera_visible = visibility_data[i];
-                draw_call.renderable->SetVisible(draw_call.camera_visible);
-            }
-        }
     }
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
