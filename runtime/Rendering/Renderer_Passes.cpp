@@ -298,6 +298,11 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
+        // This occlusion culling pass aims to efficiently determine object visibility without stalling the GPU, doing GPU driven work or causing visual artifacts like meshes popping in/out.
+        // We render major occluders to a depth buffer and build a Hi-Z mip chain for fast coarse tests. A compute shader then checks each renderable's AABB against this Hi-Z for initial occlusion.
+        // To avoid stalls, precise occlusion queries (on full meshes) are only issued for items that fail Hi-Z but were visible recently, with results fetched asynchronously in the next frame.
+        // Conservative logic ensures recently visible objects are still drawn until confirmed occluded, preventing sudden disappearances while progressively culling hidden ones over frames.
+
         if (!GetOption<bool>(Renderer_Option::OcclusionCulling))
             return;
     
@@ -320,16 +325,15 @@ namespace spartan
     
             if (state.pending_query)
             {
-                // if true, occluded (0 pixels); false, visible (>0) or not ready/not found
-                if (cmd_list->GetOcclusionQueryResult(entity_id))
+                if (cmd_list->GetOcclusionQueryResult(entity_id)) // occluded
                 {
-                    // occluded: set invisible (but conservative, only if sure; here we override to hidden)
+                    // set invisible
                     draw_call.camera_visible = false;
                     draw_call.renderable->SetVisible(false);
                 }
-                else
+                else // visible or not ready
                 {
-                    // visible or not ready: stay/set visible
+                    // stay/set visible
                     draw_call.camera_visible = true;
                     state.last_visible_frame = m_cb_frame_cpu.frame;
                     draw_call.renderable->SetVisible(true);
@@ -347,14 +351,14 @@ namespace spartan
         {
             // set pipeline state for depth-only rendering
             RHI_PipelineState pso;
-            pso.name                              = "occluders";
-            pso.shaders[RHI_Shader_Type::Vertex]  = GetShader(Renderer_Shader::depth_prepass_v);
-            pso.rasterizer_state                  = GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.blend_state                       = GetBlendState(Renderer_BlendState::Off);
-            pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-            pso.render_target_depth_texture       = tex_occluders;
-            pso.resolution_scale                  = true;
-            pso.clear_depth                       = 0.0f;
+            pso.name                             = "occluders";
+            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v);
+            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+            pso.render_target_depth_texture      = tex_occluders;
+            pso.resolution_scale                 = true;
+            pso.clear_depth                      = 0.0f;
     
             bool pipeline_set = false;
     
@@ -425,7 +429,6 @@ namespace spartan
     
         // update the draw calls with the previous frame's visibility results
         uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::VisibilityPrevious)->GetMappedData());
-    
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -435,34 +438,37 @@ namespace spartan
             if (!draw_call.is_occluder && draw_call.camera_visible)
             {
                 bool hi_z_visible = visibility_data[i];
-    
-                if (hi_z_visible || state.last_visible_frame >= m_cb_frame_cpu.frame - 1)
+
+                if (hi_z_visible)
                 {
                     draw_call.camera_visible = true;
+                    state.last_visible_frame = m_cb_frame_cpu.frame;
                 }
-                else
+                else if (state.last_visible_frame >= m_cb_frame_cpu.frame - 1)
                 {
-                    // conservative hybrid: unsure (recently visible but hi-z says no), issue query and assume visible for now
-                    // draw actual mesh for query (simple pso, depth test on, color write off)
+                    // conservative: draw and query, but don't update last_visible_frame (wait for confirmation)
+                    draw_call.camera_visible = true;
+                
+                    // issue query
                     RHI_PipelineState query_pso;
-                    query_pso.name                              = "occlusion_query";
-                    query_pso.shaders[RHI_Shader_Type::Vertex]  = GetShader(Renderer_Shader::depth_prepass_v); // reuse for mesh
-                    query_pso.rasterizer_state                  = GetRasterizerState(Renderer_RasterizerState::Solid);
-                    query_pso.blend_state                       = GetBlendState(Renderer_BlendState::Off);
-                    query_pso.depth_stencil_state               = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual); // default read func
-                    query_pso.render_target_depth_texture       = tex_occluders; // test against current occluders
+                    query_pso.name                             = "occlusion_query";
+                    query_pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v); // reuse for mesh
+                    query_pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+                    query_pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
+                    query_pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual); // default read func
+                    query_pso.render_target_depth_texture      = tex_occluders; // test against current occluders
                     cmd_list->SetPipelineState(query_pso);
-    
+                
                     // culling (match occluder logic)
                     Renderable* renderable = draw_call.renderable;
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
-                    cull_mode              = (query_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
+                    cull_mode = (query_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
-    
+                
                     // set pass constants
                     m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     cmd_list->PushConstants(m_pcb_pass_cpu);
-    
+                
                     // draw mesh with occlusion query
                     cmd_list->BeginOcclusionQuery(entity_id);
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
@@ -473,19 +479,21 @@ namespace spartan
                         renderable->GetVertexOffset(draw_call.lod_index)
                     );
                     cmd_list->EndOcclusionQuery();
-    
-                    state.pending_query      = true;
-                    draw_call.camera_visible = true; // conservative till result
+                
+                    state.pending_query = true;
                 }
-    
-                draw_call.renderable->SetVisible(draw_call.camera_visible);
-    
-                if (draw_call.camera_visible)
+                else
                 {
-                    state.last_visible_frame = m_cb_frame_cpu.frame;
+                    // safe to cull: Hi-Z occluded and not recently visible
+                    draw_call.camera_visible = false;
                 }
+                
+                draw_call.renderable->SetVisible(draw_call.camera_visible);
             }
         }
+
+        // swap visibility buffers for next frame (ping-pong)
+        SwapVisibilityBuffers();
     
         cmd_list->EndTimeblock();
     }

@@ -728,6 +728,11 @@ namespace spartan
         return buffers[static_cast<uint8_t>(type)].get();
     }
 
+    void Renderer::SwapVisibilityBuffers()
+    {
+        swap(buffers[static_cast<uint8_t>(Renderer_Buffer::Visibility)], buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityPrevious)]);
+    }
+
     RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)
     {
         return standard_textures[static_cast<uint8_t>(type)].get();

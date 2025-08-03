@@ -117,6 +117,7 @@ namespace spartan
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
+        static void SwapVisibilityBuffers();
 
     private:
         static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);

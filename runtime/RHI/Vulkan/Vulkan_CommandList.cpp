@@ -365,36 +365,25 @@ namespace spartan
             uint32_t index_active       = 0;
             bool occlusion_query_active = false;
             const uint32_t query_count  = 4096;
-            array<uint64_t, query_count * 2> data;
+            array<uint64_t, query_count> data;
             unordered_map<uint64_t, uint32_t> id_to_index;
 
             void update(void* query_pool)
             {
-                VkResult res = vkGetQueryPoolResults(
-                    RHI_Context::device,                                                                         // device
-                    static_cast<VkQueryPool>(query_pool),                                                        // queryPool
-                    0,                                                                                           // firstQuery
-                    query_count,                                                                                 // queryCount
-                    query_count * sizeof(uint64_t) * 2,                                                          // dataSize (result + avail)
-                    data.data(),                                                                                 // pData
-                    sizeof(uint64_t) * 2,                                                                        // stride (skip for next query's result+avail)
-                    VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT // flags
+                vkGetQueryPoolResults(
+                    RHI_Context::device,                                 // device
+                    static_cast<VkQueryPool>(query_pool),                // queryPool
+                    0,                                                   // firstQuery
+                    query_count,                                         // queryCount
+                    query_count * sizeof(uint64_t),                      // dataSize
+                    data.data(),                                         // pData
+                    sizeof(uint64_t),                                    // stride
+                    VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_PARTIAL_BIT // flags
                 );
-
-                if (res == VK_NOT_READY)
-                {
-                   
-                }
-                else if (res != VK_SUCCESS)
-                {
-                    SP_ASSERT_MSG(false, "vkGetQueryPoolResults failed");
-                }
             }
 
             void reset(void* cmd_list, void*& query_pool)
             {
-                id_to_index.clear();
-                index = 0;
                 vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
             }
         }
@@ -1566,16 +1555,12 @@ namespace spartan
 
     bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
     {
-        auto it = queries::occlusion::id_to_index.find(entity_id);
-        if (it == queries::occlusion::id_to_index.end())
-            return false; // not queried, assume visible (conservative)
-    
-        uint32_t index     = it->second;
-        uint64_t available = queries::occlusion::data[index * 2 + 1]; // 1 if ready
-        if (!available)
-            return false; // not ready, assume visible (conservative)
-    
-        uint64_t result = queries::occlusion::data[index * 2]; // visible pixel count
+        if (queries::occlusion::id_to_index.find(entity_id) == queries::occlusion::id_to_index.end())
+            return false;
+
+        uint32_t index  = queries::occlusion::id_to_index[entity_id];
+        uint64_t result = queries::occlusion::data[index]; // visible pixel count
+
         return result == 0;
     }
 
