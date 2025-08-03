@@ -41,7 +41,7 @@ namespace spartan
     namespace compressonator
     {
         RHI_Format destination_format = RHI_Format::BC3_Unorm;
-        atomic<bool> registered = false;
+        atomic<bool> registered       = false;
 
         CMP_FORMAT to_cmp_format(const RHI_Format format)
         {
@@ -89,9 +89,9 @@ namespace spartan
             {
                 CMP_CompressOptions options = {};
                 options.dwSize              = sizeof(CMP_CompressOptions);
-                options.fquality            = 0.05f;                            // set for lower quality, faster compression
-                options.dwnumThreads        = ThreadPool::GetIdleThreadCount(); // use all free threads
-                options.nEncodeWith         = CMP_HPC;                          // set encoder
+                options.fquality            = 0.05f;                                     // lower quality, faster compression
+                options.dwnumThreads        = max(1u, ThreadPool::GetIdleThreadCount()); // all free threads
+                options.nEncodeWith         = CMP_HPC;                                   // encoder
 
                 SP_ASSERT(CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr) == CMP_OK);
             }

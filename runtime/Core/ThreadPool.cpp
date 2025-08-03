@@ -99,25 +99,25 @@ namespace spartan
     {
         Flush(true);
 
-        // Put unique lock on task mutex.
+        // put unique lock on task mutex
         unique_lock<mutex> lock(mutex_tasks);
 
-        // Set termination flag to true.
+        // set termination flag to true
         is_stopping = true;
 
-        // Unlock the mutex
+        // unlock the mutex
         lock.unlock();
 
-        // Wake up all threads.
+        // Wake up all threads
         condition_var.notify_all();
 
-        // Join all threads.
+        // join all threads
         for (auto& thread : threads)
         {
             thread.join();
         }
 
-        // Empty worker threads.
+        // empty worker threads
         threads.clear();
     }
 
@@ -150,9 +150,16 @@ namespace spartan
 
     void ThreadPool::ParallelLoop(function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total)
     {
-        SP_ASSERT_MSG(work_total > 1, "A parallel loop can't have a range of 1 or smaller");
+        SP_ASSERT_MSG(work_total > 0, "A parallel loop must have a work_total of at least 1");
 
+        // ensure we have available threads, if not, execute the function in the caller thread
         uint32_t available_threads = GetIdleThreadCount();
+        if (available_threads == 0)
+        {
+            function(0, work_total);
+            return;
+        }
+
         uint32_t work_per_thread   = work_total / available_threads;
         uint32_t work_remainder    = work_total % available_threads;
         uint32_t work_index        = 0;

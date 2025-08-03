@@ -156,7 +156,7 @@ namespace spartan
         Decr
     };
 
-    enum class RHI_Format : uint32_t // gets serialized so better be explicit
+    enum class RHI_Format
     {
         // R
         R8_Unorm,
