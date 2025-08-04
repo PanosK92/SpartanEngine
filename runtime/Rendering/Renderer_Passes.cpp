@@ -298,10 +298,10 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
-        // This occlusion culling pass aims to efficiently determine object visibility without stalling the GPU, doing GPU driven work or causing visual artifacts like meshes popping in/out.
-        // We render major occluders to a depth buffer and build a Hi-Z mip chain for fast coarse tests. A compute shader then checks each renderable's AABB against this Hi-Z for initial occlusion.
-        // To avoid stalls, precise occlusion queries (on full meshes) are only issued for items that fail Hi-Z but were visible recently, with results fetched asynchronously in the next frame.
-        // Conservative logic ensures recently visible objects are still drawn until confirmed occluded, preventing sudden disappearances while progressively culling hidden ones over frames.
+        // determines visibility without GPU stalls, full GPU-driven rendering, or pop-in
+        // major occluders are rendered to a depth buffer, then a Hi-Z mip chain enables fast coarse AABB tests
+        // objects failing Hi-Z but recently visible get precise occlusion queries, with results read next frame
+        // recently visible objects are drawn until confirmed occluded, avoiding sudden disappearances
 
         if (!GetOption<bool>(Renderer_Option::OcclusionCulling))
             return;
@@ -311,8 +311,8 @@ namespace spartan
         // persistent visibility state across frames (since draw calls rebuild each frame)
         struct VisibilityState
         {
-            bool     pending_query       = false;
-            uint32_t last_visible_frame  = 0;
+            bool     pending_query      = false;
+            uint32_t last_visible_frame = 0;
         };
         static unordered_map<uint64_t, VisibilityState> visibility_states;
     

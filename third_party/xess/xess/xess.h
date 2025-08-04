@@ -206,7 +206,7 @@ typedef enum _xess_logging_level_t
  */
   
 /**
- * @brief Gets the XeSS version. This is baked into the X<sup>e</sup>SS SDK release.
+ * @brief Gets the XeSS version. This is baked into the XeSS SDK release.
  * @param[out] pVersion Returned XeSS version.
  * @return XeSS return status code.
  */
@@ -382,7 +382,7 @@ XESS_API xess_result_t xessIsOptimalDriver(xess_context_handle_t hContext);
 /**
  * @brief Forces usage of legacy (pre 1.3.0) scale factors
  *
- * Following scale factors will be appied:
+ * Following scale factors will be applied:
  * @li XESS_QUALITY_SETTING_ULTRA_PERFORMANCE: 3.0
  * @li XESS_QUALITY_SETTING_PERFORMANCE: 2.0
  * @li XESS_QUALITY_SETTING_BALANCED: 1.7
