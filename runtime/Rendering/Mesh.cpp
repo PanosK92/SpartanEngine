@@ -36,91 +36,6 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    namespace
-    {
-        bool is_solid(Mesh& mesh, uint32_t sub_mesh_index)
-        {
-            const MeshLod& lod = mesh.GetSubMesh(sub_mesh_index).lods[0];
-            BoundingBox aabb   = lod.aabb;
-            Vector3 min        = aabb.GetMin();
-            Vector3 max        = aabb.GetMax();
-            Vector3 center     = aabb.GetCenter();
-    
-            // Define ray start points (face centers) and their opposite targets
-            static array<Vector3, 6> start_points =
-            {
-                Vector3(min.x, center.y, center.z), // Left face
-                Vector3(max.x, center.y, center.z), // Right face
-                Vector3(center.x, min.y, center.z), // Bottom face
-                Vector3(center.x, max.y, center.z), // Top face
-                Vector3(center.x, center.y, min.z), // Front face
-                Vector3(center.x, center.y, max.z)  // Back face
-            };
-    
-            static array<Vector3, 6> end_points =
-            {
-                Vector3(max.x, center.y, center.z), // Opposite of left (right face)
-                Vector3(min.x, center.y, center.z), // Opposite of right (left face)
-                Vector3(center.x, max.y, center.z), // Opposite of bottom (top face)
-                Vector3(center.x, min.y, center.z), // Opposite of top (bottom face)
-                Vector3(center.x, center.y, max.z), // Opposite of front (back face)
-                Vector3(center.x, center.y, min.z)  // Opposite of back (front face)
-            };
-    
-            // Offset start points slightly outward to avoid starting on the mesh surface
-            static array<Vector3, 6> normals =
-            {
-                Vector3::Left,     Vector3::Right,
-                Vector3::Down,     Vector3::Up,
-                Vector3::Backward, Vector3::Forward
-            };
-    
-            for (size_t i = 0; i < start_points.size(); ++i)
-            {
-                start_points[i] += normals[i] * 0.1f; // small offset to avoid surface
-            }
-    
-            // get geometry
-            vector<uint32_t> indices;
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            mesh.GetGeometry(sub_mesh_index, &indices, &vertices);
-    
-            // shoot rays
-            uint32_t intersect_count = 0;
-            for (size_t i = 0; i < start_points.size(); ++i)
-            {
-                Vector3 direction = end_points[i] - start_points[i];
-                float distance_to_opposite = direction.Length();
-                direction.Normalize();
-    
-                Ray ray(start_points[i], direction);
-    
-                bool intersects = false;
-                for (size_t j = 0; j < indices.size(); j += 3)
-                {
-                    const Vector3& v0 = vertices[indices[j + 0]].pos;
-                    const Vector3& v1 = vertices[indices[j + 1]].pos;
-                    const Vector3& v2 = vertices[indices[j + 2]].pos;
-    
-                    float hit_distance = ray.HitDistance(v0, v1, v2);
-                    if (hit_distance != numeric_limits<float>::infinity() && hit_distance <= distance_to_opposite)
-                    {
-                        intersects = true;
-                        break;
-                    }
-                }
-    
-                if (intersects)
-                {
-                    intersect_count++;
-                }
-            }
-    
-            // threshold: At least 4 rays must intersect for the mesh to be considered solid
-            return intersect_count >= 4;
-        }
-    }
-
     Mesh::Mesh() : IResource(ResourceType::Mesh)
     {
         m_flags = GetDefaultFlags();
@@ -271,9 +186,6 @@ namespace spartan
 
             // add the original geometry as lod 0
             AddLod(vertices, indices, current_sub_mesh_index);
-
-            // determine if it's solid
-            m_sub_meshes[current_sub_mesh_index].is_solid = is_solid(*this, current_sub_mesh_index);
         }
 
         // generate additional LODs if requested

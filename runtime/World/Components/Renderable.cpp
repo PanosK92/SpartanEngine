@@ -471,11 +471,6 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
-    bool Renderable::IsSolid() const
-    {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).is_solid;
-    }
-
     uint32_t Renderable::GetInstanceGroupStartIndex(uint32_t group_index) const
     {
         return group_index == 0 ? 0 : m_instance_group_end_indices[group_index - 1];

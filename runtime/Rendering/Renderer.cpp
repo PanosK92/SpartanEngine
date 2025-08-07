@@ -1201,8 +1201,7 @@ namespace spartan
                     Material* material           = renderable->GetMaterial();
             
                     // skip any draw calls that have a mesh that you can see through (transparent, instanced, non-solid)
-                    bool is_solid = material->GetProperty(MaterialProperty::IsTerrain) || renderable->IsSolid(); // IsSolid() is still unreliable for some meshes, like terrain, temp hack
-                    if (!material || material->IsTransparent() || renderable->HasInstancing() || !is_solid || !draw_call.camera_visible)
+                    if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
                         continue;
             
                     // get bounding box
@@ -1220,7 +1219,7 @@ namespace spartan
                 });
             
                 // select the top n occluders
-                const uint32_t max_occluders = 8;
+                const uint32_t max_occluders = 64;
                 uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
                 for (uint32_t i = 0; i < occluder_count; i++)
                 {
