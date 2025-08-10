@@ -30,7 +30,7 @@ namespace spartan
     class PhysicalDevice
     {
     public:
-        PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* data)
+        PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const char* driver_info, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* data)
         {
             this->vendor_id      = vendor_id;
             this->vendor_name    = get_vendor_name();
@@ -39,7 +39,7 @@ namespace spartan
             this->memory         = static_cast<uint32_t>(memory / 1024 / 1024); // mb
             this->data           = data;
             this->api_version    = decode_api_version(api_version);
-            this->driver_version = decode_driver_version(driver_version);
+            this->driver_version = decode_driver_version(driver_version, driver_info);
         }
 
         bool IsNvidia() const
@@ -127,7 +127,7 @@ namespace spartan
         }
 
         std::string decode_api_version(const uint32_t version);
-        std::string decode_driver_version(const uint32_t version);
+        std::string decode_driver_version(const uint32_t version, const char* driver_info);
 
         std::string api_version      = "Unknown"; // version of api supported by the device
         std::string driver_version   = "Unknown"; // vendor-specified version of the driver

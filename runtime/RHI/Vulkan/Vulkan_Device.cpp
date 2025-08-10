@@ -1366,17 +1366,24 @@ namespace spartan
             // register all available physical devices
             for (const VkPhysicalDevice& device_physical : physical_devices)
             {
-                VkPhysicalDeviceProperties device_properties = {};
-                vkGetPhysicalDeviceProperties(device_physical, &device_properties);
-            
+                // properties
+                VkPhysicalDeviceVulkan12Properties device_properties_1_2 = {};
+                device_properties_1_2.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+                VkPhysicalDeviceProperties2 device_properties            = {};
+                device_properties.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+                device_properties.pNext                                  = &device_properties_1_2;
+                vkGetPhysicalDeviceProperties2(device_physical, &device_properties);
+
+                // memory properties
                 VkPhysicalDeviceMemoryProperties device_memory_properties = {};
                 vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
-            
+
+                // deduce device type
                 RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
-                if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
 
                 // find the local device memory heap size
                 uint64_t vram_size_bytes = 0;
@@ -1390,15 +1397,17 @@ namespace spartan
                 }
                 SP_ASSERT(vram_size_bytes > 0);
 
+                // register
                 RHI_Device::PhysicalDeviceRegister(PhysicalDevice
                 (
-                    device_properties.apiVersion,       // api version
-                    device_properties.driverVersion,    // driver version
-                    device_properties.vendorID,         // vendor id
-                    type,                               // type
-                    &device_properties.deviceName[0],   // name
-                    vram_size_bytes,                    // memory
-                    static_cast<void*>(device_physical) // data
+                    device_properties.properties.apiVersion,     // api version
+                    device_properties.properties.driverVersion,  // driver version
+                    device_properties_1_2.driverInfo,            // driver info - For AMD, this matches the version shown in Adrenalin, the driver version field is an internal value.
+                    device_properties.properties.vendorID,       // vendor id
+                    type,                                        // type
+                    &device_properties.properties.deviceName[0], // name
+                    vram_size_bytes,                             // memory
+                    static_cast<void*>(device_physical)          // data
                 ));
             }
         }

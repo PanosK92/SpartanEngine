@@ -38,10 +38,10 @@ namespace spartan
         uint32_t major = (version >> 22);
         uint32_t minor = (version >> 12) & 0x3ff;
         uint32_t patch = version & 0xfff;
-        return to_string(major) + "." + to_string(minor) + "." + to_string(patch);;
+        return to_string(major) + "." + to_string(minor) + "." + to_string(patch);
     }
 
-    string PhysicalDevice::decode_driver_version(const uint32_t version)
+    string PhysicalDevice::decode_driver_version(const uint32_t version, const char* driver_info)
     {
         if (IsNvidia())
         {
@@ -58,40 +58,14 @@ namespace spartan
 
         if (IsAmd())
         {
-            #ifdef _WIN32
-            HKEY hKey;
-            const char* subkey     = "SOFTWARE\\AMD\\CN";
-            const char* value_name = "OldReleaseVersion";
-            char value[255];
-            DWORD value_length = 255;
-            
-            if (RegOpenKeyExA(HKEY_CURRENT_USER, subkey, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+            // For AMD GPUs, driver_info matches the Adrenalin version, version is an internal version
+            string driver_str = driver_info;
+            size_t space_pos  = driver_str.find(' ');
+            if (space_pos != string::npos)
             {
-                if (RegQueryValueExA(hKey, value_name, nullptr, nullptr, (LPBYTE)&value, &value_length) == ERROR_SUCCESS)
-                {
-                    RegCloseKey(hKey);
-            
-                    // remove everything after the version number (a bunch of codes and text)
-                    string version_amd = value;
-                    size_t pos_dash = version_amd.find('-');
-                    if (pos_dash != string::npos)
-                    {
-                        version_amd = version_amd.substr(0, pos_dash);
-                    }
-                    
-                    // extract year, month, and revision
-                    size_t pos1     = version_amd.find('.');
-                    size_t pos2     = version_amd.find('.', pos1 + 1);
-                    size_t pos3     = version_amd.find('.', pos2 + 1);               // find the fourth dot
-                    string year     = version_amd.substr(0, pos1);
-                    string month    = version_amd.substr(pos1 + 1, pos2 - pos1 - 1); // exclude the dot
-                    string revision = version_amd.substr(pos3 + 1);                  // start from the fourth dot
-
-                    return year + "." + month + "." + revision;
-                }
-                RegCloseKey(hKey);
+                driver_str = driver_str.substr(0, space_pos);
             }
-            #endif
+            return driver_str;
         }
 
         if (IsIntel())
