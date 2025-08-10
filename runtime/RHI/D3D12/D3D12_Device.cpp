@@ -97,6 +97,7 @@ namespace spartan
                 (
                     11 << 22,                                                 // api version
                     0,                                                        // driver version
+                    nullptr,                                                  // driver info
                     adapter_desc.VendorId,                                    // vendor id
                     RHI_PhysicalDevice_Type::Max,                             // type
                     &name[0],                                                 // name
