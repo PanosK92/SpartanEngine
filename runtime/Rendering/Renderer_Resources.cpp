@@ -253,9 +253,9 @@ namespace spartan
             render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,                     format_standard,  RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
-            render_target(Renderer_RenderTarget::bloom)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, compute_mip_count(64), format_standard,            RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
-            render_target(Renderer_RenderTarget::outline)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,                     RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
-            render_target(Renderer_RenderTarget::gbuffer_depth_opaque_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,              RHI_Format::D32_Float,      RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_opaque_output");
+            render_target(Renderer_RenderTarget::bloom)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, compute_mip_count(64), format_standard,            RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
+            render_target(Renderer_RenderTarget::outline)                     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,                     RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
+            render_target(Renderer_RenderTarget::gbuffer_depth_opaque_output) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,                     RHI_Format::D32_Float,      RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit,   "depth_opaque_output");
         }
 
         // resolution - fixed (created once)
@@ -266,9 +266,9 @@ namespace spartan
             render_target(Renderer_RenderTarget::lut_atmosphere_scatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
 
             // misc
-            render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, format_standard,        RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
+            render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, format_standard, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             uint32_t lowest_dimension = 32; // lowest mip is 32x32, preserving directional detail for diffuse IBL (1x1 loses directionality)
-            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 2048, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "skysphere");
         }
 
         RHI_VendorTechnology::Resize(GetResolutionRender(), GetResolutionOutput());

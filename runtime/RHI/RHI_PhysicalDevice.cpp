@@ -22,9 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include "pch.h"
 #include "RHI_PhysicalDevice.h"
-#ifdef _WIN32
-#include <Windows.h>
-#endif
 //=============================
 
 //= NAMESPACES =====
@@ -58,8 +55,9 @@ namespace spartan
 
         if (IsAmd())
         {
-            // For AMD GPUs, driver_info matches the Adrenalin version, version is an internal version
+            // for amd gpus, driver_info matches the adrenalin version, version is an internal version
             string driver_str = driver_info;
+            // remove everything after the first space, if any
             size_t space_pos  = driver_str.find(' ');
             if (space_pos != string::npos)
             {
