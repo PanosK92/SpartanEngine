@@ -1814,7 +1814,7 @@ namespace spartan
         image_barrier::set_layout(image, mip_index, mip_range, layout_new);
     }
 
-    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture)
+    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture, const RHI_BarrierType type)
     {
         VkDependencyInfo dependency_info = {};
         dependency_info.sType            = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
@@ -1822,43 +1822,53 @@ namespace spartan
         VkImageMemoryBarrier2 barrier           = {};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
         barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-        barrier.dstAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
         barrier.subresourceRange.aspectMask     = get_aspect_mask(texture->GetFormat());
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount     = texture->GetType() == RHI_Texture_Type::Type3D ? 1 : texture->GetDepth();
-        VkImageMemoryBarrier2 barriers[rhi_max_mip_count];
 
+        // set access masks based on type
+        switch (type)
+        {
+            case RHI_BarrierType::EnsureWriteThenRead:
+                barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                break;
+            case RHI_BarrierType::EnsureReadThenWrite:
+                barrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                barrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                break;
+            case RHI_BarrierType::EnsureWriteThenWrite:
+                barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                break;
+        }
+
+        VkImageMemoryBarrier2 barriers[rhi_max_mip_count];
         if (texture->HasPerMipViews())
-        { 
+        {
             for (uint32_t mip = 0; mip < texture->GetMipCount(); ++mip)
             {
-                RHI_Image_Layout layout = image_barrier::get_layout(texture->GetRhiResource(), mip);
-
+                RHI_Image_Layout layout               = image_barrier::get_layout(texture->GetRhiResource(), mip);
                 barrier.oldLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
-                barrier.newLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
+                barrier.newLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
                 barrier.subresourceRange.baseMipLevel = mip;
                 barrier.subresourceRange.levelCount   = 1;
-
-                barriers[mip] = barrier;
+                barriers[mip]                         = barrier;
             }
-    
             dependency_info.imageMemoryBarrierCount = texture->GetMipCount();
-            dependency_info.pImageMemoryBarriers    = barriers;
+            dependency_info.pImageMemoryBarriers = barriers;
         }
         else
         {
-            RHI_Image_Layout layout = image_barrier::get_layout(texture->GetRhiResource(), 0);
-
-            barrier.oldLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
-            barrier.newLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount   = texture->GetMipCount();
-
+            RHI_Image_Layout layout                 = image_barrier::get_layout(texture->GetRhiResource(), 0);
+            barrier.oldLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)];
+            barrier.newLayout                       = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
+            barrier.subresourceRange.baseMipLevel   = 0;
+            barrier.subresourceRange.levelCount     = texture->GetMipCount();
             dependency_info.imageMemoryBarrierCount = 1;
             dependency_info.pImageMemoryBarriers    = &barrier;
         }

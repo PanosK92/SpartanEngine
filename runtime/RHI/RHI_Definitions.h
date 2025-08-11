@@ -317,6 +317,13 @@ namespace spartan
         Max
     };
 
+    enum class RHI_BarrierType
+    {
+        EnsureWriteThenRead,  // RAW: Make prior write visible before read (e.g., post-dispatch)
+        EnsureReadThenWrite,  // WAR: Order read before write (execution dep; e.g., pre-dispatch)
+        EnsureWriteThenWrite  // WAW: Order prior write before new write (e.g., sequential computes on same UAV)
+    };
+
     static uint64_t rhi_hash_combine(uint64_t a, uint64_t b)
     {
         return a * 31 + b;
