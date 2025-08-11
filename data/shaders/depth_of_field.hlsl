@@ -10,7 +10,7 @@ static const float EDGE_DETECTION_THRESHOLD   = 0.01f;       // sensitivity for 
 static const uint  AVERAGE_DEPTH_SAMPLE_COUNT = 10;          // samples for avg focus depth
 static const float AVERAGE_DEPTH_RADIUS       = 0.5f;        // radius for avg depth sampling
 static const float GOLDEN_ANGLE               = 2.39996323f; // angle for spiral sampling
-static const int   SAMPLE_COUNT               = 16;          // blur samples (perf/quality balance)
+static const int   SAMPLE_COUNT               = 32;          // blur samples (perf/quality balance)
 static const float BACKGROUND_CLAMP_FACTOR    = 2.0f;        // background CoC clamp multiplier
 static const float COC_SCALE                  = 1.0f;        // overall CoC strength scalar
 
