@@ -379,7 +379,7 @@ namespace spartan
 
     }
 
-    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture)
+    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture, const RHI_BarrierType type)
     {
 
     }
