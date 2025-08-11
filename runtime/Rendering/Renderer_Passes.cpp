@@ -1192,7 +1192,7 @@ namespace spartan
             cmd_list->Dispatch(tex_lut_atmosphere_scatter);
         
             // for the lifetime of the engine, this will be read as an srv, so transition here
-            cmd_list->InsertBarrier(tex_lut_atmosphere_scatter->GetRhiResource(), tex_lut_atmosphere_scatter->GetFormat(), 0, 1, tex_lut_atmosphere_scatter->GetDepth(), RHI_Image_Layout::Shader_Read);
+            tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }

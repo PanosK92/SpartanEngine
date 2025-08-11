@@ -1308,14 +1308,14 @@ namespace spartan
         // configure
         amd::uscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;
         amd::uscaler::description_dispatch.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
-        amd::uscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant parameter
+        amd::uscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;        // sdk issue: redundant parameter
         amd::uscaler::description_dispatch.sharpness              = sharpness;
-        amd::uscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;  // seconds to milliseconds
-        amd::uscaler::description_dispatch.preExposure            = 1.0f;                      // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+        amd::uscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
+        amd::uscaler::description_dispatch.preExposure            = 1.0f;                     // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
         amd::uscaler::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
         amd::uscaler::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
-        amd::uscaler::description_dispatch.cameraNear             = camera->GetFarPlane();     // far as near because we are using reverse-z
-        amd::uscaler::description_dispatch.cameraFar              = camera->GetNearPlane();    // near as far because we are using reverse-z
+        amd::uscaler::description_dispatch.cameraNear             = camera->GetFarPlane();    // far as near because we are using reverse-z
+        amd::uscaler::description_dispatch.cameraFar              = camera->GetNearPlane();   // near as far because we are using reverse-z
         amd::uscaler::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
         
         // reset history
@@ -1368,7 +1368,7 @@ namespace spartan
         amd::ssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         amd::ssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running
         amd::ssr::description_dispatch.mostDetailedMip                      = 0;
-        amd::ssr::description_dispatch.temporalStabilityFactor              = 0.8f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        amd::ssr::description_dispatch.temporalStabilityFactor              = 1.0f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         amd::ssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
         amd::ssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
         amd::ssr::description_dispatch.iblFactor                            = 0.0f;
