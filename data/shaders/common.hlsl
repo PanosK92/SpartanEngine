@@ -345,6 +345,7 @@ float2 direction_sphere_uv(float3 direction)
 {
     float u = 0.5f + atan2(direction.z, direction.x) / PI2;
     float v = 0.5f - asin(direction.y) / PI;
+
     return float2(u, v);
 }
 

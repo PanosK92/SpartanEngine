@@ -193,15 +193,22 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution;
     tex_uav.GetDimensions(resolution.x, resolution.y);
+    float2 uv = (float2(thread_id.xy)) / resolution;
+    
+    // map UV to spherical coordinates (lat-long)
+    float phi   = uv.x * PI2 + PI;
+    float theta = (0.5f - uv.y) * PI;
 
-    // common values
-    float2 uv             = (float2(thread_id.xy)) / resolution;
-    float phi             = uv.x * PI2;
-    float theta           = -uv.y * PI;
-    float sin_theta       = sin(theta);
-    float cos_theta       = cos(theta);
-    float3 view_direction = float3(sin_theta * cos(phi), cos_theta, sin_theta * sin(phi));
+    // convert spherical coords to direction vector
+    float cos_theta = cos(theta);
+    float sin_theta = sin(theta);
+    float3 view_direction = normalize(float3(
+        cos(phi) * cos_theta,
+        sin_theta,
+        sin(phi) * cos_theta
+    ));
 
+    
     float3 original_view_direction = view_direction;
     bool is_below_horizon = (view_direction.y < 0.0f);
     if (is_below_horizon)

@@ -1555,6 +1555,10 @@ namespace spartan
 
         cmd_list->BeginTimeblock("upscale");
         {
+            // output is displayed in the viewport, so add a barrier to ensure it's not being read by the gpu
+            cmd_list->InsertBarrierReadWrite(tex_out);
+            cmd_list->InsertPendingBarrierGroup();
+
             if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3)
             {
                 RHI_VendorTechnology::FSR3_Dispatch(
@@ -1586,7 +1590,6 @@ namespace spartan
             }
 
             // wait for vendor tech to finish writing to the texture
-            cmd_list->InsertBarrierReadWrite(tex_in);
             cmd_list->InsertBarrierReadWrite(tex_out);
 
             // used for refraction by the transparent passes, so generate mips to emulate roughness

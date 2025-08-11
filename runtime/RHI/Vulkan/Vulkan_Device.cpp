@@ -1444,7 +1444,7 @@ namespace spartan
             info_instance.enabledExtensionCount     = static_cast<uint32_t>(extensions_instance.size());
             info_instance.ppEnabledExtensionNames   = extensions_instance.data();
             info_instance.enabledLayerCount         = Debugging::IsValidationLayerEnabled() ? 1 : 0;
-            info_instance.ppEnabledLayerNames       = &validation_layer::name;
+            info_instance.ppEnabledLayerNames       = Debugging::IsValidationLayerEnabled() ? &validation_layer::name : nullptr;
 
             // settings
             VkLayerSettingsCreateInfoEXT info_settings = {};

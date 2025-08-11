@@ -1292,46 +1292,39 @@ namespace spartan
     )
     {
     #ifdef _WIN32
-        // output is displayed in the viewport, so add a barrier to ensure any work is done before writing to it
-        cmd_list->InsertBarrier(tex_output->GetRhiResource(), tex_output->GetFormat(), 0, 1, 1, tex_output->GetLayout(0));
-        cmd_list->InsertPendingBarrierGroup();
-
-        // upscale
-        {
-            // set resources (no need for the transparency or reactive masks as we do them later, full res)
-            amd::uscaler::description_dispatch.commandList                   = amd::to_cmd_list(cmd_list);
-            amd::uscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                        L"fsr3_color");
-            amd::uscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                        L"fsr3_depth");
-            amd::uscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                     L"fsr3_velocity");
-            amd::uscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                          L"fsr3_exposure");
-            amd::uscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                          L"fsr3_reactive");
-            amd::uscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                          L"fsr3_transaprency_and_composition");
-            amd::uscaler::description_dispatch.dilatedDepth                  = amd::to_resource(amd::uscaler::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
-            amd::uscaler::description_dispatch.dilatedMotionVectors          = amd::to_resource(amd::uscaler::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
-            amd::uscaler::description_dispatch.reconstructedPrevNearestDepth = amd::to_resource(amd::uscaler::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
-            amd::uscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                       L"fsr3_output");
-
-            // configure
-            amd::uscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;
-            amd::uscaler::description_dispatch.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
-            amd::uscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant parameter
-            amd::uscaler::description_dispatch.sharpness              = sharpness;
-            amd::uscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;  // seconds to milliseconds
-            amd::uscaler::description_dispatch.preExposure            = 1.0f;                      // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
-            amd::uscaler::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
-            amd::uscaler::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
-            amd::uscaler::description_dispatch.cameraNear             = camera->GetFarPlane();     // far as near because we are using reverse-z
-            amd::uscaler::description_dispatch.cameraFar              = camera->GetNearPlane();    // near as far because we are using reverse-z
-            amd::uscaler::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
-
-            // reset history
-            amd::uscaler::description_dispatch.reset = common::reset_history;
-            common::reset_history = false;
-
-            // dispatch
-            SP_ASSERT(ffxFsr3UpscalerContextDispatch(&amd::uscaler::context, &amd::uscaler::description_dispatch) == FFX_OK);
-            amd::uscaler::description_dispatch.reset = false;
-        }
+        // set resources (no need for the transparency or reactive masks as we do them later, full res)
+        amd::uscaler::description_dispatch.commandList                   = amd::to_cmd_list(cmd_list);
+        amd::uscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                        L"fsr3_color");
+        amd::uscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                        L"fsr3_depth");
+        amd::uscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                     L"fsr3_velocity");
+        amd::uscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                          L"fsr3_exposure");
+        amd::uscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                          L"fsr3_reactive");
+        amd::uscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                          L"fsr3_transaprency_and_composition");
+        amd::uscaler::description_dispatch.dilatedDepth                  = amd::to_resource(amd::uscaler::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
+        amd::uscaler::description_dispatch.dilatedMotionVectors          = amd::to_resource(amd::uscaler::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
+        amd::uscaler::description_dispatch.reconstructedPrevNearestDepth = amd::to_resource(amd::uscaler::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
+        amd::uscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                       L"fsr3_output");
+        
+        // configure
+        amd::uscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;
+        amd::uscaler::description_dispatch.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
+        amd::uscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;         // sdk issue: redundant parameter
+        amd::uscaler::description_dispatch.sharpness              = sharpness;
+        amd::uscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f;  // seconds to milliseconds
+        amd::uscaler::description_dispatch.preExposure            = 1.0f;                      // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+        amd::uscaler::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
+        amd::uscaler::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
+        amd::uscaler::description_dispatch.cameraNear             = camera->GetFarPlane();     // far as near because we are using reverse-z
+        amd::uscaler::description_dispatch.cameraFar              = camera->GetNearPlane();    // near as far because we are using reverse-z
+        amd::uscaler::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
+        
+        // reset history
+        amd::uscaler::description_dispatch.reset = common::reset_history;
+        common::reset_history = false;
+        
+        // dispatch
+        SP_ASSERT(ffxFsr3UpscalerContextDispatch(&amd::uscaler::context, &amd::uscaler::description_dispatch) == FFX_OK);
+        amd::uscaler::description_dispatch.reset = false;
     #endif
     }
 
