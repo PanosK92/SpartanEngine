@@ -26,6 +26,7 @@ assignees: ''
 
 **Environment:**
 - Operating System:
+- Visual Studio (if used):
 - GPU
 - CPU
 
