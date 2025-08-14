@@ -1103,7 +1103,7 @@ namespace spartan
 
                 // camera
                 {
-                    Vector3 camera_position = Vector3(-5.0f, 1.5f, -9.0f);
+                    Vector3 camera_position = Vector3(5.0f, 1.5f, -10.0f);
                     entities::camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
