@@ -328,7 +328,7 @@ namespace spartan
                     // body main
                     if (Material* material = default_car->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.0f);
                         material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
                         material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
@@ -1094,7 +1094,7 @@ namespace spartan
             {
                 // gran turismo 7 brand central music
                 entities::music("project\\music\\gran_turismo.wav", 1.9f);
-
+                
                 // textures
                 texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
                 texture_paint_normal = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\paint_normal.png");
@@ -1103,59 +1103,75 @@ namespace spartan
 
                 // camera
                 {
-                    Vector3 camera_position = Vector3(-4.7317f, 1.2250f, -7.6135f);
+                    Vector3 camera_position = Vector3(-5.0f, 1.5f, -9.0f);
                     entities::camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
                     default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::PhysicalBodyAnimation, false);
                 }
 
-                // floor
+                // emissive tube lights and floor
                 {
-                    entities::floor();
+                    // load and render model at max geometry quality
+                    uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+                    mesh_flags          &= static_cast<uint32_t>(MeshFlags::ImportLights);
+                    mesh_flags          &= static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+                    mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);     // don't reduce vertex/index count
+                    mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // don't genereate and use LODs
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\tube_lights_and_floor\\Laferrari.gltf", mesh_flags))
+                    {
+                        Entity* floor_tube_lights = mesh->GetRootEntity().lock().get();
+                        floor_tube_lights->SetObjectName("tube_lights_and_floor");
+                        floor_tube_lights->SetScale(2.0f);
 
-                    shared_ptr<Material> material = make_shared<Material>();
-                    material->SetResourceFilePath(string("project\\terrain\\material_floor_shiny") + string(EXTENSION_MATERIAL));
+                        if (Entity* entity_floor = floor_tube_lights->GetDescendantByName("Plane"))
+                        {
+                            // scale the floor to be larger
+                            const float scale = 100.0f;
+                            entity_floor->SetScale(scale);
+                            if (Material* material = entity_floor->GetComponent<Renderable>()->GetMaterial())
+                            {
+                                material->SetProperty(MaterialProperty::TextureTilingX, scale);
+                                material->SetProperty(MaterialProperty::TextureTilingY, scale);
+                            }
 
-                    material->SetProperty(MaterialProperty::ColorR,              0.5f);
-                    material->SetProperty(MaterialProperty::ColorG,              0.5f);
-                    material->SetProperty(MaterialProperty::ColorB,              0.5f);
-                    material->SetProperty(MaterialProperty::Roughness,           0.3f);
-                    material->SetProperty(MaterialProperty::Metalness,           1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
+                            // add physics to the floor so we can walk on it
+                            entity_floor->AddComponent<Physics>()->SetBodyType(BodyType::Plane);
+                        }
 
-                    default_floor->GetComponent<Renderable>()->SetMaterial(material);
-                }
+                        auto setup_tube_light = [floor_tube_lights](const char* descendant_name, Color color)
+                        {
+                            if (Entity* entity_tube_light = floor_tube_lights->GetDescendantByName(descendant_name))
+                            {
+                                entity_tube_light->GetComponent<Renderable>()->SetFlag(RenderableFlags::CastsShadows, false);
+                                if (Material* material = entity_tube_light->GetComponent<Renderable>()->GetMaterial())
+                                {
+                                    material->SetColor(color);
+                                    material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
+                        
+                                    // until we support actual area lights matching each tube, just use a point light
+                                    {
+                                        shared_ptr<Entity> entity = World::CreateEntity();
+                                        entity->SetObjectName("light_point");
+                                        entity->SetParent(entity_tube_light);
+                        
+                                        Light* light = entity->AddComponent<Light>();
+                                        light->SetLightType(LightType::Point);
+                                        light->SetColor(color);
+                                        light->SetRange(40.0f);
+                                        light->SetIntensity(20000.0f);
+                                        light->SetFlag(LightFlags::Shadows,            true);
+                                        light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                                        light->SetFlag(LightFlags::Volumetric,         false);
+                                    }
+                                }
+                            }
+                        };
 
-                // point light 1
-                {
-                    shared_ptr<Entity> entity = World::CreateEntity();
-                    entity->SetObjectName("light_point_1");
-                    entity->SetPosition(Vector3(-5.0f, 4.5f, -5.0f));
-
-                    Light* light = entity->AddComponent<Light>();
-                    light->SetLightType(LightType::Point);
-                    light->SetTemperature(5000.0f);
-                    light->SetRange(40.0f);
-                    light->SetIntensity(20000.0f);
-                    light->SetFlag(LightFlags::Volumetric,         false);
-                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
-                }
-
-                // point light 2
-                {
-                    shared_ptr<Entity> entity = World::CreateEntity();
-                    entity->SetObjectName("light_point_2");
-                    entity->SetPosition(Vector3(5.0f, 4.5f, -5.0f));
-
-                    Light* light = entity->AddComponent<Light>();
-                    light->SetLightType(LightType::Point);
-                    light->SetColor(Color::light_light_bulb);
-                    light->SetRange(40.0f);
-                    light->SetIntensity(20000.0f);
-                    light->SetFlag(LightFlags::Volumetric, false);
-                    light->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                       setup_tube_light("SM_TubeLight.007_1", Color(1.0f, 0.4f, 0.4f, 1.0f)); // bright red-pink
+                       setup_tube_light("SM_TubeLight.004_1", Color(0.4f, 0.8f, 1.0f, 1.0f)); // bright cyan-blue
+                       setup_tube_light("SM_TubeLight.006_1", Color(1.0f, 1.0f, 0.9f, 1.0f)); // warm white
+                    }
                 }
 
                 // adjust renderer options
@@ -1163,7 +1179,7 @@ namespace spartan
                     Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
                     Renderer::SetOption(Renderer_Option::Lights,             0.0f);
                     Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f);
-                    Renderer::SetOption(Renderer_Option::Dithering,          1.0f);
+                    Renderer::SetOption(Renderer_Option::Dithering,          0.0f);
                 }
             }
 

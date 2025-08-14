@@ -77,6 +77,7 @@ namespace spartan
         Tessellation,               // indicates if the material is tessellated
         WorldSpaceUv,               // indicates if the UV coordinates are in world space
         NormalFromAlbedo,           // indicates if the normal map is derived from the albedo texture
+        EmissiveFromAlbedo,         // indicates if the emissive map is derived from the albedo texture
         Max                         // total number of properties, used to size arrays
     };
 

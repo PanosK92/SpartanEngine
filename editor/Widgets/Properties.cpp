@@ -834,6 +834,11 @@ void Properties::ShowMaterial(Material* material) const
             bool wind_animation = material->GetProperty(MaterialProperty::WindAnimation) != 0.0f;
             ImGui::Checkbox("Wind animation", &wind_animation);
             material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
+
+              // wind animation
+            bool emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo) != 0.0f;
+            ImGui::Checkbox("Emissive from albedo", &emissive_from_albedo);
+            material->SetProperty(MaterialProperty::EmissiveFromAlbedo, emissive_from_albedo ? 1.0f : 0.0f);
         }
 
         //= MAP ===============================================================================

@@ -197,7 +197,11 @@ gbuffer main_ps(gbuffer_vertex vertex)
     }
 
     // emission
-    if (surface.has_texture_emissive())
+    if (material.emissive_from_albedo())
+    {
+        emission += luminance(albedo.rgb) * (float)material.emissive_from_albedo();
+    }
+    else if (surface.has_texture_emissive())
     {
         float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
         albedo.rgb            += emissive_color;            // overwrite the albedo color
@@ -250,9 +254,9 @@ gbuffer main_ps(gbuffer_vertex vertex)
     // occlusion, roughness, metalness, height sample
     {
         float4 packed_sample  = sample_texture(vertex, material_texture_index_packed, surface);
-        occlusion             = lerp(occlusion, packed_sample.r, material_has_texture_occlusion(material) ? 1.0f : 0.0f);
-        roughness            *= lerp(1.0f,      packed_sample.g, material_has_texture_roughness(material) ? 1.0f : 0.0f);
-        metalness            *= lerp(1.0f,      packed_sample.b, material_has_texture_metalness(material) ? 1.0f : 0.0f);
+        occlusion             = lerp(occlusion, packed_sample.r, material.has_texture_occlusion() ? 1.0f : 0.0f);
+        roughness            *= lerp(1.0f,      packed_sample.g, material.has_texture_roughness() ? 1.0f : 0.0f);
+        metalness            *= lerp(1.0f,      packed_sample.b, material.has_texture_metalness() ? 1.0f : 0.0f);
     }
     
     // specular anti-aliasing - also increases cache hits for certain subsqeuent passes

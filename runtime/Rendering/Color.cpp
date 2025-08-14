@@ -103,6 +103,7 @@ namespace spartan
     const Color Color::standard_red             = Color(1.0f, 0.0f, 0.0f, 1.0f);
     const Color Color::standard_green           = Color(0.0f, 1.0f, 0.0f, 1.0f);
     const Color Color::standard_blue            = Color(0.0f, 0.0f, 1.0f, 1.0f);
+    const Color Color::standard_yellow          = Color(1.0f, 1.0f, 0.0f, 1.0f);
     const Color Color::standard_cornflower_blue = Color(0.396f, 0.611f, 0.937f, 1.0f);
     const Color Color::standard_renderer_lines  = Color(0.41f, 0.86f, 1.0f, 1.0f);
 

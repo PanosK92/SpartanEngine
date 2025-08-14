@@ -640,6 +640,10 @@ namespace spartan
                 {
                     light->SetLightType(LightType::Spot);
                 }
+                else if (light_assimp->mType == aiLightSource_AREA)
+                {
+                    light->SetLightType(LightType::Point);
+                }
 
                 float lumens = 500.0f;
                 light->SetIntensity(lumens);

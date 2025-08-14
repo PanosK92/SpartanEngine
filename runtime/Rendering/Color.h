@@ -56,6 +56,7 @@ namespace spartan
         static const Color standard_red;
         static const Color standard_green;
         static const Color standard_blue;
+        static const Color standard_yellow;
         static const Color standard_cornflower_blue;
         static const Color standard_renderer_lines;
 

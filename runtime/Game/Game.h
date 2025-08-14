@@ -25,9 +25,9 @@ namespace spartan
 {
     enum class DefaultWorld
     {
+        GranTurismo,
         Forest,
         LiminalSpace,
-        GranTurismo,
         Sponza,
         Subway,
         Minecraft,

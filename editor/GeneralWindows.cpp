@@ -445,9 +445,9 @@ namespace
     {
         const char* world_names[] =
         {
-            "1. Open world forest (millions of Ghost of Tsushima grass blades) - extremely demanding",
-            "2. Liminal Space (shifts your frequency to a nearby reality) - light",
-            "3. Showroom (Gran Turismo 7 brand central) - light",
+            "1. Car Showroom - showcase world for YouTubers/Press, does not use experimental tech",
+            "2. Open world forest (millions of Ghost of Tsushima grass blades) - extremely demanding",
+            "3. Liminal Space (shifts your frequency to a nearby reality) - light",
             "4. Sponza 4k (high-resolution textures & meshes) - demanding",
             "5. Subway (gi test, no lights, only emissive textures) - moderate",
             "6. Minecraft (blocky aesthetic) - light",

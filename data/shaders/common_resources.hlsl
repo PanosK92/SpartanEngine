@@ -108,6 +108,11 @@ struct MaterialParameters
     float anisotropic_rotation;
     float clearcoat;
     float clearcoat_roughness;
+    
+    bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
+    bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
+    bool has_texture_metalness() { return (flags & (1 << 4))  != 0; }
+    bool emissive_from_albedo()  { return (flags & (1 << 14)) != 0; }
 };
 
 // struct which forms the bindless light parameters array
@@ -195,11 +200,6 @@ uint pass_get_material_index()       { return buffer_pass.values._m03; }
 bool pass_is_transparent()           { return buffer_pass.values._m13 == 1.0f; }
 bool pass_is_opaque()                { return !pass_is_transparent(); }
 // _m32 is available for use
-
-// easy access to material flags
-bool material_has_texture_occlusion(MaterialParameters mat) { return (mat.flags & (1 << 7)) != 0; }
-bool material_has_texture_roughness(MaterialParameters mat) { return (mat.flags & (1 << 3)) != 0; }
-bool material_has_texture_metalness(MaterialParameters mat) { return (mat.flags & (1 << 4)) != 0; }
 
 // binldess array indices
 static const uint material_texture_slots_per_type  = 4;
