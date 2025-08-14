@@ -468,7 +468,7 @@ namespace
 
         void download_and_extract()
         {
-             spartan::FileSystem::Command("python download_assets.py", world_on_download_finished, false);
+             spartan::FileSystem::Command("py download_assets.py", world_on_download_finished, false);
              spartan::ProgressTracker::SetGlobalLoadingState(true);
              visible_download_prompt = false;
         }
