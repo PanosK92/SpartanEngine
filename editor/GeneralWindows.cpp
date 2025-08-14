@@ -480,10 +480,9 @@ namespace
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("Default worlds", &visible_download_prompt, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    bool python_available = spartan::FileSystem::IsExecutableInPath("python") || spartan::FileSystem::IsExecutableInPath("python3");
-            
                     ImGui::Text("No default worlds are present. would you like to download them?");
-            
+
+                    bool python_available = spartan::FileSystem::IsExecutableInPath("py") || spartan::FileSystem::IsExecutableInPath("python") || spartan::FileSystem::IsExecutableInPath("python3");
                     if (!python_available)
                     {
                         ImGui::Spacing();
