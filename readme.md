@@ -75,6 +75,7 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 - Physically based camera.
 - Volumetric fog.
 - HDR10 output.
+- Tonemappers like ACES 2.0, AgX and others.
 - Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
 
 ###### General

@@ -28,18 +28,6 @@ float3 reinhard(float3 hdr, float k = 1.0f)
     return hdr / (hdr + k);
 }
 
-float3 uncharted_2(float3 x)
-{
-    float A = 0.15;
-    float B = 0.50;
-    float C = 0.10;
-    float D = 0.20;
-    float E = 0.02;
-    float F = 0.30;
-    float W = 11.2;
-    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-}
-
 float3 matrix_movie(float3 keannu)
 {
     static const float pow_a = 3.0f / 2.0f;
@@ -48,14 +36,8 @@ float3 matrix_movie(float3 keannu)
     return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
 }
 
-float3 aces(float3 color)
+float3 aces2(float3 color)
 {
-    //  Baking Lab
-    //  by MJP and David Neubelt
-    //  http://mynameismjp.wordpress.com/
-    //  All code licensed under the MIT license
-    
-    // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
     static const float3x3 aces_mat_input =
     {
         {0.59719, 0.35458, 0.04823},
@@ -63,21 +45,37 @@ float3 aces(float3 color)
         {0.02840, 0.13383, 0.83777}
     };
     color = mul(aces_mat_input, color);
-    
-    // RRTAndODTFit
-    float3 a = color * (color + 0.0245786f) - 0.000090537f;
-    float3 b = color * (0.983729f * color + 0.4329510f) + 0.238081f;
-    color = a / b;
 
-    // ODT_SAT => XYZ => D60_2_D65 => sRGB
+    // Apply ACES 2.0 tone scale to each channel
+    const float min_ev   = -10.0f;
+    const float max_ev   = 3.0f;
+    const float limit    = 0.815f;
+    const float shoulder = 0.98f;
+    const float hdr_max  = 1.0f;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        float x = max(color[i], 1e-6f);
+        float logx = log2(x);
+        float norm_x = (logx - min_ev) / (max_ev - min_ev);
+        norm_x = saturate(norm_x);
+        float norm_y = norm_x;
+        if (norm_x > limit)
+        {
+            float curve_x = (norm_x - limit) / (1.0f - limit);
+            norm_y = limit + (1.0f - limit) * (1.0f - pow(1.0f - curve_x, 1.0f / shoulder));
+        }
+        float y = norm_y * (max_ev - min_ev) + min_ev;
+        color[i] = min(pow(2.0f, y), hdr_max);
+    }
+
     static const float3x3 aces_mat_output =
     {
         { 1.60475, -0.53108, -0.07367},
-        {-0.10208,  1.10813, -0.00605},
-        {-0.00327, -0.07276,  1.07602}
+        {-0.10208, 1.10813, -0.00605},
+        {-0.00327, -0.07276, 1.07602}
     };
     color = mul(aces_mat_output, color);
-
     return saturate(color);
 }
 
@@ -92,6 +90,42 @@ float3 nautilus(float3 c)
     float d = 0.59f;
     float e = 0.14f;
     return clamp((c * (a * c + b)) / (c * (y * c + d) + e), 0.0, 1.0);
+}
+
+float3 agx(float3 color)
+{
+    static const float3x3 agx_mat_inset =
+    {
+        { 0.8566271533159880, 0.1373185106779920, 0.1118982129999500 },
+        { 0.0951212405381588, 0.7612419900249430, 0.0767997842235547 },
+        { 0.0482516061458523, 0.1014394992970650, 0.8113020027764950 }
+    };
+
+    static const float3x3 agx_mat_outset =
+    {
+        { 1.1271467782272380, -0.1468813165635330, -0.1255038609319300 },
+        { -0.0496500000000000,  1.1084784877776500, -0.0524964871144260 },
+        { -0.0774967775043101, -0.1468813165635330,  1.2244001486462500 }
+    };
+
+    const float min_ev = -10.0f;
+    const float max_ev = 6.5f;
+
+    color = mul(agx_mat_inset, color);
+    color = max(color, 1e-10f); // avoid log(0) and negative values
+    color = log2(color);
+    color = (color - min_ev) / (max_ev - min_ev);
+    color = saturate(color);
+
+    // s-curve approximation
+    float3 x  = color;
+    float3 x2 = x * x;
+    float3 x4 = x2 * x2;
+    color     = 15.5f * x4 * x2 - 40.14f * x4 * x + 31.96f * x4 - 6.868f * x2 * x + 0.4298f * x2 + 0.1191f * x - 0.00232f;
+
+    color = mul(agx_mat_outset, color);
+
+    return saturate(color);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -109,7 +143,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     switch (tone_mapping)
     {
         case 0:
-            color.rgb = aces(color.rgb);
+            color.rgb = aces2(color.rgb);
             break;
         case 1:
             color.rgb = nautilus(color.rgb);
@@ -118,10 +152,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             color.rgb = reinhard(color.rgb);
             break;
         case 3:
-            color.rgb = uncharted_2(color.rgb);
-            break;
-        case 4:
             color.rgb = matrix_movie(color.rgb);
+        case 4:
+            color.rgb = agx(color.rgb);
             break;
     }
 

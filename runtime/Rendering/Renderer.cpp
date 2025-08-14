@@ -210,7 +210,7 @@ namespace spartan
         // tonemapping
         if (!swapchain->IsHdr())
         {
-            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::NautilusACES));
+            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::ACESNautilus));
         }
 
         // load/create resources
