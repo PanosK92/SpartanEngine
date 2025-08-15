@@ -23,21 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-float3 reinhard(float3 hdr, float k = 1.0f)
+float3 aces(float3 color)
 {
-    return hdr / (hdr + k);
-}
-
-float3 matrix_movie(float3 keannu)
-{
-    static const float pow_a = 3.0f / 2.0f;
-    static const float pow_b = 4.0f / 5.0f;
-
-    return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
-}
-
-float3 aces2(float3 color)
-{
+    //  Baking Lab
+    //  by MJP and David Neubelt
+    //  http://mynameismjp.wordpress.com/
+    //  All code licensed under the MIT license
+    
+    // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
     static const float3x3 aces_mat_input =
     {
         {0.59719, 0.35458, 0.04823},
@@ -45,51 +38,22 @@ float3 aces2(float3 color)
         {0.02840, 0.13383, 0.83777}
     };
     color = mul(aces_mat_input, color);
+    
+    // RRTAndODTFit
+    float3 a = color * (color + 0.0245786f) - 0.000090537f;
+    float3 b = color * (0.983729f * color + 0.4329510f) + 0.238081f;
+    color = a / b;
 
-    // Apply ACES 2.0 tone scale to each channel
-    const float min_ev   = -10.0f;
-    const float max_ev   = 3.0f;
-    const float limit    = 0.815f;
-    const float shoulder = 0.98f;
-    const float hdr_max  = 1.0f;
-
-    for (int i = 0; i < 3; ++i)
-    {
-        float x = max(color[i], 1e-6f);
-        float logx = log2(x);
-        float norm_x = (logx - min_ev) / (max_ev - min_ev);
-        norm_x = saturate(norm_x);
-        float norm_y = norm_x;
-        if (norm_x > limit)
-        {
-            float curve_x = (norm_x - limit) / (1.0f - limit);
-            norm_y = limit + (1.0f - limit) * (1.0f - pow(1.0f - curve_x, 1.0f / shoulder));
-        }
-        float y = norm_y * (max_ev - min_ev) + min_ev;
-        color[i] = min(pow(2.0f, y), hdr_max);
-    }
-
+    // ODT_SAT => XYZ => D60_2_D65 => sRGB
     static const float3x3 aces_mat_output =
     {
         { 1.60475, -0.53108, -0.07367},
-        {-0.10208, 1.10813, -0.00605},
-        {-0.00327, -0.07276, 1.07602}
+        {-0.10208,  1.10813, -0.00605},
+        {-0.00327, -0.07276,  1.07602}
     };
     color = mul(aces_mat_output, color);
-    return saturate(color);
-}
 
-float3 nautilus(float3 c)
-{
-    // Nautilus fit of ACES
-    // By Nolram
-    
-    float a = 2.51f;
-    float b = 0.03f;
-    float y = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
-    return clamp((c * (a * c + b)) / (c * (y * c + d) + e), 0.0, 1.0);
+    return saturate(color);
 }
 
 float3 agx(float3 color)
@@ -128,10 +92,28 @@ float3 agx(float3 color)
     return saturate(color);
 }
 
+float3 reinhard(float3 hdr, float k = 1.0f)
+{
+    return hdr / (hdr + k);
+}
+
+float3 aces_nautilus(float3 c)
+{
+    // Nautilus fit of ACES
+    // By Nolram
+    
+    float a = 2.51f;
+    float b = 0.03f;
+    float y = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    return clamp((c * (a * c + b)) / (c * (y * c + d) + e), 0.0, 1.0);
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // get cpu data
+    // get input data
     float3 f3_value    = pass_get_f3_value();
     float tone_mapping = f3_value.x;
     float4 color       = tex[thread_id.xy];
@@ -143,18 +125,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     switch (tone_mapping)
     {
         case 0:
-            color.rgb = aces2(color.rgb);
+            color.rgb = aces(color.rgb);
             break;
         case 1:
-            color.rgb = nautilus(color.rgb);
+            color.rgb = agx(color.rgb);
             break;
         case 2:
             color.rgb = reinhard(color.rgb);
             break;
         case 3:
-            color.rgb = matrix_movie(color.rgb);
-        case 4:
-            color.rgb = agx(color.rgb);
+            color.rgb = aces_nautilus(color.rgb);
             break;
     }
 
