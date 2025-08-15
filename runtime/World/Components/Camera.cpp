@@ -336,7 +336,7 @@ namespace spartan
         bool button_sprint          = Input::GetKey(KeyCode::Shift_Left) || Input::GetKey(KeyCode::Left_Shoulder);
         bool button_jump            = Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South);
         bool button_crouch          = Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Button_East); // Left Ctrl or O button
-        bool button_flashlight      = Input::GetKeyDown(KeyCode::F);
+        bool button_flashlight      = Input::GetKeyDown(KeyCode::F) || Input::GetKeyDown(KeyCode::Button_North);
         bool mouse_right_click_down = Input::GetKeyDown(KeyCode::Click_Right);
         bool mouse_right_click      = Input::GetKey(KeyCode::Click_Right);
 
