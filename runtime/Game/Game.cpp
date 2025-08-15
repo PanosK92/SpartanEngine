@@ -1125,21 +1125,7 @@ namespace spartan
                         floor_tube_lights->SetObjectName("tube_lights_and_floor");
                         floor_tube_lights->SetScale(2.0f);
 
-                        if (Entity* entity_floor = floor_tube_lights->GetDescendantByName("Plane"))
-                        {
-                            // scale the floor to be larger
-                            const float scale = 100.0f;
-                            entity_floor->SetScale(scale);
-                            if (Material* material = entity_floor->GetComponent<Renderable>()->GetMaterial())
-                            {
-                                material->SetProperty(MaterialProperty::TextureTilingX, scale);
-                                material->SetProperty(MaterialProperty::TextureTilingY, scale);
-                            }
-
-                            // add physics to the floor so we can walk on it
-                            entity_floor->AddComponent<Physics>()->SetBodyType(BodyType::Plane);
-                        }
-
+                        // configure the tube lights
                         auto setup_tube_light = [floor_tube_lights](const char* descendant_name, Color color)
                         {
                             if (Entity* entity_tube_light = floor_tube_lights->GetDescendantByName(descendant_name))
@@ -1167,11 +1153,37 @@ namespace spartan
                                     }
                                 }
                             }
-                        };
-
+                       };
                        setup_tube_light("SM_TubeLight.007_1", Color(1.0f, 0.4f, 0.4f, 1.0f)); // bright red-pink
                        setup_tube_light("SM_TubeLight.004_1", Color(0.4f, 0.8f, 1.0f, 1.0f)); // bright cyan-blue
                        setup_tube_light("SM_TubeLight.006_1", Color(1.0f, 1.0f, 0.9f, 1.0f)); // warm white
+
+                       // add physics to all the tube lights so we can collide with them
+                       vector<Entity*> descendants;
+                       floor_tube_lights->GetDescendants(&descendants);
+                       for (Entity* descendant : descendants)
+                       {
+                           if (descendant->GetComponent<Renderable>())
+                           {
+                               descendant->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
+                           }
+                       }
+
+                       // configure the floor
+                       if (Entity* entity_floor = floor_tube_lights->GetDescendantByName("Plane"))
+                       {
+                           // scale the floor to be larger
+                           const float scale = 100.0f;
+                           entity_floor->SetScale(scale);
+                           if (Material* material = entity_floor->GetComponent<Renderable>()->GetMaterial())
+                           {
+                               material->SetProperty(MaterialProperty::TextureTilingX, scale);
+                               material->SetProperty(MaterialProperty::TextureTilingY, scale);
+                           }
+                       
+                           // add physics to the floor so we can walk on it
+                           entity_floor->GetComponent<Physics>()->SetBodyType(BodyType::Plane);
+                       }
                     }
                 }
 
@@ -1580,6 +1592,12 @@ namespace spartan
         worlds::showroom::texture_brand_logo   = nullptr;
         worlds::showroom::texture_paint_normal = nullptr;
         meshes.clear();
+
+        // clear all entities and their resources (and memory)
+        World::Clear();
+
+        // stop simulation
+        Engine::SetFlag(EngineMode::Playing, false);
     }
 
     void Game::Tick()
@@ -1593,7 +1611,7 @@ namespace spartan
         {
            worlds::liminal_space::tick();
         }
-        else if (loaded_world == DefaultWorld::GranTurismo)
+        else if (loaded_world == DefaultWorld::Showroom)
         {
             worlds::showroom::tick();
         }
@@ -1608,12 +1626,6 @@ namespace spartan
         // shutdown current world/logic
         Game::Shutdown();
 
-        // clear all entities and their resources (and memory)
-        World::Clear();
-
-        // stop simulation
-        Engine::SetFlag(EngineMode::Playing, false);
-
         // load whatever needs to be loaded
         ThreadPool::AddTask([default_world]()
         {
@@ -1627,7 +1639,7 @@ namespace spartan
                 case DefaultWorld::Minecraft:    worlds::create_minecraft();      break;
                 case DefaultWorld::Sponza:       worlds::create_sponza_4k();      break;
                 case DefaultWorld::Subway:       worlds::create_subway_gi_test(); break;
-                case DefaultWorld::GranTurismo:  worlds::showroom::create();      break;
+                case DefaultWorld::Showroom:  worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 case DefaultWorld::Basic:        worlds::basic::create();         break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;

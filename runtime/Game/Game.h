@@ -25,7 +25,7 @@ namespace spartan
 {
     enum class DefaultWorld
     {
-        GranTurismo,
+        Showroom,
         Forest,
         LiminalSpace,
         Sponza,
