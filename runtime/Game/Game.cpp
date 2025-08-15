@@ -330,7 +330,7 @@ namespace spartan
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.0f);
                         material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 1.0f);
+                        material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
                         material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
                     
                         material->SetTexture(MaterialTextureType::Normal, texture_paint_normal);
@@ -394,8 +394,8 @@ namespace spartan
                     // front (windshield) and back (engine) glass
                     if (Material* material = default_car->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
                     {
-                        material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                        material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                        material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                        material->SetProperty(MaterialProperty::Metalness, 0.0f);
                     }
                     
                     // side mirror glass
