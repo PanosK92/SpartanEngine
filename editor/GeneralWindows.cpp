@@ -122,61 +122,33 @@ namespace
             "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, "
             "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 
-        vector<string> contributors =
+        struct Contributor
         {
-            // role,  name,                country,       button text,   button url,                                               contribution,                                              steam key
-            "Spartan, Iker Galardi,        Basque Country,   LinkedIn,   https://www.linkedin.com/in/iker-galardi/,                Linux port (WIP),                                          N/A",
-            "Spartan, Jesse Guerrero,      United States,    LinkedIn,   https://www.linkedin.com/in/jguer,                        UX improvements,                                           N/A",
-            "Spartan, Konstantinos Benos,  Greece,           X,          https://twitter.com/deg3x,                                Bug fixes & editor theme improvements,                     N/A",
-            "Spartan, Nick Polyderopoulos, Greece,           LinkedIn,   https://www.linkedin.com/in/nick-polyderopoulos-21742397, UX improvements,                                           N/A",
-            "Spartan, Panos Kolyvakis,     Greece,           LinkedIn,   https://www.linkedin.com/in/panos-kolyvakis-66863421a/,   Improved water buoyancy,                                   N/A",
-            "Spartan, Tri Tran,            Belgium,          LinkedIn,   https://www.linkedin.com/in/mtrantr/,                     Days Gone screen space shadows,                            Starfield",
-            "Spartan, Ege,                 Turkey,           X,          https://x.com/egedq,                                      Editor theme & ability to save/load themes,                N/A",
-            "Hoplite, Apostolos Bouzalas,  Greece,           LinkedIn,   https://www.linkedin.com/in/apostolos-bouzalas,           Provided performance reports,                              N/A",
-            "Hoplite, Nikolas Pattakos,    Greece,           LinkedIn,   https://www.linkedin.com/in/nikolaspattakos/,             GCC compile fixes,                                         N/A",
-            "Hoplite, Sandro Mtchedlidze,  Georgia,          Artstation, https://www.artstation.com/sandromch,                     Nautilus tonemapper & spotted lighting/performance issues, N/A",
-            "Hoplite, Roman Koshchei,      Ukraine,          X,          https://x.com/roman_koshchei,                             Circular stack for the undo/redo system,                   N/A",
-            "Hoplite, Kristi Kercyku,      Albania,          GitHub,     https://github.com/kristiker,                             Identified g-buffer depth testing issue,                   N/A",
-            "Hoplite, Kinjal Kishor,       India,            X,          https://x.com/kinjalkishor,                               Supported with testing & technical issue,                  N/A",
-            //"Patron,  Kiss Tibor,          Hungary,          GitHub,     https://github.com/kisstp2006,                            GitHub Sponsor,                                            N/A"
+            string role;
+            string name;
+            string country;
+            string button_text;
+            string button_url;
+            string contribution;
+            string steam_key;
         };
-
-        vector<string> comma_seperate_contributors()
+        
+        static const vector<Contributor> contributors =
         {
-            vector<string> result;
-        
-            for (const auto& entry : contributors)
-            {
-                string processed_entry;
-                bool space_allowed = true;
-                for (char c : entry)
-                {
-                    if (c == ',')
-                    {
-                        processed_entry.push_back(c);
-                        space_allowed = false;
-                    }
-                    else if (!space_allowed && c != ' ')
-                    {
-                        space_allowed = true;
-                        processed_entry.push_back(c);
-                    }
-                    else if (space_allowed)
-                    {
-                        processed_entry.push_back(c);
-                    }
-                }
-        
-                istringstream ss(processed_entry);
-                string item;
-                while (getline(ss, item, ','))
-                {
-                    result.push_back(item);
-                }
-            }
-        
-            return result;
-        }
+            { "Spartan", "Iker Galardi",        "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
+            { "Spartan", "Jesse Guerrero",      "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX updates",                                                              "N/A" },
+            { "Spartan", "Konstantinos Benos",  "Greece",         "X",         "https://x.com/deg3x",                                     "Bug fixes & editor theme",                                                "N/A" },
+            { "Spartan", "Nick Polyderopoulos", "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nick-polyderopoulos-21742397","UX updates",                                                              "N/A" },
+            { "Spartan", "Panos Kolyvakis",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",  "Water buoyancy improvements",                                             "N/A" },
+            { "Spartan", "Tri Tran",            "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                                        "Starfield" },
+            { "Spartan", "Ege",                 "Turkey",         "X",         "https://x.com/egedq",                                     "Editor themes + save/load system",                                        "N/A" },
+            { "Spartan", "Sandro Mtchedlidze",  "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
+            { "Hoplite", "Apostolos Bouzalas",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "Performance reports",                                                     "N/A" },
+            { "Hoplite", "Nikolas Pattakos",    "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
+            { "Hoplite", "Roman Koshchei",      "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
+            { "Hoplite", "Kristi Kercyku",      "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue ID",                                                 "N/A" },
+            { "Hoplite", "Kinjal Kishor",       "India",          "X",         "https://x.com/kinjalkishor",                              "Testing & tech support",                                                  "N/A" },
+        };
 
         void personal_details()
         {
@@ -214,66 +186,57 @@ namespace
 
         void contributors_table()
         {
-            static vector<string> comma_seperated_contributors = comma_seperate_contributors();
-
             ImGui::Text("Contributors");
             if (ImGui::BeginTable("##contributors_table", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
             {
-                ImGui::TableSetupColumn("Title", 0, -1.0f);
-                ImGui::TableSetupColumn("Name", 0, -1.0f);
-                ImGui::TableSetupColumn("Country", 0, -1.0f);
-                ImGui::TableSetupColumn("URL", 0, -1.0f);
-                ImGui::TableSetupColumn("Contribution", 0, -1.0f);
-                ImGui::TableSetupColumn("Steam Key", 0, -1.0f);
+                ImGui::TableSetupColumn("Title");
+                ImGui::TableSetupColumn("Name");
+                ImGui::TableSetupColumn("Country");
+                ImGui::TableSetupColumn("URL");
+                ImGui::TableSetupColumn("Contribution");
+                ImGui::TableSetupColumn("Steam Key");
                 ImGui::TableHeadersRow();
-            
-                uint32_t index = 0;
-                for (uint32_t i = 0; i < static_cast<uint32_t>(contributors.size()); i++)
+        
+                static const float y_shift = 8.0f;
+        
+                for (const auto& c : contributors)
                 {
-                    // switch row
                     ImGui::TableNextRow();
-            
-                    // shift text down so that it's on the same line with the button
-                    static const float y_shift = 8.0f;
-            
+        
                     // role
                     ImGui::TableSetColumnIndex(0);
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(comma_seperated_contributors[index++].c_str());
-            
+                    ImGui::TextUnformatted(c.role.c_str());
+        
                     // name
                     ImGui::TableSetColumnIndex(1);
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(comma_seperated_contributors[index++].c_str());
-            
+                    ImGui::TextUnformatted(c.name.c_str());
+        
                     // country
                     ImGui::TableSetColumnIndex(2);
                     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
-                    ImGui::Text(comma_seperated_contributors[index++].c_str());
-            
-                    // button (url)
+                    ImGui::TextUnformatted(c.country.c_str());
+        
+                    // url button
                     ImGui::TableSetColumnIndex(3);
-                    string& button_text = comma_seperated_contributors[index++];
-                    string& button_url  = comma_seperated_contributors[index++];
-            
-                    // set cursor position to center the button
-                    ImGui::PushID(static_cast<uint32_t>(ImGui::GetCursorScreenPos().y));
-                    if (ImGui::Button(button_text.c_str()))
+                    ImGui::PushID(&c); // unique ID per row
+                    if (ImGui::Button(c.button_text.c_str()))
                     {
-                        spartan::FileSystem::OpenUrl(button_url);
+                        spartan::FileSystem::OpenUrl(c.button_url);
                     }
                     ImGui::PopID();
-            
+        
                     // contribution
                     ImGui::TableSetColumnIndex(4);
-                    ImGui::Text(comma_seperated_contributors[index++].c_str());
-            
-                    // steam key award
+                    ImGui::TextUnformatted(c.contribution.c_str());
+        
+                    // steam key
                     ImGui::TableSetColumnIndex(5);
-                    ImGui::Text(comma_seperated_contributors[index++].c_str());
+                    ImGui::TextUnformatted(c.steam_key.c_str());
                 }
+                ImGui::EndTable();
             }
-            ImGui::EndTable();
         }
 
         void third_party_libraries()
