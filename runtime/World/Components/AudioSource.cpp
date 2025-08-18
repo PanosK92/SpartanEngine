@@ -194,10 +194,9 @@ namespace spartan
         target_spec.freq          = wav_spec.freq;
         target_spec.format        = SDL_AUDIO_F32;
         target_spec.channels      = 1;
-
-        uint8_t* target_buffer = nullptr;
-        int      target_length = 0;
-        bool success           = SDL_ConvertAudioSamples(&wav_spec, wav_buffer, static_cast<int>(wav_length), &target_spec, &target_buffer, &target_length);
+        uint8_t* target_buffer    = nullptr;
+        int  target_length        = 0;
+        bool success              = SDL_ConvertAudioSamples(&wav_spec, wav_buffer, static_cast<int>(wav_length), &target_spec, &target_buffer, &target_length);
         SDL_free(wav_buffer);
         if (!success || !target_buffer)
         {
@@ -282,7 +281,8 @@ namespace spartan
 
     void AudioSource::SetPitch(const float pitch)
     {
-        m_pitch = clamp(pitch, 0.01f, 100.0f);
+        m_pitch = clamp(pitch, 0.01f, 5.0f);
+
         if (m_is_playing && m_stream)
         {
             CHECK_SDL_ERROR(SDL_SetAudioStreamFrequencyRatio(m_stream, m_pitch));
@@ -326,11 +326,10 @@ namespace spartan
         float         gain         = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
 
         // constant power panning
-        float         left_factor  = sqrt(0.5f * (1.0f - m_pan));
-        float         right_factor = sqrt(0.5f * (1.0f + m_pan));
-        float         left_gain    = gain * left_factor;
-        float         right_gain   = gain * right_factor;
-
+        float left_factor  = sqrt(0.5f * (1.0f - m_pan));
+        float right_factor = sqrt(0.5f * (1.0f + m_pan));
+        float left_gain    = gain * left_factor;
+        float right_gain   = gain * right_factor;
         for (uint32_t i = 0; i < num_samples; ++i)
         {
             float sample           = mono_samples[i];
