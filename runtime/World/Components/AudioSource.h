@@ -90,6 +90,7 @@ namespace spartan
         uint32_t m_length               = 0;
         SDL_AudioStream* m_stream       = nullptr;
         SDL_AudioSpec* m_spec           = nullptr;
+        float m_doppler_ratio           = 1.0f;
         math::Vector3 position_previous = math::Vector3::Zero;
     };
 }

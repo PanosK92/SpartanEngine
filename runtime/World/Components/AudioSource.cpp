@@ -159,16 +159,25 @@ namespace spartan
                     m_attenuation              = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
                     m_attenuation              = clamp(m_attenuation, 0.0f, 1.0f);
                 }
-        
+
                 // doppler effect
                 {
-                    //float delta_time           = static_cast<float>(Timer::GetDeltaTimeSec());
-                    //const float speed_of_sound = 343.0f; // m/s, at 20 degrees Celsius
-                    //Vector3 rel_velocity       = (sound_position - position_previous) / delta_time - (camera_position - camera_position_previous) / delta_time;
-                    //float doppler              = Vector3::Dot((sound_position - camera_position).Normalized(), rel_velocity) / speed_of_sound;
-                    //SetPitch(m_pitch * (1.0f + doppler));
-                }
+                    const float dt             = static_cast<float>(Timer::GetDeltaTimeSec());
+                    const float speed_of_sound = 343.0f;
+                
+                    Vector3 rel_velocity = (sound_position - position_previous) / dt - (camera_position - camera_position_previous) / dt;
+                    Vector3 to_sound     = (sound_position - camera_position).Normalized();
+                    float radial_v       = Vector3::Dot(to_sound, rel_velocity);
+                    float target_ratio   = 1.0f + radial_v / speed_of_sound;
+                
+                    // clamping and smooething
+                    target_ratio    = clamp(target_ratio, 0.5f, 2.0f);
+                    const float s   = 0.2f; // smoothing factor
+                    m_doppler_ratio = lerp(m_doppler_ratio, target_ratio, s);
 
+                    SetPitch(m_pitch);
+                }
+                
                 // update previous positions
                 camera_position_previous = camera_position;
                 position_previous        = sound_position;
@@ -299,10 +308,11 @@ namespace spartan
     void AudioSource::SetPitch(const float pitch)
     {
         m_pitch = clamp(pitch, 0.01f, 5.0f);
-
+    
         if (m_is_playing && m_stream)
         {
-            CHECK_SDL_ERROR(SDL_SetAudioStreamFrequencyRatio(m_stream, m_pitch));
+            const float effective_pitch = m_pitch * m_doppler_ratio;
+            CHECK_SDL_ERROR(SDL_SetAudioStreamFrequencyRatio(m_stream, effective_pitch));
         }
     }
 
