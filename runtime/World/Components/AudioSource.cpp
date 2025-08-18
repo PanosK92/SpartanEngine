@@ -133,34 +133,49 @@ namespace spartan
 
     void AudioSource::OnTick()
     {
-        if (m_is_playing)
+        if (!m_is_playing)
+            return;
+
+        if (m_is_3d)
         {
-            if (m_is_3d)
+            if (Camera* camera = World::GetCamera())
             {
-                if (Camera* camera = World::GetCamera())
+                // get current positions
+                static Vector3 camera_position_previous = Vector3::Zero;
+                Vector3 camera_position                 = camera->GetEntity()->GetPosition();
+                Vector3 sound_position                  = GetEntity()->GetPosition();
+        
+                // panning
                 {
-                    Vector3 camera_position = camera->GetEntity()->GetPosition();
-                    Vector3 sound_position  = GetEntity()->GetPosition();
-
-                    // panning
-                    {
-                        Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
-                        Vector3 camera_right    = camera->GetEntity()->GetRight();
-                        m_pan                   = Vector3::Dot(camera_to_sound, camera_right);
-                        m_pan                   = clamp(m_pan, -1.0f, 1.0f);
-                    }
-                    // attenuation
-                    {
-                        float   distance_squared   = Vector3::DistanceSquared(camera_position, sound_position);
-                        const float rolloff_factor = 15.0f;
-                        m_attenuation              = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
-                        m_attenuation              = clamp(m_attenuation, 0.0f, 1.0f);
-                    }
+                    Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
+                    Vector3 camera_right    = camera->GetEntity()->GetRight();
+                    m_pan                   = Vector3::Dot(camera_to_sound, camera_right);
                 }
-            }
+        
+                // attenuation
+                {
+                    float   distance_squared   = Vector3::DistanceSquared(camera_position, sound_position);
+                    const float rolloff_factor = 15.0f;
+                    m_attenuation              = 1.0f / (1.0f + (distance_squared / (rolloff_factor * rolloff_factor)));
+                    m_attenuation              = clamp(m_attenuation, 0.0f, 1.0f);
+                }
+        
+                // doppler effect
+                {
+                    //float delta_time           = static_cast<float>(Timer::GetDeltaTimeSec());
+                    //const float speed_of_sound = 343.0f; // m/s, at 20 degrees Celsius
+                    //Vector3 rel_velocity       = (sound_position - position_previous) / delta_time - (camera_position - camera_position_previous) / delta_time;
+                    //float doppler              = Vector3::Dot((sound_position - camera_position).Normalized(), rel_velocity) / speed_of_sound;
+                    //SetPitch(m_pitch * (1.0f + doppler));
+                }
 
-            FeedAudioChunk();
+                // update previous positions
+                camera_position_previous = camera_position;
+                position_previous        = sound_position;
+            }
         }
+        
+        FeedAudioChunk();
     }
 
     void AudioSource::Serialize(FileStream* stream)
@@ -184,9 +199,9 @@ namespace spartan
         // store the filename from the provided path
         m_name = FileSystem::GetFileNameFromFilePath(file_path);
 
-        SDL_AudioSpec wav_spec;
-        uint8_t*      wav_buffer = nullptr;
-        uint32_t      wav_length = 0;
+        SDL_AudioSpec wav_spec = {};
+        uint8_t* wav_buffer    = nullptr;
+        uint32_t wav_length    = 0;
         CHECK_SDL_ERROR(SDL_LoadWAV(file_path.c_str(), &wav_spec, &wav_buffer, &wav_length));
 
         // convert to mono float32 for easy processing
@@ -248,12 +263,14 @@ namespace spartan
     {
         if (!m_is_playing)
             return;
+
         if (m_stream)
         {
             SDL_ClearAudioStream(m_stream);
             SDL_DestroyAudioStream(m_stream);
             m_stream = nullptr;
         }
+
         m_is_playing = false;
         m_position   = 0;
     }
