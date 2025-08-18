@@ -26,7 +26,6 @@ SP_WARNINGS_OFF
 #include <SDL3/SDL_audio.h>
 SP_WARNINGS_ON
 #include "../../IO/FileStream.h"
-#include "../../Rendering/Renderer.h"
 #include "Camera.h"
 #include "../Entity.h"
 //===================================
@@ -150,7 +149,7 @@ namespace spartan
                         Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
                         float camera_dot_sound  = abs(Vector3::Dot(camera->GetEntity()->GetForward(), camera_to_sound));
 
-                        // todo: use SDL_SetAudioStreamPutCallback to modulate the channels
+                        // todo
                     }
 
                     // attenuation
@@ -229,7 +228,7 @@ namespace spartan
         if (!m_is_playing)
             return 0.0f;
 
-        return 1.0f; // todo: track bytes
+        return 1.0f; // todo
     }
 
     void AudioSource::SetMute(bool mute)
@@ -254,7 +253,7 @@ namespace spartan
 
     void AudioSource::SetPitch(const float pitch)
     {
-        m_pitch = clamp(pitch, 0.0f, 3.0f);
+        m_pitch = clamp(pitch, 0.01f, 100.0f);
 
         if (m_is_playing)
         {

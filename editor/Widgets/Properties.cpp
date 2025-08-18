@@ -1023,7 +1023,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 
         // Pitch
         ImGui::Text("Pitch");
-        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
+        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.01f, 100.0f);
 
         // loop
         ImGui::Text("3D");
