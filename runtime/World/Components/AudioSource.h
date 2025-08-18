@@ -73,6 +73,8 @@ namespace spartan
         void SetPitch(const float pitch);
 
     private:
+        void FeedAudioChunk();
+
         std::string m_name        = "N/A";
         bool m_is_3d              = false;
         bool m_mute               = false;
@@ -81,7 +83,9 @@ namespace spartan
         float m_volume            = 1.0f;
         float m_pitch             = 1.0f;
         float m_attenuation       = 1.0f;
+        float m_pan               = 0.0f; // -1.0 (left) to 1.0 (right)
         bool m_is_playing         = false;
+        uint32_t m_position       = 0; // in bytes
         uint8_t* m_buffer         = nullptr;
         uint32_t m_length         = 0;
         SDL_AudioStream* m_stream = nullptr;
