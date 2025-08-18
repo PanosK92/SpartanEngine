@@ -27,6 +27,7 @@ connection with the software or the use or other dealings in the software.
 //=====================
 
 struct SDL_AudioStream;
+struct SDL_AudioSpec;
 
 namespace spartan
 {
@@ -84,5 +85,6 @@ namespace spartan
         uint8_t* m_buffer         = nullptr;
         uint32_t m_length         = 0;
         SDL_AudioStream* m_stream = nullptr;
+        SDL_AudioSpec* m_spec     = nullptr;
     };
 }

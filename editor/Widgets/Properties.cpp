@@ -1000,7 +1000,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         float pitch            = audio_source->GetPitch();
         //========================================================
 
-        // Audio clip
+        // audio clip
         ImGui::Text("Audio Clip");
         ImGui::SameLine(column_pos_x);
         ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
@@ -1032,6 +1032,10 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         // volume
         ImGui::Text("Volume");
         ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
+
+        ImGui::Separator();
+        ImGui::Text("Progress");
+        ImGui::SameLine(column_pos_x); ImGui::ProgressBar(audio_source->GetProgress());
 
         //= MAP =========================================================================================
         if (mute != audio_source->GetMute())                 audio_source->SetMute(mute);

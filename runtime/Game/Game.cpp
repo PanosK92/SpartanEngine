@@ -63,7 +63,7 @@ namespace spartan
 
         namespace entities
         { 
-            void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav", const float pitch = 1.0f)
+            void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
             {
                 SP_ASSERT(soundtrack_file_path);
 
@@ -73,7 +73,6 @@ namespace spartan
                 AudioSource* audio_source = entity->AddComponent<AudioSource>();
                 audio_source->SetAudioClip(soundtrack_file_path);
                 audio_source->SetLoop(true);
-                audio_source->SetPitch(pitch);
             }
 
             void sun(const bool enabled, const Vector3& direction = Vector3(-1.0f, -0.2f, 0.25f))
@@ -1093,7 +1092,7 @@ namespace spartan
             void create()
             {
                 // gran turismo 7 brand central music
-                entities::music("project\\music\\gran_turismo.wav", 1.9f);
+                entities::music("project\\music\\gran_turismo.wav");
                 
                 // textures
                 texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
