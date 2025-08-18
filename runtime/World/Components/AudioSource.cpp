@@ -42,7 +42,7 @@ if (!(call)) {                          \
 namespace audio_device
 {
     mutex     device_mutex;
-    SDL_AudioSpec spec;
+    SDL_AudioSpec spec   = {};
     uint32_t  id         = 0;
     uint32_t  references = 0;
 
@@ -52,14 +52,13 @@ namespace audio_device
         lock_guard<mutex> lock(device_mutex);
         if (references == 0)
         {
-            id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
+            id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
             if (id == 0)
             {
                 SP_LOG_ERROR("%s", SDL_GetError());
                 return;
             }
 
-            // query actual obtained spec
             if (!SDL_GetAudioDeviceFormat(id, &spec, nullptr))
             {
                 SP_LOG_ERROR("%s", SDL_GetError());
@@ -218,8 +217,11 @@ namespace spartan
 
     void AudioSource::Play()
     {
-        if (m_is_playing)
+        if (!m_buffer || !m_spec || m_length == 0)
+        {
+            SP_LOG_ERROR("No valid audio clip set");
             return;
+        }
 
         // create stream: source is stereo float32, destination is device spec
         SDL_AudioSpec src_spec = {};
