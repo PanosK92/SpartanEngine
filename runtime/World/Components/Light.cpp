@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "../World.h"
 #include "../Entity.h"
-#include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 //===================================
 

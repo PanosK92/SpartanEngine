@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "../Entity.h"
 #include "../RHI/RHI_Buffer.h"
-#include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/Material.h"

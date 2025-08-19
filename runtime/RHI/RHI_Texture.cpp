@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Texture.h"
 #include "ThreadPool.h"
 #include "RHI_CommandList.h"
-#include "../IO/FileStream.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Core/ProgressTracker.h"
 SP_WARNINGS_OFF

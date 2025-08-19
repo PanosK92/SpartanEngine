@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
-#include "../../IO/FileStream.h"
 #include "../../Physics/PhysicsWorld.h"
 #include "../../Geometry/GeometryProcessing.h"
 SP_WARNINGS_OFF

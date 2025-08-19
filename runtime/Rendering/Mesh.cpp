@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Mesh.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../World/Entity.h"
-#include "../IO/FileStream.h"
 #include "../Resource/Import/ModelImporter.h"
 #include "../Geometry/GeometryProcessing.h"
 //===========================================
@@ -58,58 +57,12 @@ namespace spartan
 
     void Mesh::LoadFromFile(const string& file_path)
     {
-        const Stopwatch timer;
 
-        if (file_path.empty() || FileSystem::IsDirectory(file_path))
-        {
-            SP_LOG_WARNING("Invalid file path");
-            return;
-        }
-
-        // load engine format
-        if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_MODEL)
-        {
-            // deserialize
-            auto file = make_unique<FileStream>(file_path, FileStream_Read);
-            if (!file->IsOpen())
-                return;
-
-            SetResourceFilePath(file->ReadAs<string>());
-            file->Read(&m_indices);
-            file->Read(&m_vertices);
-
-            CreateGpuBuffers();
-        }
-        // load foreign format
-        else
-        {
-            SetResourceFilePath(file_path);
-            ModelImporter::Load(this, file_path);
-        }
-
-        // compute memory usage
-        {
-            if (m_vertex_buffer && m_index_buffer)
-            {
-                m_object_size = m_vertex_buffer->GetObjectSize();
-                m_object_size += m_index_buffer->GetObjectSize();
-            }
-        }
-
-        SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
     }
 
     void Mesh::SaveToFile(const string& file_path)
     {
-        auto file = make_unique<FileStream>(file_path, FileStream_Write);
-        if (!file->IsOpen())
-            return;
 
-        file->Write(GetResourceFilePath());
-        file->Write(m_indices);
-        file->Write(m_vertices);
-
-        file->Close();
     }
 
     uint32_t Mesh::GetMemoryUsage() const
