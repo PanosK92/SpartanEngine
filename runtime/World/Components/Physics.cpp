@@ -38,6 +38,7 @@ SP_WARNINGS_OFF
 #endif
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
+#include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //============================================
 
@@ -296,12 +297,42 @@ namespace spartan
 
     void Physics::Save(pugi::xml_node& node)
     {
-
+        node.append_attribute("mass")             = m_mass;
+        node.append_attribute("friction")         = m_friction;
+        node.append_attribute("friction_rolling") = m_friction_rolling;
+        node.append_attribute("restitution")      = m_restitution;
+        node.append_attribute("is_static")        = m_is_static;
+        node.append_attribute("position_lock_x")  = m_position_lock.x;
+        node.append_attribute("position_lock_y")  = m_position_lock.y;
+        node.append_attribute("position_lock_z")  = m_position_lock.z;
+        node.append_attribute("rotation_lock_x")  = m_rotation_lock.x;
+        node.append_attribute("rotation_lock_y")  = m_rotation_lock.y;
+        node.append_attribute("rotation_lock_z")  = m_rotation_lock.z;
+        node.append_attribute("center_of_mass_x") = m_center_of_mass.x;
+        node.append_attribute("center_of_mass_y") = m_center_of_mass.y;
+        node.append_attribute("center_of_mass_z") = m_center_of_mass.z;
+        node.append_attribute("body_type")        = static_cast<int>(m_body_type);
     }
-
+    
     void Physics::Load(pugi::xml_node& node)
     {
-
+        m_mass             = node.attribute("mass").as_float(0.001f);
+        m_friction         = node.attribute("friction").as_float(1.0f);
+        m_friction_rolling = node.attribute("friction_rolling").as_float(0.002f);
+        m_restitution      = node.attribute("restitution").as_float(0.2f);
+        m_is_static        = node.attribute("is_static").as_bool(true);
+        m_position_lock.x  = node.attribute("position_lock_x").as_float(0.0f);
+        m_position_lock.y  = node.attribute("position_lock_y").as_float(0.0f);
+        m_position_lock.z  = node.attribute("position_lock_z").as_float(0.0f);
+        m_rotation_lock.x  = node.attribute("rotation_lock_x").as_float(0.0f);
+        m_rotation_lock.y  = node.attribute("rotation_lock_y").as_float(0.0f);
+        m_rotation_lock.z  = node.attribute("rotation_lock_z").as_float(0.0f);
+        m_center_of_mass.x = node.attribute("center_of_mass_x").as_float(0.0f);
+        m_center_of_mass.y = node.attribute("center_of_mass_y").as_float(0.0f);
+        m_center_of_mass.z = node.attribute("center_of_mass_z").as_float(0.0f);
+        m_body_type        = static_cast<BodyType>(node.attribute("body_type").as_int(static_cast<int>(BodyType::Max)));
+    
+        Create(); // recreate the physics body using loaded parameters
     }
 
     void Physics::SetMass(float mass)

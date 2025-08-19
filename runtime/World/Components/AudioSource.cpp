@@ -19,15 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ===============
 #include "pch.h"
 #include "AudioSource.h"
 #include "Camera.h"
 #include "../Entity.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL_audio.h>
+#include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//=========================
+//==========================
 
 using namespace std;
 using namespace spartan::math;
@@ -188,18 +189,33 @@ namespace spartan
 
     void AudioSource::Save(pugi::xml_node& node)
     {
-
+        node.append_attribute("path")          = m_file_path.c_str();
+        node.append_attribute("is_3d")         = m_is_3d;
+        node.append_attribute("mute")          = m_mute;
+        node.append_attribute("loop")          = m_loop;
+        node.append_attribute("play_on_start") = m_play_on_start;
+        node.append_attribute("volume")        = m_volume;
+        node.append_attribute("pitch")         = m_pitch;
     }
 
     void AudioSource::Load(pugi::xml_node& node)
     {
+        m_file_path     = node.attribute("path").as_string("N/A");
+        m_is_3d         = node.attribute("is_3d").as_bool(false);
+        m_mute          = node.attribute("mute").as_bool(false);
+        m_loop          = node.attribute("loop").as_bool(true);
+        m_play_on_start = node.attribute("play_on_start").as_bool(true);
+        m_volume        = node.attribute("volume").as_float(1.0f);
+        m_pitch         = node.attribute("pitch").as_float(1.0f);
 
+        SetAudioClip(m_file_path);
     }
 
     void AudioSource::SetAudioClip(const string& file_path)
     {
         // store the filename from the provided path
-        m_name = FileSystem::GetFileNameFromFilePath(file_path);
+        m_file_path = file_path;
+        m_name      = FileSystem::GetFileNameFromFilePath(file_path);
 
         SDL_AudioSpec wav_spec = {};
         uint8_t* wav_buffer    = nullptr;

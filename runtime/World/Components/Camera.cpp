@@ -30,6 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Input/Input.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
+#include "../Entity.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //===================================
 
 //= NAMESPACES ===============
@@ -74,12 +78,28 @@ namespace spartan
 
     void Camera::Save(pugi::xml_node& node)
     {
-
+        node.append_attribute("aperture")       = m_aperture;
+        node.append_attribute("shutter_speed")  = m_shutter_speed;
+        node.append_attribute("iso")            = m_iso;
+        node.append_attribute("fov_horizontal") = m_fov_horizontal_rad;
+        node.append_attribute("near_plane")     = m_near_plane;
+        node.append_attribute("far_plane")      = m_far_plane;
+        node.append_attribute("projection")     = static_cast<int>(m_projection_type);
+        node.append_attribute("flags")          = m_flags;
     }
-
+    
     void Camera::Load(pugi::xml_node& node)
     {
-
+        m_aperture           = node.attribute("aperture").as_float(5.6f);
+        m_shutter_speed      = node.attribute("shutter_speed").as_float(1.0f / 125.0f);
+        m_iso                = node.attribute("iso").as_float(200.0f);
+        m_fov_horizontal_rad = node.attribute("fov_horizontal").as_float(90.0f * math::deg_to_rad);
+        m_near_plane         = node.attribute("near_plane").as_float(0.1f);
+        m_far_plane          = node.attribute("far_plane").as_float(10'000.0f);
+        m_projection_type    = static_cast<ProjectionType>(node.attribute("projection").as_int(static_cast<int>(Projection_Perspective)));
+        m_flags              = node.attribute("flags").as_uint(0);
+    
+        ComputeMatrices();
     }
 
     void Camera::SetProjection(const ProjectionType projection)

@@ -92,5 +92,6 @@ namespace spartan
         SDL_AudioSpec* m_spec           = nullptr;
         float m_doppler_ratio           = 1.0f;
         math::Vector3 position_previous = math::Vector3::Zero;
+        std::string m_file_path;
     };
 }

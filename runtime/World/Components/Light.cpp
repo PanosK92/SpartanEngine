@@ -26,6 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World.h"
 #include "../Entity.h"
 #include "../../Rendering/Renderer.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //===================================
 
 //= NAMESPACES ===============
@@ -136,12 +139,34 @@ namespace spartan
 
     void Light::Save(pugi::xml_node& node)
     {
-
+        node.append_attribute("flags")         = m_flags;
+        node.append_attribute("light_type")    = static_cast<int>(m_light_type);
+        node.append_attribute("color_r")       = m_color_rgb.r;
+        node.append_attribute("color_g")       = m_color_rgb.g;
+        node.append_attribute("color_b")       = m_color_rgb.b;
+        node.append_attribute("temperature")   = m_temperature_kelvin;
+        node.append_attribute("intensity")     = static_cast<int>(m_intensity);
+        node.append_attribute("intensity_lum") = m_intensity_lumens_lux;
+        node.append_attribute("range")         = m_range;
+        node.append_attribute("angle")         = m_angle_rad;
+        node.append_attribute("index")         = m_index;
     }
-
+    
     void Light::Load(pugi::xml_node& node)
     {
-
+        m_flags                = node.attribute("flags").as_uint(0);
+        m_light_type           = static_cast<LightType>(node.attribute("light_type").as_int(static_cast<int>(LightType::Max)));
+        m_color_rgb.r          = node.attribute("color_r").as_float(0.0f);
+        m_color_rgb.g          = node.attribute("color_g").as_float(0.0f);
+        m_color_rgb.b          = node.attribute("color_b").as_float(0.0f);
+        m_temperature_kelvin   = node.attribute("temperature").as_float(0.0f);
+        m_intensity            = static_cast<LightIntensity>(node.attribute("intensity").as_int(static_cast<int>(LightIntensity::bulb_500_watt)));
+        m_intensity_lumens_lux = node.attribute("intensity_lum").as_float(2600.0f);
+        m_range                = node.attribute("range").as_float(32.0f);
+        m_angle_rad            = node.attribute("angle").as_float(math::deg_to_rad * 30.0f);
+        m_index                = node.attribute("index").as_uint(0);
+    
+        UpdateMatrices(); // regenerate view/projection after loading
     }
 
     void Light::SetFlag(const LightFlags flag, const bool enable)

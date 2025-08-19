@@ -174,8 +174,8 @@ namespace spartan
             // load based on type
             switch (type)
             {
-                case ResourceType::Texture:  Load<RHI_Texture>(path); break;
-                case ResourceType::Material: Load<Material>(path);    break;
+                //case ResourceType::Texture:  Load<RHI_Texture>(path); break;
+                //case ResourceType::Material: Load<Material>(path);    break;
                 //case ResourceType::Mesh:     Load<Mesh>(path);        break;
                 default: SP_LOG_WARNING("Unsupported resource type: %s", type_str.c_str()); break;
             }
