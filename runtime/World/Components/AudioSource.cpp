@@ -187,20 +187,14 @@ namespace spartan
         FeedAudioChunk();
     }
 
-    void AudioSource::Serialize(FileStream* stream)
+    void AudioSource::Save(pugi::xml_node& node)
     {
-        stream->Write(m_mute);
-        stream->Write(m_loop);
-        stream->Write(m_play_on_start);
-        stream->Write(m_volume);
+
     }
 
-    void AudioSource::Deserialize(FileStream* stream)
+    void AudioSource::Load(pugi::xml_node& node)
     {
-        stream->Read(&m_mute);
-        stream->Read(&m_loop);
-        stream->Read(&m_play_on_start);
-        stream->Read(&m_volume);
+
     }
 
     void AudioSource::SetAudioClip(const string& file_path)
@@ -346,11 +340,11 @@ namespace spartan
             }
         }
 
-        uint32_t num_samples   = bytes_to_add / sizeof(float);
-        float*   mono_samples  = reinterpret_cast<float*>(m_buffer + m_position);
+        uint32_t num_samples = bytes_to_add / sizeof(float);
+        float* mono_samples  = reinterpret_cast<float*>(m_buffer + m_position);
 
         vector<float> stereo_chunk(num_samples * 2);
-        float         gain         = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
+        float gain = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
 
         // constant power panning
         float left_factor  = sqrt(0.5f * (1.0f - m_pan));

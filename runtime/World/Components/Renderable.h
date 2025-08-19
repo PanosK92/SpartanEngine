@@ -46,8 +46,8 @@ namespace spartan
         ~Renderable();
 
         // icomponent
-        void Serialize(FileStream* stream) override;
-        void Deserialize(FileStream* stream) override;
+        void Save(pugi::xml_node& node) override;
+        void Load(pugi::xml_node& node) override;
         void OnTick() override;
 
         // mesh

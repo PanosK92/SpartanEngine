@@ -73,28 +73,14 @@ namespace spartan
         ComputeMatrices();
     }
 
-    void Camera::Serialize(FileStream* stream)
+    void Camera::Save(pugi::xml_node& node)
     {
-        stream->Write(m_aperture);
-        stream->Write(m_shutter_speed);
-        stream->Write(m_iso);
-        stream->Write(uint32_t(m_projection_type));
-        stream->Write(m_fov_horizontal_rad);
-        stream->Write(m_near_plane);
-        stream->Write(m_far_plane);
+
     }
 
-    void Camera::Deserialize(FileStream* stream)
+    void Camera::Load(pugi::xml_node& node)
     {
-        stream->Read(&m_aperture);
-        stream->Read(&m_shutter_speed);
-        stream->Read(&m_iso);
-        m_projection_type = ProjectionType(stream->ReadAs<uint32_t>());
-        stream->Read(&m_fov_horizontal_rad);
-        stream->Read(&m_near_plane);
-        stream->Read(&m_far_plane);
 
-        ComputeMatrices();
     }
 
     void Camera::SetProjection(const ProjectionType projection)

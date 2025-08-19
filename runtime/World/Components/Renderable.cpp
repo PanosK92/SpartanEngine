@@ -221,55 +221,14 @@ namespace spartan
         instancing::instance_cache.clear(); // not ideal as it's shared among all renderables
     }
 
-    void Renderable::Serialize(FileStream* stream)
+    void Renderable::Save(pugi::xml_node& node)
     {
-        // mesh
-        stream->Write(m_bounding_box_mesh);
-        MeshType mesh_type = m_mesh ? m_mesh->GetType() : MeshType::Max;
-        stream->Write(static_cast<uint32_t>(mesh_type));
-        if (mesh_type == MeshType::Max)
-        { 
-            stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
-        }
 
-        // material
-        stream->Write(m_flags);
-        stream->Write(m_material_default);
-        if (!m_material_default)
-        {
-            stream->Write(m_material ? m_material->GetObjectName() : "");
-        }
     }
 
-    void Renderable::Deserialize(FileStream* stream)
+    void Renderable::Load(pugi::xml_node& node)
     {
-        // geometry
-        stream->Read(&m_bounding_box_mesh);
-        MeshType mesh_type = static_cast<MeshType>(stream->ReadAs<uint32_t>());
-        if (mesh_type == MeshType::Max)
-        {
-            string model_name;
-            stream->Read(&model_name);
-            m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
-        }
-        else if (mesh_type != MeshType::Max)
-        {
-            SetMesh(mesh_type);
-        }
 
-        // material
-        stream->Read(&m_flags);
-        stream->Read(&m_material_default);
-        if (m_material_default)
-        {
-            SetDefaultMaterial();
-        }
-        else
-        {
-            string material_name;
-            stream->Read(&material_name);
-            m_material = ResourceCache::GetByName<Material>(material_name).get();
-        }
     }
 
     void Renderable::OnTick()

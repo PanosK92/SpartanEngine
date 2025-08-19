@@ -28,6 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/SpartanObject.h"
 //===================================
 
+namespace pugi
+{
+    class xml_node;
+}
+
 namespace spartan
 {
     class Entity;
@@ -73,10 +78,10 @@ namespace spartan
         virtual void OnTick() {}
 
         // runs when the entity is being saved
-        virtual void Serialize(FileStream* stream) {}
+        virtual void Save(pugi::xml_node& node) {}
 
         // runs when the entity is being loaded
-        virtual void Deserialize(FileStream* stream) {}
+        virtual void Load(pugi::xml_node& node) {}
 
         //= TYPE =========================
         template <typename T>

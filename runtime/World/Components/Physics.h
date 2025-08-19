@@ -67,8 +67,8 @@ namespace spartan
         void OnInitialize() override;
         void OnRemove() override;
         void OnTick() override;
-        void Serialize(FileStream* stream) override;
-        void Deserialize(FileStream* stream) override;
+        void Save(pugi::xml_node& node) override;
+        void Load(pugi::xml_node& node) override;
 
         // mass
         constexpr static inline float mass_from_volume = FLT_MAX;

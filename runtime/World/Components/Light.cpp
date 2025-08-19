@@ -135,24 +135,14 @@ namespace spartan
         }
     }
 
-    void Light::Serialize(FileStream* stream)
+    void Light::Save(pugi::xml_node& node)
     {
-        stream->Write(static_cast<uint32_t>(m_light_type));
-        stream->Write(m_flags);
-        stream->Write(m_color_rgb);
-        stream->Write(m_range);
-        stream->Write(m_intensity_lumens_lux);
-        stream->Write(m_angle_rad);
+
     }
 
-    void Light::Deserialize(FileStream* stream)
+    void Light::Load(pugi::xml_node& node)
     {
-        SetLightType(static_cast<LightType>(stream->ReadAs<uint32_t>()));
-        stream->Read(&m_flags);
-        stream->Read(&m_color_rgb);
-        stream->Read(&m_range);
-        stream->Read(&m_intensity_lumens_lux);
-        stream->Read(&m_angle_rad);
+
     }
 
     void Light::SetFlag(const LightFlags flag, const bool enable)

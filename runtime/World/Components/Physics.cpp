@@ -295,30 +295,14 @@ namespace spartan
         }
     }
 
-    void Physics::Serialize(FileStream* stream)
+    void Physics::Save(pugi::xml_node& node)
     {
-        stream->Write(m_mass);
-        stream->Write(m_friction);
-        stream->Write(m_friction_rolling);
-        stream->Write(m_restitution);
-        stream->Write(m_position_lock);
-        stream->Write(m_rotation_lock);
-        stream->Write(uint32_t(m_body_type));
-        stream->Write(m_center_of_mass);
+
     }
 
-    void Physics::Deserialize(FileStream* stream)
+    void Physics::Load(pugi::xml_node& node)
     {
-        stream->Read(&m_mass);
-        stream->Read(&m_friction);
-        stream->Read(&m_friction_rolling);
-        stream->Read(&m_restitution);
-        stream->Read(&m_position_lock);
-        stream->Read(&m_rotation_lock);
-        m_body_type = BodyType(stream->ReadAs<uint32_t>());
-        stream->Read(&m_center_of_mass);
 
-        Create();
     }
 
     void Physics::SetMass(float mass)

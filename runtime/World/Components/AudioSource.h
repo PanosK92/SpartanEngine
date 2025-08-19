@@ -43,8 +43,8 @@ namespace spartan
         void OnStop() override;
         void OnRemove() override;
         void OnTick() override;
-        void Serialize(FileStream* stream) override;
-        void Deserialize(FileStream* stream) override;
+        void Save(pugi::xml_node& node) override;
+        void Load(pugi::xml_node& node) override;
 
         void SetAudioClip(const std::string& file_path);
         const std::string& GetAudioClipName() const { return m_name; };
