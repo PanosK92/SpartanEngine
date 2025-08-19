@@ -28,6 +28,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/Material.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //=======================================
 
 //= NAMESPACES ===============
@@ -222,12 +225,91 @@ namespace spartan
 
     void Renderable::Save(pugi::xml_node& node)
     {
-
+        // mesh
+        node.append_attribute("mesh_name")      = m_mesh ? m_mesh->GetObjectName().c_str() : "";
+        node.append_attribute("sub_mesh_index") = m_sub_mesh_index;
+    
+        // material
+        node.append_attribute("material_name")    = m_material && !m_material_default ? m_material->GetObjectName().c_str() : "";
+        node.append_attribute("material_default") = m_material_default;
+    
+        // flags
+        node.append_attribute("flags") = m_flags;
+    
+        // distances
+        node.append_attribute("max_render_distance") = m_max_distance_render;
+        node.append_attribute("max_shadow_distance") = m_max_distance_shadow;
+    
+        // instances
+        pugi::xml_node instances_node = node.append_child("Instances");
+        for (const auto& transform : m_instances)
+        {
+            pugi::xml_node t_node = instances_node.append_child("Transform");
+            const float* data = transform.Data();
+            std::stringstream ss;
+            for (int i = 0; i < 16; i++)
+            {
+                ss << data[i] << (i < 15 ? " " : "");
+            }
+            t_node.append_attribute("matrix") = ss.str().c_str();
+        }
     }
-
+    
     void Renderable::Load(pugi::xml_node& node)
     {
-
+        // mesh
+        const std::string mesh_name = node.attribute("mesh_name").as_string();
+        m_sub_mesh_index            = node.attribute("sub_mesh_index").as_uint();
+        if (!mesh_name.empty())
+        {
+            m_mesh = ResourceCache::GetByName<Mesh>(mesh_name).get();
+        }
+    
+        // material
+        m_material_default = node.attribute("material_default").as_bool(true);
+        const std::string material_name = node.attribute("material_name").as_string();
+        if (!material_name.empty() && !m_material_default)
+        {
+            m_material = ResourceCache::GetByName<Material>(material_name).get();
+        }
+        else if (m_material_default)
+        {
+            SetDefaultMaterial();
+        }
+    
+        // flags
+        m_flags = node.attribute("flags").as_uint();
+    
+        // distances
+        m_max_distance_render = node.attribute("max_render_distance").as_float(FLT_MAX);
+        m_max_distance_shadow = node.attribute("max_shadow_distance").as_float(FLT_MAX);
+    
+        // instances
+        m_instances.clear();
+        pugi::xml_node instances_node = node.child("Instances");
+        if (instances_node)
+        {
+            for (pugi::xml_node t_node : instances_node.children("Transform"))
+            {
+                std::stringstream ss(t_node.attribute("matrix").as_string());
+                float m[16];
+                for (int i = 0; i < 16; i++)
+                {
+                    ss >> m[i];
+                }
+                m_instances.emplace_back(math::Matrix(m));
+            }
+        }
+    
+        // update instance buffer and bounding boxes
+        if (!m_instances.empty())
+        {
+            SetInstances(m_instances);
+        }
+        else if (m_mesh)
+        {
+            OnTick();
+        }
     }
 
     void Renderable::OnTick()
