@@ -62,31 +62,61 @@ namespace spartan
         Component(Entity* entity);
         virtual ~Component() = default;
 
-        // runs when the component gets added
+        // called when the component gets added
         virtual void OnInitialize() {}
 
-        // runs every time the simulation starts
+        // called every time the simulation starts
         virtual void OnStart() {}
 
-        // runs every time the simulation stops
+        // called every time the simulation stops
         virtual void OnStop() {}
 
-        // runs when the component is removed
+        // called when the component is removed
         virtual void OnRemove() {}
 
-        // runs every frame
+        // called every frame
         virtual void OnTick() {}
 
-        // runs when the entity is being saved
+        // called when the entity is being saved
         virtual void Save(pugi::xml_node& node) {}
 
-        // runs when the entity is being loaded
+        // called when the entity is being loaded
         virtual void Load(pugi::xml_node& node) {}
 
-        //= TYPE =========================
+        //= TYPE =============================================================
         template <typename T>
         static ComponentType TypeToEnum();
-        //================================
+
+        static std::string TypeToString(ComponentType type)
+        {
+            switch (type)
+            {
+                case ComponentType::AudioSource: return "audio_source";
+                case ComponentType::Camera:      return "camera";
+                case ComponentType::Light:       return "light";
+                case ComponentType::Physics:     return "physics";
+                case ComponentType::Renderable:  return "renderable";
+                case ComponentType::Terrain:     return "terrain";
+                default:
+                    assert(false && "TypeToString: Unknown ComponentType");
+                    return {};
+            }
+        }
+        
+        static ComponentType StringToType(const std::string& name)
+        {
+            if (name == "audio_source") return ComponentType::AudioSource;
+            if (name == "camera")       return ComponentType::Camera;
+            if (name == "light")        return ComponentType::Light;
+            if (name == "physics")      return ComponentType::Physics;
+            if (name == "renderable")   return ComponentType::Renderable;
+            if (name == "terrain")      return ComponentType::Terrain;
+        
+            assert(false && "StringToType: Unknown component name");
+            return ComponentType::Max;
+        }
+
+        //====================================================================
 
         //= PROPERTIES ==============================================================
         ComponentType GetType()          const { return m_type; }

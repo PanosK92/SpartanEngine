@@ -2001,10 +2001,14 @@ namespace spartan
                                 m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
                                 m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
                                 cmd_list->PushConstants(m_pcb_pass_cpu);
-                        
-                                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+
+                                // no mesh (vertex/index buffer) can occur if the mesh is selected but not loaded or the user removed it
+                                if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
+                                {
+                                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                                    cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                                }
                             }
                         }
                         cmd_list->EndMarker();

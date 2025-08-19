@@ -1099,7 +1099,11 @@ namespace spartan
 
                     if (Renderable* renderable = entity->GetComponent<Renderable>())
                     {
-                        if (renderable->GetMaterial() && renderable->GetMaterial()->IsTransparent())
+                        // skip renderables with no material, can happen when loading a world and the material is not yet loaded
+                        if (!renderable->GetMaterial())
+                            continue;
+
+                        if (renderable->GetMaterial()->IsTransparent())
                         {
                             m_transparents_present = true;
                         }

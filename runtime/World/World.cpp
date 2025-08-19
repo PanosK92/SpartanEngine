@@ -221,10 +221,10 @@ namespace spartan
         // resources
         {
             // node
-            pugi::xml_node resources_node = world_node.append_child("Resources");
+            //pugi::xml_node resources_node = world_node.append_child("Resources");
 
             // write resources to node
-            ResourceCache::Save(resources_node);
+            //ResourceCache::Save(resources_node);
         }
 
         // entities
@@ -290,12 +290,12 @@ namespace spartan
         // resources
         {
             // get node
-            pugi::xml_node resources_node = world_node.child("Resources");
+            //pugi::xml_node resources_node = world_node.child("Resources");
 
             // read and load resources from node
-            if (resources_node)
+            //if (resources_node)
             {
-                ResourceCache::Load(resources_node);
+                //ResourceCache::Load(resources_node);
             }
         }
 

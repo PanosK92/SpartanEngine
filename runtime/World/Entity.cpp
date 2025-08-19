@@ -142,31 +142,37 @@ namespace spartan
     {
         // self
         {
-            node.append_attribute("name")      = m_object_name.c_str();
-            node.append_attribute("id")        = m_object_id;
-            node.append_attribute("active")    = m_is_active;
+            node.append_attribute("name")   = m_object_name.c_str();
+            node.append_attribute("id")     = m_object_id;
+            node.append_attribute("active") = m_is_active;
             
             {
-                std::stringstream ss;
+                stringstream ss;
                 ss << m_position_local.x << " " << m_position_local.y << " " << m_position_local.z;
                 node.append_attribute("position") = ss.str().c_str();
             }
 
             {
-                std::stringstream ss;
+                stringstream ss;
                 ss << m_rotation_local.x << " " << m_rotation_local.y << " " << m_rotation_local.z << " " << m_rotation_local.w;
                 node.append_attribute("rotation") = ss.str().c_str();
             }
 
             {
-                std::stringstream ss;
+                stringstream ss;
                 ss << m_scale_local.x << " " << m_scale_local.y << " " << m_scale_local.z;
                 node.append_attribute("scale") = ss.str().c_str();
             }
 
             // components
+            for (shared_ptr<Component>& component : m_components)
             {
-
+                if (component)
+                {
+                    string type_name              = Component::TypeToString(component->GetType());
+                    pugi::xml_node component_node = node.append_child(type_name.c_str());
+                    component->Save(component_node);
+                }
             }
         }
 
@@ -187,26 +193,38 @@ namespace spartan
             m_object_name = node.attribute("name").as_string();
 
             {
-                std::string pos_str = node.attribute("position").as_string();
-                std::stringstream ss(pos_str);
+                string pos_str = node.attribute("position").as_string();
+                stringstream ss(pos_str);
                 ss >> m_position_local.x >> m_position_local.y >> m_position_local.z;
             }
 
             {
-                std::string rot_str = node.attribute("rotation").as_string();
-                std::stringstream ss(rot_str);
+                string rot_str = node.attribute("rotation").as_string();
+                stringstream ss(rot_str);
                 ss >> m_rotation_local.x >> m_rotation_local.y >> m_rotation_local.z >> m_rotation_local.w;
             }
 
             {
-                std::string scale_str = node.attribute("scale").as_string();
-                std::stringstream ss(scale_str);
+                string scale_str = node.attribute("scale").as_string();
+                stringstream ss(scale_str);
                 ss >> m_scale_local.x >> m_scale_local.y >> m_scale_local.z;
             }
 
             // components
+            for (pugi::xml_node component_node = node.first_child(); component_node; component_node = component_node.next_sibling())
             {
+                string type_name = component_node.name();
+                if (std::string(component_node.name()) == "Entity")
+                    continue; // skip children
 
+                ComponentType type = Component::StringToType(type_name);
+                if (type != ComponentType::Max)
+                {
+                    if (Component* component = AddComponent(type))
+                    {
+                        component->Load(component_node);
+                    }
+                }
             }
         }
 

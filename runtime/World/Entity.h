@@ -170,7 +170,7 @@ namespace spartan
 
     private:
         std::atomic<bool> m_is_active = true;
-        std::array<std::shared_ptr<Component>, 13> m_components;
+        std::array<std::shared_ptr<Component>, static_cast<uint32_t>(ComponentType::Max)> m_components;
 
         void UpdateTransform();
         math::Matrix GetParentTransformMatrix();

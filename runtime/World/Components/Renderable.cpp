@@ -458,6 +458,9 @@ namespace spartan
 
     uint32_t Renderable::GetLodCount() const
     {
+        if (!m_mesh)
+            return 0;
+
         return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());
     }
 
@@ -545,7 +548,7 @@ namespace spartan
             2.9f  * math::deg_to_rad
         };
         const uint32_t lod_count  = GetLodCount();
-        const uint32_t max_lod    = lod_count - 1;
+        const uint32_t max_lod    = lod_count > 0 ? lod_count - 1 : 0;
         Camera* camera            = World::GetCamera();
     
         // if no camera, use lowest detail lod for all
@@ -586,7 +589,7 @@ namespace spartan
 
             // determine lod index based on projected angle
             uint32_t lod_index = max_lod;
-            for (uint32_t i = 0; i < lod_count - 1; i++)
+            for (uint32_t i = 0; i < max_lod; i++)
             {
                 if (projected_angle > lod_angle_thresholds[i])
                 {
