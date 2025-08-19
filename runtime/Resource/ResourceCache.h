@@ -83,7 +83,8 @@ namespace spartan
                 return nullptr;
 
             // return cached resource if it already exists
-            if (std::shared_ptr<T> existing = GetByPath<T>(resource->GetResourceFilePath()))
+            std::shared_ptr<T> existing = GetByPath<T>(resource->GetResourceFilePath());
+            if (existing.get() != nullptr)
                 return existing;
 
             // if not, cache it and return the cached resource
@@ -103,7 +104,8 @@ namespace spartan
 
             // return cached resource if it already exists
             const std::string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-            if (std::shared_ptr<T> existing = GetByPath<T>(file_path))
+            std::shared_ptr<T> existing = GetByPath<T>(file_path);
+            if (existing.get() != nullptr)
                 return existing;
 
             // create new resource

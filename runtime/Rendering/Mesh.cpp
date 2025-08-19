@@ -57,7 +57,25 @@ namespace spartan
 
     void Mesh::LoadFromFile(const string& file_path)
     {
+        const Stopwatch timer;
 
+        if (file_path.empty() || FileSystem::IsDirectory(file_path))
+        {
+            SP_LOG_WARNING("Invalid file path");
+            return;
+        }
+
+        SetResourceFilePath(file_path);
+        ModelImporter::Load(this, file_path);
+
+        // compute memory usage
+        if (m_vertex_buffer && m_index_buffer)
+        {
+            m_object_size = m_vertex_buffer->GetObjectSize();
+            m_object_size += m_index_buffer->GetObjectSize();
+        }
+
+        SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
     }
 
     void Mesh::SaveToFile(const string& file_path)

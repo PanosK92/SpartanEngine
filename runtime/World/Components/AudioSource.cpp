@@ -40,10 +40,10 @@ if (!(call)) {                          \
 
 namespace audio_device
 {
-    mutex     device_mutex;
-    SDL_AudioSpec spec   = {};
-    uint32_t  id         = 0;
-    uint32_t  references = 0;
+    mutex device_mutex;
+    SDL_AudioSpec spec  = {};
+    uint32_t id         = 0;
+    uint32_t references = 0;
 
     // acquire the shared audio device, open it if it's not already open
     void acquire()
@@ -164,7 +164,7 @@ namespace spartan
                     const float dt             = static_cast<float>(Timer::GetDeltaTimeSec());
                     const float speed_of_sound = 343.0f;
                 
-                    Vector3 rel_velocity = (sound_position - position_previous) / dt - (camera_position - camera_position_previous) / dt;
+                    Vector3 rel_velocity = (camera_position - camera_position_previous) / dt - (sound_position - position_previous) / dt;
                     Vector3 to_sound     = (sound_position - camera_position).Normalized();
                     float radial_v       = Vector3::Dot(to_sound, rel_velocity);
                     float target_ratio   = 1.0f + radial_v / speed_of_sound;

@@ -1638,7 +1638,7 @@ namespace spartan
                 case DefaultWorld::Minecraft:    worlds::create_minecraft();      break;
                 case DefaultWorld::Sponza:       worlds::create_sponza_4k();      break;
                 case DefaultWorld::Subway:       worlds::create_subway_gi_test(); break;
-                case DefaultWorld::Showroom:  worlds::showroom::create();      break;
+                case DefaultWorld::Showroom:     worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 case DefaultWorld::Basic:        worlds::basic::create();         break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
