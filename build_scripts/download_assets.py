@@ -19,9 +19,9 @@
 
 import file_utilities
 
-file_url           = 'https://www.dropbox.com/scl/fi/6aiyk1ri7mavrzklbvlbl/assets.7z?rlkey=1ldv16t6cxkkshov3saflgwho&st=9q3y6971&dl=1'
+file_url           = 'https://www.dropbox.com/scl/fi/zf7m9b7s8aclp84g0wxbo/assets.7z?rlkey=dpfnbyrifsg7axkkohi4k13vf&st=ttgbdrnz&dl=1'
 file_destination   = 'project/assets.7z'
-file_expected_hash = '612e99367641e05bed7fa8ead56d5a09107825ed0c553fbb9ffa4c92af8893bb'
+file_expected_hash = 'd724545595a41e5e1cceb3f3cede63c5b43d073050f4765680738d46ed97828a'
 
 def main():
     file_utilities.download_file(file_url, file_destination, file_expected_hash)

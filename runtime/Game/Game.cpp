@@ -58,7 +58,7 @@ namespace spartan
         shared_ptr<Entity> default_environment       = nullptr;
         shared_ptr<Entity> default_light_directional = nullptr;
         shared_ptr<Entity> default_metal_cube        = nullptr;
-        shared_ptr<Entity> default_water             = nullptr; 
+        shared_ptr<Entity> default_water             = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
         namespace entities
@@ -1088,6 +1088,7 @@ namespace spartan
         {
             shared_ptr<RHI_Texture> texture_brand_logo;
             shared_ptr<RHI_Texture> texture_paint_normal;
+            Entity* turn_table = nullptr;
 
             void create()
             {
@@ -1118,7 +1119,7 @@ namespace spartan
                     mesh_flags          &= static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);     // don't reduce vertex/index count
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // don't genereate and use LODs
-                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\tube_lights_and_floor\\Laferrari.gltf", mesh_flags))
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\SpartanLaFerrariV2\\LaFerrariV2.gltf", mesh_flags))
                     {
                         Entity* floor_tube_lights = mesh->GetRootEntity().lock().get();
                         floor_tube_lights->SetObjectName("tube_lights_and_floor");
@@ -1169,7 +1170,7 @@ namespace spartan
                        }
 
                        // configure the floor
-                       if (Entity* entity_floor = floor_tube_lights->GetDescendantByName("Plane"))
+                       if (Entity* entity_floor = floor_tube_lights->GetDescendantByName("Floor"))
                        {
                            // scale the floor to be larger
                            const float scale = 100.0f;
@@ -1182,6 +1183,13 @@ namespace spartan
                        
                            // add physics to the floor so we can walk on it
                            entity_floor->GetComponent<Physics>()->SetBodyType(BodyType::Plane);
+                       }
+
+                       // make the car, a child of the turn table so that it rotates with it
+                       if (turn_table = floor_tube_lights->GetDescendantByName("TurnTable"))
+                       {
+                           default_car->SetParent(turn_table);
+                           default_car->SetScaleLocal(1.0f);
                        }
                     }
                 }
@@ -1198,11 +1206,11 @@ namespace spartan
             void tick()
             {
                  // slow rotation: rotate car around y-axis (vertical)
-                float rotation_speed = 0.25f; // degrees per second
+                float rotation_speed = 0.15f; // radians per second
                 float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec()); // time since last frame (in seconds)
                 float angle          = rotation_speed * delta_time; // incremental rotation
                 Quaternion rotation  = Quaternion::FromAxisAngle(Vector3::Up, angle);
-                default_car->Rotate(rotation);
+                turn_table->Rotate(rotation);
         
                 // helper function to format float with 1 decimal place
                 auto format_float = [](float value) -> string
