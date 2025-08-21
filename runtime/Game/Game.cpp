@@ -299,7 +299,6 @@ namespace spartan
         void set_base_renderer_options()
          {
              // disable all effects which are specific to certain worlds, let the each world decide which effects it wants to enable
-             Renderer::SetOption(Renderer_Option::GlobalIllumination,  0.0f);
              Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
              Renderer::SetOption(Renderer_Option::ChromaticAberration, 0.0f);
              Renderer::SetOption(Renderer_Option::Grid,                0.0f);
@@ -721,10 +720,7 @@ namespace spartan
         {
             entities::sun(false);
             entities::camera();
-            
-            Renderer::SetOption(Renderer_Option::Grid, 0.0f);
-            Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.5f);
-            
+
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
@@ -765,7 +761,6 @@ namespace spartan
 
                 entities::camera(Vector3(-1437.9974f, 329.2f, 2144.2534f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
-                Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f); // in an open-world it offers little yet it costs a lot
 
                 // create
                 default_terrain = World::CreateEntity();
@@ -1198,7 +1193,6 @@ namespace spartan
                 {
                     Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
                     Renderer::SetOption(Renderer_Option::Lights,             0.0f);
-                    Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f);
                     Renderer::SetOption(Renderer_Option::Dithering,          0.0f);
                 }
             }
@@ -1304,12 +1298,7 @@ namespace spartan
                 }
             
                 // renderer options
-                Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
-                Renderer::SetOption(Renderer_Option::Lights, 0.0f);
-                Renderer::SetOption(Renderer_Option::GlobalIllumination, 0.0f);
-                Renderer::SetOption(Renderer_Option::Dithering, 0.0f);
                 Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
-                Renderer::SetOption(Renderer_Option::Grid, 0.0f);
                 Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
             
                 // camera

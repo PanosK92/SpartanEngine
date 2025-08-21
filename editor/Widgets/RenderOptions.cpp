@@ -307,37 +307,6 @@ void RenderOptions::OnTickVisible()
 
             // ssao
             option_check_box("SSAO - Screen space ambient occlusion", Renderer_Option::ScreenSpaceAmbientOcclusion);
-
-            // gi
-            {
-                // toggle
-                option_check_box("GI - Global illumination", Renderer_Option::GlobalIllumination);
-            
-                // internal resolution
-                //float gi_value  = Renderer::GetOption<float>(Renderer_Option::GlobalIllumination);
-                //bool gi_enabled = gi_value != 0.0f;
-                //ImGui::BeginDisabled(!gi_enabled);
-                //{
-                //    static vector<string> internal_resolutions =
-                //    {
-                //        "25%",
-                //        "50%",
-                //        "75%",
-                //        "100%",
-                //    };
-                //
-                //    // adjust index for 25%, 50%, 75%, and 100%
-                //    uint32_t index = gi_value == 0.25f ? 0 : (gi_value == 0.5f ? 1 : (gi_value == 0.75f ? 2 : 3));
-                //    
-                //    if (option_combo_box("GI - Internal resolution", internal_resolutions, index))
-                //    {
-                //        // set selected value based on the updated index
-                //        float selected_value = index == 0 ? 0.25f : (index == 1 ? 0.5f : (index == 2 ? 0.75f : 1.0f));
-                //        Renderer::SetOption(Renderer_Option::GlobalIllumination, selected_value);
-                //    }
-                //}
-                //ImGui::EndDisabled();
-            }
         }
 
         if (option("Anti-Aliasing"))

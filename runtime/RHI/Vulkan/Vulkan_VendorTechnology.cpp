@@ -44,8 +44,6 @@ SP_WARNINGS_OFF
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
 #include <FidelityFX/host/ffx_sssr.h>
-#include <FidelityFX/host/ffx_brixelizer.h>
-#include <FidelityFX/host/ffx_brixelizergi.h>
 #include <FidelityFX/host/ffx_breadcrumbs.h>
 #include <xess/xess.h>
 #include <xess/xess_vk.h>
@@ -493,7 +491,7 @@ namespace spartan
             return char_str;
         }
 
-        namespace uscaler
+        namespace upscaler
         {
             // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/super-resolution-upscaler.md
             // requires:      VK_KHR_get_memory_requirements2
@@ -628,260 +626,6 @@ namespace spartan
             }
         }
 
-        namespace gi
-        {
-            // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer.md
-            // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/brixelizer-gi.md
-
-            // sdk issue #1: the sdk should keep track of static/dynamic instances and decide what needs to be deleted or created, not the user.
-            // sdk issue #2: all the buffers which are needed, should be created and bound internally by the sdk, not the user.
-            // sdk issue #3: instance ids are really indices, using actual ids (a big number) will cause an out of bounds crash.
-            // sdk issue #4: the previous depth and normal textures, should be created internally using a blit operation, not by the user.
-            // sdk issue #5: after a number of instances (a lot) debug drawing the AABB starts to flicker, and the AABBs are not always correct.
-
-            // parameters
-            FfxBrixelizerGIInternalResolution internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
-            const float    voxel_size               = 0.05f;
-            const float    cascade_size_ratio       = 2.0f;
-            const uint32_t cascade_count            = 8;               // max is 24
-            const uint32_t cascade_offset           = 16;              // 0 - 8 is for static, 8 - 16 is for dynamic, 16 - 24 is for static + dynamic (merged)
-            const uint32_t cascade_index_start      = cascade_offset + 0;
-            const uint32_t cascade_index_end        = cascade_offset + cascade_count - 1;
-            const bool     sdf_center_around_camera = true;
-            const float    sdf_ray_normal_offset    = 0.5f;            // distance from a surface along the normal vector to offset the ray origin - below 0.5 you get wild artifacts and issues
-            const float    sdf_ray_epsilon          = 0.5f;            // epsilon value for ray marching to be used with brixelizer for rays
-            const uint32_t bricks_per_update_max    = 1 << 14;         // maximum number of bricks to be updated
-            const uint32_t triangle_references_max  = 32 * (1 << 20);  // maximum number of triangle voxel references to be stored in the update
-            const uint32_t triangle_swap_size       = 300 * (1 << 20); // size of the swap space available to be used for storing triangles in the update
-            const float    t_min                    = 0.0f;
-            const float    t_max                    = 10000.0f;
-
-            // structs
-            bool                                       context_created          = false;
-            FfxBrixelizerContext                       context                  = {};
-            FfxBrixelizerContextDescription            description_context      = {};
-            FfxBrixelizerUpdateDescription             description_update       = {};
-            FfxBrixelizerBakedUpdateDescription        description_update_baked = {};
-            FfxBrixelizerGIContext                     context_gi               = {};
-            FfxBrixelizerGIContextDescription          description_context_gi   = {};
-            FfxBrixelizerGIDispatchDescription         description_dispatch_gi  = {};
-            FfxBrixelizerDebugVisualizationDescription debug_description        = {};
-            FfxBrixelizerGIDebugDescription            debug_description_gi     = {};
-
-            // resources
-            shared_ptr<RHI_Texture>                                    texture_sdf_atlas        = nullptr;
-            shared_ptr<RHI_Texture>                                    texture_depth_previous   = nullptr;
-            shared_ptr<RHI_Texture>                                    texture_normal_previous  = nullptr;
-            shared_ptr<RHI_Buffer>                                     buffer_scratch           = nullptr;
-            shared_ptr<RHI_Buffer>                                     buffer_brick_aabbs       = nullptr;
-            array<shared_ptr<RHI_Buffer>, FFX_BRIXELIZER_MAX_CASCADES> buffer_cascade_aabb_tree = {};
-            array<shared_ptr<RHI_Buffer>, FFX_BRIXELIZER_MAX_CASCADES> buffer_cascade_brick_map = {};
-
-            // instances
-            unordered_set<uint64_t> static_instances;
-            vector<pair<const RHI_Buffer*, uint32_t>> instance_buffers;
-            unordered_map<uint64_t, shared_ptr<Entity>> entity_map;
-            vector<FfxBrixelizerInstanceDescription> instances_to_create;
-            vector<uint32_t> instances_to_delete;
-
-            // debug visualisation
-            enum class DebugMode
-            {
-                Distance,   // brixelizer
-                UVW,        // brixelizer
-                Iterations, // brixelizer
-                Gradient,   // brixelizer
-                BrickID,    // brixelizer
-                CascadeID,  // brixelizer
-                Radiance,   // brixelizer gi
-                Irradiance, // brixelizer gi
-                Max
-            };
-            DebugMode debug_mode            = DebugMode::Max; // overwrites light_diffuse_gi render target
-            bool debug_mode_arrow_switch    = false;
-            bool debug_mode_aabbs_and_stats = false;
-            bool debug_mode_log_instances   = false;
-            FfxBrixelizerStats debug_stats  = {};
-           
-            uint32_t& get_or_create_id(uint64_t entity_id)
-            {
-                static unordered_map<uint64_t, uint32_t> entity_to_id_map;
-                static uint32_t next_id = 0;
-
-                // return existing
-                auto it = entity_to_id_map.find(entity_id);
-                if (it != entity_to_id_map.end())
-                    return it->second;
-
-                // return a new one
-                entity_to_id_map[entity_id] = next_id++;
-                return entity_to_id_map[entity_id];
-            }
-
-            uint32_t register_geometry_buffer(const RHI_Buffer* buffer)
-            {
-                // return existing
-                {
-                    auto it = find_if(instance_buffers.begin(), instance_buffers.end(), [buffer](const auto& pair)
-                    {
-                        return pair.first == buffer;
-                    });
-
-                    if (it != instance_buffers.end())
-                        return it->second;
-                }
-
-                // else register a new one (they need VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
-                {
-                    uint32_t index = 0;
-
-                    FfxBrixelizerBufferDescription buffer_desc = {};
-                    buffer_desc.buffer                         = to_resource(buffer, L"brixelizer_gi_buffer");
-                    buffer_desc.outIndex                       = &index;
-                    SP_ASSERT(ffxBrixelizerRegisterBuffers(&context, &buffer_desc, 1) == FFX_OK);
-
-                    instance_buffers.emplace_back(buffer, index);
-
-                    return index;
-                }
-            }
-
-            FfxBrixelizerInstanceDescription create_instance_description(const shared_ptr<Entity>& entity, uint32_t instance_index = 0)
-            {
-                FfxBrixelizerInstanceDescription desc = {};
-                Renderable* renderable                = entity->GetComponent<Renderable>();
-            
-                // aabb: world space, pre-transformed
-                const BoundingBox& aabb = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(instance_index) : renderable->GetBoundingBox();
-                desc.aabb.min[0]        = aabb.GetMin().x;
-                desc.aabb.min[1]        = aabb.GetMin().y;
-                desc.aabb.min[2]        = aabb.GetMin().z;
-                desc.aabb.max[0]        = aabb.GetMax().x;
-                desc.aabb.max[1]        = aabb.GetMax().y;
-                desc.aabb.max[2]        = aabb.GetMax().z;
-            
-                // transform: world space, row-major
-                Matrix transform = entity->GetMatrix();
-                if (renderable->HasInstancing())
-                {
-                     transform *= renderable->GetInstanceTransform(instance_index);
-                }
-                set_float16(desc.transform, transform);
-            
-                // vertex buffer
-                desc.vertexBuffer       = register_geometry_buffer(renderable->GetVertexBuffer());
-                desc.vertexStride       = renderable->GetVertexBuffer()->GetStride();
-                desc.vertexBufferOffset = renderable->GetVertexOffset() * desc.vertexStride;
-                desc.vertexCount        = renderable->GetVertexCount();
-                desc.vertexFormat       = FFX_SURFACE_FORMAT_R32G32B32_FLOAT;
-            
-                // index buffer
-                desc.indexBuffer       = register_geometry_buffer(renderable->GetIndexBuffer());
-                desc.indexBufferOffset = renderable->GetIndexOffset() * renderable->GetIndexBuffer()->GetStride();
-                desc.triangleCount     = renderable->GetIndexCount() / 3;
-                desc.indexFormat       = (renderable->GetIndexBuffer()->GetStride() == sizeof(uint16_t)) ? FFX_INDEX_TYPE_UINT16 : FFX_INDEX_TYPE_UINT32;
-            
-                // misc
-                desc.flags           = entity->GetTimeSinceLastTransform() == 0.0f ? FFX_BRIXELIZER_INSTANCE_FLAG_DYNAMIC : FFX_BRIXELIZER_INSTANCE_FLAG_NONE;
-                uint64_t instance_id = renderable->HasInstancing() ? (entity->GetObjectId() | (static_cast<uint64_t>(instance_index) << 32)) : entity->GetObjectId();
-                desc.outInstanceID   = &get_or_create_id(instance_id);
-            
-                return desc;
-            }
-            
-            FfxBrixelizerTraceDebugModes to_ffx_debug_mode(const DebugMode debug_mode)
-            {
-                if (debug_mode == gi::DebugMode::Distance)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
-                if (debug_mode == gi::DebugMode::UVW)        return FFX_BRIXELIZER_TRACE_DEBUG_MODE_UVW;
-                if (debug_mode == gi::DebugMode::Iterations) return FFX_BRIXELIZER_TRACE_DEBUG_MODE_ITERATIONS;
-                if (debug_mode == gi::DebugMode::Gradient)   return FFX_BRIXELIZER_TRACE_DEBUG_MODE_GRAD;
-                if (debug_mode == gi::DebugMode::BrickID)    return FFX_BRIXELIZER_TRACE_DEBUG_MODE_BRICK_ID;
-                if (debug_mode == gi::DebugMode::CascadeID)  return FFX_BRIXELIZER_TRACE_DEBUG_MODE_CASCADE_ID;
-            
-                return FFX_BRIXELIZER_TRACE_DEBUG_MODE_DISTANCE;
-            }
-            
-            string debug_mode_to_string(const DebugMode debug_mode)
-            {
-               if (debug_mode == gi::DebugMode::Distance)   return "Distance";
-               if (debug_mode == gi::DebugMode::UVW)        return "UVW";
-               if (debug_mode == gi::DebugMode::Iterations) return "Iterations";
-               if (debug_mode == gi::DebugMode::Gradient)   return "Gradient";
-               if (debug_mode == gi::DebugMode::BrickID)    return "Brick ID";
-               if (debug_mode == gi::DebugMode::CascadeID)  return "Cascade ID";
-               if (debug_mode == gi::DebugMode::Radiance)   return "Radiance";
-               if (debug_mode == gi::DebugMode::Irradiance) return "Irradiance";
-
-               return "Disabled";
-            }
-
-            void context_destroy()
-            {
-                if (context_created)
-                {
-                    RHI_Device::QueueWaitAll();
-
-                    SP_ASSERT(ffxBrixelizerContextDestroy(&context) == FFX_OK);
-                    SP_ASSERT(ffxBrixelizerGIContextDestroy(&context_gi) == FFX_OK);
-
-                    static_instances.clear();
-                    instance_buffers.clear();
-                    entity_map.clear();
-                    instances_to_create.clear();
-                    instances_to_delete.clear();
-                    context_created = false;
-                }
-            }
-
-            void context_create()
-            {
-                context_destroy();
-
-                // context
-                {
-                    // sdf
-                    set_float3(description_context.sdfCenter, Vector3::Zero);
-                
-                    // cascades
-                    description_context.numCascades = cascade_count;
-                    float voxel_size_ = voxel_size;
-                    for (uint32_t i = 0; i < cascade_count; ++i)
-                    {
-                        FfxBrixelizerCascadeDescription* cascade_description   = &description_context.cascadeDescs[i];
-                        cascade_description->flags                             = static_cast<FfxBrixelizerCascadeFlag>(FFX_BRIXELIZER_CASCADE_STATIC | FFX_BRIXELIZER_CASCADE_DYNAMIC);
-                        cascade_description->voxelSize                         = voxel_size_;
-                        voxel_size_                                           *= cascade_size_ratio;
-                    }
-                
-                    // interface
-                    description_context.flags            = debug_mode_aabbs_and_stats ? FFX_BRIXELIZER_CONTEXT_FLAG_ALL_DEBUG : static_cast<FfxBrixelizerContextFlags>(0);
-                    description_context.backendInterface = ffx_interface;
-                
-                    SP_ASSERT(ffxBrixelizerContextCreate(&description_context, &context) == FFX_OK);
-                }
-                
-                // context gi
-                {
-                    description_context_gi.internalResolution = internal_resolution;
-                    description_context_gi.displaySize.width  = common::resolution_render_width;
-                    description_context_gi.displaySize.height = common::resolution_render_height;
-                    description_context_gi.flags              = FfxBrixelizerGIFlags::FFX_BRIXELIZER_GI_FLAG_DEPTH_INVERTED;
-                    description_context_gi.backendInterface   = ffx_interface;
-                    
-                    SP_ASSERT(ffxBrixelizerGIContextCreate(&context_gi, &description_context_gi) == FFX_OK);
-                }
-                
-                // resources
-                {
-                    uint32_t flags = RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit;
-                    texture_depth_previous  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, common::resolution_render_width, common::resolution_render_height, 1, 1, RHI_Format::D32_Float, flags, "ffx_deoth_previous");
-                    texture_normal_previous = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, common::resolution_render_width, common::resolution_render_height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ffx_normal_previous");
-                }
-                
-                context_created = true;
-            }
-        }
-
         namespace breadcrumbs
         {
             bool                  context_created = false;
@@ -932,8 +676,7 @@ namespace spartan
             }
         }
     }
-
-    #endif
+    #endif // _WIN32
 
     void RHI_VendorTechnology::Initialize()
     {
@@ -959,11 +702,9 @@ namespace spartan
         {
             // all used contexts need to be accounted for here
             const size_t max_contexts =
-                FFX_FSR3_CONTEXT_COUNT          +
-                FFX_SSSR_CONTEXT_COUNT          +
-                FFX_BRIXELIZER_CONTEXT_COUNT    +
-                FFX_BRIXELIZER_GI_CONTEXT_COUNT;
-                Debugging::IsBreadcrumbsEnabled() ? FFX_BREADCRUMBS_CONTEXT_COUNT : 0;
+                FFX_FSR3_CONTEXT_COUNT +
+                FFX_SSSR_CONTEXT_COUNT +
+                FFX_BREADCRUMBS_CONTEXT_COUNT;
             
             VkDeviceContext device_context  = {};
             device_context.vkDevice         = RHI_Context::device;
@@ -987,77 +728,13 @@ namespace spartan
             {
                 amd::texture_skybox = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 128, 128, 6, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox");
             }
-
-            // brixelizer gi
-            {
-                // sdf atlas texture
-                amd::gi::texture_sdf_atlas = make_shared<RHI_Texture>(
-                    RHI_Texture_Type::Type3D,
-                    FFX_BRIXELIZER_STATIC_CONFIG_SDF_ATLAS_SIZE,
-                    FFX_BRIXELIZER_STATIC_CONFIG_SDF_ATLAS_SIZE,
-                    FFX_BRIXELIZER_STATIC_CONFIG_SDF_ATLAS_SIZE,
-                    1,
-                    RHI_Format::R8_Unorm,
-                    RHI_Texture_Srv | RHI_Texture_Uav,
-                    "ffx_sdf_atlas"
-                );
-
-                // scratch buffer
-                amd::gi::buffer_scratch = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Storage,
-                    1 << 30, // stride - 1024 MB (will assert if not enough)
-                    1,       // element count
-                    nullptr,
-                    false,
-                    "ffx_brixelizer_gi_scratch"
-                );
-
-                // brick aabbs buffer
-                amd::gi::buffer_brick_aabbs = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Storage,
-                    static_cast<uint32_t>(FFX_BRIXELIZER_BRICK_AABBS_STRIDE),                                   // stride
-                    static_cast<uint32_t>(FFX_BRIXELIZER_BRICK_AABBS_SIZE / FFX_BRIXELIZER_BRICK_AABBS_STRIDE), // element count
-                    nullptr,
-                    false,
-                    "ffx_brick_aabbs"
-                );
-
-                // cascade cascade aabb trees
-                for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
-                {
-                    amd::gi::buffer_cascade_aabb_tree[i] = make_shared<RHI_Buffer>(
-                        RHI_Buffer_Type::Storage,
-                        FFX_BRIXELIZER_CASCADE_AABB_TREE_STRIDE,                                                                // stride
-                        static_cast<uint32_t>(FFX_BRIXELIZER_CASCADE_AABB_TREE_SIZE / FFX_BRIXELIZER_CASCADE_AABB_TREE_STRIDE), // element count
-                        nullptr,
-                        false,
-                        ("ffx_cascade_aabb_tree_" + to_string(i)).c_str()
-                    );
-                }
-
-                // cascade brick maps
-                for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
-                {
-                    string name = "ffx_cascade_brick_map_" + to_string(i);
-                    amd::gi::buffer_cascade_brick_map[i] = make_shared<RHI_Buffer>(
-                        RHI_Buffer_Type::Storage,
-                        static_cast<uint32_t>(FFX_BRIXELIZER_CASCADE_BRICK_MAP_STRIDE),                                         // stride
-                        static_cast<uint32_t>(FFX_BRIXELIZER_CASCADE_BRICK_MAP_SIZE / FFX_BRIXELIZER_CASCADE_BRICK_MAP_STRIDE), // element count
-                        nullptr,
-                        false,
-                        name.c_str()
-                    );
-                }
-            }
         }
     #endif
     }
-
     void RHI_VendorTechnology::Shutdown()
     {
     #ifdef _WIN32
-        amd::uscaler::context_destroy();
-        amd::gi::context_destroy();
+        amd::upscaler::context_destroy();
         amd::ssr::context_destroy();
         amd::breadcrumbs::context_destroy();
 
@@ -1066,16 +743,6 @@ namespace spartan
         {
             free(amd::ffx_interface.scratchBuffer);
         }
-
-        // release static resources now so that they register
-        // themselves with the RHI for deletion before engine shutdown
-        amd::gi::texture_sdf_atlas       = nullptr;
-        amd::gi::buffer_brick_aabbs      = nullptr;
-        amd::gi::buffer_scratch          = nullptr;
-        amd::gi::texture_depth_previous  = nullptr;
-        amd::gi::texture_normal_previous = nullptr;
-        amd::gi::buffer_cascade_aabb_tree.fill(nullptr);
-        amd::gi::buffer_cascade_brick_map.fill(nullptr);
 
         // shared
         amd::texture_skybox = nullptr;
@@ -1098,25 +765,6 @@ namespace spartan
             amd::view_inverted            = Matrix::Invert(amd::view);
             amd::projection_inverted      = Matrix::Invert(amd::projection);
             amd::view_projection_inverted = Matrix::Invert(amd::view_projection);
-        }
-
-        // brixelizer gi
-        if (amd::gi::debug_mode_arrow_switch)
-        {
-            if (Input::GetKeyDown(KeyCode::Arrow_Left))
-            {
-                amd::gi::debug_mode = static_cast<amd::gi::DebugMode>(
-                    (static_cast<uint32_t>(amd::gi::debug_mode) - 1 + static_cast<uint32_t>(amd::gi::DebugMode::Max) + 1) %
-                    (static_cast<uint32_t>(amd::gi::DebugMode::Max) + 1));
-                SP_LOG_INFO("Debug mode: %s", amd::gi::debug_mode_to_string(amd::gi::debug_mode));
-            }
-            else if (Input::GetKeyDown(KeyCode::Arrow_Right))
-            {
-                amd::gi::debug_mode = static_cast<amd::gi::DebugMode>(
-                    (static_cast<uint32_t>(amd::gi::debug_mode) + 1) %
-                    (static_cast<uint32_t>(amd::gi::DebugMode::Max) + 1));
-                SP_LOG_INFO("Debug mode: %s", amd::gi::debug_mode_to_string(amd::gi::debug_mode));
-            }
         }
 
         // breadcrumbs
@@ -1144,13 +792,12 @@ namespace spartan
             if (resolution_render_changed)
             {
                 amd::ssr::context_create();
-                amd::gi::context_create();
             }
 
             // todo: make these mutually exlusive
             if ((resolution_render_changed || resolution_output_changed)) 
             {
-                amd::uscaler::context_create();
+                amd::upscaler::context_create();
                 intel::context_create();
             }
         }
@@ -1262,19 +909,19 @@ namespace spartan
     {
     #ifdef _WIN32
         // get jitter phase count
-        const uint32_t resolution_render_x = static_cast<uint32_t>(amd::uscaler::description_context.maxRenderSize.width);
-        const uint32_t resolution_render_y = static_cast<uint32_t>(amd::uscaler::description_context.maxRenderSize.height);
+        const uint32_t resolution_render_x = static_cast<uint32_t>(amd::upscaler::description_context.maxRenderSize.width);
+        const uint32_t resolution_render_y = static_cast<uint32_t>(amd::upscaler::description_context.maxRenderSize.height);
         const int32_t jitter_phase_count   = ffxFsr3GetJitterPhaseCount(resolution_render_x, resolution_render_x);
 
         // ensure fsr3_jitter_index is properly wrapped around the jitter_phase_count
-        amd::uscaler::jitter_index = (amd::uscaler::jitter_index + 1) % jitter_phase_count;
+        amd::upscaler::jitter_index = (amd::upscaler::jitter_index + 1) % jitter_phase_count;
 
         // generate jitter sample
-        FfxErrorCode result = ffxFsr3GetJitterOffset(&amd::uscaler::description_dispatch.jitterOffset.x, &amd::uscaler::description_dispatch.jitterOffset.y, amd::uscaler::jitter_index, jitter_phase_count);
+        FfxErrorCode result = ffxFsr3GetJitterOffset(&amd::upscaler::description_dispatch.jitterOffset.x, &amd::upscaler::description_dispatch.jitterOffset.y, amd::upscaler::jitter_index, jitter_phase_count);
         SP_ASSERT(result == FFX_OK);
 
-        *x =  2.0f * amd::uscaler::description_dispatch.jitterOffset.x / resolution_render_x;
-        *y = -2.0f * amd::uscaler::description_dispatch.jitterOffset.y / resolution_render_y;
+        *x =  2.0f * amd::upscaler::description_dispatch.jitterOffset.x / resolution_render_x;
+        *y = -2.0f * amd::upscaler::description_dispatch.jitterOffset.y / resolution_render_y;
     #endif
     }
 
@@ -1293,38 +940,38 @@ namespace spartan
     {
     #ifdef _WIN32
         // set resources (no need for the transparency or reactive masks as we do them later, full res)
-        amd::uscaler::description_dispatch.commandList                   = amd::to_cmd_list(cmd_list);
-        amd::uscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                        L"fsr3_color");
-        amd::uscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                        L"fsr3_depth");
-        amd::uscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                     L"fsr3_velocity");
-        amd::uscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                          L"fsr3_exposure");
-        amd::uscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                          L"fsr3_reactive");
-        amd::uscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                          L"fsr3_transaprency_and_composition");
-        amd::uscaler::description_dispatch.dilatedDepth                  = amd::to_resource(amd::uscaler::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
-        amd::uscaler::description_dispatch.dilatedMotionVectors          = amd::to_resource(amd::uscaler::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
-        amd::uscaler::description_dispatch.reconstructedPrevNearestDepth = amd::to_resource(amd::uscaler::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
-        amd::uscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                       L"fsr3_output");
+        amd::upscaler::description_dispatch.commandList                   = amd::to_cmd_list(cmd_list);
+        amd::upscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                        L"fsr3_color");
+        amd::upscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                        L"fsr3_depth");
+        amd::upscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                     L"fsr3_velocity");
+        amd::upscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                          L"fsr3_exposure");
+        amd::upscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                          L"fsr3_reactive");
+        amd::upscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                          L"fsr3_transaprency_and_composition");
+        amd::upscaler::description_dispatch.dilatedDepth                  = amd::to_resource(amd::upscaler::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
+        amd::upscaler::description_dispatch.dilatedMotionVectors          = amd::to_resource(amd::upscaler::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
+        amd::upscaler::description_dispatch.reconstructedPrevNearestDepth = amd::to_resource(amd::upscaler::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
+        amd::upscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                       L"fsr3_output");
         
         // configure
-        amd::uscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;
-        amd::uscaler::description_dispatch.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
-        amd::uscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;        // sdk issue: redundant parameter
-        amd::uscaler::description_dispatch.sharpness              = sharpness;
-        amd::uscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
-        amd::uscaler::description_dispatch.preExposure            = 1.0f;                     // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
-        amd::uscaler::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
-        amd::uscaler::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
-        amd::uscaler::description_dispatch.cameraNear             = camera->GetFarPlane();    // far as near because we are using reverse-z
-        amd::uscaler::description_dispatch.cameraFar              = camera->GetNearPlane();   // near as far because we are using reverse-z
-        amd::uscaler::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
+        amd::upscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;
+        amd::upscaler::description_dispatch.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
+        amd::upscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;        // sdk issue: redundant parameter
+        amd::upscaler::description_dispatch.sharpness              = sharpness;
+        amd::upscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
+        amd::upscaler::description_dispatch.preExposure            = 1.0f;                     // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
+        amd::upscaler::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
+        amd::upscaler::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
+        amd::upscaler::description_dispatch.cameraNear             = camera->GetFarPlane();    // far as near because we are using reverse-z
+        amd::upscaler::description_dispatch.cameraFar              = camera->GetNearPlane();   // near as far because we are using reverse-z
+        amd::upscaler::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
         
         // reset history
-        amd::uscaler::description_dispatch.reset = common::reset_history;
+        amd::upscaler::description_dispatch.reset = common::reset_history;
         common::reset_history = false;
         
         // dispatch
-        SP_ASSERT(ffxFsr3UpscalerContextDispatch(&amd::uscaler::context, &amd::uscaler::description_dispatch) == FFX_OK);
-        amd::uscaler::description_dispatch.reset = false;
+        SP_ASSERT(ffxFsr3UpscalerContextDispatch(&amd::upscaler::context, &amd::upscaler::description_dispatch) == FFX_OK);
+        amd::upscaler::description_dispatch.reset = false;
     #endif
     }
 
@@ -1389,330 +1036,7 @@ namespace spartan
         SP_ASSERT(error_code == FFX_OK);
     #endif
     }
-
-    void RHI_VendorTechnology::BrixelizerGI_Update(
-        RHI_CommandList* cmd_list,
-        const float resolution_scale,
-        Cb_Frame* cb_frame,
-        const vector<shared_ptr<Entity>>& entities,
-        RHI_Texture* tex_debug
-    )
-    {
-    #ifdef _WIN32
-        SP_ASSERT(amd::gi::context_created);
-
-        // instances
-        {
-            amd::gi::instances_to_create.clear();
-            amd::gi::instances_to_delete.clear();
-            amd::gi::entity_map.clear();
-        
-            // process entities
-            for (const shared_ptr<Entity>& entity : entities)
-            {
-                if (!entity->GetActive())
-                    continue;
-
-                // skip entities that won't contribute yet will kill performance
-                Renderable* renderable = entity->GetComponent<Renderable>();
-                if (!renderable || renderable->GetMaterial()->GetProperty(MaterialProperty::IsGrassBlade) || renderable->GetMaterial()->IsTransparent())
-                    continue;
-
-                uint64_t entity_id                   = entity->GetObjectId();
-                amd::gi::entity_map[entity_id] = entity;
-                bool is_dynamic                      = entity->GetTimeSinceLastTransform() == 0.0f;
-                auto static_it                       = amd::gi::static_instances.find(entity_id);
-                bool was_static                      = static_it != amd::gi::static_instances.end();
-
-                if (is_dynamic)
-                {
-                    if (renderable->HasInstancing())
-                    {
-                        for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
-                        {
-                            uint64_t instance_id = entity_id | (static_cast<uint64_t>(instance_index) << 32);
-                            amd::gi::instances_to_create.push_back(amd::gi::create_instance_description(entity, instance_index));
-                            
-                            auto static_instance_it = amd::gi::static_instances.find(instance_id);
-                            if (static_instance_it != amd::gi::static_instances.end())
-                            {
-                                amd::gi::instances_to_delete.push_back(amd::gi::get_or_create_id(instance_id));
-                                amd::gi::static_instances.erase(static_instance_it);
-                                if (amd::gi::debug_mode_log_instances)
-                                {
-                                    SP_LOG_INFO("Static instance became dynamic: %llu (instance %u)", entity_id, instance_index);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        amd::gi::instances_to_create.push_back(amd::gi::create_instance_description(entity));
-                        
-                        if (was_static)
-                        {
-                            amd::gi::instances_to_delete.push_back(amd::gi::get_or_create_id(entity_id));
-                            amd::gi::static_instances.erase(static_it);
-                            if (amd::gi::debug_mode_log_instances)
-                            {
-                                SP_LOG_INFO("Static instance became dynamic: %llu", entity_id);
-                            }
-                        }
-                    }
-                }
-                else if (!was_static)
-                {
-                    if (renderable->HasInstancing())
-                    {
-                        for (uint32_t instance_index = 0; instance_index < renderable->GetInstanceCount(); instance_index++)
-                        {
-                            uint64_t instance_id = entity_id | (static_cast<uint64_t>(instance_index) << 32);
-                            amd::gi::instances_to_create.push_back(amd::gi::create_instance_description(entity, instance_index));
-                            amd::gi::static_instances.insert(instance_id);
-                            if (amd::gi::debug_mode_log_instances)
-                            {
-                                SP_LOG_INFO("Added new static instance: %llu (instance %u)", entity_id, instance_index);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        amd::gi::instances_to_create.push_back(amd::gi::create_instance_description(entity));
-                        amd::gi::static_instances.insert(entity_id);
-                        if (amd::gi::debug_mode_log_instances)
-                        {
-                            SP_LOG_INFO("Added new static instance: %llu", entity_id);
-                        }
-                    }
-                }
-            }
-        
-            // delete static instances that no longer exist
-            for (auto it = amd::gi::static_instances.begin(); it != amd::gi::static_instances.end();)
-            {
-                uint64_t entity_id = *it;
-                if (amd::gi::entity_map.find(entity_id) == amd::gi::entity_map.end())
-                {
-                    amd::gi::instances_to_delete.push_back(amd::gi::get_or_create_id(entity_id));
-                    it = amd::gi::static_instances.erase(it);
-                    if (amd::gi::debug_mode_log_instances)
-                    {
-                        SP_LOG_INFO("Deleted non-existent static instance: %llu", entity_id);
-                    }
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-        
-            // create instances
-            if (!amd::gi::instances_to_create.empty())
-            {
-                SP_ASSERT(ffxBrixelizerCreateInstances(&amd::gi::context, amd::gi::instances_to_create.data(), static_cast<uint32_t>(amd::gi::instances_to_create.size())) == FFX_OK);
-            }
-        
-            // delete instances
-            if (!amd::gi::instances_to_delete.empty())
-            {
-                SP_ASSERT(ffxBrixelizerDeleteInstances(&amd::gi::context, amd::gi::instances_to_delete.data(), static_cast<uint32_t>(amd::gi::instances_to_delete.size())) == FFX_OK);
-            }
-        }
-
-        // fill in the update description
-        for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
-        {
-            amd::gi::description_update.resources.cascadeResources[i].aabbTree = amd::to_resource(amd::gi::buffer_cascade_aabb_tree[i].get(), L"brixelizer_gi_abbb_tree");
-            amd::gi::description_update.resources.cascadeResources[i].brickMap = amd::to_resource(amd::gi::buffer_cascade_brick_map[i].get(), L"brixelizer_gi_brick_map");
-        }
-        amd::gi::description_update.resources.sdfAtlas   = amd::to_resource(amd::gi::texture_sdf_atlas.get(),  L"brixelizer_gi_sdf_atlas");
-        amd::gi::description_update.resources.brickAABBs = amd::to_resource(amd::gi::buffer_brick_aabbs.get(), L"brixelizer_gi_brick_aabbs");
-        amd::gi::description_update.frameIndex           = cb_frame->frame;
-        amd::gi::description_update.maxReferences        = amd::gi::triangle_references_max;
-        amd::gi::description_update.triangleSwapSize     = amd::gi::triangle_swap_size;
-        amd::gi::description_update.maxBricksPerBake     = amd::gi::bricks_per_update_max;
-        size_t required_scratch_buffer_size                    = 0;
-        amd::gi::description_update.outScratchBufferSize = &required_scratch_buffer_size; // the size of the gpu scratch buffer needed for ffxBrixelizerUpdate()
-        amd::gi::description_update.outStats             = &amd::gi::debug_stats;   // statistics for the update, stats read back after ffxBrixelizerUpdate()
-        amd::set_float3(amd::gi::description_update.sdfCenter, amd::gi::sdf_center_around_camera ? cb_frame->camera_position : Vector3::Zero); // sdf center in world space
-
-        // debug visualization for: distance, uvw, iterations, brick id, cascade id
-        bool debug_enabled = amd::gi::debug_mode != amd::gi::DebugMode::Max;
-        bool debug_update  = amd::gi::debug_mode != amd::gi::DebugMode::Radiance && amd::gi::debug_mode != amd::gi::DebugMode::Irradiance;
-        if (debug_enabled && debug_update)
-        {
-            FfxBrixelizerPopulateDebugAABBsFlags flags = static_cast<FfxBrixelizerPopulateDebugAABBsFlags>(FFX_BRIXELIZER_POPULATE_AABBS_INSTANCES | FFX_BRIXELIZER_POPULATE_AABBS_CASCADE_AABBS);
-
-            for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
-            {
-                amd::gi::debug_description.cascadeDebugAABB[0] = FFX_BRIXELIZER_CASCADE_DEBUG_AABB_NONE;
-            }
-
-            amd::gi::description_update.populateDebugAABBsFlags = amd::gi::debug_mode_aabbs_and_stats ? flags : FFX_BRIXELIZER_POPULATE_AABBS_NONE;
-            amd::gi::description_update.debugVisualizationDesc  = &amd::gi::debug_description;
-            amd::gi::debug_description.commandList              = amd::to_cmd_list(cmd_list);
-            amd::gi::debug_description.output                   = amd::to_resource(tex_debug, L"brixelizer_gi_tex_debug");
-            amd::gi::debug_description.renderWidth              = static_cast<uint32_t>(tex_debug->GetWidth() * resolution_scale);
-            amd::gi::debug_description.renderHeight             = static_cast<uint32_t>(tex_debug->GetHeight() * resolution_scale);
-            amd::gi::debug_description.debugState               = amd::gi::to_ffx_debug_mode(amd::gi::debug_mode);
-            amd::gi::debug_description.startCascadeIndex        = amd::gi::cascade_index_start;
-            amd::gi::debug_description.endCascadeIndex          = amd::gi::cascade_index_end;
-            amd::gi::debug_description.tMin                     = amd::gi::t_min;
-            amd::gi::debug_description.tMax                     = amd::gi::t_max;
-            amd::gi::debug_description.sdfSolveEps              = amd::gi::sdf_ray_epsilon;
-           
-            amd::set_float16(amd::gi::debug_description.inverseViewMatrix,       amd::view_inverted);
-            amd::set_float16(amd::gi::debug_description.inverseProjectionMatrix, amd::projection_inverted);
-        }
-        
-        // update
-        SP_ASSERT(ffxBrixelizerBakeUpdate(&amd::gi::context, &amd::gi::description_update, &amd::gi::description_update_baked) == FFX_OK);
-        SP_ASSERT_MSG(required_scratch_buffer_size <= amd::gi::buffer_scratch->GetObjectSize(), "Create a larger scratch buffer");
-        SP_ASSERT(ffxBrixelizerUpdate(&amd::gi::context, &amd::gi::description_update_baked, amd::to_resource(amd::gi::buffer_scratch.get(), L"ffx_brixelizer_gi_scratch"), amd::to_cmd_list(cmd_list)) == FFX_OK);
-    #endif
-    }
-
-    void RHI_VendorTechnology::BrixelizerGI_Dispatch(
-        RHI_CommandList* cmd_list,
-        Cb_Frame* cb_frame,
-        RHI_Texture* tex_frame,
-        RHI_Texture* tex_depth,
-        RHI_Texture* tex_velocity,
-        RHI_Texture* tex_normal,
-        RHI_Texture* tex_material,
-        array<RHI_Texture*, 8>& tex_noise,
-        RHI_Texture* tex_diffuse_gi,
-        RHI_Texture* tex_specular_gi,
-        RHI_Texture* tex_debug
-    )
-    {
-    #ifdef _WIN32
-        SP_ASSERT(amd::gi::context_created);
-
-        bool debug_enabled  = amd::gi::debug_mode != amd::gi::DebugMode::Max;
-        bool debug_dispatch = amd::gi::debug_mode == amd::gi::DebugMode::Radiance || amd::gi::debug_mode == amd::gi::DebugMode::Irradiance;
-        bool debug_update   = debug_enabled && !debug_dispatch;
-        if (debug_update)
-            return;
-
-        // end the render pass (if there is one) as third-party code takes over here
-        cmd_list->RenderPassEnd();
-
-        // set camera matrices
-        amd::set_float16(amd::gi::description_dispatch_gi.view,           amd::view);
-        amd::set_float16(amd::gi::description_dispatch_gi.prevView,       amd::view_previous);
-        amd::set_float16(amd::gi::description_dispatch_gi.projection,     amd::projection);
-        amd::set_float16(amd::gi::description_dispatch_gi.prevProjection, amd::projection_previous);
-
-        // set resources
-        amd::gi::description_dispatch_gi.environmentMap   = amd::to_resource(amd::texture_skybox.get(),                     L"brixelizer_gi_environment");
-        amd::gi::description_dispatch_gi.prevLitOutput    = amd::to_resource(tex_frame,                                     L"brixelizer_gi_lit_output_previous"); // linear
-        amd::gi::description_dispatch_gi.depth            = amd::to_resource(tex_depth,                                     L"brixelizer_gi_depth");
-        amd::gi::description_dispatch_gi.historyDepth     = amd::to_resource(amd::gi::texture_depth_previous.get(),         L"brixelizer_gi_depth_previous");
-        amd::gi::description_dispatch_gi.normal           = amd::to_resource(tex_normal,                                    L"brixelizer_gi_normal");
-        amd::gi::description_dispatch_gi.historyNormal    = amd::to_resource(amd::gi::texture_normal_previous.get(),        L"brixelizer_gi_normal_previous");
-        amd::gi::description_dispatch_gi.roughness        = amd::to_resource(tex_material,                                  L"brixelizer_gi_roughness");
-        amd::gi::description_dispatch_gi.motionVectors    = amd::to_resource(tex_velocity,                                  L"brixelizer_gi_velocity");
-        amd::gi::description_dispatch_gi.noiseTexture     = amd::to_resource(tex_noise[cb_frame->frame % tex_noise.size()], L"brixelizer_gi_noise");
-        amd::gi::description_dispatch_gi.outputDiffuseGI  = amd::to_resource(tex_diffuse_gi,                                L"brixelizer_gi_diffuse_gi");
-        amd::gi::description_dispatch_gi.outputSpecularGI = amd::to_resource(tex_specular_gi,                               L"brixelizer_gi_specular_gi");
-        amd::gi::description_dispatch_gi.sdfAtlas         = amd::to_resource(amd::gi::texture_sdf_atlas.get(),              L"brixelizer_gi_sdf_atlas");
-        amd::gi::description_dispatch_gi.bricksAABBs      = amd::to_resource(amd::gi::buffer_brick_aabbs.get(),             L"brixelizer_gi_brick_aabbs");
-        for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
-        {
-            amd::gi::description_dispatch_gi.cascadeAABBTrees[i] = amd::gi::description_update.resources.cascadeResources[i].aabbTree;
-            amd::gi::description_dispatch_gi.cascadeBrickMaps[i] = amd::gi::description_update.resources.cascadeResources[i].brickMap;
-        }
-        
-        // set parameters
-        amd::gi::description_dispatch_gi.startCascade            = amd::gi::cascade_index_start;
-        amd::gi::description_dispatch_gi.endCascade              = amd::gi::cascade_index_end;
-        amd::gi::description_dispatch_gi.rayPushoff              = amd::gi::sdf_ray_normal_offset;
-        amd::gi::description_dispatch_gi.sdfSolveEps             = amd::gi::sdf_ray_epsilon;
-        amd::gi::description_dispatch_gi.specularRayPushoff      = amd::gi::sdf_ray_normal_offset;
-        amd::gi::description_dispatch_gi.specularSDFSolveEps     = amd::gi::sdf_ray_epsilon;
-        amd::gi::description_dispatch_gi.tMin                    = amd::gi::t_min;
-        amd::gi::description_dispatch_gi.tMax                    = amd::gi::t_max;
-        amd::gi::description_dispatch_gi.normalsUnpackMul        = 1.0f;
-        amd::gi::description_dispatch_gi.normalsUnpackAdd        = 0.0f;
-        amd::gi::description_dispatch_gi.isRoughnessPerceptual   = true; // false for squared g-buffer roughness
-        amd::gi::description_dispatch_gi.roughnessChannel        = 0;    // the channel to read the roughness from the roughness texture
-        amd::gi::description_dispatch_gi.roughnessThreshold      = 0.8f; // regions with a roughness value greater than this threshold won't spawn specular rays
-        amd::gi::description_dispatch_gi.environmentMapIntensity = 0.0f; // value to scale the contribution from the environment map
-        amd::gi::description_dispatch_gi.motionVectorScale.x     = -0.5f;
-        amd::gi::description_dispatch_gi.motionVectorScale.y     = 0.5f;
-        amd::set_float3(amd::gi::description_dispatch_gi.cameraPosition, cb_frame->camera_position);
-
-        // dispatch
-        SP_ASSERT(ffxBrixelizerGetRawContext(&amd::gi::context, &amd::gi::description_dispatch_gi.brixelizerContext) == FFX_OK);
-        SP_ASSERT(ffxBrixelizerGIContextDispatch(&amd::gi::context_gi, &amd::gi::description_dispatch_gi, amd::to_cmd_list(cmd_list)) == FFX_OK);
-
-        // blit the the normal so that we can use it in the next frame as as the previous
-        cmd_list->Blit(tex_normal, amd::gi::texture_normal_previous.get(), false);
-
-        // debug visualisation
-        if (amd::gi::debug_mode == amd::gi::DebugMode::Radiance || amd::gi::debug_mode == amd::gi::DebugMode::Irradiance)
-        {
-            // set camera matrices
-            amd::set_float16(amd::gi::debug_description_gi.view,       amd::view);
-            amd::set_float16(amd::gi::debug_description_gi.projection, amd::projection);
-
-            // set resources
-            amd::gi::debug_description_gi.outputDebug   = amd::to_resource(tex_debug, L"brixelizer_gi_debug");
-            amd::gi::debug_description_gi.outputSize[0] = tex_debug->GetWidth();
-            amd::gi::debug_description_gi.outputSize[1] = tex_debug->GetHeight();
-            amd::gi::debug_description_gi.depth         = amd::gi::description_dispatch_gi.depth;
-            amd::gi::debug_description_gi.normal        = amd::gi::description_dispatch_gi.normal;
-            amd::gi::debug_description_gi.sdfAtlas      = amd::gi::description_dispatch_gi.sdfAtlas;
-            amd::gi::debug_description_gi.bricksAABBs   = amd::gi::description_dispatch_gi.bricksAABBs;
-            for (uint32_t i = 0; i < FFX_BRIXELIZER_MAX_CASCADES; i++)
-            {
-                amd::gi::debug_description_gi.cascadeAABBTrees[i] = amd::gi::description_dispatch_gi.cascadeAABBTrees[i];
-                amd::gi::debug_description_gi.cascadeBrickMaps[i] = amd::gi::description_dispatch_gi.cascadeBrickMaps[i];
-            }
-
-            // set parameters
-            amd::gi::debug_description_gi.startCascade     = amd::gi::description_dispatch_gi.startCascade;
-            amd::gi::debug_description_gi.endCascade       = amd::gi::description_dispatch_gi.endCascade;
-            amd::gi::debug_description_gi.debugMode        = amd::gi::debug_mode == amd::gi::DebugMode::Radiance ? FFX_BRIXELIZER_GI_DEBUG_MODE_RADIANCE_CACHE : FFX_BRIXELIZER_GI_DEBUG_MODE_IRRADIANCE_CACHE;
-            amd::gi::debug_description_gi.normalsUnpackMul = amd::gi::description_dispatch_gi.normalsUnpackMul;
-            amd::gi::debug_description_gi.normalsUnpackAdd = amd::gi::description_dispatch_gi.normalsUnpackAdd;
-
-            // dispatch
-            amd::gi::debug_description_gi.brixelizerContext = amd::gi::description_dispatch_gi.brixelizerContext;
-            SP_ASSERT(ffxBrixelizerGIContextDebugVisualization(&amd::gi::context_gi, &amd::gi::debug_description_gi, amd::to_cmd_list(cmd_list)) == FFX_OK);
-        }
-    #endif
-    }
-
-    void RHI_VendorTechnology::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
-    {
-        #ifdef _MSC_VER
-        if (resolution_percentage == 0.25f)
-        {
-            amd::gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_25_PERCENT;
-        }
-        else if (resolution_percentage == 0.5f)
-        {
-            amd::gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_50_PERCENT;
-        }
-        else if (resolution_percentage == 0.75f)
-        {
-            amd::gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_75_PERCENT;
-        }
-        else if (resolution_percentage == 1.0f)
-        {
-            amd::gi::internal_resolution = FFX_BRIXELIZER_GI_INTERNAL_RESOLUTION_NATIVE;
-        }
-        else
-        {
-            SP_ASSERT_MSG(false, "Invalid percentage. Supported percentages are 0.25, 0.5, 0.75 and 1.0.");
-        }
-
-        amd::gi::context_create();
-        #endif
-    }
-
+   
     void RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
         #ifdef _MSC_VER

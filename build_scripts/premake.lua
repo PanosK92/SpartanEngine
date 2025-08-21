@@ -69,8 +69,6 @@ API_LIBRARIES = {
             "ffx_opticalflow_x64",
             "ffx_denoiser_x64",
             "ffx_sssr_x64",
-            "ffx_brixelizer_x64",
-            "ffx_brixelizergi_x64",
             "ffx_breadcrumbs_x64",
             "libxess"
         },
@@ -87,8 +85,6 @@ API_LIBRARIES = {
             "ffx_opticalflow_x64d",
             "ffx_denoiser_x64d",
             "ffx_sssr_x64d",
-            "ffx_brixelizer_x64d",
-            "ffx_brixelizergi_x64d",
             "ffx_breadcrumbs_x64d",
             "libxess"
         }
@@ -205,7 +201,6 @@ function runtime_project_configuration()
             includedirs { "../third_party/compressonator" }
             includedirs { "../third_party/renderdoc" }
             includedirs { "../third_party/pugixml" }
-            includedirs { "../third_party/open_image_denoise" }
             includedirs { "../third_party/meshoptimizer" }
             includedirs { "../third_party/dxc" }
             includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
@@ -242,7 +237,6 @@ function runtime_project_configuration()
             }
             links { "SDL3" }
             links { "Compressonator_MT" }
-            links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
             links { "meshoptimizer" }
             links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
             
@@ -267,7 +261,6 @@ function runtime_project_configuration()
                 }
                 links { "SDL3_debug" }
                 links { "Compressonator_MT_debug" }
-                links { "OpenImageDenoise_debug" , "OpenImageDenoise_core_debug", "OpenImageDenoise_utils_debug" }
                 links { "meshoptimizer_debug" }
                 links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
             else
@@ -278,7 +271,6 @@ function runtime_project_configuration()
                 links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
                 links { "SDL3" }
                 links { "Compressonator_MT" }
-                links { "OpenImageDenoise" , "OpenImageDenoise_core", "OpenImageDenoise_utils" }
             end
 end
 

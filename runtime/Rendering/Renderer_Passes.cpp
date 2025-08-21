@@ -33,10 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
-#include "../Game/Game.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
-#include "../RHI/RHI_OpenImageDenoise.h"
 SP_WARNINGS_ON
 //==========================================
 
@@ -104,7 +102,6 @@ namespace spartan
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
                 Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
-                Pass_Light_GlobalIllumination(cmd_list_graphics_present);          // compute global illumination
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
                 cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
             }
@@ -418,9 +415,9 @@ namespace spartan
             // set the visibility buffer (where the occlusion results will be written)
             cmd_list->SetBuffer(Renderer_BindingsUav::visibility, GetBuffer(Renderer_Buffer::Visibility));
     
-            // clearing and hi-jacking the diffuse gi texture - just for debugging purposes
-            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi), Color::standard_black);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
+            // clearing and hi-jacking the diffuse texture - just for debugging purposes
+            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse), Color::standard_black);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
     
             // dispatch: ceil(aabb_count / 256) thread groups
             uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
@@ -1018,66 +1015,6 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light_GlobalIllumination(RHI_CommandList* cmd_list)
-    {
-        static bool cleared = true;
-
-        if (GetOption<float>(Renderer_Option::GlobalIllumination) != 0.0f)
-        { 
-            cmd_list->BeginTimeblock("light_global_illumination");
-
-            // update
-            {
-                RHI_VendorTechnology::BrixelizerGI_Update(
-                    cmd_list,
-                    GetOption<float>(Renderer_Option::ResolutionScale),
-                    &m_cb_frame_cpu,
-                    World::GetEntities(),
-                    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi) // use as debug output (if needed)
-                );
-            }
-
-            // dispatch
-            {
-                static array<RHI_Texture*, 8> noise_textures =
-                {
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_0),
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_1),
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_2),
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_3),
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_4),
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_5),
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_6),
-                    GetStandardTexture(Renderer_StandardTexture::Noise_blue_7)
-                };
-
-                RHI_VendorTechnology::BrixelizerGI_Dispatch(
-                    cmd_list,
-                    &m_cb_frame_cpu,
-                    GetRenderTarget(Renderer_RenderTarget::source_gi),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
-                    noise_textures,
-                    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi),
-                    GetRenderTarget(Renderer_RenderTarget::light_specular_gi),
-                    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi) // use as debug output (if needed)
-                );
-            }
-
-            cleared = false;
-
-            cmd_list->EndTimeblock();
-        }
-        else if (!cleared)
-        {
-            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi),  Color::standard_black);
-            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_specular_gi), Color::standard_black);
-            cleared = true;
-        }
-    }
-
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
@@ -1136,8 +1073,6 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_out);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2,    GetRenderTarget(Renderer_RenderTarget::light_diffuse_gi));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    GetRenderTarget(Renderer_RenderTarget::light_specular_gi));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::light_shadow));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));

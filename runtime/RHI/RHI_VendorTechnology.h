@@ -85,29 +85,6 @@ namespace spartan
             RHI_Texture* tex_output
         );
 
-        // brixelizer gi
-        static void BrixelizerGI_Update(
-            RHI_CommandList* cmd_list,
-            const float resolution_scale,
-            Cb_Frame* cb_frame,
-            const std::vector<std::shared_ptr<Entity>>& entities,
-            RHI_Texture* tex_debug
-        );
-        static void BrixelizerGI_Dispatch(
-            RHI_CommandList* cmd_list,
-            Cb_Frame* cb_frame,
-            RHI_Texture* tex_frame,
-            RHI_Texture* tex_depth,
-            RHI_Texture* tex_velocity,
-            RHI_Texture* tex_normal,
-            RHI_Texture* tex_material,
-            std::array< RHI_Texture*, 8>& tex_noise,
-            RHI_Texture* tex_diffuse_gi,
-            RHI_Texture* tex_specular_gi,
-            RHI_Texture* tex_debug
-        );
-        static void BrixelizerGI_SetResolutionPercentage(const float resolution_percentage);
-
         // breadcrumbs
         static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name);
         static void Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline);

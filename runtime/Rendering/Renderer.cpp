@@ -36,7 +36,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_VendorTechnology.h"
-#include "../RHI/RHI_OpenImageDenoise.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
@@ -137,17 +136,16 @@ namespace spartan
             m_options.clear();
             SetOption(Renderer_Option::WhitePoint,                  350.0f);
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);                                                          // non-zero values activate it and control the intensity
-            SetOption(Renderer_Option::MotionBlur,                  1.0f);
-            SetOption(Renderer_Option::DepthOfField,                1.0f);
-            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
-            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
-            SetOption(Renderer_Option::GlobalIllumination,          0.0f);                                                          // disabled by default because it sucks - options are 0.25f - 25%, 0.5f - 50%, 0.75f - 75% and 1.0f - 100%)
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);                                                         
-            SetOption(Renderer_Option::ShadowResolution,            4096.0f);                                                       
-            SetOption(Renderer_Option::Sharpness,                   0.0f);                                                          // becomes the upsampler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);                                                           // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa));                // this is using fsr 3 for taa
+            SetOption(Renderer_Option::Bloom,                       1.0f);                                           // non-zero values activate it and control the intensity
+            SetOption(Renderer_Option::MotionBlur,                  1.0f);                                           
+            SetOption(Renderer_Option::DepthOfField,                1.0f);                                           
+            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);                                           
+            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);                                           
+            SetOption(Renderer_Option::Anisotropy,                  16.0f);                                          
+            SetOption(Renderer_Option::ShadowResolution,            4096.0f);                                        
+            SetOption(Renderer_Option::Sharpness,                   0.0f);                                           // becomes the upsampler's sharpness as well
+            SetOption(Renderer_Option::Fog,                         1.0);                                            // controls the intensity of the distance/height and volumetric fog, it's the particle density
+            SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa)); // this is using fsr 3 for taa
             SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);
@@ -187,7 +185,6 @@ namespace spartan
         // in case of breadcrumb support, anything that uses a command list can use RHI_FidelityFX
         // so we need to initialize even before the swapchain which can use a copy queue etc.
         RHI_VendorTechnology::Initialize();
-        RHI_OpenImageDenoise::Initialize();
 
         // swap chain
         {
@@ -274,7 +271,6 @@ namespace spartan
             m_lines_vertex_buffer = nullptr;
         }
 
-        RHI_OpenImageDenoise::Shutdown();
         RHI_VendorTechnology::Shutdown();
         RenderDoc::Shutdown();
         RHI_Device::Destroy();
@@ -740,17 +736,6 @@ namespace spartan
                 }
 
                 enabled = value != 0.0f;
-            }
-            else if (option == Renderer_Option::GlobalIllumination)
-            {
-                if (value == 0.0)
-                {
-                    //RHI_FidelityFX::Shutdown(FidelityFX::BrixelizerGi);
-                }
-                else
-                { 
-                    //RHI_FidelityFX::BrixelizerGI_SetResolutionPercentage(value);
-                }
             }
             else if (option == Renderer_Option::ScreenSpaceReflections)
             {
