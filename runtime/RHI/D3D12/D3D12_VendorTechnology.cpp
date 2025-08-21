@@ -112,39 +112,6 @@ namespace spartan
 
     }
 
-    void RHI_VendorTechnology::BrixelizerGI_Update(
-        RHI_CommandList* cmd_list,
-        const float resolution_scale,
-        Cb_Frame* cb_frame,
-        const vector<shared_ptr<Entity>>& entities,
-        RHI_Texture* tex_debug
-    )
-    {
-
-    }
-
-    void RHI_VendorTechnology::BrixelizerGI_Dispatch(
-        RHI_CommandList* cmd_list,
-        Cb_Frame* cb_frame,
-        RHI_Texture* tex_color,
-        RHI_Texture* tex_depth,
-        RHI_Texture* tex_velocity,
-        RHI_Texture* tex_normal,
-        RHI_Texture* tex_material,
-        array<RHI_Texture*, 8>& tex_noise,
-        RHI_Texture* tex_diffuse_gi,
-        RHI_Texture* tex_specular_gi,
-        RHI_Texture* tex_debug
-    )
-    {
-
-    }
-
-    void RHI_VendorTechnology::BrixelizerGI_SetResolutionPercentage(const float resolution_percentage)
-    {
-
-    }
-
     void RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
 
