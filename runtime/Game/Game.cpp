@@ -1185,6 +1185,7 @@ namespace spartan
                        {
                            default_car->SetParent(turn_table);
                            default_car->SetScaleLocal(1.0f);
+                           turn_table->SetPositionLocal(0.0f); // lower it a bit because it seems to have some weird alpha testing going on below it
                        }
                     }
                 }

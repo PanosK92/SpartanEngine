@@ -111,11 +111,33 @@ float compute_shadow(Surface surface, Light light)
 
         if (light.is_point())
         {
-            uint slice_index      = dot(light.forward, light.to_pixel) < 0.0f;
-            float3 position_view  = mul(float4(position_world, 1.0f), light.transform[slice_index]).xyz;
-            float3 ndc            = project_onto_paraboloid(position_view, light.near, light.far);
-            float3 sample_coords  = float3(ndc_to_uv(ndc.xy), slice_index);
-            shadow                = vogel_depth(light, surface, sample_coords, ndc.z);
+            float3 light_to_pixel = position_world - light.position;
+            float3 abs_dir        = abs(light_to_pixel);
+            float max_comp        = max(abs_dir.x, max(abs_dir.y, abs_dir.z));
+            uint face_index;
+            if (max_comp == abs_dir.x)
+            {
+                face_index = (light_to_pixel.x > 0) ? 0u : 1u;
+            }
+            else if (max_comp == abs_dir.y)
+            {
+                face_index = (light_to_pixel.y > 0) ? 2u : 3u;
+            }
+            else
+            {
+                face_index = (light_to_pixel.z > 0) ? 4u : 5u;
+            }
+            float4 clip_pos = mul(float4(position_world, 1.0f), light.transform[face_index]);
+            float3 ndc      = clip_pos.xyz / clip_pos.w;
+            
+            // check if within frustum bounds
+            if (ndc.x < -1.0f || ndc.x > 1.0f || ndc.y < -1.0f || ndc.y > 1.0f || ndc.z < 0.0f || ndc.z > 1.0f)
+                return 1.0f; // outside frustum, no shadow
+            
+            float2 uv            = ndc_to_uv(ndc.xy);
+            float3 sample_coords = float3(uv, (float)face_index);
+            float receiver_depth = ndc.z;
+            shadow               = vogel_depth(light, surface, sample_coords, receiver_depth);
         }
         else // directional, spot
         {

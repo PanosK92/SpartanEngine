@@ -339,6 +339,11 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // vertex processing - world space
     vertex_processing::process_world_space(surface, vertex.position, vertex, input.position.xyz, transform, instance_id, 0.0f);
     vertex_processing::process_world_space(surface, vertex.position_previous, vertex, input.position.xyz, transform_previous, instance_id, -buffer_frame.delta_time);
+
+    // set to silence validation errors (in case these are never set later)
+    vertex.position_clip          = 0.0f;
+    vertex.position_clip_current  = 0.0f;
+    vertex.position_clip_previous = 0.0f;
     
     return vertex;
 }

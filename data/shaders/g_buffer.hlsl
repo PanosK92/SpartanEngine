@@ -101,7 +101,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
 
-    // transform world space position to screen space
+    // transform world space position to clip space
     Surface surface;
     surface.flags = GetMaterial().flags;
     if (!surface.is_tessellated())

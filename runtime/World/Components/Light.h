@@ -111,8 +111,7 @@ namespace spartan
         auto GetAngle() const { return m_angle_rad; }
 
         // matrices
-        const math::Matrix& GetViewMatrix(uint32_t index) const       { return m_matrix_view[index]; }
-        const math::Matrix& GetProjectionMatrix(uint32_t index) const { return m_matrix_projection[index]; }
+        const math::Matrix GetViewProjectionMatrix(uint32_t index) const { return m_matrix_view[index] * m_matrix_projection[index]; }
 
         // textures
         RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
@@ -143,9 +142,9 @@ namespace spartan
 
         // shadows
         std::shared_ptr<RHI_Texture> m_texture_depth;
-        std::array<math::Frustum, 2> m_frustums;
-        std::array<math::Matrix, 2> m_matrix_view;
-        std::array<math::Matrix, 2> m_matrix_projection;
+        std::array<math::Frustum, 6> m_frustums;
+        std::array<math::Matrix, 6> m_matrix_view;
+        std::array<math::Matrix, 6> m_matrix_projection;
 
         // misc
         uint32_t m_flags           = 0;

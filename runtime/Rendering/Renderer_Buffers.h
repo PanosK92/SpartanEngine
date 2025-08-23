@@ -185,7 +185,7 @@ namespace spartan
 
     struct Sb_Light
     {
-        math::Matrix view_projection[2];
+        math::Matrix view_projection[6];
 
         Color color;
 

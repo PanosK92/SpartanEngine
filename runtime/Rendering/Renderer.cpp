@@ -964,38 +964,33 @@ namespace spartan
         uint32_t count           = 0;
         Light* first_directional = nullptr;
     
-        auto fill_light = [&](Light* light, uint32_t index)
+        auto fill_light = [&](Light* light_component, uint32_t index)
         {
-            light->SetIndex(index);
-    
-            if (RHI_Texture* texture = light->GetDepthTexture())
+            light_component->SetIndex(index);
+
+            Sb_Light& light_buffer_entry = m_bindless_lights[index];
+
+            if (RHI_Texture* texture = light_component->GetDepthTexture())
             {
                 for (uint32_t i = 0; i < texture->GetDepth(); i++)
                 {
-                    if (light->GetLightType() == LightType::Point)
-                    {
-                        m_bindless_lights[index].view_projection[i] = light->GetViewMatrix(i);
-                    }
-                    else
-                    {
-                        m_bindless_lights[index].view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
-                    }
+                    light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
                 }
             }
     
-            m_bindless_lights[index].intensity  = light->GetIntensityWatt();
-            m_bindless_lights[index].range      = light->GetRange();
-            m_bindless_lights[index].angle      = light->GetAngle();
-            m_bindless_lights[index].color      = light->GetColor();
-            m_bindless_lights[index].position   = light->GetEntity()->GetPosition();
-            m_bindless_lights[index].direction  = light->GetEntity()->GetForward();
-            m_bindless_lights[index].flags      = 0;
-            m_bindless_lights[index].flags     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-            m_bindless_lights[index].flags     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-            m_bindless_lights[index].flags     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-            m_bindless_lights[index].flags     |= light->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-            m_bindless_lights[index].flags     |= light->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
-            m_bindless_lights[index].flags     |= light->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
+            light_buffer_entry.intensity  = light_component->GetIntensityWatt();
+            light_buffer_entry.range      = light_component->GetRange();
+            light_buffer_entry.angle      = light_component->GetAngle();
+            light_buffer_entry.color      = light_component->GetColor();
+            light_buffer_entry.position   = light_component->GetEntity()->GetPosition();
+            light_buffer_entry.direction  = light_component->GetEntity()->GetForward();
+            light_buffer_entry.flags      = 0;
+            light_buffer_entry.flags     |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+            light_buffer_entry.flags     |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+            light_buffer_entry.flags     |= light_component->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+            light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+            light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
+            light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
         };
     
         // cpu
@@ -1005,12 +1000,12 @@ namespace spartan
             // find first directional light and put it at slot 0
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
-                if (Light* light = entity->GetComponent<Light>())
+                if (Light* light_component = entity->GetComponent<Light>())
                 {
-                    if (light->GetLightType() == LightType::Directional)
+                    if (light_component->GetLightType() == LightType::Directional)
                     {
-                        first_directional = light;
-                        fill_light(light, 0);
+                        first_directional = light_component;
+                        fill_light(light_component, 0);
                         count = 1;
                         break;
                     }
@@ -1020,12 +1015,12 @@ namespace spartan
             // process all other lights, skipping the one already placed
             for (const shared_ptr<Entity>& entity : World::GetEntities())
             {
-                if (Light* light = entity->GetComponent<Light>())
+                if (Light* light_component = entity->GetComponent<Light>())
                 {
-                    if (light == first_directional)
+                    if (light_component == first_directional)
                         continue;
     
-                    fill_light(light, count);
+                    fill_light(light_component, count);
                     count++;
                 }
             }

@@ -150,7 +150,7 @@ struct Light
     float  attenuation;
     float2 resolution;
     float2 texel_size;
-    matrix transform[2];
+    matrix transform[6];
  
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
@@ -229,15 +229,15 @@ struct Light
 
             if (is_spot())
             {
-                float3 to_vol            = normalize(vol_position - position); // direction from light to point
-                float cos_outer          = cos(angle);
-                float cos_inner          = cos(angle * 0.9f);
-                float cos_outer_squared  = cos_outer * cos_outer;
-                float scale              = 1.0f / max(0.001f, cos_inner - cos_outer);
-                float offset             = -cos_outer * scale;
-                float cd                 = dot(to_vol, forward); // use per-sample direction
-                float atten_angle        = saturate(cd * scale + offset);
-                atten_angle              *= atten_angle;
+                float3 to_vol           = normalize(vol_position - position); // direction from light to point
+                float cos_outer         = cos(angle);
+                float cos_inner         = cos(angle * 0.9f);
+                float cos_outer_squared = cos_outer * cos_outer;
+                float scale             = 1.0f / max(0.001f, cos_inner - cos_outer);
+                float offset            = -cos_outer * scale;
+                float cd                = dot(to_vol, forward); // use per-sample direction
+                float atten_angle       = saturate(cd * scale + offset);
+                atten_angle             *= atten_angle;
 
                 atten *= atten_angle;
             }

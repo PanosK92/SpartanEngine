@@ -204,7 +204,7 @@ namespace spartan
                 pso.render_target_depth_texture = light->GetDepthTexture();
                 pso.rasterizer_state            = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
 
-                // iterate over cascades/faces
+                // iterate over cascades/faces (all lights are texture arrays)
                 for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
                 {
                     pso.render_target_array_index = array_index;
@@ -219,6 +219,10 @@ namespace spartan
                         const float shadow_distance = renderable->GetMaxShadowDistance();
                         if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
                             continue;
+
+                        // todo: this needs to be cached, no need to do it real-time for all lights, against all entities, only what moves needs to be re-caculated
+                        //if (!light->IsInViewFrustum(renderable, array_index, draw_call.instance_group_index))
+                            //continue;
 
                         // pixel shader
                         {
@@ -246,45 +250,17 @@ namespace spartan
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                            // determine lod based on distance to camera
-                            uint32_t lod_index = 0;
-                            {
-                                // squared units
-                                static const float lod_threshold_near = 5.0f  * 5.0f;
-                                static const float lod_threshold_mid  = 20.0f * 20.0f;
-                                static const float lod_threshold_far  = 60.0f * 60.0f;
-                            
-                                float d2 = draw_call.distance_squared;
-                                uint32_t lod_count = renderable->GetLodCount();
-                            
-                                if (d2 < lod_threshold_near)
-                                    lod_index = 0;
-                                else if (d2 < lod_threshold_mid)
-                                    lod_index = min(1u, lod_count - 1);
-                                else if (d2 < lod_threshold_far)
-                                    lod_index = min(2u, lod_count - 1);
-                                else
-                                    lod_index = lod_count - 1;
-                            }
+                            // bias the lod index to improve performance (for non-directional lights)
+                            const uint32_t lod_bias = light->GetLightType() == LightType::Directional ? 0 : 1;
+                            uint32_t lod_index      = clamp<uint32_t>(draw_call.lod_index + lod_bias, 0, renderable->GetLodCount() - 1);
 
-                            if (renderable->HasInstancing())
-                            {
-                                cmd_list->DrawIndexed(
-                                    renderable->GetIndexCount(lod_index),
-                                    renderable->GetIndexOffset(lod_index),
-                                    renderable->GetVertexOffset(lod_index),
-                                    draw_call.instance_index,
-                                    draw_call.instance_count
-                                );
-                            }
-                            else
-                            {
-                                cmd_list->DrawIndexed(
-                                    renderable->GetIndexCount(lod_index),
-                                    renderable->GetIndexOffset(lod_index),
-                                    renderable->GetVertexOffset(lod_index)
-                                );
-                            }
+                            cmd_list->DrawIndexed(
+                                renderable->GetIndexCount(lod_index),
+                                renderable->GetIndexOffset(lod_index),
+                                renderable->GetVertexOffset(lod_index),
+                                renderable->HasInstancing() ? draw_call.instance_index : 0,
+                                renderable->HasInstancing() ? draw_call.instance_count : 1
+                            );
                         }
                     }
                 }

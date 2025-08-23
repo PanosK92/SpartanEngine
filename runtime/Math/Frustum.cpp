@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -89,41 +89,37 @@ namespace spartan::math
         return CheckCube(center, extent, ignore_depth) != Intersection::Outside;
     }
 
-    Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth /*= false*/) const
+   Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth /*= false*/) const
     {
-        Intersection result = Intersection::Inside;
-        Plane plane_abs;
-
+        SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
+    
+        bool intersects = false;
+    
         for (size_t i = 0; i < 6; i++)
         {
             // skip near and far plane checks if depth is to be ignored
             if (ignore_depth && (i == 0 || i == 1))
                 continue;
-
+    
             const Plane& plane = m_planes[i];
-
-            plane_abs.normal = plane.normal.Abs();
-            plane_abs.d      = plane.d;
-
-            const float d = center.x * plane.normal.x + center.y * plane.normal.y + center.z * plane.normal.z;
-            const float r = extent.x * plane_abs.normal.x + extent.y * plane_abs.normal.y + extent.z * plane_abs.normal.z;
-
+            const Vector3 normal_abs = plane.normal.Abs();
+    
+            const float d = Vector3::Dot(plane.normal, center);
+            const float r = Vector3::Dot(normal_abs, extent);
+    
             const float d_p_r = d + r;
             const float d_m_r = d - r;
-
+    
+            // fully outside → no need to check further
             if (d_p_r < -plane.d)
-            {
-                result = Intersection::Outside;
-                break;
-            }
-
+                return Intersection::Outside;
+    
+            // partial intersection → mark but keep checking (could still be outside later)
             if (d_m_r < -plane.d)
-            {
-                result = Intersection::Intersects;
-            }
+                intersects = true;
         }
-
-        return result;
+    
+        return intersects ? Intersection::Intersects : Intersection::Inside;
     }
 
     Intersection Frustum::CheckSphere(const Vector3& center, float radius, float ignore_depth) const

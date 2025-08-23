@@ -412,8 +412,18 @@ namespace spartan
         }
         else if (m_light_type == LightType::Point)
         {
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Forward, Vector3::Up); // Front
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position - Vector3::Forward, Vector3::Up); // Back
+            // +X (right)
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);
+            // -X (left)
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);
+            // +Y (up)
+            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward);
+            // -Y (down)
+            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,     Vector3::Forward);
+            // +Z (forward)
+            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);
+            // -Z (backward)
+            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);
         }
     }
     
@@ -440,39 +450,59 @@ namespace spartan
             m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], cascade_depth);
             m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], cascade_depth);
         }
-        else if (m_light_type == LightType::Spot)
+        else // spot/point
         {
             if (!m_texture_depth)
                 return;
 
-            const float near_plane   = 0.05f;
-            const float far_plane    = m_range;
-            const float aspect_ratio = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
-            const float fov          = m_angle_rad * 2.0f;
-            Matrix projection        = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, far_plane, near_plane);
-            m_matrix_projection[0]   = projection;
-            m_frustums[0]            = Frustum(m_matrix_view[0], projection, m_range - near_plane);
+            const float aspect_ratio  = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
+            const float fov_y_radians = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2;
+
+            for (uint32_t i = 0; i < m_texture_depth->GetDepth(); i++)
+            {
+                m_matrix_projection[i] = Matrix::CreatePerspectiveFieldOfViewLH(fov_y_radians, aspect_ratio, m_range, 0.05f);
+                m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], m_range);
+            }
         }
     }
 
     void Light::CreateShadowMaps()
     {
-        uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
-        RHI_Format format_depth = RHI_Format::D32_Float;
-        RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
-        uint32_t flags          = RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit;
-        uint32_t array_length   = GetLightType() == LightType::Spot ? 1 : 2;
-        bool resolution_dirty   = (m_texture_depth ? m_texture_depth->GetWidth() : resolution) != resolution;
+        // get various states
+        uint32_t resolution   = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
+        bool resolution_dirty = (m_texture_depth ? m_texture_depth->GetWidth() : resolution) != resolution;
+        bool shadows_enabled  = GetFlag(LightFlags::Shadows);
 
-        // spot light:        1 slice
-        // directional light: 2 slices for cascades
-        // point light:       2 slices for front and back paraboloid
-
-        if ((GetFlag(LightFlags::Shadows) && !m_texture_depth) || resolution_dirty)
+        // determine amount of array slices needed
+        uint32_t array_length = 1;
+        if (m_light_type == LightType::Directional)
         {
-            m_texture_depth = make_unique<RHI_Texture>(RHI_Texture_Type::Type2DArray, resolution, resolution, array_length, 1, format_depth, flags, "light_depth");
+            array_length = 2; // near and far
         }
-        else if (!GetFlag(LightFlags::Shadows) && m_texture_depth)
+        else if (m_light_type == LightType::Point)
+        {
+            array_length = 6; // faces
+        }
+        else if (m_light_type == LightType::Spot)
+        {
+            array_length = 1; // forward view
+        }
+
+        // create/destroy depth texture
+        if (shadows_enabled && (!m_texture_depth || resolution_dirty))
+        {
+            m_texture_depth = make_unique<RHI_Texture>(
+                RHI_Texture_Type::Type2DArray,
+                resolution,
+                resolution,
+                array_length,                                              // depth or array length
+                1,                                                         // mip levels
+                RHI_Format::D32_Float,                                     // format
+                RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit, // flags
+                "light_depth"                                              // name - useful for debugging
+            );
+        }
+        else if (!shadows_enabled && m_texture_depth)
         {
             m_texture_depth = nullptr;
         }
@@ -481,29 +511,10 @@ namespace spartan
     bool Light::IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index) const
     {
         const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(instance_group_index) : renderable->GetBoundingBox();
-
-        if (m_light_type != LightType::Point)
-        { 
-            const Vector3 center    = bounding_box.GetCenter();
-            const Vector3 extents   = bounding_box.GetExtents();
-            const bool ignore_depth = m_light_type == LightType::Directional; // orthographic
-            
-            return m_frustums[array_index].IsVisible(center, extents, ignore_depth);
-        }
-
-        // paraboloid point light
-        {
-            float sign = (array_index == 0) ? 1.0f : -1.0f;
-            array<Vector3, 8> corners;
-            bounding_box.GetCorners(&corners);
-            for (const Vector3& corner : corners)
-            {
-                Vector3 to_corner = corner - m_entity_ptr->GetPosition();
-                if (Vector3::Dot(to_corner, sign * m_entity_ptr->GetForward()) >= 0.0f)
-                    return true; // at least one corner is inside
-            }
-
-            return false; // no corners are inside
-        }
+        const Vector3 center            = bounding_box.GetCenter();
+        const Vector3 extents           = bounding_box.GetExtents();
+        const bool ignore_depth         = m_light_type == LightType::Directional; // orthographic
+        
+        return m_frustums[array_index].IsVisible(center, extents, ignore_depth);
     }
-}  
+}

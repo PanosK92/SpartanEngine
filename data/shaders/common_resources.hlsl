@@ -118,7 +118,7 @@ struct MaterialParameters
 // struct which forms the bindless light parameters array
 struct LightParameters
 {
-    matrix transform[2];
+    matrix transform[6];
 
     float4 color;
 
