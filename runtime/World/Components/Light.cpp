@@ -470,7 +470,7 @@ namespace spartan
         else // spot/point
         {
             const float aspect_ratio     = 1;
-            const float fov_y_radians    = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2;
+            const float fov_y_radians    = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2 + 0.02f; // small epsilon to hide face seems
 
             for (uint32_t i = 0; i < GetSliceCount(); i++)
             {

@@ -53,7 +53,6 @@ namespace spartan
         Vhs,
         ChromaticAberration,
         Anisotropy,
-        ShadowResolution,
         Antialiasing,
         Tonemapping,
         Upsampling,

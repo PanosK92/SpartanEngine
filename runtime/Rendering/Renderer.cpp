@@ -143,8 +143,7 @@ namespace spartan
             SetOption(Renderer_Option::DepthOfField,                1.0f);                                           
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);                                           
             SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);                                           
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);                                          
-            SetOption(Renderer_Option::ShadowResolution,            4096.0f);                                        
+            SetOption(Renderer_Option::Anisotropy,                  16.0f);                                                                                
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                           // becomes the upsampler's sharpness as well
             SetOption(Renderer_Option::Fog,                         1.0);                                            // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa)); // this is using fsr 3 for taa
@@ -614,11 +613,6 @@ namespace spartan
             if (option == Renderer_Option::Anisotropy)
             {
                 value = clamp(value, 0.0f, 16.0f);
-            }
-            // shadow resolution
-            else if (option == Renderer_Option::ShadowResolution)
-            {
-                value = clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::PropertyGetMaxTexture2dDimension()));
             }
             else if (option == Renderer_Option::ResolutionScale)
             {
@@ -1227,16 +1221,16 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::UpdateShadowAtlas()
-    {
+     void Renderer::UpdateShadowAtlas()
+     {
         m_shadow_slices.clear();
         
         auto camera = World::GetCamera();
         if (!camera)
             return;
-    
-        uint32_t resolution_slice = GetOption<uint32_t>(Renderer_Option::ShadowResolution);
+
         uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
+        uint32_t resolution_slice = 4096;
 
         // collect slices
         for (const auto& entity : World::GetEntitiesLights())

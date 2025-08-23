@@ -973,7 +973,7 @@ namespace spartan
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
                     bool clear = light_count == 0;
                     m_pcb_pass_cpu.set_f3_value2(static_cast<float>(i), clear, static_cast<float>(light->GetScreenSpaceShadowsSliceIndex()));
-                    m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), GetOption<float>(Renderer_Option::ShadowResolution), static_cast<float>(tex_skysphere->GetMipCount()));
+                    m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), 0.0f, static_cast<float>(tex_skysphere->GetMipCount()));
                     cmd_list->PushConstants(m_pcb_pass_cpu);
     
                     // dispatch

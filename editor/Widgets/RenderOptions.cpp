@@ -380,11 +380,6 @@ void RenderOptions::OnTickVisible()
 
         if (option("Misc"))
         {
-            // shadow resolution
-            int resolution_shadow = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
-            option_int("Shadow resolution", resolution_shadow);
-            Renderer::SetOption(Renderer_Option::ShadowResolution, static_cast<float>(resolution_shadow));
-
             // vsync
             option_check_box("VSync", Renderer_Option::Vsync, "Vertical Synchronization");
 
