@@ -56,7 +56,6 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 - On the fly single dispatch GPU-based mip generation for render targets (FidelityFX SPD).
 - On the fly compression and mip generation for material textures (FidelityFX Compressonator).
 - Fully bindless design (materials, lights, even the samplers).
-- Fast dual paraboloid point lights.
 - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
 - Unified deferred rendering with transparency (BSDF with same render path).
 - Atmospheric scattering, real-time filtering and image-based lighting (with bent normals).
