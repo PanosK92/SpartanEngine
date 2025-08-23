@@ -125,28 +125,12 @@ void TextureViewer::OnVisible()
     render_targets.clear();
 
     // get render targets
+    for (const shared_ptr<RHI_Texture>& render_target : Renderer::GetRenderTargets())
     {
-        // renderer
-        for (const shared_ptr<RHI_Texture>& render_target : Renderer::GetRenderTargets())
+        if (render_target)
         {
-            if (render_target)
-            {
-                render_target_names.emplace_back(render_target->GetObjectName());
-                render_targets.emplace_back(render_target.get());
-            }
-        }
-
-        // lights
-        for (const shared_ptr<Entity>& entity : World::GetEntities())
-        {
-            if (Light* light = entity->GetComponent<Light>())
-            {
-                if (RHI_Texture* depth_map = light->GetDepthTexture())
-                {
-                    render_target_names.emplace_back(depth_map->GetObjectName() + "_" + to_string(depth_map->GetObjectId()));
-                    render_targets.emplace_back(depth_map);
-                }
-            }
+            render_target_names.emplace_back(render_target->GetObjectName());
+            render_targets.emplace_back(render_target.get());
         }
     }
 }

@@ -293,8 +293,7 @@ Warning Options:
             // initialize compiler and utils
             if (!m_compiler || !m_utils)
             {
-                if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler))) ||
-                    FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils))))
+                if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler))) || FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils))))
                 {
                     SP_LOG_ERROR("Failed to create DirectXShaderCompiler interfaces");
                     return nullptr;

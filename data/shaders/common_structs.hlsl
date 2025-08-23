@@ -149,8 +149,10 @@ struct Light
     float  n_dot_l;
     float  attenuation;
     float2 resolution;
-    float2 texel_size;
     matrix transform[6];
+    float2 atlas_offset[6];
+    float2 atlas_scale[6];
+    float2 atlas_texel_size[6];
  
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
@@ -182,12 +184,7 @@ struct Light
 
     float2 compute_resolution()
     {
-        float2 resolution;
-
-        uint layer_count;
-        tex_light_depth.GetDimensions(resolution.x, resolution.y, layer_count);
-
-        return resolution;
+        return 1.0f / atlas_texel_size[0]; // assuming all slices are the same resolution
     }
 
     float compute_attenuation(const float3 surface_position)
@@ -264,19 +261,22 @@ struct Light
 
     float compare_depth(float3 uv, float compare)
     {
-        return tex_light_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
+        uint array_index = (uint)uv.z;
+        float2 atlas_uv  = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
+        return tex_shadow_atlas.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], atlas_uv, compare).r;
     }
     
     float sample_depth(float3 uv)
     {
-         return tex_light_depth.SampleLevel(samplers[sampler_bilinear_clamp_border], uv, 0).r;
+        uint array_index = (uint)uv.z;
+        float2 atlas_uv  = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
+        return tex_shadow_atlas.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
     }
     
     void Build(uint index, Surface surface)
     {
         LightParameters light = light_parameters[index];
         flags                 = light.flags;
-        transform             = light.transform;
         color                 = light.color.rgb;
         position              = light.position.xyz;
         intensity             = light.intensity;
@@ -289,7 +289,10 @@ struct Light
         n_dot_l               = saturate(dot(surface.normal, -to_pixel));
         attenuation           = compute_attenuation(surface.position);
         resolution            = compute_resolution();
-        texel_size            = 1.0f / resolution;
+        transform             = light.transform;
+        atlas_offset          = light.atlas_offsets;
+        atlas_scale           = light.atlas_scales;
+        atlas_texel_size      = light.atlas_texel_sizes;
 
         radiance = color * intensity * attenuation * n_dot_l;
     }

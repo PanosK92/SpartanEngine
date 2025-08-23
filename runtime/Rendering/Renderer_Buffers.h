@@ -185,19 +185,17 @@ namespace spartan
 
     struct Sb_Light
     {
-        math::Matrix view_projection[6];
-
         Color color;
-
         math::Vector3 position;
         float intensity;
-
         math::Vector3 direction;
         float range;
-
         float angle;
         uint32_t flags;
-        math::Vector2 padding;
+        math::Matrix view_projection[6];
+        math::Vector2 atlas_offsets[6];
+        math::Vector2 atlas_scales[6];
+        math::Vector2 atlas_texel_sizes[6];
     };
 
     struct Sb_Aabb

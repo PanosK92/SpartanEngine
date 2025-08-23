@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../Core/ProgressTracker.h"
+#include "../Math/Rectangle.h"
 //======================================
 
 //= NAMESPACES ===============
@@ -70,6 +71,7 @@ namespace spartan
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
+    vector<ShadowSlice> Renderer::m_shadow_slices;
 
     namespace
     {
@@ -818,6 +820,7 @@ namespace spartan
             
             if (m_bindless_lights_dirty)
             {
+                UpdateShadowAtlas();
                 BindlessUpdateLights(cmd_list);
                 RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
                 m_bindless_lights_dirty = false;
@@ -960,24 +963,18 @@ namespace spartan
     void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
     {
         // slot 0 is always the directional light (sky), as it affects everything and should be easily accessible in shaders
-
         uint32_t count           = 0;
         Light* first_directional = nullptr;
-    
+   
         auto fill_light = [&](Light* light_component, uint32_t index)
         {
             light_component->SetIndex(index);
-
             Sb_Light& light_buffer_entry = m_bindless_lights[index];
-
-            if (RHI_Texture* texture = light_component->GetDepthTexture())
+            for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
             {
-                for (uint32_t i = 0; i < texture->GetDepth(); i++)
-                {
-                    light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
-                }
+                light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
-    
+   
             light_buffer_entry.intensity  = light_component->GetIntensityWatt();
             light_buffer_entry.range      = light_component->GetRange();
             light_buffer_entry.angle      = light_component->GetAngle();
@@ -991,14 +988,31 @@ namespace spartan
             light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
             light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
             light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
+
+            for (uint32_t i = 0; i < 6; i++)
+            {
+                if (i < light_component->GetSliceCount())
+                {
+                    light_buffer_entry.atlas_offsets[i]     = light_component->GetAtlasOffset(i);
+                    light_buffer_entry.atlas_scales[i]      = light_component->GetAtlasScale(i);
+                    const math::Rectangle& rect             = light_component->GetAtlasRectangle(i);
+                    light_buffer_entry.atlas_texel_sizes[i] = Vector2(1.0f / rect.width, 1.0f / rect.height);
+                }
+                else
+                {
+                    light_buffer_entry.atlas_offsets[i]     = Vector2::Zero;
+                    light_buffer_entry.atlas_scales[i]      = Vector2::Zero;
+                    light_buffer_entry.atlas_texel_sizes[i] = Vector2::Zero;
+                }
+            }
         };
-    
+   
         // cpu
         {
             m_bindless_lights.fill(Sb_Light());
-    
+   
             // find first directional light and put it at slot 0
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
             {
                 if (Light* light_component = entity->GetComponent<Light>())
                 {
@@ -1011,21 +1025,21 @@ namespace spartan
                     }
                 }
             }
-    
+   
             // process all other lights, skipping the one already placed
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
             {
                 if (Light* light_component = entity->GetComponent<Light>())
                 {
                     if (light_component == first_directional)
                         continue;
-    
+   
                     fill_light(light_component, count);
                     count++;
                 }
             }
         }
-    
+   
         // gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
@@ -1160,10 +1174,8 @@ namespace spartan
                     { 
                         math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
                 
-                        // compute screen-space dimensions using rectangle's left, top, right, bottom
-                        float width  = rect_screen.right  - rect_screen.left;
-                        float height = rect_screen.bottom - rect_screen.top;
-                        area         = clamp(width * height, 0.0f, numeric_limits<float>::max());
+                        // compute screen-space dimensions
+                        area = clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
                     }
 
                     return area;
@@ -1213,5 +1225,96 @@ namespace spartan
             }
         }
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::UpdateShadowAtlas()
+    {
+        m_shadow_slices.clear();
+        
+        auto camera = World::GetCamera();
+        if (!camera)
+            return;
+    
+        uint32_t resolution_slice = GetOption<uint32_t>(Renderer_Option::ShadowResolution);
+        uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
+
+        // collect slices
+        for (const auto& entity : World::GetEntitiesLights())
+        {
+            Light* light = entity->GetComponent<Light>();
+            light->ClearAtlasRectangles();
+
+            if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f || !light->GetEntity()->GetActive())
+                continue;
+
+            for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
+            {
+                uint32_t res = resolution_slice; // same resolution for all slices
+                m_shadow_slices.emplace_back(light, i, res, math::Rectangle::Zero);
+            }
+        }
+    
+        if (m_shadow_slices.empty())
+            return;
+    
+        // sort largest first
+        sort(m_shadow_slices.begin(), m_shadow_slices.end(), [](const auto& a, const auto& b) { return a.res > b.res; });
+    
+        // compute total area/width needed for rough fit
+        uint32_t x = 0, y = 0, row_h = 0;
+        uint32_t max_x = 0, total_y = 0;
+        for (auto& slice : m_shadow_slices)
+        {
+            if (x + slice.res > resolution_atlas)
+            {
+                total_y += row_h;
+                max_x    = max(max_x, x);
+                x        = 0;
+                row_h    = 0;
+            }
+            x     += slice.res;
+            row_h  = max(row_h, slice.res);
+        }
+        total_y += row_h;
+        max_x    = max(max_x, x);
+    
+        // compute scale factor if it overflows atlas
+        float scale = 1.0f;
+        if (max_x > resolution_atlas || total_y > resolution_atlas)
+        {
+            float scale_x = static_cast<float>(resolution_atlas) / static_cast<float>(max_x);
+            float scale_y = static_cast<float>(resolution_atlas) / static_cast<float>(total_y);
+            scale         = min(scale_x, scale_y);
+        }
+    
+        // pack slices with scale
+        x = 0; y = 0; row_h = 0;
+        for (auto& slice : m_shadow_slices)
+        {
+            uint32_t res_scaled = max(1u, static_cast<uint32_t>(slice.res * scale));
+    
+            if (x + res_scaled > resolution_atlas)
+            {
+                y     += row_h;
+                x      = 0;
+                row_h  = 0;
+            }
+    
+            if (y + res_scaled > resolution_atlas)
+            {
+                SP_LOG_WARNING("Atlas overflow even after scaling");
+                continue;
+            }
+    
+            slice.rect  = math::Rectangle(static_cast<float>(x), static_cast<float>(y), static_cast<float>(res_scaled), static_cast<float>(res_scaled));
+            x          += res_scaled;
+            row_h       = max(row_h, res_scaled);
+        }
+    
+        // assign back
+        for (const auto& slice : m_shadow_slices)
+        {
+            slice.light->SetAtlasRectangle(slice.slice_index, slice.rect);
+        }
     }
 }

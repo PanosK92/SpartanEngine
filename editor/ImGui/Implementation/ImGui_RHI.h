@@ -313,10 +313,10 @@ namespace ImGui::RHI
                         // set scissor rectangle
                         {
                             math::Rectangle rectangle;
-                            rectangle.left   = pcmd->ClipRect.x - draw_data->DisplayPos.x;
-                            rectangle.top    = pcmd->ClipRect.y - draw_data->DisplayPos.y;
-                            rectangle.right  = pcmd->ClipRect.z - draw_data->DisplayPos.x;
-                            rectangle.bottom = pcmd->ClipRect.w - draw_data->DisplayPos.y;
+                            rectangle.x      = pcmd->ClipRect.x - draw_data->DisplayPos.x;
+                            rectangle.y      = pcmd->ClipRect.y - draw_data->DisplayPos.y;
+                            rectangle.width  = (pcmd->ClipRect.z - draw_data->DisplayPos.x) - rectangle.x;
+                            rectangle.height = (pcmd->ClipRect.w - draw_data->DisplayPos.y) - rectangle.y;
 
                             cmd_list->SetScissorRectangle(rectangle);
                         }

@@ -489,10 +489,10 @@ namespace spartan
     
             // scissor rectangle
             math::Rectangle scissor_rect;
-            scissor_rect.left   = 0.0f;
-            scissor_rect.top    = 0.0f;
-            scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
-            scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
+            scissor_rect.x      = 0.0f;
+            scissor_rect.y      = 0.0f;
+            scissor_rect.width  = static_cast<float>(m_pso.GetWidth());
+            scissor_rect.height = static_cast<float>(m_pso.GetHeight());
             SetScissorRectangle(scissor_rect);
         }
     
@@ -595,10 +595,10 @@ namespace spartan
 
                 // scissor rectangle
                 math::Rectangle scissor_rect;
-                scissor_rect.left   = 0.0f;
-                scissor_rect.top    = 0.0f;
-                scissor_rect.right  = static_cast<float>(m_pso.GetWidth());
-                scissor_rect.bottom = static_cast<float>(m_pso.GetHeight());
+                scissor_rect.x      = 0.0f;
+                scissor_rect.y      = 0.0f;
+                scissor_rect.width  = static_cast<float>(m_pso.GetWidth());
+                scissor_rect.height = static_cast<float>(m_pso.GetHeight());
                 SetScissorRectangle(scissor_rect);
 
                 // vertex and index buffer state
@@ -1209,10 +1209,10 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         VkRect2D vk_scissor;
-        vk_scissor.offset.x      = static_cast<int32_t>(scissor_rectangle.left);
-        vk_scissor.offset.y      = static_cast<int32_t>(scissor_rectangle.top);
-        vk_scissor.extent.width  = static_cast<uint32_t>(scissor_rectangle.Width());
-        vk_scissor.extent.height = static_cast<uint32_t>(scissor_rectangle.Height());
+        vk_scissor.offset.x      = static_cast<int32_t>(scissor_rectangle.x);
+        vk_scissor.offset.y      = static_cast<int32_t>(scissor_rectangle.y);
+        vk_scissor.extent.width  = static_cast<uint32_t>(scissor_rectangle.width);
+        vk_scissor.extent.height = static_cast<uint32_t>(scissor_rectangle.height);
 
         vkCmdSetScissor(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer

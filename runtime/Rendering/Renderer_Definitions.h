@@ -217,7 +217,6 @@ namespace spartan
         frame_render_opaque,
         frame_output,
         frame_output_2,
-        source_gi,
         ssao,
         ssr,
         sss,
@@ -226,6 +225,7 @@ namespace spartan
         blur,
         outline,
         shading_rate,
+        shadow_atlas,
         max
     };
 

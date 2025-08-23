@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Font/Font.h"
 #include <unordered_map>
 #include <atomic>
+#include "../Math/Rectangle.h"
 //===============================
 
 namespace spartan
@@ -45,6 +46,14 @@ namespace spartan
         class BoundingBox;
         class Frustum;
     }
+
+    struct ShadowSlice
+    {
+        Light* light;
+        uint32_t slice_index;
+        uint32_t res;
+        math::Rectangle rect;
+    };
 
     class Renderer
     {
@@ -191,6 +200,7 @@ namespace spartan
         static void AddLinesToBeRendered();
         static void SetCommonTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
+        static void UpdateShadowAtlas();
 
         // misc
         static Cb_Frame m_cb_frame_cpu;
@@ -205,6 +215,7 @@ namespace spartan
         static uint32_t m_draw_call_count;
         static bool m_transparents_present;
         static RHI_CommandList* m_cmd_list_present;
+        static std::vector<ShadowSlice> m_shadow_slices;
 
         // bindless
         static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;

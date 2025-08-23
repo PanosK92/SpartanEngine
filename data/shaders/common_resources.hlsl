@@ -118,19 +118,17 @@ struct MaterialParameters
 // struct which forms the bindless light parameters array
 struct LightParameters
 {
-    matrix transform[6];
-
     float4 color;
-
     float3 position;
     float intensity;
-
     float3 direction;
     float range;
-
     float angle;
     uint flags;
-    float2 padding;
+    matrix transform[6];
+    float2 atlas_offsets[6];
+    float2 atlas_scales[6];
+    float2 atlas_texel_sizes[6];
 };
 
 struct aabb
@@ -152,7 +150,7 @@ Texture2D tex_depth    : register(t4);
 Texture2D tex_ssao : register(t5);
 
 // shadow maps
-Texture2DArray tex_light_depth : register(t6);
+Texture2D tex_shadow_atlas : register(t6);
 
 // misc
 Texture2D tex   : register(t7);

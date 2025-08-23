@@ -190,9 +190,14 @@ namespace spartan
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.clear_depth                      = 0.0f;
+        pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
+        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Light_directional); // the world always starts with the directiona lght
 
         cmd_list->BeginTimeblock(pso.name);
         {
+            // set base state
+            cmd_list->SetPipelineState(pso);
+
             // render shadow maps using cached renderables
             for (const shared_ptr<Entity>& entity_light : World::GetEntitiesLights())
             {
@@ -200,15 +205,25 @@ namespace spartan
                 if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
                     continue;
     
-                // set light-specific pso properties
-                pso.render_target_depth_texture = light->GetDepthTexture();
-                pso.rasterizer_state            = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
-
-                // iterate over cascades/faces (all lights are texture arrays)
-                for (uint32_t array_index = 0; array_index < pso.render_target_depth_texture->GetDepth(); array_index++)
+                // set rasterizer state
+                RHI_RasterizerState* new_state = (light->GetLightType() == LightType::Directional) ? GetRasterizerState(Renderer_RasterizerState::Light_directional) : GetRasterizerState(Renderer_RasterizerState::Light_point_spot);
+                if (pso.rasterizer_state != new_state)
                 {
-                    pso.render_target_array_index = array_index;
+                    pso.rasterizer_state = new_state;
                     cmd_list->SetPipelineState(pso);
+                }
+
+                // iterate over slices (all lights are just texture arrays)
+                for (uint32_t array_index = 0; array_index < light->GetSliceCount(); array_index++)
+                {
+                    // get atlas rectangle for this slice
+                    const math::Rectangle& rect = light->GetAtlasRectangle(array_index);
+                    if (!rect.IsDefined()) // can happen if there is no more atlas space
+                        continue;
+
+                    // set atlas rectangle as viewport and scissor
+                    cmd_list->SetViewport(RHI_Viewport(rect.x, rect.y, rect.width, rect.height));
+                    cmd_list->SetScissorRectangle(rect);
 
                     // render cached renderables
                     for (uint32_t i = 0; i < m_draw_call_count; i++)
@@ -216,13 +231,14 @@ namespace spartan
                         const Renderer_DrawCall& draw_call = m_draw_calls[i];
                         Renderable* renderable             = draw_call.renderable;
                         Material* material                 = renderable->GetMaterial();
-                        const float shadow_distance = renderable->GetMaxShadowDistance();
+                        const float shadow_distance        = renderable->GetMaxShadowDistance();
                         if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
                             continue;
 
                         // todo: this needs to be cached, no need to do it real-time for all lights, against all entities, only what moves needs to be re-caculated
                         //if (!light->IsInViewFrustum(renderable, array_index, draw_call.instance_group_index))
                             //continue;
+                            //
 
                         // pixel shader
                         {
@@ -234,6 +250,10 @@ namespace spartan
                             {
                                 pso.shaders[RHI_Shader_Type::Pixel] = ps;
                                 cmd_list->SetPipelineState(pso);
+
+                                // if the pipeline changed, set the viewport and scissor again
+                                cmd_list->SetViewport(RHI_Viewport(rect.x, rect.y, rect.width, rect.height));
+                                cmd_list->SetScissorRectangle(rect);
                             }
                         }
 
@@ -904,6 +924,7 @@ namespace spartan
         RHI_Texture* light_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
         RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
         RHI_Texture* tex_skysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_shadow_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
     
         // define pipeline state
         RHI_PipelineState pso;
@@ -942,7 +963,7 @@ namespace spartan
     
                     // set textures
                     SetCommonTextures(cmd_list);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, light->GetDepthTexture());
+                    cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_shadow_atlas);
                     cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
                     cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
                     cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
@@ -1059,9 +1080,6 @@ namespace spartan
 
             // render
             cmd_list->Dispatch(tex_out);
-
-            // create sampling source for gi
-            cmd_list->Blit(tex_out, GetRenderTarget(Renderer_RenderTarget::source_gi), false);
         }
         cmd_list->EndTimeblock();
     }

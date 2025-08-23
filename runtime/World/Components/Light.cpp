@@ -366,20 +366,40 @@ namespace spartan
         return false;
     }
 
+    void Light::SetAtlasRectangle(uint32_t slice, const math::Rectangle& rectangle)
+    {
+        m_atlas_rectangles[slice] = rectangle;
+        float atlas_w             = static_cast<float>(Renderer::GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth());
+        float atlas_h             = static_cast<float>(Renderer::GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetHeight());
+        m_atlas_offsets[slice]    = Vector2(rectangle.x / atlas_w, rectangle.y / atlas_h);
+        m_atlas_scales[slice]     = Vector2(rectangle.width / atlas_w, rectangle.height / atlas_h);
+    }
+
+    void Light::ClearAtlasRectangles()
+    {
+        m_atlas_rectangles.fill(math::Rectangle::Zero);
+        m_atlas_offsets.fill(Vector2::Zero);
+        m_atlas_scales.fill(Vector2::Zero);
+    }
+
+    uint32_t Light::GetSliceCount() const
+    {
+        if (m_light_type == LightType::Directional) return 2;
+        if (m_light_type == LightType::Point)       return 6;
+        return 1; // spot
+    }
+
     void Light::UpdateMatrices()
     {
         ComputeViewMatrix();
         ComputeProjectionMatrix();
-        CreateShadowMaps();
-
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
     void Light::ComputeViewMatrix()
     {
-        const Vector3 position        = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
-        const uint32_t texture_width  = m_texture_depth ? m_texture_depth->GetWidth() : 0;
-    
+        const Vector3 position = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
+
         if (m_light_type == LightType::Directional)
         {
             Camera* camera = World::GetCamera();
@@ -393,17 +413,14 @@ namespace spartan
             m_matrix_view[1]   = m_matrix_view[0];
     
             // compute shadow extents inline
-            if (texture_width > 0)
+            float extents[2] = { cascade_near_half_extent, cascade_far_half_extent };
+            for (int i = 0; i < 2; i++)
             {
-                float extents[2] = { cascade_near_half_extent, cascade_far_half_extent };
-    
-                for (int i = 0; i < 2; i++)
-                {
-                    float texel_size     = (2.0f * extents[i]) / static_cast<float>(texture_width); // texel size in world space
-                    m_matrix_view[i].m30 = round(m_matrix_view[i].m30 / texel_size) * texel_size;   // snap x-translation
-                    m_matrix_view[i].m31 = round(m_matrix_view[i].m31 / texel_size) * texel_size;   // snap y-translation
-                    // z-translation (m32) remains unchanged for orthographic projection
-                }
+                float rect_width       = m_atlas_rectangles[i].width;
+                float texel_size_world = (2.0f * extents[i]) / rect_width; // world units per texel
+                m_matrix_view[i].m30   = round(m_matrix_view[i].m30 / texel_size_world) * texel_size_world; // snap x-translation
+                m_matrix_view[i].m31   = round(m_matrix_view[i].m31 / texel_size_world) * texel_size_world; // snap y-translation
+                // z-translation (m32) remains unchanged for orthographic projection
             }
         }
         else if (m_light_type == LightType::Spot)
@@ -452,59 +469,14 @@ namespace spartan
         }
         else // spot/point
         {
-            if (!m_texture_depth)
-                return;
+            const float aspect_ratio     = 1;
+            const float fov_y_radians    = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2;
 
-            const float aspect_ratio  = static_cast<float>(m_texture_depth->GetWidth()) / static_cast<float>(m_texture_depth->GetHeight());
-            const float fov_y_radians = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2;
-
-            for (uint32_t i = 0; i < m_texture_depth->GetDepth(); i++)
+            for (uint32_t i = 0; i < GetSliceCount(); i++)
             {
                 m_matrix_projection[i] = Matrix::CreatePerspectiveFieldOfViewLH(fov_y_radians, aspect_ratio, m_range, 0.05f);
                 m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], m_range);
             }
-        }
-    }
-
-    void Light::CreateShadowMaps()
-    {
-        // get various states
-        uint32_t resolution   = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
-        bool resolution_dirty = (m_texture_depth ? m_texture_depth->GetWidth() : resolution) != resolution;
-        bool shadows_enabled  = GetFlag(LightFlags::Shadows);
-
-        // determine amount of array slices needed
-        uint32_t array_length = 1;
-        if (m_light_type == LightType::Directional)
-        {
-            array_length = 2; // near and far
-        }
-        else if (m_light_type == LightType::Point)
-        {
-            array_length = 6; // faces
-        }
-        else if (m_light_type == LightType::Spot)
-        {
-            array_length = 1; // forward view
-        }
-
-        // create/destroy depth texture
-        if (shadows_enabled && (!m_texture_depth || resolution_dirty))
-        {
-            m_texture_depth = make_unique<RHI_Texture>(
-                RHI_Texture_Type::Type2DArray,
-                resolution,
-                resolution,
-                array_length,                                              // depth or array length
-                1,                                                         // mip levels
-                RHI_Format::D32_Float,                                     // format
-                RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit, // flags
-                "light_depth"                                              // name - useful for debugging
-            );
-        }
-        else if (!shadows_enabled && m_texture_depth)
-        {
-            m_texture_depth = nullptr;
         }
     }
 

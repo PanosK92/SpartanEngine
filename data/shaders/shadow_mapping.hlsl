@@ -49,7 +49,7 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
 
     for(uint i = 0; i < g_penumbra_sample_count; i++)
     {
-        float2 offset = vogel_disk_sample(i, g_penumbra_sample_count, rotation_angle) * light.texel_size * g_penumbra_filter_size;
+        float2 offset = vogel_disk_sample(i, g_penumbra_sample_count, rotation_angle) * light.atlas_texel_size[0] * g_penumbra_filter_size;
         float depth   = light.sample_depth(sample_coords + float3(offset, 0.0f));
 
         if(depth > receiver_depth)
@@ -82,7 +82,7 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
     for (uint i = 0; i < g_shadow_sample_count; i++)
     {
-        float2 filter_size = light.texel_size * g_shadow_filter_size * penumbra;
+        float2 filter_size = light.atlas_texel_size[0] * g_shadow_filter_size * penumbra;
         float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, temporal_angle) * filter_size;
         float2 sample_uv   = sample_coords.xy + offset;
 
@@ -127,13 +127,8 @@ float compute_shadow(Surface surface, Light light)
             {
                 face_index = (light_to_pixel.z > 0) ? 4u : 5u;
             }
-            float4 clip_pos = mul(float4(position_world, 1.0f), light.transform[face_index]);
-            float3 ndc      = clip_pos.xyz / clip_pos.w;
-            
-            // check if within frustum bounds
-            if (ndc.x < -1.0f || ndc.x > 1.0f || ndc.y < -1.0f || ndc.y > 1.0f || ndc.z < 0.0f || ndc.z > 1.0f)
-                return 1.0f; // outside frustum, no shadow
-            
+            float4 clip_pos      = mul(float4(position_world, 1.0f), light.transform[face_index]);
+            float3 ndc           = clip_pos.xyz / clip_pos.w;
             float2 uv            = ndc_to_uv(ndc.xy);
             float3 sample_coords = float3(uv, (float)face_index);
             float receiver_depth = ndc.z;

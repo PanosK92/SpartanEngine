@@ -36,78 +36,79 @@ namespace spartan
         public:
             Rectangle() = default;
 
-            Rectangle(const float left, const float top, const float right, const float bottom)
+            Rectangle(const float x, const float y, const float width, const float height)
             {
-                this->left   = left;
-                this->top    = top;
-                this->right  = right;
-                this->bottom = bottom;
+                this->x      = x;
+                this->y      = y;
+                this->width  = width;
+                this->height = height;
             }
 
             Rectangle(const Rectangle& rectangle)
             {
-                left   = rectangle.left;
-                top    = rectangle.top;
-                right  = rectangle.right;
-                bottom = rectangle.bottom;
+                x      = rectangle.x;
+                y      = rectangle.y;
+                width  = rectangle.width;
+                height = rectangle.height;
             }
 
             ~Rectangle() = default;
 
             bool operator==(const Rectangle& rhs) const
             {
-                return
-                    left   == rhs.left  &&
-                    top    == rhs.top   &&
-                    right  == rhs.right &&
-                    bottom == rhs.bottom;
+                return x == rhs.x && y == rhs.y &&
+                       width == rhs.width && height == rhs.height;
             }
 
             bool operator!=(const Rectangle& rhs) const
             {
-                return
-                    left   != rhs.left  ||
-                    top    != rhs.top   ||
-                    right  != rhs.right ||
-                    bottom != rhs.bottom;
+                return !(*this == rhs);
             }
 
             bool IsDefined() const
             {
-                return  left   != 0.0f ||
-                        top    != 0.0f ||
-                        right  != 0.0f ||
-                        bottom != 0.0f;
+                return width > 0.0f && height > 0.0f;
             }
-
-            float Width()  const { return right - left; }
-            float Height() const { return bottom - top; }
-            float Area() const   { return Width() * Height(); }
 
             void Merge(const Vector2& point)
             {
-                left   = std::min(left,   point.x);
-                top    = std::min(top,    point.y);
-                right  = std::max(right,  point.x);
-                bottom = std::max(bottom, point.y);
+                float min_x = x;
+                float min_y = y;
+                float max_x = x + width;
+                float max_y = y + height;
+
+                min_x = std::min(min_x, point.x);
+                min_y = std::min(min_y, point.y);
+                max_x = std::max(max_x, point.x);
+                max_y = std::max(max_y, point.y);
+
+                x      = min_x;
+                y      = min_y;
+                width  = max_x - min_x;
+                height = max_y - min_y;
             }
 
             bool Intersects(const Rectangle& other) const
             {
-                return !(left > other.right || right < other.left ||
-                         top > other.bottom || bottom < other.top);
+                return !(x + width  < other.x ||
+                         other.x + other.width < x ||
+                         y + height < other.y ||
+                         other.y + other.height < y);
             }
 
             bool Contains(const Rectangle& other) const
             {
-                return left <= other.left && top <= other.top &&
-                       right >= other.right && bottom >= other.bottom;
+                return x <= other.x &&
+                       y <= other.y &&
+                       x + width  >= other.x + other.width &&
+                       y + height >= other.y + other.height;
             }
 
-            float left   = FLT_MAX;
-            float top    = FLT_MAX;
-            float right  = -FLT_MAX;
-            float bottom = -FLT_MAX;
+            // top-left + size
+            float x      = 0.0f;
+            float y      = 0.0f;
+            float width  = 0.0f;
+            float height = 0.0f;
 
             static const Rectangle Zero;
         };

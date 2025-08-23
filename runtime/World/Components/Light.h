@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <array>
-#include <memory>
 #include "Component.h"
 #include "Renderable.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Frustum.h"
+#include "../../Math/Rectangle.h"
 #include "../../Rendering/Color.h"
 //================================
 
@@ -113,9 +113,6 @@ namespace spartan
         // matrices
         const math::Matrix GetViewProjectionMatrix(uint32_t index) const { return m_matrix_view[index] * m_matrix_projection[index]; }
 
-        // textures
-        RHI_Texture* GetDepthTexture() const { return m_texture_depth.get(); }
-
         // frustum
         bool IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index = 0) const;
 
@@ -129,22 +126,33 @@ namespace spartan
 
         // misc
         bool NeedsSkysphereUpdate() const;
+        uint32_t GetSliceCount() const;
+
+        // atlas
+        math::Vector2 GetAtlasOffset(uint32_t slice) const { return m_atlas_offsets[slice]; }
+        math::Vector2 GetAtlasScale(uint32_t slice) const  { return m_atlas_scales[slice]; }
+        const math::Rectangle& GetAtlasRectangle(uint32_t slice) const { return m_atlas_rectangles[slice]; }
+        void SetAtlasRectangle(uint32_t slice, const math::Rectangle& rectangle);
+        void ClearAtlasRectangles();
 
     private:
         void UpdateMatrices();
         void ComputeViewMatrix();
         void ComputeProjectionMatrix();
-        void CreateShadowMaps();
 
         // intensity
         LightIntensity m_intensity   = LightIntensity::bulb_500_watt;
         float m_intensity_lumens_lux = 2600.0f;
 
-        // shadows
-        std::shared_ptr<RHI_Texture> m_texture_depth;
+        // matrices/frustums per slice/face/cascade
         std::array<math::Frustum, 6> m_frustums;
         std::array<math::Matrix, 6> m_matrix_view;
         std::array<math::Matrix, 6> m_matrix_projection;
+
+        // atlas entries per slice/face/cascade
+        std::array<math::Rectangle, 6> m_atlas_rectangles;
+        std::array<math::Vector2, 6> m_atlas_offsets;
+        std::array<math::Vector2, 6> m_atlas_scales;
 
         // misc
         uint32_t m_flags           = 0;

@@ -62,6 +62,7 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 - Screen space shadows (Bend Studio's Days Gone).
 - Screen space ambient occlusion (XeGTAO + visibility bitfield).
 - Screen space reflections (FidelityFX SSSR).
+- Fast shadow mapping for dozens of lights via a shadow map atlas.
 - Variable rate shading.
 - Upscaling (XeSS 2 & FSR 3).
 - Dynamic resolution scaling (fed directly into the upscalers).

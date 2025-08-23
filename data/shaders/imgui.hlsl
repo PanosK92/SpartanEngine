@@ -74,10 +74,10 @@ float4 main_ps(vertex input) : SV_Target
     float4 color_texture;
     float mip_level             = mip_array.x;
     float array_level           = mip_array.y;
-    float is_array              = array_level > 0.0f ? 1.0f : 0.0f;
+    float is_array              = array_level > 0.0f ? 1.0f : 0.0f; // not needed anymore
     float3 uv_array             = float3(input.uv, array_level);
-    float4 sample_point_wrap    = is_array ? tex_light_depth.SampleLevel(samplers[sampler_point_clamp], uv_array, mip_level) : tex.SampleLevel(samplers[sampler_point_clamp], input.uv, mip_level);
-    float4 sample_bilinear_wrap = is_array ? tex_light_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv_array, mip_level) : tex.SampleLevel(samplers[sampler_bilinear_clamp], input.uv, mip_level);
+    float4 sample_point_wrap    = tex.SampleLevel(samplers[sampler_point_clamp], input.uv, mip_level);
+    float4 sample_bilinear_wrap = tex.SampleLevel(samplers[sampler_bilinear_clamp], input.uv, mip_level);
     color_texture               = lerp(sample_bilinear_wrap, sample_point_wrap, float(point_sampling));
 
     // visualization
