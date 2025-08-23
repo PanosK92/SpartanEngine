@@ -207,10 +207,10 @@ namespace spartan
 
         const D3D12_RECT d3d12_rectangle =
         {
-            static_cast<LONG>(scissor_rectangle.left),
-            static_cast<LONG>(scissor_rectangle.top),
-            static_cast<LONG>(scissor_rectangle.right),
-            static_cast<LONG>(scissor_rectangle.bottom)
+            static_cast<LONG>(scissor_rectangle.x),
+            static_cast<LONG>(scissor_rectangle.y),
+            static_cast<LONG>(scissor_rectangle.width),
+            static_cast<LONG>(scissor_rectangle.height)
         };
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetScissorRects(1, &d3d12_rectangle);
