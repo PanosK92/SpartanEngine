@@ -919,44 +919,25 @@ namespace spartan
     
         cmd_list->BeginTimeblock(pso.name);
         {
-            const uint32_t light_count = static_cast<uint32_t>(World::GetLightCount());
-
-            // clear if no lights or camera
-            if (light_count == 0 || World::GetCamera() == nullptr)
-            {
-                // clear when there are no lights or no camera
-                cmd_list->ClearTexture(light_diffuse,    Color::standard_transparent);
-                cmd_list->ClearTexture(light_specular,   Color::standard_transparent);
-                cmd_list->ClearTexture(light_shadow,     Color::standard_transparent);
-                cmd_list->ClearTexture(light_volumetric, Color::standard_transparent);
-    
-                cmd_list->InsertBarrierReadWrite(light_diffuse,    RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
-            }
-            else // if there are lights, do the lighting pass, with a single dispatch as all lights are in a bindless array
-            {
-                cmd_list->SetPipelineState(pso);
-    
-                SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,     GetRenderTarget(Renderer_RenderTarget::sss));
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,         tex_skysphere);
-                cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_shadow_atlas);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
-    
-                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-                m_pcb_pass_cpu.set_f3_value(static_cast<float>(light_count), GetOption<float>(Renderer_Option::Fog), static_cast<float>(tex_skysphere->GetMipCount()));
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-                cmd_list->Dispatch(light_diffuse); // adds read write barrier for light_diffuse internally
-                cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
-            }
+            cmd_list->SetPipelineState(pso);
+            
+            SetCommonTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,     GetRenderTarget(Renderer_RenderTarget::sss));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,         tex_skysphere);
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_shadow_atlas);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
+            
+            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(static_cast<uint32_t>(World::GetLightCount())), GetOption<float>(Renderer_Option::Fog), static_cast<float>(tex_skysphere->GetMipCount()));
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            
+            cmd_list->Dispatch(light_diffuse); // adds read write barrier for light_diffuse internally
+            cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }

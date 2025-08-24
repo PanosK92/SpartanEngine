@@ -59,7 +59,7 @@ namespace spartan
 
         // active
         bool GetActive();
-        void SetActive(const bool active) { m_is_active = active; }
+        void SetActive(const bool active);
 
         // adds a component of type T
         template <class T>
