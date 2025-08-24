@@ -147,29 +147,27 @@ float compute_shadow(Surface surface, Light light)
             bool in_near_bounds = abs(near_ndc.x) <= 1.0f && abs(near_ndc.y) <= 1.0f && near_ndc.z >= 0.0f && near_ndc.z <= 1.0f;
             if (light.is_directional())
             {
-                // compute blend factor based on distance to near cascade edge
-                float blend_input  = max(abs(near_ndc.x), abs(near_ndc.y));
-                float blend_factor = smoothstep(0.8f, 1.0f, blend_input); // blend from 0.8 to 1.0
-
-                // near cascade shadow
-                float near_shadow = in_near_bounds ? vogel_depth(light, surface, near_sample, near_depth) : 1.0f;
-
-                // far cascade with larger offset
-                normal_offset_scale    = 0.5f;
-                normal_offset_bias     = surface.normal * (1.0f - saturate(light.n_dot_l)) * normal_offset_scale;
-                position_world         = surface.position + normal_offset_bias;
+                // always sample near cascade
+                float near_shadow = vogel_depth(light, surface, near_sample, near_depth);
+                
+                // compute distance to edge and blend factor
+                float edge_dist    = max(abs(near_ndc.x), abs(near_ndc.y));
+                float blend_factor = smoothstep(0.9f, 1.0f, edge_dist);
+                
+                // sample far cascade regardless, but blend by factor
+                normal_offset_scale = 0.5f;
+                normal_offset_bias  = surface.normal * (1.0f - saturate(light.n_dot_l)) * normal_offset_scale;
+                float3 position_world_far = surface.position + normal_offset_bias;
+                
                 const uint far_cascade = 1;
-                float3 far_ndc         = world_to_ndc(position_world, light.transform[far_cascade]);
-                float2 far_uv          = ndc_to_uv(far_ndc);
-                float3 far_sample      = float3(far_uv, far_cascade);
-                float far_depth        = far_ndc.z;
-                float far_shadow       = vogel_depth(light, surface, far_sample, far_depth);
-
-                // blend between near and far cascades
-                float blended = lerp(near_shadow, far_shadow, blend_factor);
-
-                // ensure distant shadows are applied everywhere by taking the minimum visibility
-                shadow = min(blended, far_shadow);
+                float3 far_ndc      = world_to_ndc(position_world_far, light.transform[far_cascade]);
+                float2 far_uv       = ndc_to_uv(far_ndc);
+                float3 far_sample   = float3(far_uv, far_cascade);
+                float far_depth     = far_ndc.z;
+                float far_shadow    = vogel_depth(light, surface, far_sample, far_depth);
+                
+                // blend near and far shadows
+                shadow = lerp(near_shadow, far_shadow, blend_factor);
             }
             else // spot light
             {

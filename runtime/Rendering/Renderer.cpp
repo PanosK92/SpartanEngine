@@ -139,11 +139,11 @@ namespace spartan
             SetOption(Renderer_Option::WhitePoint,                  350.0f);
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
             SetOption(Renderer_Option::Bloom,                       1.0f);                                           // non-zero values activate it and control the intensity
-            SetOption(Renderer_Option::MotionBlur,                  1.0f);                                           
-            SetOption(Renderer_Option::DepthOfField,                1.0f);                                           
-            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);                                           
-            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);                                           
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);                                                                                
+            SetOption(Renderer_Option::MotionBlur,                  1.0f);
+            SetOption(Renderer_Option::DepthOfField,                1.0f);
+            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
+            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
+            SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::Sharpness,                   0.0f);                                           // becomes the upsampler's sharpness as well
             SetOption(Renderer_Option::Fog,                         1.0);                                            // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa)); // this is using fsr 3 for taa
