@@ -605,7 +605,9 @@ namespace spartan
             const float scale      = 2.0f; // actually walked in sponza, it's that big
 
             // 3d model - sponza
-            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
+            uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+            //mesh_flags          |= ~static_cast<uint32_t>(MeshFlags::ImportLights); // would be cool to make that work (has a ton of lights)
+            if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("sponza");

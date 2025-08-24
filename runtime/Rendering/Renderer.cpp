@@ -144,7 +144,7 @@ namespace spartan
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
             SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);                                           // becomes the upsampler's sharpness as well
+            SetOption(Renderer_Option::Sharpness,                   0.0f);                                           // becomes the upscaler's sharpness as well
             SetOption(Renderer_Option::Fog,                         1.0);                                            // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa)); // this is using fsr 3 for taa
             SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));

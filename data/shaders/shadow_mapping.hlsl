@@ -19,12 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+// = INCLUDES ========
 #include "common.hlsl"
+//====================
 
 // note: golden ratio exists in the universe to maximize surface coverage, hence the use of it here
 
 static const uint   g_shadow_sample_count            = 4;
-static const float  g_shadow_filter_size             = 4.0f;
+static const float  g_shadow_filter_size             = 1.0f; // get's x4 for directional
 static const float  g_shadow_cascade_blend_threshold = 0.8f;
 static const uint   g_penumbra_sample_count          = 8;
 static const float  g_penumbra_filter_size           = 128.0f;
@@ -73,7 +75,7 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
     return clamp(penumbra * 16.0f, 1.0f, 1024.0f);
 }
 
-float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth)
+float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multipler = 1.0f)
 {
     float shadow_factor   = 0.0f;
     float temporal_offset = noise_interleaved_gradient(surface.pos);
@@ -82,7 +84,7 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
     for (uint i = 0; i < g_shadow_sample_count; i++)
     {
-        float2 filter_size = light.atlas_texel_size[0] * g_shadow_filter_size * penumbra;
+        float2 filter_size = light.atlas_texel_size[0] * g_shadow_filter_size * filter_size_multipler * penumbra;
         float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, temporal_angle) * filter_size;
         float2 sample_uv   = sample_coords.xy + offset;
 
@@ -100,82 +102,46 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
 float compute_shadow(Surface surface, Light light)
 {
-    float shadow = 1.0f;
+    float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * 0.04f;
+    float3 position_world     = surface.position + normal_offset_bias;
+    float shadow              = 1.0f;
 
-    if (light.distance_to_pixel <= light.far)
+    if (light.is_point())
     {
-        // compute normal offset bias, larger for far cascade
-        float normal_offset_scale = 0.04f; // default for near cascade and spot light
-        float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * normal_offset_scale;
-        float3 position_world     = surface.position + normal_offset_bias;
+        float3 light_to_pixel  = position_world - light.position;
+        float3 abs_dir         = abs(light_to_pixel);
 
-        if (light.is_point())
-        {
-            float3 light_to_pixel = position_world - light.position;
-            float3 abs_dir        = abs(light_to_pixel);
-            float max_comp        = max(abs_dir.x, max(abs_dir.y, abs_dir.z));
-            uint face_index;
-            if (max_comp == abs_dir.x)
-            {
-                face_index = (light_to_pixel.x > 0) ? 0u : 1u;
-            }
-            else if (max_comp == abs_dir.y)
-            {
-                face_index = (light_to_pixel.y > 0) ? 2u : 3u;
-            }
-            else
-            {
-                face_index = (light_to_pixel.z > 0) ? 4u : 5u;
-            }
-            float4 clip_pos      = mul(float4(position_world, 1.0f), light.transform[face_index]);
-            float3 ndc           = clip_pos.xyz / clip_pos.w;
-            float2 uv            = ndc_to_uv(ndc.xy);
-            float3 sample_coords = float3(uv, (float)face_index);
-            float receiver_depth = ndc.z;
-            shadow               = vogel_depth(light, surface, sample_coords, receiver_depth);
-        }
-        else // directional, spot
-        {
-            // near cascade computation
-            const uint near_cascade = 0;
-            float3 near_ndc         = world_to_ndc(position_world, light.transform[near_cascade]);
-            float2 near_uv          = ndc_to_uv(near_ndc);
-            float3 near_sample      = float3(near_uv, near_cascade);
-            float near_depth        = near_ndc.z;
+        // determine the cube face
+        uint face_index         = (abs_dir.x >= abs_dir.y && abs_dir.x >= abs_dir.z) ? (light_to_pixel.x > 0 ? 0u : 1u) :
+                                  (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0 ? 2u : 3u) :
+                                                                                       (light_to_pixel.z > 0 ? 4u : 5u);
 
-            // check if pixel is within near cascade bounds
-            bool in_near_bounds = abs(near_ndc.x) <= 1.0f && abs(near_ndc.y) <= 1.0f && near_ndc.z >= 0.0f && near_ndc.z <= 1.0f;
-            if (light.is_directional())
-            {
-                // always sample near cascade
-                float near_shadow = vogel_depth(light, surface, near_sample, near_depth);
-                
-                // compute distance to edge and blend factor
-                float edge_dist    = max(abs(near_ndc.x), abs(near_ndc.y));
-                float blend_factor = smoothstep(0.9f, 1.0f, edge_dist);
-                
-                // sample far cascade regardless, but blend by factor
-                normal_offset_scale = 0.5f;
-                normal_offset_bias  = surface.normal * (1.0f - saturate(light.n_dot_l)) * normal_offset_scale;
-                float3 position_world_far = surface.position + normal_offset_bias;
-                
-                const uint far_cascade = 1;
-                float3 far_ndc      = world_to_ndc(position_world_far, light.transform[far_cascade]);
-                float2 far_uv       = ndc_to_uv(far_ndc);
-                float3 far_sample   = float3(far_uv, far_cascade);
-                float far_depth     = far_ndc.z;
-                float far_shadow    = vogel_depth(light, surface, far_sample, far_depth);
-                
-                // blend near and far shadows
-                shadow = lerp(near_shadow, far_shadow, blend_factor);
-            }
-            else // spot light
-            {
-                if (in_near_bounds)
-                {
-                    shadow = vogel_depth(light, surface, near_sample, near_depth);
-                }
-            }
+        float4 clip_pos         = mul(float4(position_world, 1.0f), light.transform[face_index]);
+        float3 ndc              = clip_pos.xyz / clip_pos.w;
+        float2 uv               = ndc_to_uv(ndc.xy);
+        shadow                  = vogel_depth(light, surface, float3(uv, (float)face_index), ndc.z);
+    }
+    else // directional / spot
+    {
+        const uint near_cascade = 0;
+        float4 clip_pos_near    = mul(float4(position_world, 1.0f), light.transform[near_cascade]);
+        float3 ndc_near         = clip_pos_near.xyz / clip_pos_near.w;
+        float2 uv_near          = ndc_to_uv(ndc_near.xy);
+        float  shadow_near      = vogel_depth(light, surface, float3(uv_near, near_cascade), ndc_near.z, 4.0f);
+        shadow                  = shadow_near;
+
+        if (light.is_directional())
+        {
+            float3 normal_offset_far  = surface.normal * (1.0f - saturate(light.n_dot_l)) * 0.5f;
+            float3 position_world_far = surface.position + normal_offset_far;
+            const uint far_cascade    = 1;
+            float4 clip_pos_far       = mul(float4(position_world_far, 1.0f), light.transform[far_cascade]);
+            float3 ndc_far            = clip_pos_far.xyz / clip_pos_far.w;
+            float2 uv_far             = ndc_to_uv(ndc_far.xy);
+            float  shadow_far         = vogel_depth(light, surface, float3(uv_far, far_cascade), ndc_far.z, 4.0f);
+            float edge_dist           = max(abs(ndc_near.x), abs(ndc_near.y));
+            float blend_factor        = smoothstep(0.9f, 1.0f, edge_dist);
+            shadow                    = lerp(shadow_near, shadow_far, blend_factor);
         }
     }
 
