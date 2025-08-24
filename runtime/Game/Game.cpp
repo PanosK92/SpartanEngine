@@ -1174,6 +1174,7 @@ namespace spartan
                            {
                                material->SetProperty(MaterialProperty::TextureTilingX, scale);
                                material->SetProperty(MaterialProperty::TextureTilingY, scale);
+                               material->SetProperty(MaterialProperty::Metalness, 0.0f);
                            }
                        
                            // add physics to the floor so we can walk on it
@@ -1186,6 +1187,10 @@ namespace spartan
                            default_car->SetParent(turn_table);
                            default_car->SetScaleLocal(1.0f);
                            turn_table->SetPositionLocal(0.0f); // lower it a bit because it seems to have some weird alpha testing going on below it
+                           if (Material* material = turn_table->GetComponent<Renderable>()->GetMaterial())
+                           {
+                                material->SetColor(Color::standard_black);
+                           }
                        }
                     }
                 }

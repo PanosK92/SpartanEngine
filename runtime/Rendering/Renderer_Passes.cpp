@@ -122,17 +122,7 @@ namespace spartan
             // render -> output resolution
             Pass_Upscale(cmd_list_graphics_present);
 
-            // post-process
-            {
-                // game
-                Pass_PostProcess(cmd_list_graphics_present);
-
-                // editor
-                Pass_Grid(cmd_list_graphics_present, rt_output);
-                Pass_Lines(cmd_list_graphics_present, rt_output);
-                Pass_Outline(cmd_list_graphics_present, rt_output);
-                Pass_Icons(cmd_list_graphics_present, rt_output);
-            }
+            Pass_PostProcess(cmd_list_graphics_present);
         }
         else
         {
@@ -1214,6 +1204,12 @@ namespace spartan
         {
             cmd_list->Copy(rt_frame_output_scratch, rt_frame_output, false);
         }
+
+        // editor
+        Pass_Grid(cmd_list, rt_frame_output);
+        Pass_Lines(cmd_list, rt_frame_output);
+        Pass_Outline(cmd_list, rt_frame_output);
+        Pass_Icons(cmd_list, rt_frame_output);
 
         cmd_list->EndMarker();
     }
