@@ -910,30 +910,33 @@ namespace spartan
         RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* light_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
         RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
-        RHI_Texture* tex_skysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_shadow_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
-    
+
+        // define pipeline state
         RHI_PipelineState pso;
         pso.name             = is_transparent_pass ? "light_transparent" : "light";
         pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
-    
+
+        // work
         cmd_list->BeginTimeblock(pso.name);
         {
             cmd_list->SetPipelineState(pso);
-            
+
+            // textures
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,     GetRenderTarget(Renderer_RenderTarget::sss));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,         tex_skysphere);
-            cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_shadow_atlas);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,         GetRenderTarget(Renderer_RenderTarget::skysphere));
+            cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
             cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
             cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
-            
+
+            // push constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(static_cast<uint32_t>(World::GetLightCount())), GetOption<float>(Renderer_Option::Fog), static_cast<float>(tex_skysphere->GetMipCount()));
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(static_cast<uint32_t>(World::GetLightCount())), GetOption<float>(Renderer_Option::Fog));
             cmd_list->PushConstants(m_pcb_pass_cpu);
-            
+
+            // dispatch
             cmd_list->Dispatch(light_diffuse); // adds read write barrier for light_diffuse internally
             cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
