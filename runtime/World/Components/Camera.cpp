@@ -304,7 +304,7 @@ namespace spartan
         m_projection_non_reverse_z      = ComputeProjection(m_near_plane, m_far_plane);
         m_view_projection               = m_view * m_projection;
         m_view_projection_non_reverse_z = m_view * m_projection_non_reverse_z;
-        m_frustum                       = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_near_plane);
+        m_frustum                       = Frustum(GetViewMatrix(), GetProjectionMatrix());
         SetFlag(CameraFlags::IsDirty, false);
     }
 

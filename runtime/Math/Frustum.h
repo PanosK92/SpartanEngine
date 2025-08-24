@@ -33,7 +33,7 @@ namespace spartan::math
     {
     public:
         Frustum() = default;
-        Frustum(const Matrix& mView, const Matrix& mProjection, float screenDepth);
+        Frustum(const Matrix& view, const Matrix& projection);
         ~Frustum() = default;
 
         bool IsVisible(const Vector3& center, const Vector3& extent, bool ignore_depth = false) const;

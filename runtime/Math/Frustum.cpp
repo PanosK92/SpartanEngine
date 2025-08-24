@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 #include "pch.h"
+#include "Frustum.h"
 //==================
 
 //= NAMESPACES =====
@@ -29,17 +30,9 @@ using namespace std;
 
 namespace spartan::math
 {
-    Frustum::Frustum(const Matrix& view, const Matrix& projection, float screen_depth)
+    Frustum::Frustum(const Matrix& view, const Matrix& projection)
     {
-        // calculate the minimum z distance in the frustum
-        const float z_min          = -projection.m32 / projection.m22;
-        const float r              = screen_depth / (screen_depth - z_min);
-        Matrix projection_updated  = projection;
-        projection_updated.m22     = r;
-        projection_updated.m32     = -r * z_min;
-
-        // create the frustum matrix from the view matrix and updated projection matrix
-        const Matrix view_projection = view * projection_updated;
+        const Matrix view_projection = view * projection;
 
         // near plane
         m_planes[0].normal.x = view_projection.m03 + view_projection.m02;
@@ -89,7 +82,7 @@ namespace spartan::math
         return CheckCube(center, extent, ignore_depth) != Intersection::Outside;
     }
 
-   Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth /*= false*/) const
+    Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent, float ignore_depth) const
     {
         SP_ASSERT(!center.IsNaN() && !extent.IsNaN());
     
@@ -97,25 +90,19 @@ namespace spartan::math
     
         for (size_t i = 0; i < 6; i++)
         {
-            // skip near and far plane checks if depth is to be ignored
             if (ignore_depth && (i == 0 || i == 1))
                 continue;
     
             const Plane& plane = m_planes[i];
             const Vector3 normal_abs = plane.normal.Abs();
     
-            const float d = Vector3::Dot(plane.normal, center);
-            const float r = Vector3::Dot(normal_abs, extent);
+            float d = Vector3::Dot(plane.normal, center) + plane.d;
+            float r = Vector3::Dot(normal_abs, extent);
     
-            const float d_p_r = d + r;
-            const float d_m_r = d - r;
-    
-            // fully outside → no need to check further
-            if (d_p_r < -plane.d)
+            if (d + r < 0.0f)
                 return Intersection::Outside;
     
-            // partial intersection → mark but keep checking (could still be outside later)
-            if (d_m_r < -plane.d)
+            if (d - r < 0.0f)
                 intersects = true;
         }
     

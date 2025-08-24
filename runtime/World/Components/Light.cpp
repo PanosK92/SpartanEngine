@@ -464,8 +464,8 @@ namespace spartan
                 cascade_depth, 0.0f
             );
 
-            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0], cascade_depth);
-            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1], cascade_depth);
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);
+            m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1]);
         }
         else // spot/point
         {
@@ -475,7 +475,7 @@ namespace spartan
             for (uint32_t i = 0; i < GetSliceCount(); i++)
             {
                 m_matrix_projection[i] = Matrix::CreatePerspectiveFieldOfViewLH(fov_y_radians, aspect_ratio, m_range, 0.05f);
-                m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i], m_range);
+                m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i]);
             }
         }
     }

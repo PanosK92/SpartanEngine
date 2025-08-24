@@ -191,7 +191,7 @@ namespace spartan
         pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
         pso.clear_depth                      = 0.0f;
         pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
-        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Light_directional); // the world always starts with the directiona lght
+        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Light_directional); // the world always starts with the directional lght
 
         cmd_list->BeginTimeblock(pso.name);
         {
@@ -235,14 +235,13 @@ namespace spartan
                         if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
                             continue;
 
-                        // todo: this needs to be cached, no need to do it real-time for all lights, against all entities, only what moves needs to be re-caculated
-                        //if (!light->IsInViewFrustum(renderable, array_index, draw_call.instance_group_index))
-                            //continue;
-                            //
+                        // todo: this needs to be recalculate only when the light or the renderable moves, not every frame
+                        if (!light->IsInViewFrustum(renderable, array_index, draw_call.instance_group_index))
+                            continue;
 
                         // pixel shader
                         {
-                            bool is_first_cascade = array_index == 0;
+                            bool is_first_cascade = array_index == 0 && light->GetLightType() == LightType::Directional;
                             bool is_alpha_tested  = material->IsAlphaTested();
                             RHI_Shader* ps        = (is_first_cascade && is_alpha_tested) ? GetShader(Renderer_Shader::depth_light_alpha_color_p) : nullptr;
                         
@@ -780,7 +779,7 @@ namespace spartan
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)
     {
         // get resources
-        RHI_Texture* tex_sss= GetRenderTarget(Renderer_RenderTarget::sss);
+        RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss);
 
         cmd_list->BeginTimeblock("screen_space_shadows");
         {
