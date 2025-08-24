@@ -150,6 +150,7 @@ struct Light
     float  attenuation;
     float2 resolution;
     matrix transform[6];
+    uint screen_space_shadows_slice_index;
     float2 atlas_offset[6];
     float2 atlas_scale[6];
     float2 atlas_texel_size[6];
@@ -275,24 +276,25 @@ struct Light
     
     void Build(uint index, Surface surface)
     {
-        LightParameters light = light_parameters[index];
-        flags                 = light.flags;
-        color                 = light.color.rgb;
-        position              = light.position.xyz;
-        intensity             = light.intensity;
-        near                  = 0.01f;
-        far                   = light.range;
-        angle                 = light.angle;
-        forward               = is_point() ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
-        distance_to_pixel     = length(surface.position - position);
-        to_pixel              = compute_direction(position, surface.position);
-        n_dot_l               = saturate(dot(surface.normal, -to_pixel));
-        attenuation           = compute_attenuation(surface.position);
-        resolution            = compute_resolution();
-        transform             = light.transform;
-        atlas_offset          = light.atlas_offsets;
-        atlas_scale           = light.atlas_scales;
-        atlas_texel_size      = light.atlas_texel_sizes;
+        LightParameters light            = light_parameters[index];
+        flags                            = light.flags;
+        color                            = light.color.rgb;
+        position                         = light.position.xyz;
+        intensity                        = light.intensity;
+        near                             = 0.01f;
+        far                              = light.range;
+        angle                            = light.angle;
+        forward                          = is_point() ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
+        distance_to_pixel                = length(surface.position - position);
+        to_pixel                         = compute_direction(position, surface.position);
+        n_dot_l                          = saturate(dot(surface.normal, -to_pixel));
+        attenuation                      = compute_attenuation(surface.position);
+        resolution                       = compute_resolution();
+        screen_space_shadows_slice_index = light.screen_space_shadow_slice_index;
+        transform                        = light.transform;
+        atlas_offset                     = light.atlas_offsets;
+        atlas_scale                      = light.atlas_scales;
+        atlas_texel_size                 = light.atlas_texel_sizes;
 
         radiance = color * intensity * attenuation * n_dot_l;
     }

@@ -956,36 +956,42 @@ namespace spartan
 
     void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
     {
-        // slot 0 is always the directional light (sky), as it affects everything and should be easily accessible in shaders
-        uint32_t count           = 0;
+        const Entity* camera_entity = World::GetCamera() ? World::GetCamera()->GetEntity() : nullptr;
+        const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
+    
+        m_bindless_lights.fill(Sb_Light());
+        uint32_t count = 0;
         Light* first_directional = nullptr;
-   
+    
         auto fill_light = [&](Light* light_component, uint32_t index)
         {
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];
-            for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
+    
+            const uint32_t slice_count = light_component->GetSliceCount();
+            for (uint32_t i = 0; i < slice_count; i++)
             {
                 light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
-   
-            light_buffer_entry.intensity  = light_component->GetIntensityWatt();
-            light_buffer_entry.range      = light_component->GetRange();
-            light_buffer_entry.angle      = light_component->GetAngle();
-            light_buffer_entry.color      = light_component->GetColor();
-            light_buffer_entry.position   = light_component->GetEntity()->GetPosition();
-            light_buffer_entry.direction  = light_component->GetEntity()->GetForward();
-            light_buffer_entry.flags      = 0;
-            light_buffer_entry.flags     |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-            light_buffer_entry.flags     |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-            light_buffer_entry.flags     |= light_component->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-            light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-            light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
-            light_buffer_entry.flags     |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
 
+            light_buffer_entry.screen_space_shadows_slice_index = light_component->GetScreenSpaceShadowsSliceIndex();
+            light_buffer_entry.intensity                        = light_component->GetIntensityWatt();
+            light_buffer_entry.range                            = light_component->GetRange();
+            light_buffer_entry.angle                            = light_component->GetAngle();
+            light_buffer_entry.color                            = light_component->GetColor();
+            light_buffer_entry.position                         = light_component->GetEntity()->GetPosition();
+            light_buffer_entry.direction                        = light_component->GetEntity()->GetForward();
+            light_buffer_entry.flags                             = 0;
+            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
+            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
+    
             for (uint32_t i = 0; i < 6; i++)
             {
-                if (i < light_component->GetSliceCount())
+                if (i < slice_count)
                 {
                     light_buffer_entry.atlas_offsets[i]     = light_component->GetAtlasOffset(i);
                     light_buffer_entry.atlas_scales[i]      = light_component->GetAtlasScale(i);
@@ -1000,44 +1006,56 @@ namespace spartan
                 }
             }
         };
-   
-        // cpu
+    
+        // directional light always goes in slot 0
+        for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
         {
-            m_bindless_lights.fill(Sb_Light());
-   
-            // find first directional light and put it at slot 0
-            for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
+            if (Light* light_component = entity->GetComponent<Light>())
             {
-                if (Light* light_component = entity->GetComponent<Light>())
+                if (light_component->GetLightType() == LightType::Directional)
                 {
-                    if (light_component->GetLightType() == LightType::Directional)
-                    {
-                        first_directional = light_component;
-                        fill_light(light_component, 0);
-                        count = 1;
-                        break;
-                    }
-                }
-            }
-   
-            // process all other lights, skipping the one already placed
-            for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
-            {
-                if (Light* light_component = entity->GetComponent<Light>())
-                {
-                    if (light_component == first_directional)
-                        continue;
-   
-                    fill_light(light_component, count);
-                    count++;
+                    first_directional = light_component;
+                    fill_light(light_component, 0);
+                    count = 1;
+                    break;
                 }
             }
         }
-   
-        // gpu
-        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
-        buffer->ResetOffset();
-        buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * count);
+    
+        // fill remaining lights (skip disabled or out-of-range)
+        for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
+        {
+            if (Light* light_component = entity->GetComponent<Light>())
+            {
+                if (light_component == first_directional)
+                    continue;
+    
+                // skip inactive or zero-intensity lights
+                bool active = light_component->GetEntity()->GetActive() && light_component->GetIntensityWatt() > 0.0f;
+    
+                // skip point/spot lights beyond 100 meters
+                if (active && camera_entity && light_component->GetLightType() != LightType::Directional)
+                {
+                    const float dist2 = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
+                    if (dist2 > 10000.0f) // 100 meters squared
+                        active = false;
+                }
+    
+                if (!active)
+                    continue; // never insert disabled lights
+    
+                fill_light(light_component, count);
+                count++;
+            }
+        }
+    
+        // upload active lights to GPU
+        if (count > 0)
+        {
+            RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
+            buffer->ResetOffset();
+            buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * count);
+        }
     }
 
     void Renderer::BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list)

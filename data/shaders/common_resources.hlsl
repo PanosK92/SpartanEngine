@@ -125,6 +125,7 @@ struct LightParameters
     float range;
     float angle;
     uint flags;
+    uint screen_space_shadow_slice_index;
     matrix transform[6];
     float2 atlas_offsets[6];
     float2 atlas_scales[6];

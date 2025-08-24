@@ -905,8 +905,6 @@ namespace spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        static bool cleared = false;
-    
         // acquire resources
         RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
@@ -915,87 +913,49 @@ namespace spartan
         RHI_Texture* tex_skysphere    = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_shadow_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
     
-        // define pipeline state
         RHI_PipelineState pso;
         pso.name             = is_transparent_pass ? "light_transparent" : "light";
         pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
     
-        uint32_t light_count = 0;
         cmd_list->BeginTimeblock(pso.name);
         {
-            // skip processing if there are no lights or no camera
-            if (World::GetLightCount() != 0 && World::GetCamera())
+            const uint32_t light_count = static_cast<uint32_t>(World::GetLightCount());
+
+            // clear if no lights or camera
+            if (light_count == 0 || World::GetCamera() == nullptr)
             {
-                // set shared state
-                cmd_list->SetPipelineState(pso);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,     tex_skysphere);
-    
-                // process lights
-                const auto& lights = World::GetEntitiesLights();
-                for (uint32_t i = 0; i < lights.size(); i++)
-                {
-                    // skip lights beyond the first 16
-                    if (i > 16)
-                        continue;
-    
-                    // skip inactive lights
-                    const shared_ptr<Entity>& entity = lights[i];
-                    if (!entity->GetActive())
-                        continue;
-    
-                    // skip lights beyond 100 meters from the camera
-                    Light* light           = entity->GetComponent<Light>();
-                    float distance_squared = Vector3::DistanceSquared(entity->GetPosition(), World::GetCamera()->GetEntity()->GetPosition());
-                    if (distance_squared > 10000.0f && light->GetLightType() != LightType::Directional)
-                        continue;
-    
-                    // set textures
-                    SetCommonTextures(cmd_list);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_shadow_atlas);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
-    
-                    // push constants
-                    m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-                    bool clear = light_count == 0;
-                    m_pcb_pass_cpu.set_f3_value2(static_cast<float>(i), clear, static_cast<float>(light->GetScreenSpaceShadowsSliceIndex()));
-                    m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Fog), 0.0f, static_cast<float>(tex_skysphere->GetMipCount()));
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
-    
-                    // dispatch
-                    cmd_list->Dispatch(light_diffuse); // includes InsertBarrierReadWrite(light_diffuse)
-    
-                    // the above dispatch will add a read/write barrier to the diffuse texture
-                    cmd_list->InsertBarrierReadWrite(light_specular, RHI_BarrierType::EnsureWriteThenRead);
-                    cmd_list->InsertBarrierReadWrite(light_shadow, RHI_BarrierType::EnsureWriteThenRead);
-                    cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
-    
-                    light_count++;
-                }
-            }
-    
-            // clear textures once if no lights were processed and not already cleared
-            if (light_count == 0 && !cleared)
-            {
-                cmd_list->ClearTexture(light_diffuse, Color::standard_transparent);
-                cmd_list->ClearTexture(light_specular, Color::standard_transparent);
-                cmd_list->ClearTexture(light_shadow, Color::standard_transparent);
+                // clear when there are no lights or no camera
+                cmd_list->ClearTexture(light_diffuse,    Color::standard_transparent);
+                cmd_list->ClearTexture(light_specular,   Color::standard_transparent);
+                cmd_list->ClearTexture(light_shadow,     Color::standard_transparent);
                 cmd_list->ClearTexture(light_volumetric, Color::standard_transparent);
     
-                cmd_list->InsertBarrierReadWrite(light_diffuse, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrierReadWrite(light_specular, RHI_BarrierType::EnsureWriteThenRead);
-                cmd_list->InsertBarrierReadWrite(light_shadow, RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrierReadWrite(light_diffuse,    RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
                 cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
-    
-                cleared = true;
             }
-            // reset cleared flag if at least one light was processed
-            else if (light_count > 0)
+            else // if there are lights, do the lighting pass, with a single dispatch as all lights are in a bindless array
             {
-                cleared = false;
+                cmd_list->SetPipelineState(pso);
+    
+                SetCommonTextures(cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,     GetRenderTarget(Renderer_RenderTarget::sss));
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,         tex_skysphere);
+                cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, tex_shadow_atlas);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
+    
+                m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
+                m_pcb_pass_cpu.set_f3_value(static_cast<float>(light_count), GetOption<float>(Renderer_Option::Fog), static_cast<float>(tex_skysphere->GetMipCount()));
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+                cmd_list->Dispatch(light_diffuse); // adds read write barrier for light_diffuse internally
+                cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
             }
         }
         cmd_list->EndTimeblock();

@@ -192,6 +192,7 @@ namespace spartan
         float range;
         float angle;
         uint32_t flags;
+        uint32_t screen_space_shadows_slice_index;
         math::Matrix view_projection[6];
         math::Vector2 atlas_offsets[6];
         math::Vector2 atlas_scales[6];

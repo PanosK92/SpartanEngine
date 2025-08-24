@@ -60,105 +60,94 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // create surface
+    // build surface
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, true);
-    
-    // early exit cases
-    bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky(); // shade sky pixels during the opaque pass (volumetric lighting)
+
+    // early exits
+    bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky();
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
-    return;
+        return;
+
+    float3 out_diffuse    = 0.0f;
+    float3 out_specular   = 0.0f;
+    float  out_shadow     = 1.0f;
+    float3 out_volumetric = 0.0f;
     
-    // create light
-    Light light;
-    uint  light_index = pass_get_f3_value2().x;
-    bool  clear       = pass_get_f3_value2().y > 0.0f;
-    light.Build(light_index, surface);
-    
-    float  shadow            = 1.0f;
-    float3 light_diffuse     = 0.0f;
-    float3 light_specular    = 0.0f;
-    float3 volumetric_fog    = 0.0f;
-    float3 light_subsurface  = 0.0f;
-    
-    if (!surface.is_sky() && light.intensity > 0.0f)
+    // loop lights and accumulate
+    uint light_count = pass_get_f3_value().x;
+    for (uint i = 0; i < light_count; i++)
     {
-        // shadows
-        if (light.has_shadows() && surface.is_opaque())
+        Light light;
+        light.Build(i, surface);
+
+        float  L_shadow        = 1.0f;
+        float3 L_specular_sum  = 0.0f;
+        float3 L_diffuse_term  = 0.0f;
+        float3 L_subsurface    = 0.0f;
+        float3 L_volumetric    = 0.0f;
+
+        if (!surface.is_sky())
         {
-            // shadow maps
-            shadow = compute_shadow(surface, light);
-            
-            // screen space shadows
-            if (light.has_shadows_screen_space())
+            // shadows
+            if (light.has_shadows() && surface.is_opaque())
             {
-                uint slice_index = pass_get_f3_value2().z;
-                shadow = min(shadow, tex_uav_sss[int3(thread_id.xy, slice_index)].x);
+                L_shadow = compute_shadow(surface, light);
+
+                if (light.has_shadows_screen_space())
+                {
+                    L_shadow = min(L_shadow, tex_uav_sss[int3(thread_id.xy, light.screen_space_shadows_slice_index)].x);
+                }
+
+                light.radiance *= L_shadow;
             }
-            
-            // modulate radiance with shadow
-            light.radiance *= shadow;
-        }
-    
-        // reflectance equation(s)
-        {
+
+            // reflectance terms
             AngularInfo angular_info;
             angular_info.Build(light, surface);
-            
-            // specular
-            if (surface.anisotropic > 0.0f)
-            {
-                light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
-            }
-            else
-            {
-                light_specular += BRDF_Specular_Isotropic(surface, angular_info);
-            }
-            
-            // specular clearcoat
-            if (surface.clearcoat > 0.0f)
-            {
-                light_specular += BRDF_Specular_Clearcoat(surface, angular_info);
-            }
-            
-            // sheen
-            if (surface.sheen > 0.0f)
-            {
-                light_specular += BRDF_Specular_Sheen(surface, angular_info);
-            }
-            
-            // subsurface scattering
-            if (surface.subsurface_scattering > 0.0f)
-            {
-                light_subsurface += subsurface_scattering(surface, light, angular_info);
-            }
-            
-            // diffuse
-            light_diffuse += BRDF_Diffuse(surface, angular_info);
-            
-            // energy conservation - only non metals have diffuse
-            light_diffuse *= surface.diffuse_energy * surface.alpha;
-        }
-     }
 
-     // volumetric
-     if (light.is_volumetric())
-     {
-         volumetric_fog = compute_volumetric_fog(surface, light, thread_id.xy);
-     }
-    
-    // accumulation
-    float accumulate = !clear;
-    
-    // shadow accumulation (multiplicative for visibility)
-    float prev_shadow      = accumulate ? tex_uav3[thread_id.xy].r : 1.0f;
-    float combined_shadow  = prev_shadow * shadow;
-    tex_uav3[thread_id.xy] = combined_shadow;
-    
-    tex_uav[thread_id.xy]  = tex_uav[thread_id.xy]  * accumulate + float4(light_diffuse  * light.radiance + light_subsurface, 0.0f) * surface.alpha * surface.occlusion;
-    tex_uav2[thread_id.xy] = tex_uav2[thread_id.xy] * accumulate + float4(light_specular * light.radiance, 0.0f) * surface.alpha;
-    tex_uav4[thread_id.xy] = tex_uav4[thread_id.xy] * accumulate + float4(volumetric_fog, 1.0f);
+            // specular lobes
+            if (surface.anisotropic > 0.0f)
+                L_specular_sum += BRDF_Specular_Anisotropic(surface, angular_info) * light.radiance;
+            else
+                L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info)   * light.radiance;
+                                                                                   
+            if (surface.clearcoat > 0.0f)                                          
+                L_specular_sum += BRDF_Specular_Clearcoat(surface, angular_info)   * light.radiance;
+                                                                                   
+            if (surface.sheen > 0.0f)                                              
+                L_specular_sum += BRDF_Specular_Sheen(surface, angular_info)       * light.radiance;
+
+            // subsurface
+            if (surface.subsurface_scattering > 0.0f)
+                L_subsurface += subsurface_scattering(surface, light, angular_info);
+
+            // diffuse term before radiance
+            L_diffuse_term += BRDF_Diffuse(surface, angular_info) * surface.diffuse_energy * surface.alpha;
+        }
+
+        // volumetric
+        if (light.is_volumetric())
+            L_volumetric += compute_volumetric_fog(surface, light, thread_id.xy);
+
+        // convert per light terms to what we actually store in the UAVs
+        float3 write_diffuse    = (L_diffuse_term * light.radiance + L_subsurface) * surface.alpha * surface.occlusion;
+        float3 write_specular   = L_specular_sum * surface.alpha;
+        float  write_shadow     = L_shadow;
+        float3 write_volumetric = L_volumetric;
+
+        // accumulate
+        out_diffuse    += write_diffuse;
+        out_specular   += write_specular;
+        out_shadow     *= write_shadow;
+        out_volumetric += write_volumetric;
+    }
+
+    tex_uav[thread_id.xy]  = float4(out_diffuse,    0.0f);
+    tex_uav2[thread_id.xy] = float4(out_specular,   0.0f);
+    tex_uav3[thread_id.xy] = out_shadow;
+    tex_uav4[thread_id.xy] = float4(out_volumetric, 1.0f);
 }
