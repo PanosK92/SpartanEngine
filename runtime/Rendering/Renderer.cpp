@@ -1221,88 +1221,112 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-     void Renderer::UpdateShadowAtlas()
-     {
+    void Renderer::UpdateShadowAtlas()
+    {
         m_shadow_slices.clear();
-        
+    
         auto camera = World::GetCamera();
         if (!camera)
             return;
-
-        uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
-        uint32_t resolution_slice = 4096;
-
+    
+        const uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
+        const uint32_t min_slice_res    = 256;
+    
         // collect slices
         for (const auto& entity : World::GetEntitiesLights())
         {
             Light* light = entity->GetComponent<Light>();
             light->ClearAtlasRectangles();
-
+    
             if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f || !light->GetEntity()->GetActive())
                 continue;
-
+    
             for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
             {
-                uint32_t res = resolution_slice; // same resolution for all slices
-                m_shadow_slices.emplace_back(light, i, res, math::Rectangle::Zero);
+                m_shadow_slices.emplace_back(light, i, 0, math::Rectangle::Zero);
             }
         }
     
         if (m_shadow_slices.empty())
             return;
     
-        // sort largest first
-        sort(m_shadow_slices.begin(), m_shadow_slices.end(), [](const auto& a, const auto& b) { return a.res > b.res; });
+        // lambda: check if N slices of given size can fit
+        auto can_fit = [&](uint32_t slice_res, uint32_t num_slices) -> bool
+        {
+            uint32_t x = 0, y = 0, row_h = 0;
+            uint32_t packed = 0;
     
-        // compute total area/width needed for rough fit
+            for (uint32_t i = 0; i < num_slices; ++i)
+            {
+                if (x + slice_res > resolution_atlas)
+                {
+                    y    += row_h;
+                    x     = 0;
+                    row_h = 0;
+                }
+    
+                if (y + slice_res > resolution_atlas)
+                    return false;
+    
+                x    += slice_res;
+                row_h = max(row_h, slice_res);
+                packed++;
+            }
+    
+            return packed == num_slices;
+        };
+    
+        // --- decide slice resolution dynamically ---
+        uint32_t slice_res = resolution_atlas;
+    
+        if (m_shadow_slices.size() > 1)
+        {
+            uint32_t low = min_slice_res;
+            uint32_t high = resolution_atlas;
+    
+            // binary search to find largest fitting slice size
+            while (low < high)
+            {
+                uint32_t mid = (low + high + 1) / 2;
+                if (can_fit(mid, static_cast<uint32_t>(m_shadow_slices.size())))
+                    low = mid;
+                else
+                    high = mid - 1;
+            }
+    
+            slice_res = low;
+        }
+    
+        // assign chosen resolution to all slices
+        for (auto& slice : m_shadow_slices)
+            slice.res = slice_res;
+    
+        // --- pack slices in scanline order ---
         uint32_t x = 0, y = 0, row_h = 0;
-        uint32_t max_x = 0, total_y = 0;
         for (auto& slice : m_shadow_slices)
         {
             if (x + slice.res > resolution_atlas)
             {
-                total_y += row_h;
-                max_x    = max(max_x, x);
-                x        = 0;
-                row_h    = 0;
-            }
-            x     += slice.res;
-            row_h  = max(row_h, slice.res);
-        }
-        total_y += row_h;
-        max_x    = max(max_x, x);
-    
-        // compute scale factor if it overflows atlas
-        float scale = 1.0f;
-        if (max_x > resolution_atlas || total_y > resolution_atlas)
-        {
-            float scale_x = static_cast<float>(resolution_atlas) / static_cast<float>(max_x);
-            float scale_y = static_cast<float>(resolution_atlas) / static_cast<float>(total_y);
-            scale         = min(scale_x, scale_y);
-        }
-    
-        // pack slices with scale
-        x = 0; y = 0; row_h = 0;
-        for (auto& slice : m_shadow_slices)
-        {
-            uint32_t res_scaled = max(1u, static_cast<uint32_t>(slice.res * scale));
-    
-            if (x + res_scaled > resolution_atlas)
-            {
-                y     += row_h;
-                x      = 0;
-                row_h  = 0;
+                y    += row_h;
+                x     = 0;
+                row_h = 0;
             }
     
-            if (y + res_scaled > resolution_atlas)
+            if (y + slice.res > resolution_atlas)
             {
-                SP_LOG_WARNING("Atlas overflow even after scaling");
+                SP_LOG_WARNING("Atlas overflow even after fitting");
                 continue;
             }
     
-            slice.rect  = math::Rectangle(static_cast<float>(x), static_cast<float>(y), static_cast<float>(res_scaled), static_cast<float>(res_scaled));
-            x          += res_scaled;
-            row_h       = max(row_h, res_scaled);
+            slice.rect  = math::Rectangle(
+                static_cast<float>(x),
+                static_cast<float>(y),
+                static_cast<float>(slice.res),
+                static_cast<float>(slice.res)
+            );
+    
+            x    += slice.res;
+            row_h = max(row_h, slice.res);
         }
     
         // assign back

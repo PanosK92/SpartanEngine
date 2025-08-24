@@ -101,6 +101,11 @@ namespace spartan
         SetFlag(LightFlags::ShadowsScreenSpace);
     }
 
+    Light::~Light()
+    {
+        SP_FIRE_EVENT(EventType::LightOnChanged);
+    }
+
     void Light::OnTick()
     {
         // update matrices

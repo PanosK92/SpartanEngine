@@ -69,7 +69,7 @@ namespace spartan
     {
     public:
         Light(Entity* entity);
-        ~Light() = default;
+        ~Light();
 
         //= COMPONENT ================================
         void OnTick() override;
