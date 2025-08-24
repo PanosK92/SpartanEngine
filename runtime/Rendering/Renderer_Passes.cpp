@@ -916,7 +916,7 @@ namespace spartan
         pso.name             = is_transparent_pass ? "light_transparent" : "light";
         pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
 
-        // work
+        // dispatch on the bindless light array and the shadow atlas
         cmd_list->BeginTimeblock(pso.name);
         {
             cmd_list->SetPipelineState(pso);

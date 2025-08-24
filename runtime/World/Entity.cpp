@@ -249,7 +249,7 @@ namespace spartan
 
     void Entity::SetActive(const bool active)
     {
-        if (active != m_is_active)
+        if (active == m_is_active)
             return;
 
         m_is_active = active;

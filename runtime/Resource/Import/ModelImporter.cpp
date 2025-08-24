@@ -644,10 +644,6 @@ namespace spartan
                 {
                     light->SetLightType(LightType::Point);
                 }
-
-                float lumens = 500.0f;
-                light->SetIntensity(lumens);
-                light->SetRange(5.0f);
             }
         }
     }

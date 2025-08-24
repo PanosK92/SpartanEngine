@@ -606,19 +606,13 @@ namespace spartan
 
             // 3d model - sponza
             uint32_t mesh_flags  = Mesh::GetDefaultFlags();
-            //mesh_flags          |= ~static_cast<uint32_t>(MeshFlags::ImportLights); // would be cool to make that work (has a ton of lights)
+            //mesh_flags          |= static_cast<uint32_t>(MeshFlags::ImportLights); // they don't look good for some reason, investigate
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
             {
                 shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
                 entity->SetObjectName("sponza");
                 entity->SetPosition(position);
                 entity->SetScale(scale);
-
-                // make the lamp frame not cast shadows
-                if (Renderable* renderable = entity->GetDescendantByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
-                {
-                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                }
 
                 // disable dirt decals since they look bad
                 // they are hovering over the surfaces, they have z-fighting, and they also cast shadows underneath them

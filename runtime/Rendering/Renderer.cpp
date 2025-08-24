@@ -733,13 +733,6 @@ namespace spartan
 
                 enabled = value != 0.0f;
             }
-            else if (option == Renderer_Option::ScreenSpaceReflections)
-            {
-                if (value == 0.0)
-                {
-                    //RHI_FidelityFX::Shutdown(FidelityFX::Sssr);
-                }
-            }
         }
     }
 
@@ -960,16 +953,17 @@ namespace spartan
         const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
     
         m_bindless_lights.fill(Sb_Light());
-        uint32_t count = 0;
+        static uint32_t count;
+        count = 0;
         Light* first_directional = nullptr;
     
-        auto fill_light = [&](Light* light_component, uint32_t index)
+        auto fill_light = [&](Light* light_component)
         {
+            const uint32_t index = count++;
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];
-    
-            const uint32_t slice_count = light_component->GetSliceCount();
-            for (uint32_t i = 0; i < slice_count; i++)
+
+            for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
             {
                 light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
@@ -981,17 +975,17 @@ namespace spartan
             light_buffer_entry.color                            = light_component->GetColor();
             light_buffer_entry.position                         = light_component->GetEntity()->GetPosition();
             light_buffer_entry.direction                        = light_component->GetEntity()->GetForward();
-            light_buffer_entry.flags                             = 0;
-            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
-            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
+            light_buffer_entry.flags                            = 0;
+            light_buffer_entry.flags                           |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+            light_buffer_entry.flags                           |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+            light_buffer_entry.flags                           |= light_component->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+            light_buffer_entry.flags                           |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+            light_buffer_entry.flags                           |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
+            light_buffer_entry.flags                           |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
     
             for (uint32_t i = 0; i < 6; i++)
             {
-                if (i < slice_count)
+                if (i < light_component->GetSliceCount())
                 {
                     light_buffer_entry.atlas_offsets[i]     = light_component->GetAtlasOffset(i);
                     light_buffer_entry.atlas_scales[i]      = light_component->GetAtlasScale(i);
@@ -1015,8 +1009,7 @@ namespace spartan
                 if (light_component->GetLightType() == LightType::Directional)
                 {
                     first_directional = light_component;
-                    fill_light(light_component, 0);
-                    count = 1;
+                    fill_light(light_component);
                     break;
                 }
             }
@@ -1044,18 +1037,14 @@ namespace spartan
                 if (!active)
                     continue; // never insert disabled lights
     
-                fill_light(light_component, count);
-                count++;
+                fill_light(light_component);
             }
         }
     
-        // upload active lights to GPU
-        if (count > 0)
-        {
-            RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
-            buffer->ResetOffset();
-            buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * count);
-        }
+        // upload to gpu
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
+        buffer->ResetOffset();
+        buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * World::GetLightCount());
     }
 
     void Renderer::BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list)
