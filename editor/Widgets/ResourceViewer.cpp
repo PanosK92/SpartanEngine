@@ -24,10 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Resource/ResourceCache.h"
 //=================================
 
-//= NAMESPACES ==========
+//= NAMESPACES ===============
 using namespace std;
 using namespace spartan;
-//=======================
+using namespace spartan::math;
+//============================
 
 namespace
 {
@@ -50,9 +51,8 @@ namespace
 
 ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
 {
-    m_title        = "Resource Viewer";
-    m_size_initial = ImVec2(1366, 768);
-    m_visible      = false;
+    m_title   = "Resource Viewer";
+    m_visible = false;
 }
 
 void ResourceViewer::OnTickVisible()

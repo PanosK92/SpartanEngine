@@ -26,10 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Extension.h"
 //===================================
 
-//= NAMESPACES =========
+//= NAMESPACES ===============
 using namespace std;
 using namespace spartan;
-//======================
+using namespace spartan::math;
+//============================
 
 namespace
 {
@@ -39,12 +40,11 @@ namespace
 
 ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
 {
-    m_title            = "Shader Editor";
-    m_flags           |= ImGuiWindowFlags_NoScrollbar;
-    m_visible          = false;
-    m_size_initial     = ImVec2(1366, 1000);
-    m_alpha            = 1.0f;
-    m_index_displayed  = -1;
+    m_title           = "Shader Editor";
+    m_flags           = ImGuiWindowFlags_NoScrollbar;
+    m_visible         = false;
+    m_alpha           = 1.0f;
+    m_index_displayed = -1;
 }
 
 void ShaderEditor::OnTickVisible()

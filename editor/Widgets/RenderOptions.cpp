@@ -195,9 +195,9 @@ namespace
 RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
 {
     m_title        = "Renderer Options";
-    m_size_initial = Vector2(720, 1080);
     m_visible      = false;
     m_alpha        = 1.0f;
+    m_size_initial = Vector2(Display::GetWidth() * 0.25f, Display::GetHeight() * 0.5f);
 }
 
 void RenderOptions::OnVisible()

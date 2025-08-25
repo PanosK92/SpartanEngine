@@ -25,7 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui_internal.h"
 #include "Profiling/Profiler.h"
 #include "Viewport.h"
+#include "Display/Display.h"
 //=========================================
+
+//= NAMESPACES =========
+using namespace std;
+using namespace spartan;
+using namespace math;
+//======================
 
 Widget::Widget(Editor* editor)
 {
@@ -45,10 +52,8 @@ void Widget::Tick()
         SP_PROFILE_CPU_START(m_title.c_str());
 
         // Size initial
-        if (m_size_initial != k_widget_default_property)
-        {
-            ImGui::SetNextWindowSize(m_size_initial, ImGuiCond_FirstUseEver);
-        }
+        m_size_initial = m_size_initial == k_widget_default_property ? Vector2(Display::GetWidth() * 0.5f, Display::GetHeight() * 0.5f) : m_size_initial;
+        ImGui::SetNextWindowSize(m_size_initial, ImGuiCond_FirstUseEver);
 
         // Size min max
         if (m_size_min != k_widget_default_property || m_size_max != FLT_MAX)

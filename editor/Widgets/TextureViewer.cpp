@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "TextureViewer.h"
 #include "../ImGui/ImGui_Extension.h"
-#include "World/Components/Light.h"
-#include "World/Entity.h"
 //===================================
 
 //= NAMESPACES =========
@@ -108,9 +106,8 @@ namespace
 
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 {
-    m_title    = "Texture Viewer";
-    m_visible  = false;
-    m_size_min = Vector2(720, 576);
+    m_title   = "Texture Viewer";
+    m_visible = false;
 }
 
 void TextureViewer::OnTick()
