@@ -110,23 +110,20 @@ namespace spartan
         // other
         ssao = 5,
     
-        // light depth
-        light_depth = 6,
-    
         // misc
-        tex   = 7,
-        tex2  = 8,
-        tex3  = 9,
-        tex4  = 10,
-        tex5  = 11,
-        tex6  = 12,
-        tex3d = 13,
+        tex   = 6,
+        tex2  = 7,
+        tex3  = 8,
+        tex4  = 9,
+        tex5  = 10,
+        tex6  = 11,
+        tex3d = 12,
 
         // bindless
-        bindless_material_textures   = 14,
-        bindless_material_parameters = 15,
-        bindless_light_parameters    = 16,
-        bindless_aabbs               = 17,
+        bindless_material_textures   = 13,
+        bindless_material_parameters = 14,
+        bindless_light_parameters    = 15,
+        bindless_aabbs               = 16,
     };
 
     enum class Renderer_BindingsUav

@@ -1108,7 +1108,7 @@ namespace spartan
                             for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                             {
                                 Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
-                                draw_call.renderable           = renderable;                          
+                                draw_call.renderable           = renderable;
                                 draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
                                 draw_call.lod_index            = renderable->GetLodIndex(group_index);
                                 draw_call.is_occluder          = false;

@@ -264,14 +264,14 @@ struct Light
     {
         uint array_index = (uint)uv.z;
         float2 atlas_uv  = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
-        return tex_shadow_atlas.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], atlas_uv, compare).r;
+        return tex2.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], atlas_uv, compare).r;
     }
     
     float sample_depth(float3 uv)
     {
         uint array_index = (uint)uv.z;
         float2 atlas_uv  = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
-        return tex_shadow_atlas.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
+        return tex2.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
     }
     
     void Build(uint index, Surface surface)

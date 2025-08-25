@@ -923,13 +923,13 @@ namespace spartan
 
             // textures
             SetCommonTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss,     GetRenderTarget(Renderer_RenderTarget::sss));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,         GetRenderTarget(Renderer_RenderTarget::skysphere));
-            cmd_list->SetTexture(Renderer_BindingsSrv::light_depth, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
-            cmd_list->SetTexture(Renderer_BindingsUav::tex,         light_diffuse);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex2,        light_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,        light_shadow);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex4,        light_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::skysphere));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,     light_diffuse);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_shadow);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex4,    light_volumetric);
 
             // push constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
