@@ -154,9 +154,5 @@ namespace spartan
         static std::mutex& GetMutex();
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
-
-        // io
-        static void Save(pugi::xml_node& node);
-        static void Load(pugi::xml_node& node);
     };
 }

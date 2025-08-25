@@ -28,6 +28,10 @@ connection with the software or the use or other dealings in the software.
 
 struct SDL_AudioStream;
 struct SDL_AudioSpec;
+namespace audio_clip_cache
+{
+    struct AudioClip;
+}
 
 namespace spartan
 {
@@ -75,23 +79,21 @@ namespace spartan
     private:
         void FeedAudioChunk();
 
-        std::string m_name              = "N/A";
-        bool m_is_3d                    = false;
-        bool m_mute                     = false;
-        bool m_loop                     = true;
-        bool m_play_on_start            = true;
-        float m_volume                  = 1.0f;
-        float m_pitch                   = 1.0f;
-        float m_attenuation             = 1.0f;
-        float m_pan                     = 0.0f; // -1.0 (left) to 1.0 (right)
-        bool m_is_playing               = false;
-        uint32_t m_position             = 0; // in bytes
-        uint8_t* m_buffer               = nullptr;
-        uint32_t m_length               = 0;
-        SDL_AudioStream* m_stream       = nullptr;
-        SDL_AudioSpec* m_spec           = nullptr;
-        float m_doppler_ratio           = 1.0f;
-        math::Vector3 position_previous = math::Vector3::Zero;
+        std::string m_name                             = "N/A";
+        bool m_is_3d                                   = false;
+        bool m_mute                                    = false;
+        bool m_loop                                    = true;
+        bool m_play_on_start                           = true;
+        float m_volume                                 = 1.0f;
+        float m_pitch                                  = 1.0f;
+        float m_attenuation                            = 1.0f;
+        float m_pan                                    = 0.0f; // -1.0 (left) to 1.0 (right)
+        bool m_is_playing                              = false;
+        uint32_t m_position                            = 0; // in bytes
+        SDL_AudioStream* m_stream                      = nullptr;
+        float m_doppler_ratio                          = 1.0f;
+        math::Vector3 position_previous                = math::Vector3::Zero;
+        std::shared_ptr<audio_clip_cache::AudioClip> m_clip = nullptr;
         std::string m_file_path;
     };
 }

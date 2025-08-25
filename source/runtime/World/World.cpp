@@ -218,13 +218,9 @@ namespace spartan
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name") = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
 
-        // resources
+        // materials
         {
-            // node
-            pugi::xml_node resources_node = world_node.append_child("Resources");
 
-            // write resources to node
-            ResourceCache::Save(resources_node);
         }
 
         // entities
@@ -287,16 +283,9 @@ namespace spartan
             return false;
         }
 
-        // resources
+        // materials
         {
-            // get node
-            pugi::xml_node resources_node = world_node.child("Resources");
 
-            // read and load resources from node
-            if (resources_node)
-            {
-                ResourceCache::Load(resources_node);
-            }
         }
 
         // entities

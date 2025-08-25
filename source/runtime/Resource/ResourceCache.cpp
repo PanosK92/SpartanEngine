@@ -43,35 +43,6 @@ namespace spartan
         vector<shared_ptr<IResource>> m_resources;
         mutex m_mutex;
         bool use_root_shader_directory = false;
-
-        const char* resource_type_to_string(const ResourceType type)
-        {
-            switch (type)
-            {
-                case ResourceType::Cubemap:   return "Cubemap";
-                case ResourceType::Texture:   return "Texture";
-                case ResourceType::Material:  return "Material";
-                case ResourceType::Mesh:      return "Mesh";
-                case ResourceType::Shader:    return "Shader";
-                case ResourceType::Audio:     return "Audio";
-                case ResourceType::Animation: return "Animation";
-                case ResourceType::Font:      return "Font";
-                default:                      return "Max";
-            }
-        }
-
-        ResourceType resource_type_from_string(const string& type_str)
-        {
-            if (type_str == "Cubemap")   return ResourceType::Cubemap;
-            if (type_str == "Texture")   return ResourceType::Texture;
-            if (type_str == "Material")  return ResourceType::Material;
-            if (type_str == "Mesh")      return ResourceType::Mesh;
-            if (type_str == "Shader")    return ResourceType::Shader;
-            if (type_str == "Audio")     return ResourceType::Audio;
-            if (type_str == "Animation") return ResourceType::Animation;
-            if (type_str == "Font")      return ResourceType::Font;
-            return ResourceType::Unknown;
-        }
     }
 
     void ResourceCache::Initialize()
@@ -141,47 +112,6 @@ namespace spartan
         return size;
     }
 
-    void ResourceCache::Save(pugi::xml_node& node)
-    {
-        for (const auto& resource : GetResources())
-        {
-            // skip resources without a file path (e.g., procedural/in-memory only)
-            if (resource->GetResourceFilePath().empty())
-                continue;
-    
-            pugi::xml_node res_node = node.append_child("Resource");
-            res_node.append_attribute("type") = resource_type_to_string(resource->GetResourceType());
-            res_node.append_attribute("path") = resource->GetResourceFilePath().c_str();
-        }
-    }
-    
-    void ResourceCache::Load(pugi::xml_node& node)
-    {
-        Shutdown();
-
-        for (pugi::xml_node res_node = node.child("Resource"); res_node; res_node = res_node.next_sibling("Resource"))
-        {
-            std::string type_str = res_node.attribute("type").as_string();
-            ResourceType type    = resource_type_from_string(type_str);
-            std::string path     = res_node.attribute("path").as_string();
-
-            if (type == ResourceType::Unknown || path.empty())
-            {
-                SP_LOG_WARNING("Skipping invalid resource: type=%s, path=%s", type_str.c_str(), path.c_str());
-                continue;
-            }
-
-            // load based on type
-            switch (type)
-            {
-                //case ResourceType::Texture:  Load<RHI_Texture>(path); break;
-                //case ResourceType::Material: Load<Material>(path);    break;
-                //case ResourceType::Mesh:     Load<Mesh>(path);        break;
-                default: SP_LOG_WARNING("Unsupported resource type: %s", type_str.c_str()); break;
-            }
-        }
-    }
-    
     void ResourceCache::Shutdown()
     {
         uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
