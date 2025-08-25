@@ -286,4 +286,23 @@ namespace spartan
     {
         return 0;
     }
+
+    void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)
+    {
+
+    }
+
+    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_Descriptor>& descriptors_)
+    {
+
+    }
+
+    class RHI_DescriptorSet
+    {
+    };
+    unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
+    {
+        static unordered_map<uint64_t, RHI_DescriptorSet> descriptors;
+        return descriptors;
+    }
 }

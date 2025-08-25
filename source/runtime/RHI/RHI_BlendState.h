@@ -32,14 +32,14 @@ namespace spartan
     {
     public:
         RHI_BlendState(
-            const bool blend_enabled                    = false,
-            const RHI_Blend source_blend                = RHI_Blend::Src_Alpha,
-            const RHI_Blend dest_blend                  = RHI_Blend::Inv_Src_Alpha,
-            const RHI_Blend_Operation blend_op          = RHI_Blend_Operation::Add,
-            const RHI_Blend source_blend_alpha          = RHI_Blend::One,
-            const RHI_Blend dest_blend_alpha            = RHI_Blend::One,
-            const RHI_Blend_Operation blend_op_alpha    = RHI_Blend_Operation::Add,
-            const float blend_factor                    = 0.0f
+            const bool blend_enabled                 = false,
+            const RHI_Blend source_blend             = RHI_Blend::Src_Alpha,
+            const RHI_Blend dest_blend               = RHI_Blend::Inv_Src_Alpha,
+            const RHI_Blend_Operation blend_op       = RHI_Blend_Operation::Add,
+            const RHI_Blend source_blend_alpha       = RHI_Blend::One,
+            const RHI_Blend dest_blend_alpha         = RHI_Blend::One,
+            const RHI_Blend_Operation blend_op_alpha = RHI_Blend_Operation::Add,
+            const float blend_factor                 = 0.0f
         );
         ~RHI_BlendState();
 
