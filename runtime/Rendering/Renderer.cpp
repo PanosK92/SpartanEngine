@@ -1236,14 +1236,14 @@ namespace spartan
     
         const uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
         const uint32_t min_slice_res    = 256;
+        const uint32_t border           = 2; // border in pixels
     
         // collect slices
         for (const auto& entity : World::GetEntitiesLights())
         {
             Light* light = entity->GetComponent<Light>();
             light->ClearAtlasRectangles();
-
-            // if the bindless array index is invalid, it means it never made it into the array (so it's not visible)
+    
             if (light->GetIndex() == numeric_limits<uint32_t>::max())
                 continue;
     
@@ -1256,7 +1256,6 @@ namespace spartan
         if (m_shadow_slices.empty())
             return;
     
-        // lambda: check if N slices of given size can fit
         auto can_fit = [&](uint32_t slice_res, uint32_t num_slices) -> bool
         {
             uint32_t x = 0, y = 0, row_h = 0;
@@ -1264,17 +1263,17 @@ namespace spartan
     
             for (uint32_t i = 0; i < num_slices; ++i)
             {
-                if (x + slice_res > resolution_atlas)
+                if (x + slice_res + 2*border > resolution_atlas)
                 {
-                    y    += row_h;
+                    y    += row_h + 2*border;
                     x     = 0;
                     row_h = 0;
                 }
     
-                if (y + slice_res > resolution_atlas)
+                if (y + slice_res + 2*border > resolution_atlas)
                     return false;
     
-                x    += slice_res;
+                x    += slice_res + 2*border;
                 row_h = max(row_h, slice_res);
                 packed++;
             }
@@ -1282,7 +1281,6 @@ namespace spartan
             return packed == num_slices;
         };
     
-        // decide slice resolution dynamically
         uint32_t slice_res = resolution_atlas;
     
         if (m_shadow_slices.size() > 1)
@@ -1290,7 +1288,6 @@ namespace spartan
             uint32_t low = min_slice_res;
             uint32_t high = resolution_atlas;
     
-            // binary search to find largest fitting slice size
             while (low < high)
             {
                 uint32_t mid = (low + high + 1) / 2;
@@ -1303,35 +1300,35 @@ namespace spartan
             slice_res = low;
         }
     
-        // assign chosen resolution to all slices
         for (auto& slice : m_shadow_slices)
             slice.res = slice_res;
     
-        // pack slices in scanline order
+        // pack slices in scanline order with border
         uint32_t x = 0, y = 0, row_h = 0;
         for (auto& slice : m_shadow_slices)
         {
-            if (x + slice.res > resolution_atlas)
+            if (x + slice.res + 2*border > resolution_atlas)
             {
-                y    += row_h;
+                y    += row_h + 2*border;
                 x     = 0;
                 row_h = 0;
             }
     
-            if (y + slice.res > resolution_atlas)
+            if (y + slice.res + 2*border > resolution_atlas)
             {
                 SP_LOG_WARNING("Atlas overflow even after fitting");
                 continue;
             }
     
-            slice.rect  = math::Rectangle(
-                static_cast<float>(x),
-                static_cast<float>(y),
+            // apply border offset
+            slice.rect = math::Rectangle(
+                static_cast<float>(x + border),
+                static_cast<float>(y + border),
                 static_cast<float>(slice.res),
                 static_cast<float>(slice.res)
             );
     
-            x    += slice.res;
+            x    += slice.res + 2*border;
             row_h = max(row_h, slice.res);
         }
     
