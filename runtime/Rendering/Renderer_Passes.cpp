@@ -852,7 +852,6 @@ namespace spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        Light* light                            = World::GetDirectionalLight();
         RHI_Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
 
@@ -864,9 +863,6 @@ namespace spartan
                 pso.name             = "skysphere_atmospheric_scattering";
                 pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
                 cmd_list->SetPipelineState(pso);
-    
-                m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), 0.0f, 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
     
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);

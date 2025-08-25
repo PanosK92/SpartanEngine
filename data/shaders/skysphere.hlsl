@@ -208,7 +208,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         sin(phi) * cos_theta
     ));
 
-    
     float3 original_view_direction = view_direction;
     bool is_below_horizon = (view_direction.y < 0.0f);
     if (is_below_horizon)

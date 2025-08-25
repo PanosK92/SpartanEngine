@@ -102,6 +102,19 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 
 float compute_shadow(Surface surface, Light light)
 {
+    float3 to_light = light.position - surface.position;
+    float dist_sq   = dot(to_light, to_light);
+
+    // range-based fade for point and spot lights
+    float fade = 1.0f;
+    if (light.is_point() || light.is_spot())
+    {
+        fade = saturate(1.0f - dist_sq / (light.far * light.far));
+        fade = fade * fade; // quadratic falloff for smooth transition
+        if (fade <= 0.0f)
+            return 1.0f; // fully lit
+    }
+
     float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * 0.04f;
     float3 position_world     = surface.position + normal_offset_bias;
     float shadow              = 1.0f;
@@ -112,14 +125,17 @@ float compute_shadow(Surface surface, Light light)
         float3 abs_dir         = abs(light_to_pixel);
 
         // determine the cube face
-        uint face_index         = (abs_dir.x >= abs_dir.y && abs_dir.x >= abs_dir.z) ? (light_to_pixel.x > 0 ? 0u : 1u) :
-                                  (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0 ? 2u : 3u) :
-                                                                                       (light_to_pixel.z > 0 ? 4u : 5u);
+        uint face_index = (abs_dir.x >= abs_dir.y && abs_dir.x >= abs_dir.z) ? (light_to_pixel.x > 0 ? 0u : 1u) :
+                          (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0 ? 2u : 3u) :
+                                                                               (light_to_pixel.z > 0 ? 4u : 5u);
 
-        float4 clip_pos         = mul(float4(position_world, 1.0f), light.transform[face_index]);
-        float3 ndc              = clip_pos.xyz / clip_pos.w;
-        float2 uv               = ndc_to_uv(ndc.xy);
-        shadow                  = vogel_depth(light, surface, float3(uv, (float)face_index), ndc.z);
+        float4 clip_pos = mul(float4(position_world, 1.0f), light.transform[face_index]);
+        float3 ndc      = clip_pos.xyz / clip_pos.w;
+        float2 uv       = ndc_to_uv(ndc.xy);
+        shadow          = vogel_depth(light, surface, float3(uv, (float)face_index), ndc.z);
+
+        // apply range fade
+        shadow = lerp(1.0f, shadow, fade);
     }
     else // directional / spot
     {
@@ -143,6 +159,10 @@ float compute_shadow(Surface surface, Light light)
             float blend_factor        = smoothstep(0.9f, 1.0f, edge_dist);
             shadow                    = lerp(shadow_near, shadow_far, blend_factor);
         }
+
+        // apply range fade for spot light
+        if (light.is_spot())
+            shadow = lerp(1.0f, shadow, fade);
     }
 
     return shadow;
