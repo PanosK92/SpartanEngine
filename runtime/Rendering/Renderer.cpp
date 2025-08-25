@@ -279,58 +279,123 @@ namespace spartan
 
     void Renderer::Tick()
     {
-        // update logic
-        swapchain->AcquireNextImage();
-        RHI_Device::Tick(frame_num);
-        RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
-        dynamic_resolution();
-
-        // begin the graphics/present command list
-        RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
-        m_cmd_list_present        = queue_graphics->NextCommandList();
-        m_cmd_list_present->Begin();
-
-        // begin the secondary/compute command list
-        //RHI_Queue* queue_compute          = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
-        //RHI_CommandList* cmd_list_compute = queue_compute->NextCommandList();
-        //cmd_list_compute->Begin();
-
-        // build draw calls and determine occluders
-        UpdateDrawCalls(m_cmd_list_present);
-
-        // update GPU buffers (needs to happen after draw call and occluder building)
-        UpdateBuffers(m_cmd_list_present);
-
-        // produce a frame (or not, if minimized), this is where the expensive work happens
-        if (!Window::IsMinimized() && m_initialized_resources)
-        { 
-            ProduceFrame(m_cmd_list_present, nullptr);
-        }
-
-        // blit to back buffer when not in editor mode
-        bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
-        if (is_standalone)
+        // acquire next swapchain image and update RHI
         {
-            BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
+            swapchain->AcquireNextImage();
+            RHI_Device::Tick(frame_num);
+            RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
+            dynamic_resolution();
         }
-
-        // present
-        if (is_standalone)
+    
+        // begin the primary graphics command list
         {
-            SubmitAndPresent();
+            RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+            m_cmd_list_present = queue_graphics->NextCommandList();
+            m_cmd_list_present->Begin();
         }
-
-        // clear per frame data
+    
+        // update CPU and GPU resources
+        {
+            // fill draw call list and determine ideal occluders
+            UpdateDrawCalls(m_cmd_list_present);
+    
+            // handle dynamic buffers and resource deletion
+            {
+                m_resource_index++;
+                bool is_sync_point = m_resource_index == renderer_resource_frame_lifetime;
+                if (is_sync_point)
+                {
+                    m_resource_index = 0;
+    
+                    if (RHI_Device::DeletionQueueNeedsToParse())
+                    {
+                        RHI_Device::QueueWaitAll();
+                        RHI_Device::DeletionQueueParse();
+                    }
+    
+                    GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
+                }
+            }
+    
+            // update bindless resources
+            {
+                bool initialize = GetFrameNumber() == 0;
+    
+                if (initialize || !ProgressTracker::IsLoading())
+                {
+                    if (m_bindless_materials_dirty)
+                    {
+                        UpdateMaterials(m_cmd_list_present);
+                        RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
+                        m_bindless_materials_dirty = false;
+                    }
+    
+                    if (m_bindless_lights_dirty)
+                    {
+                        UpdateShadowAtlas();
+                        UpdateLights(m_cmd_list_present);
+                        RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
+                        m_bindless_lights_dirty = false;
+                    }
+    
+                    if (m_bindless_abbs_dirty)
+                    {
+                        UpdatedBoundingBoxes(m_cmd_list_present);RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+                        m_bindless_abbs_dirty = true; // always update world-space AABBs
+                    }
+                }
+    
+                if (m_bindless_samplers_dirty)
+                {
+                    RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
+                    m_bindless_samplers_dirty = false;
+                }
+            }
+    
+            // update frame constant buffer and add lines to render
+            UpdateFrameConstantBuffer(m_cmd_list_present);
+            AddLinesToBeRendered();
+        }
+    
+        // produce the frame if window is not minimized
+        {
+            if (!Window::IsMinimized() && m_initialized_resources)
+            {
+                ProduceFrame(m_cmd_list_present, nullptr);
+            }
+        }
+    
+        // blit to back buffer when standalone
+        {
+            bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
+            if (is_standalone)
+            {
+                BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
+            }
+        }
+    
+        // present frame when standalone
+        {
+            bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
+            if (is_standalone)
+            {
+                SubmitAndPresent();
+            }
+        }
+    
+        // clear per-frame data
         {
             m_lines_vertices.clear();
             m_icons.clear();
         }
-
-        frame_num++;
-
-        if (frame_num == 1)
+    
+        // increment frame counter and trigger first-frame event
         {
-            SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
+            frame_num++;
+            if (frame_num == 1)
+            {
+                SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
+            }
         }
     }
 
@@ -556,37 +621,6 @@ namespace spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::UpdateBuffers(RHI_CommandList* cmd_list)
-    {
-        // reset dynamic buffers and parse deletion queue
-        {
-            m_resource_index++;
-            bool is_sync_point = m_resource_index == renderer_resource_frame_lifetime;
-            if (is_sync_point)
-            {
-                m_resource_index = 0;
-
-                // delete any rhi resources that have accumulated
-                if (RHI_Device::DeletionQueueNeedsToParse())
-                {
-                    RHI_Device::QueueWaitAll();
-                    RHI_Device::DeletionQueueParse();
-                }
-
-                // reset dynamic buffer offsets
-                GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
-            }
-        }
-
-        // frame constant buffer (just a single buffer for the entire frame)
-        UpdateFrameConstantBuffer(cmd_list);
-
-        // line rendering buffer (used for debugging)
-        AddLinesToBeRendered();
-
-        UpdateBindlessBuffers(cmd_list);
-    }
-
     void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
     {
         if (shared_ptr<Font>& font = GetFont())
@@ -793,42 +827,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
     }
 
-    void Renderer::UpdateBindlessBuffers(RHI_CommandList* cmd_list)
-    {
-        bool initialize = GetFrameNumber() == 0;
-        if (initialize || !ProgressTracker::IsLoading())
-        { 
-            if (m_bindless_materials_dirty)
-            {
-                BindlessUpdateMaterialsParameters(cmd_list);
-                RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
-                m_bindless_materials_dirty = false;
-            }
-            
-            if (m_bindless_lights_dirty)
-            {
-                UpdateShadowAtlas();
-                BindlessUpdateLights(cmd_list);
-                RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
-                m_bindless_lights_dirty = false;
-            }
-            
-            if (m_bindless_abbs_dirty)
-            {
-                BindlessUpdateOccludersAndOccludes(cmd_list);
-                RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
-                m_bindless_abbs_dirty = true; // world space bounding boxes always need to update
-            }
-        }
-
-        if (m_bindless_samplers_dirty)
-        { 
-            RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
-            m_bindless_samplers_dirty = false;
-        }
-    }
-
-    void Renderer::BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list)
+    void Renderer::UpdateMaterials(RHI_CommandList* cmd_list)
     {
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
@@ -947,7 +946,7 @@ namespace spartan
         count = 0;
     }
 
-    void Renderer::BindlessUpdateLights(RHI_CommandList* cmd_list)
+    void Renderer::UpdateLights(RHI_CommandList* cmd_list)
     {
         const Entity* camera_entity = World::GetCamera() ? World::GetCamera()->GetEntity() : nullptr;
         const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
@@ -1055,7 +1054,7 @@ namespace spartan
         buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * World::GetLightCount());
     }
 
-    void Renderer::BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list)
+    void Renderer::UpdatedBoundingBoxes(RHI_CommandList* cmd_list)
     {
         // clear
         m_bindless_aabbs.fill(Sb_Aabb());
@@ -1077,11 +1076,6 @@ namespace spartan
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::AABBs);
         buffer->ResetOffset();
         buffer->Update(cmd_list, &m_bindless_aabbs[0], buffer->GetStride() * count);
-    }
-
-    void Renderer::Screenshot(const string& file_path)
-    {
-        GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
     }
 
     void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
@@ -1346,5 +1340,10 @@ namespace spartan
         {
             slice.light->SetAtlasRectangle(slice.slice_index, slice.rect);
         }
+    }
+
+    void Renderer::Screenshot(const string& file_path)
+    {
+        GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
     }
 }

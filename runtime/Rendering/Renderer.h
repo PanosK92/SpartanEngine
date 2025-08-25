@@ -187,13 +187,11 @@ namespace spartan
 
         // event handlers
         static void OnFullScreenToggled();
-        static void UpdateBuffers(RHI_CommandList* cmd_list);
 
         // bindless
-        static void UpdateBindlessBuffers(RHI_CommandList* cmd_list);
-        static void BindlessUpdateMaterialsParameters(RHI_CommandList* cmd_list);
-        static void BindlessUpdateLights(RHI_CommandList* cmd_lis);
-        static void BindlessUpdateOccludersAndOccludes(RHI_CommandList* cmd_list);
+        static void UpdateMaterials(RHI_CommandList* cmd_list);
+        static void UpdateLights(RHI_CommandList* cmd_lis);
+        static void UpdatedBoundingBoxes(RHI_CommandList* cmd_list);
 
         // misc
         static void AddLinesToBeRendered();
