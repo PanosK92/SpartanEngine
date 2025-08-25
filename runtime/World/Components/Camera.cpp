@@ -299,7 +299,7 @@ namespace spartan
         if (!GetFlag(CameraFlags::IsDirty))
             return;
 
-        m_view                          = ComputeViewMatrix();
+        m_view                          = UpdateViewMatrix();
         m_projection                    = ComputeProjection(m_far_plane, m_near_plane);
         m_projection_non_reverse_z      = ComputeProjection(m_near_plane, m_far_plane);
         m_view_projection               = m_view * m_projection;
@@ -698,7 +698,7 @@ namespace spartan
         m_physics_body_to_control = physics_body;
     }
 
-    Matrix Camera::ComputeViewMatrix() const
+    Matrix Camera::UpdateViewMatrix() const
     {
         Vector3 position = GetEntity()->GetPosition();
         Vector3 look_at  = GetEntity()->GetRotation() * Vector3::Forward;

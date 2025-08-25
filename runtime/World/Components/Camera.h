@@ -146,7 +146,7 @@ namespace spartan
         void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
         std::shared_ptr<Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
 
-        math::Matrix ComputeViewMatrix() const;
+        math::Matrix UpdateViewMatrix() const;
         math::Matrix ComputeProjection(const float near_plane, const float far_plane);
         void FocusOnSelectedEntity();
 

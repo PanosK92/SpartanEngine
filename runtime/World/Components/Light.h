@@ -134,15 +134,25 @@ namespace spartan
         const math::Rectangle& GetAtlasRectangle(uint32_t slice) const { return m_atlas_rectangles[slice]; }
         void SetAtlasRectangle(uint32_t slice, const math::Rectangle& rectangle);
         void ClearAtlasRectangles();
+        math::BoundingBox GetBoundingBox() const { return m_bounding_box; }
 
     private:
         void UpdateMatrices();
-        void ComputeViewMatrix();
-        void ComputeProjectionMatrix();
+        void UpdateViewMatrix();
+        void UpdateProjectionMatrix();
+        void UpdateBoundingBox();
 
-        // intensity
-        LightIntensity m_intensity   = LightIntensity::bulb_500_watt;
-        float m_intensity_lumens_lux = 2600.0f;
+        // properties
+        LightIntensity m_intensity       = LightIntensity::bulb_500_watt;
+        float m_intensity_lumens_lux     = 2600.0f;
+        uint32_t m_flags                 = 0;
+        LightType m_light_type           = LightType::Max;
+        Color m_color_rgb                = Color::standard_black;
+        float m_temperature_kelvin       = 0.0f;
+        float m_range                    = 32.0f;
+        float m_angle_rad                = math::deg_to_rad * 30.0f;
+        uint32_t m_index                 = 0;
+        math::BoundingBox m_bounding_box = math::BoundingBox::Zero;
 
         // matrices/frustums per slice/face/cascade
         std::array<math::Frustum, 6> m_frustums;
@@ -153,14 +163,5 @@ namespace spartan
         std::array<math::Rectangle, 6> m_atlas_rectangles;
         std::array<math::Vector2, 6> m_atlas_offsets;
         std::array<math::Vector2, 6> m_atlas_scales;
-
-        // misc
-        uint32_t m_flags           = 0;
-        LightType m_light_type     = LightType::Max;
-        Color m_color_rgb          = Color::standard_black;
-        float m_temperature_kelvin = 0.0f;
-        float m_range              = 32.0f;
-        float m_angle_rad          = math::deg_to_rad * 30.0f;
-        uint32_t m_index           = 0;
     };
 }

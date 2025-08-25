@@ -223,8 +223,8 @@ namespace spartan
                                 float radius   = light->GetRange();
                                 uint32_t segment_count = 64;
 
-                                DrawCircle(center, Vector3::Up, radius, segment_count);
-                                DrawCircle(center, Vector3::Right, radius, segment_count);
+                                DrawCircle(center, Vector3::Up,      radius, segment_count);
+                                DrawCircle(center, Vector3::Right,   radius, segment_count);
                                 DrawCircle(center, Vector3::Forward, radius, segment_count);
                             }
                             else if (light->GetLightType() == LightType::Spot)
@@ -234,10 +234,10 @@ namespace spartan
                                 float opposite = light->GetRange() * tan(light->GetAngle());
 
                                 Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
-                                Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp() * opposite;
+                                Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp()    * opposite;
                                 Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
-                                Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown() * opposite;
-                                Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft() * opposite;
+                                Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown()  * opposite;
+                                Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft()  * opposite;
 
                                 Vector3 pos_start = light->GetEntity()->GetPosition();
                                 DrawLine(pos_start, pos_start + pos_end_center);
@@ -266,7 +266,8 @@ namespace spartan
             {
                 if (!entity)
                     continue;
-            
+
+                // meshes
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
                     if (Camera* camera = World::GetCamera())
@@ -297,6 +298,12 @@ namespace spartan
                             }
                         }
                     }
+                }
+
+                // lights
+                if (Light* light = entity->GetComponent<Light>())
+                {
+                    DrawBox(light->GetBoundingBox(), Color::standard_yellow);
                 }
             }
         }

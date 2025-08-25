@@ -148,7 +148,6 @@ namespace spartan
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list);
-        static void BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list);
         static void Pass_Occlusion(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
@@ -201,6 +200,7 @@ namespace spartan
         static void SetCommonTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
         static void UpdateShadowAtlas();
+        static void UpdateDrawCalls(RHI_CommandList* cmd_list);
 
         // misc
         static Cb_Frame m_cb_frame_cpu;

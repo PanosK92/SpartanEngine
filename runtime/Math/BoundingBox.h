@@ -104,6 +104,7 @@ namespace spartan
 
             static const BoundingBox Zero;
             static const BoundingBox Unit;
+            static const BoundingBox Infinite;
 
         private:
             Vector3 m_min;

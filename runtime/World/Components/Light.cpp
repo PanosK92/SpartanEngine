@@ -396,12 +396,13 @@ namespace spartan
 
     void Light::UpdateMatrices()
     {
-        ComputeViewMatrix();
-        ComputeProjectionMatrix();
+        UpdateViewMatrix();
+        UpdateProjectionMatrix();
+        UpdateBoundingBox();
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
-    void Light::ComputeViewMatrix()
+    void Light::UpdateViewMatrix()
     {
         const Vector3 position = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
 
@@ -449,7 +450,7 @@ namespace spartan
         }
     }
     
-    void Light::ComputeProjectionMatrix()
+    void Light::UpdateProjectionMatrix()
     {
         if (m_light_type == LightType::Directional)
         {
@@ -482,6 +483,52 @@ namespace spartan
                 m_matrix_projection[i] = Matrix::CreatePerspectiveFieldOfViewLH(fov_y_radians, aspect_ratio, m_range, 0.05f);
                 m_frustums[i]          = Frustum(m_matrix_view[i], m_matrix_projection[i]);
             }
+        }
+    }
+
+    void Light::UpdateBoundingBox()
+    {
+        const Vector3 position = GetEntity()->GetPosition();
+    
+        if (m_light_type == LightType::Point)
+        {
+            const float radius = m_range;
+            m_bounding_box = math::BoundingBox(
+                position - Vector3(radius, radius, radius),
+                position + Vector3(radius, radius, radius)
+            );
+        }
+        else if (m_light_type == LightType::Spot)
+        {
+            const float opposite = m_range * tan(m_angle_rad);
+    
+            const Vector3 pos_tip    = position;
+            const Vector3 pos_center = pos_tip    + GetEntity()->GetForward() * m_range;
+            const Vector3 pos_up     = pos_center + GetEntity()->GetUp()      * opposite;
+            const Vector3 pos_down   = pos_center + GetEntity()->GetDown()    * opposite;
+            const Vector3 pos_right  = pos_center + GetEntity()->GetRight()   * opposite;
+            const Vector3 pos_left   = pos_center + GetEntity()->GetLeft()    * opposite;
+    
+            Vector3 min = pos_tip;
+            Vector3 max = pos_tip;
+    
+            auto expand = [&](const Vector3& p)
+            {
+                min = Vector3::Min(min, p);
+                max = Vector3::Max(max, p);
+            };
+    
+            expand(pos_center);
+            expand(pos_up);
+            expand(pos_down);
+            expand(pos_right);
+            expand(pos_left);
+    
+            m_bounding_box = math::BoundingBox(min, max);
+        }
+        else // directional
+        {
+            m_bounding_box = math::BoundingBox::Infinite;
         }
     }
 

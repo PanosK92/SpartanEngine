@@ -296,7 +296,7 @@ namespace spartan
         //cmd_list_compute->Begin();
 
         // build draw calls and determine occluders
-        BuildDrawCallsAndOccluders(m_cmd_list_present);
+        UpdateDrawCalls(m_cmd_list_present);
 
         // update GPU buffers (needs to happen after draw call and occluder building)
         UpdateBuffers(m_cmd_list_present);
@@ -1023,20 +1023,26 @@ namespace spartan
                 if (light_component == first_directional)
                     continue;
     
-                // skip inactive or zero-intensity lights
-                bool active = light_component->GetEntity()->GetActive() && light_component->GetIntensityWatt() > 0.0f;
-    
+                if (!light_component->GetEntity()->GetActive())
+                    continue;
+
+                if (light_component->GetIntensityWatt() <= 0.0f)
+                    continue;
+
+                if (Camera* camera = World::GetCamera())
+                {
+                    if (!camera->IsInViewFrustum(light_component->GetBoundingBox()))
+                        continue;
+                }
+
                 // skip point/spot lights beyond 100 meters
-                if (active && camera_entity && light_component->GetLightType() != LightType::Directional)
+                if (light_component->GetLightType() != LightType::Directional)
                 {
                     const float dist2 = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
                     if (dist2 > 10000.0f) // 100 meters squared
-                        active = false;
+                        continue;
                 }
-    
-                if (!active)
-                    continue; // never insert disabled lights
-    
+
                 fill_light(light_component);
             }
         }
@@ -1076,156 +1082,152 @@ namespace spartan
         GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
     }
 
-    void Renderer::BuildDrawCallsAndOccluders(RHI_CommandList* cmd_list)
+    void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
     {
         m_draw_call_count = 0;
 
         if (ProgressTracker::IsLoading())
             return;
 
-        cmd_list->BeginTimeblock("build_draw_calls_and_occluders", false, false);
-        {
-            // build draw calls and sort them
-            {  
-                for (const shared_ptr<Entity>& entity : World::GetEntities())
+        // build draw calls and sort them
+        {  
+            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            {
+                if (!entity->GetActive())
+                    continue;
+        
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
-                    if (!entity->GetActive())
+                    // skip renderables with no material, can happen when loading a world and the material is not yet loaded
+                    if (!renderable->GetMaterial())
                         continue;
-
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+        
+                    if (renderable->GetMaterial()->IsTransparent())
                     {
-                        // skip renderables with no material, can happen when loading a world and the material is not yet loaded
-                        if (!renderable->GetMaterial())
-                            continue;
-
-                        if (renderable->GetMaterial()->IsTransparent())
-                        {
-                            m_transparents_present = true;
-                        }
-                
-                        if (renderable->HasInstancing())
-                        {
-                            for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
-                            {
-                                Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
-                                draw_call.renderable           = renderable;
-                                draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                                draw_call.lod_index            = renderable->GetLodIndex(group_index);
-                                draw_call.is_occluder          = false;
-                                draw_call.camera_visible       = renderable->IsVisible(group_index);
-                                draw_call.instance_group_index = group_index;
-                                draw_call.instance_index       = renderable->GetInstanceGroupStartIndex(group_index);
-                                draw_call.instance_count       = renderable->GetInstanceGroupCount(group_index);
-                            }
-                        }
-                        else
+                        m_transparents_present = true;
+                    }
+            
+                    if (renderable->HasInstancing())
+                    {
+                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
                         {
                             Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
                             draw_call.renderable           = renderable;
-                            draw_call.distance_squared     = renderable->GetDistanceSquared();
-                            draw_call.lod_index            = renderable->GetLodIndex();
+                            draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
+                            draw_call.lod_index            = renderable->GetLodIndex(group_index);
                             draw_call.is_occluder          = false;
-                            draw_call.camera_visible       = renderable->IsVisible();
-                            draw_call.instance_group_index = 0;
-                            draw_call.instance_index       = 0;
-                            draw_call.instance_count       = 1;
+                            draw_call.camera_visible       = renderable->IsVisible(group_index);
+                            draw_call.instance_group_index = group_index;
+                            draw_call.instance_index       = renderable->GetInstanceGroupStartIndex(group_index);
+                            draw_call.instance_count       = renderable->GetInstanceGroupCount(group_index);
                         }
                     }
+                    else
+                    {
+                        Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
+                        draw_call.renderable           = renderable;
+                        draw_call.distance_squared     = renderable->GetDistanceSquared();
+                        draw_call.lod_index            = renderable->GetLodIndex();
+                        draw_call.is_occluder          = false;
+                        draw_call.camera_visible       = renderable->IsVisible();
+                        draw_call.instance_group_index = 0;
+                        draw_call.instance_index       = 0;
+                        draw_call.instance_count       = 1;
+                    }
                 }
-
-                // sort by transparency, material id, and distance (front-to-back for opaque, back-to-front for transparent)
-                sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-                {
-                    // step 1: sort by transparency (opaque before transparent)
-                    bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-                    bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-                    if (a_transparent != b_transparent)
-                    {
-                        return !a_transparent; // false (opaque) before true (transparent)
-                    }
-                    
-                    // step 2: sort by material id within each transparency group
-                    uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
-                    uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
-                    if (a_material_id != b_material_id)
-                    {
-                        return a_material_id < b_material_id; // lower material ids first
-                    }
-                    
-                    // step 3: sort by distance within each material group
-                    if (!a_transparent) // both are opaque
-                    {
-                        return a.distance_squared < b.distance_squared; // front-to-back
-                    }
-                    else // both are transparent
-                    {
-                        return a.distance_squared > b.distance_squared; // back-to-front
-                    }
-                });
             }
-
-            // select occluders by finding the top n largest screen-space bounding boxes
+        
+            // sort by transparency, material id, and distance (front-to-back for opaque, back-to-front for transparent)
+            sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
             {
-                // lambda to compute screen-space area of a bounding box
-                auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
+                // step 1: sort by transparency (opaque before transparent)
+                bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+                bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+                if (a_transparent != b_transparent)
                 {
-                    // project aabb to screen space using camera function
-                    float area = 0.0f;
-                    if (Camera* camera = World::GetCamera())
-                    { 
-                        math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
+                    return !a_transparent; // false (opaque) before true (transparent)
+                }
                 
-                        // compute screen-space dimensions
-                        area = clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
-                    }
-
-                    return area;
-                };
-            
-                // temporary storage for draw call areas
-                struct DrawCallArea
+                // step 2: sort by material id within each transparency group
+                uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
+                uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
+                if (a_material_id != b_material_id)
                 {
-                    uint32_t index;
-                    float area;
-                };
-                vector<DrawCallArea> areas;
-                areas.reserve(m_draw_call_count); // pre-allocate to avoid reallocations
-            
-                // collect screen-space areas for eligible draw calls
-                for (uint32_t i = 0; i < m_draw_call_count; i++)
-                {
-                    Renderer_DrawCall& draw_call = m_draw_calls[i];
-                    Renderable* renderable       = draw_call.renderable;
-                    Material* material           = renderable->GetMaterial();
-            
-                    // skip any draw calls that have a mesh that you can see through (transparent, instanced, non-solid)
-                    if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
-                        continue;
-            
-                    // get bounding box
-                    const BoundingBox& aabb_world = renderable->GetBoundingBox();
-                    
-                    // compute screen-space area and store it
-                    float screen_area = compute_screen_space_area(aabb_world);
-                    areas.push_back({i, screen_area});
+                    return a_material_id < b_material_id; // lower material ids first
                 }
-            
-                // sort draw calls by screen-space area (descending)
-                sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
+                
+                // step 3: sort by distance within each material group
+                if (!a_transparent) // both are opaque
                 {
-                    return a.area > b.area;
-                });
-            
-                // select the top n occluders
-                const uint32_t max_occluders = 64;
-                uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
-                for (uint32_t i = 0; i < occluder_count; i++)
-                {
-                    m_draw_calls[areas[i].index].is_occluder = true;
+                    return a.distance_squared < b.distance_squared; // front-to-back
                 }
+                else // both are transparent
+                {
+                    return a.distance_squared > b.distance_squared; // back-to-front
+                }
+            });
+        }
+        
+        // select occluders by finding the top n largest screen-space bounding boxes
+        {
+            // lambda to compute screen-space area of a bounding box
+            auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
+            {
+                // project aabb to screen space using camera function
+                float area = 0.0f;
+                if (Camera* camera = World::GetCamera())
+                { 
+                    math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
+            
+                    // compute screen-space dimensions
+                    area = clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
+                }
+        
+                return area;
+            };
+        
+            // temporary storage for draw call areas
+            struct DrawCallArea
+            {
+                uint32_t index;
+                float area;
+            };
+            vector<DrawCallArea> areas;
+            areas.reserve(m_draw_call_count); // pre-allocate to avoid reallocations
+        
+            // collect screen-space areas for eligible draw calls
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                Renderer_DrawCall& draw_call = m_draw_calls[i];
+                Renderable* renderable       = draw_call.renderable;
+                Material* material           = renderable->GetMaterial();
+        
+                // skip any draw calls that have a mesh that you can see through (transparent, instanced, non-solid)
+                if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
+                    continue;
+        
+                // get bounding box
+                const BoundingBox& aabb_world = renderable->GetBoundingBox();
+                
+                // compute screen-space area and store it
+                float screen_area = compute_screen_space_area(aabb_world);
+                areas.push_back({i, screen_area});
+            }
+        
+            // sort draw calls by screen-space area (descending)
+            sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
+            {
+                return a.area > b.area;
+            });
+        
+            // select the top n occluders
+            const uint32_t max_occluders = 64;
+            uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
+            for (uint32_t i = 0; i < occluder_count; i++)
+            {
+                m_draw_calls[areas[i].index].is_occluder = true;
             }
         }
-        cmd_list->EndTimeblock();
     }
 
     void Renderer::UpdateShadowAtlas()
