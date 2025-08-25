@@ -263,17 +263,35 @@ struct Light
     float compare_depth(float3 uv, float compare)
     {
         uint array_index = (uint)uv.z;
-        float2 atlas_uv  = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
+    
+        // compute atlas UV
+        float2 atlas_uv = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
+    
+        // clamp to slice bounds
+        float2 min_uv = atlas_offset[array_index];
+        float2 max_uv = atlas_offset[array_index] + atlas_scale[array_index];
+        atlas_uv      = clamp(atlas_uv, min_uv, max_uv);
+    
+        // comparison sampling
         return tex2.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], atlas_uv, compare).r;
     }
     
     float sample_depth(float3 uv)
     {
         uint array_index = (uint)uv.z;
-        float2 atlas_uv  = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
+    
+        // compute atlas UV
+        float2 atlas_uv = atlas_offset[array_index] + uv.xy * atlas_scale[array_index];
+    
+        // clamp to slice bounds
+        float2 min_uv = atlas_offset[array_index];
+        float2 max_uv = atlas_offset[array_index] + atlas_scale[array_index];
+        atlas_uv      = clamp(atlas_uv, min_uv, max_uv);
+    
+        // normal sampling
         return tex2.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
     }
-    
+
     void Build(uint index, Surface surface)
     {
         LightParameters light            = light_parameters[index];

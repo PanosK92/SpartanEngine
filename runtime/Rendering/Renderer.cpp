@@ -1283,7 +1283,7 @@ namespace spartan
             return packed == num_slices;
         };
     
-        // --- decide slice resolution dynamically ---
+        // decide slice resolution dynamically
         uint32_t slice_res = resolution_atlas;
     
         if (m_shadow_slices.size() > 1)
@@ -1308,7 +1308,7 @@ namespace spartan
         for (auto& slice : m_shadow_slices)
             slice.res = slice_res;
     
-        // --- pack slices in scanline order ---
+        // pack slices in scanline order
         uint32_t x = 0, y = 0, row_h = 0;
         for (auto& slice : m_shadow_slices)
         {
