@@ -1022,6 +1022,8 @@ namespace spartan
             {
                 if (light_component == first_directional)
                     continue;
+
+                light_component->SetIndex(numeric_limits<uint32_t>::max());
     
                 if (!light_component->GetEntity()->GetActive())
                     continue;
@@ -1246,8 +1248,9 @@ namespace spartan
         {
             Light* light = entity->GetComponent<Light>();
             light->ClearAtlasRectangles();
-    
-            if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f || !light->GetEntity()->GetActive())
+
+            // if the bindless array index is invalid, it means it never made it into the array (so it's not visible)
+            if (light->GetIndex() == numeric_limits<uint32_t>::max())
                 continue;
     
             for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
