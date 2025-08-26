@@ -1228,119 +1228,130 @@ namespace spartan
 
     void Renderer::UpdateShadowAtlas()
     {
-        m_shadow_slices.clear();
-    
-        auto camera = World::GetCamera();
-        if (!camera)
-            return;
-    
         const uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
         const uint32_t min_slice_res    = 256;
-        uint32_t border                 = 2; // border in pixels
 
+        // assume atlas is square, width == height
+    
         // collect slices
+        m_shadow_slices.clear();
         for (const auto& entity : World::GetEntitiesLights())
         {
-            Light* light = entity->GetComponent<Light>();
+            Light* light                = entity->GetComponent<Light>();
             light->ClearAtlasRectangles();
-    
             if (light->GetIndex() == numeric_limits<uint32_t>::max())
                 continue;
-    
             for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
             {
                 m_shadow_slices.emplace_back(light, i, 0, math::Rectangle::Zero);
             }
         }
-    
         if (m_shadow_slices.empty())
             return;
     
-        auto can_fit = [&](uint32_t slice_res, uint32_t num_slices) -> bool
+        // lambda to check if slices of given res can fit with borders
+        uint32_t border  = 8; // pixels between slices, none at edges
+        auto can_fit = [&](uint32_t test_res, uint32_t num_slices) -> bool
         {
-            uint32_t x = 0, y = 0, row_h = 0;
-            uint32_t packed = 0;
+            if (test_res > resolution_atlas)
+                return false;
+    
+            uint32_t x     = 0;
+            uint32_t y     = 0;
+            uint32_t row_h = 0;
     
             for (uint32_t i = 0; i < num_slices; ++i)
             {
-                if (x + slice_res + 2 * border > resolution_atlas)
+                uint32_t left_pad = (x == 0) ? 0 : border;
+                uint32_t placed_x = x + left_pad;
+    
+                // wrap to next row if overflow
+                if (placed_x + test_res > resolution_atlas)
                 {
-                    y    += row_h + 2 * border;
-                    x     = 0;
-                    row_h = 0;
+                    y        += row_h + border;
+                    x         = 0;
+                    row_h     = 0;
+                    placed_x  = 0;
                 }
     
-                if (y + slice_res + 2 * border > resolution_atlas)
+                // check if too wide after wrap
+                if (placed_x + test_res > resolution_atlas)
                     return false;
     
-                x    += slice_res + 2 * border;
-                row_h = max(row_h, slice_res);
-                packed++;
+                uint32_t placed_y       = y;
+                if (placed_y + test_res > resolution_atlas)
+                    return false;
+    
+                // simulate placement
+                x     = placed_x + test_res;
+                row_h = max(row_h, test_res);
             }
     
-            return packed == num_slices;
+            return true;
         };
     
-        uint32_t slice_res = resolution_atlas;
-    
+        // binary search for max uniform slice res
+        uint32_t max_slice_res = resolution_atlas;
         if (m_shadow_slices.size() > 1)
         {
-            uint32_t low = min_slice_res;
+            uint32_t low  = min_slice_res;
             uint32_t high = resolution_atlas;
-    
             while (low < high)
             {
                 uint32_t mid = (low + high + 1) / 2;
                 if (can_fit(mid, static_cast<uint32_t>(m_shadow_slices.size())))
+                {
                     low = mid;
+                }
                 else
+                {
                     high = mid - 1;
+                }
             }
-    
-            slice_res = low;
+            max_slice_res = low;
         }
+        max_slice_res = max(max_slice_res, min_slice_res); // clamp to min
     
-        for (auto& slice : m_shadow_slices)
-            slice.res = slice_res;
-    
-        // pack slices in scanline order with border
-       uint32_t x = 0, y = 0, row_h = 0;
+        // assign res to all slices (uniform)
         for (auto& slice : m_shadow_slices)
         {
-            uint32_t effective_border = border;
-        
-            // if this slice is at the right or bottom edge, remove border
-            if (x + slice.res + border > resolution_atlas)
-                effective_border = 0;
-            if (y + slice.res + border > resolution_atlas)
-                effective_border = 0;
-        
-            if (x + slice.res + effective_border > resolution_atlas)
+            slice.res = max_slice_res;
+        }
+    
+        // pack slices in scanline order
+        uint32_t x     = 0;
+        uint32_t y     = 0;
+        uint32_t row_h = 0;
+        for (auto& slice : m_shadow_slices)
+        {
+            uint32_t left_pad = (x == 0) ? 0 : border;
+            uint32_t placed_x = x + left_pad;
+    
+            // wrap to next row if needed
+            if (placed_x + slice.res > resolution_atlas)
             {
-                y    += row_h + border;
-                x     = 0;
-                row_h = 0;
-                effective_border = (slice.res + border <= resolution_atlas) ? border : 0;
+                y        += row_h + border;
+                x         = 0;
+                row_h     = 0;
+                placed_x  = 0;
             }
-        
-            if (y + slice.res + effective_border > resolution_atlas)
-            {
-                SP_LOG_WARNING("Atlas overflow even after fitting");
-                continue;
-            }
-        
+    
+            // no overflow checks here, as can_fit validated
+            // assert(placed_x + slice.res <= resolution_atlas && y + slice.res <= resolution_atlas);
+    
             slice.rect = math::Rectangle(
-                static_cast<float>(x + effective_border),
-                static_cast<float>(y + effective_border),
+                static_cast<float>(placed_x),
+                static_cast<float>(y),
                 static_cast<float>(slice.res),
                 static_cast<float>(slice.res)
             );
-        
-            x    += slice.res + border;
+    
+            // advance
+            x     = placed_x + slice.res;
             row_h = max(row_h, slice.res);
         }
     
-        // assign back
+        // assign rects back to lights
         for (const auto& slice : m_shadow_slices)
         {
             slice.light->SetAtlasRectangle(slice.slice_index, slice.rect);
