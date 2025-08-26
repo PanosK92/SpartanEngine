@@ -525,9 +525,9 @@ namespace spartan
                 // camera positions for different views
                 static const Vector3 car_view_positions[] =
                 {
-                    Vector3(0.5f, 1.8f, -0.6f),  // dashboard
-                    Vector3(0.0f, 2.0f, 1.0f),   // hood
-                    Vector3(0.0f, 3.0f, -10.0f)  // chase
+                    Vector3(0.5f, 1.8f, -0.6f), // dashboard
+                    Vector3(0.0f, 2.0f, 1.0f),  // hood
+                    Vector3(0.0f, 3.0f, -10.0f) // chase
                 };
             
                 // get some commonly used things

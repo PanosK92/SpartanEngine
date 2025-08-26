@@ -19,11 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES =======================
 #include "pch.h"
 #include "World.h"
 #include "Entity.h"
-#include "../Resource/ResourceCache.h"
 #include "../Game/Game.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
@@ -34,8 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//====================================
-
+//==================================
+// 
 //= NAMESPACES ===============
 using namespace std;
 using namespace spartan::math;
@@ -49,13 +48,14 @@ namespace spartan
         vector<shared_ptr<Entity>> entities_lights; // entities subset that contains only lights
         string file_path;
         mutex entity_access_mutex;
-        bool resolve                = false;
-        bool was_in_editor_mode     = false;
-        BoundingBox bounding_box    = BoundingBox::Unit;
-        shared_ptr<Entity> camera   = nullptr;
-        shared_ptr<Entity> light    = nullptr;
+        bool resolve = false;
+        bool was_in_editor_mode = false;
+        BoundingBox bounding_box = BoundingBox::Unit;
+        shared_ptr<Entity> camera = nullptr;
+        shared_ptr<Entity> light = nullptr;
         uint32_t audio_source_count = 0;
-
+        vector<shared_ptr<Entity>> pending_add;
+        set<uint64_t> pending_remove;
         void compute_bounding_box()
         {
             for (shared_ptr<Entity>& entity : entities)
@@ -73,9 +73,8 @@ namespace spartan
 
     namespace day_night_cycle
     {
-        float current_time = 0.25f;  // start at 6 am
-        float time_scale   = 200.0f; // 200x real time
-
+        float current_time = 0.25f; // start at 6 am
+        float time_scale = 200.0f; // 200x real time
         void tick()
         {
             current_time += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
@@ -90,9 +89,38 @@ namespace spartan
         }
     }
 
+    void World::ProcessPendingRemovals()
+    {
+        lock_guard<mutex> lock(entity_access_mutex);
+        if (pending_remove.empty())
+            return;
+
+        for (auto it = entities.begin(); it != entities.end(); )
+        {
+            if (pending_remove.count((*it)->GetObjectId()) > 0)
+            {
+                it = entities.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        pending_remove.clear();
+    }
+
+    void World::ProcessPendingAdditions()
+    {
+        lock_guard<mutex> lock(entity_access_mutex);
+        if (pending_add.empty())
+            return;
+
+        entities.insert(entities.end(), pending_add.begin(), pending_add.end());
+        pending_add.clear();
+    }
+
     void World::Initialize()
     {
-
     }
 
     void World::Shutdown()
@@ -106,14 +134,12 @@ namespace spartan
         // loading can happen in the background
         if (ProgressTracker::IsLoading())
             return;
-
         SP_PROFILE_CPU();
-
         // detect game toggling
-        const bool started =  Engine::IsFlagSet(EngineMode::Playing) &&  was_in_editor_mode;
+        const bool started = Engine::IsFlagSet(EngineMode::Playing) && was_in_editor_mode;
         const bool stopped = !Engine::IsFlagSet(EngineMode::Playing) && !was_in_editor_mode;
         was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Playing);
-        
+       
         // start
         if (started)
         {
@@ -122,7 +148,7 @@ namespace spartan
                 entity->OnStart();
             }
         }
-        
+       
         // stop
         if (stopped)
         {
@@ -131,22 +157,26 @@ namespace spartan
                 entity->OnStop();
             }
         }
-        
+       
+        ProcessPendingRemovals();
+
         // tick
         for (shared_ptr<Entity>& entity : entities)
         {
             if (entity->GetActive())
-            { 
+            {
                 entity->Tick();
             }
         }
-        
+
+        ProcessPendingAdditions();
+       
         if (resolve)
         {
             // track entities
             {
-                camera             = nullptr;
-                light              = nullptr;
+                camera = nullptr;
+                light = nullptr;
                 audio_source_count = 0;
                 entities_lights.clear();
                 for (shared_ptr<Entity>& entity : entities)
@@ -154,20 +184,19 @@ namespace spartan
                     if (entity->GetActive())
                     {
                         if (!camera && entity->GetComponent<Camera>())
-                        { 
+                        {
                             camera = entity;
                         }
-        
+       
                         if (entity->GetComponent<Light>())
                         {
                             if (!light && entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
                             {
                                 light = entity;
                             }
-
                             entities_lights.push_back(entity);
                         }
-        
+       
                         if (entity->GetComponent<AudioSource>())
                         {
                             audio_source_count++;
@@ -175,13 +204,11 @@ namespace spartan
                     }
                 }
             }
-
             compute_bounding_box();
             resolve = false;
         }
-
         if (Engine::IsFlagSet(EngineMode::Playing))
-        { 
+        {
             day_night_cycle::tick();
         }
         Game::Tick();
@@ -191,14 +218,14 @@ namespace spartan
     {
         // fire event
         SP_FIRE_EVENT(EventType::WorldClear);
-        
+       
         // clear
         entities.clear();
         entities_lights.clear();
         camera = nullptr;
-        light  = nullptr;
+        light = nullptr;
         file_path.clear();
-        
+       
         // mark for resolve
         resolve = true;
     }
@@ -209,32 +236,24 @@ namespace spartan
         {
             file_path += string(EXTENSION_WORLD);
         }
-
         // start timing
         const Stopwatch timer;
-
         // create document
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name") = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
-
         // materials
         {
-
         }
-
         // entities
         {
             // node
             pugi::xml_node entities_node = world_node.append_child("Entities");
-
             // get root entities, save them, and they will save their children recursively
             vector<shared_ptr<Entity>> root_actors = GetRootEntities();
-            const uint32_t root_entity_count       = static_cast<uint32_t>(root_actors.size());
-
+            const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
             // progress tracking
             ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
-
             // write entities to node
             for (shared_ptr<Entity>& root : root_actors)
             {
@@ -243,18 +262,15 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::World).JobDone();
             }
         }
-
         // save to file
-        bool saved = doc.save_file(file_path.c_str(), "  ", pugi::format_indent);
+        bool saved = doc.save_file(file_path.c_str(), " ", pugi::format_indent);
         if (!saved)
         {
             SP_LOG_ERROR("Failed to save XML file.");
             return false;
         }
-
         // log
         SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
-
         return true;
     }
 
@@ -262,10 +278,8 @@ namespace spartan
     {
         Clear();
         file_path = file_path_;
-
         // start timing
         const Stopwatch timer;
-
         // load xml document
         pugi::xml_document doc;
         pugi::xml_parse_result result = doc.load_file(file_path.c_str());
@@ -274,7 +288,6 @@ namespace spartan
             SP_LOG_ERROR("Failed to load XML file: %s", result.description());
             return false;
         }
-
         // get world node
         pugi::xml_node world_node = doc.child("World");
         if (!world_node)
@@ -282,12 +295,9 @@ namespace spartan
             SP_LOG_ERROR("No 'World' node found.");
             return false;
         }
-
         // materials
         {
-
         }
-
         // entities
         {
             // get node
@@ -297,17 +307,14 @@ namespace spartan
                 SP_LOG_ERROR("No 'Entities' node found.");
                 return false;
             }
-
             // count root entities for progress tracking
             uint32_t root_entity_count = 0;
             for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
             {
                 ++root_entity_count;
             }
-
             // progress tracking
             ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
-
             // load root entities (they will load their descendants recursively)
             for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
             {
@@ -316,10 +323,8 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::World).JobDone();
             }
         }
-
         // report time
         SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
-
         return true;
     }
 
@@ -331,10 +336,9 @@ namespace spartan
     shared_ptr<Entity> World::CreateEntity()
     {
         lock_guard lock(entity_access_mutex);
-
         shared_ptr<Entity> entity = make_shared<Entity>();
-        entities.push_back(entity);
-
+        pending_add.push_back(entity);
+        resolve = true;
         return entity;
     }
 
@@ -347,53 +351,35 @@ namespace spartan
     void World::RemoveEntity(Entity* entity_to_remove)
     {
         SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
-
         lock_guard<mutex> lock(entity_access_mutex);
-
         // remove the entity and all of its children
         {
             // get the root entity and its descendants
             vector<Entity*> entities_to_remove;
-            entities_to_remove.push_back(entity_to_remove);        // add the root entity
+            entities_to_remove.push_back(entity_to_remove); // add the root entity
             entity_to_remove->GetDescendants(&entities_to_remove); // get descendants
-
             // create a set containing the object ids of entities to remove
             set<uint64_t> ids_to_remove;
             for (Entity* entity : entities_to_remove)
             {
                 ids_to_remove.insert(entity->GetObjectId());
             }
-
-            // remove entities using a single loop
-            for (auto it = entities.begin(); it != entities.end(); )
-            {
-                if (ids_to_remove.count((*it)->GetObjectId()) > 0)
-                {
-                    it = entities.erase(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-
+            // defer removal
+            pending_remove.insert(ids_to_remove.begin(), ids_to_remove.end());
             // if there was a parent, update it
             if (Entity* parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
             }
         }
-
-        resolve      = true;
+        resolve = true;
         bounding_box = BoundingBox::Unit;
     }
 
     vector<shared_ptr<Entity>> World::GetRootEntities()
     {
         lock_guard<mutex> lock(entity_access_mutex);
-
         vector<shared_ptr<Entity>> root_entities;
-
         for (shared_ptr<Entity>& entity : entities)
         {
             if (!entity->GetParent())
@@ -401,24 +387,23 @@ namespace spartan
                 root_entities.emplace_back(entity);
             }
         }
-
         return root_entities;
     }
 
     const shared_ptr<Entity>& World::GetEntityById(const uint64_t id)
     {
         lock_guard<mutex> lock(entity_access_mutex);
-    
+   
         for (const auto& entity : entities)
         {
             if (entity && entity->GetObjectId() == id)
                 return entity;
         }
-    
+   
         static shared_ptr<Entity> empty;
         return empty;
     }
-    
+
     const vector<shared_ptr<Entity>>& World::GetEntities()
     {
         return entities;

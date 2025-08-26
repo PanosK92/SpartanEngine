@@ -342,11 +342,12 @@ namespace spartan
         bool button_jump            = Input::GetKeyDown(KeyCode::Space) || Input::GetKeyDown(KeyCode::Button_South);
         bool button_crouch          = Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Button_East); // Left Ctrl or O button
         bool button_flashlight      = Input::GetKeyDown(KeyCode::F) || Input::GetKeyDown(KeyCode::Button_North);
-        bool mouse_right_click_down = Input::GetKeyDown(KeyCode::Click_Right);
-        bool mouse_right_click      = Input::GetKey(KeyCode::Click_Right);
+        bool mouse_click_right_down = Input::GetKeyDown(KeyCode::Click_Right);
+        bool mouse_click_right      = Input::GetKey(KeyCode::Click_Right);
+        bool mouse_click_left_down  = Input::GetKeyDown(KeyCode::Click_Left);
 
-        bool mouse_in_viewport      = Input::GetMouseIsInViewport();
-        // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
+         // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
+        bool mouse_in_viewport    = Input::GetMouseIsInViewport();
         bool is_controlled        = GetFlag(CameraFlags::IsControlled);
         bool wants_cursor_hidden  = GetFlag(CameraFlags::WantsCursorHidden);
         bool is_gamepad_connected = Input::IsGamepadConnected();
@@ -358,8 +359,8 @@ namespace spartan
         
         // behavior: control activation and cursor handling
         {
-            bool control_initiated  = mouse_right_click_down && mouse_in_viewport;
-            bool control_maintained = mouse_right_click && is_controlled;
+            bool control_initiated  = mouse_click_right_down && mouse_in_viewport;
+            bool control_maintained = mouse_click_right && is_controlled;
             bool is_controlled_new  = control_initiated || control_maintained;
             SetFlag(CameraFlags::IsControlled, is_controlled_new);
     
@@ -564,6 +565,7 @@ namespace spartan
         }
 
         // behavior: flashlight
+        if (is_playing)
         {
             // create
             if (GetFlag(CameraFlags::Flashlight) && !m_flashlight)
@@ -597,6 +599,33 @@ namespace spartan
             {
                 m_flashlight->SetActive(GetFlag(CameraFlags::Flashlight));
             }
+        }
+
+        // behaviour: shoot (physics boxes for now)
+        if (mouse_click_left_down && is_playing)
+        {
+            // create entity and name it
+            shared_ptr<Entity> entity = World::CreateEntity();
+            entity->SetObjectName("physics_box");
+
+            // position it in front of the camera
+            math::Vector3 spawn_offset = GetEntity()->GetForward() * 2.0f; // 2 meters ahead
+            entity->SetPosition(GetEntity()->GetPosition() + spawn_offset);
+
+            // give it a mesh and a material
+            Renderable* renderable = entity->AddComponent<Renderable>();
+            renderable->SetMesh(MeshType::Cube);
+            renderable->SetDefaultMaterial();
+
+            // add physics
+            Physics* physics = entity->AddComponent<Physics>();
+            physics->SetBodyType(BodyType::Box);
+            physics->SetStatic(false);
+            physics->SetKinematic(false);
+
+            // apply bullet-like impulse
+            float bullet_speed = 50.0f; // m/s
+            physics->ApplyForce(GetEntity()->GetForward() * bullet_speed, PhysicsForce::Impulse);
         }
     }
 
