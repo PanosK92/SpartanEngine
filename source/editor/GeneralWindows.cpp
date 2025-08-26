@@ -345,6 +345,7 @@ namespace
     
         static const Shortcut camera_controls[] =
         {
+            { "Left click",   "Fire physics cube"           },
             { "Right click",  "Enable first-person control" },
             { "W, A, S, D",   "Movement"                    },
             { "Q, E",         "Elevation"                   },
