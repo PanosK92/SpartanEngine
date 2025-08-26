@@ -565,7 +565,6 @@ namespace spartan
         }
 
         // behavior: flashlight
-        if (is_playing)
         {
             // create
             if (GetFlag(CameraFlags::Flashlight) && !m_flashlight)
@@ -589,7 +588,7 @@ namespace spartan
             }
 
             // toggle
-            if (button_flashlight)
+            if (button_flashlight && is_playing)
             {
                 SetFlag(CameraFlags::Flashlight, !GetFlag(CameraFlags::Flashlight));
             }

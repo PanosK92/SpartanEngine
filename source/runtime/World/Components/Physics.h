@@ -137,8 +137,8 @@ namespace spartan
         void CreateBodies();
 
         float m_mass                   = 1.0f;
-        float m_friction               = 0.5f;
-        float m_friction_rolling       = 0.5f;
+        float m_friction               = 0.4f;
+        float m_friction_rolling       = 0.4f;
         float m_restitution            = 0.2f;
         bool m_is_static               = true;
         bool m_is_kinematic            = false;
