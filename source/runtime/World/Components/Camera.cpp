@@ -602,7 +602,7 @@ namespace spartan
         }
 
         // behaviour: shoot (physics boxes for now)
-        if (mouse_click_left_down && is_playing)
+        if (mouse_click_left_down && mouse_in_viewport && is_playing)
         {
             // create entity and name it
             shared_ptr<Entity> entity = World::CreateEntity();
