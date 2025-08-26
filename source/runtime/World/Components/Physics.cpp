@@ -68,6 +68,7 @@ namespace spartan
     Physics::Physics(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_static, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_kinematic, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction_rolling, float);
@@ -150,30 +151,56 @@ namespace spartan
         }
         else if (!m_is_static)
         {
-            Renderable* renderable                = GetEntity()->GetComponent<Renderable>();
+            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
             const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
-            bool has_instances                    = !instances.empty();
-
+            bool has_instances = !instances.empty();
             for (size_t i = 0; i < m_bodies.size(); i++)
             {
                 PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]);
-
+                PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
                 if (Engine::IsFlagSet(EngineMode::Playing))
                 {
-                    PxTransform pose       = actor->getGlobalPose();
-                    math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                    if (has_instances && renderable && i < instances.size())
+                    if (m_is_kinematic && dynamic)
                     {
-                        renderable->SetInstance(static_cast<uint32_t>(i), transform);
+                        // Sync entity -> PhysX (kinematic target)
+                        math::Matrix transform;
+                        if (has_instances && i < instances.size())
+                        {
+                            transform = instances[i];
+                        }
+                        else if (i == 0)
+                        {
+                            transform = GetEntity()->GetMatrix();
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                        PxTransform target(
+                            PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
+                            PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
+                        );
+                        dynamic->setKinematicTarget(target);
                     }
-                    else if (i == 0)
+                    else
                     {
-                        GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                        GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                        // Sync PhysX -> entity (simulated dynamic)
+                        PxTransform pose = actor->getGlobalPose();
+                        math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                        if (has_instances && renderable && i < instances.size())
+                        {
+                            renderable->SetInstance(static_cast<uint32_t>(i), transform);
+                        }
+                        else if (i == 0)
+                        {
+                            GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
+                            GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                        }
                     }
                 }
                 else
                 {
+                    // Editor mode: Sync entity -> PhysX, reset velocities only for non-kinematics
                     math::Matrix transform;
                     if (has_instances && i < instances.size())
                     {
@@ -192,7 +219,7 @@ namespace spartan
                         PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
                     );
                     actor->setGlobalPose(pose);
-                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+                    if (dynamic && !m_is_kinematic)
                     {
                         dynamic->setLinearVelocity(PxVec3(0, 0, 0));
                         dynamic->setAngularVelocity(PxVec3(0, 0, 0));
@@ -302,6 +329,7 @@ namespace spartan
         node.append_attribute("friction_rolling") = m_friction_rolling;
         node.append_attribute("restitution")      = m_restitution;
         node.append_attribute("is_static")        = m_is_static;
+        node.append_attribute("is_kinematic")     = m_is_kinematic;
         node.append_attribute("position_lock_x")  = m_position_lock.x;
         node.append_attribute("position_lock_y")  = m_position_lock.y;
         node.append_attribute("position_lock_z")  = m_position_lock.z;
@@ -321,6 +349,7 @@ namespace spartan
         m_friction_rolling = node.attribute("friction_rolling").as_float(0.002f);
         m_restitution      = node.attribute("restitution").as_float(0.2f);
         m_is_static        = node.attribute("is_static").as_bool(true);
+        m_is_kinematic     = node.attribute("is_kinematic").as_bool(false);
         m_position_lock.x  = node.attribute("position_lock_x").as_float(0.0f);
         m_position_lock.y  = node.attribute("position_lock_y").as_float(0.0f);
         m_position_lock.z  = node.attribute("position_lock_z").as_float(0.0f);
@@ -721,10 +750,24 @@ namespace spartan
             return;
     
         // update static state
-        m_is_static = is_static;
-    
+        m_is_static    = is_static;
+        m_is_kinematic = false; // statics can't be kinematic
+     
         // recreate bodies to apply static/dynamic state
         Create();
+    }
+
+    void Physics::SetKinematic(bool is_kinematic)
+    {
+        // return if state hasn't changed
+        if (m_is_kinematic == is_kinematic)
+            return;
+    
+        // update kinematic state
+        m_is_kinematic = is_kinematic;
+        m_is_static    = false; // kinematics require dynamic (non-static) bodies
+    
+        Create(); // recreate body to apply changes
     }
 
     void Physics::Move(const math::Vector3& offset)
@@ -884,7 +927,7 @@ namespace spartan
                 params.maxWeightRatioInTet             = FLT_MAX;
 
                 PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-                if (IsStatic()) // static: triangle mesh
+                if (IsStatic() || IsKinematic()) // triangle mesh for exact collision (static or kinematic)
                 {
                     PxTriangleMeshDesc mesh_desc;
                     mesh_desc.points.count     = static_cast<PxU32>(px_vertices.size());
@@ -965,7 +1008,8 @@ namespace spartan
                 if (dynamic)
                 {
                     dynamic->setMass(m_mass);
-                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, !m_is_kinematic); // kinematics don't support ccd
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
                     if (m_center_of_mass != Vector3::Zero)
                     {
                         PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
@@ -1022,7 +1066,7 @@ namespace spartan
                 {
                     if (m_mesh)
                     {
-                        if (IsStatic())
+                        if (IsStatic() || IsKinematic())
                         {
                             Vector3 scale = instance_count > 1 ? instances[i].GetScale() : Vector3::One;
                             PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // this is a runtime transform, cheap for statics but it won't be reflected for the internal baked shape (raycasts etc)

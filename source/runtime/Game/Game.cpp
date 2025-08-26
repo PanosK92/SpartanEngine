@@ -451,9 +451,9 @@ namespace spartan
                 // physics
                 if (Entity* body = default_car->GetDescendantByName("Object_12"))
                 {
-                    //Physics* physics = body->AddComponent<Physics>();
-                    //physics->SetStatic(false);
-                    //physics->SetBodyType(BodyType::Mesh);
+                    Physics* physics = body->AddComponent<Physics>();
+                    physics->SetKinematic(true);
+                    physics->SetBodyType(BodyType::Mesh);
                 }
             }
 
@@ -1187,6 +1187,7 @@ namespace spartan
                            {
                                 material->SetColor(Color::standard_black);
                            }
+                           turn_table->GetComponent<Physics>()->SetKinematic(true);
                        }
                     }
                 }

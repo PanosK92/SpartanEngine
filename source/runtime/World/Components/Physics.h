@@ -124,6 +124,10 @@ namespace spartan
         bool IsStatic() const { return m_is_static; }
         void SetStatic(bool is_static);
 
+        // kinematic
+        bool IsKinematic() const { return m_is_kinematic; }
+        void SetKinematic(bool is_kinematic);
+
         // misc
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
@@ -137,6 +141,7 @@ namespace spartan
         float m_friction_rolling       = 0.002f;
         float m_restitution            = 0.2f;
         bool m_is_static               = true;
+        bool m_is_kinematic            = false;
         math::Vector3 m_position_lock  = math::Vector3::Zero;
         math::Vector3 m_rotation_lock  = math::Vector3::Zero;
         math::Vector3 m_center_of_mass = math::Vector3::Zero;

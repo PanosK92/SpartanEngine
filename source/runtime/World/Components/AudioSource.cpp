@@ -57,7 +57,6 @@ namespace audio_clip_cache
             spec = nullptr;
         }
     };
-
     unordered_map<string, weak_ptr<AudioClip>> cache;
 
     shared_ptr<AudioClip> Get(const string& file_path)

@@ -1006,11 +1006,11 @@ namespace spartan
         amd::ssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_reflection_source->GetHeight() * resolution_scale);
 
         // set sssr specific parameters
-        amd::ssr::description_dispatch.motionVectorScale.x                  = 0.25f;  // convert ndc x-velocity delta[-2, 2] to SSSR texture space [-0.5, 0.5] by dividing by 4
-        amd::ssr::description_dispatch.motionVectorScale.y                  = -0.25f; // convert ndc y-velocity delta[-2, 2] to [-0.5, 0.5] and flip Y (NDC +Y up to SSSR +Y down)
+        amd::ssr::description_dispatch.motionVectorScale.x                  = 0.5f;  // maps [-1,1] NDC delta to [-0.5, 0.5]
+        amd::ssr::description_dispatch.motionVectorScale.y                  = -0.5f; // same as above, but also flips Y
         amd::ssr::description_dispatch.normalUnPackMul                      = 1.0f;
         amd::ssr::description_dispatch.normalUnPackAdd                      = 0.0f;
-        amd::ssr::description_dispatch.depthBufferThickness                 = 0.2f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
+        amd::ssr::description_dispatch.depthBufferThickness                 = 0.1f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
         amd::ssr::description_dispatch.varianceThreshold                    = 0.04f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
         amd::ssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         amd::ssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running

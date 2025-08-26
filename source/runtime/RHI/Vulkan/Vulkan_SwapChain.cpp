@@ -305,11 +305,13 @@ namespace spartan
         if (m_rhi_swapchain)
         {
             vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
+            m_rhi_swapchain = nullptr;
         }
 
         if (m_rhi_surface)
         {
             vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(m_rhi_surface), nullptr);
+            m_rhi_surface = nullptr;
         }
     }
 
@@ -323,7 +325,7 @@ namespace spartan
     {
         SP_ASSERT(m_sdl_window != nullptr);
         SP_ASSERT(m_rhi_surface != nullptr);
-    
+
         // get surface capabilities
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(static_cast<VkSurfaceKHR>(m_rhi_surface));
     
