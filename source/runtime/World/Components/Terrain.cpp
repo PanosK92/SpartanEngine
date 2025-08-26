@@ -582,7 +582,7 @@ namespace spartan
             const uint32_t max_steps     = 30;
             const float wind_strength    = 0.3f;
         
-            // random number generation (unchanged)
+            // random number generation
             mt19937 gen(random_device{}());
             uniform_real_distribution<float> dist_x(1.0f, static_cast<float>(width) - 2.0f);
             uniform_real_distribution<float> dist_z(1.0f, static_cast<float>(height) - 2.0f);
@@ -1215,8 +1215,9 @@ namespace spartan
                 m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
                 shared_ptr<Entity> entity = World::CreateEntity();
                 entity->SetObjectName("tile_" + to_string(tile_index));
-                entity->SetParent(World::GetEntityById(m_entity_ptr->GetObjectId()).get());
-                entity->SetPosition(m_tile_offsets[tile_index]); 
+                entity->SetParent(GetEntity());
+                entity->SetPosition(m_tile_offsets[tile_index]);
+
                 if (Renderable* renderable = entity->AddComponent<Renderable>())
                 {
                     renderable->SetMesh(m_mesh.get(), sub_mesh_index);

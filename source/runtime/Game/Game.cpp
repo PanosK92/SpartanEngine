@@ -867,11 +867,8 @@ namespace spartan
                     // add physics so we can walk on it
                     for(Entity* entity : terrain->GetEntity()->GetChildren())
                     {
-                        if (entity->GetActive() && entity->GetComponent<Renderable>() != nullptr)
-                        {
-                            Physics* physics_body = entity->AddComponent<Physics>();
-                            physics_body->SetBodyType(BodyType::Mesh);
-                        }
+                        Physics* physics_body = entity->AddComponent<Physics>();
+                        physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
 
