@@ -264,7 +264,7 @@ namespace spartan
             // misc
             render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             uint32_t lowest_dimension = 32; // lowest mip is 32x32, preserving directional detail for diffuse IBL (1x1 loses directionality)
-            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "skysphere");
+            render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit, "skysphere");
         }
 
         RHI_VendorTechnology::Resize(GetResolutionRender(), GetResolutionOutput());

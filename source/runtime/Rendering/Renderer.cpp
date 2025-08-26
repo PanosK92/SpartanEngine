@@ -1236,8 +1236,8 @@ namespace spartan
     
         const uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
         const uint32_t min_slice_res    = 256;
-        const uint32_t border           = 2; // border in pixels
-    
+        uint32_t border                 = 2; // border in pixels
+
         // collect slices
         for (const auto& entity : World::GetEntitiesLights())
         {
@@ -1263,17 +1263,17 @@ namespace spartan
     
             for (uint32_t i = 0; i < num_slices; ++i)
             {
-                if (x + slice_res + 2*border > resolution_atlas)
+                if (x + slice_res + 2 * border > resolution_atlas)
                 {
-                    y    += row_h + 2*border;
+                    y    += row_h + 2 * border;
                     x     = 0;
                     row_h = 0;
                 }
     
-                if (y + slice_res + 2*border > resolution_atlas)
+                if (y + slice_res + 2 * border > resolution_atlas)
                     return false;
     
-                x    += slice_res + 2*border;
+                x    += slice_res + 2 * border;
                 row_h = max(row_h, slice_res);
                 packed++;
             }
@@ -1304,31 +1304,39 @@ namespace spartan
             slice.res = slice_res;
     
         // pack slices in scanline order with border
-        uint32_t x = 0, y = 0, row_h = 0;
+       uint32_t x = 0, y = 0, row_h = 0;
         for (auto& slice : m_shadow_slices)
         {
-            if (x + slice.res + 2*border > resolution_atlas)
+            uint32_t effective_border = border;
+        
+            // if this slice is at the right or bottom edge, remove border
+            if (x + slice.res + border > resolution_atlas)
+                effective_border = 0;
+            if (y + slice.res + border > resolution_atlas)
+                effective_border = 0;
+        
+            if (x + slice.res + effective_border > resolution_atlas)
             {
-                y    += row_h + 2*border;
+                y    += row_h + border;
                 x     = 0;
                 row_h = 0;
+                effective_border = (slice.res + border <= resolution_atlas) ? border : 0;
             }
-    
-            if (y + slice.res + 2*border > resolution_atlas)
+        
+            if (y + slice.res + effective_border > resolution_atlas)
             {
                 SP_LOG_WARNING("Atlas overflow even after fitting");
                 continue;
             }
-    
-            // apply border offset
+        
             slice.rect = math::Rectangle(
-                static_cast<float>(x + border),
-                static_cast<float>(y + border),
+                static_cast<float>(x + effective_border),
+                static_cast<float>(y + effective_border),
                 static_cast<float>(slice.res),
                 static_cast<float>(slice.res)
             );
-    
-            x    += slice.res + 2*border;
+        
+            x    += slice.res + border;
             row_h = max(row_h, slice.res);
         }
     

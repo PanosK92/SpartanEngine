@@ -68,19 +68,28 @@ namespace spartan
         RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
-        // render lookup tables (once per session)
-        bool update_skysphere = World::GetDirectionalLight() ? World::GetDirectionalLight()->NeedsSkysphereUpdate() : false;
+        // generate BRDF LUT (once per session)
+        static bool brdf_produced = false;
+        if (!brdf_produced)
         {
-            static bool brdf_produced = false;
-            if (!brdf_produced)
-            {
-                Pass_Lut_BrdfSpecular(cmd_list_graphics_present);
-                brdf_produced = true;
-            }
+            Pass_Lut_BrdfSpecular(cmd_list_graphics_present);
+            brdf_produced = true;
+        }
 
+        // once per skysphere update
+        {
+            bool update_skysphere = false;
+            {
+                static bool had_directional_light_last_frame = false;
+                bool has_directional_light                   = World::GetDirectionalLight() != nullptr;
+                update_skysphere                             = (has_directional_light && World::GetDirectionalLight()->NeedsSkysphereUpdate()) || (!has_directional_light && had_directional_light_last_frame);
+                had_directional_light_last_frame             = has_directional_light;
+            }
+            
             if (update_skysphere)
             {
                 Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
+                Pass_Skysphere(cmd_list_graphics_present);
             }
         }
 
@@ -95,10 +104,6 @@ namespace spartan
                 Pass_Depth_Prepass(cmd_list_graphics_present);
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_ShadowMaps(cmd_list_graphics_present);
-                if (update_skysphere)
-                {
-                    Pass_Skysphere(cmd_list_graphics_present);
-                }
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
                 Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
@@ -858,6 +863,7 @@ namespace spartan
         cmd_list->BeginTimeblock("skysphere");
         {
             // 1. atmospheric scattering
+            if (World::GetDirectionalLight())
             {
                 RHI_PipelineState pso;
                 pso.name             = "skysphere_atmospheric_scattering";
@@ -867,6 +873,10 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
                 cmd_list->Dispatch(tex_skysphere);
+            }
+            else
+            {
+                cmd_list->ClearTexture(tex_skysphere, Color::standard_black);
             }
 
             // 2. filter all mip levels
