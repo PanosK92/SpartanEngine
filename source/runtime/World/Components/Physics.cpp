@@ -1082,25 +1082,25 @@ namespace spartan
                     break;
                 }
                 case BodyType::Water:
-                    {
-                        Vector3 extents = renderable->GetBoundingBox().GetExtents();
+                {
+                    Vector3 extents = renderable->GetBoundingBox().GetExtents();
 
-                        // controls the body overlap volume
-                        const float height_extent = 2.0f;
-                    
-                        // build geometry that extends downward from the water surface
-                        PxBoxGeometry geometry(extents.x, height_extent * 0.5f, extents.z);
-                    
-                        // offset the shape so its top aligns with the visual water surface
-                        PxTransform offset(PxVec3(0.0f, -height_extent * 0.5f, 0.0f));
-                    
-                        // create shape and assign offset
-                        shape = physics->createShape(geometry, *material);
-                        shape->setLocalPose(offset);
-                        shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false); // disable simulation
-                        shape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);     // enable trigger
-                        break;
-                    }
+                    // controls the body overlap volume
+                    const float height_extent = 2.0f;
+                
+                    // build geometry that extends downward from the water surface
+                    PxBoxGeometry geometry(extents.x, height_extent * 0.5f, extents.z);
+                
+                    // offset the shape so its top aligns with the visual water surface
+                    PxTransform offset(PxVec3(0.0f, -height_extent * 0.5f, 0.0f));
+                
+                    // create shape and assign offset
+                    shape = physics->createShape(geometry, *material);
+                    shape->setLocalPose(offset);
+                    shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false); // disable simulation
+                    shape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);     // enable trigger
+                    break;
+                }
             }
             if (shape)
             {

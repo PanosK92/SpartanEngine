@@ -549,7 +549,8 @@ void Properties::ShowPhysics(Physics* body) const
         bool freeze_rot_y      = static_cast<bool>(body->GetRotationLock().y);
         bool freeze_rot_z      = static_cast<bool>(body->GetRotationLock().z);
         Vector3 center_of_mass = body->GetCenterOfMass();
-        bool is_static         = body->IsStatic(); // new: reflect static state
+        bool is_static         = body->IsStatic();
+        bool is_kinematic      = body->IsKinematic();
 
         // mass
         ImGui::Text("Mass (kg)");
@@ -613,6 +614,10 @@ void Properties::ShowPhysics(Physics* body) const
         ImGui::Text("Static");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_static", &is_static);
 
+        // kinematic checkbox
+        ImGui::Text("Kinematic");
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_kinematic", &is_kinematic);
+
         // center
         ImGui::Text("Shape Center");
         ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_center_x"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
@@ -636,8 +641,9 @@ void Properties::ShowPhysics(Physics* body) const
         {
             body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         }
-        if (center_of_mass != body->GetCenterOfMass())                    body->SetCenterOfMass(center_of_mass);
-        if (is_static != body->IsStatic())                                body->SetStatic(is_static); // new: map static state
+        if (center_of_mass != body->GetCenterOfMass()) body->SetCenterOfMass(center_of_mass);
+        if (is_static != body->IsStatic())             body->SetStatic(is_static);
+        if (is_kinematic != body->IsKinematic())       body->SetKinematic(is_kinematic);
     }
     component_end();
 }

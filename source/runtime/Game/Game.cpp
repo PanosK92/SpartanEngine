@@ -449,11 +449,27 @@ namespace spartan
                 }
 
                 // physics
-                if (Entity* body = default_car->GetDescendantByName("Object_12"))
                 {
-                    Physics* physics = body->AddComponent<Physics>();
-                    physics->SetKinematic(true);
-                    physics->SetBodyType(BodyType::Mesh);
+                    if (Entity* body = default_car->GetDescendantByName("Object_12"))
+                    {
+                        Physics* physics = body->AddComponent<Physics>();
+                        physics->SetKinematic(true);
+                        physics->SetBodyType(BodyType::Mesh);
+                    }
+
+                    if (Entity* glass = default_car->GetDescendantByName("Object_58"))
+                    {
+                        Physics* physics = glass->AddComponent<Physics>();
+                        physics->SetKinematic(true);
+                        physics->SetBodyType(BodyType::Mesh);
+                    }
+
+                    if (Entity* roof = default_car->GetDescendantByName("Object_10"))
+                    {
+                        Physics* physics = roof->AddComponent<Physics>();
+                        physics->SetKinematic(true);
+                        physics->SetBodyType(BodyType::Mesh);
+                    }
                 }
             }
 
