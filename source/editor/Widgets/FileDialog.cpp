@@ -536,7 +536,12 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
                     // load texture
                     ThreadPool::AddTask([this, anything]()
                     {
-                         m_items.emplace_back(anything, spartan::ResourceCache::Load<RHI_Texture>(anything).get());
+                        // Load happens in parallel (assuming ResourceCache::Load is thread-safe for concurrent calls)
+                        auto texture = spartan::ResourceCache::Load<RHI_Texture>(anything);
+                    
+                        // Now serialize the append
+                        lock_guard<mutex> lock(m_mutex_items);
+                        m_items.emplace_back(anything, texture.get());
                     });
                 }
                 else
