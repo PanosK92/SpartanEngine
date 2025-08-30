@@ -516,55 +516,60 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
     lock_guard<mutex> lock(m_mutex_items);
     m_items.clear();
 
-    // get directories
+    // assign folder icon to all directories
     auto directories = FileSystem::GetDirectoriesInDirectory(file_path);
     for (const string& directory : directories)
     {
         m_items.emplace_back(directory, spartan::ResourceCache::GetIcon(spartan::IconType::Folder));
     }
 
-    // Get files (based on filter)
+    // asign appropriate icon to files
     if (m_filter == FileDialog_Filter_All)
     {
         vector<string> paths_anything = FileSystem::GetFilesInDirectory(file_path);
         for (const string& anything : paths_anything)
         {
-            if (!FileSystem::IsEngineModelFile(anything))
-            {
-                if (FileSystem::IsSupportedImageFile(anything))
-                {
-                    // load texture
-                    ThreadPool::AddTask([this, anything]()
-                    {
-                        // Load happens in parallel (assuming ResourceCache::Load is thread-safe for concurrent calls)
-                        auto texture = spartan::ResourceCache::Load<RHI_Texture>(anything);
-                    
-                        // Now serialize the append
-                        lock_guard<mutex> lock(m_mutex_items);
-                        m_items.emplace_back(anything, texture.get());
-                    });
-                }
-                else
-                {
-                    m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
-                }
-            }
-        }
-    }
-    else if (m_filter == FileDialog_Filter_World)
-    {
-        vector<string> paths_world = FileSystem::GetSupportedSceneFilesInDirectory(file_path);
-        for (const string& world : paths_world)
-        {
-            m_items.emplace_back(world, spartan::ResourceCache::GetIcon(spartan::IconType::World));
-        }
-    }
-    else if (m_filter == FileDialog_Filter_Model)
-    {
-        vector<string> paths_models = FileSystem::GetSupportedModelFilesInDirectory(file_path);
-        for (const string& model : paths_models)
-        {
-            m_items.emplace_back(model, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
+           if (FileSystem::IsSupportedImageFile(anything))
+           {
+               // load texture
+               ThreadPool::AddTask([this, anything]()
+               {
+                   // load in parallel
+                   auto texture = spartan::ResourceCache::Load<RHI_Texture>(anything);
+               
+                   // serialize the append
+                   lock_guard<mutex> lock(m_mutex_items);
+                   m_items.emplace_back(anything, texture.get());
+               });
+           }
+           else if (FileSystem::IsSupportedAudioFile(anything))
+           {
+               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Audio));
+           }
+           else if (FileSystem::IsSupportedModelFile(anything))
+           {
+               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
+           }
+           else if (FileSystem::IsSupportedFontFile(anything))
+           {
+               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Font));
+           }
+           else if (FileSystem::IsEngineMaterialFile(anything))
+           {
+               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Material));
+           }
+           else if (FileSystem::GetExtensionFromFilePath(anything) == EXTENSION_WORLD)
+           {
+               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::World));
+           }
+            else if (FileSystem::GetExtensionFromFilePath(anything) == ".7z")
+           {
+               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
+           }
+           else
+           {
+               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
+           }
         }
     }
 }

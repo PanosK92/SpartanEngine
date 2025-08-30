@@ -78,6 +78,7 @@ namespace spartan
         Light,
         Camera,
         Physics,
+        Compressed,
         Max
     };
 
