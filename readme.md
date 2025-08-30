@@ -100,7 +100,7 @@ The [wiki](https://github.com/PanosK92/SpartanEngine/wiki/Wiki) can answer most 
 
 While the engine is designed primarily for experienced game developers to experiment, there are resources available for those who prefer a more guided approach.
 
-To get started, take a look at [game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/runtime/Game/Game.cpp). This file contains all the logic for loading and setting up the default worlds within the engine, and it's a great place to understand the core structure of the engine.
+To get started, take a look at [Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp). This file contains all the logic for loading and setting up the default worlds within the engine, and it's a great place to understand the core structure of the engine.
 
 # Media
 
