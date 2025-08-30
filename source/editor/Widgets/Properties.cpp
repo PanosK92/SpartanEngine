@@ -114,7 +114,7 @@ namespace
     
             ImGui::SetCursorScreenPos(icon_pos);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
-            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Component_Options), icon_size, false))
+            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Gear), icon_size, false))
             {
                 context_menu_id = name;
                 ImGui::OpenPopup(context_menu_id.c_str());

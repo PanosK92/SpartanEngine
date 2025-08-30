@@ -62,20 +62,23 @@ namespace spartan
         Exe,
         Font,
         Screenshot,
-        Component_Options,
-        Button_Play,
-        Button_Profiler,
-        Button_ResourceCache,
-        Button_RenderDoc,
-        Button_Shader,
-        Directory_File_Texture,
+        Gear,
+        Play,
+        Profiler,
+        ResourceCache,
+        RenderDoc,
+        Texture,
         Minimize,
         Maximize,
         X,
         Entity,
         Hybrid,
         Audio,
-        Terrain
+        Terrain,
+        Light,
+        Camera,
+        Physics,
+        Max
     };
 
     class ResourceCache

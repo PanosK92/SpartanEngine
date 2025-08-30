@@ -51,6 +51,54 @@ namespace
     bool popup_rename_entity       = false;
     spartan::Entity* entity_copied = nullptr;
     ImRect selected_entity_rect;
+
+    spartan::RHI_Texture* component_to_image(const shared_ptr<spartan::Entity>& entity)
+    {
+        spartan::RHI_Texture* icon = nullptr;
+        int match_count = 0;
+    
+        if (entity->GetComponent<spartan::Light>())
+        {
+            icon = spartan::ResourceCache::GetIcon(spartan::IconType::Light);
+            ++match_count;
+        }
+    
+        if (entity->GetComponent<spartan::Camera>())
+        {
+            icon = spartan::ResourceCache::GetIcon(spartan::IconType::Camera);
+            ++match_count;
+        }
+    
+        if (entity->GetComponent<spartan::AudioSource>())
+        {
+            icon = spartan::ResourceCache::GetIcon(spartan::IconType::Audio);
+            ++match_count;
+        }
+
+        // everything has physics, ignore it
+        //if (entity->GetComponent<spartan::Physics>())
+        //{
+        //    icon = spartan::ResourceCache::GetIcon(spartan::IconType::Physics);
+        //    ++match_count;
+        //}
+    
+        if (entity->GetComponent<spartan::Terrain>())
+        {
+            icon = spartan::ResourceCache::GetIcon(spartan::IconType::Terrain);
+            ++match_count;
+        }
+
+        if (entity->GetComponent<spartan::Renderable>())
+        {
+            icon = spartan::ResourceCache::GetIcon(spartan::IconType::Model);
+            ++match_count;
+        }
+
+        if (match_count > 1)
+            return spartan::ResourceCache::GetIcon(spartan::IconType::Hybrid);
+    
+        return icon ? icon : spartan::ResourceCache::GetIcon(spartan::IconType::Entity);
+    }
 }
 
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
@@ -132,7 +180,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     m_expanded_to_selection       = false;
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth;
 
-    // flag - is expandable (does it have has children) ?
+    // flag - is expandable (does it have children) ?
     const vector<spartan::Entity*>& children  = entity->GetChildren();
     bool has_children                         = !children.empty();
     node_flags                               |= has_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
@@ -145,11 +193,11 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         {
             if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
             {
-                node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
+                if (selected_entity->GetObjectId() == entity->GetObjectId())
+                    node_flags |= ImGuiTreeNodeFlags_Selected;
 
                 if (m_expand_to_selection)
                 {
-                    // if the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
                     if (selected_entity->IsDescendantOf(entity.get()))
                     {
                         ImGui::SetNextItemOpen(true);
@@ -160,26 +208,31 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         }
     }
 
-    // add node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
-    string node_name        = entity->GetObjectName();
-    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, node_name.c_str());
+    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, ""); // empty label, we’ll draw manually
 
-    // keep a copy of the selected item's rect so that we can scroll to bring it into view
+    EntityHandleDragDrop(entity);
+
+    // draw the image + text
+    ImGui::SameLine();
+    if (ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity)))
+    {
+        ImGui::Image(icon, ImVec2(32, 32));
+        ImGui::SameLine();
+    }
+    ImGui::TextUnformatted(entity->GetObjectName().c_str());
+
+
     if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
     {
         selected_entity_rect = ImGui::GetCurrentContext()->LastItemData.Rect;
     }
 
-    // manually detect some useful states
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
     {
         entity_hovered = entity;
     }
 
-    EntityHandleDragDrop(entity);
-
-    // recursively show all child nodes
     if (is_node_open)
     {
         if (has_children)
@@ -189,8 +242,6 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
                 TreeAddEntity(spartan::World::GetEntityById(child->GetObjectId()));
             }
         }
-
-        // pop if isNodeOpen
         ImGui::TreePop();
     }
 }
@@ -201,28 +252,28 @@ void WorldViewer::HandleClicking()
     const auto left_click        = ImGui::IsMouseClicked(0);
     const auto right_click       = ImGui::IsMouseClicked(1);
 
-    // Since we are handling clicking manually, we must ensure we are inside the window
+    // since we are handling clicking manually, we must ensure we are inside the window
     if (!is_window_hovered)
         return;
 
-    // Left click on item - Don't select yet
+    // left click on item - Don't select yet
     if (left_click && entity_hovered.lock())
     {
         entity_clicked = entity_hovered;
     }
 
-    // Right click on item - Select and show context menu
+    // right click on item - Select and show context menu
     if (ImGui::IsMouseClicked(1))
     {
         if (shared_ptr<spartan::Entity> entity = entity_hovered.lock())
-        {            
+        {
             SetSelectedEntity(entity);
         }
 
         ImGui::OpenPopup("##HierarchyContextMenu");
     }
 
-    // Clicking on empty space - Clear selection
+    // clicking on empty space - Clear selection
     if ((left_click || right_click) && !entity_hovered.lock())
     {
         SetSelectedEntity(m_entity_empty);
@@ -231,7 +282,7 @@ void WorldViewer::HandleClicking()
 
 void WorldViewer::EntityHandleDragDrop(shared_ptr<spartan::Entity> entity_ptr) const
 {
-    // Drag
+    // drag
     if (ImGui::BeginDragDropSource())
     {
         drag_drop_payload.data = entity_ptr->GetObjectId();
@@ -239,7 +290,8 @@ void WorldViewer::EntityHandleDragDrop(shared_ptr<spartan::Entity> entity_ptr) c
         ImGuiSp::create_drag_drop_paylod(drag_drop_payload);
         ImGui::EndDragDropSource();
     }
-    // Drop
+
+    // drop
     if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
     {
         const uint64_t entity_id = get<uint64_t>(payload->data);

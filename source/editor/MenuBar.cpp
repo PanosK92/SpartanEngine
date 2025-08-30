@@ -282,7 +282,7 @@ namespace
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPaddingY() - 5.0f });
 
                 toolbar_button(
-                    spartan::ResourceCache::GetIcon(spartan::IconType::Button_Play), "Play",
+                    spartan::ResourceCache::GetIcon(spartan::IconType::Play), "Play",
                     []() { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);  },
                     []() { return spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); },
                     cursor_pos_x
@@ -302,7 +302,7 @@ namespace
                 // buttons from custom functionality
                 {
                     // renderdoc button
-                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Button_RenderDoc), "Captures the next frame and then launches RenderDoc",
+                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::RenderDoc), "Captures the next frame and then launches RenderDoc",
                         []() { return false; },
                         []()
                         {
@@ -386,11 +386,11 @@ void MenuBar::Initialize(Editor* _editor)
     editor      = _editor;
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Button_Profiler)]        = editor->GetWidget<Profiler>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Button_ResourceCache)]   = editor->GetWidget<ResourceViewer>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Button_Shader)]          = editor->GetWidget<ShaderEditor>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Component_Options)]      = editor->GetWidget<RenderOptions>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Directory_File_Texture)] = editor->GetWidget<TextureViewer>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Profiler)]      = editor->GetWidget<Profiler>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::ResourceCache)] = editor->GetWidget<ResourceViewer>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Shader)]        = editor->GetWidget<ShaderEditor>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Gear)]          = editor->GetWidget<RenderOptions>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Texture)]       = editor->GetWidget<TextureViewer>();
 
     spartan::Engine::SetFlag(spartan::EngineMode::Playing, false);
 }
