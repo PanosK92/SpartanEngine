@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Display/Display.h"
 #include "Source/imgui_internal.h"
 #include "../Editor.h"
-#include "../Widgets/IconLoader.h"
+#include <Resource/ResourceCache.h>
 //=================================
 
 namespace ImGuiSp
@@ -95,17 +95,11 @@ namespace ImGuiSp
         return ImGui::Button(label);
     }
 
-    static bool image_button(spartan::RHI_Texture* texture, const IconType icon, const spartan::math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
+    static bool image_button(spartan::RHI_Texture* texture, const spartan::math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
     {
         if (!border)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        }
-
-        // get texture from icon enum (if provided)
-        if (!texture && icon != IconType::Undefined)
-        {
-            texture = IconLoader::GetTextureByType(icon);
         }
 
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
@@ -127,18 +121,6 @@ namespace ImGuiSp
         }
 
         return result;
-    }
-
-    static void image(const Icon& icon, const float size)
-    {
-        ImGui::Image(
-            reinterpret_cast<ImTextureID>(icon.GetTexture()),
-            ImVec2(size, size),
-            ImVec2(0, 0),
-            ImVec2(1, 1),
-            default_tint,       // tint
-            ImColor(0, 0, 0, 0) // border
-        );
     }
 
     static void image(spartan::RHI_Texture* texture, const spartan::math::Vector2& size, bool border = false)
@@ -175,10 +157,10 @@ namespace ImGuiSp
         );
     }
 
-    static void image(const IconType icon, const float size)
+    static void image(const spartan::IconType icon, const float size)
     {
         ImGui::Image(
-            reinterpret_cast<ImTextureID>(IconLoader::GetTextureByType(icon)),
+            reinterpret_cast<ImTextureID>(spartan::ResourceCache::GetIcon(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -187,10 +169,10 @@ namespace ImGuiSp
         );
     }
 
-    static void image(const IconType icon, const float size,const ImVec4 tint)
+    static void image(const spartan::IconType icon, const float size,const ImVec4 tint)
     {
         ImGui::Image(
-            reinterpret_cast<ImTextureID>(IconLoader::GetTextureByType(icon)),
+            reinterpret_cast<ImTextureID>(spartan::ResourceCache::GetIcon(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -253,7 +235,7 @@ namespace ImGuiSp
             if (texture != nullptr)
             {
                 ImGui::SetCursorPos(pos_button);
-                if (image_button(nullptr, IconType::Component_Material_RemoveTexture, button_size, true))
+                if (image_button(spartan::ResourceCache::GetIcon(spartan::IconType::X), button_size, true))
                 {
                     texture = nullptr;
                     setter(nullptr);

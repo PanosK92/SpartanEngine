@@ -330,7 +330,7 @@ namespace ImGui::RHI
                                 bool is_texture_visualised = false;
                                 bool is_frame_texture      = false;
                                 
-                                if (RHI_Texture* texture = reinterpret_cast<RHI_Texture*>(pcmd->TextureId))
+                                if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->TextureId))
                                 {
                                     is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
                                 

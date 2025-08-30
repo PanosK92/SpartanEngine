@@ -68,6 +68,7 @@ namespace spartan
         SetFlag(EngineMode::EditorVisible, true);
         SetFlag(EngineMode::Playing,       true);
 
+        // initialize
         Stopwatch timer_initialize;
         {
             Log::Initialize();
@@ -87,6 +88,11 @@ namespace spartan
             Settings::Initialize();
         }
 
+        // post-initialize
+        {
+            ResourceCache::LoadDefaultResources(); // requires RHI to be initialized so they can be uploaded to the GPU
+        }
+
         SP_LOG_INFO("Initialization took %.1f sec", timer_initialize.GetElapsedTimeSec());
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC(write_ci_test_file(0);));
     }
@@ -98,6 +104,8 @@ namespace spartan
         ThreadPool::Shutdown();
 
         ResourceCache::Shutdown();
+        ResourceCache::UnloadDefaultResources();
+
         World::Shutdown();
         Renderer::Shutdown();
         PhysicsWorld::Shutdown();

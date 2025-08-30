@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "Window.h"
 #include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_Style.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../Widgets/ButtonColorPicker.h"
 #include "Core/Engine.h"
 #include "World/Entity.h"
+#include "Rendering/Material.h"
 #include "World/Components/Renderable.h"
 #include "World/Components/Physics.h"
 #include "World/Components/Light.h"
@@ -114,7 +114,7 @@ namespace
     
             ImGui::SetCursorScreenPos(icon_pos);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
-            if (ImGuiSp::image_button(nullptr, IconType::Component_Options, icon_size, false))
+            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Component_Options), icon_size, false))
             {
                 context_menu_id = name;
                 ImGui::OpenPopup(context_menu_id.c_str());
@@ -734,7 +734,7 @@ void Properties::ShowMaterial(Material* material) const
                         }
                 
                         // get the texture for this slot and show it in the UI
-                        RHI_Texture* texture = material->GetTexture(texture_type, slot);
+                        spartan::RHI_Texture* texture = material->GetTexture(texture_type, slot);
                         ImGuiSp::image_slot(texture, setter);
                     }
                 
@@ -947,7 +947,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
         {
             ImGui::Text("Height Map");
 
-            ImGuiSp::image_slot(terrain->GetHeightMap(), [&terrain](RHI_Texture* texture)
+            ImGuiSp::image_slot(terrain->GetHeightMap(), [&terrain](spartan::RHI_Texture* texture)
             {
                 terrain->SetHeightMap(texture);
             });

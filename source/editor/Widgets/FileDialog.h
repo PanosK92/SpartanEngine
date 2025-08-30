@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include "IconLoader.h"
 #include "FileSystem/FileSystem.h"
 #include "../ImGui/ImGui_Extension.h"
 #include <chrono>
+#include <Resource/ResourceCache.h>
 //===================================
 
 enum FileDialog_Type
@@ -51,7 +51,7 @@ enum FileDialog_Filter
 class FileDialogItem
 {
 public:
-    FileDialogItem(const std::string& path, Icon* icon)
+    FileDialogItem(const std::string& path, spartan::RHI_Texture* icon)
     {
         m_path        = path;
         m_icon        = icon;
@@ -60,12 +60,12 @@ public:
         m_label       = spartan::FileSystem::GetFileNameFromFilePath(path);
     }
 
-    const auto& GetPath()              const { return m_path; }
-    const auto& GetLabel()             const { return m_label; }
-    auto GetId()                       const { return m_id; }
-    spartan::RHI_Texture* GetTexture() const { return m_icon->GetTexture(); }
-    auto IsDirectory()                 const { return m_isDirectory; }
-    auto GetTimeSinceLastClickMs()     const { return static_cast<float>(m_time_since_last_click.count()); }
+    const auto& GetPath()           const { return m_path; }
+    const auto& GetLabel()          const { return m_label; }
+    auto GetId()                    const { return m_id; }
+    spartan::RHI_Texture* GetIcon() const { return m_icon; }
+    auto IsDirectory()              const { return m_isDirectory; }
+    auto GetTimeSinceLastClickMs()  const { return static_cast<float>(m_time_since_last_click.count()); }
 
     void Clicked()
     {
@@ -75,7 +75,7 @@ public:
     }
     
 private:
-    Icon* m_icon;
+    spartan::RHI_Texture* m_icon;
     uint64_t m_id;
     std::string m_path;
     std::string m_label;
@@ -114,7 +114,7 @@ private:
     void ItemContextMenu(FileDialogItem* item);
 
     // Misc
-    bool DialogUpdateFromDirectory(const std::string& path);
+    void DialogUpdateFromDirectory(const std::string& path);
     void EmptyAreaContextMenu();
 
     // Options
@@ -145,6 +145,7 @@ private:
     spartan::math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
     std::string m_current_path;
+    std::mutex m_mutex_items;
 
     // Callbacks
     std::function<void(const std::string&)> m_callback_on_item_clicked;

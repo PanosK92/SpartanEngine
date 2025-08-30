@@ -117,10 +117,10 @@ namespace
 
 AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 {
-    m_title             = "Assets";
+    m_title           = "Assets";
     file_dialog_view  = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
     file_dialog_load  = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
-    m_flags            |= ImGuiWindowFlags_NoScrollbar;
+    m_flags          |= ImGuiWindowFlags_NoScrollbar;
 
     // just clicked, not selected (double clicked, end of dialog)
     file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });

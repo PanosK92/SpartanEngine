@@ -33,25 +33,25 @@ using namespace math;
 
 namespace
 {
-    RHI_Texture* texture_current   = nullptr;
-    uint32_t m_texture_index       = 0;
-    int mip_level                  = 0;
-    int array_level                = 0;
-    bool m_magnifying_glass        = false;
-    bool m_channel_r               = true;
-    bool m_channel_g               = true;
-    bool m_channel_b               = true;
-    bool m_channel_a               = true;
-    bool m_gamma_correct           = true;
-    bool m_pack                    = false;
-    bool m_boost                   = false;
-    bool m_abs                     = false;
-    bool m_point_sampling          = false;
-    uint32_t m_visualisation_flags = 0;
+    spartan::RHI_Texture* texture_current = nullptr;
+    uint32_t m_texture_index              = 0;
+    int mip_level                         = 0;
+    int array_level                       = 0;
+    bool m_magnifying_glass               = false;
+    bool m_channel_r                      = true;
+    bool m_channel_g                      = true;
+    bool m_channel_b                      = true;
+    bool m_channel_a                      = true;
+    bool m_gamma_correct                  = true;
+    bool m_pack                           = false;
+    bool m_boost                          = false;
+    bool m_abs                            = false;
+    bool m_point_sampling                 = false;
+    uint32_t m_visualisation_flags        = 0;
     vector<string> render_target_names;
-    vector<RHI_Texture*> render_targets;
+    vector<spartan::RHI_Texture*> render_targets;
 
-    void show_texture(RHI_Texture* texture)
+    void show_texture(spartan::RHI_Texture* texture)
     {
         // calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
         float bottom_padding              = 200.0f * spartan::Window::GetDpiScale(); // to fit the information text
@@ -123,7 +123,7 @@ void TextureViewer::OnVisible()
     render_targets.clear();
 
     // get render targets
-    for (const shared_ptr<RHI_Texture>& render_target : Renderer::GetRenderTargets())
+    for (const shared_ptr<spartan::RHI_Texture>& render_target : Renderer::GetRenderTargets())
     {
         if (render_target)
         {
@@ -138,7 +138,7 @@ void TextureViewer::OnTickVisible()
     // texture
     ImGui::BeginGroup();
     {
-        if (RHI_Texture* texture = render_targets[m_texture_index])
+        if (spartan::RHI_Texture* texture = render_targets[m_texture_index])
         {
             show_texture(texture);
         }

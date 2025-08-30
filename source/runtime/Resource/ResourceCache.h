@@ -20,12 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-
 //= INCLUDES =====================
 #include "IResource.h"
 #include "../Logging/Log.h"
 #include <mutex>
 #include "../Rendering/Material.h"
+#include "../RHI/RHI_Texture.h"
 //================================
 
 namespace pugi
@@ -45,17 +45,54 @@ namespace spartan
         Textures
     };
 
+    enum class IconType
+    {
+        Undefined,
+        Console,
+        File,
+        Folder,
+        Model,
+        World,
+        Material,
+        Shader,
+        Xml,
+        Dll,
+        Txt,
+        Ini,
+        Exe,
+        Font,
+        Screenshot,
+        Component_Options,
+        Button_Play,
+        Button_Profiler,
+        Button_ResourceCache,
+        Button_RenderDoc,
+        Button_Shader,
+        Directory_File_Texture,
+        Minimize,
+        Maximize,
+        X,
+        Entity,
+        Hybrid,
+        Audio,
+        Terrain
+    };
+
     class ResourceCache
     {
     public:
         static void Initialize();
         static void Shutdown();
 
+        // default resources
+         static void LoadDefaultResources();
+         static void UnloadDefaultResources();
+
         // get by name
         static std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
-        template <class T> 
-        static std::shared_ptr<T> GetByName(const std::string& name) 
-        { 
+        template <class T>
+        static std::shared_ptr<T> GetByName(const std::string& name)
+        {
             return std::static_pointer_cast<T>(GetByName(name, IResource::TypeToEnum<T>()));
         }
 
@@ -71,7 +108,6 @@ namespace spartan
                 if (path == resource->GetResourceFilePath())
                     return std::static_pointer_cast<T>(resource);
             }
-
             return nullptr;
         }
 
@@ -124,7 +160,6 @@ namespace spartan
         {
             if (!resource)
                 return;
-
             GetResources().erase
             (
                 std::remove_if
@@ -154,5 +189,6 @@ namespace spartan
         static std::mutex& GetMutex();
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
+        static RHI_Texture* GetIcon(IconType type);
     };
 }

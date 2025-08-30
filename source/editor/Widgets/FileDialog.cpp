@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui_internal.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../Widgets/Viewport.h"
-#include "Rendering/Mesh.h"
 #include <Rendering/Material.h>
 //=========================================
 
@@ -164,7 +163,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
 void FileDialog::ShowMiddle()
 {
-    // Compute some useful stuff
+    // compute some useful stuff
     const auto window         = ImGui::GetCurrentWindowRead();
     const auto content_width  = ImGui::GetContentRegionAvail().x;
     const auto content_height = ImGui::GetContentRegionAvail().y - m_offset_bottom;
@@ -180,21 +179,23 @@ void FileDialog::ShowMiddle()
     ImRect rect_button;
     ImRect rect_label;
 
-    // Remove border
+    lock_guard lock(m_mutex_items);
+
+    // remove border
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
 
     if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
     {
         m_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : m_is_hovering_window;
 
-        // Set starting position
+        // set starting position
         {
             float offset = ImGui::GetStyle().ItemSpacing.x;
             pen_x_min    = ImGui::GetCursorPosX() + offset;
             set_cursor_position_x(pen_x_min);
         }
 
-        // Go through all the items
+        // go through all the items
         for (int i = 0; i < m_items.size(); i++)
         {
             // Get item to be displayed
@@ -304,7 +305,7 @@ void FileDialog::ShowMiddle()
                     }
 
                     // Image
-                    if (RHI_Texture* texture = item.GetTexture())
+                    if (spartan::RHI_Texture* texture = item.GetIcon())
                     {
                         if (texture->GetResourceState() == ResourceState::PreparedForGpu) // This is possible for when the editor is reading from drive
                         {
@@ -337,7 +338,7 @@ void FileDialog::ShowMiddle()
                             ImGui::SetCursorScreenPos(image_pos);
 
                             // Draw the image
-                            ImGuiSp::image(item.GetTexture(), image_size);
+                            ImGuiSp::image(item.GetIcon(), image_size);
                         }
                     }
 
@@ -454,7 +455,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
         if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Material, item->GetPath()); }
 
         // Preview
-        ImGuiSp::image(item->GetTexture(), 50);
+        ImGuiSp::image(item->GetIcon(), 50);
 
         ImGui::EndDragDropSource();
     }
@@ -504,22 +505,22 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
     ImGui::EndPopup();
 }
 
-bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
+void FileDialog::DialogUpdateFromDirectory(const string& file_path)
 {
     if (!FileSystem::IsDirectory(file_path))
     {
         SP_LOG_ERROR("Provided path doesn't point to a directory.");
-        return false;
+        return;
     }
 
+    lock_guard<mutex> lock(m_mutex_items);
     m_items.clear();
-    m_items.shrink_to_fit();
 
-    // Get directories
+    // get directories
     auto directories = FileSystem::GetDirectoriesInDirectory(file_path);
     for (const string& directory : directories)
     {
-        m_items.emplace_back(directory, IconLoader::LoadFromFile(directory, IconType::Directory_Folder));
+        m_items.emplace_back(directory, spartan::ResourceCache::GetIcon(spartan::IconType::Folder));
     }
 
     // Get files (based on filter)
@@ -530,7 +531,18 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         {
             if (!FileSystem::IsEngineModelFile(anything))
             {
-                m_items.emplace_back(anything, IconLoader::LoadFromFile(anything, IconType::Undefined));
+                if (FileSystem::IsSupportedImageFile(anything))
+                {
+                    // load texture
+                    ThreadPool::AddTask([this, anything]()
+                    {
+                         m_items.emplace_back(anything, spartan::ResourceCache::Load<RHI_Texture>(anything).get());
+                    });
+                }
+                else
+                {
+                    m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
+                }
             }
         }
     }
@@ -539,7 +551,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         vector<string> paths_world = FileSystem::GetSupportedSceneFilesInDirectory(file_path);
         for (const string& world : paths_world)
         {
-            m_items.emplace_back(world, IconLoader::LoadFromFile(world, IconType::Directory_File_World));
+            m_items.emplace_back(world, spartan::ResourceCache::GetIcon(spartan::IconType::World));
         }
     }
     else if (m_filter == FileDialog_Filter_Model)
@@ -547,11 +559,9 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         vector<string> paths_models = FileSystem::GetSupportedModelFilesInDirectory(file_path);
         for (const string& model : paths_models)
         {
-            m_items.emplace_back(model, IconLoader::LoadFromFile(model, IconType::Directory_File_Model));
+            m_items.emplace_back(model, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
         }
     }
-
-    return true;
 }
 
 void FileDialog::EmptyAreaContextMenu()

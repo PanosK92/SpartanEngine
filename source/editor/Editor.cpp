@@ -86,9 +86,6 @@ Editor::Editor(const vector<string>& args)
     SP_ASSERT_MSG(ImGui_ImplSDL3_InitForVulkan(static_cast<SDL_Window*>(spartan::Window::GetHandleSDL())), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
-    // initialization of some helper static classes
-    IconLoader::Initialize();
-
     // create all imgui widgets
     m_widgets.emplace_back(make_shared<Style>(this));
     m_widgets.emplace_back(make_shared<ProgressDialog>(this));

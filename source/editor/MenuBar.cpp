@@ -238,10 +238,10 @@ namespace
     namespace buttons_toolbar
     {
         float button_size = 19.0f;
-        unordered_map<IconType, Widget*> widgets;
+        unordered_map<spartan::RHI_Texture*, Widget*> widgets;
 
         // a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-        void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press, float cursor_pos_x = -1.0f)
+        void toolbar_button(spartan::RHI_Texture* icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press, float cursor_pos_x = -1.0f)
         {
             ImGui::SameLine();
             ImVec4 button_color = get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button];
@@ -258,7 +258,7 @@ namespace
 
             ImGui::SetCursorPosY(offset_y);
 
-            if (ImGuiSp::image_button(nullptr, icon_type, button_size * spartan::Window::GetDpiScale(), false))
+            if (ImGuiSp::image_button(icon_type, button_size * spartan::Window::GetDpiScale(), false))
             {
                 on_press();
             }
@@ -282,7 +282,7 @@ namespace
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPaddingY() - 5.0f });
 
                 toolbar_button(
-                    IconType::Button_Play, "Play",
+                    spartan::ResourceCache::GetIcon(spartan::IconType::Button_Play), "Play",
                     []() { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);  },
                     []() { return spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); },
                     cursor_pos_x
@@ -302,7 +302,7 @@ namespace
                 // buttons from custom functionality
                 {
                     // renderdoc button
-                    toolbar_button(IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
+                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Button_RenderDoc), "Captures the next frame and then launches RenderDoc",
                         []() { return false; },
                         []()
                         {
@@ -319,7 +319,7 @@ namespace
                     );
 
                     // world selection
-                    toolbar_button(IconType::Component_Terrain, "World selection window",
+                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Terrain), "World selection window",
                         []() { return GeneralWindows::GetVisibilityWorlds(); },
                         []()
                         {
@@ -331,8 +331,8 @@ namespace
                 // buttons from widgets
                 for (auto& widget_it : widgets)
                 {
-                    Widget* widget            = widget_it.second;
-                    const IconType widget_icon = widget_it.first;
+                    Widget* widget                    = widget_it.second;
+                    spartan::RHI_Texture* widget_icon = widget_it.first;
 
                     toolbar_button(widget_icon, widget->GetTitle(),
                         [&widget]() { return widget->GetVisible(); },
@@ -363,17 +363,17 @@ namespace
             ImGui::SetCursorPosX(size_avail_x - offset_right);
 
             spartan::math::Vector2 icon_size = spartan::math::Vector2(24.0f, 24.0f);
-            if (ImGuiSp::image_button(nullptr, IconType::Window_Minimize, icon_size, false))
+            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(spartan::IconType::Minimize), icon_size, false))
             {
                 spartan::Window::Minimize();
             }
 
-            if (ImGuiSp::image_button(nullptr, IconType::Window_Maximize, icon_size, false))
+            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(spartan::IconType::Maximize), icon_size, false))
             {
                 spartan::Window::Maximize();
             }
 
-            if (ImGuiSp::image_button(nullptr, IconType::Window_Close, icon_size, false))
+            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(spartan::IconType::X), icon_size, false))
             {
                 spartan::Window::Close();
             }
@@ -386,11 +386,11 @@ void MenuBar::Initialize(Editor* _editor)
     editor      = _editor;
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
-    buttons_toolbar::widgets[IconType::Button_Profiler]        = editor->GetWidget<Profiler>();
-    buttons_toolbar::widgets[IconType::Button_ResourceCache]   = editor->GetWidget<ResourceViewer>();
-    buttons_toolbar::widgets[IconType::Button_Shader]          = editor->GetWidget<ShaderEditor>();
-    buttons_toolbar::widgets[IconType::Component_Options]      = editor->GetWidget<RenderOptions>();
-    buttons_toolbar::widgets[IconType::Directory_File_Texture] = editor->GetWidget<TextureViewer>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Button_Profiler)]        = editor->GetWidget<Profiler>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Button_ResourceCache)]   = editor->GetWidget<ResourceViewer>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Button_Shader)]          = editor->GetWidget<ShaderEditor>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Component_Options)]      = editor->GetWidget<RenderOptions>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Directory_File_Texture)] = editor->GetWidget<TextureViewer>();
 
     spartan::Engine::SetFlag(spartan::EngineMode::Playing, false);
 }
