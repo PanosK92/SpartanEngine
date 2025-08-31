@@ -1,4 +1,4 @@
-#/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
 #include "Input/Input.h"
-#include "Core/Engine.h"
 #include "../ImGui/ImGui_Extension.h"
 SP_WARNINGS_OFF
 #include "../ImGui/Source/imgui_stdlib.h"
@@ -177,62 +176,100 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     if (!entity)
         return;
 
-    m_expanded_to_selection       = false;
-    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth;
+    m_expanded_to_selection = false;
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowOverlap
+                                  | ImGuiTreeNodeFlags_SpanFullWidth
+                                  | ImGuiTreeNodeFlags_OpenOnArrow;
+    const vector<spartan::Entity*>& children = entity->GetChildren();
+    bool has_children = !children.empty();
+    node_flags |= has_children ? 0 : ImGuiTreeNodeFlags_Leaf;
 
-    // flag - is expandable (does it have children) ?
-    const vector<spartan::Entity*>& children  = entity->GetChildren();
-    bool has_children                         = !children.empty();
-    node_flags                               |= has_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
-
-    // flag - is it selected?
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
+    shared_ptr<spartan::Entity> selected_entity = nullptr;
     if (!is_in_game_mode)
-    { 
+    {
         if (spartan::Camera* camera = spartan::World::GetCamera())
         {
-            if (shared_ptr<spartan::Entity> selected_entity = camera->GetSelectedEntity())
-            {
-                if (selected_entity->GetObjectId() == entity->GetObjectId())
-                    node_flags |= ImGuiTreeNodeFlags_Selected;
-
-                if (m_expand_to_selection)
-                {
-                    if (selected_entity->IsDescendantOf(entity.get()))
-                    {
-                        ImGui::SetNextItemOpen(true);
-                        m_expanded_to_selection = true;
-                    }
-                }
-            }
+            selected_entity = camera->GetSelectedEntity();
+        }
+        if (selected_entity && selected_entity->GetObjectId() == entity->GetObjectId())
+        {
+            node_flags |= ImGuiTreeNodeFlags_Selected;
+        }
+        if (m_expand_to_selection && selected_entity && selected_entity->IsDescendantOf(entity.get()))
+        {
+            ImGui::SetNextItemOpen(true);
+            m_expanded_to_selection = true;
         }
     }
 
-    const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
-    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, ""); // empty label, we’ll draw manually
+    const void* node_id = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
+    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, ""); // no label, we'll draw our own
 
+    // drag-drop
     EntityHandleDragDrop(entity);
 
-    // draw the image + text
+    // row metrics
+    const float row_height = ImGui::GetTextLineHeightWithSpacing();
     ImGui::SameLine();
-    if (ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity)))
+
+    // get cursor position for drawing
+    const ImVec2 row_pos  = ImGui::GetCursorScreenPos();
+    const ImVec2 row_size = ImVec2(ImGui::GetContentRegionAvail().x, row_height);
+
+    // invisible button for interaction
+    ImGui::PushID(node_id);
+    ImGui::InvisibleButton("row_btn", row_size);
+    const bool clicked = ImGui::IsItemClicked();
+    ImGui::PopID();
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+    // icon drawing
+    ImVec2 icon_pos  = row_pos;
+    ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity));
+    float next_x = icon_pos.x; // track x-position for text
+    if (icon)
     {
-        ImGui::Image(icon, ImVec2(32, 32));
-        ImGui::SameLine();
+        // fit icon within row height, accounting for padding
+        const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
+        const float icon_size = row_height - padding; // max size to fit row
+        const float y_offset  = (row_height - icon_size) * 0.5f; // vertical centering
+        ImVec2 icon_min       = ImVec2(icon_pos.x, icon_pos.y + y_offset);
+        ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
+        dl->AddImage(icon, icon_min, icon_max);
+        next_x = icon_max.x + ImGui::GetStyle().ItemSpacing.x; // use imgui spacing for consistency
     }
-    ImGui::TextUnformatted(entity->GetObjectName().c_str());
 
+    // text drawing with spacing
+    const ImVec2 text_pos = ImVec2(
+        next_x, // shift text right of icon
+        row_pos.y + (row_height - ImGui::GetTextLineHeight()) * 0.5f
+    );
+    dl->AddText(
+        ImGui::GetFont(),
+        ImGui::GetFontSize(),
+        text_pos,
+        ImGui::GetColorU32(ImGuiCol_Text),
+        entity->GetObjectName().c_str()
+    );
 
-    if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
-    {
-        selected_entity_rect = ImGui::GetCurrentContext()->LastItemData.Rect;
-    }
-
+    // hover handling
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
     {
         entity_hovered = entity;
     }
 
+    // click handling
+    if (clicked)
+    {
+        if (spartan::Camera* camera = spartan::World::GetCamera())
+        {
+            camera->SetSelectedEntity(entity);
+        }
+    }
+
+    // children
     if (is_node_open)
     {
         if (has_children)

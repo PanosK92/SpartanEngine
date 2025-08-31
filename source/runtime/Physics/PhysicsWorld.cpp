@@ -79,7 +79,7 @@ namespace spartan
 
             // raycast
             PxRaycastBuffer hit;
-            PxQueryFilterData filter_data(PxQueryFlag::eDYNAMIC); // only pick dynamic bodies
+            PxQueryFilterData filter_data(PxQueryFlag::eDYNAMIC); // only pick dynamic bodies - static/kinematic can be moved as per usual from the editor
             PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
             if (scene->raycast(origin, direction, 1000.0f, hit, PxHitFlag::eDEFAULT, filter_data) && hit.hasBlock)
             {

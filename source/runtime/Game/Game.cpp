@@ -731,7 +731,9 @@ namespace spartan
         void create_subway_gi_test()
         {
             entities::sun(false);
+
             entities::camera();
+            //default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true); // if you do that, you get a GPU crash, fix
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
             {

@@ -38,11 +38,5 @@ namespace spartan
         static math::Vector3 GetGravity();
         static void* GetScene();
         static void* GetPhysics();
-
-    private:
-        // picking
-        static void PickBody();
-        static void UnpickBody();
-        static void MovePickedBody();
     };
 }
