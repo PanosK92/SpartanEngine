@@ -274,7 +274,7 @@ namespace spartan
         }
         else if (m_material_default)
         {
-            SetDefaultMaterial();
+            //SetDefaultMaterial(); /// cause crash, disable for now
         }
     
         // flags

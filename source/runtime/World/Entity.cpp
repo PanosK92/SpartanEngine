@@ -233,7 +233,7 @@ namespace spartan
         {
             shared_ptr<Entity> child = World::CreateEntity();
             child->Load(child_node);
-            child->SetParent(World::GetEntityById(GetObjectId()).get());
+            child->SetParent(this);
         }
     }
 
