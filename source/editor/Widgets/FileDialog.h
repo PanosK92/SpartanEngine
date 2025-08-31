@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "../ImGui/ImGui_Extension.h"
 #include <chrono>
-#include <Resource/ResourceCache.h>
 //===================================
 
 enum FileDialog_Type

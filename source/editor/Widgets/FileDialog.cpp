@@ -54,7 +54,7 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_type                            = type;
     m_title                           = OPERATION_NAME;
     m_is_window                       = standalone_window;
-    m_item_size                       = Vector2(100.0f, 100.0f);
+    m_item_size                       = 150.0f;
     m_is_dirty                        = true;
     m_selection_made                  = false;
     m_callback_on_item_clicked        = nullptr;
