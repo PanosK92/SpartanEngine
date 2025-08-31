@@ -185,8 +185,8 @@ namespace spartan
         {
             // track entities
             {
-                camera = nullptr;
-                light = nullptr;
+                camera             = nullptr;
+                light              = nullptr;
                 audio_source_count = 0;
                 entities_lights.clear();
                 for (shared_ptr<Entity>& entity : entities)
@@ -221,6 +221,7 @@ namespace spartan
         {
             day_night_cycle::tick();
         }
+
         Game::Tick();
     }
 
@@ -250,19 +251,35 @@ namespace spartan
         // start timing
         const Stopwatch timer;
 
-        // serialize resources
+        // serialize the resources before saving the world (XML), as it references them
         {
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
-
+        
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
+        
+            // save textures first
             for (shared_ptr<IResource>& resource : resources)
             {
                 if (resource->GetResourceType() == ResourceType::Texture)
                 {
                     resource->SaveToFile(directory + resource->GetObjectName() + EXTENSION_TEXTURE);
                 }
-                else if (resource->GetResourceType() == ResourceType::Mesh)
+            }
+        
+            // then save materials
+            for (shared_ptr<IResource>& resource : resources)
+            {
+                if (resource->GetResourceType() == ResourceType::Material)
+                {
+                    resource->SaveToFile(directory + resource->GetObjectName() + EXTENSION_MATERIAL);
+                }
+            }
+        
+            // finally save meshes
+            for (shared_ptr<IResource>& resource : resources)
+            {
+                if (resource->GetResourceType() == ResourceType::Mesh)
                 {
                     resource->SaveToFile(directory + resource->GetObjectName() + EXTENSION_MESH);
                 }
@@ -314,18 +331,35 @@ namespace spartan
         // start timing
         const Stopwatch timer;
 
-        // deserialize resources
+        // deserialize the resources before saving the world (XML), as it references them
         {
             string directory = world_file_path_to_resource_directory(file_path);
-            for (string& file_path : FileSystem::GetFilesInDirectory(directory))
+            vector<string> files = FileSystem::GetFilesInDirectory(directory);
+        
+            // load textures first
+            for (string& path : files)
             {
-                if (FileSystem::IsEngineTextureFile(file_path))
+                if (FileSystem::IsEngineTextureFile(path))
                 {
-                    ResourceCache::Load<RHI_Texture>(file_path);
+                    ResourceCache::Load<RHI_Texture>(path);
                 }
-                else if (FileSystem::IsEngineMeshFile(file_path))
+            }
+        
+            // then load materials
+            for (string& path : files)
+            {
+                if (FileSystem::IsEngineMaterialFile(path))
                 {
-                    ResourceCache::Load<Mesh>(file_path);
+                    ResourceCache::Load<Material>(path);
+                }
+            }
+        
+            // finally load meshes
+            for (string& path : files)
+            {
+                if (FileSystem::IsEngineMeshFile(path))
+                {
+                    ResourceCache::Load<Mesh>(path);
                 }
             }
         }
@@ -338,6 +372,7 @@ namespace spartan
             SP_LOG_ERROR("Failed to load XML file: %s", result.description());
             return false;
         }
+
         // get world node
         pugi::xml_node world_node = doc.child("World");
         if (!world_node)

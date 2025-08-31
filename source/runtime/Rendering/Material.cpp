@@ -45,13 +45,17 @@ namespace spartan
         {
             switch (material_property)
             {
+                // System / meta
                 case MaterialProperty::Optimized:                  return "optimized";
+                case MaterialProperty::Gltf:                       return "gltf";
+        
+                // World / geometry context
                 case MaterialProperty::WorldHeight:                return "world_space_height";
-                case MaterialProperty::Clearcoat:                  return "clearcoat";
-                case MaterialProperty::Clearcoat_Roughness:        return "clearcoat_roughness";
-                case MaterialProperty::Anisotropic:                return "anisotropic";
-                case MaterialProperty::AnisotropicRotation:        return "anisotropic_rotation";
-                case MaterialProperty::Sheen:                      return "sheen";
+                case MaterialProperty::WorldWidth:                 return "world_space_width";
+                case MaterialProperty::WorldSpaceUv:               return "world_space_uv";
+                case MaterialProperty::Tessellation:               return "tessellation";
+        
+                // Core PBR
                 case MaterialProperty::ColorR:                     return "color_r";
                 case MaterialProperty::ColorG:                     return "color_g";
                 case MaterialProperty::ColorB:                     return "color_b";
@@ -60,18 +64,36 @@ namespace spartan
                 case MaterialProperty::Metalness:                  return "metalness";
                 case MaterialProperty::Normal:                     return "normal";
                 case MaterialProperty::Height:                     return "height";
+        
+                // Extended PBR
+                case MaterialProperty::Clearcoat:                  return "clearcoat";
+                case MaterialProperty::Clearcoat_Roughness:        return "clearcoat_roughness";
+                case MaterialProperty::Anisotropic:                return "anisotropic";
+                case MaterialProperty::AnisotropicRotation:        return "anisotropic_rotation";
+                case MaterialProperty::Sheen:                      return "sheen";
                 case MaterialProperty::SubsurfaceScattering:       return "subsurface_scattering";
+                case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
+                case MaterialProperty::EmissiveFromAlbedo:         return "emissive_from_albedo";
+        
+                // Texture transforms
                 case MaterialProperty::TextureTilingX:             return "texture_tiling_x";
                 case MaterialProperty::TextureTilingY:             return "texture_tiling_y";
                 case MaterialProperty::TextureOffsetX:             return "texture_offset_x";
                 case MaterialProperty::TextureOffsetY:             return "texture_offset_y";
+        
+                // Special effects
                 case MaterialProperty::IsTerrain:                  return "texture_slope_based";
+                case MaterialProperty::IsGrassBlade:               return "is_grass_blade";
                 case MaterialProperty::WindAnimation:              return "wind_animation";
                 case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
                 case MaterialProperty::IsWater:                    return "vertex_animate_water";
+        
+                // Render settings
                 case MaterialProperty::CullMode:                   return "cull_mode";
-                case MaterialProperty::NormalFromAlbedo:           return "normal_from_albedo";
+        
+                // Sentinel
                 case MaterialProperty::Max:                        return "max";
+        
                 default:
                 {
                     SP_ASSERT_MSG(false, "Unknown material property");
@@ -264,74 +286,83 @@ namespace spartan
         pugi::xml_document doc;
         if (!doc.load_file(file_path.c_str()))
         {
-            SP_LOG_ERROR("Failed to load XML file");
+            SP_LOG_ERROR("Failed to load XML file %s", file_path.c_str());
             return;
         }
-
+    
         SetResourceFilePath(file_path);
-
         pugi::xml_node node_material = doc.child("Material");
-
+    
         // load properties
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {
             const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
             m_properties[i] = node_material.child(attribute_name).text().as_float();
         }
-
+    
         // load textures
-        uint32_t texture_count = node_material.child("textures").attribute("count").as_uint();
-        for (uint32_t i = 0; i < texture_count; ++i)
+        pugi::xml_node textures_node = node_material.child("textures");
+        for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
-            string node_name            = "texture_" + to_string(i);
-            pugi::xml_node node_texture = node_material.child("textures").child(node_name.c_str());
-
-            MaterialTextureType tex_type = static_cast<MaterialTextureType>(node_texture.attribute("texture_type").as_uint());
-            string tex_name              = node_texture.attribute("texture_name").as_string();
-            string tex_path              = node_texture.attribute("texture_path").as_string();
-
-            // If the texture happens to be loaded, get a reference to it
-            auto texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
-            // If there is not texture (it's not loaded yet), load it
-            if (!texture)
+            for (uint32_t slot = 0; slot < slots_per_texture_type; ++slot)
             {
-                texture = ResourceCache::Load<RHI_Texture>(tex_path);
+                uint32_t index = type * slots_per_texture_type + slot;
+                string node_name = "texture_" + to_string(index);
+                pugi::xml_node node_texture = textures_node.child(node_name.c_str());
+                if (!node_texture)
+                    continue; // skip if node doesn't exist
+    
+                string tex_name = node_texture.attribute("texture_name").as_string();
+                string tex_path = node_texture.attribute("texture_path").as_string();
+    
+                // If the texture is already loaded, get a reference to it
+                auto texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
+                // If the texture is not loaded yet, load it
+                if (!texture && !tex_path.empty())
+                {
+                    texture = ResourceCache::Load<RHI_Texture>(tex_path);
+                }
+    
+                if (texture)
+                {
+                    SetTexture(static_cast<MaterialTextureType>(type), texture, slot);
+                }
             }
-
-            SetTexture(tex_type, texture);
         }
-
+    
         m_object_size = sizeof(*this);
     }
-
+    
     void Material::SaveToFile(const string& file_path)
     {
         SetResourceFilePath(file_path);
-
         pugi::xml_document doc;
-        pugi::xml_node materialNode = doc.append_child("Material");
-
+        pugi::xml_node material_node = doc.append_child("Material");
+    
         // save properties
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {
-            const char* attributeName = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
-            materialNode.append_child(attributeName).text().set(m_properties[i]);
+            const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
+            material_node.append_child(attribute_name).text().set(m_properties[i]);
         }
-
+    
         // save textures
-        pugi::xml_node texturesNode = materialNode.append_child("textures");
-        texturesNode.append_attribute("count").set_value(static_cast<uint32_t>(m_textures.size()));
-
-        for (uint32_t i = 0; i < m_textures.size(); ++i)
+        pugi::xml_node textures_node = material_node.append_child("textures");
+        textures_node.append_attribute("count").set_value(static_cast<uint32_t>(m_textures.size()));
+        for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
-            string node_name = "texture_" + to_string(i);
-            pugi::xml_node textureNode = texturesNode.append_child(node_name.c_str());
-
-            textureNode.append_attribute("texture_type").set_value(i);
-            textureNode.append_attribute("texture_name").set_value(m_textures[i] ? m_textures[i]->GetObjectName().c_str() : "");
-            textureNode.append_attribute("texture_path").set_value(m_textures[i] ? m_textures[i]->GetResourceFilePath().c_str() : "");
+            for (uint32_t slot = 0; slot < slots_per_texture_type; ++slot)
+            {
+                uint32_t index = type * slots_per_texture_type + slot;
+                string node_name = "texture_" + to_string(index);
+                pugi::xml_node texture_node = textures_node.append_child(node_name.c_str());
+                texture_node.append_attribute("texture_type").set_value(type);
+                texture_node.append_attribute("texture_slot").set_value(slot);
+                texture_node.append_attribute("texture_name").set_value(m_textures[index] ? m_textures[index]->GetObjectName().c_str() : "");
+                texture_node.append_attribute("texture_path").set_value(m_textures[index] ? m_textures[index]->GetResourceFilePath().c_str() : "");
+            }
         }
-
+    
         doc.save_file(file_path.c_str());
     }
 
