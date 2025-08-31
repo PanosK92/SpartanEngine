@@ -52,7 +52,7 @@ namespace spartan
     namespace settings
     {
         float gravity = -9.81f; // gravity value in m/s^2
-        float hz      = 60.0f; // simulation frequency in hz
+        float hz      = 200.0f; // simulation frequency in hz
     }
 
     namespace picking

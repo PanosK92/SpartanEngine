@@ -449,24 +449,13 @@ namespace spartan
                 }
 
                 // physics
+                vector<Entity*> car_parts;
+                default_car->GetDescendants(&car_parts);
+                for (Entity* car_part : car_parts)
                 {
-                    if (Entity* body = default_car->GetDescendantByName("Object_12"))
+                    if (car_part->GetComponent<Renderable>())
                     {
-                        Physics* physics = body->AddComponent<Physics>();
-                        physics->SetKinematic(true);
-                        physics->SetBodyType(BodyType::Mesh);
-                    }
-
-                    if (Entity* glass = default_car->GetDescendantByName("Object_58"))
-                    {
-                        Physics* physics = glass->AddComponent<Physics>();
-                        physics->SetKinematic(true);
-                        physics->SetBodyType(BodyType::Mesh);
-                    }
-
-                    if (Entity* roof = default_car->GetDescendantByName("Object_10"))
-                    {
-                        Physics* physics = roof->AddComponent<Physics>();
+                        Physics* physics = car_part->AddComponent<Physics>();
                         physics->SetKinematic(true);
                         physics->SetBodyType(BodyType::Mesh);
                     }
