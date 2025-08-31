@@ -345,19 +345,19 @@ namespace
     
         static const Shortcut camera_controls[] =
         {
-            { "Left click",   "Fire physics cube"           },
-            { "Right click",  "Enable first-person control" },
-            { "W, A, S, D",   "Movement"                    },
-            { "Q, E",         "Elevation"                   },
-            { "F",            "Flashlight"                  },
-            { "Ctrl",         "Crouch"                      }
+            { "Left click while holding right click", "Fire physics cube"           },
+            { "Right click",                          "Enable first-person control" },
+            { "W, A, S, D",                           "Movement"                    },
+            { "Q, E",                                 "Elevation"                   },
+            { "F",                                    "Flashlight"                  },
+            { "Ctrl",                                 "Crouch"                      }
         };
 
         void show_shortcut_table(const char* label, const Shortcut* shortcuts, size_t count)
         {
             if (ImGui::BeginTable(label, 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
             {
-                ImGui::TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+                ImGui::TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableHeadersRow();
         

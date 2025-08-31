@@ -315,13 +315,13 @@ namespace spartan
         // update directions
         {
             // z
-            m_forward  = GetRotation() * Vector3::Forward;
+            m_forward  = Vector3::Normalize(GetRotation() * Vector3::Forward);
             m_backward = -m_forward;
             // y
-            m_up       = GetRotation() * Vector3::Up;
+            m_up       = Vector3::Normalize(GetRotation() * Vector3::Up);
             m_down     = -m_up;
             // x
-            m_right    = GetRotation() * Vector3::Right;
+            m_right    = Vector3::Normalize(GetRotation() * Vector3::Right);
             m_left     = -m_right;
         }
 
