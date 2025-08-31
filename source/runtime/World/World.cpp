@@ -57,6 +57,7 @@ namespace spartan
         uint32_t audio_source_count = 0;
         vector<shared_ptr<Entity>> pending_add;
         set<uint64_t> pending_remove;
+
         void compute_bounding_box()
         {
             for (shared_ptr<Entity>& entity : entities)
@@ -69,6 +70,12 @@ namespace spartan
                     }
                 }
             }
+        }
+
+        string world_file_path_to_resource_directory(const string& world_file_path)
+        {
+            const string world_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path);
+            return FileSystem::GetDirectoryFromFilePath(world_file_path) + "\\" + world_name + "_resources\\";
         }
     }
 
@@ -135,7 +142,9 @@ namespace spartan
         // loading can happen in the background
         if (ProgressTracker::IsLoading())
             return;
+
         SP_PROFILE_CPU();
+
         // detect game toggling
         const bool started = Engine::IsFlagSet(EngineMode::Playing) && was_in_editor_mode;
         const bool stopped = !Engine::IsFlagSet(EngineMode::Playing) && !was_in_editor_mode;
@@ -244,8 +253,7 @@ namespace spartan
         // note: the world description is in XML, this inlcudes, entities, components and their properties
         // however things like textures and meshes have to be saved as binary files separately
         {
-            string name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-            string directory = FileSystem::GetDirectoryFromFilePath(file_path) + "\\" + name + "_resources\\";
+            string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
@@ -305,7 +313,14 @@ namespace spartan
 
         // textures
         {
-
+            string directory = world_file_path_to_resource_directory(file_path);
+            for (string& file_path : FileSystem::GetFilesInDirectory(directory))
+            {
+                if (FileSystem::IsEngineTextureFile(file_path))
+                {
+                    ResourceCache::Load<RHI_Texture>(file_path);
+                }
+            }
         }
 
         // load xml document

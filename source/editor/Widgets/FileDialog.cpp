@@ -524,10 +524,10 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
         m_items.emplace_back(directory, spartan::ResourceCache::GetIcon(spartan::IconType::Folder));
     }
 
-    // asign appropriate icon to files
+    // assign appropriate icon to files
+    vector<string> paths_anything = FileSystem::GetFilesInDirectory(file_path);
     if (m_filter == FileDialog_Filter_All)
     {
-        vector<string> paths_anything = FileSystem::GetFilesInDirectory(file_path);
         for (const string& anything : paths_anything)
         {
            if (FileSystem::IsSupportedImageFile(anything))
@@ -563,7 +563,7 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
            {
                m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::World));
            }
-            else if (FileSystem::GetExtensionFromFilePath(anything) == ".7z")
+           else if (FileSystem::GetExtensionFromFilePath(anything) == ".7z")
            {
                m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
            }
@@ -571,6 +571,16 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
            {
                m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
            }
+        }
+    }
+    else if (m_filter == FileDialog_Filter_World)
+    {
+        for (const string& anything : paths_anything)
+        {
+            if (FileSystem::GetExtensionFromFilePath(anything) == EXTENSION_WORLD)
+            {
+                m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::World));
+            }
         }
     }
 }
