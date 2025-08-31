@@ -145,7 +145,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         ImGui::Text("%s", m_current_path.c_str());
     }
 
-    // Size slider
+    // size slider
     const float slider_width = 200.0f;
     ImGui::SameLine(ImGui::GetContentRegionAvail().x - slider_width);
     ImGui::PushItemWidth(slider_width);
@@ -154,7 +154,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     m_item_size.y += m_item_size.x - previous_width;
     ImGui::PopItemWidth();
 
-    // Search filter
+    // search filter
     const float label_width = 37.0f * spartan::Window::GetDpiScale();
     m_search_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
 
@@ -198,16 +198,16 @@ void FileDialog::ShowMiddle()
         // go through all the items
         for (int i = 0; i < m_items.size(); i++)
         {
-            // Get item to be displayed
+            // get item to be displayed
             auto& item = m_items[i];
 
-            // Apply search filter
+            // apply search filter
             if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
                 continue;
 
             m_displayed_item_count++;
 
-            // Start new line ?
+            // start new line ?
             if (new_line)
             {
                 ImGui::BeginGroup();
@@ -216,7 +216,7 @@ void FileDialog::ShowMiddle()
 
             ImGui::BeginGroup();
             {
-                // Compute rectangles for elements that make up an item
+                // compute rectangles for elements that make up an item
                 {
                     rect_button = ImRect
                     (
@@ -235,7 +235,7 @@ void FileDialog::ShowMiddle()
                     );
                 }
 
-                // Drop shadow effect
+                // drop shadow effect
                 if (m_drop_shadow)
                 {
                     static const float shadow_thickness = 2.0f;
@@ -256,24 +256,25 @@ void FileDialog::ShowMiddle()
 
                     if (ImGuiSp::button("##dummy", m_item_size))
                     {
-                        // Determine type of click
+                        // determine type of click
                         item.Clicked();
                         const bool is_single_click = item.GetTimeSinceLastClickMs() > 500;
 
                         if (is_single_click)
                         {
-                            // Updated input box
+                            // updated input box
                             m_input_box = item.GetLabel();
-                            // Callback
+
+                            // callback
                             if (m_callback_on_item_clicked) m_callback_on_item_clicked(item.GetPath());
                         }
-                        else // Double Click
+                        else // double click
                         {
                             m_current_path   = item.GetPath();
                             m_is_dirty       = true;
                             m_selection_made = !item.IsDirectory();
 
-                            // When browsing files, open them on double click
+                            // when browsing files, open them on double click
                             if (m_type == FileDialog_Type_Browser)
                             {
                                 if (!item.IsDirectory())
@@ -282,7 +283,7 @@ void FileDialog::ShowMiddle()
                                 }
                             }
 
-                            // Callback
+                            // callback
                             if (m_callback_on_item_double_clicked)
                             {
                                 m_callback_on_item_double_clicked(m_current_path);
@@ -292,7 +293,7 @@ void FileDialog::ShowMiddle()
 
                     // Item functionality
                     {
-                        // Manually detect some useful states
+                        // manually detect some useful states
                         if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
                         {
                             m_is_hovering_item = true;
@@ -309,11 +310,11 @@ void FileDialog::ShowMiddle()
                     {
                         if (texture->GetResourceState() == ResourceState::PreparedForGpu) // This is possible for when the editor is reading from drive
                         {
-                            // Compute thumbnail size
+                            // compute thumbnail size
                             ImVec2 image_size     = ImVec2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
                             ImVec2 image_size_max = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
 
-                            // Scale the image size to fit the max available size while respecting its aspect ratio
+                            // scale the image size to fit the max available size while respecting its aspect ratio
                             {
                                 float width_scale  = image_size_max.x / image_size.x;
                                 float height_scale = image_size_max.y / image_size.y;
@@ -323,7 +324,7 @@ void FileDialog::ShowMiddle()
                                 image_size.y *= scale;
                             }
 
-                            // Calculate button center and image position
+                            // calculate button center and image position
                             ImVec2 button_center = ImVec2(
                                 rect_button.Min.x + (rect_button.Max.x - rect_button.Min.x) / 2,
                                 rect_button.Min.y + (rect_button.Max.y - rect_button.Min.y - label_height - 5.0f) / 2
@@ -334,10 +335,10 @@ void FileDialog::ShowMiddle()
                                 button_center.y - image_size.y / 2
                             );
 
-                            // Position the image within the square border
+                            // position the image within the square border
                             ImGui::SetCursorScreenPos(image_pos);
 
-                            // Draw the image
+                            // draw the image
                             ImGuiSp::image(item.GetIcon(), image_size);
                         }
                     }
@@ -352,11 +353,11 @@ void FileDialog::ShowMiddle()
                     const char* label_text  = item.GetLabel().c_str();
                     const ImVec2 label_size = ImGui::CalcTextSize(label_text, nullptr, true);
 
-                    // Draw text background
+                    // draw text background
                     ImGui::GetWindowDrawList()->AddRectFilled(rect_label.Min, rect_label.Max, ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_ChildBg]),style.ChildRounding,0);
                     //ImGui::GetWindowDrawList()->AddRect(rect_label.Min, rect_label.Max, IM_COL32(255, 0, 0, 255)); // debug
 
-                    // Draw text
+                    // draw text
                     ImGui::SetCursorScreenPos(ImVec2(rect_label.Min.x + text_offset, rect_label.Min.y + text_offset));
                     if (label_size.x <= m_item_size.x && label_size.y <= m_item_size.y)
                     {
@@ -371,7 +372,7 @@ void FileDialog::ShowMiddle()
                 ImGui::EndGroup();
             }
 
-            // Decide whether we should switch to the next column or switch row
+            // decide whether we should switch to the next column or switch row
             pen_x += m_item_size.x + ImGui::GetStyle().ItemSpacing.x;
             if (pen_x >= content_width - m_item_size.x)
             {
@@ -454,7 +455,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
         if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Audio,    item->GetPath()); }
         if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Material, item->GetPath()); }
 
-        // Preview
+        // preview
         ImGuiSp::image(item->GetIcon(), 50);
 
         ImGui::EndDragDropSource();
@@ -466,7 +467,7 @@ void FileDialog::ItemClick(FileDialogItem* item) const
     if (!item || !m_is_hovering_window)
         return;
 
-    // Context menu on right click
+    // context menu on right click
     if (ImGui::IsItemClicked(1))
     {
         m_context_menu_id = item->GetId();

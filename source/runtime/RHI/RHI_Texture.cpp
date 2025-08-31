@@ -188,6 +188,33 @@ namespace spartan
         }
     }
 
+    namespace binary_format
+    {
+        struct header
+        {
+            uint32_t type;
+            uint32_t format;
+            uint32_t width;
+            uint32_t height;
+            uint32_t depth;
+            uint32_t mip_count;
+            uint32_t flags;
+            char     name[128];
+        };
+
+        bool write_all(ofstream& ofs, const void* data, size_t size)
+        {
+            ofs.write(reinterpret_cast<const char*>(data), static_cast<streamsize>(size));
+            return ofs.good();
+        }
+
+        bool read_all(ifstream& ifs, void* data, size_t size)
+        {
+            ifs.read(reinterpret_cast<char*>(data), static_cast<streamsize>(size));
+            return ifs.good();
+        }
+    }
+
     RHI_Texture::RHI_Texture() : IResource(ResourceType::Texture)
     {
 
@@ -238,39 +265,166 @@ namespace spartan
         RHI_DestroyResource();
     }
 
-    void RHI_Texture::SaveToFile(const string& file_path)
+    void spartan::RHI_Texture::SaveToFile(const string& file_path)
     {
-        SP_LOG_WARNING("Saving custom textures to file is not supported (or needed) yet.");
+        // require cpu nytes
+        if (m_slices.empty() || m_slices[0].mips.empty())
+        {
+            SP_LOG_ERROR("SaveToFile failed for %s because no CPU-side bits are present. Use RHI_Texture_KeepData when preparing or add a readback path.", file_path.c_str());
+            return;
+        }
+    
+        // require compressed native format
+        if (!IsCompressedFormat(m_format))
+        {
+            SP_LOG_ERROR("SaveToFile expects a compressed native format. Current format is not compressed.");
+            return;
+        }
+    
+        binary_format::header hdr = {};
+        hdr.type                  = static_cast<uint32_t>(m_type);
+        hdr.format                = static_cast<uint32_t>(m_format);
+        hdr.width                 = m_width;
+        hdr.height                = m_height;
+        hdr.depth                 = m_depth;
+        hdr.mip_count             = m_mip_count;
+        hdr.flags                 = m_flags;
+        memset(hdr.name, 0, sizeof(hdr.name));
+        {
+            string n = m_object_name.empty() ? FileSystem::GetFileNameFromFilePath(file_path) : m_object_name;
+            size_t count = min(n.size(), sizeof(hdr.name) - 1);
+            copy_n(n.c_str(), count, hdr.name);
+            hdr.name[count] = '\0';
+        }
+    
+        ofstream ofs(file_path, ios::binary);
+        if (!ofs.is_open())
+        {
+            SP_LOG_ERROR("SaveToFile failed to open %s", file_path.c_str());
+            return;
+        }
+    
+        if (!write_all(ofs, &hdr, sizeof(hdr)))
+        {
+            SP_LOG_ERROR("SaveToFile failed to write header for %s", file_path.c_str());
+            return;
+        }
+    
+        // write layout: for each slice, for each mip, write uint64 size then bytes
+        for (uint32_t array_index = 0; array_index < m_depth; array_index++)
+        {
+            const RHI_Texture_Slice& slice = m_slices[array_index];
+            if (slice.mips.size() != m_mip_count)
+            {
+                SP_LOG_ERROR("SaveToFile mip count mismatch on slice %u", array_index);
+                return;
+            }
+    
+            for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
+            {
+                const auto& mip = slice.mips[mip_index];
+                const uint64_t sz = static_cast<uint64_t>(mip.bytes.size());
+                if (!binary_format::write_all(ofs, &sz, sizeof(sz)) || !binary_format::write_all(ofs, mip.bytes.data(), mip.bytes.size()))
+                {
+                    SP_LOG_ERROR("SaveToFile failed while writing slice %u mip %u", array_index, mip_index);
+                    return;
+                }
+            }
+        }
+    
+        ofs.flush();
+        if (!ofs.good())
+        {
+            SP_LOG_ERROR("SaveToFile finalise failed for %s", file_path.c_str());
+            return;
+        }
+    
+        // record path for cache
+        SetResourceFilePath(file_path);
+        SP_LOG_INFO("Saved native compressed texture to %s", file_path.c_str());
     }
 
     void RHI_Texture::LoadFromFile(const string& file_path)
     {
-        if (!FileSystem::IsFile(file_path))
-        {
-            SP_LOG_ERROR("Invalid file path \"%s\".", file_path.c_str());
-            return;
-        }
-
-        if (!FileSystem::IsSupportedImageFile(file_path))
-        {
-            SP_LOG_ERROR("Unsupported file format \"%s\".", file_path.c_str());
-            return;
-        }
-
         ProgressTracker::SetGlobalLoadingState(true);
-
         ClearData();
-        m_type            = RHI_Texture_Type::Type2D;
-        m_depth           = 1;
-        m_flags          |= RHI_Texture_Srv;
-        m_object_name     = FileSystem::GetFileNameFromFilePath(file_path);
-        m_resource_state  = ResourceState::LoadingFromDrive;
 
-        ImageImporter::Load(file_path, 0, this);
+        // load foreign format
+        if (FileSystem::IsSupportedImageFile(file_path))
+        {
+            m_type            = RHI_Texture_Type::Type2D;
+            m_depth           = 1;
+            m_flags          |= RHI_Texture_Srv;
+            m_object_name     = FileSystem::GetFileNameFromFilePath(file_path);
+            m_resource_state  = ResourceState::LoadingFromDrive;
 
-        // set resource file path so it can be used by the resource cache.
-        SetResourceFilePath(file_path);
+            ImageImporter::Load(file_path, 0, this);
+        }
+        // load native compressed bits
+        else if (FileSystem::IsEngineTextureFile(file_path))
+        {
+            ifstream ifs(file_path, ios::binary);
+            if (!ifs.is_open())
+            {
+                SP_LOG_ERROR("Failed to open native texture %s", file_path.c_str());
+                return;
+            }
 
+            binary_format::header hdr{};
+            if (!read_all(ifs, &hdr, sizeof(hdr)))
+            {
+                SP_LOG_ERROR("Failed to read header for %s", file_path.c_str());
+                return;
+            }
+
+            // initialise texture fields
+            ClearData();
+            m_type            = static_cast<RHI_Texture_Type>(hdr.type);
+            m_format          = static_cast<RHI_Format>(hdr.format);
+            m_width           = hdr.width;
+            m_height          = hdr.height;
+            m_depth           = hdr.depth;
+            m_mip_count       = hdr.mip_count;
+            m_flags           = hdr.flags | RHI_Texture_Srv;
+            m_object_name     = hdr.name[0] ? string(hdr.name) : FileSystem::GetFileNameFromFilePath(file_path);
+            m_viewport        = RHI_Viewport(0, 0, static_cast<float>(m_width), static_cast<float>(m_height));
+            m_channel_count   = rhi_to_format_channel_count(m_format);
+            m_bits_per_channel= rhi_format_to_bits_per_channel(m_format);
+
+            // allocate slices and load mips
+            m_slices.resize(m_depth);
+            for (uint32_t array_index = 0; array_index < m_depth; array_index++)
+            {
+                RHI_Texture_Slice& slice = m_slices[array_index];
+                slice.mips.resize(m_mip_count);
+
+                for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
+                {
+                    uint64_t sz = 0;
+                    if (!binary_format::read_all(ifs, &sz, sizeof(sz)) || sz == 0)
+                    {
+                        SP_LOG_ERROR("Failed to read size for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
+                        return;
+                    }
+
+                    RHI_Texture_Mip& mip = slice.mips[mip_index];
+                    mip.bytes.resize(static_cast<size_t>(sz));
+                    if (!binary_format::read_all(ifs, mip.bytes.data(), static_cast<size_t>(sz)))
+                    {
+                        SP_LOG_ERROR("Failed to read data for slice %u mip %u in %s", array_index, mip_index, file_path.c_str());
+                        return;
+                    }
+                }
+            }
+
+            SP_LOG_INFO("Loaded native texture %s", file_path.c_str());
+        }
+        else
+        {
+            SP_LOG_ERROR("Failed to load texture %s: format not supported", file_path.c_str());
+        }
+
+        SetResourceFilePath(file_path); // set resource file path so it can be used by the resource cache.
         ComputeMemoryUsage();
         m_resource_state = ResourceState::Max;
 
@@ -426,7 +580,7 @@ namespace spartan
                     // move the target mip to the top
                     if (target_mip > 0)
                     {
-                        m_slices[0].mips[0] = std::move(m_slices[0].mips[target_mip]);
+                        m_slices[0].mips[0] = move(m_slices[0].mips[target_mip]);
                         m_width             = max(1u, m_width >> target_mip);
                         m_height            = max(1u, m_height >> target_mip);
                     }
@@ -449,11 +603,6 @@ namespace spartan
             SP_ASSERT(RHI_CreateResource());
         }
 
-        // clear data
-        if (!(m_flags & RHI_Texture_KeepData))
-        { 
-            ClearData();
-        }
         ComputeMemoryUsage();
 
         if (m_rhi_resource)

@@ -616,6 +616,11 @@ namespace spartan
         return GetExtensionFromFilePath(path) == EXTENSION_SHADER;
     }
 
+    bool FileSystem::IsEngineTextureFile(const std::string& path)
+    {
+        return GetExtensionFromFilePath(path) == EXTENSION_TEXTURE;
+    }
+
     bool FileSystem::IsEngineFile(const string& path)
     {
         return
