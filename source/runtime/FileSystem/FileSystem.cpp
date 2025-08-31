@@ -621,6 +621,11 @@ namespace spartan
         return GetExtensionFromFilePath(path) == EXTENSION_TEXTURE;
     }
 
+    bool FileSystem::IsEngineWorldFile(const std::string& path)
+    {
+        return GetExtensionFromFilePath(path) == EXTENSION_WORLD;
+    }
+
     bool FileSystem::IsEngineFile(const string& path)
     {
         return
@@ -630,7 +635,9 @@ namespace spartan
                 IsEngineMeshFile(path)     ||
                 IsEngineSceneFile(path)    ||
                 IsEngineAudioFile(path)    ||
-                IsEngineShaderFile(path);
+                IsEngineShaderFile(path)   ||
+                IsEngineTextureFile(path)  ||
+                IsEngineWorldFile(path);
     }
 
     const vector<string>& FileSystem::GetSupportedImageFormats()

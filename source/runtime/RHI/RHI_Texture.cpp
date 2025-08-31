@@ -360,7 +360,7 @@ namespace spartan
 
             ImageImporter::Load(file_path, 0, this);
         }
-        // load native compressed bits
+        // load native compressed bytes
         else if (FileSystem::IsEngineTextureFile(file_path))
         {
             ifstream ifs(file_path, ios::binary);
@@ -378,7 +378,6 @@ namespace spartan
             }
 
             // initialise texture fields
-            ClearData();
             m_type            = static_cast<RHI_Texture_Type>(hdr.type);
             m_format          = static_cast<RHI_Format>(hdr.format);
             m_width           = hdr.width;

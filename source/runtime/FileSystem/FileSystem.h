@@ -57,6 +57,7 @@ namespace spartan
         static bool IsEngineAudioFile(const std::string& path);
         static bool IsEngineShaderFile(const std::string& path);
         static bool IsEngineTextureFile(const std::string& path);
+        static bool IsEngineWorldFile(const std::string& path);
         static bool IsEngineFile(const std::string& path);
         static const std::vector<std::string>& GetSupportedImageFormats();
 

@@ -528,48 +528,48 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
     vector<string> paths_anything = FileSystem::GetFilesInDirectory(file_path);
     if (m_filter == FileDialog_Filter_All)
     {
-        for (const string& anything : paths_anything)
+        for (const string& file_path : paths_anything)
         {
-           if (FileSystem::IsSupportedImageFile(anything))
+           if (FileSystem::IsSupportedImageFile(file_path))
            {
                // load texture
-               ThreadPool::AddTask([this, anything]()
+               ThreadPool::AddTask([this, file_path]()
                {
                    // load in parallel
-                   auto texture = spartan::ResourceCache::Load<RHI_Texture>(anything);
+                   auto texture = spartan::ResourceCache::Load<RHI_Texture>(file_path);
                
                    // serialize the append
                    lock_guard<mutex> lock(m_mutex_items);
-                   m_items.emplace_back(anything, texture.get());
+                   m_items.emplace_back(file_path, texture.get());
                });
            }
-           else if (FileSystem::IsSupportedAudioFile(anything))
+           else if (FileSystem::IsSupportedAudioFile(file_path))
            {
-               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Audio));
+               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Audio));
            }
-           else if (FileSystem::IsSupportedModelFile(anything))
+           else if (FileSystem::IsSupportedModelFile(file_path))
            {
-               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
+               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
            }
-           else if (FileSystem::IsSupportedFontFile(anything))
+           else if (FileSystem::IsSupportedFontFile(file_path))
            {
-               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Font));
+               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Font));
            }
-           else if (FileSystem::IsEngineMaterialFile(anything))
+           else if (FileSystem::IsEngineMaterialFile(file_path))
            {
-               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Material));
+               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Material));
            }
-           else if (FileSystem::GetExtensionFromFilePath(anything) == EXTENSION_WORLD)
+           else if (FileSystem::IsEngineWorldFile(file_path))
            {
-               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::World));
+               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::World));
            }
-           else if (FileSystem::GetExtensionFromFilePath(anything) == ".7z")
+           else if (FileSystem::GetExtensionFromFilePath(file_path) == ".7z")
            {
-               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
+               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
            }
            else
            {
-               m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
+               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
            }
         }
     }
@@ -580,6 +580,16 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
             if (FileSystem::GetExtensionFromFilePath(anything) == EXTENSION_WORLD)
             {
                 m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::World));
+            }
+        }
+    }
+    else if (m_filter == FileDialog_Filter_Model)
+    {
+        for (const string& anything : paths_anything)
+        {
+            if (FileSystem::IsSupportedModelFile(anything))
+            {
+                m_items.emplace_back(anything, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
             }
         }
     }

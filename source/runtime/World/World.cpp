@@ -82,13 +82,13 @@ namespace spartan
     namespace day_night_cycle
     {
         float current_time = 0.25f; // start at 6 am
-        float time_scale = 200.0f; // 200x real time
+        float time_scale   = 200.0f; // 200x real time
         void tick()
         {
             current_time += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
             if (current_time >= 1.0f)
             {
-               current_time -= 1.0f;
+                current_time -= 1.0f;
             }
             if (current_time < 0.0f)
             {
@@ -250,8 +250,7 @@ namespace spartan
         // start timing
         const Stopwatch timer;
 
-        // note: the world description is in XML, this inlcudes, entities, components and their properties
-        // however things like textures and meshes have to be saved as binary files separately
+        // serialize resources
         {
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
@@ -262,6 +261,10 @@ namespace spartan
                 if (resource->GetResourceType() == ResourceType::Texture)
                 {
                     resource->SaveToFile(directory + resource->GetObjectName() + EXTENSION_TEXTURE);
+                }
+                else if (resource->GetResourceType() == ResourceType::Mesh)
+                {
+                    resource->SaveToFile(directory + resource->GetObjectName() + EXTENSION_MESH);
                 }
             }
         }
@@ -311,7 +314,7 @@ namespace spartan
         // start timing
         const Stopwatch timer;
 
-        // textures
+        // deserialize resources
         {
             string directory = world_file_path_to_resource_directory(file_path);
             for (string& file_path : FileSystem::GetFilesInDirectory(directory))
@@ -319,6 +322,10 @@ namespace spartan
                 if (FileSystem::IsEngineTextureFile(file_path))
                 {
                     ResourceCache::Load<RHI_Texture>(file_path);
+                }
+                else if (FileSystem::IsEngineModelFile(file_path))
+                {
+                    ResourceCache::Load<Mesh>(file_path);
                 }
             }
         }
