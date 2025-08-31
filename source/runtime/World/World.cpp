@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES =========================
 #include "pch.h"
 #include "World.h"
 #include "Entity.h"
@@ -30,10 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
+#include "../Resource/ResourceCache.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//==================================
+//====================================
 // 
 //= NAMESPACES ===============
 using namespace std;
@@ -236,24 +237,44 @@ namespace spartan
         {
             file_path += string(EXTENSION_WORLD);
         }
+
         // start timing
         const Stopwatch timer;
+
+        // note: the world description is in XML, this inlcudes, entities, components and their properties
+        // however things like textures and meshes have to be saved as binary files separately
+        {
+            string name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+            string directory = FileSystem::GetDirectoryFromFilePath(file_path) + "\\" + name + "_resources\\";
+            FileSystem::CreateDirectory_(directory);
+
+            vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
+            for (shared_ptr<IResource>& resource : resources)
+            {
+                if (resource->GetResourceType() == ResourceType::Texture)
+                {
+                    resource->SaveToFile(directory + resource->GetObjectName() + EXTENSION_TEXTURE);
+                }
+            }
+        }
+
         // create document
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name") = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
-        // materials
-        {
-        }
+
         // entities
         {
             // node
             pugi::xml_node entities_node = world_node.append_child("Entities");
+
             // get root entities, save them, and they will save their children recursively
             vector<shared_ptr<Entity>> root_actors = GetRootEntities();
             const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
+
             // progress tracking
             ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
+
             // write entities to node
             for (shared_ptr<Entity>& root : root_actors)
             {
@@ -278,8 +299,15 @@ namespace spartan
     {
         Clear();
         file_path = file_path_;
+
         // start timing
         const Stopwatch timer;
+
+        // textures
+        {
+
+        }
+
         // load xml document
         pugi::xml_document doc;
         pugi::xml_parse_result result = doc.load_file(file_path.c_str());
@@ -295,9 +323,7 @@ namespace spartan
             SP_LOG_ERROR("No 'World' node found.");
             return false;
         }
-        // materials
-        {
-        }
+
         // entities
         {
             // get node
@@ -307,14 +333,17 @@ namespace spartan
                 SP_LOG_ERROR("No 'Entities' node found.");
                 return false;
             }
+
             // count root entities for progress tracking
             uint32_t root_entity_count = 0;
             for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
             {
                 ++root_entity_count;
             }
+
             // progress tracking
             ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
+
             // load root entities (they will load their descendants recursively)
             for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
             {
@@ -323,6 +352,7 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::World).JobDone();
             }
         }
+
         // report time
         SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
         return true;

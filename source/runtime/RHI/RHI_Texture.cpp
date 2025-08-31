@@ -430,7 +430,7 @@ namespace spartan
 
         if (!(m_flags & RHI_Texture_DontPrepareForGpu))
         { 
-            PrepareForGpu();
+        PrepareForGpu();
         }
 
         ProgressTracker::SetGlobalLoadingState(false);
