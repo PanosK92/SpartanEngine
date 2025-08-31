@@ -52,7 +52,6 @@ namespace spartan
         static bool IsEnginePrefabFile(const std::string& path);
         static bool IsEngineMaterialFile(const std::string& path);
         static bool IsEngineMeshFile(const std::string& path);
-        static bool IsEngineModelFile(const std::string& path);
         static bool IsEngineSceneFile(const std::string& path);
         static bool IsEngineAudioFile(const std::string& path);
         static bool IsEngineShaderFile(const std::string& path);
@@ -99,11 +98,10 @@ namespace spartan
 
     static const char* EXTENSION_WORLD    = ".world";
     static const char* EXTENSION_MATERIAL = ".xml";
-    static const char* EXTENSION_MODEL    = ".model";
+    static const char* EXTENSION_MESH     = ".mesh";
     static const char* EXTENSION_PREFAB   = ".prefab";
     static const char* EXTENSION_SHADER   = ".shader";
     static const char* EXTENSION_FONT     = ".font";
-    static const char* EXTENSION_MESH     = ".mesh";
     static const char* EXTENSION_AUDIO    = ".audio";
     static const char* EXTENSION_TEXTURE  = ".texture";
 }

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 #include "../World/Entity.h"
 #include "../Resource/Import/ModelImporter.h"
-#include "../Geometry/GeometryProcessing.h"
+#include "GeometryProcessing.h"
 //===========================================
 
 //= NAMESPACES ================
@@ -55,18 +55,149 @@ namespace spartan
         m_vertices.shrink_to_fit();
     }
 
-    void Mesh::LoadFromFile(const string& file_path)
+    void Mesh::SaveToFile(const string& file_path)
     {
-        const Stopwatch timer;
-
-        if (file_path.empty() || FileSystem::IsDirectory(file_path))
+        std::ofstream outfile(file_path, std::ios::binary);
+        if (!outfile)
         {
-            SP_LOG_WARNING("Invalid file path");
+            SP_LOG_ERROR("Failed to open file for writing: %s", file_path.c_str());
             return;
         }
 
+        uint32_t version = 1;
+        outfile.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
+
+        uint32_t type = static_cast<uint32_t>(m_type);
+        outfile.write(reinterpret_cast<const char*>(&type), sizeof(uint32_t));
+
+        uint32_t dropoff = static_cast<uint32_t>(m_lod_dropoff);
+        outfile.write(reinterpret_cast<const char*>(&dropoff), sizeof(uint32_t));
+
+        outfile.write(reinterpret_cast<const char*>(&m_flags), sizeof(uint32_t));
+
+        uint32_t submesh_count = static_cast<uint32_t>(m_sub_meshes.size());
+        outfile.write(reinterpret_cast<const char*>(&submesh_count), sizeof(uint32_t));
+
+        for (const auto& sub : m_sub_meshes)
+        {
+            uint32_t lod_count = static_cast<uint32_t>(sub.lods.size());
+            outfile.write(reinterpret_cast<const char*>(&lod_count), sizeof(uint32_t));
+
+            for (const auto& lod : sub.lods)
+            {
+                outfile.write(reinterpret_cast<const char*>(&lod.vertex_offset), sizeof(uint32_t));
+                outfile.write(reinterpret_cast<const char*>(&lod.vertex_count), sizeof(uint32_t));
+                outfile.write(reinterpret_cast<const char*>(&lod.index_offset), sizeof(uint32_t));
+                outfile.write(reinterpret_cast<const char*>(&lod.index_count), sizeof(uint32_t));
+
+                Vector3 min = lod.aabb.GetMin();
+                Vector3 max = lod.aabb.GetMax();
+                outfile.write(reinterpret_cast<const char*>(&min.x), sizeof(float));
+                outfile.write(reinterpret_cast<const char*>(&min.y), sizeof(float));
+                outfile.write(reinterpret_cast<const char*>(&min.z), sizeof(float));
+                outfile.write(reinterpret_cast<const char*>(&max.x), sizeof(float));
+                outfile.write(reinterpret_cast<const char*>(&max.y), sizeof(float));
+                outfile.write(reinterpret_cast<const char*>(&max.z), sizeof(float));
+            }
+        }
+
+        uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
+        outfile.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
+        outfile.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
+
+        uint32_t index_count = static_cast<uint32_t>(m_indices.size());
+        outfile.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
+        outfile.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
+
+        outfile.close();
+    }
+
+    void Mesh::LoadFromFile(const string& file_path)
+    {
+        const Stopwatch timer;
         SetResourceFilePath(file_path);
-        ModelImporter::Load(this, file_path);
+
+        if (FileSystem::IsSupportedModelFile(file_path)) // foreign
+        {
+            ModelImporter::Load(this, file_path);
+        }
+        else if (FileSystem::IsEngineMeshFile(file_path)) // native
+        {
+            std::ifstream infile(file_path, std::ios::binary);
+            if (!infile)
+            {
+                SP_LOG_ERROR("Failed to open file: %s", file_path.c_str());
+                return;
+            }
+
+            Clear();
+
+            uint32_t version;
+            infile.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
+            if (version != 1)
+            {
+                SP_LOG_ERROR("Version mismatch for file: %s", file_path.c_str());
+                return;
+            }
+
+            uint32_t type;
+            infile.read(reinterpret_cast<char*>(&type), sizeof(uint32_t));
+            m_type = static_cast<MeshType>(type);
+
+            uint32_t dropoff;
+            infile.read(reinterpret_cast<char*>(&dropoff), sizeof(uint32_t));
+            m_lod_dropoff = static_cast<MeshLodDropoff>(dropoff);
+
+            infile.read(reinterpret_cast<char*>(&m_flags), sizeof(uint32_t));
+
+            uint32_t submesh_count;
+            infile.read(reinterpret_cast<char*>(&submesh_count), sizeof(uint32_t));
+            m_sub_meshes.resize(submesh_count);
+
+            for (auto& sub : m_sub_meshes)
+            {
+                uint32_t lod_count;
+                infile.read(reinterpret_cast<char*>(&lod_count), sizeof(uint32_t));
+                sub.lods.resize(lod_count);
+
+                for (auto& lod : sub.lods)
+                {
+                    infile.read(reinterpret_cast<char*>(&lod.vertex_offset), sizeof(uint32_t));
+                    infile.read(reinterpret_cast<char*>(&lod.vertex_count), sizeof(uint32_t));
+                    infile.read(reinterpret_cast<char*>(&lod.index_offset), sizeof(uint32_t));
+                    infile.read(reinterpret_cast<char*>(&lod.index_count), sizeof(uint32_t));
+
+                    float min_x, min_y, min_z, max_x, max_y, max_z;
+                    infile.read(reinterpret_cast<char*>(&min_x), sizeof(float));
+                    infile.read(reinterpret_cast<char*>(&min_y), sizeof(float));
+                    infile.read(reinterpret_cast<char*>(&min_z), sizeof(float));
+                    infile.read(reinterpret_cast<char*>(&max_x), sizeof(float));
+                    infile.read(reinterpret_cast<char*>(&max_y), sizeof(float));
+                    infile.read(reinterpret_cast<char*>(&max_z), sizeof(float));
+
+                    lod.aabb = BoundingBox(Vector3(min_x, min_y, min_z), Vector3(max_x, max_y, max_z));
+                }
+            }
+
+            uint32_t vertex_count;
+            infile.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
+            m_vertices.resize(vertex_count);
+            infile.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
+
+            uint32_t index_count;
+            infile.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
+            m_indices.resize(index_count);
+            infile.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
+
+            infile.close();
+
+            CreateGpuBuffers();
+        }
+        else
+        {
+            SP_LOG_ERROR("Failed to load mesh %s: format not supported", file_path.c_str());
+            return;
+        }
 
         // compute memory usage
         if (m_vertex_buffer && m_index_buffer)
@@ -76,11 +207,6 @@ namespace spartan
         }
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
-    }
-
-    void Mesh::SaveToFile(const string& file_path)
-    {
-
     }
 
     uint32_t Mesh::GetMemoryUsage() const

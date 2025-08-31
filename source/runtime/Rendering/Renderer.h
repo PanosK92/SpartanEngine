@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture.h"
 #include "../Math/Vector3.h"
 #include "../Math/Plane.h"
-#include "Mesh.h"
+#include "../Geometry/Mesh.h"
 #include "Renderer_Buffers.h"
 #include "../Font/Font.h"
 #include <unordered_map>

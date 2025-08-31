@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Terrain.h"
 #include "../Core/ThreadPool.h"
 #include "../Core/ProgressTracker.h"
-#include "../Rendering/Mesh.h"
+#include "../Geometry/Mesh.h"
 #include "../Rendering/Renderer.h"
 #include "../Rendering/Material.h"
 #include "../Resource/ResourceCache.h"
@@ -999,8 +999,8 @@ namespace spartan
                             mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
                         }
                 
-                        mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MODEL); // silly, need to remove that
-                        mesh->CreateGpuBuffers();                                                                             // aabb, gpu buffers, etc.
+                        mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
+                        mesh->CreateGpuBuffers();                                                                            // aabb, gpu buffers, etc.
                     }
                 
                     // generate instances

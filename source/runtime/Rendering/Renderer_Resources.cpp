@@ -522,27 +522,27 @@ namespace spartan
             if (type == MeshType::Cube)
             {
                 geometry_generation::generate_cube(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_cube" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_cube" + EXTENSION_MESH);
             }
             else if (type == MeshType::Quad)
             {
                 geometry_generation::generate_quad(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MESH);
             }
             else if (type == MeshType::Sphere)
             {
                 geometry_generation::generate_sphere(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_sphere" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_sphere" + EXTENSION_MESH);
             }
             else if (type == MeshType::Cylinder)
             {
                 geometry_generation::generate_cylinder(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_cylinder" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_cylinder" + EXTENSION_MESH);
             }
             else if (type == MeshType::Cone)
             {
                 geometry_generation::generate_cone(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MESH);
             }
 
             // don't optimize this geometry as it's made to spec

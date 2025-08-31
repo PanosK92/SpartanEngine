@@ -323,7 +323,7 @@ namespace spartan
                 {
                     ResourceCache::Load<RHI_Texture>(file_path);
                 }
-                else if (FileSystem::IsEngineModelFile(file_path))
+                else if (FileSystem::IsEngineMeshFile(file_path))
                 {
                     ResourceCache::Load<Mesh>(file_path);
                 }

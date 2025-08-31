@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-#include "../Rendering/Mesh.h"
+#include "../Geometry/Mesh.h"
 #include "../Rendering/Renderer_Definitions.h"
 //============================================
 

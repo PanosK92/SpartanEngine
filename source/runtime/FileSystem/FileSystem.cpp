@@ -586,11 +586,6 @@ namespace spartan
         return GetExtensionFromFilePath(path) == EXTENSION_PREFAB;
     }
 
-    bool FileSystem::IsEngineModelFile(const string& path)
-    {
-        return GetExtensionFromFilePath(path) == EXTENSION_MODEL;
-    }
-
     bool FileSystem::IsEngineMaterialFile(const string& path)
     {
         return GetExtensionFromFilePath(path) == EXTENSION_MATERIAL;
@@ -630,7 +625,7 @@ namespace spartan
     {
         return
                 IsEnginePrefabFile(path)   ||
-                IsEngineModelFile(path)    ||
+                IsEngineMeshFile(path)     ||
                 IsEngineMaterialFile(path) ||
                 IsEngineMeshFile(path)     ||
                 IsEngineSceneFile(path)    ||

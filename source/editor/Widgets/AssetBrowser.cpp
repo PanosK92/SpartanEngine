@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "AssetBrowser.h"
 #include "Properties.h"
-#include "Rendering/Mesh.h"
+#include "Geometry/Mesh.h"
 #include "../Widgets/FileDialog.h"
 #include "Viewport.h"
 //================================
