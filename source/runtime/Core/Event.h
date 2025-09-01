@@ -61,8 +61,6 @@ namespace spartan
         RendererOnInitialized,         // The renderer has been initialized
         RendererOnFirstFrameCompleted, // The renderer has completed the first frame
         RendererOnShutdown,            // The renderer is about to shutdown
-        // World                       
-        WorldClear,                    // The world is about to clear everything
         // SDL                         
         Sdl,                           // An SDL event
         // Window                      

@@ -227,10 +227,10 @@ namespace spartan
 
     void World::Clear()
     {
-        // fire event
-        SP_FIRE_EVENT(EventType::WorldClear);
+        Engine::SetFlag(EngineMode::Playing, false); // stop simulation
+        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
        
-        // clear
+        // clear entities
         entities.clear();
         entities_lights.clear();
         camera = nullptr;

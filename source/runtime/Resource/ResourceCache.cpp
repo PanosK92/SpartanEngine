@@ -59,10 +59,6 @@ namespace spartan
         AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
         AddResourceDirectory(ResourceDirectory::Shaders, data_dir + "shaders");
         AddResourceDirectory(ResourceDirectory::Textures, data_dir + "textures");
-
-        // subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER_STATIC(Shutdown));
-
     }
 
     void ResourceCache::Shutdown()

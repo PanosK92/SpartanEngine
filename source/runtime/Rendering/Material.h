@@ -96,7 +96,6 @@ namespace spartan
         Max                         // total number of properties
     };
 
-
     enum class MaterialIor
     {
         Air,

@@ -1596,11 +1596,8 @@ namespace spartan
         worlds::showroom::texture_paint_normal = nullptr;
         meshes.clear();
 
-        // clear all entities and their resources (and memory)
+        // clear entities, stop simulation, release resources, etc
         World::Clear();
-
-        // stop simulation
-        Engine::SetFlag(EngineMode::Playing, false);
     }
 
     void Game::Tick()

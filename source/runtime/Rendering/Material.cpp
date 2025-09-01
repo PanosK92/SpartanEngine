@@ -292,7 +292,8 @@ namespace spartan
     
         SetResourceFilePath(file_path);
         pugi::xml_node node_material = doc.child("Material");
-    
+
+   
         // load properties
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {
@@ -317,6 +318,7 @@ namespace spartan
     
                 // If the texture is already loaded, get a reference to it
                 auto texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
+
                 // If the texture is not loaded yet, load it
                 if (!texture && !tex_path.empty())
                 {
@@ -381,25 +383,6 @@ namespace spartan
         else
         {
             m_textures[array_index] = nullptr;
-        }
-
-        // set the correct multiplier
-        float multiplier = texture != nullptr;
-        if (texture_type == MaterialTextureType::Roughness)
-        {
-            SetProperty(MaterialProperty::Roughness, multiplier);
-        }
-        else if (texture_type == MaterialTextureType::Metalness)
-        {
-            SetProperty(MaterialProperty::Metalness, multiplier);
-        }
-        else if (texture_type == MaterialTextureType::Normal)
-        {
-            SetProperty(MaterialProperty::Normal, multiplier);
-        }
-        else if (texture_type == MaterialTextureType::Height)
-        {
-            SetProperty(MaterialProperty::Height, multiplier);
         }
 
         SP_FIRE_EVENT(EventType::MaterialOnChanged);
