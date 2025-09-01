@@ -68,6 +68,4 @@ private:
     static void ActionEntityCreateAudioSource();
 
     std::shared_ptr<spartan::Entity> m_entity_empty;
-    bool m_expand_to_selection   = false;
-    bool m_expanded_to_selection = false;
 };

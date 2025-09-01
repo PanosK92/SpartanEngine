@@ -293,7 +293,6 @@ namespace spartan
         SetResourceFilePath(file_path);
         pugi::xml_node node_material = doc.child("Material");
 
-   
         // load properties
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {

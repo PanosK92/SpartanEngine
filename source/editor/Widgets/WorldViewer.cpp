@@ -145,14 +145,6 @@ void WorldViewer::TreeShow()
                 TreeAddEntity(entity);
             }
         }
-
-        // if we have been expanding to show an entity and no more expansions are taking place, we reached it
-        // so, we stop expanding and we bring it into view
-        if (m_expand_to_selection && !m_expanded_to_selection)
-        {
-            ImGui::ScrollToBringRectIntoView(m_window, selected_entity_rect);
-            m_expand_to_selection = false;
-        }
     }
     ImGui::EndDisabled();
 
@@ -176,34 +168,38 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     if (!entity)
         return;
 
-    m_expanded_to_selection = false;
     ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowOverlap
                                   | ImGuiTreeNodeFlags_SpanFullWidth
                                   | ImGuiTreeNodeFlags_OpenOnArrow;
+
     const vector<spartan::Entity*>& children = entity->GetChildren();
     bool has_children = !children.empty();
-    node_flags |= has_children ? 0 : ImGuiTreeNodeFlags_Leaf;
+    if (!has_children)
+        node_flags |= ImGuiTreeNodeFlags_Leaf;
 
-    bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
+    // determine the selected entity (camera or user selection)
     shared_ptr<spartan::Entity> selected_entity = nullptr;
-    if (!is_in_game_mode)
+    if (spartan::Camera* camera = spartan::World::GetCamera())
     {
-        if (spartan::Camera* camera = spartan::World::GetCamera())
-        {
-            selected_entity = camera->GetSelectedEntity();
-        }
-        if (selected_entity && selected_entity->GetObjectId() == entity->GetObjectId())
-        {
-            node_flags |= ImGuiTreeNodeFlags_Selected;
-        }
-        if (m_expand_to_selection && selected_entity && selected_entity->IsDescendantOf(entity.get()))
-        {
-            ImGui::SetNextItemOpen(true);
-            m_expanded_to_selection = true;
-        }
+        selected_entity = camera->GetSelectedEntity();
     }
 
-    const void* node_id = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
+    const bool is_selected = selected_entity && selected_entity->GetObjectId() == entity->GetObjectId();
+    if (is_selected)
+    {
+        node_flags |= ImGuiTreeNodeFlags_Selected;
+
+        // upon selection, scroll the tree to ensure theh selected entity is visible
+        ImGui::SetScrollHereY(0.25f);
+    }
+
+    // auto-expand ancestors of the selected entity
+    if (selected_entity && selected_entity->IsDescendantOf(entity.get()))
+    {
+        ImGui::SetNextItemOpen(true);
+    }
+
+    const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, ""); // no label, we'll draw our own
 
     // drag-drop
@@ -349,8 +345,6 @@ void WorldViewer::SetSelectedEntity(const std::shared_ptr<spartan::Entity> entit
     if (is_in_game_mode)
         return;
 
-    m_expand_to_selection = true;
-
     if (spartan::Camera* camera = spartan::World::GetCamera())
     {
         camera->SetSelectedEntity(entity);
@@ -370,7 +364,7 @@ void WorldViewer::PopupContextMenu() const
     if (!ImGui::BeginPopup("##HierarchyContextMenu"))
         return;
 
-    // Get selected entity
+    // get selected entity
     shared_ptr<spartan::Entity> selected_entity = nullptr;
     if (spartan::Camera* camera = spartan::World::GetCamera())
     {
