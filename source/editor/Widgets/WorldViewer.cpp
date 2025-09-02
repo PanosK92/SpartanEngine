@@ -166,22 +166,20 @@ void WorldViewer::OnTreeEnd()
 
 void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
 {
+    // early exit if entity is null
     if (!entity)
         return;
 
-    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowOverlap
-                                  | ImGuiTreeNodeFlags_SpanFullWidth
-                                  | ImGuiTreeNodeFlags_OpenOnArrow;
-
-    // mark as leaf if no children
+    // set up tree node flags
+    ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow;
     const vector<spartan::Entity*>& children = entity->GetChildren();
-    bool has_children = !children.empty();
+    bool has_children                        = !children.empty();
     if (!has_children)
     {
         node_flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
-    // mark as selected if it's the selected entity
+    // handle selection
     shared_ptr<spartan::Entity> selected_entity = spartan::World::GetCamera() ? spartan::World::GetCamera()->GetSelectedEntity() : nullptr;
     const bool is_selected                      = selected_entity && selected_entity->GetObjectId() == entity->GetObjectId();
     const bool first_time_selected              = is_selected && selected_entity->GetObjectId() != last_selected_entity_id;
@@ -190,7 +188,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         node_flags |= ImGuiTreeNodeFlags_Selected;
     }
 
-    // auto-expand the lineage of the selected entity until it becomes visible
+    // auto-expand for selected descendants
     if (selected_entity && selected_entity->IsDescendantOf(entity.get()) && selected_entity->GetObjectId() != last_selected_entity_id)
     {
         ImGui::SetNextItemOpen(true);
@@ -198,69 +196,114 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
 
     // start tree node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
-    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, ""); // no label, we'll draw our own
+    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "");
 
-    // the first time an entity is selected (say from the viewport) we want to ensure it's visible in the tree
+    // scroll to selected entity
     if (first_time_selected)
     {
         ImGui::SetScrollHereY(0.25f);
         last_selected_entity_id = selected_entity->GetObjectId();
     }
 
-    // handle drag & drop
-    EntityHandleDragDrop(entity);
-
-    // row metrics
-    const float row_height = ImGui::GetTextLineHeightWithSpacing();
+    // set up row for interaction
     ImGui::SameLine();
-
-    // get cursor position for drawing
     const ImVec2 row_pos  = ImGui::GetCursorScreenPos();
-    const ImVec2 row_size = ImVec2(ImGui::GetContentRegionAvail().x, row_height);
+    const ImVec2 row_size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetTextLineHeightWithSpacing());
 
-    // invisible button for interaction
+    // handle clicking and drag-and-drop
     ImGui::PushID(node_id);
     ImGui::InvisibleButton("row_btn", row_size);
-    const bool clicked = ImGui::IsItemClicked();
-    ImGui::PopID();
-
-    // draw icon
-    ImVec2 icon_pos  = row_pos;
-    ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity));
-    float next_x     = icon_pos.x; // track x-position for text
-    ImDrawList* dl   = ImGui::GetWindowDrawList();
-    if (icon)
-    {
-        // fit icon within row height, accounting for padding
-        const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
-        const float icon_size = row_height - padding; // max size to fit row
-        const float y_offset  = (row_height - icon_size) * 0.25f; // vertical centering
-        ImVec2 icon_min       = ImVec2(icon_pos.x, icon_pos.y + y_offset);
-        ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
-        dl->AddImage(icon, icon_min, icon_max);
-        next_x = icon_max.x + ImGui::GetStyle().ItemSpacing.x; // use imgui spacing for consistency
-    }
-
-    // draw text
-    const ImVec2 text_pos = ImVec2(
-        next_x, // shift text right of icon
-        row_pos.y - (row_height - ImGui::GetTextLineHeight()) * 0.25f
-    );
-    dl->AddText(
-        ImGui::GetFont(),
-        ImGui::GetFontSize(),
-        text_pos,
-        ImGui::GetColorU32(ImGuiCol_Text),
-        entity->GetObjectName().c_str()
-    );
-
-    // handle hover
+    const bool clicked         = ImGui::IsItemClicked();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
     {
         entity_hovered = entity;
     }
 
-    // handle clicking
+    // drag source
+    if (!spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
+    {
+        if (ImGui::BeginDragDropSource())
+        {
+            uint64_t entity_id = entity->GetObjectId();
+            ImGui::SetDragDropPayload("ENTITY", &entity_id, sizeof(uint64_t));
+            ImGui::Text("%s", entity->GetObjectName().c_str());
+            ImGui::EndDragDropSource();
+        }
+    }
+
+    // drop target
+    if (ImGui::BeginDragDropTarget())
+    {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
+        {
+            if (payload->DataSize != sizeof(uint64_t))
+            {
+                SP_LOG_ERROR("Invalid drag-and-drop payload size for entity.");
+            }
+            else
+            {
+                const uint64_t entity_id = *(const uint64_t*)payload->Data;
+                if (const shared_ptr<spartan::Entity> dropped_entity = spartan::World::GetEntityById(entity_id))
+                {
+                    if (dropped_entity->GetObjectId() != entity->GetObjectId())
+                    {
+                        // reverse parent-child if dropped entity is a direct child
+                        if (entity->GetParent() == dropped_entity.get())
+                        {
+                            entity->SetParent(nullptr); // temporarily unparent to avoid cycle
+                            dropped_entity->SetParent(entity.get());
+                        }
+                        // reverse parent-child if dropped entity is a descendant
+                        else if (entity->IsDescendantOf(dropped_entity.get()))
+                        {
+                            spartan::Entity* old_parent = entity->GetParent();
+                            if (!old_parent || old_parent != dropped_entity.get())
+                            {
+                                entity->SetParent(dropped_entity.get());
+                            }
+                            else
+                            {
+                                SP_LOG_WARNING("cannot make %s a child of %s due to circular parenting.", entity->GetObjectName().c_str(), dropped_entity->GetObjectName().c_str());
+                            }
+                        }
+                        // normal case: make dropped entity a child of target
+                        else
+                        {
+                            dropped_entity->SetParent(entity.get());
+                        }
+                    }
+                }
+                else
+                {
+                    SP_LOG_WARNING("Dropped entity with ID %llu not found.", entity_id);
+                }
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+    ImGui::PopID();
+
+    // draw icon
+    ImVec2 icon_pos  = row_pos;
+    ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity));
+    float next_x     = icon_pos.x;
+    ImDrawList* dl   = ImGui::GetWindowDrawList();
+    if (icon)
+    {
+        const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
+        const float icon_size = ImGui::GetTextLineHeightWithSpacing() - padding;
+        const float y_offset  = (ImGui::GetTextLineHeightWithSpacing() - icon_size) * 0.25f;
+        ImVec2 icon_min       = ImVec2(icon_pos.x, icon_pos.y + y_offset);
+        ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
+        dl->AddImage(icon, icon_min, icon_max);
+        next_x                = icon_max.x + ImGui::GetStyle().ItemSpacing.x;
+    }
+
+    // draw text
+    const ImVec2 text_pos = ImVec2(next_x, row_pos.y - (ImGui::GetTextLineHeightWithSpacing() - ImGui::GetTextLineHeight()) * 0.25f);
+    dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, ImGui::GetColorU32(ImGuiCol_Text), entity->GetObjectName().c_str());
+
+    // handle selection on click
     if (clicked)
     {
         if (spartan::Camera* camera = spartan::World::GetCamera())
@@ -269,7 +312,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         }
     }
 
-    // recurvisely add children
+    // recursively add children
     if (is_node_open)
     {
         if (has_children)
@@ -314,31 +357,6 @@ void WorldViewer::HandleClicking()
     if ((left_click || right_click) && !entity_hovered.lock())
     {
         SetSelectedEntity(m_entity_empty);
-    }
-}
-
-void WorldViewer::EntityHandleDragDrop(shared_ptr<spartan::Entity> entity_ptr) const
-{
-    // drag
-    if (ImGui::BeginDragDropSource())
-    {
-        drag_drop_payload.data = entity_ptr->GetObjectId();
-        drag_drop_payload.type = ImGuiSp::DragPayloadType::Entity;
-        ImGuiSp::create_drag_drop_paylod(drag_drop_payload);
-        ImGui::EndDragDropSource();
-    }
-
-    // drop
-    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
-    {
-        const uint64_t entity_id = get<uint64_t>(payload->data);
-        if (const shared_ptr<spartan::Entity>& dropped_entity = spartan::World::GetEntityById(entity_id))
-        {
-            if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
-            {
-                dropped_entity->SetParent(entity_ptr.get());
-            }
-        }
     }
 }
 
@@ -690,12 +708,12 @@ void WorldViewer::ActionEntityCreatePhysicsBody()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<spartan::Physics>();
-    entity->SetObjectName("PhysicsBody");
+    entity->SetObjectName("Physics");
 }
 
 void WorldViewer::ActionEntityCreateAudioSource()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<spartan::AudioSource>();
-    entity->SetObjectName("AudioSource");
+    entity->SetObjectName("Physics");
 }

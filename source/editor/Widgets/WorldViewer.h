@@ -43,7 +43,6 @@ private:
     void OnTreeEnd();
     void TreeAddEntity(std::shared_ptr<spartan::Entity> entity);
     void HandleClicking();
-    void EntityHandleDragDrop(std::shared_ptr<spartan::Entity> entity_ptr) const;
 
     // misc
     void Popups();
