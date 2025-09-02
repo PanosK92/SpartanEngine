@@ -219,18 +219,17 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     const bool clicked = ImGui::IsItemClicked();
     ImGui::PopID();
 
-    ImDrawList* dl = ImGui::GetWindowDrawList();
-
     // icon drawing
     ImVec2 icon_pos  = row_pos;
     ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity));
-    float next_x = icon_pos.x; // track x-position for text
+    float next_x     = icon_pos.x; // track x-position for text
+    ImDrawList* dl   = ImGui::GetWindowDrawList();
     if (icon)
     {
         // fit icon within row height, accounting for padding
         const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
         const float icon_size = row_height - padding; // max size to fit row
-        const float y_offset  = (row_height - icon_size) * 0.5f; // vertical centering
+        const float y_offset  = (row_height - icon_size) * 0.25f; // vertical centering
         ImVec2 icon_min       = ImVec2(icon_pos.x, icon_pos.y + y_offset);
         ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
         dl->AddImage(icon, icon_min, icon_max);
@@ -240,7 +239,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     // text drawing with spacing
     const ImVec2 text_pos = ImVec2(
         next_x, // shift text right of icon
-        row_pos.y + (row_height - ImGui::GetTextLineHeight()) * 0.5f
+        row_pos.y - (row_height - ImGui::GetTextLineHeight()) * 0.25f
     );
     dl->AddText(
         ImGui::GetFont(),
