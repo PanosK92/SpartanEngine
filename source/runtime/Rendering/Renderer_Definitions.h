@@ -267,8 +267,6 @@ namespace spartan
         Gizmo_light_point,
         Gizmo_light_spot,
         Gizmo_audio_source,
-        Foam,
-        Caustics,
         Black,
         White,
         Max

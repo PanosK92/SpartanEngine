@@ -762,7 +762,6 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex5, GetStandardTexture(Renderer_StandardTexture::Caustics));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);             // out
                 cmd_list->Dispatch(tex_frame);
             }
@@ -979,7 +978,6 @@ namespace spartan
             // set textures
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  GetStandardTexture(Renderer_StandardTexture::Foam));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);

@@ -592,12 +592,6 @@ namespace spartan
             standard_texture(Renderer_StandardTexture::Gizmo_audio_source)      = make_shared<RHI_Texture>(dir_texture + "audio.png");
         }
 
-        // water
-        {
-            standard_texture(Renderer_StandardTexture::Foam)      = make_shared<RHI_Texture>(dir_materials + "water\\foam.jpg");
-            standard_texture(Renderer_StandardTexture::Caustics)  = make_shared<RHI_Texture>(dir_materials + "water\\caustics.jpeg");
-        }
-
         // misc
         {
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");

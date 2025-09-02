@@ -56,7 +56,7 @@ namespace ImGui::TransformGizmo
         style.Colors[ImGuizmo::COLOR::PLANE_Z]            = inspector_color_z;
         style.Colors[ImGuizmo::COLOR::HATCHED_AXIS_LINES] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 
-        const float line_thickness = 8.0f;
+        const float line_thickness       = 8.0f;
         style.CenterCircleSize           = 5.0f;
         style.TranslationLineThickness   = line_thickness;
         style.TranslationLineArrowSize   = 6.0f;
