@@ -211,8 +211,11 @@ void Properties::ShowEntity(shared_ptr<Entity> entity) const
         }
 
         // global toggle for world/local space
-        static bool use_world_space = true;
-        ImGui::Checkbox("World Space", &use_world_space);
+        bool use_world_space = Editor::GetWorldSpaceTransforms();
+        if (ImGui::Checkbox("World Space", &use_world_space))
+        {
+            Editor::SetWorldSpaceTransforms(use_world_space);
+        }
 
         // reflect transforms based on mode
         Vector3 position    = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();

@@ -1602,10 +1602,10 @@ namespace spartan
 
     void Game::Tick()
     {
-        car::tick();
-
         if (!Engine::IsFlagSet(EngineMode::Playing))
             return;
+
+        car::tick();
 
         if (loaded_world == DefaultWorld::LiminalSpace)
         {

@@ -56,12 +56,13 @@ namespace ImGui::TransformGizmo
         style.Colors[ImGuizmo::COLOR::PLANE_Z]            = inspector_color_z;
         style.Colors[ImGuizmo::COLOR::HATCHED_AXIS_LINES] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 
+        const float line_thickness = 8.0f;
         style.CenterCircleSize           = 5.0f;
-        style.TranslationLineThickness   = 4.0f;
+        style.TranslationLineThickness   = line_thickness;
         style.TranslationLineArrowSize   = 6.0f;
-        style.RotationLineThickness      = 3.0f;
+        style.RotationLineThickness      = line_thickness;
         style.RotationOuterLineThickness = 2.0f;
-        style.ScaleLineThickness         = 4.0f;
+        style.ScaleLineThickness         = line_thickness;
         style.ScaleLineCircleSize        = 7.0f;
     }
 
@@ -116,27 +117,27 @@ namespace ImGui::TransformGizmo
         // get matrices
         const spartan::math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
         const spartan::math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
- 
+
         // begin
         const bool is_orthographic = false;
         ImGuizmo::SetOrthographic(is_orthographic);
         ImGuizmo::BeginFrame();
 
         // map transform to ImGuizmo
-        spartan::math::Vector3 position        = entity->GetPosition();
-        spartan::math::Vector3 scale           = entity->GetScale();
-        spartan::math::Quaternion rotation     = entity->GetRotation();
+        bool use_world_space                   = Editor::GetWorldSpaceTransforms();
+        spartan::math::Vector3 position        = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
+        spartan::math::Quaternion rotation     = use_world_space ? entity->GetRotation() : entity->GetRotationLocal();
+        spartan::math::Vector3 scale           = use_world_space ? entity->GetScale() : entity->GetScaleLocal();
         spartan::math::Matrix transform_matrix = create_row_major_matrix(position, rotation, scale);
 
         // set viewport rectangle
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
-
         ImGuizmo::Manipulate(
             &matrix_view.m00,
             &matrix_projection.m00,
             transform_operation,
-            ImGuizmo::WORLD,
+            use_world_space ? ImGuizmo::WORLD : ImGuizmo::LOCAL,
             &transform_matrix.m00,
             nullptr,
             &snap.x
@@ -148,17 +149,25 @@ namespace ImGui::TransformGizmo
             // start of handling - save the initial transform
             if (first_use)
             {
-                position_previous = entity->GetPosition();
-                rotation_previous = entity->GetRotation();
-                scale_previous    = entity->GetScale();
-
-                first_use = false;
+                position_previous = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
+                rotation_previous = use_world_space ? entity->GetRotation() : entity->GetRotationLocal();
+                scale_previous    = use_world_space ? entity->GetScale()    : entity->GetScaleLocal();
+                first_use         = false;
             }
 
             transform_matrix.Transposed().Decompose(scale, rotation, position);
-            entity->SetPosition(position);
-            entity->SetRotation(rotation);
-            entity->SetScale(scale);
+            if (use_world_space)
+            {
+                entity->SetPosition(position);
+                entity->SetRotation(rotation);
+                entity->SetScale(scale);
+            }
+            else
+            {
+                entity->SetPositionLocal(position);
+                entity->SetRotationLocal(rotation);
+                entity->SetScaleLocal(scale);
+            }
 
             // end of handling - add the current and previous transforms to the command stack
             if (spartan::Input::GetKeyUp(spartan::KeyCode::Click_Left))
