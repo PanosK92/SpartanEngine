@@ -118,7 +118,7 @@ namespace spartan
         void SaveToFile(const std::string& file_path) override;
 
         // textures
-        void SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot = 0);
+        void SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot = 0, const bool auto_adjust_multipler = true);
         void SetTexture(const MaterialTextureType texture_type, std::shared_ptr<RHI_Texture> texture, const uint8_t slot = 0);
         void SetTexture(const MaterialTextureType texture_type, const std::string& file_path, const uint8_t slot = 0);
         bool HasTextureOfType(const std::string& path) const;

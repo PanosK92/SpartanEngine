@@ -326,7 +326,7 @@ namespace spartan
     
                 if (texture)
                 {
-                    SetTexture(static_cast<MaterialTextureType>(type), texture, slot);
+                    SetTexture(static_cast<MaterialTextureType>(type), texture.get(), slot, false);
                 }
             }
         }
@@ -367,7 +367,7 @@ namespace spartan
         doc.save_file(file_path.c_str());
     }
 
-    void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot)
+    void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot, const bool auto_adjust_multipler)
     {
         // validate slot range
         SP_ASSERT(slot < slots_per_texture_type);
@@ -382,6 +382,26 @@ namespace spartan
         else
         {
             m_textures[array_index] = nullptr;
+        }
+
+        if (auto_adjust_multipler)
+        {
+            if (texture_type == MaterialTextureType::Metalness)
+            {
+                SetProperty(MaterialProperty::Metalness, 1.0f);
+            }
+            else if (texture_type == MaterialTextureType::Normal)
+            {
+                SetProperty(MaterialProperty::Normal, 1.0f);
+            }
+            else if (texture_type == MaterialTextureType::Roughness)
+            {
+                SetProperty(MaterialProperty::Roughness, 1.0f);
+            }
+            else if (texture_type == MaterialTextureType::Height)
+            {
+                SetProperty(MaterialProperty::Height, 1.0f);
+            }
         }
 
         SP_FIRE_EVENT(EventType::MaterialOnChanged);
