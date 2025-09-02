@@ -394,7 +394,7 @@ namespace spartan
             }
         }
     
-        // behavior: mouse Look and movement direction calculation
+        // behavior: mouse look and movement direction calculation
         Vector3 movement_direction = Vector3::Zero;
         if (is_controlled || is_gamepad_connected)
         {
@@ -496,7 +496,7 @@ namespace spartan
             }
             else // breathing effect when resting
             {
-                breathe_timer               += delta_time * 0.5f;
+                breathe_timer               += delta_time * 1.5f;
                 float breathe_amplitude      = 0.0025f;
                 float pitch_offset           = sin(breathe_timer) * breathe_amplitude;
                 Quaternion breathe_rotation  = Quaternion::FromAxisAngle(Vector3::Right, pitch_offset * deg_to_rad);
