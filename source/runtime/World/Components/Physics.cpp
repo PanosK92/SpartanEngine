@@ -361,7 +361,7 @@ namespace spartan
         m_center_of_mass.z = node.attribute("center_of_mass_z").as_float(0.0f);
         m_body_type        = static_cast<BodyType>(node.attribute("body_type").as_int(static_cast<int>(BodyType::Max)));
     
-        Create(); // recreate the physics body using loaded parameters
+        Create();
     }
 
     void Physics::SetMass(float mass)

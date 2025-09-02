@@ -130,8 +130,8 @@ namespace spartan
                 // add a camera component
                 shared_ptr<Entity> camera = World::CreateEntity();
                 camera->SetObjectName("component_camera");
-                camera->AddComponent<Camera>()->SetPhysicsBodyToControl(physics_body); // let the camera now that it should control the physics body
-                camera->SetParent(default_camera.get());
+                camera->AddComponent<Camera>();
+                camera->SetParent(default_camera.get()); // if the parent has a physics body, the camera will automatically control it for physics based movement
                 camera->SetPositionLocal(physics_body->GetControllerTopLocal());
                 camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }

@@ -98,7 +98,7 @@ namespace spartan
         m_far_plane          = node.attribute("far_plane").as_float(10'000.0f);
         m_projection_type    = static_cast<ProjectionType>(node.attribute("projection").as_int(static_cast<int>(Projection_Perspective)));
         m_flags              = node.attribute("flags").as_uint(0);
-    
+
         ComputeMatrices();
     }
 
@@ -346,14 +346,24 @@ namespace spartan
         bool mouse_click_right      = Input::GetKey(KeyCode::Click_Right);
         bool mouse_click_left_down  = Input::GetKeyDown(KeyCode::Click_Left);
 
-         // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
+        // if the camera is paranted to an entity with a physics body, we will control that instead
+        Physics* physics_body = nullptr;
+        if (Entity* parent = GetEntity()->GetParent())
+        {
+            if (Physics* physics = parent->GetComponent<Physics>())
+            {
+                physics_body = physics;
+            }
+        }
+
+        // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
         bool mouse_in_viewport    = Input::GetMouseIsInViewport();
         bool is_controlled        = GetFlag(CameraFlags::IsControlled);
         bool wants_cursor_hidden  = GetFlag(CameraFlags::WantsCursorHidden);
         bool is_gamepad_connected = Input::IsGamepadConnected();
         bool is_playing           = Engine::IsFlagSet(EngineMode::Playing);
-        bool has_physics_body     = m_physics_body_to_control != nullptr;
-        bool is_grounded          = has_physics_body ? m_physics_body_to_control->IsGrounded() : false;
+        bool has_physics_body     = physics_body != nullptr;
+        bool is_grounded          = has_physics_body ? physics_body->IsGrounded() : false;
         bool is_crouching         = button_crouch && is_grounded;
         m_is_walking              = (button_move_forward || button_move_backward || button_move_left || button_move_right) && is_grounded;
         
@@ -476,7 +486,7 @@ namespace spartan
             static float bob_timer             = 0.0f;
             static float breathe_timer         = 0.0f;
     
-            float velocity_magnitude = m_physics_body_to_control->GetLinearVelocity().Length();
+            float velocity_magnitude = physics_body->GetLinearVelocity().Length();
             if (velocity_magnitude > 0.01f) // walking head bob
             {
                 bob_timer           += delta_time * velocity_magnitude * 2.0f;
@@ -511,7 +521,7 @@ namespace spartan
                 if (m_jump_time <= max_jump_time)
                 {
                     Vector3 displacement = Vector3(0.0f, m_jump_velocity * delta_time, 0.0f);
-                    m_physics_body_to_control->Move(displacement);
+                    physics_body->Move(displacement);
                 }
                 else
                 {
@@ -529,7 +539,7 @@ namespace spartan
         // behavior: crouching
         if (has_physics_body && is_playing)
         {
-            m_physics_body_to_control->Crouch(is_crouching);
+            physics_body->Crouch(is_crouching);
         }
         
         // behavior: apply movement
@@ -537,13 +547,13 @@ namespace spartan
         {
             if (has_physics_body && is_playing)
             {
-                if (m_physics_body_to_control->GetBodyType() == BodyType::Controller)
+                if (physics_body->GetBodyType() == BodyType::Controller)
                 {
-                    m_physics_body_to_control->Move(m_movement_speed * delta_time * 10.0f);
+                    physics_body->Move(m_movement_speed * delta_time * 10.0f);
                 }
                 else if (is_grounded)
                 {
-                    Vector3 velocity        = m_physics_body_to_control->GetLinearVelocity();
+                    Vector3 velocity        = physics_body->GetLinearVelocity();
                     Vector3 target_velocity = Vector3(m_movement_speed.x * 70.0f, velocity.y, m_movement_speed.z * 70.0f);
                     float force_multiplier  = 50.0f;
                     if (movement_direction.LengthSquared() < 0.1f)
@@ -551,12 +561,12 @@ namespace spartan
                         force_multiplier *= 8.0f;
                     }
                     Vector3 force = (target_velocity - velocity) * force_multiplier;
-                    m_physics_body_to_control->ApplyForce(force, PhysicsForce::Constant);
+                    physics_body->ApplyForce(force, PhysicsForce::Constant);
                 }
             }
             else if (has_physics_body)
             {
-                m_physics_body_to_control->Move(m_movement_speed);
+                physics_body->Move(m_movement_speed);
             }
             else
             {
@@ -719,11 +729,6 @@ namespace spartan
         {
             m_flags  &= ~static_cast<uint32_t>(flag);
         }
-    }
-
-    void Camera::SetPhysicsBodyToControl(Physics* physics_body)
-    {
-        m_physics_body_to_control = physics_body;
     }
 
     Matrix Camera::UpdateViewMatrix() const

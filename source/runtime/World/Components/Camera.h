@@ -141,8 +141,7 @@ namespace spartan
         void SetFlag(const CameraFlags flag, const bool enable = true);
 
         // misc
-        void SetPhysicsBodyToControl(Physics* physics_body);
-        bool IsWalking() { return m_is_walking; }
+        bool IsWalking()                                       { return m_is_walking; }
         void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
         std::shared_ptr<Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
 
@@ -185,7 +184,6 @@ namespace spartan
         float m_jump_time                            = 0.0f;
         math::Vector3 m_lerp_to_target_position      = math::Vector3::Zero;
         math::Quaternion m_lerp_to_target_rotation   = math::Quaternion::Identity;
-        Physics* m_physics_body_to_control           = nullptr;
         Entity* m_flashlight                         = nullptr;
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;

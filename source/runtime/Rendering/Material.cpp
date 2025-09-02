@@ -315,10 +315,10 @@ namespace spartan
                 string tex_name = node_texture.attribute("texture_name").as_string();
                 string tex_path = node_texture.attribute("texture_path").as_string();
     
-                // If the texture is already loaded, get a reference to it
+                // if the texture is already loaded, get a reference to it
                 auto texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
 
-                // If the texture is not loaded yet, load it
+                // if the texture is not loaded yet, load it
                 if (!texture && !tex_path.empty())
                 {
                     texture = ResourceCache::Load<RHI_Texture>(tex_path);
