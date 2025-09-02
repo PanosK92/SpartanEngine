@@ -173,6 +173,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
                                   | ImGuiTreeNodeFlags_SpanFullWidth
                                   | ImGuiTreeNodeFlags_OpenOnArrow;
 
+    // mark as leaf if no children
     const vector<spartan::Entity*>& children = entity->GetChildren();
     bool has_children = !children.empty();
     if (!has_children)
@@ -180,15 +181,10 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         node_flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
-    // determine the selected entity (camera or user selection)
-    shared_ptr<spartan::Entity> selected_entity = nullptr;
-    if (spartan::Camera* camera = spartan::World::GetCamera())
-    {
-        selected_entity = camera->GetSelectedEntity();
-    }
-
-    const bool is_selected         = selected_entity && selected_entity->GetObjectId() == entity->GetObjectId();
-    const bool first_time_selected = is_selected && selected_entity->GetObjectId() != last_selected_entity_id;
+    // mark as selected if it's the selected entity
+    shared_ptr<spartan::Entity> selected_entity = spartan::World::GetCamera() ? spartan::World::GetCamera()->GetSelectedEntity() : nullptr;
+    const bool is_selected                      = selected_entity && selected_entity->GetObjectId() == entity->GetObjectId();
+    const bool first_time_selected              = is_selected && selected_entity->GetObjectId() != last_selected_entity_id;
     if (is_selected)
     {
         node_flags |= ImGuiTreeNodeFlags_Selected;
@@ -200,6 +196,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         ImGui::SetNextItemOpen(true);
     }
 
+    // start tree node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, ""); // no label, we'll draw our own
 
@@ -210,7 +207,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         last_selected_entity_id = selected_entity->GetObjectId();
     }
 
-    // drag-drop
+    // handle drag & drop
     EntityHandleDragDrop(entity);
 
     // row metrics
@@ -227,7 +224,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     const bool clicked = ImGui::IsItemClicked();
     ImGui::PopID();
 
-    // icon drawing
+    // draw icon
     ImVec2 icon_pos  = row_pos;
     ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity));
     float next_x     = icon_pos.x; // track x-position for text
@@ -244,7 +241,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         next_x = icon_max.x + ImGui::GetStyle().ItemSpacing.x; // use imgui spacing for consistency
     }
 
-    // text drawing with spacing
+    // draw text
     const ImVec2 text_pos = ImVec2(
         next_x, // shift text right of icon
         row_pos.y - (row_height - ImGui::GetTextLineHeight()) * 0.25f
@@ -257,13 +254,13 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         entity->GetObjectName().c_str()
     );
 
-    // hover handling
+    // handle hover
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
     {
         entity_hovered = entity;
     }
 
-    // click handling
+    // handle clicking
     if (clicked)
     {
         if (spartan::Camera* camera = spartan::World::GetCamera())
@@ -272,7 +269,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         }
     }
 
-    // children
+    // recurvisely add children
     if (is_node_open)
     {
         if (has_children)

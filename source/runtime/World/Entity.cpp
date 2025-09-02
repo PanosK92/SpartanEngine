@@ -235,6 +235,8 @@ namespace spartan
             child->Load(child_node);
             child->SetParent(this);
         }
+
+        UpdateTransform();
     }
 
     bool Entity::GetActive()
