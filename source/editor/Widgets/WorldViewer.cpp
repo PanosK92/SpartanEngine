@@ -50,6 +50,7 @@ namespace
     bool popup_rename_entity       = false;
     spartan::Entity* entity_copied = nullptr;
     ImRect selected_entity_rect;
+    uint64_t last_selected_entity_id = 0;
 
     spartan::RHI_Texture* component_to_image(const shared_ptr<spartan::Entity>& entity)
     {
@@ -175,7 +176,9 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
     const vector<spartan::Entity*>& children = entity->GetChildren();
     bool has_children = !children.empty();
     if (!has_children)
+    {
         node_flags |= ImGuiTreeNodeFlags_Leaf;
+    }
 
     // determine the selected entity (camera or user selection)
     shared_ptr<spartan::Entity> selected_entity = nullptr;
@@ -184,23 +187,28 @@ void WorldViewer::TreeAddEntity(shared_ptr<spartan::Entity> entity)
         selected_entity = camera->GetSelectedEntity();
     }
 
-    const bool is_selected = selected_entity && selected_entity->GetObjectId() == entity->GetObjectId();
+    const bool is_selected         = selected_entity && selected_entity->GetObjectId() == entity->GetObjectId();
+    const bool first_time_selected = is_selected && selected_entity->GetObjectId() != last_selected_entity_id;
     if (is_selected)
     {
         node_flags |= ImGuiTreeNodeFlags_Selected;
-
-        // upon selection, scroll the tree to ensure theh selected entity is visible
-        ImGui::SetScrollHereY(0.25f);
     }
 
-    // auto-expand ancestors of the selected entity
-    if (selected_entity && selected_entity->IsDescendantOf(entity.get()))
+    // auto-expand the lineage of the selected entity until it becomes visible
+    if (selected_entity && selected_entity->IsDescendantOf(entity.get()) && selected_entity->GetObjectId() != last_selected_entity_id)
     {
         ImGui::SetNextItemOpen(true);
     }
 
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, ""); // no label, we'll draw our own
+
+    // the first time an entity is selected (say from the viewport) we want to ensure it's visible in the tree
+    if (first_time_selected)
+    {
+        ImGui::SetScrollHereY(0.25f);
+        last_selected_entity_id = selected_entity->GetObjectId();
+    }
 
     // drag-drop
     EntityHandleDragDrop(entity);
