@@ -359,7 +359,7 @@ namespace spartan
         if (GetRotation() == rotation)
             return;
 
-        SetRotationLocal(!GetParent() ? rotation : rotation * GetParent()->GetRotation().Inverse());
+        SetRotationLocal(!GetParent() ? rotation : GetParent()->GetRotation().Inverse() * rotation);
     }
 
     void Entity::SetRotationLocal(const Quaternion& rotation)
