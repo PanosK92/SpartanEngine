@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Source/imgui.h"
 #include "World/Entity.h"
 #include "World/Components/Camera.h"
-#include "Rendering/Renderer.h"
 #include "Input/Input.h"
 #include "Commands/CommandStack.h"
 #include "Commands/CommandTransform.h"

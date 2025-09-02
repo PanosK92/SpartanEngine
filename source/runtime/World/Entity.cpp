@@ -414,7 +414,7 @@ namespace spartan
         }
         else
         {
-            SetRotationLocal(delta * m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
+            SetRotationLocal(GetParent()->GetRotation().Inverse() * delta * GetParent()->GetRotation() * m_rotation_local);
         }
     }
 

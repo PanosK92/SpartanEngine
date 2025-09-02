@@ -199,7 +199,7 @@ void Properties::Inspect(const shared_ptr<Material> material)
     m_inspected_material = material;
 }
 
-void Properties::ShowEntity(shared_ptr<Entity> entity) const 
+void Properties::ShowEntity(shared_ptr<Entity> entity) const
 {
     if (component_begin("Entity", nullptr, true, false))
     {
@@ -210,39 +210,42 @@ void Properties::ShowEntity(shared_ptr<Entity> entity) const
             entity->SetActive(is_active);
         }
 
-        //= REFLECT =====================================
-        Vector3 position    = entity->GetPositionLocal();
-        Quaternion rotation = entity->GetRotationLocal();
-        Vector3 scale       = entity->GetScaleLocal();
-        //===============================================
+        // global toggle for world/local space
+        static bool use_world_space = true;
+        ImGui::Checkbox("World Space", &use_world_space);
 
-        // per-entity tracking rotation handling
+        // reflect transforms based on mode
+        Vector3 position    = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
+        Quaternion rotation = use_world_space ? entity->GetRotation() : entity->GetRotationLocal();
+        Vector3 scale       = use_world_space ? entity->GetScale()    : entity->GetScaleLocal();
+
+        // per-entity tracking for euler angles
         static std::unordered_map<uintptr_t, Vector3> last_euler_map;
         uintptr_t entity_id = reinterpret_cast<uintptr_t>(entity.get());
+        rotation.Normalize(); // safety
 
-        // normalize for safety in comparisons
-        rotation.Normalize();
-
-        // sync if externally changed or uninitialized
+        // sync euler if externally changed or uninitialized
         auto it = last_euler_map.find(entity_id);
         if (it != last_euler_map.end())
         {
             Quaternion expected = Quaternion::FromEulerAngles(it->second);
             expected.Normalize();
             float dot_abs = std::abs(rotation.Dot(expected));
-            if (dot_abs < 0.9999f)
-            {   // threshold for ~2-3 degrees difference
+            if (dot_abs < 0.999f) // detect external changes
+            {
                 it->second = rotation.ToEulerAngles();
             }
-        } else
+        }
+        else
         {
             last_euler_map[entity_id] = rotation.ToEulerAngles();
         }
 
-        // now use the (possibly updated) per-entity euler
+        // use the (possibly updated) per-entity euler
         Vector3& last_frame_euler = last_euler_map[entity_id];
         Vector3 current_euler     = last_frame_euler;
 
+        // display and edit transforms
         ImGui::AlignTextToFramePadding();
         ImGuiSp::vector3("Position (m)", position);
         ImGui::SameLine();
@@ -250,18 +253,34 @@ void Properties::ShowEntity(shared_ptr<Entity> entity) const
         ImGui::SameLine();
         ImGuiSp::vector3("Scale", scale);
 
-        // calculate the the rotation delta, convert it to a quaternion, and apply it, avoiding gimbal lock
+        // handle rotation delta
         Vector3 delta_euler         = current_euler - last_frame_euler;
         last_frame_euler            = current_euler;
         Quaternion delta_quaternion = Quaternion::FromEulerAngles(delta_euler);
-        rotation                    = delta_quaternion * rotation;
-        rotation.Normalize();
+        Quaternion new_rotation;
+        if (use_world_space)
+        {
+            new_rotation = delta_quaternion * rotation; // world space: pre-multiply
+        }
+        else
+        {
+            new_rotation = rotation * delta_quaternion; // local space: post-multiply
+        }
+        new_rotation.Normalize();
 
-        //= MAP ===========================
-        entity->SetPositionLocal(position);
-        entity->SetScaleLocal(scale);
-        entity->SetRotationLocal(rotation);
-        //=================================
+        // apply transforms based on mode
+        if (use_world_space)
+        {
+            entity->SetPosition(position);
+            entity->SetRotation(new_rotation);
+            entity->SetScale(scale);
+        }
+        else
+        {
+            entity->SetPositionLocal(position);
+            entity->SetRotationLocal(new_rotation);
+            entity->SetScaleLocal(scale);
+        }
     }
     component_end();
 }
