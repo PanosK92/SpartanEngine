@@ -40,8 +40,8 @@ namespace spartan
     class RHI_DescriptorSetLayout : public SpartanObject
     {
     public:
-        RHI_DescriptorSetLayout() = default;
-        RHI_DescriptorSetLayout(const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
+         RHI_DescriptorSetLayout() = default;
+         RHI_DescriptorSetLayout(const RHI_Descriptor* descriptors, size_t count, const char* name);
         ~RHI_DescriptorSetLayout();
 
         // set

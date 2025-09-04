@@ -34,14 +34,19 @@ using namespace std;
 
 namespace spartan
 {
-    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const vector<RHI_Descriptor>& descriptors, const string& name)
+    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Descriptor* descriptors, size_t count, const char* name)
     {
-        m_descriptors = descriptors;
+        m_descriptors.reserve(count);
+        for (size_t i = 0; i < count; ++i)
+        {
+            m_descriptors.push_back(descriptors[i]);
+        }
+    
         m_object_name = name;
-
+    
         CreateRhiResource(m_descriptors);
-
-        for (RHI_Descriptor& descriptor : m_descriptors)
+    
+        for (const RHI_Descriptor& descriptor : m_descriptors)
         {
             m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(descriptor.slot));
             m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(descriptor.stage));
