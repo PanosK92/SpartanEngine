@@ -414,75 +414,105 @@ namespace spartan
 
     void Profiler::DrawPerformanceMetrics()
     {
-        static string metrics_string;
+        // static buffer to avoid allocations
+        static char metrics_buffer[8192];
         static float metrics_time_since_last_update = profiling_interval_sec;
     
         metrics_time_since_last_update += static_cast<float>(Timer::GetDeltaTimeSec());
         if (metrics_time_since_last_update >= profiling_interval_sec)
         {
             metrics_time_since_last_update = 0.0f;
+            int offset = 0;
     
-            stringstream ss;
-            ss << fixed << setprecision(1);
+            // fps and frames
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "FPS:\t\t\t%.1f\n", m_fps);
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Time:\t\t%.2f ms\n", time_frame_avg);
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Frame:\t%llu\n\n", Renderer::GetFrameNumber());
     
-            // fps and frame info
-            ss << "FPS:\t\t\t" << m_fps << "\n";
-            ss << setprecision(2);
-            ss << "Time:\t\t" << time_frame_avg << " ms\n";
-            ss << "Frame:\t" << Renderer::GetFrameNumber() << "\n\n";
-    
-            // timings table
-            ss << "\t\t\t\tavg\t\tmin\t\tmax\tlast\n";
-            ss << "Total:\t\t" << time_frame_avg << "\t\t" << time_frame_min << "\t\t" << time_frame_max << "\t\t" << time_frame_last << " ms\n";
-            ss << "CPU:\t\t" << time_cpu_avg << "\t\t" << time_cpu_min << "\t\t" << time_cpu_max << "\t\t" << time_cpu_last << " ms\n";
-            ss << "GPU:\t\t" << time_gpu_avg << "\t\t" << time_gpu_min << "\t\t" << time_gpu_max << "\t\t" << time_gpu_last << " ms\n\n";
+            // timings
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "\t\t\t\tavg\t\tmin\t\tmax\tlast\n");
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Total:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n",
+                               time_frame_avg, time_frame_min, time_frame_max, time_frame_last);
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "CPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n",
+                               time_cpu_avg, time_cpu_min, time_cpu_max, time_cpu_last);
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "GPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n\n",
+                               time_gpu_avg, time_gpu_min, time_gpu_max, time_gpu_last);
     
             // gpu
-            ss << "GPU\n";
-            ss << "Name:\t\t" << gpu_name << "\n";
-            ss << "Memory:\t" << gpu_memory_used << "/" << gpu_memory_available << " MB\n";
-            ss << "API:\t\t\t\t" << RHI_Context::api_type_str << "\t" << gpu_api << "\n";
-            ss << "Driver:\t\t" << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << "\n\n";
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "GPU\nName:\t\t%s\nMemory:\t%u/%u MB\nAPI:\t\t\t\t%s %s\nDriver:\t\t%s %s\n\n",
+                               gpu_name.c_str(),
+                               static_cast<unsigned int>(gpu_memory_used),
+                               static_cast<unsigned int>(gpu_memory_available),
+                               RHI_Context::api_type_str,
+                               gpu_api.c_str(),
+                               RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName(),
+                               gpu_driver.c_str());
     
             // cpu
-            ss << "CPU\n";
-            ss << "Name:\t\t\t\t\t" << cpu_name << "\n";
-            ss << "Worker threads:\t" << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << "\n";
-        #ifdef __AVX2__
-            ss << "AVX2:\t\t\t\t\t\tYes\n";
-        #else
-            ss << "AVX2:\t\t\t\t\t\tNo\n";
-        #endif
-            ss << "\n";
-
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "CPU\nName:\t\t\t\t\t%s\nWorker threads:\t%u/%u\nAVX2:\t\t%s\n\n",
+                               cpu_name.c_str(),
+                               static_cast<unsigned int>(ThreadPool::GetWorkingThreadCount()),
+                               static_cast<unsigned int>(ThreadPool::GetThreadCount()),
+    #ifdef __AVX2__
+                               "\t\t\t\tYes"
+    #else
+                               "\t\t\t\tNo"
+    #endif
+            );
+    
             // memory
-            ss << "Memory\n";
-            ss << "System:\t\t" << Allocator::GetMemoryAllocatedMb() << "/" << Allocator::GetMemoryAvailableMb() << " (" << Allocator::GetMemoryTotalMb() << ")" << " MB\n";
-            ss << "\n";
-
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Memory\nSystem:\t\t%.2f/%.2f (%.2f) MB\n\n",
+                               Allocator::GetMemoryAllocatedMb(),
+                               Allocator::GetMemoryAvailableMb(),
+                               Allocator::GetMemoryTotalMb());
+    
             // display
-            ss << "Display\n";
-            ss << "Name:\t\t\t" << Display::GetName() << "\n";
-            ss << "Hz:\t\t\t\t\t" << Display::GetRefreshRate() << "\n";
-            ss << "HDR:\t\t\t\t" << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << "\n";
-            ss << "Max nits:\t\t" << static_cast<uint32_t>(Display::GetLuminanceMax()) << "\n";
-            ss << "Render:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionRender().x) << " x " << static_cast<uint32_t>(Renderer::GetResolutionRender().y) << " - " << (Renderer::GetOption<float>(Renderer_Option::ResolutionScale) * 100.0f) << "%\n";
-            ss << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << " x " << static_cast<uint32_t>(Renderer::GetResolutionOutput().y) << "\n";
-            ss << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width) << " x " << static_cast<uint32_t>(Renderer::GetViewport().height) << "\n\n";
+            const auto& res_render = Renderer::GetResolutionRender();
+            const auto& res_output = Renderer::GetResolutionOutput();
+            const auto& vp         = Renderer::GetViewport();
+    
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Display\nName:\t\t%s\nHz:\t\t\t\t%d\nHDR:\t\t\t%s\nMax nits:\t%u\n"
+                               "Render:\t\t%u x %u - %.0f%%\nOutput:\t\t%u x %u\nViewport:\t%u x %u\n\n",
+                               Display::GetName(),
+                               static_cast<int>(Display::GetRefreshRate()),
+                               Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
+                               static_cast<unsigned int>(Display::GetLuminanceMax()),
+                               static_cast<unsigned int>(res_render.x),
+                               static_cast<unsigned int>(res_render.y),
+                               Renderer::GetOption<float>(Renderer_Option::ResolutionScale) * 100.0f,
+                               static_cast<unsigned int>(res_output.x),
+                               static_cast<unsigned int>(res_output.y),
+                               static_cast<unsigned int>(vp.width),
+                               static_cast<unsigned int>(vp.height));
     
             // graphics api
-            ss << "Graphics API\n";
-            ss << "Draw:\t\t\t\t\t\t\t\t\t\t" << m_rhi_draw << "\n";
-            ss << "Index buffer bindings:\t\t" << m_rhi_bindings_buffer_index << "\n";
-            ss << "Vertex buffer bindings:\t\t" << m_rhi_bindings_buffer_vertex << "\n";
-            ss << "Barriers:\t\t\t\t\t\t\t\t\t" << m_rhi_pipeline_barriers << "\n";
-            ss << "Bindings from pipelines:\t" << m_rhi_bindings_pipeline << "/" << RHI_Device::GetPipelineCount() << "\n";
-            ss << "Descriptor set capacity:\t" << m_rhi_descriptor_set_count << "/" << rhi_max_descriptor_set_count;
-    
-            metrics_string = ss.str();
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Graphics API\nDraw:\t\t\t\t\t\t\t\t\t\t%u\nIndex buffer bindings:\t\t%u\n"
+                               "Vertex buffer bindings:\t\t%u\nBarriers:\t\t\t\t\t\t\t\t\t%u\nBindings from pipelines:\t%u/%u\n"
+                               "Descriptor set capacity:\t%u/%u",
+                               static_cast<unsigned int>(m_rhi_draw),
+                               static_cast<unsigned int>(m_rhi_bindings_buffer_index),
+                               static_cast<unsigned int>(m_rhi_bindings_buffer_vertex),
+                               static_cast<unsigned int>(m_rhi_pipeline_barriers),
+                               static_cast<unsigned int>(m_rhi_bindings_pipeline),
+                               static_cast<unsigned int>(RHI_Device::GetPipelineCount()),
+                               static_cast<unsigned int>(m_rhi_descriptor_set_count),
+                               static_cast<unsigned int>(rhi_max_descriptor_set_count));
         }
     
-        // draw directly from the static string
-        Renderer::DrawString(metrics_string, math::Vector2(0.005f, 0.02f));
+        // draw directly from the static buffer
+        Renderer::DrawString(metrics_buffer, math::Vector2(0.005f, 0.02f));
     }
+
 }

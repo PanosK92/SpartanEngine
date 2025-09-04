@@ -30,50 +30,55 @@ using namespace std;
 
 namespace spartan
 {
-    string PhysicalDevice::decode_api_version(const uint32_t version)
+    const char* PhysicalDevice::decode_api_version(const uint32_t version)
     {
+        static char api_version_str[64];
         uint32_t major = (version >> 22);
         uint32_t minor = (version >> 12) & 0x3ff;
         uint32_t patch = version & 0xfff;
-        return to_string(major) + "." + to_string(minor) + "." + to_string(patch);
+    
+        snprintf(api_version_str, sizeof(api_version_str), "%u.%u.%u", major, minor, patch);
+        return api_version_str;
     }
-
-    string PhysicalDevice::decode_driver_version(const uint32_t version, const char* driver_info)
+    
+    const char* PhysicalDevice::decode_driver_version(const uint32_t version, const char* driver_info)
     {
+        static char driver_version_str[128];
+    
         if (IsNvidia())
         {
             uint32_t major     = (version >> 22) & 0x3ff;
             uint32_t minor     = (version >> 14) & 0x0ff;
             uint32_t secondary = (version >> 6)  & 0x0ff;
             uint32_t tertiary  = version         & 0x003f;
-        
-            return to_string(major) + "." +
-                   to_string(minor) + "." +
-                   to_string(secondary) + "." +
-                   to_string(tertiary);
+    
+            snprintf(driver_version_str, sizeof(driver_version_str), "%u.%u.%u.%u", major, minor, secondary, tertiary);
+            return driver_version_str;
         }
-
+    
         if (IsAmd())
         {
             // for amd gpus, driver_info matches the adrenalin version, version is an internal version
-            string driver_str = driver_info;
-            // remove everything after the first space, if any
-            size_t space_pos  = driver_str.find(' ');
-            if (space_pos != string::npos)
+            if (driver_info)
             {
-                driver_str = driver_str.substr(0, space_pos);
-            }
-            return driver_str;
-        }
+                strncpy_s(driver_version_str, sizeof(driver_version_str), driver_info, _TRUNCATE);
 
+                // truncate at first space
+                char* space_ptr = strchr(driver_version_str, ' ');
+                if (space_ptr) *space_ptr = '\0';
+                return driver_version_str;
+            }
+            return "Unknown AMD driver";
+        }
+    
         if (IsIntel())
         {
             uint32_t major = (version >> 14);
             uint32_t minor = version & 0x3fff;
-        
-            return to_string(major) + "." + to_string(minor);
+            snprintf(driver_version_str, sizeof(driver_version_str), "%u.%u", major, minor);
+            return driver_version_str;
         }
-
+    
         return "Unable to determine driver version";
     }
 }

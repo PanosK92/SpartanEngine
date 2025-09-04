@@ -224,7 +224,8 @@ namespace spartan
         {
             // copy the texture's data to a staging buffer
             void* staging_buffer = nullptr;
-            vector<VkBufferImageCopy> regions;
+            static vector<VkBufferImageCopy> regions;
+            regions.clear();
             copy_to_staging_buffer(texture, regions, staging_buffer);
 
             // copy the staging buffer into the image

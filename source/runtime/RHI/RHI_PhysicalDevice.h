@@ -45,66 +45,66 @@ namespace spartan
         bool IsNvidia() const
         {
             return vendor_id == 0x10DE ||
-                   name.find("Nvidia") != std::string::npos ||
-                   name.find("nvidia") != std::string::npos;
+                   strstr(name, "Nvidia") != nullptr ||
+                   strstr(name, "nvidia") != nullptr;
         }
-
+        
         bool IsAmd() const
         {
             return vendor_id == 0x1002 || vendor_id == 0x1022 ||
-                   name.find("AMD") != std::string::npos ||
-                   name.find("amd") != std::string::npos;
+                   strstr(name, "AMD") != nullptr ||
+                   strstr(name, "amd") != nullptr;
         }
-
+        
         bool IsIntel() const
         {
             return vendor_id == 0x8086 || vendor_id == 0x163C || vendor_id == 0x8087 ||
-                   name.find("Intel") != std::string::npos ||
-                   name.find("intel") != std::string::npos;
+                   strstr(name, "Intel") != nullptr ||
+                   strstr(name, "intel") != nullptr;
         }
-
+        
         bool IsArm() const
         {
             return vendor_id == 0x13B5 ||
-                   name.find("Arm") != std::string::npos ||
-                   name.find("arm") != std::string::npos;
+                   strstr(name, "Arm") != nullptr ||
+                   strstr(name, "arm") != nullptr;
         }
-
+        
         bool IsQualcomm() const
         {
-            return vendor_id == 0x5143 || 
-                   name.find("Qualcomm") != std::string::npos ||
-                   name.find("qualcomm") != std::string::npos;
+            return vendor_id == 0x5143 ||
+                   strstr(name, "Qualcomm") != nullptr ||
+                   strstr(name, "qualcomm") != nullptr;
         }
 
-        bool IsBelowMinimumRequirements()
+        bool IsBelowMinimumRequirements() const
         {
             // minimum requirements
             const uint32_t min_memory_mb           = 4096; // minimum memory in MB, 4GB in this case
             const RHI_PhysicalDevice_Type min_type = RHI_PhysicalDevice_Type::Discrete;
             const bool is_old                      = 
-                                                     // NVIDIA GPUs older than or including 1000 series
-                                                     name.find("GeForce GTX 10") != std::string::npos ||
-                                                     name.find("GeForce GTX 9")  != std::string::npos ||
-                                                     name.find("GeForce GTX 7")  != std::string::npos ||
-                                                     name.find("GeForce GTX 6")  != std::string::npos ||
-                                                     // AMD GPUs older than or including R9, RX 400/500 series
-                                                     name.find("Radeon R9")      != std::string::npos ||
-                                                     name.find("Radeon RX 4")    != std::string::npos ||
-                                                     name.find("Radeon RX 5")    != std::string::npos ||
-                                                     name.find("Radeon HD")      != std::string::npos;
-
+                // NVIDIA GPUs older than or including 1000 series
+                strstr(name, "GeForce GTX 10") != nullptr ||
+                strstr(name, "GeForce GTX 9")  != nullptr ||
+                strstr(name, "GeForce GTX 7")  != nullptr ||
+                strstr(name, "GeForce GTX 6")  != nullptr ||
+                // AMD GPUs older than or including R9, RX 400/500 series
+                strstr(name, "Radeon R9")      != nullptr ||
+                strstr(name, "Radeon RX 4")    != nullptr ||
+                strstr(name, "Radeon RX 5")    != nullptr ||
+                strstr(name, "Radeon HD")      != nullptr;
+        
             return memory < min_memory_mb || type != min_type || is_old;
         }
 
-        const std::string& GetName()          const { return name; }
-        const std::string& GetDriverVersion() const { return driver_version; }
-        const std::string& GetApiVersion()    const { return api_version; }
-        const std::string& GetVendorName()    const { return vendor_name; }
-        uint32_t GetMemory()                  const { return memory; }
-        void* GetData()                       const { return data; }
-        RHI_PhysicalDevice_Type GetType()     const { return type; }
-
+        const char* GetName()             const { return name; }
+        const char* GetDriverVersion()    const { return driver_version; }
+        const char* GetApiVersion()       const { return api_version; }
+        const char* GetVendorName()       const { return vendor_name; }
+        uint32_t GetMemory()              const { return memory; }
+        void* GetData()                   const { return data; }
+        RHI_PhysicalDevice_Type GetType() const { return type; }
+                                          
     private:
         const char* get_vendor_name()
         {
@@ -126,15 +126,15 @@ namespace spartan
             return "Unknown";
         }
 
-        std::string decode_api_version(const uint32_t version);
-        std::string decode_driver_version(const uint32_t version, const char* driver_info);
+        const char* decode_api_version(const uint32_t version);
+        const char* decode_driver_version(const uint32_t version, const char* driver_info);
 
-        std::string api_version      = "Unknown"; // version of api supported by the device
-        std::string driver_version   = "Unknown"; // vendor-specified version of the driver
+        const char* api_version      = "Unknown"; // version of api supported by the device
+        const char* driver_version   = "Unknown"; // vendor-specified version of the driver
         uint32_t vendor_id           = 0;         // unique identifier of the vendor
-        std::string vendor_name      = "Unknown";
+        const char* vendor_name      = "Unknown";
         RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
-        std::string name             = "Unknown";
+        const char* name             = "Unknown";
         uint32_t memory              = 0;
         void* data                   = nullptr;
     };

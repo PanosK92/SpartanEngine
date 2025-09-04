@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Allocator.h"
 #if defined(_WIN32)
 #include <Windows.h>
-#include <Psapi.h>
 #elif defined(__linux__)
 #include <unistd.h>
 #include <sys/resource.h>

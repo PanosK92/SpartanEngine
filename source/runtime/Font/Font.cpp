@@ -81,7 +81,7 @@ namespace spartan
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
     }
 
-    void Font::AddText(const std::string& text, const Vector2& position_screen_percentage)
+    void Font::AddText(const char* text, const Vector2& position_screen_percentage)
     {
         // define a maximum vertex limit
         const uint32_t max_vertices = 1000000;
@@ -101,8 +101,10 @@ namespace spartan
     
         // generate vertices - draw each letter onto a quad
         Vector2 cursor = position;
-        for (char character : text)
+        for (const char* p = text; *p != '\0'; ++p)
         {
+            char character = *p;
+
             // check if adding this character would exceed the vertex limit
             if (m_vertices.size() + 6 > max_vertices)
             {

@@ -1206,45 +1206,54 @@ namespace spartan
 
             void tick()
             {
-                 // slow rotation: rotate car around y-axis (vertical)
+                // slow rotation: rotate car around y-axis (vertical)
                 float rotation_speed = 0.15f; // radians per second
-                float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec()); // time since last frame (in seconds)
-                float angle          = rotation_speed * delta_time; // incremental rotation
+                float delta_time     = static_cast<float>(Timer::GetDeltaTimeSec());
+                float angle          = rotation_speed * delta_time;
                 Quaternion rotation  = Quaternion::FromAxisAngle(Vector3::Up, angle);
                 turn_table->Rotate(rotation);
-        
-                // helper function to format float with 1 decimal place
-                auto format_float = [](float value) -> string
-                {
-                    char buffer[16];
-                    snprintf(buffer, sizeof(buffer), "%.1f", value);
-                    return string(buffer);
-                };
-
+            
                 const float x       = 0.75f;
                 const float y       = 0.05f;
                 const float spacing = 0.02f;
-              
+            
+                // buffer for formatted text
+                static char text_buffer[128];
+            
                 // car specs
                 Renderer::DrawString("Ferrari LaFerrari", Vector2(x, y));
-                Renderer::DrawString("Torque: " + format_float(900.0f) + " Nm", Vector2(x, y + spacing * 1));
-                Renderer::DrawString("Weight: " + format_float(1585.0f) + " kg", Vector2(x, y + spacing * 2));
-                Renderer::DrawString("Power: " + format_float(708.0f) + " kW", Vector2(x, y + spacing * 3)); // 963 PS
-                Renderer::DrawString("Top Speed: " + format_float(350.0f) + " km/h", Vector2(x, y + spacing * 4));
+            
+                snprintf(text_buffer, sizeof(text_buffer), "Torque: %.1f Nm", 900.0f);
+                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 1));
+            
+                snprintf(text_buffer, sizeof(text_buffer), "Weight: %.1f kg", 1585.0f);
+                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 2));
+            
+                snprintf(text_buffer, sizeof(text_buffer), "Power: %.1f kW", 708.0f);
+                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 3));
+            
+                snprintf(text_buffer, sizeof(text_buffer), "Top Speed: %.1f km/h", 350.0f);
+                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 4));
+            
                 Renderer::DrawString("Engine: 6.3L V12 + HY-KERS", Vector2(x, y + spacing * 5));
                 Renderer::DrawString("Drivetrain: RWD", Vector2(x, y + spacing * 6));
-                Renderer::DrawString("0-100 km/h: " + format_float(2.6f) + " s", Vector2(x, y + spacing * 7));
-                Renderer::DrawString("Power/Weight: " + format_float(446.7f) + " kW/ton", Vector2(x, y + spacing * 8));
+            
+                snprintf(text_buffer, sizeof(text_buffer), "0-100 km/h: %.1f s", 2.6f);
+                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 7));
+            
+                snprintf(text_buffer, sizeof(text_buffer), "Power/Weight: %.1f kW/ton", 446.7f);
+                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 8));
+            
                 Renderer::DrawString("Production: 2013-2018", Vector2(x, y + spacing * 9));
                 Renderer::DrawString("Flagship Hypercar: Ferrari's Hybrid Masterpiece", Vector2(x, y + spacing * 10));
-                
-                // description (with a gap)
+            
+                // description
                 Renderer::DrawString("The LaFerrari is Ferrari's first hybrid hypercar, blending a 6.3L V12 with", Vector2(x, y + spacing * 12));
                 Renderer::DrawString("an electric motor via its HY-KERS system. It delivers extreme performance", Vector2(x, y + spacing * 13));
                 Renderer::DrawString("and razor-sharp dynamics, wrapped in a design that embodies pure", Vector2(x, y + spacing * 14));
                 Renderer::DrawString("Ferrari DNA. A limited-production icon of modern automotive engineering.", Vector2(x, y + spacing * 15));
-
-                // logo - this is in pixels (not screen space coordinates unlike the text, need to make everything use one space)
+            
+                // logo
                 Renderer::DrawIcon(texture_brand_logo.get(), Vector2(400.0f, 300.0f));
             }
         }

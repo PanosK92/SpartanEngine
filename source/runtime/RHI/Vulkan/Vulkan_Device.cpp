@@ -153,7 +153,7 @@ namespace spartan
 
                 // save the api version we ended up using
                 version::used                = app_info.apiVersion;
-                RHI_Context::api_version_str = version::to_string(version::used);
+                RHI_Context::api_version_str = version::to_string(version::used).c_str();
 
                 // some checks
                 {

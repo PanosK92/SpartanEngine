@@ -71,7 +71,7 @@ namespace spartan
         static void DrawSphere(const math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines);
         static void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines);
         static void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines);
-        static void DrawString(const std::string& text, const math::Vector2& position_screen_percentage);
+        static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
         static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
         // options

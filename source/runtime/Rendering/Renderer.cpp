@@ -621,7 +621,7 @@ namespace spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::DrawString(const string& text, const Vector2& position_screen_percentage)
+    void Renderer::DrawString(const char* text, const Vector2& position_screen_percentage)
     {
         if (shared_ptr<Font>& font = GetFont())
         {

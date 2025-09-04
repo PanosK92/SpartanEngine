@@ -54,7 +54,7 @@ namespace spartan
 
     void RHI_Device::PhysicalDeviceRegister(const PhysicalDevice& physical_device)
     {
-        // discrete devices come first.
+        // discrete devices come first
         vector<PhysicalDevice>::const_iterator iter = find_if(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& device)
         {
             return device.GetType() != RHI_PhysicalDevice_Type::Discrete;
@@ -68,7 +68,7 @@ namespace spartan
             return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
         });
 
-        SP_LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
+        SP_LOG_INFO("%s (%d MB)", physical_device.GetName(), physical_device.GetMemory());
     }
 
     PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
@@ -85,7 +85,7 @@ namespace spartan
 
         if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
         {
-            SP_LOG_INFO("%s (%d MB)", physical_device->GetName().c_str(), physical_device->GetMemory());
+            SP_LOG_INFO("%s (%d MB)", physical_device->GetName(), physical_device->GetMemory());
         }
     }
  

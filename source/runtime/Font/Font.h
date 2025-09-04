@@ -67,7 +67,7 @@ namespace spartan
         void LoadFromFile(const std::string& file_path) override;
 
         // text
-        void AddText(const std::string& text, const math::Vector2& position_screen_percentage);
+        void AddText(const char* text, const math::Vector2& position_screen_percentage);
         bool HasText() const;
 
         // color

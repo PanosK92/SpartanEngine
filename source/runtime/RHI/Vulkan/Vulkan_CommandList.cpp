@@ -1728,7 +1728,7 @@ namespace spartan
         uint32_t aspect_mask = get_aspect_mask(format);
     
         // get layouts for all mips in the range
-        static vector<RHI_Image_Layout> layouts;
+        static thread_local vector<RHI_Image_Layout> layouts;
         layouts.clear();
         layouts.resize(mip_range);
         bool all_mips_same_layout     = true;

@@ -33,16 +33,16 @@ namespace spartan
     // api specific
 #if defined(API_GRAPHICS_D3D12)
     RHI_Api_Type  RHI_Context::api_type     = RHI_Api_Type::D3d12;
-    string        RHI_Context::api_type_str = "D3D12";
+    const char*   RHI_Context::api_type_str = "D3D12";
     ID3D12Device* RHI_Context::device       = nullptr;
 #elif defined(API_GRAPHICS_VULKAN)
     RHI_Api_Type     RHI_Context::api_type        = RHI_Api_Type::Vulkan;
-    string           RHI_Context::api_type_str    = "Vulkan";
+    const char*      RHI_Context::api_type_str    = "Vulkan";
     VkInstance       RHI_Context::instance        = nullptr;
     VkPhysicalDevice RHI_Context::device_physical = nullptr;
     VkDevice         RHI_Context::device          = nullptr;
 #endif
 
     // api agnostic
-    string RHI_Context::api_version_str;
+    const char* RHI_Context::api_version_str;
 }

@@ -395,7 +395,7 @@ namespace spartan
     {
     public:
         // api specific
-#       if defined(API_GRAPHICS_D3D12)
+        #if defined(API_GRAPHICS_D3D12)
             static ID3D12Device* device;
         #elif defined(API_GRAPHICS_VULKAN)
             static VkInstance instance;
@@ -404,8 +404,8 @@ namespace spartan
         #endif
 
         // api agnostic
-        static std::string api_version_str;
-        static std::string api_type_str;
+        static const char* api_version_str;
+        static const char* api_type_str;
         static RHI_Api_Type api_type;
     };
 }
