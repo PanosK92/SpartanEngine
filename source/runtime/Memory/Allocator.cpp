@@ -36,7 +36,7 @@ namespace spartan
 {
     namespace
     {
-        static atomic<size_t> g_total_allocated = 0;
+        atomic<size_t> g_total_allocated = 0;
     }
 
     void* Allocator::Allocate(size_t size, size_t alignment)
