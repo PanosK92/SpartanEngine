@@ -19,30 +19,37 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-
-//= INCLUDES =========
+//= INCLUDES ===============
 #include "pch.h"
+#include "MemoryOverrides.h"
 #include "Allocator.h"
-//====================
+//==========================
 
-namespace spartan
+void* operator new(size_t size)
 {
-    void* Allocator::Allocate(std::size_t size, std::size_t alignment)
-    {
-        // aligned allocation if available
-#if defined(_MSC_VER)
-        return _aligned_malloc(size, alignment);
-#else
-        return std::aligned_alloc(alignment, size);
-#endif
-    }
+    void* ptr = spartan::Allocator::Allocate(size);
 
-    void Allocator::Free(void* ptr)
-    {
-        #if defined(_MSC_VER)
-        _aligned_free(ptr);
-#else
-        std::free(ptr);
-#endif
-    }
+    if (!ptr)
+        throw std::bad_alloc();
+
+    return ptr;
+}
+
+void operator delete(void* ptr) noexcept
+{
+    spartan::Allocator::Free(ptr);
+}
+
+void* operator new[](size_t size)
+{
+    void* ptr = spartan::Allocator::Allocate(size);
+    if (!ptr)
+        throw std::bad_alloc();
+
+    return ptr;
+}
+
+void operator delete[](void* ptr) noexcept
+{
+    spartan::Allocator::Free(ptr);
 }

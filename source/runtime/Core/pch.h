@@ -19,10 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// engine macros
-#include "Definitions.h"
+// memory
+#include "../Memory/MemoryOverrides.h"
 
-//= std =====================
+// std
 #include <string>
 #include <algorithm>
 #include <type_traits>
@@ -58,16 +58,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <numeric>
 //===========================
 
-//= RUNTIME =========================
-// core
+// common
+#include "Definitions.h"
 #include "Engine.h"
 #include "Event.h"
 #include "Settings.h"
 #include "Timer.h"
 #include "../FileSystem/FileSystem.h"
 #include "Stopwatch.h"
-// logging
 #include "../Logging/Log.h"
+
 // math
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
@@ -81,7 +81,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Frustum.h"
 #include "../Math/Plane.h"
 #include "../Math/Helper.h"
-//===================================
 
 #if !defined(_MSC_VER)
     #define FFX_GCC

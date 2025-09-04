@@ -19,30 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#pragma once
 
-//= INCLUDES =========
-#include "pch.h"
-#include "Allocator.h"
-//====================
+// global
+void* operator new(size_t size);
+void operator delete(void* ptr) noexcept;
 
-namespace spartan
-{
-    void* Allocator::Allocate(std::size_t size, std::size_t alignment)
-    {
-        // aligned allocation if available
-#if defined(_MSC_VER)
-        return _aligned_malloc(size, alignment);
-#else
-        return std::aligned_alloc(alignment, size);
-#endif
-    }
-
-    void Allocator::Free(void* ptr)
-    {
-        #if defined(_MSC_VER)
-        _aligned_free(ptr);
-#else
-        std::free(ptr);
-#endif
-    }
-}
+// for arrays
+void* operator new[](size_t size);
+void operator delete[](void* ptr) noexcept;
