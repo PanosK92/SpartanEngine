@@ -641,7 +641,8 @@ namespace spartan
         rendering_info.pStencilAttachment   = nullptr;
     
         // color attachments
-        vector<VkRenderingAttachmentInfo> attachments_color;
+        static vector<VkRenderingAttachmentInfo> attachments_color;
+        attachments_color.clear();
         {
             // swapchain buffer as a render target
             RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
@@ -1761,7 +1762,8 @@ namespace spartan
             return;
     
         // single barrier if all mips have the same layout
-        vector<VkImageMemoryBarrier2> barriers;
+        static vector<VkImageMemoryBarrier2> barriers;
+        barriers.clear();
         if (all_mips_same_layout)
         {
             barriers.push_back(image_barrier::create(

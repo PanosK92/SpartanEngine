@@ -28,14 +28,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 //====================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace spartan
 {
     namespace
     {
-        static std::atomic<size_t> g_total_allocated = 0;
+        static atomic<size_t> g_total_allocated = 0;
     }
 
-    void* Allocator::Allocate(std::size_t size, std::size_t alignment)
+    void* Allocator::Allocate(size_t size, size_t alignment)
     {
         // allocate extra space for storing size just before the aligned pointer
         const size_t header_size = sizeof(size_t);
@@ -44,7 +48,7 @@ namespace spartan
 #if defined(_MSC_VER)
         void* raw = _aligned_malloc(total_size, alignment);
 #else
-        void* raw = std::aligned_alloc(alignment, total_size);
+        void* raw = aligned_alloc(alignment, total_size);
 #endif
         if (!raw)
             return nullptr;
@@ -53,7 +57,7 @@ namespace spartan
         *reinterpret_cast<size_t*>(raw) = size;
 
         // update counter
-        g_total_allocated.fetch_add(size, std::memory_order_relaxed);
+        g_total_allocated.fetch_add(size, memory_order_relaxed);
 
         // return pointer just after the header
         return static_cast<char*>(raw) + header_size;
@@ -73,12 +77,12 @@ namespace spartan
         size_t size = *reinterpret_cast<size_t*>(raw);
 
         // update counter
-        g_total_allocated.fetch_sub(size, std::memory_order_relaxed);
+        g_total_allocated.fetch_sub(size, memory_order_relaxed);
 
 #if defined(_MSC_VER)
         _aligned_free(raw);
 #else
-        std::free(raw);
+        free(raw);
 #endif
     }
 
@@ -98,11 +102,6 @@ namespace spartan
         long pages = sysconf(_SC_PHYS_PAGES);
         long page_size = sysconf(_SC_PAGE_SIZE);
         return static_cast<float>(pages * page_size) / (1024.0f * 1024.0f);
-#elif defined(__APPLE__)
-        int64_t mem = 0;
-        size_t len = sizeof(mem);
-        sysctlbyname("hw.memsize", &mem, &len, nullptr, 0);
-        return static_cast<float>(mem) / (1024.0f * 1024.0f);
 #else
         return 0.0f; // unsupported platform
 #endif
