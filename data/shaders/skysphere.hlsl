@@ -35,8 +35,8 @@ static const float beta_mie_scatter  = 3.996e-6;                             // 
 static const float beta_mie_abs      = 4.40e-6;                              // m^-1, mie absorption
 static const float3 beta_ozone_abs   = float3(0.650e-6, 1.881e-6, 0.085e-6); // m^-1, ozone absorption
 static const float g_mie             = 0.80;                                 // mie phase asymmetry factor
-static const int num_view_samples    = 16;                                   // samples along view ray
-static const int num_sun_samples     = 1024;                                 // samples along sun ray
+static const int num_view_samples    = 32;                                   // samples along view ray
+static const int num_sun_samples     = 256;                                  // samples along sun ray
 
 struct sun
 {
@@ -99,32 +99,28 @@ float intersect_sphere(float3 origin, float3 direction, float3 center, float rad
     float c            = dot(oc, oc) - radius * radius;
     float discriminant = b * b - c;
     
-    if (discriminant < 0)
-        return -1.0;
-        
+    if (discriminant < 0.0f)
+        return -1.0f;
+    
     float sqrt_disc = sqrt(discriminant);
     float t1        = -b - sqrt_disc;
     float t2        = -b + sqrt_disc;
+    float t_near    = min(t1, t2);
+    float t_far     = max(t1, t2);
     
-    if (t2 > 0)
-        return t2;
-    else if (t1 > 0)
-        return t1;
-    else
-        return -1.0;
+    if (t_near >= 1e-3f)
+        return t_near;
+    
+    if (t_far >= 1e-3f)
+        return t_far;
+    
+    return -1.0f;
 }
 
 float compute_density_ozone(float height)
 {
-    height *= 0.001; // to km
-    if (height < 10.0)
-        return 0.0;
-    else if (height < 25.0)
-        return (height - 10.0) / 15.0;
-    else if (height < 40.0)
-        return 1.0 - (height - 25.0) / 15.0;
-    else
-        return 0.0;
+    float h_km = height * 0.001f;
+    return exp(-((h_km - 22.0f) * (h_km - 22.0f)) / (2.0f * 8.0f * 8.0f));  // gaussian, sigma=8km
 }
 
 float3 compute_optical_depth(float3 position, float3 direction, float t_max)
@@ -146,6 +142,7 @@ float3 compute_optical_depth(float3 position, float3 direction, float t_max)
         float3 extinction      = density_rayleigh * beta_rayleigh + density_mie * (beta_mie_scatter + beta_mie_abs) + density_ozone * beta_ozone_abs;
         optical_depth         += extinction * ds;
     }
+    
     return optical_depth;
 }
 
@@ -200,8 +197,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float theta = (0.5f - uv.y) * PI;
 
     // convert spherical coords to direction vector
-    float cos_theta = cos(theta);
-    float sin_theta = sin(theta);
+    float cos_theta       = cos(theta);
+    float sin_theta       = sin(theta);
     float3 view_direction = normalize(float3(
         cos(phi) * cos_theta,
         sin_theta,
@@ -229,15 +226,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // integration
     float3 atmosphere_color = 0.0f;
-    float t_max = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
+    float t_max             = intersect_sphere(buffer_frame.camera_position, view_direction, earth_center, earth_radius + atmosphere_height);
     if (t_max < 0)
     {
         tex_uav[thread_id.xy] = float4(atmosphere_color, 1.0f);
         return;
     }    
-    float ds         = t_max / num_view_samples;
-    float sun_zenith = dot(sun_direction, up_direction);
-    float w          = saturate((sun_zenith + 1.0f) * 0.5f);
+    float ds             = t_max / num_view_samples;
+    float sun_zenith     = dot(sun_direction, up_direction);
+    float w              = saturate((sun_zenith + 1.0f) * 0.5f);
     float3 transmittance = 1.0f;
     [unroll]
     for (int i = 0; i < num_view_samples; i++)
