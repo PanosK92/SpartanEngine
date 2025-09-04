@@ -21,14 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "pch.h"
-#include "../World/Entity.h"
 #include "../Core/Debugging.h"
 //============================
 
-//= NAMESPACES ===============
+//= NAMESPACES =====
 using namespace std;
-using namespace spartan::math;
-//============================
+//==================
 
 namespace spartan
 {
@@ -66,6 +64,10 @@ namespace spartan
             }
         }
     }
+
+    std::array<char[SP_LOG_BUFFER_SIZE], SP_LOG_BUFFER_COUNT> Log::m_buffers;
+    std::array<std::mutex, SP_LOG_BUFFER_COUNT> Log::m_buffer_mutexes;
+    size_t Log::m_current_buffer = 0;
 
     void Log::Initialize()
     {
@@ -117,140 +119,53 @@ namespace spartan
         }
     }
 
-    // all functions resolve to this one
-    void Log::Write(const char* text, const LogType type)
+    void Log::WriteBuffer(const char* text, LogType type)
     {
         SP_ASSERT_MSG(text != nullptr, "Text is null");
-    
-        // lock mutex
-        static mutex log_mutex;
-        lock_guard<mutex> guard(log_mutex);
-    
-        // add time to the text
+        
+        // get a buffer
+        size_t buffer_index;
+        {
+            static std::mutex buffer_select_mutex;
+            std::lock_guard<std::mutex> guard(buffer_select_mutex);
+            buffer_index = m_current_buffer;
+            m_current_buffer = (m_current_buffer + 1) % SP_LOG_BUFFER_COUNT;
+        }
+        
+        // lock the selected buffer
+        std::lock_guard<std::mutex> guard(m_buffer_mutexes[buffer_index]);
+        char* buffer = m_buffers[buffer_index];
+        
+        // add timestamp
         auto t = time(nullptr);
         tm tm_struct{};
         localtime_s(&tm_struct, &t);
-    
-        ostringstream oss;
-        oss << put_time(&tm_struct, "[%H:%M:%S]");
-        const string final_text = oss.str() + ": " + string(text);
-    
+        char timestamp[32];
+        strftime(timestamp, sizeof(timestamp), "[%H:%M:%S]: ", &tm_struct);
+        
+        // combine timestamp and text
+        snprintf(buffer, SP_LOG_BUFFER_SIZE, "%s%s", timestamp, text);
+        
         // log to file if requested or if an in-engine logger is not available
         if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
         {
-            logs.emplace_back(final_text, type);
-            write_to_file(final_text, type);
+            logs.emplace_back(string(buffer), type);
+            write_to_file(buffer, type);
         }
-    
+        
         if (logger)
         {
-            logger->Log(final_text, static_cast<uint32_t>(type));
+            logger->Log(buffer, static_cast<uint32_t>(type));
         }
     }
 
-    void Log::WriteFInfo(const char* text, ...)
+    void Log::FormatBuffer(char* buffer, const char* function, const char* text, ...)
     {
-        char buffer[1024];
         va_list args;
         va_start(args, text);
-        auto w = vsnprintf(buffer, sizeof(buffer), text, args);
+        char temp[SP_LOG_BUFFER_SIZE];
+        vsnprintf(temp, SP_LOG_BUFFER_SIZE, text, args);
         va_end(args);
-
-        Write(buffer, LogType::Info);
-    }
-
-    void Log::WriteFWarning(const char* text, ...)
-    {
-        char buffer[1024];
-        va_list args;
-        va_start(args, text);
-        auto w = vsnprintf(buffer, sizeof(buffer), text, args);
-        va_end(args);
-
-        Write(buffer, LogType::Warning);
-    }
-
-    void Log::WriteFError(const char* text, ...)
-    {
-        char buffer[1024];
-        va_list args;
-        va_start(args, text);
-        auto w = vsnprintf(buffer, sizeof(buffer), text, args);
-        va_end(args);
-
-        Write(buffer, LogType::Error);
-    }
-
-    void Log::Write(const string& text, const LogType type)
-    {
-        Write(text.c_str(), type);
-    }
-
-    void Log::WriteFInfo(const string text, ...)
-    {
-        char buffer[2048];
-        va_list args;
-        va_start(args, text);
-        auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
-        va_end(args);
-
-        Write(buffer, LogType::Info);
-    }
-
-    void Log::WriteFWarning(const string text, ...)
-    {
-        char buffer[2048];
-        va_list args;
-        va_start(args, text);
-        auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
-        va_end(args);
-
-        Write(buffer, LogType::Warning);
-    }
-
-    void Log::WriteFError(const string text, ...)
-    {
-        char buffer[2048];
-        va_list args;
-        va_start(args, text);
-        auto w = vsnprintf(buffer, sizeof(buffer), text.c_str(), args);
-        va_end(args);
-
-        Write(buffer, LogType::Error);
-    }
-
-    void Log::Write(const weak_ptr<Entity>& entity, const LogType type)
-    {
-        entity.expired() ? Write("Null", type) : Write(entity.lock()->GetObjectName(), type);
-    }
-
-    void Log::Write(const shared_ptr<Entity>& entity, const LogType type)
-    {
-        entity ? Write(entity->GetObjectName(), type) : Write("Null", type);
-    }
-
-    void Log::Write(const Vector2& value, const LogType type)
-    {
-        Write(value.ToString(), type);
-    }
-
-    void Log::Write(const Vector3& value, const LogType type)
-    {
-        Write(value.ToString(), type);
-    }
-
-    void Log::Write(const Vector4& value, const LogType type)
-    {
-        Write(value.ToString(), type);
-    }
-
-    void Log::Write(const Quaternion& value, const LogType type)
-    {
-        Write(value.ToString(), type);
-    }
-
-    void Log::Write(const Matrix& value, const LogType type)
-    {
-        Write(value.ToString(), type);
+        snprintf(buffer, SP_LOG_BUFFER_SIZE, "%s: %s", function, temp);
     }
 }

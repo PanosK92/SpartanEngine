@@ -252,15 +252,15 @@ Warning Options:
             {
                 if (line.find("error") != std::string::npos)
                 {
-                    SP_LOG_ERROR(line);
+                    SP_LOG_ERROR(line.c_str());
                 }
                 else if (line.find("warning") != std::string::npos)
                 {
-                    SP_LOG_WARNING(line);
+                    SP_LOG_WARNING(line.c_str());
                 }
                 else if (!FileSystem::IsEmptyOrWhitespace(line))
                 {
-                    SP_LOG_INFO(line);
+                    SP_LOG_INFO(line.c_str());
                 }
             }
         }

@@ -21,17 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES =======
 #include <string>
 #include <memory>
 #include "ILogger.h"
-//==============================
+//==================
 
 namespace spartan
 {
-    #define SP_LOG_INFO(text, ...)    { spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), ## __VA_ARGS__); }
-    #define SP_LOG_WARNING(text, ...) { spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), ## __VA_ARGS__); }
-    #define SP_LOG_ERROR(text, ...)   { spartan::Log::WriteFError(std::string(__FUNCTION__)   + ": " + std::string(text), ## __VA_ARGS__); }
+    // macros for easy logging across the engine
+    #define SP_LOG_BUFFER_SIZE 2048
+    #define SP_LOG_BUFFER_COUNT 16
+    #define SP_LOG_INFO(text, ...)    { char buffer[SP_LOG_BUFFER_SIZE]; spartan::Log::FormatBuffer(buffer, __FUNCTION__, text, ##__VA_ARGS__); spartan::Log::WriteBuffer(buffer, spartan::LogType::Info); }
+    #define SP_LOG_WARNING(text, ...) { char buffer[SP_LOG_BUFFER_SIZE]; spartan::Log::FormatBuffer(buffer, __FUNCTION__, text, ##__VA_ARGS__); spartan::Log::WriteBuffer(buffer, spartan::LogType::Warning); }
+    #define SP_LOG_ERROR(text, ...)   { char buffer[SP_LOG_BUFFER_SIZE]; spartan::Log::FormatBuffer(buffer, __FUNCTION__, text, ##__VA_ARGS__); spartan::Log::WriteBuffer(buffer, spartan::LogType::Error); }
 
     // Forward declarations
     class Entity;
@@ -75,45 +78,13 @@ namespace spartan
         static void SetLogToFile(const bool log_to_file);
         static void Clear();
 
-        // alpha
-        static void Write(const char* text, const LogType type);
-        static void WriteFInfo(const char* text, ...);
-        static void WriteFWarning(const char* text, ...);
-        static void WriteFError(const char* text, ...);
-        static void Write(const std::string& text, const LogType type);
-        static void WriteFInfo(const std::string text, ...);
-        static void WriteFWarning(const std::string text, ...);
-        static void WriteFError(const std::string text, ...);
+        // buffer-based logging
+        static void WriteBuffer(const char* text, LogType type);
+        static void FormatBuffer(char* buffer, const char* function, const char* text, ...);
 
-        // numeric
-        template <class T, class = typename std::enable_if<
-            std::is_same<T, int>::value ||
-            std::is_same<T, long>::value ||
-            std::is_same<T, long long>::value ||
-            std::is_same<T, unsigned>::value ||
-            std::is_same<T, unsigned long>::value ||
-            std::is_same<T, unsigned long long>::value ||
-            std::is_same<T, float>::value || 
-            std::is_same<T, double>::value ||
-            std::is_same<T, long double>::value
-        >::type>
-        static void Write(T value, LogType type)
-        {
-            Write(to_string(value), type);
-        }
-
-        // math
-        static void Write(const math::Vector2& value, LogType type);
-        static void Write(const math::Vector3& value, LogType type);
-        static void Write(const math::Vector4& value, LogType type);
-        static void Write(const math::Quaternion& value, LogType type);
-        static void Write(const math::Matrix& value, LogType type);
-
-        // manually handled types
-        static void Write(const bool value, const LogType type)                            { Write(value ? "True" : "False", type); }
-        template<typename T> static void Write(std::weak_ptr<T> ptr, const LogType type)   { Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
-        template<typename T> static void Write(std::shared_ptr<T> ptr, const LogType type) { Write(ptr ? typeid(ptr).name() : "Null", type); }
-        static void Write(const std::weak_ptr<Entity>& entity, LogType type);
-        static void Write(const std::shared_ptr<Entity>& entity, LogType type);
+    private:
+        static std::array<char[SP_LOG_BUFFER_SIZE], SP_LOG_BUFFER_COUNT> m_buffers;
+        static std::array<std::mutex, SP_LOG_BUFFER_COUNT> m_buffer_mutexes;
+        static size_t m_current_buffer;
     };
 }

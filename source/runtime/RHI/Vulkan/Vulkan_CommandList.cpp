@@ -1437,7 +1437,7 @@ namespace spartan
 
         if (!m_descriptor_layout_current)
         {
-            SP_LOG_WARNING("Descriptor layout not set, try setting buffer \"%s\" within a render pass", buffer->GetObjectName().c_str());
+            //SP_LOG_WARNING("Descriptor layout not set, try setting buffer \"%s\" within a render pass", buffer->GetObjectName().c_str());
             return;
         }
 

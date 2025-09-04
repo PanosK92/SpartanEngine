@@ -425,15 +425,15 @@ namespace spartan
 
                 if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
                 {
-                    Log::Write(msg.c_str(), LogType::Info);
+                    SP_LOG_INFO(msg.c_str());
                 }
                 else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
                 {
-                    Log::Write(msg.c_str(), LogType::Warning);
+                    SP_LOG_WARNING(msg.c_str());
                 }
                 else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
                 {
-                    Log::Write(msg.c_str(), LogType::Error);
+                    SP_LOG_ERROR(msg.c_str());
                 }
 
                 return VK_FALSE;
