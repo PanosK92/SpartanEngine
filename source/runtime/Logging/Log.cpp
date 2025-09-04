@@ -119,10 +119,10 @@ namespace spartan
         }
     }
 
-    void Log::WriteBuffer(const char* text, LogType type)
+    void Log::WriteBuffer(const char* text, const LogType type)
     {
         SP_ASSERT_MSG(text != nullptr, "Text is null");
-        
+    
         // get a buffer
         size_t buffer_index;
         {
@@ -131,28 +131,28 @@ namespace spartan
             buffer_index = m_current_buffer;
             m_current_buffer = (m_current_buffer + 1) % SP_LOG_BUFFER_COUNT;
         }
-        
+    
         // lock the selected buffer
         std::lock_guard<std::mutex> guard(m_buffer_mutexes[buffer_index]);
         char* buffer = m_buffers[buffer_index];
-        
-        // add timestamp
+    
+        // add timestamp directly to buffer
         auto t = time(nullptr);
         tm tm_struct{};
         localtime_s(&tm_struct, &t);
-        char timestamp[32];
-        strftime(timestamp, sizeof(timestamp), "[%H:%M:%S]: ", &tm_struct);
-        
-        // combine timestamp and text
-        snprintf(buffer, SP_LOG_BUFFER_SIZE, "%s%s", timestamp, text);
-        
+        size_t timestamp_len = strftime(buffer, SP_LOG_BUFFER_SIZE, "[%H:%M:%S]: ", &tm_struct);
+        size_t available_len = SP_LOG_BUFFER_SIZE - timestamp_len - 1; // -1 for null terminator
+    
+        // append text to buffer after timestamp
+        strncpy_s(buffer + timestamp_len, available_len + 1, text, _TRUNCATE);
+    
         // log to file if requested or if an in-engine logger is not available
         if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
         {
-            logs.emplace_back(string(buffer), type);
+            logs.emplace_back(buffer, type);
             write_to_file(buffer, type);
         }
-        
+    
         if (logger)
         {
             logger->Log(buffer, static_cast<uint32_t>(type));
@@ -163,9 +163,18 @@ namespace spartan
     {
         va_list args;
         va_start(args, text);
-        char temp[SP_LOG_BUFFER_SIZE];
-        vsnprintf(temp, SP_LOG_BUFFER_SIZE, text, args);
+
+        // calculate lengths for safe formatting
+        size_t function_len  = strlen(function);
+        size_t prefix_len    = function_len + 2; // ": " after function name
+        size_t available_len = SP_LOG_BUFFER_SIZE - prefix_len - 1; // -1 for null terminator
+
+        // write function name and ": " directly to buffer
+        snprintf(buffer, SP_LOG_BUFFER_SIZE, "%s: ", function);
+
+        // append formatted text directly to buffer after function name
+        vsnprintf(buffer + prefix_len, available_len, text, args);
+
         va_end(args);
-        snprintf(buffer, SP_LOG_BUFFER_SIZE, "%s: %s", function, temp);
     }
 }
