@@ -1188,8 +1188,9 @@ namespace spartan
                 uint32_t index;
                 float area;
             };
-            vector<DrawCallArea> areas;
-            areas.reserve(m_draw_call_count); // pre-allocate to avoid reallocations
+            static std::vector<DrawCallArea> areas;
+            areas.clear();                    // clear old data
+            areas.reserve(m_draw_call_count); // ensure enough capacity
         
             // collect screen-space areas for eligible draw calls
             for (uint32_t i = 0; i < m_draw_call_count; i++)

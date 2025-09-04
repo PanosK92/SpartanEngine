@@ -152,7 +152,8 @@ namespace spartan
         else if (!m_is_static)
         {
             Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-            const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
+            const static vector<math::Matrix> empty_instances;
+            const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : empty_instances;
             bool has_instances = !instances.empty();
             for (size_t i = 0; i < m_bodies.size(); i++)
             {

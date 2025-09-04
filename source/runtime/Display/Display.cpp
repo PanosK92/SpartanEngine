@@ -240,7 +240,7 @@ namespace spartan
     float Display::GetGamma()
     {
         // no good way to do that, so just return a default value
-        // this needs to be calibrate per display by the user
+        // this needs to be calibrated per display by the user
         return 2.2f;
     }
 

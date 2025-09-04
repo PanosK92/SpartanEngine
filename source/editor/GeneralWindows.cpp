@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "Game/Game.h"
 #include "Core/ProgressTracker.h"
-#include <sstream>
 //================================
 
 //= NAMESPACES =====

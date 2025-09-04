@@ -932,7 +932,8 @@ namespace spartan
         shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)
         {
             // get descriptors from pipeline state
-            vector<RHI_Descriptor> descriptors;
+            static vector<RHI_Descriptor> descriptors;
+            descriptors.clear(); // reset contents
             get_descriptors_from_pipeline_state(pipeline_state, descriptors);
 
             // compute a hash for the descriptors

@@ -32,5 +32,8 @@ namespace spartan
     public:
         static void* Allocate(std::size_t size, std::size_t alignment = alignof(std::max_align_t));
         static void Free(void* ptr);
+
+        static float GetMemoryAllocatedMb();
+        static float GetMemoryTotalMb();
     };
 }

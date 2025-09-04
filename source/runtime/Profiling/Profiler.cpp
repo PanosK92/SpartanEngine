@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Debugging.h"
 #include "../Rendering/Renderer.h"
 #include "../Display/Display.h"
+#include "../Memory/Allocator.h"
 //====================================
 
 //= NAMESPACES =====
@@ -436,14 +437,14 @@ namespace spartan
             ss << "CPU:\t\t" << time_cpu_avg << "\t\t" << time_cpu_min << "\t\t" << time_cpu_max << "\t\t" << time_cpu_last << " ms\n";
             ss << "GPU:\t\t" << time_gpu_avg << "\t\t" << time_gpu_min << "\t\t" << time_gpu_max << "\t\t" << time_gpu_last << " ms\n\n";
     
-            // gpu section
+            // gpu
             ss << "GPU\n";
             ss << "Name:\t\t" << gpu_name << "\n";
             ss << "Memory:\t" << gpu_memory_used << "/" << gpu_memory_available << " MB\n";
             ss << "API:\t\t\t\t" << RHI_Context::api_type_str << "\t" << gpu_api << "\n";
             ss << "Driver:\t\t" << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << "\n\n";
     
-            // cpu section
+            // cpu
             ss << "CPU\n";
             ss << "Name:\t\t\t\t\t" << cpu_name << "\n";
             ss << "Worker threads:\t" << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << "\n";
@@ -453,8 +454,13 @@ namespace spartan
             ss << "AVX2:\t\t\t\t\t\tNo\n";
         #endif
             ss << "\n";
-    
-            // display section
+
+            // memory
+            ss << "Memory\n";
+            ss << "System:\t\t" << Allocator::GetMemoryAllocatedMb() << "/" << Allocator::GetMemoryTotalMb() << " MB\n";
+            ss << "\n";
+
+            // display
             ss << "Display\n";
             ss << "Name:\t\t\t" << Display::GetName() << "\n";
             ss << "Hz:\t\t\t\t\t" << Display::GetRefreshRate() << "\n";
@@ -464,7 +470,7 @@ namespace spartan
             ss << "Output:\t\t\t" << static_cast<uint32_t>(Renderer::GetResolutionOutput().x) << " x " << static_cast<uint32_t>(Renderer::GetResolutionOutput().y) << "\n";
             ss << "Viewport:\t\t" << static_cast<uint32_t>(Renderer::GetViewport().width) << " x " << static_cast<uint32_t>(Renderer::GetViewport().height) << "\n\n";
     
-            // graphics api section
+            // graphics api
             ss << "Graphics API\n";
             ss << "Draw:\t\t\t\t\t\t\t\t\t\t" << m_rhi_draw << "\n";
             ss << "Index buffer bindings:\t\t" << m_rhi_bindings_buffer_index << "\n";

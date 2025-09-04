@@ -23,26 +23,88 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========
 #include "pch.h"
 #include "Allocator.h"
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
 //====================
 
 namespace spartan
 {
+    namespace
+    {
+        static std::atomic<size_t> g_total_allocated = 0;
+    }
+
     void* Allocator::Allocate(std::size_t size, std::size_t alignment)
     {
-        // aligned allocation if available
+        // allocate extra space for storing size just before the aligned pointer
+        const size_t header_size = sizeof(size_t);
+        const size_t total_size  = size + header_size;
+
 #if defined(_MSC_VER)
-        return _aligned_malloc(size, alignment);
+        void* raw = _aligned_malloc(total_size, alignment);
 #else
-        return std::aligned_alloc(alignment, size);
+        void* raw = std::aligned_alloc(alignment, total_size);
 #endif
+        if (!raw)
+            return nullptr;
+
+        // store size at the beginning
+        *reinterpret_cast<size_t*>(raw) = size;
+
+        // update counter
+        g_total_allocated.fetch_add(size, std::memory_order_relaxed);
+
+        // return pointer just after the header
+        return static_cast<char*>(raw) + header_size;
     }
 
     void Allocator::Free(void* ptr)
     {
-        #if defined(_MSC_VER)
-        _aligned_free(ptr);
+        if (!ptr)
+            return;
+
+        const size_t header_size = sizeof(size_t);
+
+        // move back to get the header
+        void* raw = static_cast<char*>(ptr) - header_size;
+
+        // read stored size
+        size_t size = *reinterpret_cast<size_t*>(raw);
+
+        // update counter
+        g_total_allocated.fetch_sub(size, std::memory_order_relaxed);
+
+#if defined(_MSC_VER)
+        _aligned_free(raw);
 #else
-        std::free(ptr);
+        std::free(raw);
+#endif
+    }
+
+    float Allocator::GetMemoryAllocatedMb()
+    {
+         return static_cast<float>(g_total_allocated) / (1024.0f * 1024.0f);
+    }
+
+    float Allocator::GetMemoryTotalMb()
+    {
+#if defined(_WIN32)
+        MEMORYSTATUSEX status;
+        status.dwLength = sizeof(status);
+        GlobalMemoryStatusEx(&status);
+        return static_cast<float>(status.ullTotalPhys) / (1024.0f * 1024.0f);
+#elif defined(__linux__)
+        long pages = sysconf(_SC_PHYS_PAGES);
+        long page_size = sysconf(_SC_PAGE_SIZE);
+        return static_cast<float>(pages * page_size) / (1024.0f * 1024.0f);
+#elif defined(__APPLE__)
+        int64_t mem = 0;
+        size_t len = sizeof(mem);
+        sysctlbyname("hw.memsize", &mem, &len, nullptr, 0);
+        return static_cast<float>(mem) / (1024.0f * 1024.0f);
+#else
+        return 0.0f; // unsupported platform
 #endif
     }
 }
