@@ -171,26 +171,32 @@ namespace spartan
     
         // grow gpu buffers if needed
         {
-            if (m_vertices.size() > m_buffers_vertex[m_buffer_index]->GetElementCount())
+            // compute how many bytes we need
+            uint64_t vertex_data_size = static_cast<uint64_t>(m_vertices.size()) * sizeof(m_vertices[0]);
+            uint64_t index_data_size  = static_cast<uint64_t>(m_indices.size())  * sizeof(m_indices[0]);
+            
+            // grow vertex buffer if needed
+            if (vertex_data_size > m_buffers_vertex[m_buffer_index]->GetStride())
             {
                 m_buffers_vertex[m_buffer_index] = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Vertex,                                          // type
-                    static_cast<uint32_t>(m_vertices.size()) * sizeof(m_vertices[0]), // stride
-                    1,                                                                // element count
-                    m_vertices.data(),                                                // data
-                    true,                                                             // mappable
+                    RHI_Buffer_Type::Vertex,
+                    static_cast<uint32_t>(vertex_data_size), // stride = total size in bytes
+                    1,                                       // element count = 1
+                    nullptr,
+                    true,
                     "font_vertex"
                 );
             }
-        
-            if (m_indices.size() > m_buffers_index[m_buffer_index]->GetElementCount())
+            
+            // grow index buffer if needed
+            if (index_data_size > m_buffers_index[m_buffer_index]->GetStride())
             {
                 m_buffers_index[m_buffer_index] = make_shared<RHI_Buffer>(
-                    RHI_Buffer_Type::Index,                                         // type
-                    static_cast<uint32_t>(m_indices.size()) * sizeof(m_indices[0]), // stride
-                    1,                                                              // element count
-                    m_indices.data(),                                               // data
-                    true,                                                           // mappable
+                    RHI_Buffer_Type::Index,
+                    static_cast<uint32_t>(index_data_size), // stride = total size in bytes
+                    1,
+                    nullptr,
+                    true,
                     "font_index"
                 );
             }

@@ -750,11 +750,9 @@ namespace spartan
             RHI_Device::SetVariableRateShading(this, m_pso.vrs_input_texture != nullptr);
     
             // set viewport
-            RHI_Viewport viewport = RHI_Viewport(
-                0.0f, 0.0f,
-                static_cast<float>(m_pso.GetWidth()),
-                static_cast<float>(m_pso.GetHeight())
-            );
+            static RHI_Viewport viewport;
+            viewport.width  = static_cast<float>(m_pso.GetWidth());
+            viewport.height = static_cast<float>(m_pso.GetHeight());
             SetViewport(viewport);
         }
     
