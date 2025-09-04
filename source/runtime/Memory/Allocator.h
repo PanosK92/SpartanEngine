@@ -34,6 +34,7 @@ namespace spartan
         static void Free(void* ptr);
 
         static float GetMemoryAllocatedMb();
+        static float GetMemoryAvailableMb();
         static float GetMemoryTotalMb();
     };
 }

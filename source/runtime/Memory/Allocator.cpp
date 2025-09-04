@@ -20,13 +20,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-//= INCLUDES =========
+//= INCLUDES ============
 #include "pch.h"
 #include "Allocator.h"
 #if defined(_WIN32)
 #include <Windows.h>
+#include <Psapi.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#include <sys/resource.h>
 #endif
-//====================
+//=======================
 
 //= NAMESPACES =====
 using namespace std;
@@ -89,6 +93,22 @@ namespace spartan
     float Allocator::GetMemoryAllocatedMb()
     {
          return static_cast<float>(g_total_allocated) / (1024.0f * 1024.0f);
+    }
+
+    float Allocator::GetMemoryAvailableMb()
+    {
+    #if defined(_WIN32)
+        MEMORYSTATUSEX status;
+        status.dwLength = sizeof(status);
+        GlobalMemoryStatusEx(&status);
+        return static_cast<float>(status.ullAvailPhys) / (1024.0f * 1024.0f);
+    #elif defined(__linux__)
+        long free_pages = sysconf(_SC_AVPHYS_PAGES); // available pages
+        long page_size = sysconf(_SC_PAGE_SIZE);
+        return static_cast<float>(free_pages * page_size) / (1024.0f * 1024.0f);
+    #else
+        return 0.0f; // unsupported platform
+    #endif
     }
 
     float Allocator::GetMemoryTotalMb()

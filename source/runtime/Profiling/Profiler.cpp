@@ -457,7 +457,7 @@ namespace spartan
 
             // memory
             ss << "Memory\n";
-            ss << "System:\t\t" << Allocator::GetMemoryAllocatedMb() << "/" << Allocator::GetMemoryTotalMb() << " MB\n";
+            ss << "System:\t\t" << Allocator::GetMemoryAllocatedMb() << "/" << Allocator::GetMemoryAvailableMb() << " (" << Allocator::GetMemoryTotalMb() << ")" << " MB\n";
             ss << "\n";
 
             // display
