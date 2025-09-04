@@ -880,44 +880,55 @@ namespace spartan
             auto cached_descriptors = descriptor_cache.find(pipeline_state_hash);
             if (cached_descriptors != descriptor_cache.end())
             {
-                // fetch from cache
-                descriptors = cached_descriptors->second;
+                // clear the output vector and reserve space to avoid allocations
+                descriptors.clear();
+                descriptors.reserve(cached_descriptors->second.size());
+
+                // clear the output vector and reserve space to avoid allocations
+                descriptors.clear();
+                descriptors.reserve(cached_descriptors->second.size());
+
+                // copy elements directly to avoid assignment-related allocations
+                copy(cached_descriptors->second.begin(), cached_descriptors->second.end(), back_inserter(descriptors));
                 return;
             }
 
             // if not cached, generate descriptors
             descriptors.clear();
-
             if (pipeline_state.IsCompute())
             {
                 SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Compute]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                descriptors = pipeline_state.shaders[RHI_Shader_Type::Compute]->GetDescriptors();
+
+                // reserve space to minimize allocations
+                auto compute_descriptors = pipeline_state.shaders[RHI_Shader_Type::Compute]->GetDescriptors();
+                descriptors.reserve(compute_descriptors.size());
+                descriptors.insert(descriptors.end(), compute_descriptors.begin(), compute_descriptors.end());
             }
             else if (pipeline_state.IsGraphics())
             {
                 SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
-                descriptors = pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetDescriptors();
+                auto vertex_descriptors = pipeline_state.shaders[RHI_Shader_Type::Vertex]->GetDescriptors();
+                descriptors.reserve(vertex_descriptors.size());
+                descriptors.insert(descriptors.end(), vertex_descriptors.begin(), vertex_descriptors.end());
 
                 if (pipeline_state.shaders[RHI_Shader_Type::Pixel])
                 {
                     SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Pixel]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                     merge_descriptors(descriptors, pipeline_state.shaders[RHI_Shader_Type::Pixel]->GetDescriptors());
                 }
-
                 if (pipeline_state.shaders[RHI_Shader_Type::Hull])
                 {
                     SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Hull]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                     merge_descriptors(descriptors, pipeline_state.shaders[RHI_Shader_Type::Hull]->GetDescriptors());
                 }
-
                 if (pipeline_state.shaders[RHI_Shader_Type::Domain])
                 {
                     SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::Domain]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                     merge_descriptors(descriptors, pipeline_state.shaders[RHI_Shader_Type::Domain]->GetDescriptors());
                 }
             }
-
-            // sort descriptors by slot
+            // sor
+            // t descriptors by slot
             // this makes things easier to work with, for example dynamic offsets
             // are expected as a list which should be ordered by a slot
             sort(descriptors.begin(), descriptors.end(), [](const RHI_Descriptor& a, const RHI_Descriptor& b)

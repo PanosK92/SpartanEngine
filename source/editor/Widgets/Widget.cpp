@@ -50,7 +50,7 @@ void Widget::Tick()
 
     // Begin
     {
-        SP_PROFILE_CPU_START(m_title.c_str());
+        SP_PROFILE_CPU_START(m_title);
 
         // Size initial
         m_size_initial = m_size_initial == k_widget_default_property ? Vector2(Display::GetWidth() * 0.5f, Display::GetHeight() * 0.5f) : m_size_initial;
@@ -80,7 +80,7 @@ void Widget::Tick()
         OnPreBegin();
 
         // Begin
-        if (ImGui::Begin(m_title.c_str(), &m_visible, m_flags))
+        if (ImGui::Begin(m_title, &m_visible, m_flags))
         {
             m_window = ImGui::GetCurrentWindow();
             m_height = ImGui::GetWindowHeight();

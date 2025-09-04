@@ -216,16 +216,16 @@ void Editor::BeginWindow()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(0.0f, 0.0f));
     
     // begin window
-    std::string name = "##main_window";
+    const char* name = "##main_window";
     bool open = true;
-    ImGui::Begin(name.c_str(), &open, window_flags);
+    ImGui::Begin(name, &open, window_flags);
     ImGui::PopStyleVar(3);
     
     // begin dock space
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
         // dock space
-        const auto window_id = ImGui::GetID(name.c_str());
+        const auto window_id = ImGui::GetID(name);
         if (!ImGui::DockBuilderGetNode(window_id))
         {
             // reset current docking state

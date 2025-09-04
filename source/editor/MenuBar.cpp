@@ -61,7 +61,7 @@ namespace
         T* widget = editor->GetWidget<T>();
 
         // menu item with checkmark based on widget->GetVisible()
-        if (ImGui::MenuItem(widget->GetTitle().c_str(), nullptr, widget->GetVisible()))
+        if (ImGui::MenuItem(widget->GetTitle(), nullptr, widget->GetVisible()))
         {
             // toggle visibility
             widget->SetVisible(!widget->GetVisible());
@@ -241,10 +241,10 @@ namespace
         unordered_map<spartan::RHI_Texture*, Widget*> widgets;
 
         // a button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-        void toolbar_button(spartan::RHI_Texture* icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press, float cursor_pos_x = -1.0f)
+        void toolbar_button(spartan::RHI_Texture* icon_type, const char* tooltip_text, bool (*get_visibility)(Widget*), void (*on_press)(Widget*), Widget* widget = nullptr, float cursor_pos_x = -1.0f)
         {
             ImGui::SameLine();
-            ImVec4 button_color = get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button];
+            ImVec4 button_color = get_visibility(widget) ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button];
             ImGui::PushStyleColor(ImGuiCol_Button, button_color);
             if (cursor_pos_x > 0.0f)
             {
@@ -260,12 +260,12 @@ namespace
 
             if (ImGuiSp::image_button(icon_type, button_size * spartan::Window::GetDpiScale(), false))
             {
-                on_press();
+                on_press(widget);
             }
 
             ImGui::PopStyleColor();
 
-            ImGuiSp::tooltip(tooltip_text.c_str());
+            ImGuiSp::tooltip(tooltip_text);
         }
 
         void tick()
@@ -280,64 +280,64 @@ namespace
             // play button
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPaddingY() - 5.0f });
-
+                // Inline static functions
+                static auto is_playing = [](Widget*) { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing); };
+                static auto toggle_playing = [](Widget*) { spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); };
                 toolbar_button(
                     spartan::ResourceCache::GetIcon(spartan::IconType::Play), "Play",
-                    []() { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);  },
-                    []() { return spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); },
+                    is_playing,
+                    toggle_playing,
+                    nullptr,
                     cursor_pos_x
                 );
-                
+               
                 ImGui::PopStyleVar(1);
             }
-
             // all the other buttons
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
             {
-                num_buttons  = 7.0f;
+                num_buttons = 7.0f;
                 size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
                 cursor_pos_x = size_avail_x - (size_toolbar - 2.0f);
-
                 // buttons from custom functionality
                 {
                     // renderdoc button
-                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::RenderDoc), "Captures the next frame and then launches RenderDoc",
-                        []() { return false; },
-                        []()
+                    static auto renderdoc_visible = [](Widget*) { return false; };
+                    static auto renderdoc_press = [](Widget*)
+                    {
+                        if (spartan::Debugging::IsRenderdocEnabled())
                         {
-                            if (spartan::Debugging::IsRenderdocEnabled())
-                            {
-                                spartan::RenderDoc::FrameCapture();
-                            }
-                            else
-                            {
-                                SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
-                            }
-                        },
+                            spartan::RenderDoc::FrameCapture();
+                        }
+                        else
+                        {
+                            SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
+                        }
+                    };
+                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::RenderDoc), "Captures the next frame and then launches RenderDoc",
+                        renderdoc_visible,
+                        renderdoc_press,
+                        nullptr,
                         cursor_pos_x
                     );
-
                     // world selection
+                    static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
+                    static auto world_press = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
                     toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Terrain), "World selection window",
-                        []() { return GeneralWindows::GetVisibilityWorlds(); },
-                        []()
-                        {
-                            GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds());
-                        }
+                        world_visible,
+                        world_press,
+                        nullptr
                     );
                 }
-
                 // buttons from widgets
                 for (auto& widget_it : widgets)
                 {
-                    Widget* widget                    = widget_it.second;
+                    Widget* widget = widget_it.second;
                     spartan::RHI_Texture* widget_icon = widget_it.first;
-
-                    toolbar_button(widget_icon, widget->GetTitle(),
-                        [&widget]() { return widget->GetVisible(); },
-                        [&widget]() { widget->SetVisible(true); }
-                    );
+                    static auto is_widget_visible = [](Widget* widget) { return widget->GetVisible(); };
+                    static auto set_widget_visible = [](Widget* widget) { widget->SetVisible(true); };
+                    toolbar_button(widget_icon, widget->GetTitle(), is_widget_visible, set_widget_visible, widget);
                 }
             }
             ImGui::PopStyleVar(2);

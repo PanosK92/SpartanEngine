@@ -405,8 +405,9 @@ void FileDialog::ShowBottom(bool* is_visible)
         m_offset_bottom = 24.0f * spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
-        string text = (m_displayed_item_count == 1) ? "%d item" : "%d items";
-        ImGui::Text(text.c_str(), m_displayed_item_count);
+        static char text[16]; // Sufficient for "%d item" or "%d items" with reasonable integer sizes
+        snprintf(text, sizeof(text), (m_displayed_item_count == 1) ? "%d item" : "%d items", m_displayed_item_count);
+        ImGui::Text(text);
     }
     else
     {

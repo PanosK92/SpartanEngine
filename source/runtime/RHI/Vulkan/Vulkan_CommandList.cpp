@@ -1729,7 +1729,9 @@ namespace spartan
         uint32_t aspect_mask = get_aspect_mask(format);
     
         // get layouts for all mips in the range
-        vector<RHI_Image_Layout> layouts(mip_range);
+        static vector<RHI_Image_Layout> layouts;
+        layouts.clear();
+        layouts.resize(mip_range);
         bool all_mips_same_layout     = true;
         RHI_Image_Layout first_layout = image_barrier::get_layout(image, mip_index);
         for (uint32_t i = 0; i < mip_range; i++)

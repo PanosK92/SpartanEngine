@@ -297,14 +297,15 @@ namespace spartan
             pugi::xml_node entities_node = world_node.append_child("Entities");
 
             // get root entities, save them, and they will save their children recursively
-            vector<shared_ptr<Entity>> root_actors = GetRootEntities();
-            const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
+            static vector<shared_ptr<Entity>> root_entities;
+            World::GetRootEntities(root_entities);
+            const uint32_t root_entity_count = static_cast<uint32_t>(root_entities.size());
 
             // progress tracking
             ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
 
             // write entities to node
-            for (shared_ptr<Entity>& root : root_actors)
+            for (shared_ptr<Entity>& root : root_entities)
             {
                 pugi::xml_node entity_node = entities_node.append_child("Entity");
                 root->Save(entity_node);
@@ -463,18 +464,18 @@ namespace spartan
         bounding_box = BoundingBox::Unit;
     }
 
-    vector<shared_ptr<Entity>> World::GetRootEntities()
+    void World::GetRootEntities(vector<shared_ptr<Entity>>& entities)
     {
         lock_guard<mutex> lock(entity_access_mutex);
-        vector<shared_ptr<Entity>> root_entities;
+        entities.clear();
+        entities.reserve(entities.size());
         for (shared_ptr<Entity>& entity : entities)
         {
             if (!entity->GetParent())
             {
-                root_entities.emplace_back(entity);
+                entities.emplace_back(entity);
             }
         }
-        return root_entities;
     }
 
     const shared_ptr<Entity>& World::GetEntityById(const uint64_t id)

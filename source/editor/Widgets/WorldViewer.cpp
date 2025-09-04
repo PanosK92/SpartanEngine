@@ -137,8 +137,10 @@ void WorldViewer::TreeShow()
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     ImGui::BeginDisabled(is_in_game_mode);
     {
+        static vector<shared_ptr<spartan::Entity>> root_entities;
+        spartan::World::GetRootEntities(root_entities);
+
         // iterate over root entities directly, omitting the root node
-        vector<shared_ptr<spartan::Entity>> root_entities = spartan::World::GetRootEntities();
         for (const shared_ptr<spartan::Entity>& entity : root_entities)
         {
             if (entity->GetActive())

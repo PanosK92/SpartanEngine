@@ -66,7 +66,7 @@ public:
     spartan::math::Vector2 GetCenter() const;
     float GetHeight()                  const { return m_height; }
     ImGuiWindow* GetWindow()           const { return m_window; }
-    const auto& GetTitle()             const { return m_title; }
+    const char* GetTitle()             const { return m_title; }
     bool& GetVisible()                       { return m_visible; }
     void SetVisible(bool is_visible)         { m_visible = is_visible; }
 
@@ -81,7 +81,7 @@ protected:
     spartan::math::Vector2 m_size_min     = k_widget_default_property;
     spartan::math::Vector2 m_size_max     = FLT_MAX;
     spartan::math::Vector2 m_padding      = k_widget_default_property;
-    std::string m_title                   = "Title";
+    const char* m_title                   = "Title";
 
     // the ImGui window this widget corresponds to
     ImGuiWindow* m_window = nullptr;
