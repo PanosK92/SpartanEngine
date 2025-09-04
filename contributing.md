@@ -7,7 +7,15 @@ This platform offers you the freedom to explore, experiment, and excel. Make the
 - Starting small: If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
 - Task complexity: The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
 - Your priorities: Your first priority should be to have fun. Secondly, prioritize practical action over extensive theorizing. For instance, spending four hours discussing a task that could be completed in 30 minutes is inefficient.
-- Workflow overview: The workflow is: clone/fork, work, submit a pull request.
+
+# Workflow overview
+- The standard flow is always through your own fork, not the main SpartanEngine repo.
+- Fork the SpartanEngine repo to your GitHub account.
+- Clone your fork locally.
+- Create a branch in your fork and do your work there.
+- Push the branch to your fork (you have full rights there).
+- Open a Pull Request from your fork/branch → SpartanEngine.
+- This way you never push directly to the main repo.
 
 # Pull Request (PR) Guidelines
 - Functionality: Ensure your PR is functional. While it can be incomplete, the code it introduces should be operational.
