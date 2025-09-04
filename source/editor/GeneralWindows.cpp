@@ -416,7 +416,8 @@ namespace
             "4. Sponza 4k (high-resolution textures & meshes) - demanding",
             "5. Subway (gi test, no lights, only emissive textures) - moderate",
             "6. Minecraft (blocky aesthetic) - light",
-            "7. Basic (light, camera, floor) - light"
+            "7. Basic (light, camera, floor) - light",
+            "8. Water (light, camera, ocean) - ?"
         };
 
         int world_index = 0;
