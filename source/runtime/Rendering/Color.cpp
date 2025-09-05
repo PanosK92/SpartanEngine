@@ -130,18 +130,18 @@ namespace spartan
     const Color Color::material_gray_card       = Color(0.180f, 0.180f, 0.180f);
     const Color Color::material_honey           = Color(0.831f, 0.397f, 0.038f);
     const Color Color::material_ice             = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::material_iron            = Color(0.531f, 0.512f, 0.496f); // Metallic: 1.0
+    const Color Color::material_iron            = Color(0.531f, 0.512f, 0.496f); // metallic: 1.0
     const Color Color::material_ketchup         = Color(0.164f, 0.006f, 0.002f);
     const Color Color::material_lead            = Color(0.632f, 0.626f, 0.641f);
     const Color Color::material_mercury         = Color(0.781f, 0.779f, 0.779f);
     const Color Color::material_milk            = Color(0.604f, 0.584f, 0.497f);
     const Color Color::material_nickel          = Color(0.649f, 0.610f, 0.541f);
     const Color Color::material_office_paper    = Color(0.738f, 0.768f, 1.000f);
-    const Color Color::material_plastic_pc      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.640
-    const Color Color::material_plastic_pet     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.623
-    const Color Color::material_plastic_acrylic = Color(1.000f, 1.000f, 1.000f); // Specular: 0.462
-    const Color Color::material_plastic_pp      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.487
-    const Color Color::material_plastic_pvc     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.550
+    const Color Color::material_plastic_pc      = Color(1.000f, 1.000f, 1.000f); // specular: 0.640
+    const Color Color::material_plastic_pet     = Color(1.000f, 1.000f, 1.000f); // specular: 0.623
+    const Color Color::material_plastic_acrylic = Color(1.000f, 1.000f, 1.000f); // specular: 0.462
+    const Color Color::material_plastic_pp      = Color(1.000f, 1.000f, 1.000f); // specular: 0.487
+    const Color Color::material_plastic_pvc     = Color(1.000f, 1.000f, 1.000f); // specular: 0.550
     const Color Color::material_platinum        = Color(0.679f, 0.642f, 0.588f);
     const Color Color::material_salt            = Color(0.800f, 0.800f, 0.800f);
     const Color Color::material_sand            = Color(0.440f, 0.386f, 0.231f);
@@ -154,23 +154,23 @@ namespace spartan
     const Color Color::material_skin_5          = Color(0.360f, 0.160f, 0.080f);
     const Color Color::material_skin_6          = Color(0.090f, 0.050f, 0.020f);
     const Color Color::material_snow            = Color(0.810f, 0.810f, 0.810f);
-    const Color Color::material_tire            = Color(0.023f, 0.023f, 0.023f); // Metallic: 0.0, Specular 0.5
+    const Color Color::material_tire            = Color(0.023f, 0.023f, 0.023f); // metallic: 0.0, specular 0.5
     const Color Color::material_titanium        = Color(0.616f, 0.582f, 0.544f);
     const Color Color::material_tungsten        = Color(0.925f, 0.835f, 0.757f);
     const Color Color::material_vanadium        = Color(0.945f, 0.894f, 0.780f);
     const Color Color::material_water           = Color(1.000f, 1.000f, 1.000f);
     const Color Color::material_zinc            = Color(0.875f, 0.867f, 0.855f);
 
-    //lights
-    const Color Color::light_sky_clear              = Color(15000); // Intensity: 20000  lx
-    const Color Color::light_sky_daylight_overcast  = Color(6500);  // Intensity: 2000   lx
-    const Color Color::light_sky_moonlight          = Color(4000);  // Intensity: 0.1    lx
+    // lights
+    const Color Color::light_sky_clear              = Color(15000); // intensity: 20000  lx
+    const Color Color::light_sky_daylight_overcast  = Color(6500);  // intensity: 2000   lx
+    const Color Color::light_sky_moonlight          = Color(4000);  // intensity: 0.1    lx
     const Color Color::light_sky_sunrise            = Color(2000); 
-    const Color Color::light_candle_flame           = Color(1850);  // Intensity: 13     lm
-    const Color Color::light_direct_sunlight        = Color(5778);  // Intensity: 120000 lx
-    const Color Color::light_digital_display        = Color(6500);  // Intensity: 200    cd/m2
-    const Color Color::light_fluorescent_tube_light = Color(5000);  // Intensity: 1000   lm 
-    const Color Color::light_kerosene_lamp          = Color(1850);  // Intensity: 50     lm
-    const Color Color::light_light_bulb             = Color(2700);  // Intensity: 800    lm
-    const Color Color::light_photo_flash            = Color(5500);  // Intensity: 20000  lm
+    const Color Color::light_candle_flame           = Color(1850);  // intensity: 13     lm
+    const Color Color::light_direct_sunlight        = Color(5778);  // intensity: 120000 lx
+    const Color Color::light_digital_display        = Color(6500);  // intensity: 200    cd/m2
+    const Color Color::light_fluorescent_tube_light = Color(5000);  // intensity: 1000   lm 
+    const Color Color::light_kerosene_lamp          = Color(1850);  // intensity: 50     lm
+    const Color Color::light_light_bulb             = Color(2700);  // intensity: 800    lm
+    const Color Color::light_photo_flash            = Color(5500);  // intensity: 20000  lm
 }

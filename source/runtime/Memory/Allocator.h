@@ -47,5 +47,8 @@ namespace spartan
 
         // total physical system memory
         static float GetMemoryTotalMb();
+
+        // peak memory allocated by the engine
+        static float GetMemoryAllocatedPeakMb();
     };
 }

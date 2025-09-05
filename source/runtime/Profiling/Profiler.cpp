@@ -471,12 +471,19 @@ namespace spartan
     
             // memory
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                               "Memory\nAllocated: %.2f MB | Process: %.2f MB | System: %.2f/%.2f MB\n\n",
+                               "Memory\n"); // title
+            
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Allocated:\t%.2f MB | Peak: %.2f MB\n",
                                Allocator::GetMemoryAllocatedMb(),
+                               Allocator::GetMemoryAllocatedPeakMb());
+            
+            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
+                               "Process:\t\t%.2f MB | Available: %.2f MB | Total: %.2f MB\n\n",
                                Allocator::GetMemoryProcessUsedMb(),
                                Allocator::GetMemoryAvailableMb(),
                                Allocator::GetMemoryTotalMb());
-    
+
             // display
             const auto& res_render = Renderer::GetResolutionRender();
             const auto& res_output = Renderer::GetResolutionOutput();

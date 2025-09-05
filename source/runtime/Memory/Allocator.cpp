@@ -41,7 +41,8 @@ namespace spartan
 {
     namespace
     {
-        atomic<size_t> g_total_allocated = 0;
+        atomic<size_t> bytes_allocated      = 0;
+        atomic<size_t> bytes_allocated_peak = 0;
     }
 
     void* Allocator::Allocate(size_t size, size_t alignment)
@@ -62,7 +63,8 @@ namespace spartan
         *reinterpret_cast<size_t*>(raw) = size;
 
         // update counter
-        g_total_allocated.fetch_add(size, memory_order_relaxed);
+        bytes_allocated.fetch_add(size, memory_order_relaxed);
+        bytes_allocated_peak = max(bytes_allocated_peak.load(memory_order_relaxed), bytes_allocated.load(memory_order_relaxed));
 
         // return pointer just after the header
         return static_cast<char*>(raw) + header_size;
@@ -82,7 +84,7 @@ namespace spartan
         size_t size = *reinterpret_cast<size_t*>(raw);
 
         // update counter
-        g_total_allocated.fetch_sub(size, memory_order_relaxed);
+        bytes_allocated.fetch_sub(size, memory_order_relaxed);
 
 #if defined(_MSC_VER)
         _aligned_free(raw);
@@ -93,7 +95,7 @@ namespace spartan
 
     float Allocator::GetMemoryAllocatedMb()
     {
-         return static_cast<float>(g_total_allocated) / (1024.0f * 1024.0f);
+         return static_cast<float>(bytes_allocated) / (1024.0f * 1024.0f);
     }
 
     float Allocator::GetMemoryProcessUsedMb()
@@ -102,7 +104,7 @@ namespace spartan
         PROCESS_MEMORY_COUNTERS_EX pmc;
         if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc)))
         {
-            // Working set = physical memory currently used by the process
+            // working set = physical memory currently used by the process
             return static_cast<float>(pmc.WorkingSetSize) / (1024.0f * 1024.0f);
         }
         return 0.0f;
@@ -159,5 +161,10 @@ namespace spartan
 #else
         return 0.0f; // unsupported platform
 #endif
+    }
+
+    float Allocator::GetMemoryAllocatedPeakMb()
+    {
+        return static_cast<float>(bytes_allocated_peak) / (1024.0f * 1024.0f);
     }
 }
