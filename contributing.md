@@ -8,6 +8,11 @@ This platform offers you the freedom to explore, experiment, and excel. Make the
 - Task complexity: The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
 - Your priorities: Your first priority should be to have fun. Secondly, prioritize practical action over extensive theorizing. For instance, spending four hours discussing a task that could be completed in 30 minutes is inefficient.
 
+# What to do
+- Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
+- You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 600+ members, where you can ask for ideas on what to contribute.
+- Another great approach is to simply run the engine, see what doesn't work or could be improved.
+
 # Workflow overview
 - The standard flow is always through your own fork, not the main SpartanEngine repo.
 - Fork the SpartanEngine repo to your GitHub account.
@@ -15,18 +20,12 @@ This platform offers you the freedom to explore, experiment, and excel. Make the
 - Create a branch in your fork and do your work there.
 - Push the branch to your fork (you have full rights there).
 - Open a Pull Request from your fork/branch → SpartanEngine.
-- This way you never push directly to the main repo.
 
 # Pull Request (PR) Guidelines
 - Functionality: Ensure your PR is functional. While it can be incomplete, the code it introduces should be operational.
 - Collaboration restrictions: Other contributors generally can't modify your PR directly. Hence, non-functional PRs can obstruct the project's progress.
 - Iterative improvements: It's okay for your PR to be a part of a larger task. Incremental, functional changes are encouraged.
 - Communication: If you're looking for collaboration on your PR, communicate this in your PR description or through our Discord community.
-
-# What to do
-- Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
-- You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 600+ members, where you can ask for ideas on what to contribute.
-- Another great approach is to simply run the engine, see what doesn't work or could be improved.
 
 # Coding style
 
