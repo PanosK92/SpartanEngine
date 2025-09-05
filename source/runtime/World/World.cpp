@@ -464,16 +464,16 @@ namespace spartan
         bounding_box = BoundingBox::Unit;
     }
 
-    void World::GetRootEntities(vector<shared_ptr<Entity>>& entities)
+    void World::GetRootEntities(vector<shared_ptr<Entity>>& entities_out)
     {
         lock_guard<mutex> lock(entity_access_mutex);
-        entities.clear();
-        entities.reserve(entities.size());
+        entities_out.clear();
+        entities_out.reserve(entities.size());
         for (shared_ptr<Entity>& entity : entities)
         {
             if (!entity->GetParent())
             {
-                entities.emplace_back(entity);
+                entities_out.emplace_back(entity);
             }
         }
     }

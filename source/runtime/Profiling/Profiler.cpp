@@ -415,7 +415,7 @@ namespace spartan
     void Profiler::DrawPerformanceMetrics()
     {
         // static buffer to avoid allocations
-        static char metrics_buffer[8192];
+        static char metrics_buffer[16384];
         static float metrics_time_since_last_update = profiling_interval_sec;
     
         metrics_time_since_last_update += static_cast<float>(Timer::GetDeltaTimeSec());
