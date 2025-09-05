@@ -143,11 +143,14 @@ namespace spartan
         return IsInViewFrustum(box);
     }
 
-    const Ray Camera::ComputePickingRay()
+    const Ray& Camera::ComputePickingRay()
     {
-        Vector3 ray_start     = GetEntity()->GetPosition();
-        Vector3 ray_direction = ScreenToWorldCoordinates(Input::GetMousePositionRelativeToEditorViewport(), 1.0f);
-        return Ray(ray_start, ray_direction);
+        static Ray ray;
+
+        ray.m_origin    = GetEntity()->GetPosition();
+        ray.m_direction = ScreenToWorldCoordinates(Input::GetMousePositionRelativeToEditorViewport(), 1.0f);
+
+        return ray;
     }
     
     void Camera::Pick()
@@ -160,8 +163,9 @@ namespace spartan
         }
 
         // traces ray against all AABBs in the world
-        Ray ray = ComputePickingRay();
-        vector<RayHit> hits;
+        const Ray& ray = ComputePickingRay();
+        static vector<RayHit> hits;
+        hits.clear();
         {
             const vector<shared_ptr<Entity>>& entities = World::GetEntities();
             for (shared_ptr<Entity>entity : entities)
@@ -210,34 +214,50 @@ namespace spartan
         float distance_min = numeric_limits<float>::max();
         for (RayHit& hit : hits)
         {
-            // Get entity geometry
+            // get entity geometry
             Renderable* renderable = hit.m_entity->GetComponent<Renderable>();
-            vector<uint32_t> indicies;
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            renderable->GetGeometry(&indicies, &vertices);
-            if (indicies.empty()|| vertices.empty())
+            static vector<uint32_t> indices;
+            indices.clear();
+            static vector<RHI_Vertex_PosTexNorTan> vertices;
+            vertices.clear();
+            renderable->GetGeometry(&indices, &vertices);
+            if (indices.empty()|| vertices.empty())
             {
                 SP_LOG_ERROR("Failed to get geometry of entity %s, skipping intersection test.");
                 continue;
             }
 
-            // Compute matrix which can transform vertices to view space
-            Matrix vertex_transform = hit.m_entity->GetMatrix();
-
-            // Go through each face
-            for (uint32_t i = 0; i < indicies.size(); i += 3)
+            // compute matrix which can transform vertices to view space
+            const Matrix& vertex_transform = hit.m_entity->GetMatrix();
+            
+            // go through each face
+            static Vector3 p1_world;
+            static Vector3 p2_world;
+            static Vector3 p3_world;
+            
+            for (uint32_t i = 0; i < indices.size(); i += 3)
             {
-                Vector3 p1_world = Vector3(vertices[indicies[i]].pos) * vertex_transform;
-                Vector3 p2_world = Vector3(vertices[indicies[i + 1]].pos) * vertex_transform;
-                Vector3 p3_world = Vector3(vertices[indicies[i + 2]].pos) * vertex_transform;
-
+                const float* v1 = vertices[indices[i]].pos;
+                const float* v2 = vertices[indices[i + 1]].pos;
+                const float* v3 = vertices[indices[i + 2]].pos;
+            
+                // assign components explicitly
+                p1_world.x = v1[0]; p1_world.y = v1[1]; p1_world.z = v1[2];
+                p2_world.x = v2[0]; p2_world.y = v2[1]; p2_world.z = v2[2];
+                p3_world.x = v3[0]; p3_world.y = v3[1]; p3_world.z = v3[2];
+            
+                // apply transform (must reassign, since *= with Matrix is not defined)
+                p1_world = p1_world * vertex_transform;
+                p2_world = p2_world * vertex_transform;
+                p3_world = p3_world * vertex_transform;
+            
                 float distance = ray.HitDistance(p1_world, p2_world, p3_world);
                 if (distance < distance_min)
                 {
                     m_selected_entity = hit.m_entity;
                     distance_min      = distance;
                 }
-            }
+           }
         }
     }
 

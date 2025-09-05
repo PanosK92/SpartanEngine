@@ -217,7 +217,12 @@ namespace spartan
                         continue;
 
                     // set atlas rectangle as viewport and scissor
-                    cmd_list->SetViewport(RHI_Viewport(rect.x, rect.y, rect.width, rect.height));
+                    static RHI_Viewport viewport;
+                    viewport.x      = rect.x;
+                    viewport.y      = rect.y;
+                    viewport.width  = rect.width;
+                    viewport.height = rect.height;
+                    cmd_list->SetViewport(viewport);
                     cmd_list->SetScissorRectangle(rect);
 
                     // render cached renderables
@@ -246,7 +251,7 @@ namespace spartan
                                 cmd_list->SetPipelineState(pso);
 
                                 // if the pipeline changed, set the viewport and scissor again
-                                cmd_list->SetViewport(RHI_Viewport(rect.x, rect.y, rect.width, rect.height));
+                                cmd_list->SetViewport(viewport);
                                 cmd_list->SetScissorRectangle(rect);
                             }
                         }

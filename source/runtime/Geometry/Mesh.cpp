@@ -221,25 +221,27 @@ namespace spartan
     void Mesh::GetGeometry(uint32_t sub_mesh_index, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
     {
         SP_ASSERT_MSG(indices != nullptr || vertices != nullptr, "Indices and vertices vectors can't both be null");
-
+    
         const MeshLod& lod = GetSubMesh(sub_mesh_index).lods[0];
-
+    
         if (indices)
         {
             SP_ASSERT_MSG(lod.index_count != 0, "Index count can't be 0");
-
-            const auto index_first = m_indices.begin() + lod.index_offset;
-            const auto index_last  = m_indices.begin() + lod.index_offset + lod.index_count;
-            *indices               = vector<uint32_t>(index_first, index_last);
+    
+            indices->resize(lod.index_count); // allocate once (caller can reuse buffer)
+            std::copy(m_indices.begin() + lod.index_offset,
+                      m_indices.begin() + lod.index_offset + lod.index_count,
+                      indices->begin());
         }
-
+    
         if (vertices)
         {
-            SP_ASSERT_MSG(lod.vertex_count != 0, "Index count can't be 0");
-
-            const auto vertex_first = m_vertices.begin() + lod.vertex_offset;
-            const auto vertex_last  = m_vertices.begin() + lod.vertex_offset + lod.vertex_count;
-            *vertices               = vector<RHI_Vertex_PosTexNorTan>(vertex_first, vertex_last);
+            SP_ASSERT_MSG(lod.vertex_count != 0, "Vertex count can't be 0");
+    
+            vertices->resize(lod.vertex_count); // allocate once (caller can reuse buffer)
+            std::copy(m_vertices.begin() + lod.vertex_offset,
+                      m_vertices.begin() + lod.vertex_offset + lod.vertex_count,
+                      vertices->begin());
         }
     }
 

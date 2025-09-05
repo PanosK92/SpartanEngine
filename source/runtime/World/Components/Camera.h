@@ -77,7 +77,7 @@ namespace spartan
         const math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
 
         // ray casting
-        const math::Ray ComputePickingRay();
+        const math::Ray& ComputePickingRay();
 
         // picks the nearest entity under the mouse cursor
         void Pick();
