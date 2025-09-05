@@ -270,48 +270,55 @@ namespace ImGuiSp
         }
     }
 
-    // A drag float which will wrap the mouse cursor around the edges of the screen
+    // a drag float which will wrap the mouse cursor around the edges of the screen
     static void draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
         static const uint32_t screen_edge_padding = 10;
-        bool needs_to_wrap                        = false;
-        ImGuiIO& imgui_io                         = ImGui::GetIO();
-
-        // wrap
+        ImGuiIO& io = ImGui::GetIO();
+    
+        static ImVec2 last_mouse_pos = io.MousePos;
+    
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
-            ImVec2 position_cursor       = imgui_io.MousePos;
-            float position_left          = static_cast<float>(screen_edge_padding);
-            float position_right         = static_cast<float>(spartan::Display::GetWidth() - screen_edge_padding);
-            bool is_on_right_screen_edge = position_cursor.x >= position_right;
-            bool is_on_left_screen_edge  = position_cursor.x <= position_left;
-
-            if (is_on_right_screen_edge)
+            ImVec2 mouse_pos = io.MousePos;
+            bool wrapped = false;
+    
+            float left  = static_cast<float>(screen_edge_padding);
+            float right = static_cast<float>(spartan::Display::GetWidth() - screen_edge_padding);
+    
+            if (mouse_pos.x >= right)
             {
-                position_cursor.x = position_left + 1;
-                needs_to_wrap     = true;
+                mouse_pos.x = left + 1;
+                wrapped = true;
             }
-            else if (is_on_left_screen_edge)
+            else if (mouse_pos.x <= left)
             {
-                position_cursor.x = position_right - 1;
-                needs_to_wrap     = true;
+                mouse_pos.x = right - 1;
+                wrapped = true;
             }
-
-            if (needs_to_wrap)
+    
+            if (wrapped)
             {
-                // set mouse position
-                imgui_io.MousePos        = position_cursor;
-                imgui_io.WantSetMousePos = true;
-
-                // prevent delta from being huge by invalidating the previous position
-                imgui_io.MousePosPrev = ImVec2(-FLT_MAX, -FLT_MAX);
+                io.MousePos        = mouse_pos;
+                io.WantSetMousePos = true;
+                io.MouseDelta.x    = 0.0f;
+                io.MouseDelta.y    = 0.0f;
+    
+                // update last_mouse_pos to avoid delta spikes in the next frame
+                last_mouse_pos = mouse_pos;
+            }
+            else
+            {
+                // update last position normally
+                last_mouse_pos = mouse_pos;
             }
         }
-        
+    
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
         ImGui::PopID();
     }
+
 
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
