@@ -112,6 +112,29 @@ float2 get_front_back_horizons(float samplingDirection, float3 deltaPos, float3 
     return frontBackHorizon;
 }
 
+float3 compute_slice_normal_from_bitmask(uint bitmask, float3 ortho_dir_vec, float3 view_vec)
+{
+    float3 slice_normal = float3(0,0,0);
+
+    for (uint sector = 0; sector < g_sector_count; sector++)
+    {
+        bool occluded = (bitmask & (1u << sector)) != 0u;
+        if (!occluded)
+        {
+            float angle = (float(sector) + 0.5f) / float(g_sector_count) * PI; // sector center
+            float cos_a = cos(angle);
+            float sin_a = sin(angle);
+
+            // sector vector in slice plane
+            float3 dir_in_plane = cos_a * ortho_dir_vec + sin_a * cross(ortho_dir_vec, view_vec);
+
+            slice_normal += dir_in_plane;
+        }
+    }
+
+    return normalize(slice_normal);
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -226,8 +249,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
        // compute bent normal
        float h0, h1;
        compute_slice_visibility(horizon_cos0, horizon_cos1, cos_norm, n, h0, h1);
-       float3 bent_normal_l  = compute_slice_bent_normal(cos_phi, sin_phi, h0, h1, n) * projected_normal_vec_length;
-       bent_normal          += mul(bent_normal_l, rot_mat);
+       float slice_angle    = (h0 + h1) * 0.5f - n;
+       float3 bent_normal_l = normalize(
+            cos(slice_angle) * projected_normal_vec + 
+            sin(slice_angle) * cross(axis_vec, projected_normal_vec) +
+            (1.0 - cos(slice_angle)) * dot(axis_vec, projected_normal_vec) * axis_vec
+        );
+       bent_normal += mul(bent_normal_l, rot_mat);
     }
 
     // normalize visibility
