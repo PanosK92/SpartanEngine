@@ -30,11 +30,22 @@ namespace spartan
     class Allocator
     {
     public:
+         // allocate aligned memory
         static void* Allocate(std::size_t size, std::size_t alignment = alignof(std::max_align_t));
+
+        // free previously allocated memory
         static void Free(void* ptr);
 
+        // total memory used by the engine
         static float GetMemoryAllocatedMb();
+
+        // total memory used by the process including engine, dlls, drivers, os allocations, etc.
+        static float GetMemoryProcessUsedMb();
+
+        // available physical system memory
         static float GetMemoryAvailableMb();
+
+        // total physical system memory
         static float GetMemoryTotalMb();
     };
 }

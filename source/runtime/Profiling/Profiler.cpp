@@ -471,8 +471,9 @@ namespace spartan
     
             // memory
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                               "Memory\nSystem:\t\t%.2f/%.2f (%.2f) MB\n\n",
+                               "Memory\nAllocated: %.2f MB | Process: %.2f MB | System: %.2f/%.2f MB\n\n",
                                Allocator::GetMemoryAllocatedMb(),
+                               Allocator::GetMemoryProcessUsedMb(),
                                Allocator::GetMemoryAvailableMb(),
                                Allocator::GetMemoryTotalMb());
     

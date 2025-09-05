@@ -20,16 +20,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 
-//= INCLUDES ============
+//= INCLUDES ====================
 #include "pch.h"
 #include "Allocator.h"
 #if defined(_WIN32)
 #include <Windows.h>
+#include <psapi.h>
+#pragma comment(lib, "psapi.lib")
 #elif defined(__linux__)
 #include <unistd.h>
 #include <sys/resource.h>
 #endif
-//=======================
+//===============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -92,6 +94,39 @@ namespace spartan
     float Allocator::GetMemoryAllocatedMb()
     {
          return static_cast<float>(g_total_allocated) / (1024.0f * 1024.0f);
+    }
+
+    float Allocator::GetMemoryProcessUsedMb()
+    {
+    #if defined(_WIN32)
+        PROCESS_MEMORY_COUNTERS_EX pmc;
+        if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc)))
+        {
+            // Working set = physical memory currently used by the process
+            return static_cast<float>(pmc.WorkingSetSize) / (1024.0f * 1024.0f);
+        }
+        return 0.0f;
+    
+    #elif defined(__linux__)
+        // Read from /proc/self/statm
+        long rss_pages = 0;
+        FILE* file = fopen("/proc/self/statm", "r");
+        if (file)
+        {
+            long total_pages = 0;
+            if (fscanf(file, "%ld %ld", &total_pages, &rss_pages) == 2)
+            {
+                fclose(file);
+                long page_size = sysconf(_SC_PAGE_SIZE);
+                return static_cast<float>(rss_pages * page_size) / (1024.0f * 1024.0f);
+            }
+            fclose(file);
+        }
+        return 0.0f;
+    
+    #else
+        return 0.0f; // unsupported platform
+    #endif
     }
 
     float Allocator::GetMemoryAvailableMb()
