@@ -60,7 +60,9 @@ namespace spartan
         static Light* GetDirectionalLight();
         static uint32_t GetLightCount();
         static uint32_t GetAudioSourceCount();
-        static float GetTimeOfDay(); // 0 = midnight, 0.5 = noon, 1.0 = next midnight
+
+        // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
+        static float GetTimeOfDay(bool use_real_world_time = false);
 
     private:
         static void ProcessPendingRemovals();

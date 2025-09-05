@@ -393,6 +393,13 @@ void Properties::ShowLight(spartan::Light* light) const
             bool day_night_cycle = light->GetFlag(spartan::LightFlags::DayNightCycle);
             ImGui::Checkbox("Day/Night Cycle", &day_night_cycle);
             light->SetFlag(spartan::LightFlags::DayNightCycle, day_night_cycle);
+
+            
+            bool real_time_cycle = light->GetFlag(spartan::LightFlags::RealTimeCycle);
+            ImGui::BeginDisabled(!day_night_cycle);
+            ImGui::Checkbox("Real Time Cycle", &real_time_cycle);
+            light->SetFlag(spartan::LightFlags::RealTimeCycle, real_time_cycle);
+            ImGui::EndDisabled();
         }
 
         // range

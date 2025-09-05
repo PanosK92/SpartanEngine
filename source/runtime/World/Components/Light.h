@@ -62,7 +62,8 @@ namespace spartan
         Shadows            = 1U << 0,
         ShadowsScreenSpace = 1U << 1,
         Volumetric         = 1U << 2,
-        DayNightCycle      = 1U << 3 // only affects directional lights
+        DayNightCycle      = 1U << 3, // rotates the light according to the time of day (game time)
+        RealTimeCycle      = 1U << 4  // derives the time of day from the real world time
     };
 
     class Light : public Component

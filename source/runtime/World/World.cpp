@@ -79,21 +79,48 @@ namespace spartan
         }
     }
 
-    namespace day_night_cycle
+    namespace world_time
     {
-        float current_time = 0.25f; // start at 6 am
-        float time_scale   = 200.0f; // 200x real time
-        void tick()
+        // simulated time
+        inline float time_of_day   = 0.25f;   // 6 AM
+        inline float time_scale    = 200.0f;  // 200x real time
+    
+        // tick simulated time every frame
+        inline void tick()
         {
-            current_time += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
-            if (current_time >= 1.0f)
+            time_of_day += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
+    
+            if (time_of_day >= 1.0f)
+                time_of_day -= 1.0f;
+            else if (time_of_day < 0.0f)
+                time_of_day = 0.0f;
+        }
+    
+        // get current time of day based on boolean
+        inline float get_time_of_day(bool use_real_world_time)
+        {
+            if (use_real_world_time)
             {
-                current_time -= 1.0f;
+                using namespace std::chrono;
+    
+                auto now      = system_clock::now();
+                time_t t      = system_clock::to_time_t(now);
+                tm local_time = {};
+            #if defined(_WIN32)
+                localtime_s(&local_time, &t);
+            #else
+                localtime_r(&t, &local_time);
+            #endif
+    
+                float hours   = static_cast<float>(local_time.tm_hour);
+                float minutes = static_cast<float>(local_time.tm_min);
+                float seconds = static_cast<float>(local_time.tm_sec);
+    
+                return (hours + minutes / 60.0f + seconds / 3600.0f) / 24.0f;
             }
-            if (current_time < 0.0f)
-            {
-                current_time = 0.0f;
-            }
+    
+            // return simulated time if not using real-world time
+            return time_of_day;
         }
     }
 
@@ -219,7 +246,7 @@ namespace spartan
         }
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
-            day_night_cycle::tick();
+            world_time::tick();
         }
 
         Game::Tick();
@@ -537,8 +564,8 @@ namespace spartan
         return audio_source_count;
     }
 
-    float World::GetTimeOfDay()
+    float World::GetTimeOfDay(bool use_real_world_time)
     {
-        return day_night_cycle::current_time;
+        return world_time::get_time_of_day(use_real_world_time);
     }
 }
