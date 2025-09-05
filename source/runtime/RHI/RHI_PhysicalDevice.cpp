@@ -30,7 +30,7 @@ using namespace std;
 
 namespace spartan
 {
-    const char* PhysicalDevice::decode_api_version(const uint32_t version)
+    const char* RHI_PhysicalDevice::decode_api_version(const uint32_t version)
     {
         static char api_version_str[64];
         uint32_t major = (version >> 22);
@@ -41,7 +41,7 @@ namespace spartan
         return api_version_str;
     }
     
-    const char* PhysicalDevice::decode_driver_version(const uint32_t version, const char* driver_info)
+    const char* RHI_PhysicalDevice::decode_driver_version(const uint32_t version, const char* driver_info)
     {
         static char driver_version_str[128];
     

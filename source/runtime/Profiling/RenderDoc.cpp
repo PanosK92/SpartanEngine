@@ -23,11 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RenderDoc.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../Core/Definitions.h"
-#include "../Logging/Log.h"
 #if defined(_WIN32) // windows
 #include "renderdoc/app/renderdoc_app.h"
-#include <windows.h>
 #else
 #include "renderdoc_app.h"
 #endif

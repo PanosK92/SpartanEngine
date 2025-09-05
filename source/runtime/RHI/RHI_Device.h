@@ -104,15 +104,15 @@ namespace spartan
         static void MarkerEnd(RHI_CommandList* cmd_list);
 
         // physical device
-        static void PhysicalDeviceRegister(const PhysicalDevice& physical_device);
+        static void PhysicalDeviceRegister(const RHI_PhysicalDevice& physical_device);
         static void PhysicalDeviceSetPrimary(const uint32_t index);
-        static std::vector<PhysicalDevice>& PhysicalDeviceGet();
+        static std::vector<RHI_PhysicalDevice>& PhysicalDeviceGet();
 
         // misc
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name);
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         static uint32_t GetDescriptorType(const RHI_Descriptor& descriptor);
-        static PhysicalDevice* GetPrimaryPhysicalDevice();
+        static RHI_PhysicalDevice* GetPrimaryPhysicalDevice();
         static void SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled);
 
     private:

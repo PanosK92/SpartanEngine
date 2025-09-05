@@ -48,14 +48,14 @@ namespace spartan
     bool RHI_Device::m_xess_supported                           = false;
 
     // misc
-    bool RHI_Device::m_wide_lines                 = false;
-    uint32_t  RHI_Device::m_physical_device_index = 0;
-    static vector<PhysicalDevice> physical_devices;
+    bool RHI_Device::m_wide_lines                = false;
+    uint32_t RHI_Device::m_physical_device_index = 0;
+    vector<RHI_PhysicalDevice> physical_devices;
 
-    void RHI_Device::PhysicalDeviceRegister(const PhysicalDevice& physical_device)
+    void RHI_Device::PhysicalDeviceRegister(const RHI_PhysicalDevice& physical_device)
     {
         // discrete devices come first
-        vector<PhysicalDevice>::const_iterator iter = find_if(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& device)
+        vector<RHI_PhysicalDevice>::const_iterator iter = find_if(physical_devices.begin(), physical_devices.end(), [](const RHI_PhysicalDevice& device)
         {
             return device.GetType() != RHI_PhysicalDevice_Type::Discrete;
         });
@@ -63,7 +63,7 @@ namespace spartan
         physical_devices.emplace(iter, physical_device);
 
         // sort devices by memory, in an ascending order, the type order will be maintained
-        sort(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
+        sort(physical_devices.begin(), physical_devices.end(), [](const RHI_PhysicalDevice& adapter1, const RHI_PhysicalDevice& adapter2)
         {
             return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
         });
@@ -71,7 +71,7 @@ namespace spartan
         SP_LOG_INFO("%s (%d MB)", physical_device.GetName(), physical_device.GetMemory());
     }
 
-    PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
+    RHI_PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
     {
         SP_ASSERT_MSG(physical_devices.size() != 0, "No physical devices detected");
         SP_ASSERT_MSG(m_physical_device_index < physical_devices.size(), "Index out of bounds");
@@ -83,13 +83,13 @@ namespace spartan
     {
         m_physical_device_index = index;
 
-        if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
+        if (const RHI_PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
         {
             SP_LOG_INFO("%s (%d MB)", physical_device->GetName(), physical_device->GetMemory());
         }
     }
  
-    vector<PhysicalDevice>& RHI_Device::PhysicalDeviceGet()
+    vector<RHI_PhysicalDevice>& RHI_Device::PhysicalDeviceGet()
     {
         return physical_devices;
     }

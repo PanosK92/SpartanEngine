@@ -23,23 +23,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "RHI_Definitions.h"
+#include <cstring>
 //==========================
 
 namespace spartan
 {
-    class PhysicalDevice
+    class RHI_PhysicalDevice
     {
     public:
-        PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const char* driver_info, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* data)
+        RHI_PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const char* driver_info, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* data)
         {
-            this->vendor_id      = vendor_id;
-            this->vendor_name    = get_vendor_name();
-            this->type           = type;
-            this->name           = name;
-            this->memory         = static_cast<uint32_t>(memory / 1024 / 1024); // mb
-            this->data           = data;
-            this->api_version    = decode_api_version(api_version);
-            this->driver_version = decode_driver_version(driver_version, driver_info);
+            this->vendor_id = vendor_id;
+            this->type      = type;
+            this->memory    = static_cast<uint32_t>(memory / 1024 / 1024); // mb
+            this->data      = data;
+
+            // copy strings into local buffers (no heap allocations)
+            strncpy_s(this->name, sizeof(this->name), name ? name : "Unknown", _TRUNCATE);
+            strncpy_s(this->vendor_name, sizeof(this->vendor_name), get_vendor_name(), _TRUNCATE);
+            strncpy_s(this->api_version, sizeof(this->api_version), decode_api_version(api_version), _TRUNCATE);
+            strncpy_s(this->driver_version, sizeof(this->driver_version), decode_driver_version(driver_version, driver_info), _TRUNCATE);
         }
 
         bool IsNvidia() const
@@ -79,7 +82,8 @@ namespace spartan
 
         bool IsBelowMinimumRequirements() const
         {
-            // minimum requirements
+            // note: we don't prevent the user from running the engine, we just show them a warning window
+
             const uint32_t min_memory_mb           = 4096; // minimum memory in MB, 4GB in this case
             const RHI_PhysicalDevice_Type min_type = RHI_PhysicalDevice_Type::Discrete;
             const bool is_old                      = 
@@ -104,24 +108,15 @@ namespace spartan
         uint32_t GetMemory()              const { return memory; }
         void* GetData()                   const { return data; }
         RHI_PhysicalDevice_Type GetType() const { return type; }
-                                          
+
     private:
         const char* get_vendor_name()
         {
-            if (IsNvidia())
-                return "Nvidia";
-
-            if (IsAmd())
-               return "Amd";
-
-            if (IsIntel())
-                return "Intel";
-
-            if (IsArm())
-             return "Arm";
-
-            if (IsQualcomm())
-                return "Qualcomm";
+            if (IsNvidia())   return "Nvidia";
+            if (IsAmd())      return "Amd";
+            if (IsIntel())    return "Intel";
+            if (IsArm())      return "Arm";
+            if (IsQualcomm()) return "Qualcomm";
 
             return "Unknown";
         }
@@ -129,13 +124,15 @@ namespace spartan
         const char* decode_api_version(const uint32_t version);
         const char* decode_driver_version(const uint32_t version, const char* driver_info);
 
-        const char* api_version      = "Unknown"; // version of api supported by the device
-        const char* driver_version   = "Unknown"; // vendor-specified version of the driver
-        uint32_t vendor_id           = 0;         // unique identifier of the vendor
-        const char* vendor_name      = "Unknown";
-        RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
-        const char* name             = "Unknown";
-        uint32_t memory              = 0;
-        void* data                   = nullptr;
+        // fixed-size buffers (stack, no heap allocations)
+        static const size_t buffer_size  = 128;
+        char api_version[buffer_size]    = "Unknown";                    // vulkan/directx/opengl api version supported
+        char driver_version[buffer_size] = "Unknown";                    // gpu driver version provided by vendor
+        char vendor_name[buffer_size]    = "Unknown";                    // gpu vendor name (e.g., nvidia, amd)
+        char name[buffer_size]           = "Unknown";                    // gpu device name/model
+        uint32_t vendor_id               = 0;                            // vendor unique id
+        RHI_PhysicalDevice_Type type     = RHI_PhysicalDevice_Type::Max; // type of device (discrete, integrated, etc.)
+        uint32_t memory                  = 0;                            // total device memory in mb
+        void* data                       = nullptr;                      // pointer to device-specific extra data
     };
 }

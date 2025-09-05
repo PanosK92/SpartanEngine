@@ -402,7 +402,7 @@ namespace spartan
 
     void Profiler::AcquireGpuData()
     {
-        if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
+        if (const RHI_PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
         {
             gpu_name             = physical_device->GetName();
             gpu_memory_used      = RHI_Device::MemoryGetUsageMb();

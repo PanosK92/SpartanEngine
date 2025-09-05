@@ -1438,7 +1438,7 @@ namespace spartan
                 SP_ASSERT(vram_size_bytes > 0);
 
                 // register
-                RHI_Device::PhysicalDeviceRegister(PhysicalDevice
+                RHI_Device::PhysicalDeviceRegister(RHI_PhysicalDevice
                 (
                     device_properties.properties.apiVersion,     // api version
                     device_properties.properties.driverVersion,  // driver version
