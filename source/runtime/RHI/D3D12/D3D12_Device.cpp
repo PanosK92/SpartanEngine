@@ -72,13 +72,13 @@ namespace spartan
                 return adapters;
             };
 
-            // Get all available adapters
+            // get all available adapters
             vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
             factory->Release();
             factory = nullptr;
             SP_ASSERT(adapters.size() > 0);
 
-            // Save all available adapters
+            // save all available adapters
             DXGI_ADAPTER_DESC adapter_desc;
             for (IDXGIAdapter* display_adapter : adapters)
             {
@@ -88,12 +88,12 @@ namespace spartan
                     continue;
                 }
 
-                // Of course it wouldn't be simple, lets convert the device name
+                // of course it wouldn't be simple, lets convert the device name
                 char name[128];
                 auto def_char = ' ';
                 WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
 
-                RHI_Device::PhysicalDeviceRegister(PhysicalDevice
+                RHI_Device::PhysicalDeviceRegister(RHI_PhysicalDevice
                 (
                     11 << 22,                                                 // api version
                     0,                                                        // driver version
