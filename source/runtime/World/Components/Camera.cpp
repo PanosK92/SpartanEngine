@@ -509,7 +509,7 @@ namespace spartan
             float velocity_magnitude = physics_body->GetLinearVelocity().Length();
             if (velocity_magnitude > 0.01f) // walking head bob
             {
-                bob_timer           += delta_time * velocity_magnitude * 2.0f;
+                bob_timer           += delta_time * velocity_magnitude * 2.5f;
                 float bob_amplitude  = 0.04f;
                 bob_offset.y         = sin(bob_timer) * bob_amplitude;
                 bob_offset.x         = cos(bob_timer) * bob_amplitude * 0.5f;
