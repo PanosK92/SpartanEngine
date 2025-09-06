@@ -1598,7 +1598,7 @@ namespace spartan
 
                 auto entity = World::CreateEntity();
 
-                auto water = entities::water({ 0.0f, 0.0f, 0.0f }, 20.0f, 2.0f, spartan::Color::standard_blue, 2.0f, 0.1f);
+                auto water = entities::water({ 0.0f, 0.0f, 0.0f }, 20.0f, 2, spartan::Color::standard_blue, 2.0f, 0.1f);
 
                 water->SetParent(entity.get());
 
