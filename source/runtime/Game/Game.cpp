@@ -1587,8 +1587,6 @@ namespace spartan
                 entities::floor();
                 entities::sun(true);
                 entities::material_ball(Vector3::Zero);
-
-                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
             }
         }
     }
