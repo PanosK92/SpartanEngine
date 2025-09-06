@@ -24,28 +24,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_VendorTechnology.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_CommandList.h"
-#include "../RHI_Texture.h"
-#include "../RHI_Buffer.h"
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Shader.h"
-#include "../Rendering/Renderer_Buffers.h"
-#include "../Rendering/Material.h"
 #include "../Rendering/Renderer.h"
-#include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
-#include "../World/Entity.h"
 #include "../Core/Debugging.h"
-#include "../Input/Input.h"
 SP_WARNINGS_OFF
 #ifdef _WIN32
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
 #include <FidelityFX/host/ffx_sssr.h>
 #include <FidelityFX/host/ffx_breadcrumbs.h>
-#include <xess/xess.h>
 #include <xess/xess_vk.h>
 #endif
 SP_WARNINGS_ON
@@ -731,6 +722,7 @@ namespace spartan
         }
     #endif
     }
+
     void RHI_VendorTechnology::Shutdown()
     {
     #ifdef _WIN32
@@ -884,7 +876,7 @@ namespace spartan
         intel::params_execute.velocityTexture            = intel::to_xess_image_view(tex_velocity);
         intel::params_execute.outputTexture              = intel::to_xess_image_view(tex_output);
         intel::params_execute.exposureScaleTexture       = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)); // neutralize and control via float
-        intel::params_execute.responsivePixelMaskTexture = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::White)); // neutralize and control via float
+        intel::params_execute.responsivePixelMaskTexture = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)); // neutralize and control via float
         intel::params_execute.jitterOffsetX              = intel::jitter.x;
         intel::params_execute.jitterOffsetY              = intel::jitter.y;
         intel::params_execute.exposureScale              = intel::exposure_scale;
@@ -1006,22 +998,22 @@ namespace spartan
         amd::ssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_reflection_source->GetHeight() * resolution_scale);
 
         // set sssr specific parameters
-        amd::ssr::description_dispatch.motionVectorScale.x                  = 0.5f;  // maps [-1,1] NDC delta to [-0.5, 0.5]
-        amd::ssr::description_dispatch.motionVectorScale.y                  = -0.5f; // same as above, but also flips Y
+        amd::ssr::description_dispatch.motionVectorScale.x                  = 0.5f;   // maps [-1,1] NDC delta to [-0.5, 0.5]
+        amd::ssr::description_dispatch.motionVectorScale.y                  = -0.5f;  // same as above, but also flips Y
         amd::ssr::description_dispatch.normalUnPackMul                      = 1.0f;
         amd::ssr::description_dispatch.normalUnPackAdd                      = 0.0f;
-        amd::ssr::description_dispatch.depthBufferThickness                 = 0.1f;  // hit acceptance bias, larger values can cause streaks, lower values can cause holes
-        amd::ssr::description_dispatch.varianceThreshold                    = 0.04f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
-        amd::ssr::description_dispatch.maxTraversalIntersections            = 100;   // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
-        amd::ssr::description_dispatch.minTraversalOccupancy                = 4;     // exit the core loop early if less than this number of threads are running
+        amd::ssr::description_dispatch.depthBufferThickness                 = 0.1f;   // hit acceptance bias, larger values can cause streaks, lower values can cause holes
+        amd::ssr::description_dispatch.varianceThreshold                    = 0.005f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
+        amd::ssr::description_dispatch.maxTraversalIntersections            = 100;    // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
+        amd::ssr::description_dispatch.minTraversalOccupancy                = 1;      // exit the core loop early if less than this number of threads are running
         amd::ssr::description_dispatch.mostDetailedMip                      = 0;
-        amd::ssr::description_dispatch.temporalStabilityFactor              = 1.0f;  // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
-        amd::ssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;  // whether a ray should be spawned on pixels where a temporal variance is detected or not
-        amd::ssr::description_dispatch.samplesPerQuad                       = 1;     // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
+        amd::ssr::description_dispatch.temporalStabilityFactor              = 1.0f;   // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
+        amd::ssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;   // whether a ray should be spawned on pixels where a temporal variance is detected or not
+        amd::ssr::description_dispatch.samplesPerQuad                       = 4;      // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
         amd::ssr::description_dispatch.iblFactor                            = 0.0f;
         amd::ssr::description_dispatch.roughnessChannel                     = 0;
         amd::ssr::description_dispatch.isRoughnessPerceptual                = true;
-        amd::ssr::description_dispatch.roughnessThreshold                   = 0.5f;  // regions with a roughness value greater than this threshold won't spawn rays
+        amd::ssr::description_dispatch.roughnessThreshold                   = 0.5f;   // regions with a roughness value greater than this threshold won't spawn rays
 
         // set camera matrices
         amd::set_float16(amd::ssr::description_dispatch.view,               amd::view);

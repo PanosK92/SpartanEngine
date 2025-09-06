@@ -483,13 +483,17 @@ namespace spartan
             {
                 // associate the semaphore with the acquired image index
                 m_image_acquired_semaphore[m_image_index] = m_image_acquired_semaphore[semaphore_index];
-                semaphore_index                           = (semaphore_index + 1) % m_image_acquired_semaphore.size(); // rotate through all semaphores
+                semaphore_index                           = (semaphore_index + 1) % m_image_acquired_semaphore.size(); // rotate through semaphores
                 return;
             }
             else if (result == VK_NOT_READY || result == VK_SUBOPTIMAL_KHR)
             {
                 this_thread::sleep_for(chrono::milliseconds(16));
                 retry_count++;
+            }
+            else if (result == VK_ERROR_OUT_OF_DATE_KHR)
+            {
+                Create();
             }
             else
             {
