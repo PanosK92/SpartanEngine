@@ -5,7 +5,7 @@
 
 <p>What started as a simple portfolio project helped me learn, land jobs, make friends, and grow my network. Since then, it has evolved beyond anything I imagined, now backed by a thriving Discord community with over 600 members, including seasoned professionals and a dedicated jobs channel.</p>
 
-<p>You can benefit from this project the same way I did. That is why there are incredible <a href="https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor">contribution perks</a> to help you get started, grow your skills, and build something meaningful. The most capable and ambitious contributors will get direct support from me to reach their potential.</p>
+<p>You can benefit from this project the same way I did. That is why there are incredible <a href="https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor">contribution perks</a> to help you get started, grow your skills, and build something meaningful. The most capable and ambitious young contributors will get direct support from me to reach their potential.</p>
 
 <p>This project now serves an altruistic purpose. It exists to give back, enable others, and push the limits of what is possible.</p>
 

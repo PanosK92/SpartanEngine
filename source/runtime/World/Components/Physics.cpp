@@ -129,8 +129,9 @@ namespace spartan
         {
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
-                float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
+                // simulate gravitatioanl acceleration (which the capsule controller seems to not have)
+                float delta_time  = static_cast<float>(Timer::GetDeltaTimeSec());
+                m_velocity.y     += PhysicsWorld::GetGravity().y * delta_time;
                 PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f);
                 PxControllerFilters filters;
                 filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
@@ -139,8 +140,16 @@ namespace spartan
                 {
                     m_velocity.y = 0.0f;
                 }
-                PxExtendedVec3 pos = static_cast<PxCapsuleController*>(m_controller)->getPosition();
-                GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
+                PxExtendedVec3 pos_ext = static_cast<PxCapsuleController*>(m_controller)->getPosition();
+                Vector3 pos_previous   = GetEntity()->GetPosition();
+                Vector3 pos            = Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
+                GetEntity()->SetPosition(pos);
+
+                // compute full velocity from position delta
+                if (delta_time > 0.0f)
+                {
+                    m_velocity = (pos - pos_previous) / delta_time;
+                }
             }
             else
             {
@@ -519,15 +528,25 @@ namespace spartan
 
     Vector3 Physics::GetLinearVelocity() const
     {
+        if (m_body_type == BodyType::Controller)
+        {
+            if (m_controller)
+            {
+                // for controllers, return the stored velocity used for movement
+                return m_velocity;
+            }
+            return Vector3::Zero;
+        }
+        
         if (m_bodies.empty())
             return Vector3::Zero;
-
+            
         if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(m_bodies[0])->is<PxRigidDynamic>())
         {
             PxVec3 velocity = dynamic->getLinearVelocity();
             return Vector3(velocity.x, velocity.y, velocity.z);
         }
-
+        
         return Vector3::Zero;
     }
 
