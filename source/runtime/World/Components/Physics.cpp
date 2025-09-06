@@ -129,10 +129,12 @@ namespace spartan
         {
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
-                // simulate gravitatioanl acceleration (which the capsule controller seems to not have)
+                // compute gravitational acceleration
                 float delta_time  = static_cast<float>(Timer::GetDeltaTimeSec());
                 m_velocity.y     += PhysicsWorld::GetGravity().y * delta_time;
                 PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f);
+
+                // if there is a collision below, zero out the vertical velocity
                 PxControllerFilters filters;
                 filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
                 PxControllerCollisionFlags collision_flags = static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, delta_time, filters);
@@ -140,16 +142,16 @@ namespace spartan
                 {
                     m_velocity.y = 0.0f;
                 }
+
+                // set new position to entity
                 PxExtendedVec3 pos_ext = static_cast<PxCapsuleController*>(m_controller)->getPosition();
                 Vector3 pos_previous   = GetEntity()->GetPosition();
                 Vector3 pos            = Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
-                GetEntity()->SetPosition(pos);
+                GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
 
-                // compute full velocity from position delta
-                if (delta_time > 0.0f)
-                {
-                    m_velocity = (pos - pos_previous) / delta_time;
-                }
+                // compute velocity for xz
+                m_velocity.x = (pos.x - pos_previous.x) / delta_time;
+                m_velocity.z = (pos.z - pos_previous.z) / delta_time;
             }
             else
             {
