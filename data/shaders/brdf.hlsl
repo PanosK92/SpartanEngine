@@ -55,9 +55,9 @@ float3 F_Schlick(const float3 f0, float3 f90, float v_dot_h)
     return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
-float3 get_f90(Surface surface)
+float3 get_f90()
 {
-    return 1.0f;
+    return float3(1.0, 1.0, 1.0);
 }
 
 float V_SmithGGX(float n_dot_v, float n_dot_l, float alpha2)
@@ -144,7 +144,7 @@ float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
     float alpha_ggx     = D_GGX_Alpha(surface.roughness);
     float  visibility   = V_SmithGGX(angular_info.n_dot_v, angular_info.n_dot_l, alpha_ggx * alpha_ggx);
     float  distribution = D_GGX(angular_info.n_dot_h, alpha_ggx * alpha_ggx);
-    float3 fresnel      = F_Schlick(surface.F0, get_f90(surface), angular_info.v_dot_h);
+    float3 fresnel      = F_Schlick(surface.F0, get_f90(), angular_info.v_dot_h);
 
     // energy conservation
     surface.diffuse_energy  *= compute_diffuse_energy(fresnel, surface.metallic);
@@ -189,7 +189,7 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     float D     = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
 
     // fresnel
-    float3 F = F_Schlick(surface.F0, get_f90(surface), angular_info.l_dot_h);
+    float3 F = F_Schlick(surface.F0, get_f90(), angular_info.v_dot_h);
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     surface.specular_energy *= F;
@@ -203,7 +203,7 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
     
     float D  = D_GGX(angular_info.n_dot_h, roughness_alpha_squared);
     float V  = V_Kelemen(angular_info.v_dot_h);
-    float3 F = F_Schlick(0.04, get_f90(surface), angular_info.v_dot_h) * surface.clearcoat;
+    float3 F = F_Schlick(0.04, get_f90(), angular_info.v_dot_h) * surface.clearcoat;
 
     surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     surface.specular_energy *= F;
