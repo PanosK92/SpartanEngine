@@ -507,7 +507,6 @@ namespace spartan
             static float breathe_timer         = 0.0f;
     
             float velocity_magnitude = physics_body->GetLinearVelocity().Length();
-            SP_LOG_INFO("Velocity magnitude: %.2f", velocity_magnitude);
             if (velocity_magnitude > 0.01f) // walking head bob
             {
                 bob_timer           += delta_time * velocity_magnitude * 2.0f;

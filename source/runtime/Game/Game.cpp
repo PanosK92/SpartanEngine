@@ -1103,7 +1103,6 @@ namespace spartan
                     entities::camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
-                    default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::PhysicalBodyAnimation, false);
                     default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
                 }
 
