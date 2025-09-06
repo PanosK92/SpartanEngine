@@ -1605,23 +1605,6 @@ namespace spartan
                 default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
             }
         }
-
-        namespace water
-        {
-            void create()
-            {
-                entities::camera();
-                entities::sun(true);
-
-                auto entity = World::CreateEntity();
-
-                auto water = entities::water({ 0.0f, 0.0f, 0.0f }, 20.0f, 2.0f, spartan::Color::standard_blue, 2.0f, 0.1f);
-
-                water->SetParent(entity.get());
-
-                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
-            }
-        }
     }
 
     void Game::Shutdown()
