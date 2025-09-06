@@ -91,6 +91,7 @@ namespace spartan
                 light->SetTemperature(4000.0f);
                 light->SetIntensity(enabled ? 40'000.0f : 0.0f);
                 light->SetFlag(LightFlags::Shadows, enabled);
+                light->SetFlag(LightFlags::ShadowsScreenSpace, enabled);
                 light->SetFlag(LightFlags::DayNightCycle, false);
             }
 

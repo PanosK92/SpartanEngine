@@ -41,8 +41,8 @@ void main_cs
 {
     DispatchParameters in_parameters;
     in_parameters.SetDefaults();
-    in_parameters.BilinearThreshold          = 0.02f;                                // recommended starting value: 0.02 (2%)
-    in_parameters.BilinearSamplingOffsetMode = false;
+    in_parameters.BilinearThreshold          = 0.04f;                                // recommended starting value: 0.02 (2%)
+    in_parameters.BilinearSamplingOffsetMode = true;
     in_parameters.SurfaceThickness           = 0.005f;                               // recommended starting value: 0.005
     in_parameters.ShadowContrast             = 4;                                    // recommended starting value: 2 or 4
     in_parameters.LightCoordinate            = pass_get_f4_value();                  // values stored in DispatchList::LightCoordinate_Shader by BuildDispatchList()
