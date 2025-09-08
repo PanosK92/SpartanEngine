@@ -221,6 +221,12 @@ namespace spartan
                 render_target(Renderer_RenderTarget::light_volumetric) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_volumetric");
             }
 
+            // ocean
+            {
+                uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv;
+                render_target(Renderer_RenderTarget::ocean_initial_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_initial_spectrum");
+            }
+
             // occlusion
             {
                 // note #1: amd is very specific with depth formats, so if something is a depth render target, it can only have one mip and flags like RHI_Texture_Uav
@@ -365,6 +371,12 @@ namespace spartan
             // image based
             shader(Renderer_Shader::light_image_based_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_image_based_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_image_based.hlsl", async);
+        }
+
+        // ocean
+        {
+            //shader(Renderer_Shader::ocean_initial_spectrum_c) = make_shared<RHI_Shader>();
+            //shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\initial_spectrum.hlsl", async);
         }
 
         // blur
