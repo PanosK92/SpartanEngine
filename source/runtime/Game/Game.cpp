@@ -1582,10 +1582,10 @@ namespace spartan
         {
             void create()
             {
-                create_entity::camera();
-                create_entity::floor();
-                create_entity::sun(true);
-                create_entity::material_ball(Vector3::Zero);
+                entities::camera();
+                entities::floor();
+                entities::sun(true);
+                entities::material_ball(Vector3::Zero);
             }
         }
 
@@ -1593,12 +1593,12 @@ namespace spartan
         {
             void create()
             {
-                create_entity::camera();
-                create_entity::sun(true);
+                entities::camera();
+                entities::sun(true);
 
                 auto entity = World::CreateEntity();
 
-                auto water = create_entity::water({ 0.0f, 0.0f, 0.0f }, 20.0f, 2, spartan::Color::standard_blue, 2.0f, 0.1f);
+                auto water = entities::water({ 0.0f, 0.0f, 0.0f }, 20.0f, 2, spartan::Color::standard_blue, 2.0f, 0.1f);
 
                 water->SetParent(entity);
 
