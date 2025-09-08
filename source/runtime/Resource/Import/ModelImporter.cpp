@@ -93,7 +93,7 @@ namespace spartan
             return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
         }
 
-        void set_entity_transform(const aiNode* node, shared_ptr<Entity> entity)
+        void set_entity_transform(const aiNode* node, Entity* entity)
         {
             // convert to engine matrix
             const Matrix matrix_engine = to_matrix(node->mTransformation);
@@ -507,7 +507,7 @@ namespace spartan
             }
 
             // make the root entity active since it's now thread-safe
-            mesh->GetRootEntity().lock()->SetActive(true);
+            mesh->GetRootEntity()->SetActive(true);
             World::Resolve();
         }
         else
@@ -520,10 +520,10 @@ namespace spartan
         mesh = nullptr;
     }
 
-    void ModelImporter::ParseNode(const aiNode* node, shared_ptr<Entity> parent_entity)
+    void ModelImporter::ParseNode(const aiNode* node, Entity* parent_entity)
     {
-        // create an entity that will match this node.
-        shared_ptr<Entity> entity = World::CreateEntity();
+        // create an entity that will match this node
+        Entity* entity = World::CreateEntity();
 
         // set root entity to mesh
         bool is_root_node = parent_entity == nullptr;
@@ -531,7 +531,7 @@ namespace spartan
         {
             mesh->SetRootEntity(entity);
 
-            // the root entity is created as inactive for thread-safety.
+            // the root entity is created as inactive for thread-safety
             entity->SetActive(false);
         }
 
@@ -543,7 +543,7 @@ namespace spartan
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
         // set the transform of parent_node as the parent of the new_entity's transform
-        entity->SetParent(parent_entity.get());
+        entity->SetParent(parent_entity);
 
         // apply node transformation
         set_entity_transform(node, entity);
@@ -570,7 +570,7 @@ namespace spartan
         ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
     }
 
-    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, shared_ptr<Entity> node_entity)
+    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* node_entity)
     {
         // An aiNode can have any number of meshes (albeit typically, it's one).
         // If it has more than one meshes, then we create children entities to store them.
@@ -579,9 +579,9 @@ namespace spartan
 
         for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
         {
-            shared_ptr<Entity> entity = node_entity;
-            aiMesh* node_mesh         = scene->mMeshes[assimp_node->mMeshes[i]];
-            string node_name          = assimp_node->mName.C_Str();
+            Entity* entity     = node_entity;
+            aiMesh* node_mesh = scene->mMeshes[assimp_node->mMeshes[i]];
+            string node_name  = assimp_node->mName.C_Str();
 
             // if this node has more than one meshes, create an entity for each mesh, then make that entity a child of node_entity
             if (assimp_node->mNumMeshes > 1)
@@ -590,7 +590,7 @@ namespace spartan
                 entity = World::CreateEntity();
 
                 // set parent
-                entity->SetParent(node_entity.get());
+                entity->SetParent(node_entity);
 
                 // set name
                 node_name += "_" + to_string(i + 1); // set name
@@ -604,7 +604,7 @@ namespace spartan
         }
     }
 
-    void ModelImporter::ParseNodeLight(const aiNode* node, shared_ptr<Entity> new_entity)
+    void ModelImporter::ParseNodeLight(const aiNode* node, Entity* new_entity)
     {
         for (uint32_t i = 0; i < scene->mNumLights; i++)
         {
@@ -648,7 +648,7 @@ namespace spartan
         }
     }
 
-    void ModelImporter::ParseMesh(aiMesh* assimp_mesh, shared_ptr<Entity> entity_parent)
+    void ModelImporter::ParseMesh(aiMesh* assimp_mesh, Entity* entity_parent)
     {
         SP_ASSERT(assimp_mesh != nullptr);
         SP_ASSERT(entity_parent != nullptr);

@@ -42,10 +42,10 @@ namespace spartan
     namespace
     {
         // input is an entity, output is a clone of that entity (descendant entities are not cloned)
-        shared_ptr<Entity> clone_entity(Entity* entity)
+        Entity* clone_entity(Entity* entity)
         {
             // clone basic properties
-            shared_ptr<Entity> clone = World::CreateEntity();
+            Entity* clone = World::CreateEntity();
             clone->SetObjectId(SpartanObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->GetActive());
@@ -70,15 +70,15 @@ namespace spartan
         };
 
         // input is an entity, output is a clone of that entity (descendant entities are cloned)
-        shared_ptr<Entity> clone_entity_and_descendants(Entity* entity)
+        Entity* clone_entity_and_descendants(Entity* entity)
         {
-            shared_ptr<Entity> clone_self = clone_entity(entity);
+            Entity* clone_self = clone_entity(entity);
 
             // clone children make them call this lambda
             for (Entity* child_transform : entity->GetChildren())
             {
-                shared_ptr<Entity> clone_child = clone_entity_and_descendants(child_transform);
-                clone_child->SetParent(clone_self.get());
+                Entity* clone_child = clone_entity_and_descendants(child_transform);
+                clone_child->SetParent(clone_self);
             }
 
             return clone_self;
@@ -98,7 +98,7 @@ namespace spartan
         m_components.fill(nullptr);
     }
 
-    shared_ptr<Entity> Entity::Clone()
+    Entity* Entity::Clone()
     {
         return clone_entity_and_descendants(this);
     }
@@ -231,7 +231,7 @@ namespace spartan
         // children
         for (pugi::xml_node child_node = node.child("Entity"); child_node; child_node = child_node.next_sibling("Entity"))
         {
-            shared_ptr<Entity> child = World::CreateEntity();
+            Entity* child = World::CreateEntity();
             child->Load(child_node);
             child->SetParent(this);
         }

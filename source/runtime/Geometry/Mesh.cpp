@@ -388,12 +388,12 @@ namespace spartan
         // normalize scale
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))
         {
-            if (shared_ptr<Entity> entity = m_root_entity.lock())
+            if (m_root_entity)
             {
                 BoundingBox bounding_box(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
                 float scale_offset     = bounding_box.GetExtents().Length();
                 float normalized_scale = 1.0f / scale_offset;
-                entity->SetScale(normalized_scale);
+                m_root_entity->SetScale(normalized_scale);
             }
         }
     }

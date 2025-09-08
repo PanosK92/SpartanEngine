@@ -49,19 +49,19 @@ namespace spartan
 {
     namespace
     {
-        DefaultWorld loaded_world                    = DefaultWorld::Max;
-        shared_ptr<Entity> default_floor             = nullptr;
-        shared_ptr<Entity> default_terrain           = nullptr;
-        shared_ptr<Entity> default_car               = nullptr;
-        Entity* default_car_window                   = nullptr;
-        shared_ptr<Entity> default_camera            = nullptr;
-        shared_ptr<Entity> default_environment       = nullptr;
-        shared_ptr<Entity> default_light_directional = nullptr;
-        shared_ptr<Entity> default_metal_cube        = nullptr;
-        shared_ptr<Entity> default_water             = nullptr;
+        DefaultWorld loaded_world          = DefaultWorld::Max;
+        Entity* default_floor             = nullptr;
+        Entity* default_terrain           = nullptr;
+        Entity* default_car               = nullptr;
+        Entity* default_car_window        = nullptr;
+        Entity* default_camera            = nullptr;
+        Entity* default_environment       = nullptr;
+        Entity* default_light_directional = nullptr;
+        Entity* default_metal_cube        = nullptr;
+        Entity* default_water             = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
-        namespace entities
+        namespace create_entity
         { 
             void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
             {
@@ -129,10 +129,10 @@ namespace spartan
                 physics_body->SetBodyType(BodyType::Controller);
 
                 // add a camera component
-                shared_ptr<Entity> camera = World::CreateEntity();
+                Entity* camera = World::CreateEntity();
                 camera->SetObjectName("component_camera");
                 camera->AddComponent<Camera>();
-                camera->SetParent(default_camera.get()); // if the parent has a physics body, the camera will automatically control it for physics based movement
+                camera->SetParent(default_camera); // if the parent has a physics body, the camera will automatically control it for physics based movement
                 camera->SetPositionLocal(physics_body->GetControllerTopLocal());
                 camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
@@ -173,7 +173,7 @@ namespace spartan
             {
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
                 {
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("flight_helmet");
                     entity->SetPosition(position);
                     entity->SetScale(Vector3(1.7f, 1.7f, 1.7f));
@@ -188,7 +188,7 @@ namespace spartan
             {
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
                 {
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("damaged_helmet");
                     entity->SetPosition(position);
                     entity->SetScale(Vector3(0.3f, 0.3f, 0.3f));
@@ -205,7 +205,7 @@ namespace spartan
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf", flags))
                 {
                     // name, position, rotate
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("material_ball");
                     entity->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
                     entity->SetRotation(Quaternion::Identity);
@@ -218,10 +218,10 @@ namespace spartan
                 }
             }
 
-            shared_ptr<Entity> water(const Vector3& position, float dimension, uint32_t density, Color color, float tiling, float normal_strength)
+            Entity* water(const Vector3& position, float dimension, uint32_t density, Color color, float tiling, float normal_strength)
             {
                 // entity
-                shared_ptr<Entity> water = World::CreateEntity();
+                Entity* water = World::CreateEntity();
                 water->SetObjectName("water");
                 water->SetPosition(position);
                 
@@ -274,9 +274,9 @@ namespace spartan
                 
                         // create a child entity, add a renderable, and this mesh tile to it
                         {
-                            shared_ptr<Entity> entity_tile = World::CreateEntity();
+                            Entity* entity_tile = World::CreateEntity();
                             entity_tile->SetObjectName(name);
-                            entity_tile->SetParent(water.get());
+                            entity_tile->SetParent(water);
                             entity_tile->SetPosition(tile_offsets[tile_index]);
                 
                             if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
@@ -317,7 +317,7 @@ namespace spartan
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // don't genereate and use LODs
             if (shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags))
             {
-                default_car = mesh_car->GetRootEntity().lock();
+                default_car = mesh_car->GetRootEntity();
                 default_car->SetObjectName("ferrari_laferrari");
                 default_car->SetScale(2.0f);
                 default_car->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
@@ -467,9 +467,9 @@ namespace spartan
             {
                 // start
                 {
-                    shared_ptr<Entity> sound = World::CreateEntity();
+                    Entity* sound = World::CreateEntity();
                     sound->SetObjectName("sound_start");
-                    sound->SetParent(default_car.get());
+                    sound->SetParent(default_car);
 
                     AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_start.wav");
@@ -479,9 +479,9 @@ namespace spartan
 
                 // idle
                 {
-                    shared_ptr<Entity> sound = World::CreateEntity();
+                    Entity* sound = World::CreateEntity();
                     sound->SetObjectName("sound_idle");
-                    sound->SetParent(default_car.get());
+                    sound->SetParent(default_car);
 
                     AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_idle.wav");
@@ -491,9 +491,9 @@ namespace spartan
 
                 // door
                 {
-                    shared_ptr<Entity> sound = World::CreateEntity();
+                    Entity* sound = World::CreateEntity();
                     sound->SetObjectName("sound_door");
-                    sound->SetParent(default_car.get());
+                    sound->SetParent(default_car);
 
                     AudioSource* audio_source = sound->AddComponent<AudioSource>();
                     audio_source->SetAudioClip("project\\music\\car_door.wav");
@@ -538,7 +538,7 @@ namespace spartan
                     if (!inside_the_car)
                     {
                         camera = default_camera->GetChildByName("component_camera");
-                        camera->SetParent(default_car.get());
+                        camera->SetParent(default_car);
                         camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         camera->SetRotationLocal(Quaternion::Identity);
             
@@ -549,7 +549,7 @@ namespace spartan
                     else
                     {
                         camera = default_car->GetChildByName("component_camera");
-                        camera->SetParent(default_camera.get());
+                        camera->SetParent(default_camera);
                         camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
                         camera->SetRotationLocal(Quaternion::Identity);
             
@@ -601,10 +601,10 @@ namespace spartan
         void create_sponza_4k()
         {
             // set the mood
-            entities::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            entities::sun(true);
+            create_entity::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
+            create_entity::sun(true);
             default_light_directional->GetComponent<Light>()->SetIntensity(120000.0f); // lux
-            entities::music("project\\music\\jake_chudnow_olive.wav");
+            create_entity::music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
             const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
@@ -615,7 +615,7 @@ namespace spartan
             //mesh_flags          |= static_cast<uint32_t>(MeshFlags::ImportLights); // they don't look good for some reason, investigate
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
             {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                Entity* entity = mesh->GetRootEntity();
                 entity->SetObjectName("sponza");
                 entity->SetPosition(position);
                 entity->SetScale(scale);
@@ -627,9 +627,9 @@ namespace spartan
                 entity->GetDescendantByName("decals_3rd_floor")->SetActive(false);
 
                 // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
+                vector<Entity*> create_entity;
+                entity->GetDescendants(&create_entity);
+                for (Entity* entity_it : create_entity)
                 {
                     if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
                     {
@@ -642,7 +642,7 @@ namespace spartan
             // 3d model - curtains
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                Entity* entity = mesh->GetRootEntity();
                 entity->SetObjectName("sponza_curtains");
                 entity->SetPosition(position);
                 entity->SetScale(scale);
@@ -675,7 +675,7 @@ namespace spartan
             // 3d model - ivy
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
             {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                Entity* entity = mesh->GetRootEntity();
                 entity->SetObjectName("sponza_ivy");
                 entity->SetPosition(position);
                 entity->SetScale(scale);
@@ -690,9 +690,9 @@ namespace spartan
 
         void create_minecraft()
         {
-             entities::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-             entities::sun(true);
-             entities::music();
+             create_entity::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
+             create_entity::sun(true);
+             create_entity::music();
 
             // the entire minecraft world is a single mesh so don't optimize or generate lods (it will deteriorate a lot)
             uint32_t mesh_flags  = Mesh::GetDefaultFlags();
@@ -700,14 +700,14 @@ namespace spartan
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
             {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                Entity* entity = mesh->GetRootEntity();
                 entity->SetObjectName("minecraft");
                 entity->SetScale(100.0f);
 
                 // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
+                vector<Entity*> create_entity;
+                entity->GetDescendants(&create_entity);
+                for (Entity* entity_it : create_entity)
                 {
                     if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
@@ -720,21 +720,21 @@ namespace spartan
 
         void create_subway_gi_test()
         {
-            entities::sun(false);
+            create_entity::sun(false);
 
-            entities::camera();
+            create_entity::camera();
             //default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true); // if you do that, you get a GPU crash, fix
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
             {
-                shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                Entity* entity = mesh->GetRootEntity();
                 entity->SetObjectName("subway");
                 entity->SetScale(Vector3(0.015f));
                 
                 // enable physics for all meshes
-                vector<Entity*> entities;
-                entity->GetDescendants(&entities);
-                for (Entity* entity_it : entities)
+                vector<Entity*> create_entity;
+                entity->GetDescendants(&create_entity);
+                for (Entity* entity_it : create_entity)
                 {
                     if (entity_it->GetComponent<Renderable>() != nullptr)
                     {
@@ -757,13 +757,13 @@ namespace spartan
                 const float shadow_distance       = 150.0f;     // tree and rock shadow distance (from the player)
 
                 // sun/lighting/mood
-                entities::sun(true);
+                create_entity::sun(true);
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetIntensity(50'000.0f);
                 sun->SetTemperature(7'000.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, false);
 
-                entities::camera(Vector3(-1437.9974f, 329.2f, 2144.2534f), Vector3(0.0f, 0.0f, 0.0f));
+                create_entity::camera(Vector3(-1437.9974f, 329.2f, 2144.2534f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
 
                 // create
@@ -772,15 +772,15 @@ namespace spartan
 
                 // sound
                 {
-                    shared_ptr<Entity> entity = World::CreateEntity();
+                    Entity* entity = World::CreateEntity();
                     entity->SetObjectName("audio");
-                    entity->SetParent(default_terrain.get());
+                    entity->SetParent(default_terrain);
 
                     // footsteps grass
                     {
-                        shared_ptr<Entity> sound = World::CreateEntity();
+                        Entity* sound = World::CreateEntity();
                         sound->SetObjectName("footsteps");
-                        sound->SetParent(entity.get());
+                        sound->SetParent(entity);
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\footsteps_grass.wav");
@@ -789,9 +789,9 @@ namespace spartan
 
                     // forest and river sounds
                     {
-                        shared_ptr<Entity> sound = World::CreateEntity();
+                        Entity* sound = World::CreateEntity();
                         sound->SetObjectName("forest_river");
-                        sound->SetParent(entity.get());
+                        sound->SetParent(entity);
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\forest_river.wav");
@@ -800,9 +800,9 @@ namespace spartan
 
                     // wind
                     {
-                        shared_ptr<Entity> sound = World::CreateEntity();
+                        Entity* sound = World::CreateEntity();
                         sound->SetObjectName("wind");
-                        sound->SetParent(entity.get());
+                        sound->SetParent(entity);
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\wind.wav");
@@ -811,9 +811,9 @@ namespace spartan
 
                     // underwater
                     {
-                        shared_ptr<Entity> sound = World::CreateEntity();
+                        Entity* sound = World::CreateEntity();
                         sound->SetObjectName("underwater");
-                        sound->SetParent(entity.get());
+                        sound->SetParent(entity);
 
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
                         audio_source->SetAudioClip("project\\music\\underwater.wav");
@@ -868,13 +868,13 @@ namespace spartan
                 const float dimension          = 8000; // meters
                 const uint32_t density         = 64;   // geometric
                 const Color forest_water_color = Color(0.0f / 255.0f, 150.0f / 255.0f, 70.0f / 255.0f, 220.0f / 255.0f);
-                entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f, 0.1f);
+                create_entity::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f, 0.1f);
                 
                 // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags))
                 {
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("tree");
                     entity->SetScale(0.04f);
                 
@@ -935,7 +935,7 @@ namespace spartan
                 // rock
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj"))
                 {
-                    shared_ptr<Entity> entity = mesh->GetRootEntity().lock();
+                    Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("rock");
                     entity->SetScale(2.0f);
 
@@ -972,7 +972,7 @@ namespace spartan
                 // grass
                 {
                     // create entity
-                    shared_ptr<Entity> entity = World::CreateEntity();
+                    Entity* entity = World::CreateEntity();
                     entity->SetObjectName("grass");
                 
                     // create a mesh with a grass blade
@@ -1089,7 +1089,7 @@ namespace spartan
             void create()
             {
                 // gran turismo 7 brand central music
-                entities::music("project\\music\\gran_turismo.wav");
+                create_entity::music("project\\music\\gran_turismo.wav");
                 
                 // textures
                 texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
@@ -1100,7 +1100,7 @@ namespace spartan
                 // camera
                 {
                     Vector3 camera_position = Vector3(5.0f, 1.5f, -10.0f);
-                    entities::camera(camera_position);
+                    create_entity::camera(camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
                     default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
@@ -1116,7 +1116,7 @@ namespace spartan
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // don't genereate and use LODs
                     if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\SpartanLaFerrariV2\\LaFerrariV2.gltf", mesh_flags))
                     {
-                        Entity* floor_tube_lights = mesh->GetRootEntity().lock().get();
+                        Entity* floor_tube_lights = mesh->GetRootEntity();
                         floor_tube_lights->SetObjectName("tube_lights_and_floor");
                         floor_tube_lights->SetScale(2.0f);
 
@@ -1133,7 +1133,7 @@ namespace spartan
                         
                                     // until we support actual area lights matching each tube, just use a point light
                                     {
-                                        shared_ptr<Entity> entity = World::CreateEntity();
+                                        Entity* entity = World::CreateEntity();
                                         entity->SetObjectName("light_point");
                                         entity->SetParent(entity_tube_light);
                         
@@ -1275,12 +1275,12 @@ namespace spartan
                 tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
 
                 // pool light mesh
-                shared_ptr<Entity> entity_pool_light = nullptr;
+                Entity* entity_pool_light = nullptr;
                 uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                 flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods); // already very simple
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\pool_light\\pool_light.blend", flags))
                 {
-                    entity_pool_light = mesh->GetRootEntity().lock();
+                    entity_pool_light = mesh->GetRootEntity();
                     entity_pool_light->SetObjectName("pool_light");
                     entity_pool_light->SetScale(0.5f);
                     entity_pool_light->SetPosition(Vector3(0.0f, 1000.0f, 0.0f)); // hide blueprint
@@ -1318,30 +1318,30 @@ namespace spartan
                 Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
             
                 // camera
-                entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
+                create_entity::camera(Vector3(5.4084f, 1.8f, 4.7593f));
                 default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
             
                 // audio hum
-                shared_ptr<Entity> entity_hum = World::CreateEntity();
+                Entity* entity_hum = World::CreateEntity();
                 entity_hum->SetObjectName("audio_hum_electric");
-                entity_hum->SetParent(default_camera.get());
+                entity_hum->SetParent(default_camera);
                 AudioSource* audio_source = entity_hum->AddComponent<AudioSource>();
                 audio_source->SetAudioClip("project\\music\\hum_electric.wav");
                 audio_source->SetLoop(true);
                 audio_source->SetVolume(0.25f);
             
                 // tile footsteps
-                shared_ptr<Entity> entity_tiles = World::CreateEntity();
+                Entity* entity_tiles = World::CreateEntity();
                 entity_tiles->SetObjectName("audio_footsteps_tiles");
-                entity_tiles->SetParent(default_camera.get());
+                entity_tiles->SetParent(default_camera);
                 AudioSource* audio_source_tiles = entity_tiles->AddComponent<AudioSource>();
                 audio_source_tiles->SetAudioClip("project\\music\\footsteps_tiles.wav");
                 audio_source_tiles->SetPlayOnStart(false);
             
                 // water footsteps
-                shared_ptr<Entity> entity_water = World::CreateEntity();
+                Entity* entity_water = World::CreateEntity();
                 entity_water->SetObjectName("audio_footsteps_water");
-                entity_water->SetParent(default_camera.get());
+                entity_water->SetParent(default_camera);
                 AudioSource* audio_source_water = entity_water->AddComponent<AudioSource>();
                 audio_source_water->SetAudioClip("project\\music\\footsteps_water.wav");
                 audio_source_water->SetPlayOnStart(false);
@@ -1366,13 +1366,13 @@ namespace spartan
                 };
             
                 // create surface lambda
-                auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, shared_ptr<Entity> parent)
+                auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, Entity* parent)
                 {
                     auto entity = World::CreateEntity();
                     entity->SetObjectName(name);
                     entity->SetPosition(pos);
                     entity->SetScale(scale);
-                    entity->SetParent(parent.get());
+                    entity->SetParent(parent);
                     auto renderable = entity->AddComponent<Renderable>();
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetMaterial(tile_material);
@@ -1382,7 +1382,7 @@ namespace spartan
                 };
             
                 // create door lambda
-                auto create_door = [&](Direction dir, const Vector3& offset, shared_ptr<Entity> parent)
+                auto create_door = [&](Direction dir, const Vector3& offset, Entity* parent)
                 {
                     string base_name = "wall_" + to_string(static_cast<int>(dir) + 1);
                     bool isFb = (dir == Direction::Front || dir == Direction::Back);
@@ -1434,8 +1434,8 @@ namespace spartan
                         float water_distance = 0.5f; // distance from floor
                         float water_y        = floor_y + 0.5f + water_distance;
                         Color pool_color     = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
-                        auto water           = entities::water(Vector3(0, water_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
-                        water->SetParent(room_entity.get());
+                        auto water           = create_entity::water(Vector3(0, water_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
+                        water->SetParent(room_entity);
                     }
 
                     // wall configs
@@ -1469,9 +1469,9 @@ namespace spartan
                         if (dir == Direction::Left || dir == Direction::Right)
                         {
                             const float height = 1.5f;
-                            shared_ptr<Entity> light_clone = entity_pool_light->Clone();
+                            Entity* light_clone = entity_pool_light->Clone();
                             light_clone->SetObjectName("pool_light_" + to_string(i));
-                            light_clone->SetParent(room_entity.get());
+                            light_clone->SetParent(room_entity);
                             light_clone->SetScale(0.5f);
                             light_clone->SetPositionLocal(Vector3(walls[i].pos.x, height, walls[i].pos.z));
                             Vector3 direction = (Vector3(0, height, 0) - Vector3(walls[i].pos.x, height, walls[i].pos.z)).Normalized();
@@ -1582,10 +1582,10 @@ namespace spartan
         {
             void create()
             {
-                entities::camera();
-                entities::floor();
-                entities::sun(true);
-                entities::material_ball(Vector3::Zero);
+                create_entity::camera();
+                create_entity::floor();
+                create_entity::sun(true);
+                create_entity::material_ball(Vector3::Zero);
             }
         }
     }

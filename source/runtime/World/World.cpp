@@ -45,7 +45,7 @@ namespace spartan
 {
     namespace
     {
-        vector<shared_ptr<Entity>> entities;
+        vector<shared_ptr<Entity>> create_entity;
         vector<shared_ptr<Entity>> entities_lights; // entities subset that contains only lights
         string file_path;
         mutex entity_access_mutex;
@@ -60,7 +60,7 @@ namespace spartan
 
         void compute_bounding_box()
         {
-            for (shared_ptr<Entity>& entity : entities)
+            for (shared_ptr<Entity>& entity : create_entity)
             {
                 if (entity->GetActive())
                 {
@@ -130,11 +130,11 @@ namespace spartan
         if (pending_remove.empty())
             return;
 
-        for (auto it = entities.begin(); it != entities.end(); )
+        for (auto it = create_entity.begin(); it != create_entity.end(); )
         {
             if (pending_remove.count((*it)->GetObjectId()) > 0)
             {
-                it = entities.erase(it);
+                it = create_entity.erase(it);
             }
             else
             {
@@ -150,7 +150,7 @@ namespace spartan
         if (pending_add.empty())
             return;
 
-        entities.insert(entities.end(), pending_add.begin(), pending_add.end());
+        create_entity.insert(create_entity.end(), pending_add.begin(), pending_add.end());
         pending_add.clear();
     }
 
@@ -180,7 +180,7 @@ namespace spartan
         // start
         if (started)
         {
-            for (shared_ptr<Entity>& entity : entities)
+            for (shared_ptr<Entity>& entity : create_entity)
             {
                 entity->OnStart();
             }
@@ -189,7 +189,7 @@ namespace spartan
         // stop
         if (stopped)
         {
-            for (shared_ptr<Entity>& entity : entities)
+            for (shared_ptr<Entity>& entity : create_entity)
             {
                 entity->OnStop();
             }
@@ -198,7 +198,7 @@ namespace spartan
         ProcessPendingRemovals();
 
         // tick
-        for (shared_ptr<Entity>& entity : entities)
+        for (shared_ptr<Entity>& entity : create_entity)
         {
             if (entity->GetActive())
             {
@@ -216,7 +216,7 @@ namespace spartan
                 light              = nullptr;
                 audio_source_count = 0;
                 entities_lights.clear();
-                for (shared_ptr<Entity>& entity : entities)
+                for (shared_ptr<Entity>& entity : create_entity)
                 {
                     if (entity->GetActive())
                     {
@@ -258,7 +258,7 @@ namespace spartan
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
        
         // clear entities
-        entities.clear();
+        create_entity.clear();
         entities_lights.clear();
         camera = nullptr;
         light = nullptr;
@@ -432,7 +432,7 @@ namespace spartan
             // load root entities (they will load their descendants recursively)
             for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
             {
-                shared_ptr<Entity> entity = World::CreateEntity();
+                Entity* entity = World::CreateEntity();
                 entity->Load(entity_node);
                 ProgressTracker::GetProgress(ProgressType::World).JobDone();
             }
@@ -448,13 +448,13 @@ namespace spartan
         resolve = true;
     }
 
-    shared_ptr<Entity> World::CreateEntity()
+    Entity* World::CreateEntity()
     {
         lock_guard lock(entity_access_mutex);
         shared_ptr<Entity> entity = make_shared<Entity>();
         pending_add.push_back(entity);
         resolve = true;
-        return entity;
+        return entity.get();
     }
 
     bool World::EntityExists(Entity* entity)
@@ -495,8 +495,8 @@ namespace spartan
     {
         lock_guard<mutex> lock(entity_access_mutex);
         entities_out.clear();
-        entities_out.reserve(entities.size());
-        for (shared_ptr<Entity>& entity : entities)
+        entities_out.reserve(create_entity.size());
+        for (shared_ptr<Entity>& entity : create_entity)
         {
             if (!entity->GetParent())
             {
@@ -509,7 +509,7 @@ namespace spartan
     {
         lock_guard<mutex> lock(entity_access_mutex);
    
-        for (const auto& entity : entities)
+        for (const auto& entity : create_entity)
         {
             if (entity && entity->GetObjectId() == id)
                 return entity;
@@ -521,7 +521,7 @@ namespace spartan
 
     const vector<shared_ptr<Entity>>& World::GetEntities()
     {
-        return entities;
+        return create_entity;
     }
 
     const vector<shared_ptr<Entity>>& World::GetEntitiesLights()

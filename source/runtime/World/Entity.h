@@ -46,12 +46,12 @@ namespace spartan
         Entity();
         ~Entity();
 
-        std::shared_ptr<Entity> Clone();
+        Entity* Clone();
 
         // core
-        void OnStart(); // runs once, before the simulation ends
-        void OnStop();  // runs once, after the simulation ends
-        void Tick();    // runs every frame
+        void OnStart();
+        void OnStop();
+        void Tick();
 
         // io
         void Save(pugi::xml_node& node);

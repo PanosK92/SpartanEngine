@@ -1213,7 +1213,7 @@ namespace spartan
             {
                 uint32_t sub_mesh_index = 0;
                 m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
-                shared_ptr<Entity> entity = World::CreateEntity();
+                Entity* entity = World::CreateEntity();
                 entity->SetObjectName("tile_" + to_string(tile_index));
                 entity->SetParent(GetEntity());
                 entity->SetPosition(m_tile_offsets[tile_index]);

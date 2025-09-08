@@ -110,8 +110,8 @@ namespace spartan
         RHI_Buffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
 
         // root entity
-        std::weak_ptr<Entity> GetRootEntity() { return m_root_entity; }
-        void SetRootEntity(std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
+        Entity* GetRootEntity() { return m_root_entity; }
+        void SetRootEntity(Entity* entity) { m_root_entity = entity; }
 
         // mesh type
         MeshType GetType() const          { return m_type; }
@@ -133,7 +133,7 @@ namespace spartan
 
         // misc
         std::mutex m_mutex;
-        std::weak_ptr<Entity> m_root_entity;
+        Entity* m_root_entity        = nullptr;
         MeshType m_type              = MeshType::Max;
         MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Exponential;
     };

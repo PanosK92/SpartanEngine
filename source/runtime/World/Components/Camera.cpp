@@ -167,8 +167,8 @@ namespace spartan
         static vector<RayHit> hits;
         hits.clear();
         {
-            const vector<shared_ptr<Entity>>& entities = World::GetEntities();
-            for (shared_ptr<Entity>entity : entities)
+            const vector<shared_ptr<Entity>>& create_entity = World::GetEntities();
+            for (shared_ptr<Entity>entity : create_entity)
             {
                 // make sure there entity has a renderable
                 if (!entity->GetComponent<Renderable>())
@@ -600,7 +600,7 @@ namespace spartan
             if (GetFlag(CameraFlags::Flashlight) && !m_flashlight)
             {
                 // entity
-                m_flashlight = World::CreateEntity().get();
+                m_flashlight = World::CreateEntity();
                 m_flashlight->SetObjectName("flashlight");
                 m_flashlight->SetParent(GetEntity());
                 m_flashlight->SetRotationLocal(Quaternion::Identity);
@@ -634,7 +634,7 @@ namespace spartan
         if (mouse_click_left_down && mouse_click_right && mouse_in_viewport && is_playing)
         {
             // create entity and name it
-            shared_ptr<Entity> entity = World::CreateEntity();
+            Entity* entity = World::CreateEntity();
             entity->SetObjectName("physics_box");
 
             // position it in front of the camera

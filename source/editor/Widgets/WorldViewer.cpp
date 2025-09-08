@@ -608,7 +608,7 @@ void WorldViewer::ActionEntityDelete(const shared_ptr<spartan::Entity> entity)
 
 spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
 {
-    shared_ptr<spartan::Entity> entity = spartan::World::CreateEntity();
+    spartan::Entity* entity = spartan::World::CreateEntity();
     
     if (spartan::Camera* camera = spartan::World::GetCamera())
     {
@@ -618,7 +618,7 @@ spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
         }
     }
 
-    return entity.get();
+    return entity;
 }
 
 void WorldViewer::ActionEntityCreateCube()

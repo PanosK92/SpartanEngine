@@ -728,7 +728,7 @@ namespace spartan
             SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
 
             // register version (I don't think VMA provides version defines)
-            Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.2.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
+            Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.3.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
         }
 
         void destroy()

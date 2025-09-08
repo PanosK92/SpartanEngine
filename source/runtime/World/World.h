@@ -42,10 +42,10 @@ namespace spartan
         static bool LoadFromFile(const std::string& file_path);
 
         // entities
-        static std::shared_ptr<Entity> CreateEntity();
+        static Entity* CreateEntity();
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);
-        static void GetRootEntities(std::vector<std::shared_ptr<Entity>>& entities);
+        static void GetRootEntities(std::vector<std::shared_ptr<Entity>>& create_entity);
         static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
         static const std::vector<std::shared_ptr<Entity>>& GetEntities();
         static const std::vector<std::shared_ptr<Entity>>& GetEntitiesLights();
