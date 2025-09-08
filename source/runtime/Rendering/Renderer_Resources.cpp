@@ -375,8 +375,8 @@ namespace spartan
 
         // ocean
         {
-            //shader(Renderer_Shader::ocean_initial_spectrum_c) = make_shared<RHI_Shader>();
-            //shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\initial_spectrum.hlsl", async);
+            shader(Renderer_Shader::ocean_initial_spectrum_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\initial_spectrum.hlsl", false);
         }
 
         // blur
