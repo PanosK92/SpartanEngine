@@ -49,11 +49,11 @@ namespace spartan
         vector<shared_ptr<Entity>> entities_lights; // entities subset that contains only lights
         string file_path;
         mutex entity_access_mutex;
-        bool resolve = false;
-        bool was_in_editor_mode = false;
-        BoundingBox bounding_box = BoundingBox::Unit;
-        shared_ptr<Entity> camera = nullptr;
-        shared_ptr<Entity> light = nullptr;
+        bool resolve                = false;
+        bool was_in_editor_mode     = false;
+        BoundingBox bounding_box    = BoundingBox::Unit;
+        shared_ptr<Entity> camera   = nullptr;
+        shared_ptr<Entity> light    = nullptr;
         uint32_t audio_source_count = 0;
         vector<shared_ptr<Entity>> pending_add;
         set<uint64_t> pending_remove;

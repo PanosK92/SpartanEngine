@@ -52,9 +52,8 @@ namespace spartan
         RHI_Texture_Srgb              = 1U << 8,
         RHI_Texture_Mappable          = 1U << 9,
         RHI_Texture_Compress          = 1U << 10,
-        RHI_Texture_ExternalMemory    = 1U << 11,
-        RHI_Texture_DontPrepareForGpu = 1U << 12,
-        RHI_Texture_Thumbnail         = 1U << 13
+        RHI_Texture_DontPrepareForGpu = 1U << 11,
+        RHI_Texture_Thumbnail         = 1U << 12
     };
 
     struct RHI_Texture_Mip
@@ -137,7 +136,6 @@ namespace spartan
         bool HasPerMipViews() const    { return m_flags & RHI_Texture_PerMipViews; }
         bool IsGrayscale() const       { return m_flags & RHI_Texture_Greyscale; }
         bool IsSemiTransparent() const { return m_flags & RHI_Texture_Transparent; }
-        bool HasExternalMemory() const { return m_flags & RHI_Texture_ExternalMemory; }
 
         // format type
         bool IsDepthFormat() const        { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }

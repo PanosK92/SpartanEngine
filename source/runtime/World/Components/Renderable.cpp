@@ -190,7 +190,7 @@ namespace spartan
                 RHI_Buffer_Type::Instance,
                 sizeof(instances_transposed[0]),
                 static_cast<uint32_t>(instances_transposed.size()),
-                static_cast<void*>(instances_transposed.data()),  // Use .data() for safety
+                static_cast<void*>(instances_transposed.data()),
                 false,
                 ("instance_buffer_" + renderable_name).c_str()
             );

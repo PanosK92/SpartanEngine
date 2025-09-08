@@ -65,6 +65,4 @@ private:
     static void ActionEntityCreateLightSpot();
     static void ActionEntityCreatePhysicsBody();
     static void ActionEntityCreateAudioSource();
-
-    std::shared_ptr<spartan::Entity> m_entity_empty;
 };

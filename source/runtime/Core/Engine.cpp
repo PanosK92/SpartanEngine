@@ -90,7 +90,7 @@ namespace spartan
 
         // post-initialize
         {
-            ResourceCache::LoadDefaultResources(); // requires RHI to be initialized so they can be uploaded to the GPU
+            ResourceCache::LoadDefaultResources(); // requires rhi to be initialized so they can be uploaded to the gpu
         }
 
         SP_LOG_INFO("Initialization took %.1f sec", timer_initialize.GetElapsedTimeSec());

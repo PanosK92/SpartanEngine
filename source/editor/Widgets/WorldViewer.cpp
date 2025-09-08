@@ -358,7 +358,8 @@ void WorldViewer::HandleClicking()
     // clicking on empty space - Clear selection
     if ((left_click || right_click) && !entity_hovered.lock())
     {
-        SetSelectedEntity(m_entity_empty);
+        static shared_ptr<spartan::Entity> entity_empty = nullptr;
+        SetSelectedEntity(entity_empty);
     }
 }
 

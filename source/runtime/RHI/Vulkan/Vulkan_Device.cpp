@@ -703,13 +703,11 @@ namespace spartan
     {
         mutex mutex_allocator;
         VmaAllocator allocator;
-        VmaAllocator allocator_external;
 
         struct AllocationData
         {
             VmaAllocation allocation;
             void* resource;
-            bool external_memory;
         };
         vector<AllocationData> allocations;
 
@@ -722,29 +720,12 @@ namespace spartan
 
             // allocator
             VmaAllocatorCreateInfo allocator_info = {};
-            {
-                allocator_info.physicalDevice   = RHI_Context::device_physical;
-                allocator_info.device           = RHI_Context::device;
-                allocator_info.instance         = RHI_Context::instance;
-                allocator_info.vulkanApiVersion = version::used;
-                allocator_info.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-                SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
-            }
-
-            // allocator external
-            {
-                vector<VkExternalMemoryHandleTypeFlags> external_memory_handle_types;
-                VkPhysicalDeviceMemoryProperties physical_device_memory_properties;
-                vkGetPhysicalDeviceMemoryProperties(RHI_Context::device_physical, &physical_device_memory_properties);
-                #if defined(_WIN32)
-                external_memory_handle_types.resize(physical_device_memory_properties.memoryTypeCount, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR);
-                #else
-                SP_LOG_ERROR("Not implemented, you need to use the Linux equivalent via VK_KHR_external_memory_fd");
-                #endif
-                allocator_info.pTypeExternalMemoryHandleTypes = external_memory_handle_types.data();
-
-                SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator_external));
-            }
+            allocator_info.physicalDevice   = RHI_Context::device_physical;
+            allocator_info.device           = RHI_Context::device;
+            allocator_info.instance         = RHI_Context::instance;
+            allocator_info.vulkanApiVersion = version::used;
+            allocator_info.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+            SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
 
             // register version (I don't think VMA provides version defines)
             Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.2.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
@@ -757,21 +738,17 @@ namespace spartan
 
             vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator));
             vulkan_memory_allocator::allocator = nullptr;
-
-            vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator_external));
-            vulkan_memory_allocator::allocator_external = nullptr;
         }
 
-        void save_allocation(void*& resource, bool external_memory, VmaAllocation allocation)
+        void save_allocation(void*& resource, VmaAllocation allocation)
         {
             SP_ASSERT(resource != nullptr);
 
             lock_guard<mutex> lock(mutex_allocation);
 
-            AllocationData allocation_data  = {};
-            allocation_data.allocation      = allocation;
-            allocation_data.resource        = resource;
-            allocation_data.external_memory = external_memory;
+            AllocationData allocation_data = {};
+            allocation_data.allocation     = allocation;
+            allocation_data.resource       = resource;
             allocations.emplace_back(allocation_data);
         }
 
@@ -2017,8 +1994,9 @@ namespace spartan
             SP_ASSERT_VK(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size));
             vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation);
         }
-        
-        vulkan_memory_allocator::save_allocation(resource, name, allocation);
+
+        vmaSetAllocationName(vulkan_memory_allocator::allocator, allocation, name);
+        vulkan_memory_allocator::save_allocation(resource, allocation);
     }
 
     void RHI_Device::MemoryBufferDestroy(void*& resource)
@@ -2047,7 +2025,7 @@ namespace spartan
         // describe image
         VkImageCreateInfo create_info_image = {};
         create_info_image.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        create_info_image.pNext             = texture->HasExternalMemory() ? &external_memory_image_create_info : nullptr;
+        create_info_image.pNext             = nullptr;
         create_info_image.imageType         = texture->GetType() == RHI_Texture_Type::Type3D ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
         create_info_image.flags             = texture->GetType() == RHI_Texture_Type::TypeCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
         create_info_image.usage             = get_image_usage_flags(texture);
@@ -2083,16 +2061,14 @@ namespace spartan
         VmaAllocationInfo allocation_info;
         VmaAllocation allocation;
         {
-            VmaAllocator allocator                          = texture->HasExternalMemory() ? vulkan_memory_allocator::allocator_external : vulkan_memory_allocator::allocator;
             VmaAllocationCreateInfo create_info_allocation  = {};
             create_info_allocation.usage                    = VMA_MEMORY_USAGE_AUTO;
             create_info_allocation.flags                    = (texture->GetFlags() & RHI_Texture_Mappable) ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
-            create_info_allocation.flags                   |= texture->HasExternalMemory() ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT : 0;
 
             void*& resource = texture->GetRhiResource();
             VkResult result = vmaCreateImage
             (
-                allocator,
+                vulkan_memory_allocator::allocator,
                 &create_info_image,
                 &create_info_allocation,
                 reinterpret_cast<VkImage*>(&resource),
@@ -2112,8 +2088,7 @@ namespace spartan
             SP_ASSERT_VK(result);
 
             // set allocation name and data
-            //vmaSetAllocationUserData(allocator, allocation, resource);
-            vmaSetAllocationName(allocator, allocation, texture->GetObjectName().c_str());
+            vmaSetAllocationName(vulkan_memory_allocator::allocator, allocation, texture->GetObjectName().c_str());
             RHI_Device::SetResourceName(allocation->GetMemory(), RHI_Resource_Type::DeviceMemory, texture->GetObjectName().c_str());
         }
 
@@ -2124,26 +2099,7 @@ namespace spartan
             mapped_data = allocation_info.pMappedData;
         }
 
-        // get external memory handle
-        if (texture->HasExternalMemory())
-        {
-            #if defined(_WIN32)
-            VkMemoryGetWin32HandleInfoKHR get_handle_info = {};
-            get_handle_info.sType                         = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
-            get_handle_info.memory                        = allocation_info.deviceMemory;
-            get_handle_info.handleType                    = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_KHR;
-
-            HANDLE win32_handle;
-            static PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR = (PFN_vkGetMemoryWin32HandleKHR)vkGetDeviceProcAddr(RHI_Context::device, "vkGetMemoryWin32HandleKHR");
-            SP_ASSERT_VK(vkGetMemoryWin32HandleKHR(RHI_Context::device, &get_handle_info, &win32_handle));
-
-            texture->SetExternalMemoryHandle(static_cast<void*>(win32_handle));
-            #else
-            SP_LOG_ERROR("Not implemented, you need to use the Linux equivalent via VK_KHR_external_memory_fd");
-            #endif
-        }
-
-        vulkan_memory_allocator::save_allocation(texture->GetRhiResource(), texture->HasExternalMemory(), allocation);
+        vulkan_memory_allocator::save_allocation(texture->GetRhiResource(), allocation);
     }
 
     void RHI_Device::MemoryTextureDestroy(void*& resource)
@@ -2153,8 +2109,7 @@ namespace spartan
         vulkan_memory_allocator::AllocationData* allocation_data = vulkan_memory_allocator::get_allocation_from_resource(resource);
         if (allocation_data->allocation)
         {
-            VmaAllocator allocator = allocation_data->external_memory ? vulkan_memory_allocator::allocator_external : vulkan_memory_allocator::allocator;
-            vmaDestroyImage(allocator, static_cast<VkImage>(resource), allocation_data->allocation);
+            vmaDestroyImage(vulkan_memory_allocator::allocator, static_cast<VkImage>(resource), allocation_data->allocation);
             vulkan_memory_allocator::destroy_allocation(resource);
         }
     }
