@@ -504,8 +504,8 @@ namespace spartan
             SP_ASSERT(mip_range != 0);
             SP_ASSERT(mip_index + mip_range <= m_mip_count);
         }
-    
-        cmd_list->InsertBarrier(m_rhi_resource, m_format, mip_index, mip_range, m_depth, new_layout);
+
+        cmd_list->InsertBarrier(m_rhi_resource, m_format, mip_index, mip_range, GetArrayLength(), new_layout);
     }
 
     RHI_Image_Layout RHI_Texture::GetLayout(const uint32_t mip) const

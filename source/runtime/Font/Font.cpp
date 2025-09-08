@@ -74,8 +74,8 @@ namespace spartan
         // find max character height (todo, actually get spacing from FreeType)
         for (const auto& char_info : m_glyphs)
         {
-            m_char_max_width    = max(char_info.second.width, m_char_max_width);
-            m_char_max_height   = max(char_info.second.height, m_char_max_height);
+            m_char_max_width  = max(char_info.second.width, m_char_max_width);
+            m_char_max_height = max(char_info.second.height, m_char_max_height);
         }
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
@@ -116,7 +116,7 @@ namespace spartan
                 const float space_offset = static_cast<float>(m_glyphs[ASCII_SPACE].horizontal_advance);
                 const float tab_spacing  = space_offset * 4.0f;
                 float relative_x         = cursor.x - position.x;
-                float k                  = std::floor((relative_x + tab_spacing) / tab_spacing);
+                float k                  = floor((relative_x + tab_spacing) / tab_spacing);
                 float next_tab_stop      = position.x + k * tab_spacing;
                 cursor.x                 = next_tab_stop;
             }

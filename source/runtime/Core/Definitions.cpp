@@ -36,8 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    // This function returns a pointer to a static buffer. It's not thread-safe,
-    // but it avoids memory allocation issues.
+    // this function returns a pointer to a static buffer, it's not thread-safe
     const char* get_callstack_c_str()
     {
         static std::string callstack_str;

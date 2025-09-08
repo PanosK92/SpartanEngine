@@ -119,9 +119,10 @@ namespace spartan
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data
-        uint32_t GetMipCount() const { return m_mip_count; }
-        uint32_t GetDepth() const    { return m_depth; }
-        bool HasData() const         { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
+        uint32_t GetMipCount() const    { return m_mip_count; }
+        uint32_t GetDepth() const       { return m_depth; }
+        uint32_t GetArrayLength() const { return (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth; }
+        bool HasData() const            { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
         void AllocateMip();
@@ -175,7 +176,7 @@ namespace spartan
 
         uint32_t m_width            = 0;
         uint32_t m_height           = 0;
-        uint32_t m_depth            = 0;
+        uint32_t m_depth            = 0; // array length and depth are both m_depth (for simplicity), in case of 3D textures we only have one layer though
         uint32_t m_mip_count        = 0;
         uint32_t m_bits_per_channel = 0;
         uint32_t m_channel_count    = 0;
