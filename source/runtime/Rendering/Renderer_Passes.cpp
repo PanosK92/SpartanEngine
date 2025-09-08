@@ -82,7 +82,7 @@ namespace spartan
             {
                 static bool had_directional_light_last_frame = false;
                 bool has_directional_light                   = World::GetDirectionalLight() != nullptr;
-                update_skysphere                             = (has_directional_light && World::GetDirectionalLight()->NeedsSkysphereUpdate()) || (!has_directional_light && had_directional_light_last_frame);
+                update_skysphere                             = (has_directional_light && World::GetDirectionalLight()->NeedsSkysphereUpdate()) || (has_directional_light != had_directional_light_last_frame);
                 had_directional_light_last_frame             = has_directional_light;
             }
             
