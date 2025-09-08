@@ -158,7 +158,7 @@ namespace spartan
         // ensure the mouse is inside the viewport
         if (!Input::GetMouseIsInViewport())
         {
-            m_selected_entity.reset();
+            m_selected_entity = nullptr;
             return;
         }
 
@@ -167,8 +167,8 @@ namespace spartan
         static vector<RayHit> hits;
         hits.clear();
         {
-            const vector<shared_ptr<Entity>>& create_entity = World::GetEntities();
-            for (shared_ptr<Entity>entity : create_entity)
+            const vector<Entity*>& entities = World::GetEntities();
+            for (Entity* entity : entities)
             {
                 // make sure there entity has a renderable
                 if (!entity->GetComponent<Renderable>())
@@ -199,7 +199,7 @@ namespace spartan
         // check if there are any hits
         if (hits.empty())
         {
-            m_selected_entity.reset();
+            m_selected_entity = nullptr;
             return;
         }
 
@@ -708,7 +708,7 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
-        if (shared_ptr<Entity> entity = GetSelectedEntity())
+        if (Entity* entity = GetSelectedEntity())
         {
             SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetObjectName().c_str());
 

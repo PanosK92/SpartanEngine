@@ -525,8 +525,8 @@ namespace spartan
         m_children.clear();
         m_children.shrink_to_fit();
 
-        const vector<shared_ptr<Entity>>& entities = World::GetEntities();
-        for (const shared_ptr<Entity>& possible_child : entities)
+        const vector<Entity*>& entities = World::GetEntities();
+        for (Entity* possible_child : entities)
         {
             if (!possible_child || !possible_child->GetParent() || possible_child->GetObjectId() == GetObjectId())
                 continue;
@@ -535,7 +535,7 @@ namespace spartan
             if (possible_child->GetParent()->GetObjectId() == GetObjectId())
             {
                 // welcome home son
-                m_children.emplace_back(possible_child.get());
+                m_children.emplace_back(possible_child);
 
                 // make the child do the same thing all over, essentially resolving the entire hierarchy
                 possible_child->AcquireChildren();

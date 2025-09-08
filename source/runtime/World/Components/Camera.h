@@ -141,9 +141,9 @@ namespace spartan
         void SetFlag(const CameraFlags flag, const bool enable = true);
 
         // misc
-        bool IsWalking()                                       { return m_is_walking; }
-        void SetSelectedEntity(std::shared_ptr<Entity> entity) { m_selected_entity = entity; }
-        std::shared_ptr<Entity> GetSelectedEntity()            { return m_selected_entity.lock(); }
+        bool IsWalking()                                { return m_is_walking; }
+        void SetSelectedEntity(spartan::Entity* entity) { m_selected_entity = entity; }
+        spartan::Entity* GetSelectedEntity()            { return m_selected_entity; }
 
         math::Matrix UpdateViewMatrix() const;
         math::Matrix ComputeProjection(const float near_plane, const float far_plane);
@@ -187,6 +187,6 @@ namespace spartan
         Entity* m_flashlight                         = nullptr;
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
-        std::weak_ptr<spartan::Entity> m_selected_entity;
+        spartan::Entity* m_selected_entity = nullptr;
     };
 }

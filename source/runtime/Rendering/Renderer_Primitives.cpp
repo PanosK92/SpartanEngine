@@ -203,11 +203,11 @@ namespace spartan
         
         if (GetOption<bool>(Renderer_Option::Lights))
         {
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (Entity* entity : World::GetEntities())
             {
                 if (Camera* camera = World::GetCamera())
                 {
-                    shared_ptr<Entity> entity_selected = camera->GetSelectedEntity();
+                    Entity* entity_selected = camera->GetSelectedEntity();
                     if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
                     {
                         if (Light* light = entity->GetComponent<Light>())
@@ -262,7 +262,7 @@ namespace spartan
                 return renderable->IsVisible(instance_group_index) ? color_visible : color_occluded;
             };
 
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (Entity* entity : World::GetEntities())
             {
                 if (!entity)
                     continue;

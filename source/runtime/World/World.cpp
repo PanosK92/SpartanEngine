@@ -45,22 +45,22 @@ namespace spartan
 {
     namespace
     {
-        vector<shared_ptr<Entity>> create_entity;
-        vector<shared_ptr<Entity>> entities_lights; // entities subset that contains only lights
+        vector<Entity*> entities;
+        vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
         mutex entity_access_mutex;
         bool resolve                = false;
         bool was_in_editor_mode     = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
-        shared_ptr<Entity> camera   = nullptr;
-        shared_ptr<Entity> light    = nullptr;
+        Entity* camera   = nullptr;
+        Entity* light    = nullptr;
         uint32_t audio_source_count = 0;
-        vector<shared_ptr<Entity>> pending_add;
+        vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
 
         void compute_bounding_box()
         {
-            for (shared_ptr<Entity>& entity : create_entity)
+            for (Entity* entity : entities)
             {
                 if (entity->GetActive())
                 {
@@ -130,11 +130,11 @@ namespace spartan
         if (pending_remove.empty())
             return;
 
-        for (auto it = create_entity.begin(); it != create_entity.end(); )
+        for (auto it = entities.begin(); it != entities.end(); )
         {
             if (pending_remove.count((*it)->GetObjectId()) > 0)
             {
-                it = create_entity.erase(it);
+                it = entities.erase(it);
             }
             else
             {
@@ -150,7 +150,7 @@ namespace spartan
         if (pending_add.empty())
             return;
 
-        create_entity.insert(create_entity.end(), pending_add.begin(), pending_add.end());
+        entities.insert(entities.end(), pending_add.begin(), pending_add.end());
         pending_add.clear();
     }
 
@@ -160,8 +160,23 @@ namespace spartan
 
     void World::Shutdown()
     {
-        Game::Shutdown();
-        Clear();
+        Engine::SetFlag(EngineMode::Playing, false); // stop simulation
+        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
+       
+        // clear entities
+        for (Entity* entity : entities)
+        {
+            delete entity;
+        }
+        entities.clear();
+        entities_lights.clear();
+        pending_add.clear();
+        camera = nullptr;
+        light = nullptr;
+        file_path.clear();
+       
+        // mark for resolve
+        resolve = true;
     }
 
     void World::Tick()
@@ -180,7 +195,7 @@ namespace spartan
         // start
         if (started)
         {
-            for (shared_ptr<Entity>& entity : create_entity)
+            for (Entity* entity : entities)
             {
                 entity->OnStart();
             }
@@ -189,7 +204,7 @@ namespace spartan
         // stop
         if (stopped)
         {
-            for (shared_ptr<Entity>& entity : create_entity)
+            for (Entity* entity : entities)
             {
                 entity->OnStop();
             }
@@ -198,7 +213,7 @@ namespace spartan
         ProcessPendingRemovals();
 
         // tick
-        for (shared_ptr<Entity>& entity : create_entity)
+        for (Entity* entity : entities)
         {
             if (entity->GetActive())
             {
@@ -216,7 +231,7 @@ namespace spartan
                 light              = nullptr;
                 audio_source_count = 0;
                 entities_lights.clear();
-                for (shared_ptr<Entity>& entity : create_entity)
+                for (Entity* entity : entities)
                 {
                     if (entity->GetActive())
                     {
@@ -250,22 +265,6 @@ namespace spartan
         }
 
         Game::Tick();
-    }
-
-    void World::Clear()
-    {
-        Engine::SetFlag(EngineMode::Playing, false); // stop simulation
-        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
-       
-        // clear entities
-        create_entity.clear();
-        entities_lights.clear();
-        camera = nullptr;
-        light = nullptr;
-        file_path.clear();
-       
-        // mark for resolve
-        resolve = true;
     }
 
     bool World::SaveToFile(string file_path)
@@ -324,7 +323,7 @@ namespace spartan
             pugi::xml_node entities_node = world_node.append_child("Entities");
 
             // get root entities, save them, and they will save their children recursively
-            static vector<shared_ptr<Entity>> root_entities;
+            static vector<Entity*> root_entities;
             World::GetRootEntities(root_entities);
             const uint32_t root_entity_count = static_cast<uint32_t>(root_entities.size());
 
@@ -332,13 +331,14 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
 
             // write entities to node
-            for (shared_ptr<Entity>& root : root_entities)
+            for (Entity* root : root_entities)
             {
                 pugi::xml_node entity_node = entities_node.append_child("Entity");
                 root->Save(entity_node);
                 ProgressTracker::GetProgress(ProgressType::World).JobDone();
             }
         }
+
         // save to file
         bool saved = doc.save_file(file_path.c_str(), " ", pugi::format_indent);
         if (!saved)
@@ -346,6 +346,7 @@ namespace spartan
             SP_LOG_ERROR("Failed to save XML file.");
             return false;
         }
+
         // log
         SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
         return true;
@@ -353,7 +354,7 @@ namespace spartan
 
     bool World::LoadFromFile(const string& file_path_)
     {
-        Clear();
+        Shutdown(); // clear existing world
         file_path = file_path_;
 
         // start timing
@@ -451,10 +452,11 @@ namespace spartan
     Entity* World::CreateEntity()
     {
         lock_guard lock(entity_access_mutex);
-        shared_ptr<Entity> entity = make_shared<Entity>();
+        Entity* entity = new Entity();
         pending_add.push_back(entity);
         resolve = true;
-        return entity.get();
+
+        return entity;
     }
 
     bool World::EntityExists(Entity* entity)
@@ -467,12 +469,14 @@ namespace spartan
     {
         SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
         lock_guard<mutex> lock(entity_access_mutex);
+
         // remove the entity and all of its children
         {
             // get the root entity and its descendants
             vector<Entity*> entities_to_remove;
             entities_to_remove.push_back(entity_to_remove); // add the root entity
             entity_to_remove->GetDescendants(&entities_to_remove); // get descendants
+
             // create a set containing the object ids of entities to remove
             set<uint64_t> ids_to_remove;
             for (Entity* entity : entities_to_remove)
@@ -481,22 +485,24 @@ namespace spartan
             }
             // defer removal
             pending_remove.insert(ids_to_remove.begin(), ids_to_remove.end());
+
             // if there was a parent, update it
             if (Entity* parent = entity_to_remove->GetParent())
             {
                 parent->AcquireChildren();
             }
         }
-        resolve = true;
+        resolve      = true;
         bounding_box = BoundingBox::Unit;
     }
 
-    void World::GetRootEntities(vector<shared_ptr<Entity>>& entities_out)
+    void World::GetRootEntities(vector<Entity*>& entities_out)
     {
         lock_guard<mutex> lock(entity_access_mutex);
+
         entities_out.clear();
-        entities_out.reserve(create_entity.size());
-        for (shared_ptr<Entity>& entity : create_entity)
+        entities_out.reserve(entities.size());
+        for (Entity* entity : entities)
         {
             if (!entity->GetParent())
             {
@@ -505,26 +511,25 @@ namespace spartan
         }
     }
 
-    const shared_ptr<Entity>& World::GetEntityById(const uint64_t id)
+    Entity* World::GetEntityById(const uint64_t id)
     {
         lock_guard<mutex> lock(entity_access_mutex);
    
-        for (const auto& entity : create_entity)
+        for (const auto& entity : entities)
         {
             if (entity && entity->GetObjectId() == id)
                 return entity;
         }
    
-        static shared_ptr<Entity> empty;
-        return empty;
+        return nullptr;
     }
 
-    const vector<shared_ptr<Entity>>& World::GetEntities()
+    const vector<Entity*>& World::GetEntities()
     {
-        return create_entity;
+        return entities;
     }
 
-    const vector<shared_ptr<Entity>>& World::GetEntitiesLights()
+    const vector<Entity*>& World::GetEntitiesLights()
     {
         return entities_lights;
     }

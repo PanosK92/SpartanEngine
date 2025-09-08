@@ -911,7 +911,7 @@ namespace spartan
     
         auto update_entities = [update_material]()
         {
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (Entity* entity : World::GetEntities())
             {
                 if (entity->GetActive())
                 {
@@ -1001,7 +1001,7 @@ namespace spartan
         };
     
         // directional light always goes in slot 0
-        for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
+        for (Entity* entity : World::GetEntitiesLights())
         {
             if (Light* light_component = entity->GetComponent<Light>())
             {
@@ -1015,7 +1015,7 @@ namespace spartan
         }
     
         // fill remaining lights (skip disabled or out-of-range)
-        for (const shared_ptr<Entity>& entity : World::GetEntitiesLights())
+        for (Entity* entity : World::GetEntitiesLights())
         {
             if (Light* light_component = entity->GetComponent<Light>())
             {
@@ -1087,7 +1087,7 @@ namespace spartan
 
         // build draw calls and sort them
         {  
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (Entity* entity : World::GetEntities())
             {
                 if (!entity->GetActive())
                     continue;

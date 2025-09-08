@@ -129,7 +129,7 @@ namespace
             {
                 if (ImGui::MenuItem("New"))
                 {
-                    spartan::World::Clear();
+                    spartan::World::Shutdown();
                 }
 
                 ImGui::Separator();

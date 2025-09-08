@@ -194,7 +194,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             // render shadow maps using cached renderables
-            for (const shared_ptr<Entity>& entity_light : World::GetEntitiesLights())
+            for (Entity* entity_light : World::GetEntitiesLights())
             {
                 Light* light = entity_light->GetComponent<Light>();
                 if (!light->GetFlag(LightFlags::Shadows) || light->GetIntensityWatt() == 0.0f)
@@ -796,7 +796,7 @@ namespace spartan
 
             // iterate through all the lights
             static float array_slice_index = 0.0f;
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (Entity* entity : World::GetEntities())
             {
                 if (Light* light = entity->GetComponent<Light>())
                 {
@@ -1667,7 +1667,7 @@ namespace spartan
         // append icons from entities
         if (!Engine::IsFlagSet(EngineMode::Playing))
         { 
-            for (const shared_ptr<Entity>& entity : World::GetEntities())
+            for (Entity* entity : World::GetEntities())
             {
                 math::Vector3 pos_world = entity->GetPosition();
                 if (entity->GetComponent<AudioSource>())
@@ -1850,7 +1850,7 @@ namespace spartan
 
         if (Camera* camera = World::GetCamera())
         {
-            if (shared_ptr<Entity> entity_selected = camera->GetSelectedEntity())
+            if (Entity* entity_selected = camera->GetSelectedEntity())
             {
                 cmd_list->BeginTimeblock("outline");
                 {

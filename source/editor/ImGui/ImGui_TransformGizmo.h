@@ -89,7 +89,7 @@ namespace ImGui::TransformGizmo
             return;
 
         // get selected entity
-        std::shared_ptr<spartan::Entity> entity = camera->GetSelectedEntity();
+        spartan::Entity* entity = camera->GetSelectedEntity();
 
         // enable/disable gizmo
         ImGuizmo::Enable(entity != nullptr);
@@ -172,7 +172,7 @@ namespace ImGui::TransformGizmo
             // end of handling - add the current and previous transforms to the command stack
             if (spartan::Input::GetKeyUp(spartan::KeyCode::Click_Left))
             {
-                spartan::CommandStack::Add<spartan::CommandTransform>(entity.get(), position_previous, rotation_previous, scale_previous);
+                spartan::CommandStack::Add<spartan::CommandTransform>(entity, position_previous, rotation_previous, scale_previous);
                 first_use = true;
             }
         }

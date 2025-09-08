@@ -51,15 +51,15 @@ public:
 
     void OnTickVisible() override;
 
-    static void Inspect(const std::shared_ptr<spartan::Entity> entity);
+    static void Inspect(spartan::Entity* entity);
     static void Inspect(const std::shared_ptr<spartan::Material> material);
 
     // inspected resources
-    static std::weak_ptr<spartan::Entity> m_inspected_entity;
+    static spartan::Entity* m_inspected_entity;
     static std::weak_ptr<spartan::Material> m_inspected_material;
 
 private:
-    void ShowEntity(std::shared_ptr<spartan::Entity> transform) const;
+    void ShowEntity(spartan::Entity* transform) const;
     void ShowLight(spartan::Light* light) const;
     void ShowRenderable(spartan::Renderable* renderable) const;
     void ShowPhysics(spartan::Physics* rigid_body) const;

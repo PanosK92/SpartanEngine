@@ -53,7 +53,7 @@ namespace spartan
 
     void CommandTransform::OnApply()
     {
-        shared_ptr<Entity> entity = World::GetEntityById(m_entity_id);
+        Entity* entity = World::GetEntityById(m_entity_id);
         if (!entity)
             return;
 
@@ -64,7 +64,7 @@ namespace spartan
 
     void CommandTransform::OnRevert()
     {
-        shared_ptr<Entity> entity = World::GetEntityById(m_entity_id);
+        Entity* entity = World::GetEntityById(m_entity_id);
         if (!entity)
             return;
 

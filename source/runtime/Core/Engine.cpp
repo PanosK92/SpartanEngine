@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ModelImporter.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Display/Display.h"
+#include "../Game/Game.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -99,6 +100,8 @@ namespace spartan
 
     void Engine::Shutdown()
     {
+        Game::Shutdown();
+
         // the thread pool can hold state from other systems
         // so shut it down first (it waits) to avoid crashes due to race conditions
         ThreadPool::Shutdown();
@@ -107,8 +110,9 @@ namespace spartan
         ResourceCache::UnloadDefaultResources();
 
         World::Shutdown();
-        Renderer::Shutdown();
         PhysicsWorld::Shutdown();
+        Renderer::Shutdown();
+   
         Event::Shutdown();
         Window::Shutdown();
         ImageImporter::Shutdown();

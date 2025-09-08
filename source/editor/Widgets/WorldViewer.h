@@ -34,14 +34,14 @@ public:
     WorldViewer(Editor* editor);
 
     void OnTickVisible() override;
-    void SetSelectedEntity(const std::shared_ptr<spartan::Entity> entity);
+    void SetSelectedEntity(spartan::Entity* entity);
 
 private:
     // tree
     void TreeShow();
     void OnTreeBegin();
     void OnTreeEnd();
-    void TreeAddEntity(std::shared_ptr<spartan::Entity> entity);
+    void TreeAddEntity(spartan::Entity* entity);
     void HandleClicking();
 
     // misc
@@ -51,7 +51,7 @@ private:
     void HandleKeyShortcuts();
 
     // context menu actions
-    static void ActionEntityDelete(const std::shared_ptr<spartan::Entity> entity);
+    static void ActionEntityDelete(spartan::Entity* entity);
     static spartan::Entity* ActionEntityCreateEmpty();
     static void ActionEntityCreateCube();
     static void ActionEntityCreateQuad();
