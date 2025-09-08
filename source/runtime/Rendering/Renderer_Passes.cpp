@@ -115,6 +115,11 @@ namespace spartan
             if (m_transparents_present)
             {
                 bool is_transparent = true;
+
+                /*static bool compute_ocean_spectrum = true;
+                if (compute_ocean_spectrum)*/
+                    Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
+
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_Light(cmd_list_graphics_present, is_transparent);
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
@@ -1064,6 +1069,26 @@ namespace spartan
         
             // for the lifetime of the engine, this will be read as an srv, so transition here
             tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ComputeInitialSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+        
+        cmd_list->BeginTimeblock("ocean_intial_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_initial_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_initial_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+        
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+            cmd_list->Dispatch(initial_spectrum);
+        
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }

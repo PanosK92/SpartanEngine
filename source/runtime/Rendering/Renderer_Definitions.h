@@ -137,6 +137,7 @@ namespace spartan
         visibility  = 6,
         sb_spd      = 7,
         tex_spd     = 8,
+        ocean_initial_spectrum = 9,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -190,6 +191,7 @@ namespace spartan
         icon_c,
         dithering_c,
         transparency_reflection_refraction_c,
+        ocean_initial_spectrum_c,
         max
     };
     
@@ -222,6 +224,7 @@ namespace spartan
         outline,
         shading_rate,
         shadow_atlas,
+        ocean_initial_spectrum,
         max
     };
 

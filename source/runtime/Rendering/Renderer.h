@@ -161,6 +161,8 @@ namespace spartan
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
         static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
+        // passes - ocean
+        static void Pass_ComputeInitialSpectrum(RHI_CommandList* cmd_list);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
