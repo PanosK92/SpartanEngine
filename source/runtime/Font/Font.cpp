@@ -84,7 +84,7 @@ namespace spartan
     void Font::AddText(const char* text, const Vector2& position_screen_percentage)
     {
         // define a maximum vertex limit
-        const uint32_t max_vertices = 1'000'000;
+        const uint32_t max_vertices = 100'000;
         uint32_t vertex_offset      = static_cast<uint32_t>(m_vertices.size());
 
         const float viewport_width  = Renderer::GetViewport().width;
