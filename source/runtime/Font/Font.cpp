@@ -84,7 +84,7 @@ namespace spartan
     void Font::AddText(const char* text, const Vector2& position_screen_percentage)
     {
         // define a maximum vertex limit
-        const uint32_t max_vertices = 10'000'000;
+        const uint32_t max_vertices = 1'000'000;
         uint32_t vertex_offset      = static_cast<uint32_t>(m_vertices.size());
 
         const float viewport_width  = Renderer::GetViewport().width;
@@ -107,10 +107,7 @@ namespace spartan
 
             // check if adding this character would exceed the vertex limit
             if (m_vertices.size() + 6 > max_vertices)
-            {
-                SP_LOG_WARNING("Text input too large, vertex limit (%u) reached. Truncating text.", max_vertices);
-                break;
-            }
+                return;
     
             Glyph& glyph = m_glyphs[character];
     
