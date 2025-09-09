@@ -103,7 +103,7 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
 float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
 {
     // base bias per cascade: near/far
-    float base_bias = (cascade_index == 0) ? 400.0f : 1000.0f;
+    float base_bias = (cascade_index == 0) ? 60.0f : 600.0f;
     // slope factor
     float slope_scale = saturate(1.0f - light.n_dot_l);
     slope_scale = slope_scale * slope_scale; // stronger at grazing angles
