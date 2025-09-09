@@ -255,10 +255,6 @@ namespace spartan
             return;
 
         m_is_active = active;
-
-        // player's flaslight can be enabled/disabled during gameplay, so we need to notify the renderer
-        // I don't like that this is here, need to fix
-        SP_FIRE_EVENT(EventType::LightOnChanged);
     }
     
     Component* Entity::AddComponent(const ComponentType type)

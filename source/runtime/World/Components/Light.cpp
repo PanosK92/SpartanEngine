@@ -107,20 +107,21 @@ namespace spartan
 
     void Light::OnTick()
     {
-        // update matrices
+        // detect transform change
         bool update_matrices = false;
         if (GetEntity()->GetTimeSinceLastTransform() <= 0.1f)
         {
             update_matrices = true;
         }
 
+        // detect day night cycle change
         if (m_light_type == LightType::Directional)
         {
             // day night cycle
             if (GetFlag(LightFlags::DayNightCycle))
             {
                 Quaternion rotation = Quaternion::FromAxisAngle(
-                    Vector3::Right,                                                                                // x-axis rotation (left to right)
+                    Vector3::Right,                                                                               // x-axis rotation (left to right)
                     (World::GetTimeOfDay(GetFlag(LightFlags::RealTimeCycle)) * 360.0f - 90.0f) * math::deg_to_rad // angle in radians, -90° offset for horizon
                 );
 
@@ -133,6 +134,13 @@ namespace spartan
             {
                 update_matrices = camera->GetEntity()->GetTimeSinceLastTransform() < 0.1f ? true : update_matrices;
             }
+        }
+
+        // detect active state change
+        if (m_is_active_previous_frame != GetEntity()->GetActive())
+        {
+            m_is_active_previous_frame = GetEntity()->GetActive();
+            update_matrices = true;
         }
 
         if (update_matrices)
