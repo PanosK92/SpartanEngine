@@ -38,7 +38,7 @@ namespace spartan
     private:
         inline static bool m_validation_layer_enabled        = false; // enables vulkan diagnostic layers, incurs significant per-draw cpu performance overhead
         inline static bool m_gpu_assisted_validation_enabled = false; // performs gpu-based validation with substantial cpu and gpu performance impact
-        inline static bool m_logging_to_file_enabled         = true; // writes diagnostic logs to disk, causes high cpu overhead due to file I/O operations
+        inline static bool m_logging_to_file_enabled         = false; // writes diagnostic logs to disk, causes high cpu overhead due to file I/O operations
         inline static bool m_breadcrumbs_enabled             = false; // tracks gpu crash information in breadcrumbs.txt, minimal overhead (amd gpus only) - crashes in debug mode - outputs unreliable data in release mode - issue reported to amd
         inline static bool m_renderdoc_enabled               = true; // integrates RenderDoc graphics debugging, introduces high cpu overhead from api wrapping
         inline static bool m_gpu_marking_enabled             = true;  // enables gpu resource marking with negligible performance cost
