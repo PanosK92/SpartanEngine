@@ -822,6 +822,56 @@ void Properties::ShowMaterial(Material* material) const
             show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
             show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
         }
+
+        // ocean properties
+        if (material->GetProperty(MaterialProperty::IsOcean))
+        {
+            const auto show_jonswap_params = [this, &material](const char* name, const char* tooltip, const JonswapParameters params)
+            {
+                bool show_modifier = params != JonswapParameters::Max;
+
+                // name
+                if (name)
+                {
+                    ImGui::Text(name);
+
+                    if (tooltip)
+                    {
+                        ImGuiSp::tooltip(tooltip);
+                    }
+
+                    if (show_modifier)
+                    {
+                        ImGui::SameLine(column_pos_x);
+                    }
+                }
+
+                if (show_modifier)
+                {
+                    float value = material->GetOceanProperty(params);
+
+                    float min = 0.0f;
+
+                    // this custom slider already has a unique id
+                    ImGuiSp::draw_float_wrap("", &value, 0.004f, min);
+
+                    material->SetOceanProperty(params, value);
+                }
+            };
+
+            show_jonswap_params("Alpha", "", JonswapParameters::Alpha);
+            show_jonswap_params("Angle", "", JonswapParameters::Angle);
+            show_jonswap_params("Fetch", "", JonswapParameters::Fetch);
+            show_jonswap_params("Gamma", "", JonswapParameters::Gamma);
+            show_jonswap_params("Peak Omega", "", JonswapParameters::PeakOmega);
+            show_jonswap_params("Repeat Time", "", JonswapParameters::RepeatTime);
+            show_jonswap_params("Scale", "", JonswapParameters::Scale);
+            show_jonswap_params("Short Waves Fade", "", JonswapParameters::ShortWavesFade);
+            show_jonswap_params("Spread Blend", "", JonswapParameters::SpreadBlend);
+            show_jonswap_params("Swell", "", JonswapParameters::Swell);
+            show_jonswap_params("Wind Direction", "", JonswapParameters::WindDirection);
+            show_jonswap_params("Wind Speed", "", JonswapParameters::WindSpeed);
+        }
         
         // uv
         {
