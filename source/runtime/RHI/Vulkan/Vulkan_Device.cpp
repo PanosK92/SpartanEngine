@@ -340,21 +340,16 @@ namespace spartan
     namespace validation_layer
     {
         // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.296.0/windows/layer_configuration.html
-        static const char* name = "VK_LAYER_KHRONOS_validation";
-        
-        // core validation settings
-        static const VkBool32 setting_validate_core           = VK_TRUE;
-        static const VkBool32 setting_validate_sync           = VK_TRUE;
-        static const VkBool32 setting_thread_safety           = VK_TRUE;
-        static const VkBool32 setting_enable_message_limit    = VK_TRUE;
-        static const int32_t  setting_duplicate_message_limit = 10;
-        
-        // debug strings
-        static const char* setting_debug_action[] = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
-        static const char* setting_report_flags[] = { "info", "warn", "perf", "error", "debug" };
-        
-        // validation feature strings
-        static const char* static_enables[] =
+
+        static const char* layer_name                        = "VK_LAYER_KHRONOS_validation";
+        static const VkBool32 setting_validate_core          = VK_TRUE;
+        static const VkBool32 setting_validate_sync          = VK_TRUE;
+        static const VkBool32 setting_thread_safety          = VK_TRUE;
+        static const VkBool32 setting_enable_message_limit   = VK_TRUE;
+        static const int32_t setting_duplicate_message_limit = 10;
+        static const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
+        static const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };
+        static const char* setting_features[]                =
         {
             "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT",
             "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT",
@@ -364,62 +359,62 @@ namespace spartan
         
         static vector<VkLayerSettingEXT> settings_storage; // persistent storage for VkLayerSettingEXT
         vector<VkLayerSettingEXT>& get_settings()
+        {
+            SP_ASSERT(Debugging::IsValidationLayerEnabled());
+        
+            // check layer availability
             {
-                SP_ASSERT(Debugging::IsValidationLayerEnabled());
-            
-                // check layer availability
+                uint32_t layer_count;
+                vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+        
+                vector<VkLayerProperties> layers(layer_count);
+                vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+        
+                bool validation_layer_unavailable = true;
+                for (const VkLayerProperties& layer : layers)
                 {
-                    uint32_t layer_count;
-                    vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-            
-                    vector<VkLayerProperties> layers(layer_count);
-                    vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-            
-                    bool validation_layer_unavailable = true;
-                    for (const VkLayerProperties& layer : layers)
+                    if (strcmp(layer_name, layer.layerName) == 0)
                     {
-                        if (strcmp(name, layer.layerName) == 0)
-                        {
-                            validation_layer_unavailable = false;
-                            break;
-                        }
+                        validation_layer_unavailable = false;
+                        break;
                     }
-            
-                    SP_ASSERT_MSG(!validation_layer_unavailable, 
-                        "Please install the Vulkan SDK, ensure correct environment variables and restart your machine: https://vulkan.lunarg.com/sdk/home");
                 }
-            
-                // clear previous settings
-                settings_storage.clear();
-            
-                // fill static settings
-                settings_storage = {
-                    { name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },
-                    { name, "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
-                    { name, "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
-                    { name, "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
-                    { name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },
-                    { name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
-                    { name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit },
-                    { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 4, static_enables }
-                };
-            
-                // optionally append GPU-assisted validation
-                if (Debugging::IsGpuAssistedValidationEnabled())
-                {
-                    static const char* setting_enable_gpu_assisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
-            
-                    // append to the enables array safely
-                    static const char* combined_enables[5];
-                    for (int i = 0; i < 4; ++i) combined_enables[i] = static_enables[i];
-                    combined_enables[4] = setting_enable_gpu_assisted;
-            
-                    // replace the last entry in settings_storage
-                    settings_storage.back() = { name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 5, combined_enables };
-                }
-            
-                return settings_storage;
+        
+                SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK, ensure correct environment variables and restart your machine: https://vulkan.lunarg.com/sdk/home");
             }
+
+            // fill static settings
+            settings_storage =
+            {
+                { layer_name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },
+                { layer_name, "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
+                { layer_name, "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
+                { layer_name, "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
+                { layer_name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },
+                { layer_name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
+                { layer_name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit },
+                { layer_name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 4, setting_features }
+            };
+        
+            // optionally append GPU-assisted validation
+            if (Debugging::IsGpuAssistedValidationEnabled())
+            {
+                static const char* setting_enable_gpu_assisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
+        
+                // append to the enables array safely
+                static const char* combined_enables[5];
+                for (int i = 0; i < 4; ++i)
+                {
+                    combined_enables[i] = setting_features[i];
+                }
+                combined_enables[4] = setting_enable_gpu_assisted;
+        
+                // replace the last entry in settings_storage
+                settings_storage.back() = { layer_name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 5, combined_enables };
+            }
+        
+            return settings_storage;
+        }
 
         namespace logging
         {
@@ -1473,7 +1468,7 @@ namespace spartan
             info_instance.enabledExtensionCount     = static_cast<uint32_t>(extensions_instance.size());
             info_instance.ppEnabledExtensionNames   = extensions_instance.data();
             info_instance.enabledLayerCount         = Debugging::IsValidationLayerEnabled() ? 1 : 0;
-            info_instance.ppEnabledLayerNames       = Debugging::IsValidationLayerEnabled() ? &validation_layer::name : nullptr;
+            info_instance.ppEnabledLayerNames       = Debugging::IsValidationLayerEnabled() ? &validation_layer::layer_name : nullptr;
 
             // settings
             VkLayerSettingsCreateInfoEXT info_settings = {};
