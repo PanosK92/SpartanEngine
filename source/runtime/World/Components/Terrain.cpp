@@ -344,7 +344,7 @@ namespace spartan
                         else if (min_dist < border_backface_width + border_plateau_width + border_blend_width)
                         {
                             // blend down inward from plateau to normal terrain
-                            float blend = 1.0f - static_cast<float>(min_dist - (border_backface_width + border_plateau_width)) / static_cast<float>(border_blend_width);
+                            float blend     = 1.0f - static_cast<float>(min_dist - (border_backface_width + border_plateau_width)) / static_cast<float>(border_blend_width);
                             height_increase = blend * border_height_max;
                         }
                         // add to existing height for natural integration
@@ -518,14 +518,25 @@ namespace spartan
         
         void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 50'000)
         {
+            // erosion parameters
+            const float inertia          = 0.05f;
+            const float capacity_factor  = 1.0f;
+            const float min_slope        = 0.01f;
+            const float deposition_rate  = 0.05f;
+            const float erosion_rate     = 0.2f;
+            const float evaporation_rate = 0.05f;
+            const float gravity          = 4.0f;
+            const uint32_t max_steps     = 30;
+
+            const float wind_strength    = 0.3f;
             auto get_height = [&positions, width, height](float x, float z) -> float
             {
-                int ix = static_cast<int>(floor(x));
-                int iz = static_cast<int>(floor(z));
+                int ix   = static_cast<int>(floor(x));
+                int iz   = static_cast<int>(floor(z));
                 float fx = x - static_cast<float>(ix);
                 float fz = z - static_cast<float>(iz);
-                ix = clamp(ix, 0, static_cast<int>(width) - 2);
-                iz = clamp(iz, 0, static_cast<int>(height) - 2);
+                ix       = clamp(ix, 0, static_cast<int>(width) - 2);
+                iz       = clamp(iz, 0, static_cast<int>(height) - 2);
         
                 float h00 = positions[static_cast<size_t>(iz) * width + ix].y;
                 float h10 = positions[static_cast<size_t>(iz) * width + ix + 1].y;
@@ -534,6 +545,7 @@ namespace spartan
         
                 float h0 = h00 + fx * (h10 - h00);
                 float h1 = h01 + fx * (h11 - h01);
+
                 return h0 + fz * (h1 - h0);
             };
         
@@ -550,37 +562,29 @@ namespace spartan
                 float w10 = fx * (1.0f - fz);
                 float w01 = (1.0f - fx) * fz;
                 float w11 = fx * fz;
+
+                // limit how deep a height adjustment can be in a single step to avoid extreme spikes
+                // ideally, you also want to adjust erosion paramters so that clamping is only needed for edge cases
+                float max_step = 0.5f;
+                auto apply     = [&](size_t idx, float delta)
+                {
+                    float& h  = positions[idx].y;
+                    h        += clamp(delta, -max_step, max_step);
+                    h         = max(h, parameters::level_sea - 10.0f);
+                };
             
-                positions[static_cast<size_t>(iz) * width + ix].y         += amount * w00;
-                positions[static_cast<size_t>(iz) * width + ix + 1].y     += amount * w10;
-                positions[static_cast<size_t>(iz + 1) * width + ix].y     += amount * w01;
-                positions[static_cast<size_t>(iz + 1) * width + ix + 1].y += amount * w11;
-            
-                // clamp heights to prevent extreme negative values
-                float min_height = parameters::level_sea - 50.0f;
-                positions[static_cast<size_t>(iz) * width + ix].y         = max(positions[static_cast<size_t>(iz) * width + ix].y, min_height);
-                positions[static_cast<size_t>(iz) * width + ix + 1].y     = max(positions[static_cast<size_t>(iz) * width + ix + 1].y, min_height);
-                positions[static_cast<size_t>(iz + 1) * width + ix].y     = max(positions[static_cast<size_t>(iz + 1) * width + ix].y, min_height);
-                positions[static_cast<size_t>(iz + 1) * width + ix + 1].y = max(positions[static_cast<size_t>(iz + 1) * width + ix + 1].y, min_height);
+                apply(static_cast<size_t>(iz) * width + ix,         amount * w00);
+                apply(static_cast<size_t>(iz) * width + ix + 1,     amount * w10);
+                apply(static_cast<size_t>(iz + 1) * width + ix,     amount * w01);
+                apply(static_cast<size_t>(iz + 1) * width + ix + 1, amount * w11);
             };
-                    
+
             auto get_gradient = [get_height](float x, float z) -> Vector2
             {
                 float hx = (get_height(x + 1.0f, z) - get_height(x - 1.0f, z)) / 2.0f;
                 float hz = (get_height(x, z + 1.0f) - get_height(x, z - 1.0f)) / 2.0f;
                 return Vector2(hx, hz);
             };
-        
-            // erosion parameters
-            const float inertia          = 0.05f;
-            const float capacity_factor  = 3.0f;
-            const float min_slope        = 0.01f;
-            const float deposition_rate  = 0.1f;
-            const float erosion_rate     = 0.3f;
-            const float evaporation_rate = 0.05f;
-            const float gravity          = 4.0f;
-            const uint32_t max_steps     = 30;
-            const float wind_strength    = 0.3f;
         
             // random number generation
             mt19937 gen(random_device{}());
@@ -608,15 +612,17 @@ namespace spartan
                     if (water < 0.01f)
                         break;
         
-                    float height = get_height(pos_x, pos_z);
+                    float height     = get_height(pos_x, pos_z);
                     Vector2 gradient = get_gradient(pos_x, pos_z);
-                    float slope = gradient.Length();
+                    float slope      = gradient.Length();
                     if (slope < min_slope)
+                    {
                         slope = min_slope;
-        
+                    }
+
                     // update direction
                     Vector2 new_dir = -gradient.Normalized();
-                    dir = (dir * inertia + new_dir * (1.0f - inertia)).Normalized();
+                    dir             = (dir * inertia + new_dir * (1.0f - inertia)).Normalized();
         
                     // proposed new position
                     float new_x      = pos_x + dir.x;
@@ -627,7 +633,7 @@ namespace spartan
                     // if moving uphill or stuck, deposit a fraction and stop (reduces spikes)
                     if (delta_h >= 0.0f || dir.LengthSquared() < 0.0001f)
                     {
-                        float deposit_amount = sediment * deposition_rate;  // only deposit a fraction, discard rest (reduce spikes)
+                        float deposit_amount = sediment * deposition_rate; // only deposit a fraction, discard rest (reduce spikes)
                         add_height(pos_x, pos_z, deposit_amount);
                         break;
                     }
@@ -652,7 +658,7 @@ namespace spartan
                     else
                     {
                         float erode_amount = (capacity - sediment) * erosion_rate;
-                        erode_amount = min(erode_amount, -delta_h); // can't erode more than height diff
+                        erode_amount       = min(erode_amount, -delta_h); // can't erode more than height diff
                         add_height(pos_x, pos_z, -erode_amount);
                         sediment += erode_amount;
                     }
