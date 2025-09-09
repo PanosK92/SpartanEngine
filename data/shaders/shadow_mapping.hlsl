@@ -100,6 +100,25 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
     return shadow_factor * g_shadow_sample_reciprocal;
 }
 
+float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
+{
+    // base bias per cascade: near/far
+    float base_bias = (cascade_index == 0) ? 400.0f : 1000.0f;
+    // slope factor
+    float slope_scale = saturate(1.0f - light.n_dot_l);
+    slope_scale = slope_scale * slope_scale; // stronger at grazing angles
+
+    // texel scale in world units
+    float texel_size = light.atlas_texel_size[cascade_index].x; // assuming square texels
+
+    float3 normal_offset = surface.normal * base_bias * slope_scale * texel_size;
+
+    // clamp to avoid over-biasing
+    normal_offset = clamp(normal_offset, -0.5f * base_bias, 0.5f * base_bias);
+
+    return normal_offset;
+}
+
 float compute_shadow(Surface surface, Light light)
 {
     float3 to_light = light.position - surface.position;
@@ -110,24 +129,23 @@ float compute_shadow(Surface surface, Light light)
     if (light.is_point() || light.is_spot())
     {
         fade = saturate(1.0f - dist_sq / (light.far * light.far));
-        fade = fade * fade; // quadratic falloff for smooth transition
+        fade = fade * fade; // quadratic falloff
         if (fade <= 0.0f)
             return 1.0f; // fully lit
     }
 
-    float3 normal_offset_bias = surface.normal * (1.0f - saturate(light.n_dot_l)) * 0.04f;
-    float3 position_world     = surface.position + normal_offset_bias;
-    float shadow              = 1.0f;
+    float shadow = 1.0f;
 
     if (light.is_point())
     {
-        float3 light_to_pixel  = position_world - light.position;
-        float3 abs_dir         = abs(light_to_pixel);
+        float3 position_world = surface.position + compute_normal_offset(surface, light, 0);
+        float3 light_to_pixel = position_world - light.position;
+        float3 abs_dir        = abs(light_to_pixel);
 
-        // determine the cube face
+        // determine cube face
         uint face_index = (abs_dir.x >= abs_dir.y && abs_dir.x >= abs_dir.z) ? (light_to_pixel.x > 0 ? 0u : 1u) :
                           (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0 ? 2u : 3u) :
-                                                                               (light_to_pixel.z > 0 ? 4u : 5u);
+                                                                                (light_to_pixel.z > 0 ? 4u : 5u);
 
         float4 clip_pos = mul(float4(position_world, 1.0f), light.transform[face_index]);
         float3 ndc      = clip_pos.xyz / clip_pos.w;
@@ -140,6 +158,7 @@ float compute_shadow(Surface surface, Light light)
     else // directional / spot
     {
         const uint near_cascade = 0;
+        float3 position_world   = surface.position + compute_normal_offset(surface, light, near_cascade);
         float4 clip_pos_near    = mul(float4(position_world, 1.0f), light.transform[near_cascade]);
         float3 ndc_near         = clip_pos_near.xyz / clip_pos_near.w;
         float2 uv_near          = ndc_to_uv(ndc_near.xy);
@@ -148,16 +167,16 @@ float compute_shadow(Surface surface, Light light)
 
         if (light.is_directional())
         {
-            float3 normal_offset_far  = surface.normal * (1.0f - saturate(light.n_dot_l)) * 0.5f;
-            float3 position_world_far = surface.position + normal_offset_far;
-            const uint far_cascade    = 1;
+            const uint far_cascade = 1;
+            float3 position_world_far = surface.position + compute_normal_offset(surface, light, far_cascade);
             float4 clip_pos_far       = mul(float4(position_world_far, 1.0f), light.transform[far_cascade]);
             float3 ndc_far            = clip_pos_far.xyz / clip_pos_far.w;
             float2 uv_far             = ndc_to_uv(ndc_far.xy);
             float  shadow_far         = vogel_depth(light, surface, float3(uv_far, far_cascade), ndc_far.z, 4.0f);
-            float edge_dist           = max(abs(ndc_near.x), abs(ndc_near.y));
-            float blend_factor        = smoothstep(0.9f, 1.0f, edge_dist);
-            shadow                    = lerp(shadow_near, shadow_far, blend_factor);
+
+            float edge_dist    = max(abs(ndc_near.x), abs(ndc_near.y));
+            float blend_factor = smoothstep(0.9f, 1.0f, edge_dist);
+            shadow             = lerp(shadow_near, shadow_far, blend_factor);
         }
 
         // apply range fade for spot light
@@ -167,3 +186,4 @@ float compute_shadow(Surface surface, Light light)
 
     return shadow;
 }
+

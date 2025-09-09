@@ -41,8 +41,7 @@ namespace spartan
     namespace
     {
         // directional matrix parameters
-        const float cascade_near_half_extent = 20.0f;
-        const float cascade_far_half_extent  = 256.0f;
+        const float cascade_near_half_extent = 50.0f;
         const float cascade_depth            = 1000.0f;
 
         float get_sensible_range(const LightType type)
@@ -399,6 +398,7 @@ namespace spartan
         UpdateViewMatrix();
         UpdateProjectionMatrix();
         UpdateBoundingBox();
+
         SP_FIRE_EVENT(EventType::LightOnChanged);
     }
 
@@ -412,21 +412,50 @@ namespace spartan
             if (!camera)
                 return;
     
-            // both near and far cascades follow the camera
+            // near cascade (tight, camera following)
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
             Vector3 position   = camera_pos - GetEntity()->GetForward() * cascade_depth * 0.5f;
             m_matrix_view[0]   = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
             m_matrix_view[1]   = m_matrix_view[0];
-    
-            // compute shadow extents inline
-            float extents[2] = { cascade_near_half_extent, cascade_far_half_extent };
-            for (int i = 0; i < 2; i++)
+
+            // far cascade (world bounds in light space)
             {
-                float rect_width       = m_atlas_rectangles[i].width;
-                float texel_size_world = (2.0f * extents[i]) / rect_width; // world units per texel
-                m_matrix_view[i].m30   = round(m_matrix_view[i].m30 / texel_size_world) * texel_size_world; // snap x-translation
-                m_matrix_view[i].m31   = round(m_matrix_view[i].m31 / texel_size_world) * texel_size_world; // snap y-translation
-                // z-translation (m32) remains unchanged for orthographic projection
+                // get world bounds
+                BoundingBox& world_box = World::GetBoundingBox();
+                array<Vector3, 8> corners_world;
+                world_box.GetCorners(&corners_world);
+
+                // transform into light space (using far cascade view)
+                m_far_cascade_min = Vector3::Infinity;
+                m_far_cascade_max = Vector3::InfinityNeg;
+                for (const Vector3& corner : corners_world)
+                {
+                    Vector3 corner_ls = corner * m_matrix_view[1];
+                    m_far_cascade_min = Vector3::Min(m_far_cascade_min, corner_ls);
+                    m_far_cascade_max = Vector3::Max(m_far_cascade_max, corner_ls);
+                }
+            }
+    
+            // compute shadow extents
+            {
+                // compute shadow extents
+                float extents[2];
+
+                // near cascade: fixed
+                extents[0] = cascade_near_half_extent;
+
+                // far cascade: compute from world bounds in light space
+                Vector3 far_extent = (m_far_cascade_max - m_far_cascade_min) * 0.5f;
+                extents[1]         = max(far_extent.x, far_extent.y); // use largest xy extent for square shadow map
+                
+                for (int i = 0; i < 2; i++)
+                {
+                    float rect_width       = m_atlas_rectangles[i].width;
+                    float texel_size_world = (2.0f * extents[i]) / rect_width; // world units per texel
+                    m_matrix_view[i].m30   = round(m_matrix_view[i].m30 / texel_size_world) * texel_size_world; // snap x
+                    m_matrix_view[i].m31   = round(m_matrix_view[i].m31 / texel_size_world) * texel_size_world; // snap y
+                    // z-translation (m32) remains unchanged for orthographic projection
+                }
             }
         }
         else if (m_light_type == LightType::Spot)
@@ -454,20 +483,18 @@ namespace spartan
     {
         if (m_light_type == LightType::Directional)
         {
-            Camera* camera = World::GetCamera();
-            if (!camera)
-                return;
-
+            // near cascade (tight, camera following)
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -cascade_near_half_extent, cascade_near_half_extent, // left, right
-                -cascade_near_half_extent, cascade_near_half_extent, // bottom, top
-                cascade_depth, 0.0f                                  // reverse-z near plane, far plane 0
+                -cascade_near_half_extent, cascade_near_half_extent,
+                -cascade_near_half_extent, cascade_near_half_extent,
+                cascade_depth, 0.0f
             );
 
+            // far cascade (world bounds in light space)
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
-                -cascade_far_half_extent, cascade_far_half_extent,
-                -cascade_far_half_extent, cascade_far_half_extent,
-                cascade_depth, 0.0f
+                m_far_cascade_min.x, m_far_cascade_max.x, // left, right
+                m_far_cascade_min.y, m_far_cascade_max.y, // bottom, top
+                m_far_cascade_max.z, m_far_cascade_min.z  // reverse-z near, far
             );
 
             m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);
@@ -475,8 +502,8 @@ namespace spartan
         }
         else // spot/point
         {
-            const float aspect_ratio     = 1;
-            const float fov_y_radians    = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2 + 0.02f; // small epsilon to hide face seems
+            const float aspect_ratio  = 1;
+            const float fov_y_radians = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : math::pi_div_2 + 0.02f; // small epsilon to hide face seems
 
             for (uint32_t i = 0; i < GetSliceCount(); i++)
             {

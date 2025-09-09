@@ -527,8 +527,8 @@ namespace spartan
             const float evaporation_rate = 0.05f;
             const float gravity          = 4.0f;
             const uint32_t max_steps     = 30;
-
             const float wind_strength    = 0.3f;
+
             auto get_height = [&positions, width, height](float x, float z) -> float
             {
                 int ix   = static_cast<int>(floor(x));
@@ -583,6 +583,7 @@ namespace spartan
             {
                 float hx = (get_height(x + 1.0f, z) - get_height(x - 1.0f, z)) / 2.0f;
                 float hz = (get_height(x, z + 1.0f) - get_height(x, z - 1.0f)) / 2.0f;
+
                 return Vector2(hx, hz);
             };
         
@@ -652,6 +653,7 @@ namespace spartan
                     if (sediment > capacity)
                     {
                         float deposit_amount = (sediment - capacity) * deposition_rate;
+
                         add_height(pos_x, pos_z, deposit_amount);
                         sediment -= deposit_amount;
                     }
@@ -659,6 +661,7 @@ namespace spartan
                     {
                         float erode_amount = (capacity - sediment) * erosion_rate;
                         erode_amount       = min(erode_amount, -delta_h); // can't erode more than height diff
+
                         add_height(pos_x, pos_z, -erode_amount);
                         sediment += erode_amount;
                     }
@@ -941,7 +944,7 @@ namespace spartan
             height_max                  = parameters::level_snow;       // stop when snow shows up
             scale_min                   = 1.0f;
             scale_max                   = 1.5f;
-            height_variation            = 5.0f;                        // ensure grass doesn't hit a min or max limit and form a perfect line
+            height_variation            = 5.0f;                         // ensure grass doesn't hit a min or max limit and form a perfect line
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
