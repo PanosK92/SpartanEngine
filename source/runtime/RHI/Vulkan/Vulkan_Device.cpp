@@ -240,15 +240,11 @@ namespace spartan
             "VK_EXT_memory_budget",         // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate", 
             "VK_EXT_hdr_metadata",          
-            "VK_EXT_robustness2",           
-            "VK_KHR_external_memory",       // to share images with Intel Open Image Denoise
-            #if defined(_WIN32)             
-            "VK_KHR_external_memory_win32", // external memory handle type, linux alternative: VK_KHR_external_memory_fd
-            #endif
+            "VK_KHR_robustness2",           
             // AMD FidelityFX relies on "VK_KHR_get_memory_requirements2" because it explicitly calls the extension function
             // vkGetBufferMemoryRequirements2KHR instead of the core Vulkan 1.1+ function vkGetBufferMemoryRequirements2,
             // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
-            "VK_KHR_synchronization2", 
+            "VK_KHR_synchronization2",
             "VK_KHR_get_memory_requirements2",
             "VK_EXT_mutable_descriptor_type", // added for XeSS mutable descriptor support
         };
@@ -344,70 +340,86 @@ namespace spartan
     namespace validation_layer
     {
         // layers configuration: https://vulkan.lunarg.com/doc/view/1.3.296.0/windows/layer_configuration.html
-        const char* name = "VK_LAYER_KHRONOS_validation";
-
-        const VkBool32 setting_validate_core          = VK_TRUE;                                                       // enable core validation checks
-        const VkBool32 setting_validate_sync          = VK_TRUE;                                                       // enable synchronization validation checks
-        const VkBool32 setting_thread_safety          = VK_TRUE;                                                       // enable thread safety checks
-        const char* setting_debug_action[]            = { "VK_DBG_LAYER_ACTION_LOG_MSG" };                             // specify action to log messages from validation layers
-        const char* setting_report_flags[]            = { "info", "warn", "perf", "error", "debug" };                  // specify types of messages to be reported by validation layers
-        const VkBool32 setting_enable_message_limit   = VK_TRUE;                                                       // enable limiting of duplicate validation messages
-        const int32_t setting_duplicate_message_limit = 10;                                                            // set the limit for duplicate validation messages
-        const char* setting_synchronization           = "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT"; // enable synchronization validation 
-        const char* setting_best_practices            = "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT";             // enable best practices
-        const char* setting_vendor_amd                = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD";                 // enable AMD-specific best practices
-        const char* setting_vendor_nvidia             = "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA";              // enable Nvidia-specific best practices
-
-        vector<VkLayerSettingEXT> get_settings()
+        static const char* name = "VK_LAYER_KHRONOS_validation";
+        
+        // core validation settings
+        static const VkBool32 setting_validate_core           = VK_TRUE;
+        static const VkBool32 setting_validate_sync           = VK_TRUE;
+        static const VkBool32 setting_thread_safety           = VK_TRUE;
+        static const VkBool32 setting_enable_message_limit    = VK_TRUE;
+        static const int32_t  setting_duplicate_message_limit = 10;
+        
+        // debug strings
+        static const char* setting_debug_action[] = { "VK_DBG_LAYER_ACTION_LOG_MSG" };
+        static const char* setting_report_flags[] = { "info", "warn", "perf", "error", "debug" };
+        
+        // validation feature strings
+        static const char* static_enables[] =
         {
-            SP_ASSERT(Debugging::IsValidationLayerEnabled());
-
-            // check layer availability
+            "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT",
+            "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT",
+            "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD",
+            "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA"
+        };
+        
+        static vector<VkLayerSettingEXT> settings_storage; // persistent storage for VkLayerSettingEXT
+        vector<VkLayerSettingEXT>& get_settings()
             {
-                uint32_t layer_count;
-                vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-                vector<VkLayerProperties> layers(layer_count);
-                vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-                bool validation_layer_unavailable = true;
-                for (const VkLayerProperties& layer : layers)
+                SP_ASSERT(Debugging::IsValidationLayerEnabled());
+            
+                // check layer availability
                 {
-                    if (strcmp(name, layer.layerName) == 0)
+                    uint32_t layer_count;
+                    vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+            
+                    vector<VkLayerProperties> layers(layer_count);
+                    vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+            
+                    bool validation_layer_unavailable = true;
+                    for (const VkLayerProperties& layer : layers)
                     {
-                        validation_layer_unavailable = false;
-                        break;
+                        if (strcmp(name, layer.layerName) == 0)
+                        {
+                            validation_layer_unavailable = false;
+                            break;
+                        }
                     }
+            
+                    SP_ASSERT_MSG(!validation_layer_unavailable, 
+                        "Please install the Vulkan SDK, ensure correct environment variables and restart your machine: https://vulkan.lunarg.com/sdk/home");
                 }
-
-                SP_ASSERT_MSG(!validation_layer_unavailable, "Please install the Vulkan SDK, ensure correct environment variables and restart your machine: https://vulkan.lunarg.com/sdk/home");
+            
+                // clear previous settings
+                settings_storage.clear();
+            
+                // fill static settings
+                settings_storage = {
+                    { name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },
+                    { name, "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },
+                    { name, "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },
+                    { name, "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },
+                    { name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },
+                    { name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
+                    { name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit },
+                    { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 4, static_enables }
+                };
+            
+                // optionally append GPU-assisted validation
+                if (Debugging::IsGpuAssistedValidationEnabled())
+                {
+                    static const char* setting_enable_gpu_assisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
+            
+                    // append to the enables array safely
+                    static const char* combined_enables[5];
+                    for (int i = 0; i < 4; ++i) combined_enables[i] = static_enables[i];
+                    combined_enables[4] = setting_enable_gpu_assisted;
+            
+                    // replace the last entry in settings_storage
+                    settings_storage.back() = { name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 5, combined_enables };
+                }
+            
+                return settings_storage;
             }
-
-            // create settings
-            vector<VkLayerSettingEXT> settings =
-            {
-                { name, "validate_core",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_core },           // enable core validation checks
-                { name, "validate_sync",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_validate_sync },           // enable synchronization validation checks
-                { name, "thread_safety",           VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_thread_safety },           // enable thread safety checks
-                { name, "debug_action",            VK_LAYER_SETTING_TYPE_STRING_EXT, 1, setting_debug_action },             // specify action to log messages
-                { name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },             // specify types of messages to report
-                { name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },    // enable limiting duplicate messages
-                { name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit }, // set limit for duplicate messages
-                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_synchronization },         // enable synchronization validation
-                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_best_practices },          // enable best practices
-                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_vendor_amd },              // enable AMD-specific best practices
-                { name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_vendor_nvidia }            // enable Nvidia-specific best practices
-            };
-
-            // enable gpu-assisted validation
-            if (Debugging::IsGpuAssistedValidationEnabled())
-            {
-                const char* setting_enable_gpu_assisted = "VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT";
-                settings.push_back({ name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 1, &setting_enable_gpu_assisted });
-            }
-
-            return settings;
-        }
 
         namespace logging
         {
