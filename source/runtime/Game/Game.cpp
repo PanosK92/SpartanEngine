@@ -295,6 +295,89 @@ namespace spartan
 
                 return water;
             }
+
+            Entity* ocean(const Vector3& position, float dimension, uint32_t density)
+            {
+                // entity
+                Entity* water = World::CreateEntity();
+                water->SetObjectName("ocean");
+                water->SetPosition(position);
+
+                // material
+                shared_ptr<Material> material = make_shared<Material>();
+                {
+                    material->SetObjectName("material_ocean");
+                    material->SetResourceFilePath("ocean" + string(EXTENSION_MATERIAL));
+
+                    float windDir = 100.0f;
+                    float angle = windDir / 180.0f * pi;
+
+                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); 
+                    material->SetProperty(MaterialProperty::IsOcean, 1.0f);
+                    material->SetOceanProperty(JonswapParameters::Scale, 2.5f);
+                    material->SetOceanProperty(JonswapParameters::SpreadBlend, 0.9f);
+                    material->SetOceanProperty(JonswapParameters::Swell, 0.6f);
+                    material->SetOceanProperty(JonswapParameters::Fetch, 10000.0f);
+                    material->SetOceanProperty(JonswapParameters::WindDirection, windDir);
+                    material->SetOceanProperty(JonswapParameters::WindSpeed, 100.0f);
+                    material->SetOceanProperty(JonswapParameters::Gamma, 3.3f);
+                    material->SetOceanProperty(JonswapParameters::ShortWavesFade, 0.0f);
+                    material->SetOceanProperty(JonswapParameters::RepeatTime, 200.0f);
+
+                    material->SetOceanProperty(JonswapParameters::Angle, angle);
+                    material->SetOceanProperty(JonswapParameters::Alpha, 0.0f); // handled internally
+                    material->SetOceanProperty(JonswapParameters::PeakOmega, 0.0f); // handled internally
+                }
+
+                // geometry
+                {
+                    // generate grid
+                    const uint32_t grid_points_per_dimension = density;
+                    vector<RHI_Vertex_PosTexNorTan> vertices;
+                    vector<uint32_t> indices;
+                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, dimension);
+
+                    // split into tiles
+                    const uint32_t tile_count = std::max(1u, density / 6); // dynamic tile count based on density, minimum 1
+                    vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
+                    vector<vector<uint32_t>> tiled_indices;
+                    vector<Vector3> tile_offsets;
+                    spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices, tile_offsets);
+
+                    for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
+                    {
+                        string name = "tile_" + to_string(tile_index);
+
+                        // create mesh if it doesn't exist
+                        shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                        mesh->SetObjectName(name);
+                        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                        mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
+                        mesh->CreateGpuBuffers();
+
+                        // create a child entity, add a renderable, and this mesh tile to it
+                        {
+                            Entity* entity_tile = World::CreateEntity();
+                            entity_tile->SetObjectName(name);
+                            entity_tile->SetParent(water);
+                            entity_tile->SetPosition(tile_offsets[tile_index]);
+
+                            if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
+                            {
+                                renderable->SetMesh(mesh.get());
+                                renderable->SetMaterial(material);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                            }
+
+                            // enable buoyancy
+                            Physics* physics = entity_tile->AddComponent<Physics>();
+                            physics->SetBodyType(BodyType::Water);
+                        }
+                    }
+                }
+
+                return water;
+            }
         }
 
         void set_base_renderer_options()
@@ -1589,7 +1672,7 @@ namespace spartan
             }
         }
 
-        namespace water
+        namespace ocean
         {
             void create()
             {
@@ -1598,7 +1681,7 @@ namespace spartan
 
                 auto entity = World::CreateEntity();
 
-                auto water = entities::water({ 0.0f, 0.0f, 0.0f }, 20.0f, 2, spartan::Color::standard_blue, 2.0f, 0.1f);
+                auto water = entities::ocean({ 0.0f, 0.0f, 0.0f }, 20.0f, 2);
 
                 water->SetParent(entity);
 
@@ -1663,7 +1746,7 @@ namespace spartan
                 case DefaultWorld::Showroom:     worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 case DefaultWorld::Basic:        worlds::basic::create();         break;
-                case DefaultWorld::Water:        worlds::water::create();         break;
+                case DefaultWorld::Ocean:        worlds::ocean::create();         break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
             }
 

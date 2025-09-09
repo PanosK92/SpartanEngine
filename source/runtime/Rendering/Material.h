@@ -88,6 +88,7 @@ namespace spartan
         WindAnimation,              // vertex wind animation
         ColorVariationFromInstance, // per-instance color variation
         IsWater,                    // water flow animation
+        IsOcean,                    // fft ocean rendering
     
         // render settings
         CullMode,                   // face culling mode
@@ -104,6 +105,27 @@ namespace spartan
         Glass,
         Sapphire,
         Diamond,
+        Max
+    };
+
+    // used for ocean calculations
+    enum class JonswapParameters
+    {
+        Scale, // used to scale the Spectrum [1.0f, 5.0f] --> Value Range
+        SpreadBlend, // used to blend between agitated water motion, and windDirection [0.0f, 1.0f]
+        Swell, // influences wave choppines, the bigger the swell, the longer the wave length [0.0f, 1.0f]
+        Gamma, // defines the Spectrum Peak [0.0f, 7.0f]
+
+        ShortWavesFade, // [0.0f, 1.0f]
+        WindDirection, // [0.0f, 360.0f]
+        Fetch,  // distance over which Wind impacts Wave Formation [0.0f, 10000.0f]
+        WindSpeed, // [0.0f, 100.0f]
+
+        RepeatTime,
+        Angle,
+        Alpha,
+        PeakOmega,
+
         Max
     };
 
@@ -134,6 +156,8 @@ namespace spartan
         // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
+        float GetOceanProperty(const JonswapParameters property_type) const;
+        void SetOceanProperty(const JonswapParameters property_type, const float value);
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
@@ -149,6 +173,7 @@ namespace spartan
     private:
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture_type> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
+        std::array<float, static_cast<uint32_t>(JonswapParameters::Max)> m_ocean_properties;
         uint32_t m_index = 0;
     };
 }

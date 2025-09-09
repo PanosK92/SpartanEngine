@@ -868,6 +868,21 @@ namespace spartan
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties[count].world_space_uv        = material->GetProperty(MaterialProperty::WorldSpaceUv);
 
+                // ocean
+                properties[count].jonswap_parameters.alpha          = material->GetOceanProperty(JonswapParameters::Alpha);
+                properties[count].jonswap_parameters.angle          = material->GetOceanProperty(JonswapParameters::Angle);
+                properties[count].jonswap_parameters.fetch          = material->GetOceanProperty(JonswapParameters::Fetch);
+                properties[count].jonswap_parameters.gamma          = material->GetOceanProperty(JonswapParameters::Gamma);
+                properties[count].jonswap_parameters.peakOmega      = material->GetOceanProperty(JonswapParameters::PeakOmega);
+                properties[count].jonswap_parameters.repeatTime     = material->GetOceanProperty(JonswapParameters::RepeatTime);
+                properties[count].jonswap_parameters.scale          = material->GetOceanProperty(JonswapParameters::Scale);
+                properties[count].jonswap_parameters.shortWavesFade = material->GetOceanProperty(JonswapParameters::ShortWavesFade);
+                properties[count].jonswap_parameters.spreadBlend    = material->GetOceanProperty(JonswapParameters::SpreadBlend);
+                properties[count].jonswap_parameters.swell          = material->GetOceanProperty(JonswapParameters::Swell);
+                properties[count].jonswap_parameters.windDirection  = material->GetOceanProperty(JonswapParameters::WindDirection);
+                properties[count].jonswap_parameters.windSpeed      = material->GetOceanProperty(JonswapParameters::WindSpeed);
+
+
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;
                 properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Normal)             ? (1U << 1)  : 0;
@@ -884,6 +899,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)                    ? (1U << 12) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 13) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 14) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsOcean)                    ? (1U << 15) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
     

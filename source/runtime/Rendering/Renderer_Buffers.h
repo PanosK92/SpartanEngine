@@ -181,6 +181,23 @@ namespace spartan
         float anisotropic_rotation;
         float clearcoat;
         float clearcoat_roughness;
+
+        struct JonswapParameters
+        {
+            float scale;
+            float spreadBlend;
+            float swell;
+            float gamma;
+            float shortWavesFade;
+
+            float windDirection;
+            float fetch;
+            float windSpeed;
+            float repeatTime;
+            float angle;
+            float alpha;
+            float peakOmega;
+        } jonswap_parameters;
     };
 
     struct Sb_Light

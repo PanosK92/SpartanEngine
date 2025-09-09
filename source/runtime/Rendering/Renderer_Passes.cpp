@@ -118,7 +118,7 @@ namespace spartan
 
                 /*static bool compute_ocean_spectrum = true;
                 if (compute_ocean_spectrum)*/
-                    Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
+                Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
 
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_Light(cmd_list_graphics_present, is_transparent);
@@ -1083,10 +1083,21 @@ namespace spartan
             pso.name = "ocean_initial_spectrum";
             pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_initial_spectrum_c);
             cmd_list->SetPipelineState(pso);
-        
-            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
-            cmd_list->Dispatch(initial_spectrum);
-        
+
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                Renderable* renderable = draw_call.renderable;
+                Material* material = renderable->GetMaterial();
+
+                // get ocean material
+                if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)
+                    continue;
+
+                cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+                cmd_list->Dispatch(initial_spectrum);
+            }
+
             // for the lifetime of the engine, this will be read as an srv, so transition here
             initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }

@@ -26,6 +26,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_STRUCT
 #define SPARTAN_COMMON_STRUCT
 
+struct JonswapParameters
+{
+    float scale;
+    float spreadBlend;
+    float swell;
+    float gamma;
+    float shortWavesFade;
+
+    float windDirection;
+    float fetch;
+    float windSpeed;
+    float repeatTime;
+    float angle;
+    float alpha;
+    float peakOmega;
+};
+
 struct Surface
 {
     // properties
@@ -55,6 +72,8 @@ struct Surface
     float3 specular_energy;
     float3 diffuse_energy;
 
+    JonswapParameters jonswap_parameters;
+
     // easy access to certain properties
     bool has_texture_height()            { return flags & uint(1U << 0);  }
     bool has_texture_normal()            { return flags & uint(1U << 1);  }
@@ -70,6 +89,7 @@ struct Surface
     bool is_grass_blade()                { return flags & uint(1U << 11); }
     bool is_water()                      { return flags & uint(1U << 12); }
     bool is_tessellated()                { return flags & uint(1U << 13); }
+    bool is_ocean()                      { return flags & uint(1U << 15); }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }
@@ -105,6 +125,20 @@ struct Surface
         subsurface_scattering = material.subsurface_scattering;
         specular_energy       = 1.0f;
         diffuse_energy        = 1.0f;
+        
+        // jonswap parameters
+        jonswap_parameters.alpha          = material.jonswap_parameters.alpha;
+        jonswap_parameters.angle          = material.jonswap_parameters.angle;
+        jonswap_parameters.fetch          = material.jonswap_parameters.fetch;
+        jonswap_parameters.gamma          = material.jonswap_parameters.gamma;
+        jonswap_parameters.peakOmega      = material.jonswap_parameters.peakOmega;
+        jonswap_parameters.repeatTime     = material.jonswap_parameters.repeatTime;
+        jonswap_parameters.scale          = material.jonswap_parameters.scale;
+        jonswap_parameters.shortWavesFade = material.jonswap_parameters.shortWavesFade;
+        jonswap_parameters.spreadBlend    = material.jonswap_parameters.spreadBlend;
+        jonswap_parameters.swell          = material.jonswap_parameters.swell;
+        jonswap_parameters.windDirection  = material.jonswap_parameters.windDirection;
+        jonswap_parameters.windSpeed      = material.jonswap_parameters.windSpeed;
 
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;
