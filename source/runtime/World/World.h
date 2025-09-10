@@ -51,7 +51,6 @@ namespace spartan
         static const std::vector<Entity*>& GetEntitiesLights();
 
         // misc
-        static void Resolve();
         static std::string GetName();
         static const std::string& GetFilePath();
         static math::BoundingBox& GetBoundingBox();

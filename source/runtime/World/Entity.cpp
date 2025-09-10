@@ -291,8 +291,20 @@ namespace spartan
                 }
             }
         }
+    }
 
-        World::Resolve();
+    uint32_t Entity::GetComponentCount() const
+    {
+        uint32_t count = 0;
+        for (const shared_ptr<Component>& component : m_components)
+        {
+            if (component)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     void Entity::UpdateTransform()

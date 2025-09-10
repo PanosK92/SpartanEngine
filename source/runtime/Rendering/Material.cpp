@@ -713,7 +713,6 @@ namespace spartan
             {
                 RHI_CullMode cull_mode = value < 1.0f ? RHI_CullMode::None : RHI_CullMode::Back;
                 m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(cull_mode);
-                World::Resolve();
             }
 
             // transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.

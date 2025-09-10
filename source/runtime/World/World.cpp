@@ -58,6 +58,16 @@ namespace spartan
         Entity* camera              = nullptr;
         Entity* light               = nullptr;
 
+        // structure to track previous entity state for change detection (to determine if a world resolve is needed)
+        struct EntityState
+        {
+            bool active            = false;
+            size_t component_count = 0;
+            RHI_CullMode cull_mode = RHI_CullMode::Max;
+            LightType light_type   = LightType::Max;
+        };
+        unordered_map<uint64_t, EntityState> prev_entity_states;
+
         void compute_bounding_box()
         {
             bounding_box = BoundingBox::Unit;
@@ -78,6 +88,73 @@ namespace spartan
         {
             const string world_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path);
             return FileSystem::GetDirectoryFromFilePath(world_file_path) + "\\" + world_name + "_resources\\";
+        }
+
+        // function to check if this entity requires a world resolve based on change criteria
+        bool is_resolve_needed(Entity* entity)
+        {
+            if (!entity)
+                return false;
+
+            const uint64_t id = entity->GetObjectId();
+
+            EntityState current;
+            current.active          = entity->GetActive();
+            current.component_count = entity->GetComponentCount();
+
+            if (Renderable* renderable = entity->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    current.cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                }
+                else
+                {
+                    current.cull_mode = RHI_CullMode::Max;
+                }
+            }
+            else
+            {
+                current.cull_mode = RHI_CullMode::Max;
+            }
+
+            if (Light* light_comp = entity->GetComponent<Light>())
+            {
+                current.light_type = light_comp->GetLightType();
+            }
+            else
+            {
+                current.light_type = LightType::Max;
+            }
+
+            // if no previous state, it's new/changed -> needs resolve
+            auto it = prev_entity_states.find(id);
+            if (it == prev_entity_states.end())
+            {
+                prev_entity_states[id] = current;
+                return true;
+            }
+
+            const EntityState& prev = it->second;
+            bool needed = false;
+
+            // check criteria
+            if (current.active != prev.active)
+                needed = true;
+
+            if (current.component_count != prev.component_count)
+                needed = true;
+
+            if (current.cull_mode != prev.cull_mode)
+                needed = true;
+
+            if (current.light_type != prev.light_type)
+                needed = true;
+
+            // make the current state the previous state for the next check
+            prev_entity_states[id] = current;
+
+            return needed;
         }
     }
 
@@ -224,6 +301,16 @@ namespace spartan
         }
 
         ProcessPendingAdditions();
+
+        // check for changes that require resolve (loop all to detect and update states)
+        for (Entity* entity : entities)
+        {
+            if (is_resolve_needed(entity))
+            {
+                resolve = true;
+                break;
+            }
+        }
        
         if (resolve)
         {
@@ -444,11 +531,6 @@ namespace spartan
         // report time
         SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
         return true;
-    }
-
-    void World::Resolve()
-    {
-        resolve = true;
     }
 
     Entity* World::CreateEntity()

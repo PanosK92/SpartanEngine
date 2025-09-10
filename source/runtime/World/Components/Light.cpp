@@ -225,7 +225,6 @@ namespace spartan
         SetRange(get_sensible_range(m_light_type));
 
         UpdateMatrices();
-        World::Resolve();
     }
 
     void Light::SetTemperature(const float temperature_kelvin)
@@ -444,7 +443,7 @@ namespace spartan
                 }
             }
     
-            // compute shadow extents
+            // move the light in words units per texel to avoid shimmering
             {
                 // compute shadow extents
                 float extents[2];

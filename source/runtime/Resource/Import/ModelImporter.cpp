@@ -508,7 +508,6 @@ namespace spartan
 
             // make the root entity active since it's now thread-safe
             mesh->GetRootEntity()->SetActive(true);
-            World::Resolve();
         }
         else
         {
