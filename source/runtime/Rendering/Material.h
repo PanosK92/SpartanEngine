@@ -165,12 +165,15 @@ namespace spartan
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
+        bool IsOcean() const { return GetProperty(MaterialProperty::IsOcean) == 1.0f; }
 
         // misc
         void PrepareForGpu();
         uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
+        bool ShouldComputeSpectrum() const { return m_should_compute_spectrum; }
+        void MarkSpectrumAsComputed() { m_should_compute_spectrum = false; }
 
         static const uint32_t slots_per_texture_type = 4;
 
@@ -179,5 +182,6 @@ namespace spartan
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         std::array<float, static_cast<uint32_t>(JonswapParameters::Max)> m_ocean_properties;
         uint32_t m_index = 0;
+        bool m_should_compute_spectrum = true;
     };
 }

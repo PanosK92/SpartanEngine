@@ -853,9 +853,8 @@ void Properties::ShowMaterial(Material* material) const
                     float min = 0.0f;
 
                     // this custom slider already has a unique id
-                    ImGuiSp::draw_float_wrap("", &value, 0.004f, min);
-
-                    material->SetOceanProperty(params, value);
+                    if (ImGuiSp::draw_float_wrap("", &value, 0.004f, min))
+                        material->SetOceanProperty(params, value);
                 }
             };
 

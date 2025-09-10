@@ -779,6 +779,9 @@ namespace spartan
             m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
         }
 
+        // mark for spectrum re-computation
+        m_should_compute_spectrum = true;
+
         // if the world is loading, don't fire an event as we will spam the event system
             // also the renderer will check all the materials after loading anyway
         if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
