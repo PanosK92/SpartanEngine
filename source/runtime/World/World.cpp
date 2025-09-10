@@ -204,8 +204,8 @@ namespace spartan
     namespace world_time
     {
         // simulated time
-        inline float time_of_day   = 0.25f;   // 6 AM
-        inline float time_scale    = 200.0f;  // 200x real time
+        inline float time_of_day = 0.25f;  // 6 AM
+        inline float time_scale  = 200.0f; // 200x real time
     
         // tick simulated time every frame
         inline void tick()
@@ -213,9 +213,13 @@ namespace spartan
             time_of_day += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
     
             if (time_of_day >= 1.0f)
+            {
                 time_of_day -= 1.0f;
+            }
             else if (time_of_day < 0.0f)
+            {
                 time_of_day = 0.0f;
+            }
         }
     
         // get current time of day based on boolean
@@ -249,6 +253,7 @@ namespace spartan
     void World::ProcessPendingRemovals()
     {
         lock_guard<mutex> lock(entity_access_mutex);
+
         if (pending_remove.empty())
             return;
 
@@ -278,6 +283,7 @@ namespace spartan
 
     void World::Initialize()
     {
+
     }
 
     void World::Shutdown()
@@ -313,7 +319,7 @@ namespace spartan
         const bool started = Engine::IsFlagSet(EngineMode::Playing) && was_in_editor_mode;
         const bool stopped = !Engine::IsFlagSet(EngineMode::Playing) && !was_in_editor_mode;
         was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Playing);
-       
+
         // start
         if (started)
         {
@@ -333,6 +339,15 @@ namespace spartan
         }
        
         ProcessPendingRemovals();
+
+        // pre-tick
+       for (Entity* entity : entities)
+        {
+            if (entity->GetActive())
+            {
+                entity->PreTick();
+            }
+        }
 
         // tick
         for (Entity* entity : entities)
@@ -699,6 +714,8 @@ namespace spartan
 
     bool World::HaveMaterialsChangedThisFrame()
     {
+        lock_guard<mutex> lock(entity_access_mutex);
+
         for (Entity* entity : entities)
         {
             if (Renderable* renderable = entity->GetComponent<Renderable>())
@@ -708,6 +725,22 @@ namespace spartan
                     if (has_material_changed(material))
                         return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    bool World::HaveLightsChangedThisFrame()
+    {
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        for (Entity* entity : entities)
+        {
+            if (Light* light = entity->GetComponent<Light>())
+            {
+                if (light->HasChangedThisFrame())
+                    return true;
             }
         }
 

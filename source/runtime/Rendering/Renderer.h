@@ -221,6 +221,5 @@ namespace spartan
         static std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
         static bool m_bindless_samplers_dirty;
         static bool m_bindless_abbs_dirty;
-        static bool m_bindless_lights_dirty;
     };
 }

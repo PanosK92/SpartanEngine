@@ -65,7 +65,6 @@ namespace spartan
     bool Renderer::m_transparents_present          = false;
     bool Renderer::m_bindless_samplers_dirty       = true;
     bool Renderer::m_bindless_abbs_dirty           = true;
-    bool Renderer::m_bindless_lights_dirty         = true;
     RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
@@ -247,11 +246,7 @@ namespace spartan
 
         // events
         {
-            // subscribe
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_lights_dirty    = true; ));
-
-            // fire
             SP_FIRE_EVENT(EventType::RendererOnInitialized);
         }
     }
@@ -320,12 +315,11 @@ namespace spartan
                 // we always update on the first frame so the buffers are bound and we don't get graphics api issues
                 bool initialize = GetFrameNumber() == 0;
     
-                if (initialize || m_bindless_lights_dirty)
+                if (initialize || World::HaveLightsChangedThisFrame())
                 {
                     UpdateShadowAtlas();
                     UpdateLights(m_cmd_list_present);
                     RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
-                    m_bindless_lights_dirty = false;
                 }
     
                 if (initialize || m_bindless_abbs_dirty)

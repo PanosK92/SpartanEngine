@@ -102,7 +102,12 @@ namespace spartan
 
     Light::~Light()
     {
-        SP_FIRE_EVENT(EventType::LightOnChanged);
+
+    }
+
+    void Light::PreTick()
+    {
+        m_changed_this_frame = false;
     }
 
     void Light::OnTick()
@@ -210,7 +215,7 @@ namespace spartan
                 }
             }
 
-            SP_FIRE_EVENT(EventType::LightOnChanged);
+            m_changed_this_frame = true;
         }
     }
 
@@ -232,7 +237,7 @@ namespace spartan
         m_temperature_kelvin = temperature_kelvin;
         m_color_rgb          = Color(temperature_kelvin);
 
-        SP_FIRE_EVENT(EventType::LightOnChanged);
+        m_changed_this_frame = true;
     }
 
     void Light::SetColor(const Color& rgb)
@@ -262,7 +267,7 @@ namespace spartan
         else if (rgb == Color::light_photo_flash)
             m_temperature_kelvin = 5500.0f;
 
-        SP_FIRE_EVENT(EventType::LightOnChanged);
+        m_changed_this_frame = true;
     }
 
     void Light::SetIntensity(const LightIntensity intensity)
@@ -302,14 +307,15 @@ namespace spartan
             m_intensity_lumens_lux = 0.0f;
         }
 
-        SP_FIRE_EVENT(EventType::LightOnChanged);
+        m_changed_this_frame = true;
     }
 
     void Light::SetIntensity(const float lumens_lux)
     {
         m_intensity_lumens_lux = lumens_lux;
         m_intensity            = LightIntensity::custom;
-        SP_FIRE_EVENT(EventType::LightOnChanged);
+
+        m_changed_this_frame = true;
     }
 
     float Light::GetIntensityWatt() const
@@ -406,7 +412,7 @@ namespace spartan
         UpdateProjectionMatrix();
         UpdateBoundingBox();
 
-        SP_FIRE_EVENT(EventType::LightOnChanged);
+        m_changed_this_frame = true;
     }
 
     void Light::UpdateViewMatrix()

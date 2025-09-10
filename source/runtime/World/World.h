@@ -29,6 +29,7 @@ namespace spartan
 {
     class Camera;
     class Light;
+
     class World
     {
     public:
@@ -59,6 +60,7 @@ namespace spartan
         static uint32_t GetLightCount();
         static uint32_t GetAudioSourceCount();
         static bool HaveMaterialsChangedThisFrame();
+        static bool HaveLightsChangedThisFrame();
 
         // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
         static float GetTimeOfDay(bool use_real_world_time = false);

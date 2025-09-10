@@ -66,8 +66,6 @@ namespace spartan
         // Window                      
         WindowResized,                 // The window has been resized
         WindowFullScreenToggled,       // The window has been toggled to full screen
-        // Resources
-        LightOnChanged,
         // Max
         Max
     };

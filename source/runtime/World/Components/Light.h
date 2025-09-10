@@ -73,6 +73,7 @@ namespace spartan
         ~Light();
 
         //= COMPONENT ================================
+        void PreTick() override;
         void OnTick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
@@ -127,6 +128,7 @@ namespace spartan
 
         // misc
         bool NeedsSkysphereUpdate() const;
+        bool HasChangedThisFrame() const { return m_changed_this_frame; }
         uint32_t GetSliceCount() const;
 
         // atlas
@@ -157,6 +159,7 @@ namespace spartan
         math::Vector3 m_far_cascade_min  = math::Vector3::Zero;
         math::Vector3 m_far_cascade_max  = math::Vector3::Zero;
         bool m_is_active_previous_frame  = false;
+        bool m_changed_this_frame        = false;
 
         // matrices/frustums per slice/face/cascade
         std::array<math::Frustum, 6> m_frustums;

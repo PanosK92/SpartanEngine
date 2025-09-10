@@ -74,6 +74,9 @@ namespace spartan
         // called when the component is removed
         virtual void OnRemove() {}
 
+        // called every frame, before Tick
+        virtual void PreTick() {}
+
         // called every frame
         virtual void OnTick() {}
 

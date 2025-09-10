@@ -125,6 +125,17 @@ namespace spartan
         }
     }
 
+    void Entity::PreTick()
+    {
+        for (shared_ptr<Component>& component : m_components)
+        {
+            if (component)
+            {
+                component->PreTick();
+            }
+        }
+    }
+
     void Entity::Tick()
     {
         for (shared_ptr<Component>& component : m_components)

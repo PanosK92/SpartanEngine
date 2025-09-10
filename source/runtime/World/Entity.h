@@ -51,6 +51,7 @@ namespace spartan
         // core
         void OnStart();
         void OnStop();
+        void PreTick();
         void Tick();
 
         // io
