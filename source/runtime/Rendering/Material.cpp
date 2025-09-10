@@ -103,7 +103,11 @@ namespace spartan
         }
 
         float jonswap_alpha(float fetch, float windSpeed) { return 0.076f * pow(9.81f * fetch / windSpeed / windSpeed, -0.22f); }
-        float jonswap_peak_frequency(float fetch, float windSpeed) { return 22 * pow(windSpeed * fetch / 9.81f / 9.81f, -0.33f); }
+        float jonswap_peak_frequency(float fetch, float windSpeed) {
+            float g = 9.81f;
+            float dimensionlessFetch = g * fetch / (windSpeed * windSpeed);
+            return 22.0f * (g / windSpeed) * pow(dimensionlessFetch, -0.33f);
+        }
     }
 
     namespace texture_processing
