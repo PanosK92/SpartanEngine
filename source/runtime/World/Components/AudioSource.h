@@ -54,8 +54,8 @@ namespace spartan
         const std::string& GetAudioClipName() const { return m_name; };
 
         bool IsPlaying() { return m_is_playing; }
-        void Play();
-        void Stop();
+        void PlayClip();
+        void StopClip();
         float GetProgress() const;
 
         bool GetMute() const { return m_mute; }

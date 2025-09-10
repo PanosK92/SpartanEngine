@@ -159,7 +159,7 @@ namespace spartan
 
     AudioSource::~AudioSource()
     {
-        Stop();
+        StopClip();
 
         if (m_stream)
         {
@@ -179,18 +179,18 @@ namespace spartan
     {
         if (m_play_on_start)
         {
-            Play();
+            PlayClip();
         }
     }
 
     void AudioSource::Stop()
     {
-        Stop();
+        StopClip();
     }
 
     void AudioSource::Remove()
     {
-        Stop();
+        StopClip();
     }
 
     void AudioSource::OnTick()
@@ -283,7 +283,7 @@ namespace spartan
         }
     }
 
-    void AudioSource::Play()
+    void AudioSource::PlayClip()
     {
         if (!m_clip || m_clip->length == 0)
         {
@@ -312,7 +312,7 @@ namespace spartan
         SetPitch(m_pitch);
     }
 
-    void AudioSource::Stop()
+    void AudioSource::StopClip()
     {
         if (!m_is_playing)
             return;
@@ -385,7 +385,7 @@ namespace spartan
             }
             else
             {
-                Stop();
+                StopClip();
                 return;
             }
         }
