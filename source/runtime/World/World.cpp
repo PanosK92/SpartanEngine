@@ -68,6 +68,14 @@ namespace spartan
         };
         unordered_map<uint64_t, EntityState> prev_entity_states;
 
+        // structure to track material state for change detection (to answer World::HaveMaterialsChangedThisFrame())
+        struct MaterialState
+        {
+            std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture> textures;
+            std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> properties;
+        };
+        static std::unordered_map<uint64_t, MaterialState> prev_material_states;
+
         void compute_bounding_box()
         {
             bounding_box = BoundingBox::Unit;
@@ -90,7 +98,6 @@ namespace spartan
             return FileSystem::GetDirectoryFromFilePath(world_file_path) + "\\" + world_name + "_resources\\";
         }
 
-        // function to check if this entity requires a world resolve based on change criteria
         bool is_resolve_needed(Entity* entity)
         {
             if (!entity)
@@ -155,6 +162,42 @@ namespace spartan
             prev_entity_states[id] = current;
 
             return needed;
+        }
+
+        bool has_material_changed(Material* material)
+        {
+            if (!material)
+                return false;
+        
+            const uint64_t id = material->GetObjectId();
+        
+            // current state
+            MaterialState current;
+            current.textures   = material->GetTextures();  
+            current.properties = material->GetProperties();
+        
+            // no previous state means it's new
+            auto it = prev_material_states.find(id);
+            if (it == prev_material_states.end())
+            {
+                prev_material_states[id] = current;
+                return true;
+            }
+        
+            const MaterialState& prev = it->second;
+            bool changed = false;
+        
+            // compare textures
+            if (current.textures != prev.textures)
+                changed = true;
+        
+            // compare properties
+            if (current.properties != prev.properties)
+                changed = true;
+        
+            // update cache
+            prev_material_states[id] = current;
+            return changed;
         }
     }
 
@@ -311,7 +354,7 @@ namespace spartan
                 break;
             }
         }
-       
+
         if (resolve)
         {
             // track entities
@@ -346,8 +389,9 @@ namespace spartan
                 }
             }
             compute_bounding_box();
-            resolve = false;
+            resolve  = false;
         }
+
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
             world_time::tick();
@@ -651,6 +695,23 @@ namespace spartan
     uint32_t World::GetAudioSourceCount()
     {
         return audio_source_count;
+    }
+
+    bool World::HaveMaterialsChangedThisFrame()
+    {
+        for (Entity* entity : entities)
+        {
+            if (Renderable* renderable = entity->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    if (has_material_changed(material))
+                        return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     float World::GetTimeOfDay(bool use_real_world_time)

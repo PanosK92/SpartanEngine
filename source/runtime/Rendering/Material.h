@@ -113,6 +113,8 @@ namespace spartan
         Material();
         ~Material() = default;
 
+        static const uint32_t slots_per_texture = 4;
+
         // iresource
         void LoadFromFile(const std::string& file_path) override;
         void SaveToFile(const std::string& file_path) override;
@@ -126,6 +128,7 @@ namespace spartan
         std::string GetTexturePathByType(const MaterialTextureType texture_type, const uint8_t slot = 0);
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTextureType texture_type, const uint8_t slot = 0);
+        const std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture>& GetTextures() const { return m_textures; }
 
         // index of refraction
         static float EnumToIor(const MaterialIor ior);
@@ -143,11 +146,10 @@ namespace spartan
         uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
-
-        static const uint32_t slots_per_texture_type = 4;
+        const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
 
     private:
-        std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture_type> m_textures;
+        std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         uint32_t m_index = 0;
     };

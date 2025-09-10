@@ -65,7 +65,6 @@ namespace spartan
     bool Renderer::m_transparents_present          = false;
     bool Renderer::m_bindless_samplers_dirty       = true;
     bool Renderer::m_bindless_abbs_dirty           = true;
-    bool Renderer::m_bindless_materials_dirty      = true;
     bool Renderer::m_bindless_lights_dirty         = true;
     RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
@@ -250,7 +249,6 @@ namespace spartan
         {
             // subscribe
             SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_SUBSCRIBE_TO_EVENT(EventType::MaterialOnChanged,       SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_materials_dirty = true; ));
             SP_SUBSCRIBE_TO_EVENT(EventType::LightOnChanged,          SP_EVENT_HANDLER_EXPRESSION_STATIC( m_bindless_lights_dirty    = true; ));
 
             // fire
@@ -319,30 +317,28 @@ namespace spartan
     
             // update bindless resources
             {
+                // we always update on the first frame so the buffers are bound and we don't get graphics api issues
                 bool initialize = GetFrameNumber() == 0;
     
-                if (initialize || !ProgressTracker::IsLoading())
+                if (initialize || m_bindless_lights_dirty)
                 {
-                    if (m_bindless_materials_dirty)
-                    {
-                        UpdateMaterials(m_cmd_list_present);
-                        RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
-                        m_bindless_materials_dirty = false;
-                    }
+                    UpdateShadowAtlas();
+                    UpdateLights(m_cmd_list_present);
+                    RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
+                    m_bindless_lights_dirty = false;
+                }
     
-                    if (m_bindless_lights_dirty)
-                    {
-                        UpdateShadowAtlas();
-                        UpdateLights(m_cmd_list_present);
-                        RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
-                        m_bindless_lights_dirty = false;
-                    }
-    
-                    if (m_bindless_abbs_dirty)
-                    {
-                        UpdatedBoundingBoxes(m_cmd_list_present);RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
-                        m_bindless_abbs_dirty = true; // always update world-space AABBs
-                    }
+                if (initialize || m_bindless_abbs_dirty)
+                {
+                    UpdatedBoundingBoxes(m_cmd_list_present);
+                    RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+                    m_bindless_abbs_dirty = true; // always update world-space AABBs
+                }
+
+                if (initialize || World::HaveMaterialsChangedThisFrame())
+                {
+                    UpdateMaterials(m_cmd_list_present);
+                    RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
                 }
     
                 if (m_bindless_samplers_dirty)
@@ -892,10 +888,10 @@ namespace spartan
                 // iterate through all texture types and their slots
                 for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); type++)
                 {
-                    for (uint32_t slot = 0; slot < Material::slots_per_texture_type; slot++)
+                    for (uint32_t slot = 0; slot < Material::slots_per_texture; slot++)
                     {
                         // calculate the final index in the bindless array
-                        uint32_t bindless_index = count + (type * Material::slots_per_texture_type) + slot;
+                        uint32_t bindless_index = count + (type * Material::slots_per_texture) + slot;
                         
                         // get the texture from the material using type and slot
                         m_bindless_textures[bindless_index] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
@@ -906,7 +902,7 @@ namespace spartan
             material->SetIndex(count);
 
             // update index increment to account for all texture slots
-            count += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture_type;
+            count += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture;
         };
     
         auto update_entities = [update_material]()
