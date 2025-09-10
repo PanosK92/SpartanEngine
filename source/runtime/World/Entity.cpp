@@ -103,24 +103,24 @@ namespace spartan
         return clone_entity_and_descendants(this);
     }
 
-    void Entity::OnStart()
+    void Entity::Start()
     {
         for (shared_ptr<Component> component : m_components)
         {
             if (component)
             {
-                component->OnStart();
+                component->Start();
             }
         }
     }
 
-    void Entity::OnStop()
+    void Entity::Stop()
     {
         for (shared_ptr<Component> component : m_components)
         {
             if (component)
             {
-                component->OnStop();
+                component->Stop();
             }
         }
     }
@@ -296,7 +296,7 @@ namespace spartan
             {
                 if (id == component->GetObjectId())
                 {
-                    component->OnRemove();
+                    component->Remove();
                     component = nullptr;
                     break;
                 }

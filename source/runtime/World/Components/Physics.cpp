@@ -81,15 +81,15 @@ namespace spartan
 
     Physics::~Physics()
     {
-        OnRemove();
+        Remove();
     }
 
-    void Physics::OnInitialize()
+    void Physics::Initialize()
     {
-        Component::OnInitialize();
+        Component::Initialize();
     }
 
-    void Physics::OnRemove()
+    void Physics::Remove()
     {
         if (m_controller)
         {
@@ -833,7 +833,7 @@ namespace spartan
     void Physics::Create()
     {
         // clear previous state
-        OnRemove();
+        Remove();
 
         PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         PxScene* scene     = static_cast<PxScene*>(PhysicsWorld::GetScene());

@@ -49,8 +49,8 @@ namespace spartan
         Entity* Clone();
 
         // core
-        void OnStart();
-        void OnStop();
+        void Start();
+        void Stop();
         void PreTick();
         void Tick();
 
@@ -80,7 +80,7 @@ namespace spartan
 
             // initialize component
             component->SetType(type);
-            component->OnInitialize();
+            component->Initialize();
 
             return component.get();
         }

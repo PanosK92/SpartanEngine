@@ -325,7 +325,7 @@ namespace spartan
         {
             for (Entity* entity : entities)
             {
-                entity->OnStart();
+                entity->Start();
             }
         }
        
@@ -334,7 +334,7 @@ namespace spartan
         {
             for (Entity* entity : entities)
             {
-                entity->OnStop();
+                entity->Stop();
             }
         }
        

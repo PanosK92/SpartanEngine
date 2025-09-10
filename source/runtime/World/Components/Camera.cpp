@@ -50,9 +50,9 @@ namespace spartan
         SetFlag(CameraFlags::PhysicalBodyAnimation, true);
     }
 
-    void Camera::OnInitialize()
+    void Camera::Initialize()
     {
-        Component::OnInitialize();
+        Component::Initialize();
         ComputeMatrices();
     }
 

@@ -170,12 +170,12 @@ namespace spartan
         audio_device::release();
     }
 
-    void AudioSource::OnInitialize()
+    void AudioSource::Initialize()
     {
-        Component::OnInitialize();
+        Component::Initialize();
     }
 
-    void AudioSource::OnStart()
+    void AudioSource::Start()
     {
         if (m_play_on_start)
         {
@@ -183,12 +183,12 @@ namespace spartan
         }
     }
 
-    void AudioSource::OnStop()
+    void AudioSource::Stop()
     {
         Stop();
     }
 
-    void AudioSource::OnRemove()
+    void AudioSource::Remove()
     {
         Stop();
     }
