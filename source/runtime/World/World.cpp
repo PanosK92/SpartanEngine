@@ -49,17 +49,19 @@ namespace spartan
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
         mutex entity_access_mutex;
+        vector<Entity*> pending_add;
+        set<uint64_t> pending_remove;
+        uint32_t audio_source_count = 0;
         bool resolve                = false;
         bool was_in_editor_mode     = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
-        Entity* camera   = nullptr;
-        Entity* light    = nullptr;
-        uint32_t audio_source_count = 0;
-        vector<Entity*> pending_add;
-        set<uint64_t> pending_remove;
+        Entity* camera              = nullptr;
+        Entity* light               = nullptr;
 
         void compute_bounding_box()
         {
+            bounding_box = BoundingBox::Unit;
+
             for (Entity* entity : entities)
             {
                 if (entity->GetActive())

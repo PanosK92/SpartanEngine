@@ -154,6 +154,9 @@ namespace spartan
         float m_angle_rad                = math::deg_to_rad * 30.0f;
         uint32_t m_index                 = 0;
         math::BoundingBox m_bounding_box = math::BoundingBox::Zero;
+        math::Vector3 m_far_cascade_min  = math::Vector3::Zero;
+        math::Vector3 m_far_cascade_max  = math::Vector3::Zero;
+        bool m_is_active_previous_frame  = false;
 
         // matrices/frustums per slice/face/cascade
         std::array<math::Frustum, 6> m_frustums;

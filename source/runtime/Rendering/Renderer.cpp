@@ -983,20 +983,20 @@ namespace spartan
                 light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
 
-            light_buffer_entry.screen_space_shadows_slice_index = light_component->GetScreenSpaceShadowsSliceIndex();
-            light_buffer_entry.intensity                        = light_component->GetIntensityWatt();
-            light_buffer_entry.range                            = light_component->GetRange();
-            light_buffer_entry.angle                            = light_component->GetAngle();
-            light_buffer_entry.color                            = light_component->GetColor();
-            light_buffer_entry.position                         = light_component->GetEntity()->GetPosition();
-            light_buffer_entry.direction                        = light_component->GetEntity()->GetForward();
-            light_buffer_entry.flags                            = 0;
-            light_buffer_entry.flags                           |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-            light_buffer_entry.flags                           |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-            light_buffer_entry.flags                           |= light_component->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-            light_buffer_entry.flags                           |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
-            light_buffer_entry.flags                           |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
-            light_buffer_entry.flags                           |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
+            light_buffer_entry.screen_space_shadows_slice_index  = light_component->GetScreenSpaceShadowsSliceIndex();
+            light_buffer_entry.intensity                         = light_component->GetIntensityWatt();
+            light_buffer_entry.range                             = light_component->GetRange();
+            light_buffer_entry.angle                             = light_component->GetAngle();
+            light_buffer_entry.color                             = light_component->GetColor();
+            light_buffer_entry.position                          = light_component->GetEntity()->GetPosition();
+            light_buffer_entry.direction                         = light_component->GetEntity()->GetForward();
+            light_buffer_entry.flags                             = 0;
+            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+            light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
+            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
+            light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
     
             for (uint32_t i = 0; i < 6; i++)
             {
