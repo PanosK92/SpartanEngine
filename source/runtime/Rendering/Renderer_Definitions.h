@@ -192,6 +192,7 @@ namespace spartan
         dithering_c,
         transparency_reflection_refraction_c,
         ocean_initial_spectrum_c,
+        ocean_pack_spectrum_c,
         max
     };
     
