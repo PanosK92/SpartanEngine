@@ -197,6 +197,10 @@ namespace spartan
             float angle;
             float alpha;
             float peakOmega;
+
+            float depth;
+            float lowCutoff;
+            float highCutoff;
         } jonswap_parameters;
     };
 

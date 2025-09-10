@@ -881,7 +881,9 @@ namespace spartan
                 properties[count].jonswap_parameters.swell          = material->GetOceanProperty(JonswapParameters::Swell);
                 properties[count].jonswap_parameters.windDirection  = material->GetOceanProperty(JonswapParameters::WindDirection);
                 properties[count].jonswap_parameters.windSpeed      = material->GetOceanProperty(JonswapParameters::WindSpeed);
-
+                properties[count].jonswap_parameters.depth          = material->GetOceanProperty(JonswapParameters::Depth);
+                properties[count].jonswap_parameters.lowCutoff      = material->GetOceanProperty(JonswapParameters::LowCutoff);
+                properties[count].jonswap_parameters.highCutoff     = material->GetOceanProperty(JonswapParameters::HighCutoff);
 
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;

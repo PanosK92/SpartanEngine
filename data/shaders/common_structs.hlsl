@@ -41,6 +41,10 @@ struct JonswapParameters
     float angle;
     float alpha;
     float peakOmega;
+
+    float depth;
+    float lowCutoff;
+    float highCutoff;
 };
 
 struct Surface
@@ -139,6 +143,9 @@ struct Surface
         jonswap_parameters.swell          = material.jonswap_parameters.swell;
         jonswap_parameters.windDirection  = material.jonswap_parameters.windDirection;
         jonswap_parameters.windSpeed      = material.jonswap_parameters.windSpeed;
+        jonswap_parameters.depth          = material.jonswap_parameters.depth;
+        jonswap_parameters.lowCutoff      = material.jonswap_parameters.lowCutoff;
+        jonswap_parameters.highCutoff     = material.jonswap_parameters.highCutoff;
 
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;

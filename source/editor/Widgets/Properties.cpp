@@ -871,6 +871,9 @@ void Properties::ShowMaterial(Material* material) const
             show_jonswap_params("Swell", "", JonswapParameters::Swell);
             show_jonswap_params("Wind Direction", "", JonswapParameters::WindDirection);
             show_jonswap_params("Wind Speed", "", JonswapParameters::WindSpeed);
+            show_jonswap_params("Depth", "", JonswapParameters::Depth);
+            show_jonswap_params("Low Cutoff", "", JonswapParameters::LowCutoff);
+            show_jonswap_params("High Cutoff", "", JonswapParameters::HighCutoff);
         }
         
         // uv

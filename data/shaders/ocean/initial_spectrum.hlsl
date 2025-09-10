@@ -6,10 +6,6 @@ static const float G = 9.81f;
 static const uint SPECTRUM_TEX_SIZE = 512;
 static const uint LENGTH_SCALE = SPECTRUM_TEX_SIZE / 8;
 
-static const float depth = 10.0f;
-static const float lowCutoff = 0.01f;
-static const float highCutoff = 1000.0f;
-
 RWTexture2D<float4> initial_spectrum : register(u9);
 
 // Heavily Inspired by Acerola's Implementation:
@@ -22,16 +18,16 @@ float2 UniformToGaussian(float u1, float u2)
     return float2(R * cos(theta), R * sin(theta));
 }
 
-float Dispersion(float kMag)
+float Dispersion(float kMag, float depth)
 {
     return sqrt(G * kMag * tanh(min(kMag * depth, 20)));
 }
 
-float DispersionDerivative(float kMag)
+float DispersionDerivative(float kMag, float depth)
 {
     float th = tanh(min(kMag * depth, 20));
     float ch = cosh(kMag * depth);
-    return G * (depth * kMag / ch / ch + th) / Dispersion(kMag) / 2.0f;
+    return G * (depth * kMag / ch / ch + th) / Dispersion(kMag, depth) / 2.0f;
 }
 
 float NormalizationFactor(float s)
@@ -83,7 +79,7 @@ float DirectionSpectrum(float theta, float omega, float peakOmega, float swell, 
     return lerp(2.0f / 3.1415f * cos(theta) * cos(theta), Cosine2s(theta - angle, s), spreadBlend);
 }
 
-float TMACorrection(float omega)
+float TMACorrection(float omega, float depth)
 {
     float omegaH = omega * sqrt(depth / G);
     if (omegaH <= 1.0f)
@@ -94,7 +90,7 @@ float TMACorrection(float omega)
     return 1.0f;
 }
 
-float JONSWAP(float omega, float peakOmega, float gamma, float scale, float alpha)
+float JONSWAP(float omega, float peakOmega, float gamma, float scale, float alpha, float depth)
 {
     float sigma = (omega <= peakOmega) ? 0.07f : 0.09f;
 
@@ -102,7 +98,7 @@ float JONSWAP(float omega, float peakOmega, float gamma, float scale, float alph
 
     float oneOverOmega = 1.0f / (omega + 1e-6f);
     float peakOmegaOverOmega = peakOmega / omega;
-    return scale * TMACorrection(omega) * alpha * G * G
+    return scale * TMACorrection(omega, depth) * alpha * G * G
 		* oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega * oneOverOmega
 		* exp(-1.25f * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega * peakOmegaOverOmega)
 		* pow(abs(gamma), r);
@@ -146,13 +142,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 gauss1 = UniformToGaussian(uniformRandSamples.x, uniformRandSamples.y);
     float2 gauss2 = UniformToGaussian(uniformRandSamples.z, uniformRandSamples.w);
 
-    if (lowCutoff <= kLength && kLength <= highCutoff)
+    if (params.lowCutoff <= kLength && kLength <= params.highCutoff)
     {
         float kAngle = atan2(K.y, K.x);
-        float omega = Dispersion(kLength);
-        float dOmegadk = DispersionDerivative(kLength);
+        float omega = Dispersion(kLength, params.depth);
+        float dOmegadk = DispersionDerivative(kLength, params.depth);
 
-        float spectrum = JONSWAP(omega, params.peakOmega, params.gamma, params.scale, params.alpha) * DirectionSpectrum(kAngle, omega, params.peakOmega, params.swell, params.spreadBlend, params.angle) * ShortWavesFade(kLength, params.shortWavesFade);
+        float spectrum = JONSWAP(omega, params.peakOmega, params.gamma, params.scale, params.alpha, params.depth) * DirectionSpectrum(kAngle, omega, params.peakOmega, params.swell, params.spreadBlend, params.angle) * ShortWavesFade(kLength, params.shortWavesFade);
         
         initial_spectrum[thread_id.xy] = float4(float2(gauss2.x, gauss1.y) * float2(sqrt(2 * spectrum * abs(dOmegadk) / kLength * deltaK * deltaK).xx), 0.0f, 0.0f);
     }

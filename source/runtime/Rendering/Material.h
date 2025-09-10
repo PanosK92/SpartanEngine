@@ -126,6 +126,10 @@ namespace spartan
         Alpha,
         PeakOmega,
 
+        Depth,
+        LowCutoff,
+        HighCutoff,
+
         Max
     };
 

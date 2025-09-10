@@ -124,6 +124,10 @@ struct MaterialParameters
         float angle;
         float alpha;
         float peakOmega;
+
+        float depth;
+        float lowCutoff;
+        float highCutoff;
     } jonswap_parameters;
     
     bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
