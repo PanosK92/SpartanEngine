@@ -749,19 +749,27 @@ namespace spartan
         SP_ASSERT_MSG(m_properties[static_cast<uint32_t>(MaterialProperty::IsOcean)] == 1.0f, "Only ocean materials can have ocean properties");
 
         // special cases
-        if (property_type == JonswapParameters::Alpha)
+        if (property_type == JonswapParameters::Fetch || property_type == JonswapParameters::WindSpeed)
         {
+            // update fetch or windspeed
+            m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
+
+            // get fetch and windspeed
             float fetch = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Fetch)];
             float windSpeed = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::WindSpeed)];
 
-            m_ocean_properties[static_cast<uint32_t>(property_type)] = jonswap_alpha(fetch, windSpeed);
+            // update alpha and peakOmega
+            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Alpha)] = jonswap_alpha(fetch, windSpeed);
+            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::PeakOmega)] = jonswap_peak_frequency(fetch, windSpeed);
         }
-        else if (property_type == JonswapParameters::PeakOmega)
+        else if (property_type == JonswapParameters::WindDirection)
         {
-            float fetch = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Fetch)];
-            float windSpeed = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::WindSpeed)];
+            // update wind direction
+            m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
 
-            m_ocean_properties[static_cast<uint32_t>(property_type)] = jonswap_peak_frequency(fetch, windSpeed);
+            // update angle, based on the wind direction
+            float angle = value / 180.0f * pi;
+            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Angle)] = angle;
         }
         else
         {
@@ -769,13 +777,13 @@ namespace spartan
                 return;
 
             m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
+        }
 
-            // if the world is loading, don't fire an event as we will spam the event system
+        // if the world is loading, don't fire an event as we will spam the event system
             // also the renderer will check all the materials after loading anyway
-            if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
-            {
-                SP_FIRE_EVENT(EventType::MaterialOnChanged);
-            }
+        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
+        {
+            SP_FIRE_EVENT(EventType::MaterialOnChanged);
         }
     }
 

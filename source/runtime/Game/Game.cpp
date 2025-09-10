@@ -310,10 +310,14 @@ namespace spartan
                     material->SetResourceFilePath("ocean" + string(EXTENSION_MATERIAL));
 
                     float windDir = 100.0f;
-                    float angle = windDir / 180.0f * pi;
 
                     material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); 
                     material->SetProperty(MaterialProperty::IsOcean, 1.0f);
+
+                    material->SetOceanProperty(JonswapParameters::Angle, 0.0f); //handled internally
+                    material->SetOceanProperty(JonswapParameters::Alpha, 0.0f); // handled internally
+                    material->SetOceanProperty(JonswapParameters::PeakOmega, 0.0f); // handled internally
+
                     material->SetOceanProperty(JonswapParameters::Scale, 2.5f);
                     material->SetOceanProperty(JonswapParameters::SpreadBlend, 0.9f);
                     material->SetOceanProperty(JonswapParameters::Swell, 0.6f);
@@ -324,9 +328,9 @@ namespace spartan
                     material->SetOceanProperty(JonswapParameters::ShortWavesFade, 0.0f);
                     material->SetOceanProperty(JonswapParameters::RepeatTime, 200.0f);
 
-                    material->SetOceanProperty(JonswapParameters::Angle, angle);
-                    material->SetOceanProperty(JonswapParameters::Alpha, 0.0f); // handled internally
-                    material->SetOceanProperty(JonswapParameters::PeakOmega, 0.0f); // handled internally
+                    material->SetOceanProperty(JonswapParameters::Depth, 20.0f);
+                    material->SetOceanProperty(JonswapParameters::LowCutoff, 0.001f);
+                    material->SetOceanProperty(JonswapParameters::HighCutoff, 1000.0f);
                 }
 
                 // geometry
