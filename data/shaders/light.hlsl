@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
+RWTexture2D<float4> slope_map : register(u13);
+
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
     const float distortion         = 0.3f;
@@ -72,6 +74,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2)
         return;
 
+    if (surface.is_ocean())
+    {
+        float4 slope = slope_map.Load(int3(thread_id.xy, 0));
+        surface.normal = normalize(float3(-slope.x, 1.0f, -slope.y));
+    }
+    
     float3 out_diffuse    = 0.0f;
     float3 out_specular   = 0.0f;
     float  out_shadow     = 1.0f;

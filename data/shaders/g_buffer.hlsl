@@ -29,6 +29,8 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
+Texture2D<float4> displacement_map : register(t17);
+
 // rotate UV around center (0.5, 0.5) by angle
 float2 rotate_uv(float2 uv, float angle)
 {
@@ -99,6 +101,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
+    input.position.xyz += displacement_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb;
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
 
     // transform world space position to clip space

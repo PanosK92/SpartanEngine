@@ -684,7 +684,13 @@ namespace spartan
                     cmd_list->SetCullMode(GetOption<bool>(Renderer_Option::Wireframe) ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
+
+                    if (material->IsOcean())
+                    {
+                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                        cmd_list->SetTexture(17, displacement_map);
+                    }
+
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),
                         renderable->GetIndexOffset(draw_call.lod_index),
