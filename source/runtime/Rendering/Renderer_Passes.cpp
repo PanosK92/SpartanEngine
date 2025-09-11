@@ -136,6 +136,9 @@ namespace spartan
 
                         material->MarkSpectrumAsComputed();
                     }
+
+                    // computes displacement and slope maps
+                    Pass_AdvanceSpectrum(cmd_list_graphics_present);
                 }
 
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
@@ -1123,6 +1126,30 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+            cmd_list->Dispatch(initial_spectrum);
+
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_AdvanceSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum      = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum        = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_advance_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_advance_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_advance_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum,      initial_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum,        slope_spectrum);
             cmd_list->Dispatch(initial_spectrum);
 
             // for the lifetime of the engine, this will be read as an srv, so transition here

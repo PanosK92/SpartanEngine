@@ -228,6 +228,10 @@ namespace spartan
             {
                 uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv;
                 render_target(Renderer_RenderTarget::ocean_initial_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_initial_spectrum");
+
+                render_target(Renderer_RenderTarget::ocean_displacement_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement_spectrum");
+
+                render_target(Renderer_RenderTarget::ocean_slope_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_slope_spectrum");
             }
 
             // occlusion
@@ -383,6 +387,10 @@ namespace spartan
 
             shader(Renderer_Shader::ocean_pack_spectrum_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::ocean_pack_spectrum_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\pack_spectrum.hlsl", false);
+
+            shader(Renderer_Shader::ocean_advance_spectrum_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_advance_spectrum_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\advance_spectrum.hlsl", false);
+
         }
 
         // blur
