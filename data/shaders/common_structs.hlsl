@@ -52,7 +52,6 @@ struct Surface
     float3 bent_normal;
     float3 camera_to_pixel;
     float  camera_to_pixel_length;
-    float3 specular_energy;
     float3 diffuse_energy;
 
     // easy access to certain properties
@@ -103,7 +102,6 @@ struct Surface
         clearcoat_roughness   = material.clearcoat_roughness;
         sheen                 = material.sheen;
         subsurface_scattering = material.subsurface_scattering;
-        specular_energy       = 1.0f;
         diffuse_energy        = 1.0f;
 
         // roughness is authored as perceptual roughness, as is convention

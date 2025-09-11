@@ -147,8 +147,7 @@ float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
     float3 fresnel      = F_Schlick(surface.F0, get_f90(), angular_info.v_dot_h);
 
     // energy conservation
-    surface.diffuse_energy  *= compute_diffuse_energy(fresnel, surface.metallic);
-    surface.specular_energy *= fresnel;
+    surface.diffuse_energy *= compute_diffuse_energy(fresnel, surface.metallic);
 
     return visibility * distribution * fresnel;
 }
@@ -191,8 +190,8 @@ float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info
     // fresnel
     float3 F = F_Schlick(surface.F0, get_f90(), angular_info.v_dot_h);
 
-    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
-    surface.specular_energy *= F;
+    // energy conservation
+    surface.diffuse_energy *= compute_diffuse_energy(F, surface.metallic);
 
     return D * V * F;
 }
@@ -205,8 +204,8 @@ float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
     float V  = V_Kelemen(angular_info.v_dot_h);
     float3 F = F_Schlick(0.04, get_f90(), angular_info.v_dot_h) * surface.clearcoat;
 
-    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
-    surface.specular_energy *= F;
+    // energy conservation
+    surface.diffuse_energy *= compute_diffuse_energy(F, surface.metallic);
 
     return D * V * F;
 }
@@ -223,9 +222,8 @@ float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
     float3 sheen_color = saturate(surface.albedo * 1.2f);
     float3 F           = F_Schlick(sheen_color, 1.0, angular_info.v_dot_h);
 
-    // sheen energy conservation
-    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
-    surface.specular_energy *= F;
+    // energy conservation
+    surface.diffuse_energy *= compute_diffuse_energy(F, surface.metallic);
 
     // combine terms to get the sheen BRDF
     return D * V * F;
