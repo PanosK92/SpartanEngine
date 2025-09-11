@@ -391,6 +391,11 @@ namespace spartan
             shader(Renderer_Shader::ocean_advance_spectrum_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::ocean_advance_spectrum_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\advance_spectrum.hlsl", false);
 
+            shader(Renderer_Shader::ocean_horizontal_fft_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_horizontal_fft_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\horizontal_fft.hlsl", false);
+
+            shader(Renderer_Shader::ocean_vertical_fft_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_vertical_fft_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\vertical_fft.hlsl", false);
         }
 
         // blur

@@ -196,6 +196,8 @@ namespace spartan
         ocean_initial_spectrum_c,
         ocean_pack_spectrum_c,
         ocean_advance_spectrum_c,
+        ocean_horizontal_fft_c,
+        ocean_vertical_fft_c,
         max
     };
     

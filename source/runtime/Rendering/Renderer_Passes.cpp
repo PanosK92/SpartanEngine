@@ -139,6 +139,8 @@ namespace spartan
 
                     // computes displacement and slope maps
                     Pass_AdvanceSpectrum(cmd_list_graphics_present);
+                    Pass_ApplyHorizontalFFT(cmd_list_graphics_present);
+                    Pass_ApplyVerticalFFT(cmd_list_graphics_present);
                 }
 
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
@@ -1153,7 +1155,51 @@ namespace spartan
             cmd_list->Dispatch(initial_spectrum);
 
             // for the lifetime of the engine, this will be read as an srv, so transition here
-            initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyHorizontalFFT(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_horizontal_fft");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_horizontal_fft";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_horizontal_fft_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->Dispatch(1, displacement_spectrum->GetHeight(), 1);
+
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyVerticalFFT(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_vertical_fft");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_vertical_fft";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_vertical_fft_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->Dispatch(1, displacement_spectrum->GetHeight(), 1);
+
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }
