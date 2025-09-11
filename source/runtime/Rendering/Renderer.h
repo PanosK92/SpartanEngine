@@ -167,6 +167,7 @@ namespace spartan
         static void Pass_AdvanceSpectrum(RHI_CommandList* cmd_list);
         static void Pass_ApplyHorizontalFFT(RHI_CommandList* cmd_list);
         static void Pass_ApplyVerticalFFT(RHI_CommandList* cmd_list);
+        static void Pass_GenerateMaps(RHI_CommandList* cmd_list);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);

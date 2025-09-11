@@ -141,6 +141,7 @@ namespace spartan
                     Pass_AdvanceSpectrum(cmd_list_graphics_present);
                     Pass_ApplyHorizontalFFT(cmd_list_graphics_present);
                     Pass_ApplyVerticalFFT(cmd_list_graphics_present);
+                    Pass_GenerateMaps(cmd_list_graphics_present);
                 }
 
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
@@ -1197,6 +1198,33 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
             cmd_list->Dispatch(1, displacement_spectrum->GetHeight(), 1);
+
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_GenerateMaps(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+
+        cmd_list->BeginTimeblock("ocean_map_generation");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_map_generation";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_generate_maps_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_map, displacement_map);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
+            cmd_list->Dispatch(displacement_map);
 
             // for the lifetime of the engine, this will be read as an srv, so transition here
             //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);

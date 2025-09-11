@@ -140,6 +140,8 @@ namespace spartan
         ocean_initial_spectrum      = 9,
         ocean_displacement_spectrum = 10,
         ocean_slope_spectrum        = 11,
+        ocean_displacement_map      = 12,
+        ocean_slope_map             = 13
     };
 
     enum class Renderer_Shader : uint8_t
@@ -198,6 +200,7 @@ namespace spartan
         ocean_advance_spectrum_c,
         ocean_horizontal_fft_c,
         ocean_vertical_fft_c,
+        ocean_generate_maps_c,
         max
     };
     
@@ -233,6 +236,8 @@ namespace spartan
         ocean_initial_spectrum,
         ocean_displacement_spectrum,
         ocean_slope_spectrum,
+        ocean_displacement_map,
+        ocean_slope_map,
         max
     };
 
