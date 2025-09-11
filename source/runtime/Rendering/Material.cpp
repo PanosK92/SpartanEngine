@@ -444,7 +444,7 @@ namespace spartan
         if (!HasTextureOfType(texture_type))
             return "";
 
-        return m_textures[static_cast<uint32_t>(texture_type)]->GetResourceFilePath();
+        return m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture + slot]->GetResourceFilePath();;
     }
 
     vector<string> Material::GetTexturePaths()

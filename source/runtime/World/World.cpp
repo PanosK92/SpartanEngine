@@ -679,7 +679,7 @@ namespace spartan
             {
                 if (Material* material = renderable->GetMaterial())
                 {
-                    const uint64_t id = material->GetObjectId();
+                    const uint64_t id   = material->GetObjectId();
                     size_t current_hash = compute_material_hash(material);
                     auto it = material_state_hashes.find(id);
                     if (it == material_state_hashes.end())
