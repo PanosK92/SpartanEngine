@@ -89,6 +89,10 @@ namespace spartan
             {
                 hash = (hash * 31) ^ std::hash<float>{}(prop);
             }
+            for (const float oceanProp : material->GetOceanProperties())
+            {
+                hash = (hash * 31) ^ std::hash<float>{}(oceanProp);
+            }
             return hash;
         }
 

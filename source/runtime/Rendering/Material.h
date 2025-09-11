@@ -179,6 +179,7 @@ namespace spartan
         void MarkSpectrumAsComputed() { m_should_compute_spectrum = false; }
 
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
+        const std::array<float, static_cast<uint32_t>(JonswapParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
 
     private:
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
