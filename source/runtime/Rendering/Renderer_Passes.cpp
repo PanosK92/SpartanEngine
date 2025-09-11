@@ -689,6 +689,9 @@ namespace spartan
                     {
                         RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
                         cmd_list->SetTexture(17, displacement_map);
+
+                        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+                        cmd_list->SetTexture(18, slope_map);
                     }
 
                     cmd_list->DrawIndexed(
@@ -1114,6 +1117,9 @@ namespace spartan
             pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_initial_spectrum_c);
             cmd_list->SetPipelineState(pso);
 
+            m_pcb_pass_cpu.set_f2_value(GetFrameNumber(), 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
             cmd_list->Dispatch(initial_spectrum);
 
@@ -1155,6 +1161,9 @@ namespace spartan
             pso.name = "ocean_advance_spectrum";
             pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_advance_spectrum_c);
             cmd_list->SetPipelineState(pso);
+
+            //m_pcb_pass_cpu.set_f2_value(, 0.0f);
+            //cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum,      initial_spectrum);
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);

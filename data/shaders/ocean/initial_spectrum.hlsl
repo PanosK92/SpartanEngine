@@ -126,8 +126,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, resolution_out, true, false);
     
     uint seed = thread_id.x + SPECTRUM_TEX_SIZE * thread_id.y + SPECTRUM_TEX_SIZE;
-    //seed += srt - > frame;
-    seed += 0;
+    seed += pass_get_f2_value().x; // seed += frame_number
 
     JonswapParameters params = surface.jonswap_parameters;
     

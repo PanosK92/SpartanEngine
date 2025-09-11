@@ -1712,7 +1712,7 @@ namespace spartan
 
                 auto entity = World::CreateEntity();
 
-                auto water = entities::ocean({ 0.0f, 0.0f, 0.0f }, 20.0f, 1024.0f);
+                auto water = entities::ocean({ 0.0f, 0.0f, 0.0f }, 20.0f, 256.0f);
 
                 water->SetParent(entity);
 

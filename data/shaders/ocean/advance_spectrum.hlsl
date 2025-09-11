@@ -43,7 +43,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     float repeatTime = params.repeatTime; //frac(srt->time);
     float w_0 = 2.0f * PI / repeatTime;
-    float dispersion = floor(sqrt(G * kMag) / w_0) * w_0 * 0.16f; //srt - > time;
+    float dispersion = floor(sqrt(G * kMag) / w_0) * w_0 * buffer_frame.time; //srt - > time;
 
     float2 exponent = EulerFormula(dispersion);
 
