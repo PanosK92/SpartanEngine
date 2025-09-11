@@ -629,7 +629,7 @@ namespace spartan
                         camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         camera->SetRotationLocal(Quaternion::Identity);
             
-                        audio_source_start->Play();
+                        audio_source_start->PlayClip();
             
                         inside_the_car = true;
                     }
@@ -643,7 +643,7 @@ namespace spartan
                         // place the camera on the left of the driver's door
                         default_camera->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
             
-                        audio_source_idle->Stop();
+                        audio_source_idle->StopClip();
             
                         inside_the_car = false;
                     }
@@ -653,7 +653,7 @@ namespace spartan
                     //default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
             
                     // play exit/enter sound
-                    audio_source_door->Play();
+                    audio_source_door->PlayClip();
             
                     // disable/enable windshield
                     if (default_car_window)
@@ -1135,11 +1135,11 @@ namespace spartan
                             {
                                 if (is_below_water_level && !audio_source->IsPlaying())
                                 {
-                                    audio_source->Play();
+                                    audio_source->PlayClip();
                                 }
                                 else if (!is_below_water_level && audio_source->IsPlaying())
                                 {
-                                    audio_source->Stop();
+                                    audio_source->StopClip();
                                 }
                             }
                         }
@@ -1154,11 +1154,11 @@ namespace spartan
                             {
                                 if (camera->IsWalking() && !audio_source->IsPlaying())
                                 {
-                                    audio_source->Play();
+                                    audio_source->PlayClip();
                                 }
                                 else if (!camera->IsWalking() && audio_source->IsPlaying())
                                 {
-                                    audio_source->Stop();
+                                    audio_source->StopClip();
                                 }
                             }
                         }
@@ -1653,13 +1653,13 @@ namespace spartan
   
                     if (camera->IsWalking() && !active_source->IsPlaying())
                     {
-                        active_source->Play();
-                        inactive_source->Stop();
+                        active_source->PlayClip();
+                        inactive_source->StopClip();
                     }
                     else if (!camera->IsWalking())
                     {
-                        audio_source_tiles->Stop();
-                        audio_source_water->Stop();
+                        audio_source_tiles->StopClip();
+                        audio_source_water->StopClip();
                     }
                 }
             }

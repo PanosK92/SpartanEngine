@@ -64,8 +64,8 @@ namespace spartan
         ~Physics();
 
         // component
-        void OnInitialize() override;
-        void OnRemove() override;
+        void Initialize() override;
+        void Remove() override;
         void OnTick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;

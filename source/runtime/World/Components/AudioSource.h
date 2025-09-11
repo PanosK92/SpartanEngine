@@ -42,10 +42,10 @@ namespace spartan
         ~AudioSource();
 
         // component interface
-        void OnInitialize() override;
-        void OnStart() override;
-        void OnStop() override;
-        void OnRemove() override;
+        void Initialize() override;
+        void Start() override;
+        void Stop() override;
+        void Remove() override;
         void OnTick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
@@ -54,8 +54,8 @@ namespace spartan
         const std::string& GetAudioClipName() const { return m_name; };
 
         bool IsPlaying() { return m_is_playing; }
-        void Play();
-        void Stop();
+        void PlayClip();
+        void StopClip();
         float GetProgress() const;
 
         bool GetMute() const { return m_mute; }

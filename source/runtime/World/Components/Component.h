@@ -63,16 +63,19 @@ namespace spartan
         virtual ~Component() = default;
 
         // called when the component gets added
-        virtual void OnInitialize() {}
+        virtual void Initialize() {}
 
         // called every time the simulation starts
-        virtual void OnStart() {}
+        virtual void Start() {}
 
         // called every time the simulation stops
-        virtual void OnStop() {}
+        virtual void Stop() {}
 
         // called when the component is removed
-        virtual void OnRemove() {}
+        virtual void Remove() {}
+
+        // called every frame, before Tick, useful to reset states before the main update
+        virtual void PreTick() {}
 
         // called every frame
         virtual void OnTick() {}
@@ -83,7 +86,6 @@ namespace spartan
         // called when the entity is being loaded
         virtual void Load(pugi::xml_node& node) {}
 
-        //= TYPE =============================================================
         template <typename T>
         static ComponentType TypeToEnum();
 
@@ -116,9 +118,6 @@ namespace spartan
             return ComponentType::Max;
         }
 
-        //====================================================================
-
-        //= PROPERTIES ==============================================================
         ComponentType GetType()          const { return m_type; }
         void SetType(ComponentType type)       { m_type = type; }
 
@@ -132,8 +131,7 @@ namespace spartan
         }
 
         Entity* GetEntity() const { return m_entity_ptr; }
-        //===========================================================================
-        
+ 
     protected:
         #define SP_REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(  \
         [this]()                        { return getter(); },                           \

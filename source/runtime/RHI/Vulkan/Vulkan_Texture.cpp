@@ -146,22 +146,22 @@ namespace spartan
             }
         }
 
-        void copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
+        template<uint32_t MaxRegions>
+        void copy_to_staging_buffer(RHI_Texture* texture, array<VkBufferImageCopy, MaxRegions>& regions, void*& staging_buffer)
         {
             SP_ASSERT_MSG(texture->HasData(), "No data to stage");
-
+        
             const uint32_t width     = texture->GetWidth();
             const uint32_t height    = texture->GetHeight();
             const uint32_t depth     = texture->GetDepth();
             const uint32_t mip_count = texture->GetMipCount();
-
+        
             const uint32_t region_count = depth * mip_count;
-            regions.resize(region_count);
-            regions.reserve(region_count);
-
+            SP_ASSERT(region_count <= MaxRegions);
+        
             VkDeviceSize buffer_offset    = 0;
             VkDeviceSize buffer_alignment = RHI_Device::PropertyGetOptimalBufferCopyOffsetAlignment();
-
+        
             for (uint32_t array_index = 0; array_index < depth; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
@@ -169,13 +169,13 @@ namespace spartan
                     uint32_t region_index = mip_index + array_index * mip_count;
                     uint32_t mip_width    = max(1u, width >> mip_index);
                     uint32_t mip_height   = max(1u, height >> mip_index);
-                    uint32_t mip_depth    = texture->GetType() == RHI_Texture_Type::Type3D ? (texture->GetDepth() >> mip_index) : 1;
-
+                    uint32_t mip_depth    = texture->GetType() == RHI_Texture_Type::Type3D ? (depth >> mip_index) : 1;
+        
                     SP_ASSERT(mip_width != 0 && mip_height != 0 && mip_depth != 0);
-
+        
                     // align buffer offset
                     buffer_offset = (buffer_offset + buffer_alignment - 1) & ~(buffer_alignment - 1);
-
+        
                     regions[region_index].bufferOffset                    = buffer_offset;
                     regions[region_index].bufferRowLength                 = 0;
                     regions[region_index].bufferImageHeight               = 0;
@@ -185,74 +185,82 @@ namespace spartan
                     regions[region_index].imageSubresource.layerCount     = 1;
                     regions[region_index].imageOffset                     = { 0, 0, 0 };
                     regions[region_index].imageExtent                     = { mip_width, mip_height, mip_depth };
-
+        
                     buffer_offset += RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
                 }
             }
-
+        
             // create staging buffer with aligned size
             RHI_Device::MemoryBufferCreate(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
-
+        
             void* mapped_data = nullptr;
             buffer_offset = 0;
             RHI_Device::MemoryMap(staging_buffer, mapped_data);
+        
+            for (uint32_t array_index = 0; array_index < depth; array_index++)
             {
-                for (uint32_t array_index = 0; array_index < depth; array_index++)
+                for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
-                    for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
+                    uint32_t mip_width  = max(1u, width >> mip_index);
+                    uint32_t mip_height = max(1u, height >> mip_index);
+                    uint32_t mip_depth  = texture->GetType() == RHI_Texture_Type::Type3D ? (depth >> mip_index) : 1;
+                    size_t size         = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
+        
+                    if (!texture->GetMip(array_index, mip_index).bytes.empty())
                     {
-
-                        uint32_t mip_width  = max(1u, width >> mip_index);
-                        uint32_t mip_height = max(1u, height >> mip_index);
-                        uint32_t mip_depth  = (texture->GetType() == RHI_Texture_Type::Type3D) ? (depth >> mip_index) : 1;
-                        size_t size         = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
-
-                        if (texture->GetMip(array_index, mip_index).bytes.size() != 0)
-                        {
-                            memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), size);
-                        }
-
-                        buffer_offset += size;
+                        memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), size);
                     }
+        
+                    buffer_offset += size;
                 }
-
-                RHI_Device::MemoryUnmap(staging_buffer);
             }
+        
+            RHI_Device::MemoryUnmap(staging_buffer);
         }
 
         void stage(RHI_Texture* texture)
         {
-            // copy the texture's data to a staging buffer
+            SP_ASSERT(texture->HasData());
+        
             void* staging_buffer = nullptr;
-            static vector<VkBufferImageCopy> regions;
-            regions.clear();
+        
+            // determine region count
+            const uint32_t depth        = texture->GetDepth();
+            const uint32_t mip_count    = texture->GetMipCount();
+            const uint32_t region_count = depth * mip_count;
+        
+            // fixed-size stack array
+            constexpr uint32_t MaxArrayLayers = 512;
+            constexpr uint32_t MaxMipLevels   = 16;
+            constexpr uint32_t MaxRegions     = MaxArrayLayers * MaxMipLevels;
+            SP_ASSERT(region_count <= MaxRegions);
+        
+            array<VkBufferImageCopy, MaxRegions> regions{};
+        
+            // copy data to staging buffer using stack array
             copy_to_staging_buffer(texture, regions, staging_buffer);
-
+        
             // copy the staging buffer into the image
             if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
             {
-                // optimal layout for images which are the destination of a transfer format
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
-
-                // insert memory barrier
-                cmd_list->InsertBarrier(texture->GetRhiResource(), texture->GetFormat(), 0, texture->GetMipCount(), texture->GetDepth(), layout);
-
-                // copy the staging buffer to the image
+        
+                cmd_list->InsertBarrier(texture->GetRhiResource(), texture->GetFormat(), 0, mip_count, depth, layout);
+        
                 vkCmdCopyBufferToImage(
                     static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
                     static_cast<VkBuffer>(staging_buffer),
                     static_cast<VkImage>(texture->GetRhiResource()),
                     vulkan_image_layout[static_cast<uint8_t>(layout)],
-                    static_cast<uint32_t>(regions.size()),
+                    region_count,
                     regions.data()
                 );
-
-                // end/flush
+        
                 RHI_Device::CmdImmediateSubmit(cmd_list);
-
-                // free staging buffer
-                RHI_Device::MemoryBufferDestroy(staging_buffer);
             }
+        
+            if (staging_buffer)
+                RHI_Device::MemoryBufferDestroy(staging_buffer);
         }
 
         RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)

@@ -49,8 +49,9 @@ namespace spartan
         Entity* Clone();
 
         // core
-        void OnStart();
-        void OnStop();
+        void Start();
+        void Stop();
+        void PreTick();
         void Tick();
 
         // io
@@ -79,9 +80,7 @@ namespace spartan
 
             // initialize component
             component->SetType(type);
-            component->OnInitialize();
-
-            World::Resolve();
+            component->Initialize();
 
             return component.get();
         }
@@ -109,6 +108,7 @@ namespace spartan
 
         void RemoveComponentById(uint64_t id);
         const auto& GetAllComponents() const { return m_components; }
+        uint32_t GetComponentCount() const;
 
         //= POSITION ======================================================================
         math::Vector3 GetPosition()             const { return m_matrix.GetTranslation(); }

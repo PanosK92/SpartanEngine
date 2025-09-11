@@ -311,9 +311,9 @@ namespace spartan
         pugi::xml_node textures_node = node_material.child("textures");
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
-            for (uint32_t slot = 0; slot < slots_per_texture_type; ++slot)
+            for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
-                uint32_t index = type * slots_per_texture_type + slot;
+                uint32_t index   = type * slots_per_texture + slot;
                 string node_name = "texture_" + to_string(index);
                 pugi::xml_node node_texture = textures_node.child(node_name.c_str());
                 if (!node_texture)
@@ -359,9 +359,9 @@ namespace spartan
         textures_node.append_attribute("count").set_value(static_cast<uint32_t>(m_textures.size()));
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
-            for (uint32_t slot = 0; slot < slots_per_texture_type; ++slot)
+            for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
-                uint32_t index = type * slots_per_texture_type + slot;
+                uint32_t index   = type * slots_per_texture + slot;
                 string node_name = "texture_" + to_string(index);
                 pugi::xml_node texture_node = textures_node.append_child(node_name.c_str());
                 texture_node.append_attribute("texture_type").set_value(type);
@@ -376,11 +376,10 @@ namespace spartan
 
     void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot, const bool auto_adjust_multipler)
     {
-        // validate slot range
-        SP_ASSERT(slot < slots_per_texture_type);
+        SP_ASSERT(slot < slots_per_texture);
     
         // calculate the actual array index based on texture type and slot
-        uint32_t array_index = (static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot;
+        uint32_t array_index = (static_cast<uint32_t>(texture_type) * slots_per_texture) + slot;
 
         if (texture)
         {
@@ -410,8 +409,6 @@ namespace spartan
                 SetProperty(MaterialProperty::Height, 1.0f);
             }
         }
-
-        SP_FIRE_EVENT(EventType::MaterialOnChanged);
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, shared_ptr<RHI_Texture> texture, const uint8_t slot)
@@ -440,9 +437,9 @@ namespace spartan
 
     bool Material::HasTextureOfType(const MaterialTextureType texture_type) const
     {
-        for (uint32_t slot = 0; slot < slots_per_texture_type; slot++)
+        for (uint32_t slot = 0; slot < slots_per_texture; slot++)
         {
-            if (m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture_type + slot] != nullptr)
+            if (m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture + slot] != nullptr)
                 return true; 
         }
     
@@ -454,7 +451,7 @@ namespace spartan
         if (!HasTextureOfType(texture_type))
             return "";
 
-        return m_textures[static_cast<uint32_t>(texture_type)]->GetResourceFilePath();
+        return m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture + slot]->GetResourceFilePath();;
     }
 
     vector<string> Material::GetTexturePaths()
@@ -473,8 +470,7 @@ namespace spartan
 
     RHI_Texture* Material::GetTexture(const MaterialTextureType texture_type, const uint8_t slot)
     {
-        SP_ASSERT(slot < slots_per_texture_type);
-        return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture_type) + slot];
+        return m_textures[(static_cast<uint32_t>(texture_type) * slots_per_texture) + slot];
     }
 
     void Material::PrepareForGpu()
@@ -689,10 +685,10 @@ namespace spartan
         for (size_t type = 0; type < static_cast<size_t>(MaterialTextureType::Max); type++)
         {
             // check each slot for this type
-            for (uint32_t slot = 0; slot < slots_per_texture_type; ++slot)
+            for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
                 // calculate array index using the helper function
-                uint32_t index = (static_cast<uint32_t>(type) * slots_per_texture_type) + slot;
+                uint32_t index = (static_cast<uint32_t>(type) * slots_per_texture) + slot;
                 
                 // if this slot has a texture, update the max used slot for this type
                 if (m_textures[index])
@@ -720,7 +716,6 @@ namespace spartan
             {
                 RHI_CullMode cull_mode = value < 1.0f ? RHI_CullMode::None : RHI_CullMode::Back;
                 m_properties[static_cast<uint32_t>(MaterialProperty::CullMode)] = static_cast<float>(cull_mode);
-                World::Resolve();
             }
 
             // transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
@@ -728,13 +723,6 @@ namespace spartan
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
-
-        // if the world is loading, don't fire an event as we will spam the event system
-        // also the renderer will check all the materials after loading anyway
-        if (!ProgressTracker::GetProgress(ProgressType::World).IsProgressing())
-        {
-            SP_FIRE_EVENT(EventType::MaterialOnChanged);
-        }
     }
 
     float Material::GetOceanProperty(const JonswapParameters property_type) const

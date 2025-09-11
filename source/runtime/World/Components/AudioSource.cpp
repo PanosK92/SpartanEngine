@@ -1,13 +1,16 @@
 /*
 Copyright(c) 2015-2025 Panos Karabelas
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
+
 The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
@@ -159,7 +162,7 @@ namespace spartan
 
     AudioSource::~AudioSource()
     {
-        Stop();
+        StopClip();
 
         if (m_stream)
         {
@@ -170,27 +173,27 @@ namespace spartan
         audio_device::release();
     }
 
-    void AudioSource::OnInitialize()
+    void AudioSource::Initialize()
     {
-        Component::OnInitialize();
+        Component::Initialize();
     }
 
-    void AudioSource::OnStart()
+    void AudioSource::Start()
     {
         if (m_play_on_start)
         {
-            Play();
+            PlayClip();
         }
     }
 
-    void AudioSource::OnStop()
+    void AudioSource::Stop()
     {
-        Stop();
+        StopClip();
     }
 
-    void AudioSource::OnRemove()
+    void AudioSource::Remove()
     {
-        Stop();
+        StopClip();
     }
 
     void AudioSource::OnTick()
@@ -283,7 +286,7 @@ namespace spartan
         }
     }
 
-    void AudioSource::Play()
+    void AudioSource::PlayClip()
     {
         if (!m_clip || m_clip->length == 0)
         {
@@ -312,7 +315,7 @@ namespace spartan
         SetPitch(m_pitch);
     }
 
-    void AudioSource::Stop()
+    void AudioSource::StopClip()
     {
         if (!m_is_playing)
             return;
@@ -385,7 +388,7 @@ namespace spartan
             }
             else
             {
-                Stop();
+                StopClip();
                 return;
             }
         }
