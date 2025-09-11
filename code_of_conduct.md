@@ -2,48 +2,50 @@
 
 ### **Free Speech and Respect**  
 
-We believe in the power of dialogue and the exchange of ideas. Disagreeing with someone doesn’t mean you dislike or hate them. Constructive debates are welcome and encouraged, as they are essential for growth.  
+We believe in the power of dialogue and exchanging ideas. Disagreeing with someone does not mean you dislike, hate, or cancel them. Say what you think, debate hard if you must, but do it constructively. Growth comes from ideas, not drama.
 
-### **Kindness and Logic**  
+### **Kindness and Reason**  
 
-Engage with others in a way that is kind and logical. A good argument doesn’t need insults; it stands on its own merit.  
+Be kind, be reasonable. A strong argument does not need insults to land. Let your points speak for themselves.
 
-### **Self-Preservation of the Community**  
+### **Self-Preservation of the Discord Community**  
 
-While free speech is vital, behaviors that threaten the survival of the community via degrading the experience for other members (e.g., hostile conduct, personal attacks) will not be tolerated.  
+Free speech is vital, but if someone becomes highly toxic, attacks others, and drives members away, killing the community, we draw the line. There is no room for suicidal empathy when the server’s survival is at stake.
+
+The person will be engaged in dialogue first. If they refuse or cannot engage constructively, they will be banned immediately. The survival of the community comes first.
 
 ---
 
 ## **Expected Behavior**  
 
-1. **Engage Constructively**: Share your thoughts and opinions without hostility or malice.  
-2. **Be Kind**: Treat others with respect and empathy, even if you strongly disagree.  
-3. **Stay on Topic**: Keep discussions relevant to the community’s goals and focus areas.  
-4. **Help Others**: Extend support, offer insights, and foster connections.  
+1. **Engage Constructively**: Share your thoughts and opinions without hostility or malice.
+2. **Be Kind**: Treat others with respect and empathy, even in strong disagreements.
+3. **Stay on Topic**: Keep discussions focused on the community’s goals and purpose.
+4. **Help Others**: Offer support, share insights, and build connections.  
 
 ---
 
 ## **Unacceptable Behavior**  
 
-To ensure the survival of the community, the following behaviors are not allowed:  
+To protect the community, the following behaviors will not be tolerated because they threaten the server’s survival:
 
-- Lying, spreading false information or misrepresenting facts.  
-- Personal attacks, insults, or hostility (e.g., saying “F*** you” or worse).
-- Refusal to engage in constructive dialogue when approached to resolve conflicts.  
+- Lying, spreading false information, or misrepresenting facts.
+- Personal attacks, insults, or hostility toward others.
+- Refusing to engage in constructive dialogue when conflicts arise.  
+
+These actions put the community at risk and will be addressed immediately.
 
 ---
 
 ## **Enforcement**  
 
-We prioritize dialogue and open communication before taking action. If someone’s behavior becomes problematic:  
+We value dialogue first. Problematic behavior will be handled like this:
 
-1. **Discussion**: They will be addressed directly and honestly to resolve the issue.  
-2. **Ban**: If dialogue fails and the behavior continues to threaten the community’s survival via degrading the experience for other members, a ban will be issued to ensure self-preservation.
+1. **Discussion**: The person will be confronted directly and honestly to resolve the issue.
+2. **Ban**: If dialogue fails and the behavior continues to threaten the community, a ban will be issued immediately. Protecting the community comes first.
 
 ---
 
 ## **Reporting Issues**  
 
-If you encounter behavior that violates this Code of Conduct:  
-
-- Contact Panos, publicly or privately, via any medium.
+If you see behavior that breaks this Code of Conduct, contact Panos Karabelas immediately, publicly or privately, by any available means.
