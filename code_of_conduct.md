@@ -1,18 +1,16 @@
-## **Core Principles**  
+# **Core Principles**  
 
-### **Free Speech and Respect**  
+## **Free Speech, Reason and Respect**  
 
 We believe in the power of dialogue and exchanging ideas. Disagreeing with someone does not mean you dislike, hate, or cancel them. Say what you think, debate hard if you must, but do it constructively. Growth comes from ideas, not drama.
 
-### **Kindness and Reason**  
-
 Be kind, be reasonable. A strong argument does not need insults to land. Let your points speak for themselves.
 
-### **Self-Preservation of the Discord Community**  
+---
+
+## **Self-Preservation of the Discord Community**  
 
 Free speech is vital, but if someone becomes highly toxic, attacks others, and drives members away, killing the community, we draw the line. There is no room for suicidal empathy when the server’s survival is at stake.
-
-The person will be engaged in dialogue first. If they refuse or cannot engage constructively, they will be banned immediately. The survival of the community comes first.
 
 ---
 

@@ -89,8 +89,7 @@ float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
             surface.roughness       = roughness;
             surface.F0              = float3(f0_val, f0_val, f0_val);
             surface.metallic        = 0.0f;
-            surface.diffuse_energy  = float3(1.0f, 1.0f, 1.0f); // init (ignored in return value)
-            surface.specular_energy = float3(1.0f, 1.0f, 1.0f); // init (ignored in return value)
+            surface.diffuse_energy  = float3(1.0f, 1.0f, 1.0f);
             
             // angular (only fields required by BRDF_Specular_Isotropic)
             AngularInfo angular_info;
