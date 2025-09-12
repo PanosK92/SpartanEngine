@@ -91,7 +91,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 L_volumetric    = 0.0f;
 
         // we pre-compute this part as it doesn't need per-light computations
-        float3 surface_light_factor = surface.alpha * light.radiance * surface.occlusion;
+        float3 light_precomputed = surface.alpha * surface.occlusion;
 
         if (!surface.is_sky())
         {
@@ -149,8 +149,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             L_volumetric += compute_volumetric_fog(surface, light, thread_id.xy);
 
         // convert per light terms to what we actually store in the UAVs
-        float3 write_diffuse    = L_diffuse_term * surface_light_factor * surface.diffuse_energy + L_subsurface;
-        float3 write_specular   = L_specular_sum * surface_light_factor;
+        float3 write_diffuse    = L_diffuse_term * light.radiance * light_precomputed * surface.diffuse_energy + L_subsurface;
+        float3 write_specular   = L_specular_sum * light.radiance * light_precomputed;
         float  write_shadow     = L_shadow;
         float3 write_volumetric = L_volumetric;
 

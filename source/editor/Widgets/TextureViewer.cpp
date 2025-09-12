@@ -187,41 +187,41 @@ void TextureViewer::OnTickVisible()
             // info
             if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Text("name: %s", texture_current->GetObjectName().c_str());
-                ImGui::Text("size: %dx%d", texture_current->GetWidth(), texture_current->GetHeight());
-                ImGui::Text("channels: %d", texture_current->GetChannelCount());
-                ImGui::Text("format: %s", rhi_format_to_string(texture_current->GetFormat()));
-                ImGui::Text("mips: %d", texture_current->GetMipCount());
-                ImGui::Text("array: %d", texture_current->GetDepth());
+                ImGui::Text("Name: %s", texture_current->GetObjectName().c_str());
+                ImGui::Text("Size: %dx%d", texture_current->GetWidth(), texture_current->GetHeight());
+                ImGui::Text("Channels: %d", texture_current->GetChannelCount());
+                ImGui::Text("Format: %s", rhi_format_to_string(texture_current->GetFormat()));
+                ImGui::Text("Mips: %d", texture_current->GetMipCount());
+                ImGui::Text("Array: %d", texture_current->GetDepth());
             }
 
             // mip and array sliders
             if (texture_current->GetMipCount() > 1)
             {
-                ImGui::SliderInt("mip level", &mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
+                ImGui::SliderInt("Mip Level", &mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
             }
             if (texture_current->GetDepth() > 1)
             {
-                ImGui::SliderInt("array level", &array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
+                ImGui::SliderInt("Array Level", &array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
             }
 
             // channels
             if (ImGui::CollapsingHeader("Channels", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Checkbox("red",   &m_channel_r);
-                ImGui::Checkbox("green", &m_channel_g);
-                ImGui::Checkbox("blue",  &m_channel_b);
-                ImGui::Checkbox("alpha", &m_channel_a);
+                ImGui::Checkbox("Red",   &m_channel_r);
+                ImGui::Checkbox("Green", &m_channel_g);
+                ImGui::Checkbox("Blue",  &m_channel_b);
+                ImGui::Checkbox("Alpha", &m_channel_a);
             }
 
             // visualisation
             if (ImGui::CollapsingHeader("Visualization", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                ImGui::Checkbox("gamma correct", &m_gamma_correct);
-                ImGui::Checkbox("pack", &m_pack);
-                ImGui::Checkbox("boost", &m_boost);
-                ImGui::Checkbox("abs", &m_abs);
-                ImGui::Checkbox("point sampling", &m_point_sampling);
+                ImGui::Checkbox("Gamma Correct", &m_gamma_correct);
+                ImGui::Checkbox("Pack from [-1, 1] to [0, 1]", &m_pack);
+                ImGui::Checkbox("Boost", &m_boost);
+                ImGui::Checkbox("Abs", &m_abs);
+                ImGui::Checkbox("Point Sampling", &m_point_sampling);
             }
         }
 
