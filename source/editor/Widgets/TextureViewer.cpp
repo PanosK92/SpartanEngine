@@ -47,63 +47,11 @@ namespace
     bool m_boost                          = false;
     bool m_abs                            = false;
     bool m_point_sampling                 = false;
+    float zoom_level                      = 1.0f;
+    ImVec2 pan_offset                     = ImVec2(0.0f, 0.0f);
     uint32_t m_visualisation_flags        = 0;
     vector<string> render_target_names;
-    vector<spartan::RHI_Texture*> render_targets;
-
-    void show_texture(spartan::RHI_Texture* texture)
-    {
-        // calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
-        float bottom_padding              = 200.0f * spartan::Window::GetDpiScale(); // to fit the information text
-        float texture_shrink_percentage_x = ImGui::GetWindowWidth() / static_cast<float>(texture->GetWidth()) * 0.95f; // 0.95 to avoid being hidden by the scroll bar
-        float texture_shrink_percentage_y = ImGui::GetWindowHeight() / static_cast<float>(texture->GetHeight() + bottom_padding);
-        float texture_shrink_percentage   = min(texture_shrink_percentage_x, texture_shrink_percentage_y);
-        
-        // texture dimensions on screen
-        float virtual_width  = static_cast<float>(texture->GetWidth()) * texture_shrink_percentage;
-        float virtual_height = static_cast<float>(texture->GetHeight()) * texture_shrink_percentage;
-        
-        // get the position where the texture will be drawn
-        ImVec2 pos = ImGui::GetCursorScreenPos();
-        ImGuiSp::image(texture, Vector2(virtual_width, virtual_height), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
-        
-        // magnifying glass
-        if (m_magnifying_glass && ImGui::IsItemHovered())
-        {
-            // configuration
-            const float region_sz   = 32.0f; // size of the region in screen pixels
-            const float zoom        = 8.0f;  // zoom factor (e.g., 8x magnification)
-            const ImVec4 tint_col   = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // no tint
-            const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f); // 50% opaque white border
-            
-            // get mouse position
-            ImGuiIO& io = ImGui::GetIO();
-            ImVec2 mouse_pos = io.MousePos;
-            
-            // calculate the top-left corner of the region in screen coordinates, centered around the mouse
-            float region_x = mouse_pos.x - pos.x - region_sz * 0.5f;
-            float region_y = mouse_pos.y - pos.y - region_sz * 0.5f;
-            
-            // clamp the region to stay within the texture bounds
-            region_x = std::max(0.0f, std::min(region_x, virtual_width - region_sz));
-            region_y = std::max(0.0f, std::min(region_y, virtual_height - region_sz));
-            
-            // compute uv coordinates for the region
-            ImVec2 uv0 = ImVec2(region_x / virtual_width, region_y / virtual_height);                             // top-left
-            ImVec2 uv1 = ImVec2((region_x + region_sz) / virtual_width, (region_y + region_sz) / virtual_height); // bottom-right
-            
-            // display the magnified region in a tooltip
-            ImGui::BeginTooltip();
-            ImGui::Image(reinterpret_cast<ImTextureID>(texture), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
-            ImGui::EndTooltip();
-        }
-        
-        // checkbox to enable/disable the magnifying glass
-        ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
-        
-        texture_current = texture;
-    }
-}
+    vector<spartan::RHI_Texture*> render_targets;}
 
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 {
@@ -135,84 +83,155 @@ void TextureViewer::OnVisible()
 
 void TextureViewer::OnTickVisible()
 {
-    // texture
-    ImGui::BeginGroup();
+    if (render_targets.empty())
+        return;
+
+    // two columns: left for preview, right for properties
+    ImGui::Columns(2, "texture_viewer_columns", false);
+    ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() * 0.65f);
+
+    //=====================================
+    // preview (left)
+    //=====================================
     {
+        ImGui::BeginChild("texture_preview", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        
+        ImVec2 child_pos  = ImGui::GetCursorScreenPos();
+        ImVec2 child_size = ImGui::GetContentRegionAvail();
+        
+        // draw black border around the preview
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRect(child_pos, ImVec2(child_pos.x + child_size.x, child_pos.y + child_size.y), IM_COL32(0, 0, 0, 255), 0.0f, 0, 2.0f);
+        
         if (spartan::RHI_Texture* texture = render_targets[m_texture_index])
         {
-            show_texture(texture);
+            texture_current = texture;
+        
+            float tex_w = static_cast<float>(texture->GetWidth());
+            float tex_h = static_cast<float>(texture->GetHeight());
+            float aspect = tex_w / tex_h;
+        
+            float avail_w = child_size.x;
+            float avail_h = child_size.y;
+        
+            float fit_w = avail_w;
+            float fit_h = avail_w / aspect;
+            if (fit_h > avail_h)
+            {
+                fit_h = avail_h;
+                fit_w = avail_h * aspect;
+            }
+        
+            float draw_w = fit_w * zoom_level;
+            float draw_h = fit_h * zoom_level;
+        
+            ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+            ImVec2 image_pos = ImVec2(cursor_pos.x + pan_offset.x, cursor_pos.y + pan_offset.y);
+        
+            ImGui::SetCursorScreenPos(image_pos);
+            ImGuiSp::image(texture, Vector2(draw_w, draw_h), ImColor(255, 255, 255, 255), ImColor(40, 40, 40, 255));
+            ImGui::SetCursorScreenPos(cursor_pos);
+        
+            ImGuiIO& io = ImGui::GetIO();
+            ImVec2 mouse_delta = io.MouseDelta;
+        
+            if (ImGui::IsWindowHovered())
+            {
+                if (io.MouseWheel != 0.0f)
+                {
+                    float prev_zoom = zoom_level;
+                    zoom_level *= (io.MouseWheel > 0.0f) ? 1.1f : 0.9f;
+                    zoom_level = clamp(zoom_level, 0.05f, 8.0f);
+        
+                    ImVec2 mouse_pos = io.MousePos;
+                    ImVec2 rel = ImVec2(mouse_pos.x - image_pos.x, mouse_pos.y - image_pos.y);
+                    pan_offset.x -= rel.x * (zoom_level / prev_zoom - 1.0f);
+                    pan_offset.y -= rel.y * (zoom_level / prev_zoom - 1.0f);
+                }
+        
+                if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
+                {
+                    pan_offset.x += mouse_delta.x;
+                    pan_offset.y += mouse_delta.y;
+                }
+        
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Middle))
+                {
+                    zoom_level = 1.0f;
+                    pan_offset = ImVec2(0, 0);
+                }
+            }
+        
+            ImGui::Text("Zoom (Wheel): %.0f%%", zoom_level * 100.0f);
+            ImGui::Text("Pan (Middle Click + Drag): %.0f, %.0f", pan_offset.x, pan_offset.y);
         }
+        
+        ImGui::EndChild();
     }
-    ImGui::EndGroup();
 
-    // properties
-    ImGui::BeginGroup();
+    ImGui::NextColumn();
+
+    //=====================================
+    // properties (right)
+    //=====================================
     {
-        // render target
-        ImGui::Text("Render target");
+        ImGui::BeginChild("texture_properties", ImVec2(0, 0), true);
+
+        // target selector
+        ImGui::Text("Texture");
         ImGui::SameLine();
-        ImGuiSp::combo_box("##render_target", render_target_names, &m_texture_index);
+        ImGuiSp::combo_box("##texture", render_target_names, &m_texture_index);
 
-        // mip level control
-        if (texture_current->GetMipCount() > 1)
+        if (texture_current)
         {
-            ImGui::SameLine();
-            ImGui::PushItemWidth(85 * spartan::Window::GetDpiScale());
-            ImGui::InputInt("Mip", &mip_level);
-            ImGui::PopItemWidth();
-            mip_level = clamp(mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
-        }
+            // info
+            if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Text("name: %s", texture_current->GetObjectName().c_str());
+                ImGui::Text("size: %dx%d", texture_current->GetWidth(), texture_current->GetHeight());
+                ImGui::Text("channels: %d", texture_current->GetChannelCount());
+                ImGui::Text("format: %s", rhi_format_to_string(texture_current->GetFormat()));
+                ImGui::Text("mips: %d", texture_current->GetMipCount());
+                ImGui::Text("array: %d", texture_current->GetDepth());
+            }
 
-        // array level control
-        if (texture_current->GetDepth() > 1)
-        {
-            ImGui::SameLine();
-            ImGui::PushItemWidth(85 * spartan::Window::GetDpiScale());
-            ImGui::InputInt("Array", &array_level);
-            ImGui::PopItemWidth();
-            array_level = clamp(array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
-        }
+            // mip and array sliders
+            if (texture_current->GetMipCount() > 1)
+            {
+                ImGui::SliderInt("mip level", &mip_level, 0, static_cast<int>(texture_current->GetMipCount()) - 1);
+            }
+            if (texture_current->GetDepth() > 1)
+            {
+                ImGui::SliderInt("array level", &array_level, 0, static_cast<int>(texture_current->GetDepth()) - 1);
+            }
 
-        ImGui::BeginGroup();
-        {
-            // information
-            ImGui::BeginGroup();
-            ImGui::Text("Name: %s",          texture_current->GetObjectName().c_str());
-            ImGui::Text("Dimensions: %dx%d", texture_current->GetWidth(), texture_current->GetHeight());
-            ImGui::Text("Channels: %d",      texture_current->GetChannelCount());
-            ImGui::Text("Format: %s",        rhi_format_to_string(texture_current->GetFormat()));
-            ImGui::Text("Mips: %d",          texture_current->GetMipCount());
-            ImGui::Text("Array: %d",         texture_current->GetDepth());
-            ImGui::EndGroup();
-        
             // channels
-            ImGui::SameLine();
-            ImGui::BeginGroup();
-            ImGui::Text("Channels");
-            ImGui::Checkbox("R", &m_channel_r);
-            ImGui::Checkbox("G", &m_channel_g);
-            ImGui::Checkbox("B", &m_channel_b);
-            ImGui::Checkbox("A", &m_channel_a);
-            ImGui::EndGroup();
-        
-            // misc
-            ImGui::SameLine();
-            ImGui::BeginGroup();
-            ImGui::Checkbox("Gamma correct", &m_gamma_correct);
-            ImGui::Checkbox("Pack", &m_pack);
-            ImGui::Checkbox("Boost", &m_boost);
-            ImGui::EndGroup();
-            ImGui::SameLine();
-            ImGui::BeginGroup();
-            ImGui::Checkbox("Abs", &m_abs);
-            ImGui::Checkbox("Point sampling", &m_point_sampling);
-            ImGui::EndGroup();
+            if (ImGui::CollapsingHeader("Channels", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Checkbox("red",   &m_channel_r);
+                ImGui::Checkbox("green", &m_channel_g);
+                ImGui::Checkbox("blue",  &m_channel_b);
+                ImGui::Checkbox("alpha", &m_channel_a);
+            }
+
+            // visualisation
+            if (ImGui::CollapsingHeader("Visualization", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                ImGui::Checkbox("gamma correct", &m_gamma_correct);
+                ImGui::Checkbox("pack", &m_pack);
+                ImGui::Checkbox("boost", &m_boost);
+                ImGui::Checkbox("abs", &m_abs);
+                ImGui::Checkbox("point sampling", &m_point_sampling);
+            }
         }
-        ImGui::EndGroup();
+
+        ImGui::EndChild();
     }
-    ImGui::EndGroup();
-    
-    // map changes
+
+    ImGui::Columns(1);
+
+    // update flags
+    m_visualisation_flags = 0;
     m_visualisation_flags |=  m_channel_r      ? Visualise_Channel_R    : 0;
     m_visualisation_flags |=  m_channel_g      ? Visualise_Channel_G    : 0;
     m_visualisation_flags |=  m_channel_b      ? Visualise_Channel_B    : 0;

@@ -40,7 +40,7 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     float3 N = surface.normal;                      // surface normal
     
     // distorted half-vector for better translucency
-    float3 H           = normalize(L + N * distortion);
+    float3 H = normalize(L + N * distortion);
     float translucency = pow(saturate(dot(V, -H)), sss_exponent);
     
     // combined scattering term
@@ -76,9 +76,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_specular   = 0.0f;
     float  out_shadow     = 1.0f;
     float3 out_volumetric = 0.0f;
-
-    float surface_visibility = surface.occlusion * surface.alpha;
-    float3 surface_energy    = surface.diffuse_energy + surface.alpha;
     
     // loop lights and accumulate
     uint light_count = pass_get_f3_value().x;
@@ -92,6 +89,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 L_diffuse_term  = 0.0f;
         float3 L_subsurface    = 0.0f;
         float3 L_volumetric    = 0.0f;
+
+        // we pre-compute this part as it doesn't need per-light computations
+        float3 surface_light_factor = surface.alpha * light.radiance * surface.occlusion;
 
         if (!surface.is_sky())
         {
@@ -122,38 +122,35 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 {
                     L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info);
                 }
-            
+                
                 if (surface.clearcoat > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Clearcoat(surface, angular_info);
                 }
-            
+                
                 if (surface.sheen > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Sheen(surface, angular_info);
                 }
-            
-                // scale by radiance
-                L_specular_sum *= light.radiance;
+                
+                // subsurface
+                if (surface.subsurface_scattering > 0.0f)
+                {
+                    L_subsurface += subsurface_scattering(surface, light, angular_info);
+                }
             }
-
-            // subsurface
-            if (surface.subsurface_scattering > 0.0f)
-                L_subsurface += subsurface_scattering(surface, light, angular_info);
-
+            
             // diffuse term before radiance
-            L_diffuse_term += BRDF_Diffuse(surface, angular_info) * surface_energy;
+            L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
 
         // volumetric
         if (light.is_volumetric())
-        {
             L_volumetric += compute_volumetric_fog(surface, light, thread_id.xy);
-        }
-        
+
         // convert per light terms to what we actually store in the UAVs
-        float3 write_diffuse    = (L_diffuse_term * light.radiance + L_subsurface) * surface_visibility;
-        float3 write_specular   = L_specular_sum * surface.alpha;
+        float3 write_diffuse    = L_diffuse_term * surface_light_factor * surface.diffuse_energy + L_subsurface;
+        float3 write_specular   = L_specular_sum * surface_light_factor;
         float  write_shadow     = L_shadow;
         float3 write_volumetric = L_volumetric;
 
