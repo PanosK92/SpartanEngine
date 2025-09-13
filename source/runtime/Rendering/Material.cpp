@@ -101,6 +101,13 @@ namespace spartan
                 }
             }
         }
+
+        float jonswap_alpha(float fetch, float windSpeed) { return 0.076f * pow(9.81f * fetch / windSpeed / windSpeed, -0.22f); }
+        float jonswap_peak_frequency(float fetch, float windSpeed) {
+            float g = 9.81f;
+            float dimensionlessFetch = g * fetch / (windSpeed * windSpeed);
+            return 22.0f * (g / windSpeed) * pow(dimensionlessFetch, -0.33f);
+        }
     }
 
     namespace texture_processing
@@ -716,6 +723,52 @@ namespace spartan
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
+    }
+
+    float Material::GetOceanProperty(const JonswapParameters property_type) const
+    {
+        SP_ASSERT_MSG(m_properties[static_cast<uint32_t>(MaterialProperty::IsOcean)] == 1.0f, "Only ocean materials can have ocean properties");
+
+        return m_ocean_properties[static_cast<uint32_t>(property_type)];
+    }
+
+    void Material::SetOceanProperty(const JonswapParameters property_type, const float value)
+    {
+        SP_ASSERT_MSG(m_properties[static_cast<uint32_t>(MaterialProperty::IsOcean)] == 1.0f, "Only ocean materials can have ocean properties");
+
+        // special cases
+        if (property_type == JonswapParameters::Fetch || property_type == JonswapParameters::WindSpeed)
+        {
+            // update fetch or windspeed
+            m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
+
+            // get fetch and windspeed
+            float fetch = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Fetch)];
+            float windSpeed = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::WindSpeed)];
+
+            // update alpha and peakOmega
+            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Alpha)] = jonswap_alpha(fetch, windSpeed);
+            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::PeakOmega)] = jonswap_peak_frequency(fetch, windSpeed);
+        }
+        else if (property_type == JonswapParameters::WindDirection)
+        {
+            // update wind direction
+            m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
+
+            // update angle, based on the wind direction
+            float angle = value / 180.0f * pi;
+            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Angle)] = angle;
+        }
+        else
+        {
+            if (m_ocean_properties[static_cast<uint32_t>(property_type)] == value)
+                return;
+
+            m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
+        }
+
+        // mark for spectrum re-computation
+        m_should_compute_spectrum = true;
     }
 
     void Material::SetColor(const Color& color)

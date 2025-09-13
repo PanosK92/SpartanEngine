@@ -71,7 +71,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;
-
+    
     float3 out_diffuse    = 0.0f;
     float3 out_specular   = 0.0f;
     float  out_shadow     = 1.0f;

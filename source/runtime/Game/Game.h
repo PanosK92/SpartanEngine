@@ -32,6 +32,7 @@ namespace spartan
         Subway,
         Minecraft,
         Basic,
+        Ocean,
         Max
     };
 
