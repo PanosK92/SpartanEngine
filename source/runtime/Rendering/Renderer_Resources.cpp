@@ -266,7 +266,7 @@ namespace spartan
 
             // misc
             render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
-            uint32_t lowest_dimension = 32; // lowest mip is 32x32, preserving directional detail for diffuse IBL (1x1 loses directionality)
+            const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit, "skysphere");
         }
 
@@ -644,11 +644,11 @@ namespace spartan
 
     void Renderer::CreateStandardMaterials()
     {
-        const string data_dir = ResourceCache::GetDataDirectory() + "\\";
+        const string data_dir = string(ResourceCache::GetDataDirectory()) + "\\";
         FileSystem::CreateDirectory_(data_dir);
 
         standard_material = make_shared<Material>();
-        standard_material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // set resource file path so it can be used by the resource cache
+        standard_material->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard" + EXTENSION_MATERIAL); // set resource file path so it can be used by the resource cache
         standard_material->SetProperty(MaterialProperty::TextureTilingX, 1.0f);
         standard_material->SetProperty(MaterialProperty::TextureTilingY, 1.0f);
         standard_material->SetProperty(MaterialProperty::ColorR,         1.0f);
