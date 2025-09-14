@@ -35,11 +35,22 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // read previous exposure
     float prev = tex2.Load(int3(0, 0, 0)).r;
 
+    // target luminance (middle gray)
+    const float target_luminance = 0.5;
+
+    // compute desired exposure (higher exposure for darker scenes)
+    float desired_exposure = target_luminance / max(lum, 0.0001);
+
+     // clamp exposure to prevent runaway
+    const float min_exposure = 0.1; // too dark
+    const float max_exposure = 5.0; // too bright
+    desired_exposure         = clamp(desired_exposure, min_exposure, max_exposure);
+
     // exponential adaptation
     float adaptation_speed = pass_get_f3_value().x;
     float tau              = 1.0 / max(adaptation_speed, 0.001);
-    float exposure         = prev + (lum - prev) * (1.0 - exp(-tau * buffer_frame.delta_time));
+    float exposure         = prev + (desired_exposure - prev) * (1.0 - exp(-tau * buffer_frame.delta_time));
 
     // write output
-    tex_uav[uint2(0, 0)] = exposure;
+    tex_uav[uint2(0, 0)] = float4(exposure, exposure, exposure, 1.0);
 }
