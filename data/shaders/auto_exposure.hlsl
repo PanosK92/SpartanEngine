@@ -26,11 +26,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(1, 1, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // read smallest mip of current frame
-    float4 col = tex.Load(int3(0, 0, 0));
-
-    // compute luminance
-    float lum = dot(col.rgb, float3(0.2126, 0.7152, 0.0722));
+    // compute luminance (16x16 mip)
+    float lum_sum = 0.0;
+    for (uint y = 0; y < 16; y++)
+    {
+        for (uint x = 0; x < 16; x++)
+        {
+            float3 col  = tex.Load(int3(x, y, 0)).rgb;
+            lum_sum    += dot(col, float3(0.2126, 0.7152, 0.0722));
+        }
+    }
+    float lum = lum_sum / 256.0;
 
     // read previous exposure
     float prev = tex2.Load(int3(0, 0, 0)).r;
@@ -41,10 +47,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // compute desired exposure (higher exposure for darker scenes)
     float desired_exposure = target_luminance / max(lum, 0.0001);
 
-     // clamp exposure to prevent runaway
-    const float min_exposure = 0.1; // too dark
-    const float max_exposure = 5.0; // too bright
-    desired_exposure         = clamp(desired_exposure, min_exposure, max_exposure);
+    // min/max exposure in EV
+    const float min_ev = -6.0; // very dark
+    const float max_ev = 6.0;  // very bright
+
+    // convert to linear
+    float min_exposure = exp2(min_ev);
+    float max_exposure = exp2(max_ev);
+
+    // clamp exposure
+    desired_exposure = clamp(desired_exposure, min_exposure, max_exposure);
 
     // exponential adaptation
     float adaptation_speed = pass_get_f3_value().x;

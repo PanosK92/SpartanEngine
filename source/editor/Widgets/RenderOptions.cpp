@@ -283,7 +283,7 @@ void RenderOptions::OnTickVisible()
         {
             option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
             option_value("Gamma", Renderer_Option::Gamma);
-            option_value("Auto-exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "A negative value turns it off");
+            option_value("Auto-exposure (adaptation speed)", Renderer_Option::AutoExposureAdaptationSpeed, "A negative value turns it off");
 
             // white point
             bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
