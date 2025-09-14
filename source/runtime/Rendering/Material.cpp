@@ -402,6 +402,9 @@ namespace spartan
                 SetProperty(MaterialProperty::Height, 1.0f);
             }
         }
+
+        // save on change
+        SaveToFile(GetResourceFilePath());
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, shared_ptr<RHI_Texture> texture, const uint8_t slot)
@@ -716,6 +719,9 @@ namespace spartan
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
+
+        // save on change
+        SaveToFile(GetResourceFilePath());
     }
 
     void Material::SetColor(const Color& color)

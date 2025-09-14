@@ -206,7 +206,10 @@ void Profiler::OnTickVisible()
 
         // cur, avg, min, max
         {
-            if (ImGuiSp::button("Clear")) { m_timings.Clear(); }
+            if (ImGuiSp::button("Clear"))
+            {
+                m_timings.Clear();
+            }
             ImGui::SameLine();
             ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_last, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
             bool is_stuttering = type == spartan::TimeBlockType::Cpu ? spartan::Profiler::IsCpuStuttering() : spartan::Profiler::IsGpuStuttering();
@@ -231,11 +234,11 @@ void Profiler::OnTickVisible()
     {
         ImGui::Separator();
 
-        bool is_vram   = type == spartan::TimeBlockType::Gpu;
-        float used     = is_vram ? spartan::RHI_Device::MemoryGetAllocatedMb() : spartan::Allocator::GetMemoryAllocatedMb();
-        float budget   = is_vram ? spartan::RHI_Device::MemoryGetAvailableMb() : spartan::Allocator::GetMemoryAvailableMb();
-        float total    = is_vram ? spartan::RHI_Device::MemoryGetTotalMb()     : spartan::Allocator::GetMemoryTotalMb();
+        bool is_vram    = type == spartan::TimeBlockType::Gpu;
+        float allocated = is_vram ? spartan::RHI_Device::MemoryGetAllocatedMb() : spartan::Allocator::GetMemoryAllocatedMb();
+        float available = is_vram ? spartan::RHI_Device::MemoryGetAvailableMb() : spartan::Allocator::GetMemoryAvailableMb();
+        float total     = is_vram ? spartan::RHI_Device::MemoryGetTotalMb()     : spartan::Allocator::GetMemoryTotalMb();
 
-        show_memory_bar(is_vram ? "VRAM" : "RAM", used, budget, total, ImVec2(-1, 32));
+        show_memory_bar(is_vram ? "VRAM" : "RAM", allocated, available, total, ImVec2(-1, 32));
     }
 }
