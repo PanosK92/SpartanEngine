@@ -68,16 +68,45 @@ namespace
     
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
     
+        // define colors
+        ImU32 col_total  = IM_COL32(20, 30, 60, 255);    // deep blue for total memory
+        ImU32 col_budget = IM_COL32(80, 150, 220, 255);  // medium blue for budget
+        // interpolate used color from green -> yellow -> red
+        float usedFrac = (budget_mb > 0.0f) ? (used_mb / budget_mb) : 0.0f;
+        usedFrac = ImClamp(usedFrac, 0.0f, 1.0f);
+        ImU32 col_used;
+        if (usedFrac < 0.5f)
+        {
+            // green to yellow
+            float t = usedFrac / 0.5f;
+            col_used = IM_COL32(
+                (int)(80  + t * (220-80)),  // R: 80->220
+                (int)(220 - t * (220-180)), // G: 220->180
+                80,                          // B constant
+                255
+            );
+        }
+        else
+        {
+            // yellow to red
+            float t = (usedFrac-0.5f)/0.5f;
+            col_used = IM_COL32(
+                220,                         // R constant
+                (int)(180 - t * 180),        // G: 180->0
+                80,                          // B constant
+                255
+            );
+        }
+    
         // background (total memory)
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW, pos.y + fullH), IM_COL32(50, 50, 50, 255));
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW, pos.y + fullH), col_total);
     
         // budget (on top of total)
         float budgetFrac = (budget_mb > 0.0f && total_mb > 0.0f) ? (budget_mb / total_mb) : 0.0f;
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * budgetFrac, pos.y + fullH), IM_COL32(100, 100, 180, 255));
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * budgetFrac, pos.y + fullH), col_budget);
     
         // used (on top of budget)
-        float usedFrac = (budget_mb > 0.0f) ? (used_mb / budget_mb) : 0.0f;
-        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * usedFrac * budgetFrac, pos.y + fullH), IM_COL32(180, 80, 80, 255));
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * usedFrac * budgetFrac, pos.y + fullH), col_used);
     
         // border
         draw_list->AddRect(pos, ImVec2(pos.x + fullW, pos.y + fullH), IM_COL32(255, 255, 255, 255));
