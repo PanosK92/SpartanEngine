@@ -76,8 +76,9 @@ namespace spartan
         static void MemoryTextureDestroy(void*& resource);
         static void MemoryMap(void* resource, void*& mapped_data);
         static void MemoryUnmap(void* resource);
-        static uint32_t MemoryGetUsageMb();
-        static uint32_t MemoryGetBudgetMb();
+        static uint64_t MemoryGetAllocatedMb();
+        static uint64_t MemoryGetAvailableMb();
+        static uint64_t MemoryGetTotalMb();
 
         // immediate execution command list
         static RHI_CommandList* CmdImmediateBegin(const RHI_Queue_Type queue_type);

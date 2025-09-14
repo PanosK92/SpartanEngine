@@ -272,12 +272,17 @@ namespace spartan
 
     }
 
-    uint32_t RHI_Device::MemoryGetUsageMb()
+    uint64_t RHI_Device::MemoryGetAllocatedMb()
     {
         return 0;
     }
 
-    uint32_t RHI_Device::MemoryGetBudgetMb()
+    uint64_t RHI_Device::MemoryGetAvailableMb()
+    {
+        return 0;
+    }
+
+    uint64_t RHI_Device::MemoryGetTotalMb()
     {
         return 0;
     }

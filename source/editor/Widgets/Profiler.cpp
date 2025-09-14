@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiler.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "Profiling/Profiler.h"
+#include "../RHI/RHI_Device.h"
+#include "../Memory/Allocator.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -56,6 +58,36 @@ namespace
         // text
         ImGui::SetCursorPos(ImVec2(pos.x + m_tree_depth_stride * time_block.GetTreeDepth(), pos.y));
         ImGui::Text("%s - %.2f ms", name, duration);
+    }
+
+    void show_memory_bar(const char* label, float used_mb, float budget_mb, float total_mb, ImVec2 size = ImVec2(-1, 0))
+    {
+        ImVec2 pos  = ImGui::GetCursorScreenPos();
+        float fullW = (size.x <= 0.0f ? ImGui::GetContentRegionAvail().x : size.x);
+        float fullH = (size.y <= 0.0f ? ImGui::GetTextLineHeightWithSpacing() : size.y);
+    
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    
+        // background (total memory)
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW, pos.y + fullH), IM_COL32(50, 50, 50, 255));
+    
+        // budget (on top of total)
+        float budgetFrac = (budget_mb > 0.0f && total_mb > 0.0f) ? (budget_mb / total_mb) : 0.0f;
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * budgetFrac, pos.y + fullH), IM_COL32(100, 100, 180, 255));
+    
+        // used (on top of budget)
+        float usedFrac = (budget_mb > 0.0f) ? (used_mb / budget_mb) : 0.0f;
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + fullW * usedFrac * budgetFrac, pos.y + fullH), IM_COL32(180, 80, 80, 255));
+    
+        // border
+        draw_list->AddRect(pos, ImVec2(pos.x + fullW, pos.y + fullH), IM_COL32(255, 255, 255, 255));
+    
+        // text overlay
+        char buf[128];
+        snprintf(buf, sizeof(buf), "%s %.0f/%.0f MB (Budget %.0f MB)", label, used_mb, total_mb, budget_mb);
+        ImGui::RenderTextClipped(pos, ImVec2(pos.x + fullW, pos.y + fullH), buf, nullptr, nullptr, ImVec2(0.5f, 0.5f));
+    
+        ImGui::Dummy(ImVec2(fullW, fullH)); // advance cursor
     }
 
     int mode_hardware = 0; // 0: gpu, 1: cpu
@@ -195,15 +227,15 @@ void Profiler::OnTickVisible()
         ImGui::PlotLines("##performance_plot", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGui::GetContentRegionAvail().x, 80));
     }
 
-    // vram
-    if (type == spartan::TimeBlockType::Gpu)
+    // memory (vram/ram)
     {
         ImGui::Separator();
 
-        const uint32_t memory_used      = spartan::Profiler::GpuGetMemoryUsed();
-        const uint32_t memory_available = spartan::Profiler::GpuGetMemoryAvailable();
-        const string overlay            = "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
+        bool is_vram   = type == spartan::TimeBlockType::Gpu;
+        float used     = is_vram ? spartan::RHI_Device::MemoryGetAllocatedMb() : spartan::Allocator::GetMemoryAllocatedMb();
+        float budget   = is_vram ? spartan::RHI_Device::MemoryGetAvailableMb() : spartan::Allocator::GetMemoryAvailableMb();
+        float total    = is_vram ? spartan::RHI_Device::MemoryGetTotalMb()     : spartan::Allocator::GetMemoryTotalMb();
 
-        ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());
+        show_memory_bar(is_vram ? "VRAM" : "RAM", used, budget, total, ImVec2(-1, 32));
     }
 }

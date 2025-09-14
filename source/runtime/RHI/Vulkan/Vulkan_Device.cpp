@@ -2143,58 +2143,69 @@ namespace spartan
         }
     }
 
-    uint32_t RHI_Device::MemoryGetUsageMb()
+    uint64_t RHI_Device::MemoryGetAllocatedMb()
     {
-        VkDeviceSize bytes = 0;
-
-        // Get the physical device memory properties
+        uint64_t bytes = 0;
+    
         VkPhysicalDeviceMemoryProperties memory_properties;
         vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
-
-        // Get the memory usage
+    
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
         vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
+    
         for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
         {
-            // Only consider device local heaps
             if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
             {
-                if (budgets[i].budget < 1ull << 60)
-                {
+                if (budgets[i].budget < (1ull << 60))
                     bytes += budgets[i].usage;
-                }
             }
         }
-
-        return static_cast<uint32_t>(bytes / 1024 / 1024);
+    
+        return bytes / (1024ull * 1024ull);
     }
-
-    uint32_t RHI_Device::MemoryGetBudgetMb()
+    
+    uint64_t RHI_Device::MemoryGetAvailableMb()
     {
-        VkDeviceSize bytes = 0;
-
-        // Get the physical device memory properties
+        uint64_t bytes = 0;
+    
         VkPhysicalDeviceMemoryProperties memory_properties;
         vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
-
-        // Get available memory
+    
         VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
         vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
+    
         for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
         {
-            // Only consider device local heaps
             if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
             {
-                if (budgets[i].budget < 1ull << 60)
-                {
+                if (budgets[i].budget < (1ull << 60))
                     bytes += budgets[i].budget;
-                }
             }
         }
-
-        return static_cast<uint32_t>(bytes / 1024 / 1024);
+    
+        return bytes / (1024ull * 1024ull);
     }
 
+    uint64_t RHI_Device::MemoryGetTotalMb()
+    {
+        uint64_t bytes = 0;
+    
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
+    
+        for (uint32_t i = 0; i < memory_properties.memoryHeapCount; i++)
+        {
+            // Only consider device-local heaps (VRAM on dGPUs)
+            if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                bytes += memory_properties.memoryHeaps[i].size;
+            }
+        }
+    
+        return bytes / (1024ull * 1024ull);
+    }
+  
     // immediate command list
 
     RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
