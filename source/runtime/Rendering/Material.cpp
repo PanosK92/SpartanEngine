@@ -87,6 +87,7 @@ namespace spartan
                 case MaterialProperty::WindAnimation:              return "wind_animation";
                 case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
                 case MaterialProperty::IsWater:                    return "vertex_animate_water";
+                case MaterialProperty::IsOcean:                    return "is_ocean";
         
                 // Render settings
                 case MaterialProperty::CullMode:                   return "cull_mode";
@@ -99,6 +100,34 @@ namespace spartan
                     SP_ASSERT_MSG(false, "Unknown material property");
                     return nullptr;
                 }
+            }
+        }
+
+        const char* ocean_property_to_char_ptr(JonswapParameters property)
+        {
+            switch (property)
+            {
+            case spartan::JonswapParameters::Scale:                 return "scale";
+            case spartan::JonswapParameters::SpreadBlend:           return "spread_blend";
+            case spartan::JonswapParameters::Swell:                 return "swell";
+            case spartan::JonswapParameters::Gamma:                 return "gamma";
+            case spartan::JonswapParameters::ShortWavesFade:        return "short_waves_fade";
+            case spartan::JonswapParameters::WindDirection:         return "wind_direction";
+            case spartan::JonswapParameters::Fetch:                 return "fetch";
+            case spartan::JonswapParameters::WindSpeed:             return "wind_speed";
+            case spartan::JonswapParameters::RepeatTime:            return "repeat_time";
+            case spartan::JonswapParameters::Angle:                 return "angle";
+            case spartan::JonswapParameters::Alpha:                 return "alpha";
+            case spartan::JonswapParameters::PeakOmega:             return "peak_omega";
+            case spartan::JonswapParameters::Depth:                 return "depth";
+            case spartan::JonswapParameters::LowCutoff:             return "low_cutoff";
+            case spartan::JonswapParameters::HighCutoff:            return "high_cutoff";
+            case spartan::JonswapParameters::Max:                   return "max";
+            default:
+            {
+                SP_ASSERT_MSG(false, "Unknown ocean property");
+                return nullptr;
+            }
             }
         }
 
@@ -306,6 +335,12 @@ namespace spartan
             const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
             m_properties[i] = node_material.child(attribute_name).text().as_float();
         }
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(JonswapParameters::Max); ++i)
+        {
+            const char* attribute_name = ocean_property_to_char_ptr(static_cast<JonswapParameters>(i));
+            m_ocean_properties[i] = node_material.child(attribute_name).text().as_float();
+        }
     
         // load textures
         pugi::xml_node textures_node = node_material.child("textures");
@@ -352,6 +387,16 @@ namespace spartan
         {
             const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
             material_node.append_child(attribute_name).text().set(m_properties[i]);
+        }
+
+        // save ocean properties
+        if (GetProperty(MaterialProperty::IsOcean) == 1.0f)
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(JonswapParameters::Max); ++i)
+            {
+                const char* attribute_name = ocean_property_to_char_ptr(static_cast<JonswapParameters>(i));
+                material_node.append_child(attribute_name).text().set(m_ocean_properties[i]);
+            }
         }
     
         // save textures
