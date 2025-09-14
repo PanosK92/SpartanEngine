@@ -66,6 +66,7 @@ namespace spartan
         ResolutionScale,
         DynamicResolution,
         OcclusionCulling,
+        AutoExposureAdaptationSpeed,
         Max
     };
 
@@ -190,6 +191,7 @@ namespace spartan
         icon_c,
         dithering_c,
         transparency_reflection_refraction_c,
+        auto_exposure_c,
         max
     };
     
@@ -222,6 +224,8 @@ namespace spartan
         outline,
         shading_rate,
         shadow_atlas,
+        auto_exposure,
+        auto_exposure_previous,
         max
     };
 

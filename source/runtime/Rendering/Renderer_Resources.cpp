@@ -268,6 +268,10 @@ namespace spartan
             render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
             render_target(Renderer_RenderTarget::skysphere) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 2048, 1, compute_mip_count(lowest_dimension), RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearBlit, "skysphere");
+
+            // auto-exposure
+            render_target(Renderer_RenderTarget::auto_exposure)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_1");
+            render_target(Renderer_RenderTarget::auto_exposure_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_2");
         }
 
         RHI_VendorTechnology::Resize(GetResolutionRender(), GetResolutionOutput());
@@ -498,9 +502,13 @@ namespace spartan
         shader(Renderer_Shader::dithering_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::dithering_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "dithering.hlsl", async);
 
-        // dithering
+        // reflection, refraction & transparency
         shader(Renderer_Shader::transparency_reflection_refraction_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::transparency_reflection_refraction_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "transparency_reflection_refraction.hlsl", async);
+
+        // auto-exposure
+        shader(Renderer_Shader::auto_exposure_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::auto_exposure_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "auto_exposure.hlsl", async);
     }
 
     void Renderer::CreateFonts()

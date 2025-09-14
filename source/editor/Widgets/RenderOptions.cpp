@@ -283,10 +283,10 @@ void RenderOptions::OnTickVisible()
         {
             option_check_box("HDR", Renderer_Option::Hdr, "High dynamic range");
             option_value("Gamma", Renderer_Option::Gamma);
-
-            bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
+            option_value("Auto-Exposure Adaptation Speed", Renderer_Option::AutoExposureAdaptationSpeed, "A negative value turns it off");
 
             // white point
+            bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
             ImGui::BeginDisabled(!hdr_enabled);
             option_value("White point (nits)", Renderer_Option::WhitePoint, nullptr, 1.0f);
             ImGui::EndDisabled();
@@ -299,7 +299,6 @@ void RenderOptions::OnTickVisible()
                 Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
             }
         }
-
 
         if (option("Lighting"))
         {

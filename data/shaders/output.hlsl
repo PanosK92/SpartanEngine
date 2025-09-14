@@ -118,8 +118,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float tone_mapping = f3_value.x;
     float4 color       = tex[thread_id.xy];
 
-    // apply exposure
-    color.rgb *= buffer_frame.camera_exposure;
+    // apply exposure (camera and auto-exposure)
+    float exposure  = tex2.Load(int3(0,0,0)).r;
+    color.rgb      *= buffer_frame.camera_exposure * exposure;
 
     // best used for sdr only
     switch (tone_mapping)
