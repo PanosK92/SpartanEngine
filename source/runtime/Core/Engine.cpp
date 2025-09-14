@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ImageImporter.h"
 #include "../Display/Display.h"
 #include "../Game/Game.h"
+#include "../Memory/Allocator.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -131,6 +132,7 @@ namespace spartan
         PhysicsWorld::Tick();
         World::Tick();
         Renderer::Tick();
+        Allocator::Tick();
 
         // post-tick
         Timer::PostTick();
