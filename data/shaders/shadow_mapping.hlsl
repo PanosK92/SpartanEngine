@@ -145,7 +145,7 @@ float compute_shadow(Surface surface, Light light)
         // determine cube face
         uint face_index = (abs_dir.x >= abs_dir.y && abs_dir.x >= abs_dir.z) ? (light_to_pixel.x > 0 ? 0u : 1u) :
                           (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0 ? 2u : 3u) :
-                                                                                (light_to_pixel.z > 0 ? 4u : 5u);
+                                                                               (light_to_pixel.z > 0 ? 4u : 5u);
 
         float4 clip_pos = mul(float4(position_world, 1.0f), light.transform[face_index]);
         float3 ndc      = clip_pos.xyz / clip_pos.w;
