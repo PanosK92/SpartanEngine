@@ -62,6 +62,12 @@ namespace spartan
             m_resource_file_path = FileSystem::GetRelativePath(path);
             m_object_name        = FileSystem::GetFileNameWithoutExtensionFromFilePath(m_resource_file_path);
         }
+
+        void SetResourceName(const std::string& name)
+        {
+            m_object_name        = name;
+            m_resource_file_path = FileSystem::GetDirectoryFromFilePath(m_resource_file_path) + name;
+        }
         
         ResourceType GetResourceType()           const { return m_resource_type; }
         const char* GetResourceTypeCstr()        const { return typeid(*this).name(); }

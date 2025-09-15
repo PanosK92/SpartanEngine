@@ -314,8 +314,7 @@ namespace spartan
             aiString name_assimp;
             aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name_assimp);
             string name = name_assimp.C_Str();
-            // set a material file path, this allows for the material to be cached (also means that if already cached, the engine will not save it as a duplicate)
-            material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(file_path) + name + EXTENSION_MATERIAL));
+            material->SetResourceName(name + EXTENSION_MATERIAL);
 
             // color
             aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);

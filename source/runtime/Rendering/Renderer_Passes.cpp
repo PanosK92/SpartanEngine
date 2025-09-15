@@ -1269,6 +1269,9 @@ namespace spartan
             Pass_Bloom(cmd_list, get_output_in, get_output_out);
         }
 
+        // auto exposure
+        Pass_AutoExposure(cmd_list, get_output_in);
+
         // tone-mapping & gamma correction
         {
             swap_output = !swap_output;
@@ -1447,6 +1450,7 @@ namespace spartan
         // set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::auto_exposure));
 
         // render
         cmd_list->Dispatch(tex_out);
@@ -1640,6 +1644,56 @@ namespace spartan
 
             // used for refraction by the transparent passes, so generate mips to emulate roughness
             Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
+    {
+        // get resources
+        RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);          // current
+        RHI_Texture* tex_exposure_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous); // previous
+
+        // clear once if disabled or continue if enabled
+        float adaptation_speed         = GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed);
+        static bool cleared_on_disable = false;
+        if (adaptation_speed <= 0.0f)
+        {
+            if (!cleared_on_disable)
+            {
+                cmd_list->ClearTexture(tex_exposure, Color::standard_white);
+                cmd_list->ClearTexture(tex_exposure_previous, Color::standard_white);
+                cleared_on_disable = true;
+            }
+            return;
+        }
+        cleared_on_disable = false;
+    
+        // define pipeline state
+        RHI_PipelineState pso;
+        pso.name             = "auto_exposure";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::auto_exposure_c);
+    
+        // do the work
+        cmd_list->BeginTimeblock(pso.name);
+        {
+            cmd_list->SetPipelineState(pso);
+    
+            // push constants
+            m_pcb_pass_cpu.set_f3_value(adaptation_speed);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+    
+            // input: smallest mip (downsampled frame)
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, tex_in->GetMipCount() - 1, 1);
+            // input: previous exposure
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);
+            // output: current exposure
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure); 
+            // single dispatch: just writes 1 value
+            cmd_list->Dispatch(1, 1, 1);
+    
+            // copy current into previous for next frame
+            cmd_list->Blit(tex_exposure, tex_exposure_previous, false);
         }
         cmd_list->EndTimeblock();
     }

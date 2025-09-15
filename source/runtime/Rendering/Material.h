@@ -21,15 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include <memory>
 #include <array>
-#include "../RHI/RHI_Definitions.h"
 #include "../Resource/IResource.h"
-//=================================
+#include "Color.h"
+//================================
 
 namespace spartan
 {
+    class RHI_Texture;
+
     enum class MaterialTextureType
     {
         Color,

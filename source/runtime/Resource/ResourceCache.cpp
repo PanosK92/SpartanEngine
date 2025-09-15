@@ -39,7 +39,7 @@ namespace spartan
     namespace
     {
         array<string, 6> m_standard_resource_directories;
-        string m_project_directory;
+        char m_project_directory[256] = {};
         vector<shared_ptr<IResource>> m_resources;
         mutex m_mutex;
         bool use_root_shader_directory = false;
@@ -52,8 +52,8 @@ namespace spartan
         SetProjectDirectory("project\\");
 
         // add engine standard resource directories
-        const string data_dir = GetDataDirectory() + "\\";
-        AddResourceDirectory(ResourceDirectory::Environment, m_project_directory + "environment");
+        const string data_dir = string(GetDataDirectory()) + "\\";
+        AddResourceDirectory(ResourceDirectory::Environment, string(m_project_directory) + "environment");
         AddResourceDirectory(ResourceDirectory::Fonts, data_dir + "fonts");
         AddResourceDirectory(ResourceDirectory::Icons, data_dir + "icons");
         AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
@@ -73,7 +73,7 @@ namespace spartan
 
     void ResourceCache::LoadDefaultResources()
     {
-        const string data_dir = GetDataDirectory() + "\\";
+        const string data_dir = string(GetDataDirectory()) + "\\";
 
         m_default_icons[IconType::Console]       = Load<RHI_Texture>(data_dir + "Icons\\console.png");
         m_default_icons[IconType::File]          = Load<RHI_Texture>(data_dir + "Icons\\file.png");
@@ -181,13 +181,15 @@ namespace spartan
         return directory;
     }
 
-    void ResourceCache::SetProjectDirectory(const string& directory)
+    void ResourceCache::SetProjectDirectory(const char* directory)
     {
         if (!FileSystem::Exists(directory))
         {
             FileSystem::CreateDirectory_(directory);
         }
-        m_project_directory = directory;
+
+        strcpy_s(m_project_directory, sizeof(m_project_directory), directory);
+        m_project_directory[sizeof(m_project_directory) - 1] = '\0'; // ensure null-termination
     }
 
     string ResourceCache::GetProjectDirectoryAbsolute()
@@ -195,12 +197,12 @@ namespace spartan
         return FileSystem::GetWorkingDirectory() + "/" + m_project_directory;
     }
 
-    const string& ResourceCache::GetProjectDirectory()
+    const char* ResourceCache::GetProjectDirectory()
     {
         return m_project_directory;
     }
 
-    string ResourceCache::GetDataDirectory()
+    const char* ResourceCache::GetDataDirectory()
     {
         return "Data";
     }

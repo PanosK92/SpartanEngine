@@ -1079,7 +1079,7 @@ namespace spartan
                             mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
                         }
                 
-                        mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
+                        mesh->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
                         mesh->CreateGpuBuffers();                                                                            // aabb, gpu buffers, etc.
                     }
                 
@@ -1095,7 +1095,7 @@ namespace spartan
                 
                     // create a material
                     shared_ptr<Material> material = make_shared<Material>();
-                    material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "grass_blade_material" + string(EXTENSION_MATERIAL));
+                    material->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "grass_blade_material" + string(EXTENSION_MATERIAL));
                     material->SetProperty(MaterialProperty::IsGrassBlade,         1.0f);
                     material->SetProperty(MaterialProperty::Roughness,            1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat,            1.0f);

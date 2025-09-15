@@ -315,6 +315,11 @@ namespace spartan
         SetProperty(MaterialProperty::TextureTilingY, 1.0f);
         SetProperty(MaterialProperty::WorldHeight,    1.0f);
         SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
+
+        const char* project_dir = ResourceCache::GetProjectDirectory();
+        char file_path[512];
+        snprintf(file_path, sizeof(file_path), "%smaterials\\empty.xml", project_dir);
+        SetResourceFilePath(file_path);
     }
 
     void Material::LoadFromFile(const string& file_path)
@@ -454,6 +459,9 @@ namespace spartan
                 SetProperty(MaterialProperty::Height, 1.0f);
             }
         }
+
+        // save on change
+        SaveToFile(GetResourceFilePath());
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, shared_ptr<RHI_Texture> texture, const uint8_t slot)
@@ -768,6 +776,9 @@ namespace spartan
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
+
+        // save on change
+        SaveToFile(GetResourceFilePath());
     }
 
     float Material::GetOceanProperty(const JonswapParameters property_type) const

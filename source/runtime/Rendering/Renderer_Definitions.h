@@ -66,6 +66,7 @@ namespace spartan
         ResolutionScale,
         DynamicResolution,
         OcclusionCulling,
+        AutoExposureAdaptationSpeed,
         Max
     };
 
@@ -195,6 +196,7 @@ namespace spartan
         icon_c,
         dithering_c,
         transparency_reflection_refraction_c,
+        auto_exposure_c,
         ocean_initial_spectrum_c,
         ocean_pack_spectrum_c,
         ocean_advance_spectrum_c,
@@ -233,6 +235,8 @@ namespace spartan
         outline,
         shading_rate,
         shadow_atlas,
+        auto_exposure,
+        auto_exposure_previous,
         ocean_initial_spectrum,
         ocean_displacement_spectrum,
         ocean_slope_spectrum,

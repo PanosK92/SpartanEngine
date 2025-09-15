@@ -89,11 +89,9 @@ namespace spartan
         vector<TimeBlock> m_time_blocks_read;
 
         // gpu
-        string gpu_name               = "N/A";
-        string gpu_driver             = "N/A";
-        string gpu_api                = "N/A";
-        uint32_t gpu_memory_available = 0;
-        uint32_t gpu_memory_used      = 0;
+        string gpu_name   = "N/A";
+        string gpu_driver = "N/A";
+        string gpu_api    = "N/A";
 
         // stutter detection
         float stutter_delta_ms = 1.0f;
@@ -363,16 +361,6 @@ namespace spartan
         return gpu_name;
     }
 
-    uint32_t Profiler::GpuGetMemoryAvailable()
-    {
-        return gpu_memory_available;
-    }
-
-    uint32_t Profiler::GpuGetMemoryUsed()
-    {
-        return gpu_memory_used;
-    }
-
     bool Profiler::IsCpuStuttering()
     {
         return is_stuttering_cpu;
@@ -404,11 +392,9 @@ namespace spartan
     {
         if (const RHI_PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
         {
-            gpu_name             = physical_device->GetName();
-            gpu_memory_used      = RHI_Device::MemoryGetUsageMb();
-            gpu_memory_available = RHI_Device::MemoryGetBudgetMb();
-            gpu_driver           = physical_device->GetDriverVersion();
-            gpu_api              = RHI_Context::api_version_str;
+            gpu_name   = physical_device->GetName();
+            gpu_driver = physical_device->GetDriverVersion();
+            gpu_api    = RHI_Context::api_version_str;
         }
     }
 
@@ -449,8 +435,8 @@ namespace spartan
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
                                "GPU\nName:\t\t%s\nMemory:\t%u/%u MB\nAPI:\t\t\t\t%s %s\nDriver:\t\t%s %s\n\n",
                                gpu_name.c_str(),
-                               static_cast<unsigned int>(gpu_memory_used),
-                               static_cast<unsigned int>(gpu_memory_available),
+                               static_cast<unsigned int>(RHI_Device::MemoryGetAllocatedMb()),
+                               static_cast<unsigned int>(RHI_Device::MemoryGetAvailableMb()),
                                RHI_Context::api_type_str,
                                gpu_api.c_str(),
                                RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName(),

@@ -36,8 +36,14 @@ namespace spartan
         // free previously allocated memory
         static void Free(void* ptr);
 
-        // total memory used by the engine
+        // calld once per frame
+        static void Tick();
+
+        // total memory allocated by the engine
         static float GetMemoryAllocatedMb();
+
+        // peak memory allocated by the engine
+        static float GetMemoryAllocatedPeakMb();
 
         // total memory used by the process including engine, dlls, drivers, os allocations, etc.
         static float GetMemoryProcessUsedMb();
@@ -48,7 +54,5 @@ namespace spartan
         // total physical system memory
         static float GetMemoryTotalMb();
 
-        // peak memory allocated by the engine
-        static float GetMemoryAllocatedPeakMb();
     };
 }
