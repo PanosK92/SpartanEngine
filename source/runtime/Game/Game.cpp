@@ -58,7 +58,7 @@ namespace spartan
         Entity* default_environment       = nullptr;
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
-        Entity* default_water             = nullptr;
+        Entity* default_ocean             = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
         namespace entities
@@ -331,6 +331,8 @@ namespace spartan
                     material->SetOceanProperty(JonswapParameters::Depth, 20.0f);
                     material->SetOceanProperty(JonswapParameters::LowCutoff, 0.001f);
                     material->SetOceanProperty(JonswapParameters::HighCutoff, 1000.0f);
+
+                    material->LoadFromFile(material->GetResourceFilePath());
                 }
 
                 // geometry
@@ -1675,17 +1677,32 @@ namespace spartan
 
                 auto entity = World::CreateEntity();
 
-                auto water = entities::ocean({ 0.0f, 0.0f, 0.0f }, 20.0f, 256.0f);
+                default_ocean = entities::ocean({ 0.0f, 0.0f, 0.0f }, 20.0f, 256.0f);
 
-                water->SetParent(entity);
+                default_ocean->SetParent(entity);
 
                 default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+            }
+
+            void on_shutdown()
+            {
+                if (!default_ocean)
+                    return;
+
+                Material* material = default_ocean->GetDescendantByName("ocean mesh")->GetComponent<Renderable>()->GetMaterial();
+                if (!material)
+                    SP_ASSERT_MSG(false, "Failed to get ocean material");
+
+                material->SaveToFile(material->GetResourceFilePath());
+
+                default_ocean = nullptr;
             }
         }
     }
 
     void Game::Shutdown()
     {
+        worlds::ocean::on_shutdown();
         default_floor                          = nullptr;
         default_camera                         = nullptr;
         default_environment                    = nullptr;

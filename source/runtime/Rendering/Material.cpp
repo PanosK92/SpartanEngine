@@ -772,7 +772,8 @@ namespace spartan
 
     float Material::GetOceanProperty(const JonswapParameters property_type) const
     {
-        SP_ASSERT_MSG(m_properties[static_cast<uint32_t>(MaterialProperty::IsOcean)] == 1.0f, "Only ocean materials can have ocean properties");
+        if (m_properties[static_cast<uint32_t>(MaterialProperty::IsOcean)] != 1.0f)
+            return 0.0f;
 
         return m_ocean_properties[static_cast<uint32_t>(property_type)];
     }
