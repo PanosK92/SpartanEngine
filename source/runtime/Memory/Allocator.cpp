@@ -93,6 +93,34 @@ namespace spartan
 #endif
     }
 
+    void Allocator::Tick()
+    {
+        static bool has_warned                    = false; // only warn once per threshold crossing
+        constexpr float warning_threshold_percent = 90.0f; // 90%
+    
+        float total_mb     = GetMemoryAvailableMb();
+        float used_mb      = GetMemoryAllocatedMb();
+        float used_percent = (used_mb / total_mb) * 100.0f;
+    
+        if (!has_warned && used_percent >= warning_threshold_percent)
+        {
+            float available_mb = GetMemoryAvailableMb();
+            SP_LOG_WARNING(
+                "Warning: High memory usage %.1f%% (%.1f MB used of %.1f MB). "
+                "Available memory: %.1f MB. "
+                "New allocations may be slower due to paging.\n",
+                used_percent, used_mb, total_mb, available_mb
+            );
+            has_warned = true;
+        }
+    
+        // reset warning if usage drops below threshold
+        if (has_warned && used_percent < warning_threshold_percent - 5.0f)
+        {
+            has_warned = false;
+        }
+    }
+
     float Allocator::GetMemoryAllocatedMb()
     {
          return static_cast<float>(bytes_allocated) / (1024.0f * 1024.0f);

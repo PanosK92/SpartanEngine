@@ -72,6 +72,7 @@ The Forest is the most advanced and demanding world. It features **33 million** 
 - Physical light units (intensity from lumens and color from kelvin).
 - Frustum & occlusion (Hi-Z) culling.
 - Physically based camera.
+- Auto-exposure.
 - Volumetric fog.
 - HDR10 output.
 - Tonemappers like ACES, AgX and others.

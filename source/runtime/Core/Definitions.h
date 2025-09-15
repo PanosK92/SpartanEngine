@@ -158,6 +158,10 @@ if (!(expression))                                                    \
 static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
 //==============================================================================
 
+//= MISCELLANEOUS =================================================
+#define SP_ARRAY_SIZE(_ARR) ((int)(sizeof(_ARR) / sizeof(*(_ARR))))
+//=================================================================
+
 #if defined(_MSC_VER)
 
 // avoid conflicts with numeric limit min/max 

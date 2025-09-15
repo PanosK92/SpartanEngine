@@ -183,10 +183,10 @@ namespace spartan
         // directories
         static void AddResourceDirectory(ResourceDirectory type, const std::string& directory);
         static std::string GetResourceDirectory(ResourceDirectory type);
-        static void SetProjectDirectory(const std::string& directory);
+        static void SetProjectDirectory(const char* directory);
         static std::string GetProjectDirectoryAbsolute();
-        static const std::string& GetProjectDirectory();
-        static std::string GetDataDirectory();
+        static const char* GetProjectDirectory();
+        static const char* GetDataDirectory();
 
         // misc
         static std::vector<std::shared_ptr<IResource>>& GetResources();

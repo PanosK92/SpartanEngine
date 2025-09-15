@@ -52,8 +52,6 @@ namespace spartan
         static float GetUpdateInterval();
         static void SetUpdateInterval(float interval);
         static const std::string& GpuGetName();
-        static uint32_t GpuGetMemoryAvailable();
-        static uint32_t GpuGetMemoryUsed();
         static bool IsCpuStuttering();
         static bool IsGpuStuttering();
         
