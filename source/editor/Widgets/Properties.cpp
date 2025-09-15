@@ -826,9 +826,9 @@ void Properties::ShowMaterial(Material* material) const
         // ocean properties
         if (material->GetProperty(MaterialProperty::IsOcean))
         {
-            const auto show_jonswap_params = [this, &material](const char* name, const char* tooltip, const JonswapParameters params)
+            const auto show_jonswap_params = [this, &material](const char* name, const char* tooltip, const OceanParameters params)
             {
-                bool show_modifier = params != JonswapParameters::Max;
+                bool show_modifier = params != OceanParameters::Max;
 
                 // name
                 if (name)
@@ -858,21 +858,25 @@ void Properties::ShowMaterial(Material* material) const
                 }
             };
 
-            show_jonswap_params("Alpha", "", JonswapParameters::Alpha);
-            show_jonswap_params("Angle", "", JonswapParameters::Angle);
-            show_jonswap_params("Fetch", "", JonswapParameters::Fetch);
-            show_jonswap_params("Gamma", "", JonswapParameters::Gamma);
-            show_jonswap_params("Peak Omega", "", JonswapParameters::PeakOmega);
-            show_jonswap_params("Repeat Time", "", JonswapParameters::RepeatTime);
-            show_jonswap_params("Scale", "", JonswapParameters::Scale);
-            show_jonswap_params("Short Waves Fade", "", JonswapParameters::ShortWavesFade);
-            show_jonswap_params("Spread Blend", "", JonswapParameters::SpreadBlend);
-            show_jonswap_params("Swell", "", JonswapParameters::Swell);
-            show_jonswap_params("Wind Direction", "", JonswapParameters::WindDirection);
-            show_jonswap_params("Wind Speed", "", JonswapParameters::WindSpeed);
-            show_jonswap_params("Depth", "", JonswapParameters::Depth);
-            show_jonswap_params("Low Cutoff", "", JonswapParameters::LowCutoff);
-            show_jonswap_params("High Cutoff", "", JonswapParameters::HighCutoff);
+            show_jonswap_params("Alpha", "", OceanParameters::Alpha);
+            show_jonswap_params("Angle", "", OceanParameters::Angle);
+            show_jonswap_params("Fetch", "", OceanParameters::Fetch);
+            show_jonswap_params("Gamma", "", OceanParameters::Gamma);
+            show_jonswap_params("Peak Omega", "", OceanParameters::PeakOmega);
+            show_jonswap_params("Repeat Time", "", OceanParameters::RepeatTime);
+            show_jonswap_params("Scale", "", OceanParameters::Scale);
+            show_jonswap_params("Short Waves Fade", "", OceanParameters::ShortWavesFade);
+            show_jonswap_params("Spread Blend", "", OceanParameters::SpreadBlend);
+            show_jonswap_params("Swell", "", OceanParameters::Swell);
+            show_jonswap_params("Wind Direction", "", OceanParameters::WindDirection);
+            show_jonswap_params("Wind Speed", "", OceanParameters::WindSpeed);
+            show_jonswap_params("Depth", "", OceanParameters::Depth);
+            show_jonswap_params("Low Cutoff", "", OceanParameters::LowCutoff);
+            show_jonswap_params("High Cutoff", "", OceanParameters::HighCutoff);
+            show_jonswap_params("Foam Decay Rate", "", OceanParameters::FoamDecayRate);
+            show_jonswap_params("Foam Bias", "", OceanParameters::FoamBias);
+            show_jonswap_params("Foam Threshold", "", OceanParameters::FoamThreshold);
+            show_jonswap_params("Foam Add", "", OceanParameters::FoamAdd);
         }
         
         // uv

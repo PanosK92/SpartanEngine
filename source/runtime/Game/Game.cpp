@@ -317,23 +317,28 @@ namespace spartan
                         material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); 
                         material->SetProperty(MaterialProperty::IsOcean, 1.0f);
 
-                        material->SetOceanProperty(JonswapParameters::Angle, 0.0f); //handled internally
-                        material->SetOceanProperty(JonswapParameters::Alpha, 0.0f); // handled internally
-                        material->SetOceanProperty(JonswapParameters::PeakOmega, 0.0f); // handled internally
+                        material->SetOceanProperty(OceanParameters::Angle, 0.0f); //handled internally
+                        material->SetOceanProperty(OceanParameters::Alpha, 0.0f); // handled internally
+                        material->SetOceanProperty(OceanParameters::PeakOmega, 0.0f); // handled internally
 
-                        material->SetOceanProperty(JonswapParameters::Scale, 0.01f);
-                        material->SetOceanProperty(JonswapParameters::SpreadBlend, 0.9f);
-                        material->SetOceanProperty(JonswapParameters::Swell, 1.0f);
-                        material->SetOceanProperty(JonswapParameters::Fetch, 10000.0f);
-                        material->SetOceanProperty(JonswapParameters::WindDirection, 90.0f);
-                        material->SetOceanProperty(JonswapParameters::WindSpeed, 100.0f);
-                        material->SetOceanProperty(JonswapParameters::Gamma, 3.3f);
-                        material->SetOceanProperty(JonswapParameters::ShortWavesFade, 0.0f);
-                        material->SetOceanProperty(JonswapParameters::RepeatTime, 200.0f);
+                        material->SetOceanProperty(OceanParameters::Scale, 0.01f);
+                        material->SetOceanProperty(OceanParameters::SpreadBlend, 0.9f);
+                        material->SetOceanProperty(OceanParameters::Swell, 1.0f);
+                        material->SetOceanProperty(OceanParameters::Fetch, 10000.0f);
+                        material->SetOceanProperty(OceanParameters::WindDirection, 90.0f);
+                        material->SetOceanProperty(OceanParameters::WindSpeed, 100.0f);
+                        material->SetOceanProperty(OceanParameters::Gamma, 3.3f);
+                        material->SetOceanProperty(OceanParameters::ShortWavesFade, 0.0f);
+                        material->SetOceanProperty(OceanParameters::RepeatTime, 200.0f);
 
-                        material->SetOceanProperty(JonswapParameters::Depth, 20.0f);
-                        material->SetOceanProperty(JonswapParameters::LowCutoff, 0.001f);
-                        material->SetOceanProperty(JonswapParameters::HighCutoff, 1000.0f);
+                        material->SetOceanProperty(OceanParameters::Depth, 20.0f);
+                        material->SetOceanProperty(OceanParameters::LowCutoff, 0.001f);
+                        material->SetOceanProperty(OceanParameters::HighCutoff, 1000.0f);
+
+                        material->SetOceanProperty(OceanParameters::FoamDecayRate, 3.0f);
+                        material->SetOceanProperty(OceanParameters::FoamThreshold, -1.8f);
+                        material->SetOceanProperty(OceanParameters::FoamBias, 0.2f);
+                        material->SetOceanProperty(OceanParameters::FoamAdd, 0.12f);
                     }
                 }
 

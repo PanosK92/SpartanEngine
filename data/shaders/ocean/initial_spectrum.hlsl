@@ -128,7 +128,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     uint seed = thread_id.x + SPECTRUM_TEX_SIZE * thread_id.y + SPECTRUM_TEX_SIZE;
     seed += pass_get_f2_value().x; // seed += frame_number
 
-    JonswapParameters params = surface.jonswap_parameters;
+    OceanParameters params = surface.ocean_parameters;
     
     float halfN = SPECTRUM_TEX_SIZE / 2.0f;
 

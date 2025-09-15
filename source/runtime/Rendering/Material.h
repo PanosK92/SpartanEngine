@@ -111,7 +111,7 @@ namespace spartan
     };
 
     // used for ocean calculations
-    enum class JonswapParameters
+    enum class OceanParameters
     {
         Scale, // used to scale the Spectrum [1.0f, 5.0f] --> Value Range
         SpreadBlend, // used to blend between agitated water motion, and windDirection [0.0f, 1.0f]
@@ -131,6 +131,11 @@ namespace spartan
         Depth,
         LowCutoff,
         HighCutoff,
+
+        FoamDecayRate,
+        FoamBias,
+        FoamThreshold,
+        FoamAdd,
 
         Max
     };
@@ -165,8 +170,8 @@ namespace spartan
         // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
-        float GetOceanProperty(const JonswapParameters property_type) const;
-        void SetOceanProperty(const JonswapParameters property_type, const float value);
+        float GetOceanProperty(const OceanParameters property_type) const;
+        void SetOceanProperty(const OceanParameters property_type, const float value);
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
@@ -181,12 +186,12 @@ namespace spartan
         void MarkSpectrumAsComputed() { m_should_compute_spectrum = false; }
 
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
-        const std::array<float, static_cast<uint32_t>(JonswapParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
+        const std::array<float, static_cast<uint32_t>(OceanParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
 
     private:
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
-        std::array<float, static_cast<uint32_t>(JonswapParameters::Max)> m_ocean_properties;
+        std::array<float, static_cast<uint32_t>(OceanParameters::Max)> m_ocean_properties;
         uint32_t m_index = 0;
         bool m_should_compute_spectrum = true;
     };

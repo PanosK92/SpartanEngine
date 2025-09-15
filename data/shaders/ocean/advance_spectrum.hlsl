@@ -39,7 +39,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     initial_spectrum.GetDimensions(resolution_out.x, resolution_out.y);
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
-    JonswapParameters params = surface.jonswap_parameters;
+    OceanParameters params = surface.ocean_parameters;
     
     float repeatTime = params.repeatTime; //frac(srt->time);
     float w_0 = 2.0f * PI / repeatTime;

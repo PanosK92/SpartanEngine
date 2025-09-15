@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_STRUCT
 #define SPARTAN_COMMON_STRUCT
 
-struct JonswapParameters
+struct OceanParameters
 {
     float scale;
     float spreadBlend;
@@ -45,6 +45,11 @@ struct JonswapParameters
     float depth;
     float lowCutoff;
     float highCutoff;
+
+    float foamDecayRate;
+    float foamBias;
+    float foamThreshold;
+    float foamAdd;
 };
 
 struct Surface
@@ -75,7 +80,7 @@ struct Surface
     float  camera_to_pixel_length;
     float3 diffuse_energy;
 
-    JonswapParameters jonswap_parameters;
+    OceanParameters ocean_parameters;
 
     // easy access to certain properties
     bool has_texture_height()            { return flags & uint(1U << 0);  }
@@ -129,21 +134,25 @@ struct Surface
         diffuse_energy        = 1.0f;
         
         // jonswap parameters
-        jonswap_parameters.alpha          = material.jonswap_parameters.alpha;
-        jonswap_parameters.angle          = material.jonswap_parameters.angle;
-        jonswap_parameters.fetch          = material.jonswap_parameters.fetch;
-        jonswap_parameters.gamma          = material.jonswap_parameters.gamma;
-        jonswap_parameters.peakOmega      = material.jonswap_parameters.peakOmega;
-        jonswap_parameters.repeatTime     = material.jonswap_parameters.repeatTime;
-        jonswap_parameters.scale          = material.jonswap_parameters.scale;
-        jonswap_parameters.shortWavesFade = material.jonswap_parameters.shortWavesFade;
-        jonswap_parameters.spreadBlend    = material.jonswap_parameters.spreadBlend;
-        jonswap_parameters.swell          = material.jonswap_parameters.swell;
-        jonswap_parameters.windDirection  = material.jonswap_parameters.windDirection;
-        jonswap_parameters.windSpeed      = material.jonswap_parameters.windSpeed;
-        jonswap_parameters.depth          = material.jonswap_parameters.depth;
-        jonswap_parameters.lowCutoff      = material.jonswap_parameters.lowCutoff;
-        jonswap_parameters.highCutoff     = material.jonswap_parameters.highCutoff;
+        ocean_parameters.alpha          = material.ocean_parameters.alpha;
+        ocean_parameters.angle          = material.ocean_parameters.angle;
+        ocean_parameters.fetch          = material.ocean_parameters.fetch;
+        ocean_parameters.gamma          = material.ocean_parameters.gamma;
+        ocean_parameters.peakOmega      = material.ocean_parameters.peakOmega;
+        ocean_parameters.repeatTime     = material.ocean_parameters.repeatTime;
+        ocean_parameters.scale          = material.ocean_parameters.scale;
+        ocean_parameters.shortWavesFade = material.ocean_parameters.shortWavesFade;
+        ocean_parameters.spreadBlend    = material.ocean_parameters.spreadBlend;
+        ocean_parameters.swell          = material.ocean_parameters.swell;
+        ocean_parameters.windDirection  = material.ocean_parameters.windDirection;
+        ocean_parameters.windSpeed      = material.ocean_parameters.windSpeed;
+        ocean_parameters.depth          = material.ocean_parameters.depth;
+        ocean_parameters.lowCutoff      = material.ocean_parameters.lowCutoff;
+        ocean_parameters.highCutoff     = material.ocean_parameters.highCutoff;
+        ocean_parameters.foamDecayRate  = material.ocean_parameters.foamDecayRate;
+        ocean_parameters.foamBias       = material.ocean_parameters.foamBias;
+        ocean_parameters.foamThreshold  = material.ocean_parameters.foamThreshold;
+        ocean_parameters.foamAdd        = material.ocean_parameters.foamAdd;
 
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;

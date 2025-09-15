@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
+RWTexture2D<float4> slope_map : register(u13);
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -76,4 +78,20 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
     tex_uav[thread_id.xy] = float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric, alpha) + tex_uav[thread_id.xy] * accumulate;
+
+    if (surface.is_ocean())
+    {
+        //float3 foamColor = float3(1.0f, 0.0f, 0.0f);
+        //
+        //float4 ndcPos = mul(float4(surface.position, 1.0f), buffer_frame.view_projection);
+        //
+        //float2 uv = ndc_to_uv(ndcPos.xyz);
+        //float foam = 1.0f;//slope_map[thread_id.xy].a;
+        //tex_uav[thread_id.xy].rgb = lerp(tex_uav[thread_id.xy].rgb, foamColor, foam);
+    	tex_uav[thread_id.xy].rgb = float3(0.0f, 1.0f, 0.0f);
+	}
+	else
+	{
+		tex_uav[thread_id.xy].rgb = float3(1.0f, 0.0f, 0.0f);
+	}
 }

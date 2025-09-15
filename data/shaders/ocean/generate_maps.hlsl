@@ -26,18 +26,26 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 displacement = float3(Lambda.x * dxdz.x, dydxz.x, Lambda.y * dxdz.y);
     float2 slopes = dyxdyz.xy / (1 + abs(dxxdzz * Lambda));
 
-    //float jacobian = (1.0f + Lambda.x * dxxdzz.x) * (1.0f + Lambda.y * dxxdzz.y) - Lambda.x * Lambda.y * dydxz.y * dydxz.y;
-    //float covariance = slopes.x * slopes.y;
-    //
-    //float foam = htildeDisplacement.a;
-    //foam *= exp(-srt - > computeParams - > foamDecayRate);
-    //foam = saturate(foam);
-    //
-    //float biasedJacobian = max(0.0f, -(jacobian - srt - > computeParams - > foamBias));
-    //
-    //if (biasedJacobian > srt - > computeParams - > foamThreshold)
-    //    foam += srt - > computeParams - > foamAdd * biasedJacobian;
+    float jacobian = (1.0f + Lambda.x * dxxdzz.x) * (1.0f + Lambda.y * dxxdzz.y) - Lambda.x * Lambda.y * dydxz.y * dydxz.y;
+    float covariance = slopes.x * slopes.y;
 
-    displacement_map[thread_id.xy] = float4(displacement, 0.0f /*foam*/);
-    slope_map[thread_id.xy] = float4(slopes, 0.0f, 1.0f);
+    // create surface
+    float2 resolution_out;
+    slope_map.GetDimensions(resolution_out.x, resolution_out.y);
+    Surface surface;
+    surface.Build(thread_id.xy, resolution_out, false, false);
+
+    OceanParameters params = surface.ocean_parameters;
+    
+    float foam = htildeDisplacement.a;
+    foam *= exp(-params.foamDecayRate);
+    foam = saturate(foam);
+    
+    float biasedJacobian = max(0.0f, -(jacobian - params.foamBias));
+    
+    if (biasedJacobian > params.foamThreshold)
+        foam += params.foamAdd * biasedJacobian;
+
+    displacement_map[thread_id.xy] = float4(displacement, 1.0f);
+    slope_map[thread_id.xy] = float4(slopes, 0.0f, foam);
 }

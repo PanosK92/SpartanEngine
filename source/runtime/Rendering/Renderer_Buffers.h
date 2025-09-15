@@ -182,7 +182,7 @@ namespace spartan
         float clearcoat;
         float clearcoat_roughness;
 
-        struct JonswapParameters
+        struct OceanParameters
         {
             float scale;
             float spreadBlend;
@@ -201,6 +201,11 @@ namespace spartan
             float depth;
             float lowCutoff;
             float highCutoff;
+
+            float foamDecayRate;
+            float foamBias;
+            float foamThreshold;
+            float foamAdd;
         } jonswap_parameters;
     };
 

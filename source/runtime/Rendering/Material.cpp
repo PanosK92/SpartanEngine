@@ -103,26 +103,30 @@ namespace spartan
             }
         }
 
-        const char* ocean_property_to_char_ptr(JonswapParameters property)
+        const char* ocean_property_to_char_ptr(OceanParameters property)
         {
             switch (property)
             {
-            case spartan::JonswapParameters::Scale:                 return "scale";
-            case spartan::JonswapParameters::SpreadBlend:           return "spread_blend";
-            case spartan::JonswapParameters::Swell:                 return "swell";
-            case spartan::JonswapParameters::Gamma:                 return "gamma";
-            case spartan::JonswapParameters::ShortWavesFade:        return "short_waves_fade";
-            case spartan::JonswapParameters::WindDirection:         return "wind_direction";
-            case spartan::JonswapParameters::Fetch:                 return "fetch";
-            case spartan::JonswapParameters::WindSpeed:             return "wind_speed";
-            case spartan::JonswapParameters::RepeatTime:            return "repeat_time";
-            case spartan::JonswapParameters::Angle:                 return "angle";
-            case spartan::JonswapParameters::Alpha:                 return "alpha";
-            case spartan::JonswapParameters::PeakOmega:             return "peak_omega";
-            case spartan::JonswapParameters::Depth:                 return "depth";
-            case spartan::JonswapParameters::LowCutoff:             return "low_cutoff";
-            case spartan::JonswapParameters::HighCutoff:            return "high_cutoff";
-            case spartan::JonswapParameters::Max:                   return "max";
+            case spartan::OceanParameters::Scale:                 return "scale";
+            case spartan::OceanParameters::SpreadBlend:           return "spread_blend";
+            case spartan::OceanParameters::Swell:                 return "swell";
+            case spartan::OceanParameters::Gamma:                 return "gamma";
+            case spartan::OceanParameters::ShortWavesFade:        return "short_waves_fade";
+            case spartan::OceanParameters::WindDirection:         return "wind_direction";
+            case spartan::OceanParameters::Fetch:                 return "fetch";
+            case spartan::OceanParameters::WindSpeed:             return "wind_speed";
+            case spartan::OceanParameters::RepeatTime:            return "repeat_time";
+            case spartan::OceanParameters::Angle:                 return "angle";
+            case spartan::OceanParameters::Alpha:                 return "alpha";
+            case spartan::OceanParameters::PeakOmega:             return "peak_omega";
+            case spartan::OceanParameters::Depth:                 return "depth";
+            case spartan::OceanParameters::LowCutoff:             return "low_cutoff";
+            case spartan::OceanParameters::HighCutoff:            return "high_cutoff";
+            case spartan::OceanParameters::FoamDecayRate:         return "foam_decay_rate";
+            case spartan::OceanParameters::FoamThreshold:         return "foam_threshold";
+            case spartan::OceanParameters::FoamAdd:               return "foam_add";
+            case spartan::OceanParameters::FoamBias:              return "foam_bias";
+            case spartan::OceanParameters::Max:                   return "max";
             default:
             {
                 SP_ASSERT_MSG(false, "Unknown ocean property");
@@ -341,9 +345,9 @@ namespace spartan
             m_properties[i] = node_material.child(attribute_name).text().as_float();
         }
 
-        for (uint32_t i = 0; i < static_cast<uint32_t>(JonswapParameters::Max); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(OceanParameters::Max); ++i)
         {
-            const char* attribute_name = ocean_property_to_char_ptr(static_cast<JonswapParameters>(i));
+            const char* attribute_name = ocean_property_to_char_ptr(static_cast<OceanParameters>(i));
             m_ocean_properties[i] = node_material.child(attribute_name).text().as_float();
         }
     
@@ -397,9 +401,9 @@ namespace spartan
         // save ocean properties
         if (GetProperty(MaterialProperty::IsOcean) == 1.0f)
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(JonswapParameters::Max); ++i)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(OceanParameters::Max); ++i)
             {
-                const char* attribute_name = ocean_property_to_char_ptr(static_cast<JonswapParameters>(i));
+                const char* attribute_name = ocean_property_to_char_ptr(static_cast<OceanParameters>(i));
                 material_node.append_child(attribute_name).text().set(m_ocean_properties[i]);
             }
         }
@@ -781,7 +785,7 @@ namespace spartan
         SaveToFile(GetResourceFilePath());
     }
 
-    float Material::GetOceanProperty(const JonswapParameters property_type) const
+    float Material::GetOceanProperty(const OceanParameters property_type) const
     {
         if (m_properties[static_cast<uint32_t>(MaterialProperty::IsOcean)] != 1.0f)
             return 0.0f;
@@ -789,32 +793,32 @@ namespace spartan
         return m_ocean_properties[static_cast<uint32_t>(property_type)];
     }
 
-    void Material::SetOceanProperty(const JonswapParameters property_type, const float value)
+    void Material::SetOceanProperty(const OceanParameters property_type, const float value)
     {
         SP_ASSERT_MSG(m_properties[static_cast<uint32_t>(MaterialProperty::IsOcean)] == 1.0f, "Only ocean materials can have ocean properties");
 
         // special cases
-        if (property_type == JonswapParameters::Fetch || property_type == JonswapParameters::WindSpeed)
+        if (property_type == OceanParameters::Fetch || property_type == OceanParameters::WindSpeed)
         {
             // update fetch or windspeed
             m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
 
             // get fetch and windspeed
-            float fetch = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Fetch)];
-            float windSpeed = m_ocean_properties[static_cast<uint32_t>(JonswapParameters::WindSpeed)];
+            float fetch = m_ocean_properties[static_cast<uint32_t>(OceanParameters::Fetch)];
+            float windSpeed = m_ocean_properties[static_cast<uint32_t>(OceanParameters::WindSpeed)];
 
             // update alpha and peakOmega
-            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Alpha)] = jonswap_alpha(fetch, windSpeed);
-            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::PeakOmega)] = jonswap_peak_frequency(fetch, windSpeed);
+            m_ocean_properties[static_cast<uint32_t>(OceanParameters::Alpha)] = jonswap_alpha(fetch, windSpeed);
+            m_ocean_properties[static_cast<uint32_t>(OceanParameters::PeakOmega)] = jonswap_peak_frequency(fetch, windSpeed);
         }
-        else if (property_type == JonswapParameters::WindDirection)
+        else if (property_type == OceanParameters::WindDirection)
         {
             // update wind direction
             m_ocean_properties[static_cast<uint32_t>(property_type)] = value;
 
             // update angle, based on the wind direction
             float angle = value / 180.0f * pi;
-            m_ocean_properties[static_cast<uint32_t>(JonswapParameters::Angle)] = angle;
+            m_ocean_properties[static_cast<uint32_t>(OceanParameters::Angle)] = angle;
         }
         else
         {

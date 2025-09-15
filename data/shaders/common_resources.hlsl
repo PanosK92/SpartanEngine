@@ -109,7 +109,7 @@ struct MaterialParameters
     float clearcoat;
     float clearcoat_roughness;
 
-    struct JonswapParameters
+    struct OceanParameters
     {
         float scale;
         float spreadBlend;
@@ -128,7 +128,12 @@ struct MaterialParameters
         float depth;
         float lowCutoff;
         float highCutoff;
-    } jonswap_parameters;
+
+        float foamDecayRate;
+        float foamBias;
+        float foamThreshold;
+        float foamAdd;
+    } ocean_parameters;
     
     bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
     bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
