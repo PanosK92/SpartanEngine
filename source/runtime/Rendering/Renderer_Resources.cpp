@@ -407,6 +407,13 @@ namespace spartan
 
             shader(Renderer_Shader::ocean_generate_maps_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::ocean_generate_maps_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\generate_maps.hlsl", false);
+
+            shader(Renderer_Shader::ocean_foam_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_foam_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "ocean\\foam.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::ocean_foam_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_foam_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "ocean\\foam.hlsl", async);
+
         }
 
         // blur

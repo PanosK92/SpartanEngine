@@ -153,6 +153,8 @@ namespace spartan
             Pass_Light_ImageBased(cmd_list_graphics_present);                 // ibl from skysphere and global illumination
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present); // ssr
 
+            Pass_ApplyFoam(cmd_list_graphics_present);
+
             // render -> output resolution
             Pass_Upscale(cmd_list_graphics_present);
 
@@ -1002,7 +1004,7 @@ namespace spartan
         RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
-        RHI_Texture* slope_map            = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+        //RHI_Texture* slope_map            = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
         cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 
@@ -1027,7 +1029,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
 
-            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
+            //cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
 
             // render
             cmd_list->Dispatch(tex_out);
@@ -1040,6 +1042,7 @@ namespace spartan
         // acquire resources
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
         cmd_list->BeginTimeblock("light_image_based");
         {
@@ -1056,6 +1059,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::light_shadow));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
+            cmd_list->SetTexture(/*Renderer_BindingsUav::ocean_slope_map*/7, slope_map);
 
             // set pass constants
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
@@ -1234,6 +1238,99 @@ namespace spartan
 
             // for the lifetime of the engine, this will be read as an srv, so transition here
             //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+
+            slope_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyFoam(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
+
+        tex_out->SetLayout(RHI_Image_Layout::General, cmd_list);
+
+        cmd_list->BeginTimeblock("ocean_foam");
+        {
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name = "ocean_foam";
+            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::ocean_foam_v);
+            pso.shaders[RHI_Shader_Type::Pixel] = GetShader(Renderer_Shader::ocean_foam_p);
+            pso.blend_state = GetBlendState(Renderer_BlendState::Additive);
+            pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off);
+            pso.vrs_input_texture = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+            pso.resolution_scale = true;
+            pso.render_target_color_textures[0] = tex_out;
+            pso.render_target_depth_texture = tex_depth;
+            pso.clear_color[0] = Color::standard_transparent;
+            cmd_list->SetPipelineState(pso);
+
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                Renderable* renderable = draw_call.renderable;
+                Material* material = renderable->GetMaterial();
+                if (!material || !material->IsOcean() || !draw_call.camera_visible)
+                    continue;
+
+                //// tessellation & culling
+                //{
+                //    bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                //    RHI_Shader* hull = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+                //    RHI_Shader* domain = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+
+                //    if (pso.shaders[RHI_Shader_Type::Hull] != hull || pso.shaders[RHI_Shader_Type::Domain] != domain)
+                //    {
+                //        pso.shaders[RHI_Shader_Type::Hull] = hull;
+                //        pso.shaders[RHI_Shader_Type::Domain] = domain;
+                //        cmd_list->SetPipelineState(pso);
+                //    }
+                //}
+
+                // pass constants
+                {
+                    Entity* entity = renderable->GetEntity();
+                    m_pcb_pass_cpu.transform = entity->GetMatrix();
+                    m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
+                    m_pcb_pass_cpu.set_is_transparent_and_material_index(true, material->GetIndex());
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
+                }
+
+                // draw
+                {
+                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                    cmd_list->SetTexture(0, tex_out);
+                    cmd_list->SetTexture(1, slope_map);
+
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(draw_call.lod_index),
+                        renderable->GetIndexOffset(draw_call.lod_index),
+                        renderable->GetVertexOffset(draw_call.lod_index),
+                        renderable->HasInstancing() ? draw_call.instance_index : 0,
+                        renderable->HasInstancing() ? draw_call.instance_count : 1
+                    );
+
+                    // at this point, we don't want clear in case another render pass is implicitly started
+                    pso.clear_depth = rhi_depth_load;
+                }
+            }
+
+            // perform early resource transitions
+            //tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
+            //tex_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
+            //tex_material->SetLayout(RHI_Image_Layout::General, cmd_list);
+            //tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
+            //tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // Pass_Sss() reads it as a srv
+            //cmd_list->InsertPendingBarrierGroup();
         }
         cmd_list->EndTimeblock();
     }
