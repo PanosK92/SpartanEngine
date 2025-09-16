@@ -1290,8 +1290,7 @@ namespace spartan
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                    cmd_list->SetTexture(0, tex_out);
-                    cmd_list->SetTexture(1, slope_map);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, slope_map);
 
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),
