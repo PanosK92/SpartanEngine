@@ -57,7 +57,7 @@ function solution_configuration()
             symbols "Off"
 
         filter { "system:windows" }
-            platforms { "windows" }
+            platforms { "x64" }
             toolset "msc"
             systemversion "latest"
             system "windows"
@@ -65,7 +65,7 @@ function solution_configuration()
             buildoptions { "/arch:AVX2" }
 
         filter { "system:linux" }
-            platforms { "linux" }
+            platforms { "x64" }
             system "linux"
             architecture "x86_64"
             buildoptions { "-mavx2" }
