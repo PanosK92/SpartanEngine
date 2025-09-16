@@ -1248,7 +1248,7 @@ namespace spartan
     {
         RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_out   = GetRenderTarget(Renderer_RenderTarget::frame_render);
 
         tex_out->SetLayout(RHI_Image_Layout::General, cmd_list);
 
@@ -1256,17 +1256,17 @@ namespace spartan
         {
             // set pipeline state
             RHI_PipelineState pso;
-            pso.name = "ocean_foam";
+            pso.name                             = "ocean_foam";
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::ocean_foam_v);
-            pso.shaders[RHI_Shader_Type::Pixel] = GetShader(Renderer_Shader::ocean_foam_p);
-            pso.blend_state = GetBlendState(Renderer_BlendState::Additive);
-            pso.rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.depth_stencil_state = GetDepthStencilState(Renderer_DepthStencilState::Off);
-            pso.vrs_input_texture = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
-            pso.resolution_scale = true;
-            pso.render_target_color_textures[0] = tex_out;
-            pso.render_target_depth_texture = tex_depth;
-            pso.clear_color[0] = Color::standard_transparent;
+            pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::ocean_foam_p);
+            pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
+            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+            pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+            pso.resolution_scale                 = true;
+            pso.render_target_color_textures[0]  = tex_out;
+            pso.render_target_depth_texture      = tex_depth;
+            pso.clear_color[0]                   = rhi_color_load;
             cmd_list->SetPipelineState(pso);
 
             for (uint32_t i = 0; i < m_draw_call_count; i++)
@@ -1277,29 +1277,11 @@ namespace spartan
                 if (!material || !material->IsOcean() || !draw_call.camera_visible)
                     continue;
 
-                //// tessellation & culling
-                //{
-                //    bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                //    RHI_Shader* hull = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                //    RHI_Shader* domain = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
-
-                //    if (pso.shaders[RHI_Shader_Type::Hull] != hull || pso.shaders[RHI_Shader_Type::Domain] != domain)
-                //    {
-                //        pso.shaders[RHI_Shader_Type::Hull] = hull;
-                //        pso.shaders[RHI_Shader_Type::Domain] = domain;
-                //        cmd_list->SetPipelineState(pso);
-                //    }
-                //}
-
                 // pass constants
                 {
-                    Entity* entity = renderable->GetEntity();
-                    m_pcb_pass_cpu.transform = entity->GetMatrix();
-                    m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
+                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(true, material->GetIndex());
                     cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                    entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
                 }
 
                 // draw
@@ -1323,14 +1305,6 @@ namespace spartan
                     pso.clear_depth = rhi_depth_load;
                 }
             }
-
-            // perform early resource transitions
-            //tex_color->SetLayout(RHI_Image_Layout::General, cmd_list);
-            //tex_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
-            //tex_material->SetLayout(RHI_Image_Layout::General, cmd_list);
-            //tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
-            //tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // Pass_Sss() reads it as a srv
-            //cmd_list->InsertPendingBarrierGroup();
         }
         cmd_list->EndTimeblock();
     }
