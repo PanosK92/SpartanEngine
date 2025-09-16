@@ -1246,9 +1246,11 @@ namespace spartan
 
     void Renderer::Pass_ApplyFoam(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         RHI_Texture* tex_out   = GetRenderTarget(Renderer_RenderTarget::frame_render);
+
+        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
         tex_out->SetLayout(RHI_Image_Layout::General, cmd_list);
 
@@ -1290,7 +1292,8 @@ namespace spartan
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, slope_map);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, displacement_map);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, slope_map);
 
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),
