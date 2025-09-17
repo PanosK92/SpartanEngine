@@ -1124,9 +1124,6 @@ namespace spartan
             pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_initial_spectrum_c);
             cmd_list->SetPipelineState(pso);
 
-            m_pcb_pass_cpu.set_f2_value(GetFrameNumber(), 0.0f);
-            cmd_list->PushConstants(m_pcb_pass_cpu);
-
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
             cmd_list->Dispatch(initial_spectrum);
         }
