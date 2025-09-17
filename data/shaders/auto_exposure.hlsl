@@ -44,12 +44,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // target luminance (middle gray)
     const float target_luminance = 0.5;
 
-    // compute desired exposure (higher exposure for darker scenes)
+    // compute desired exposure
     float desired_exposure = target_luminance / max(lum, 0.0001);
 
     // min/max exposure in EV
-    const float min_ev = -6.0; // very dark
-    const float max_ev = 6.0;  // very bright
+    const float min_ev = -6.0; // dark
+    const float max_ev = 2.0;  // bright
 
     // convert to linear
     float min_exposure = exp2(min_ev);

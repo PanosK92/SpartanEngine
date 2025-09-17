@@ -702,7 +702,7 @@ namespace spartan
                 {
                     if (!upsampling_enabled)
                     {
-                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Fsr3);
+                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::XeSS); // if the user can run at native, they can run xess (a bit more expensive than fsr)
                         RHI_VendorTechnology::ResetHistory();
                     }
                 }

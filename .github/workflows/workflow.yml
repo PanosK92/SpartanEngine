@@ -69,7 +69,7 @@ jobs:
           
       - name: Build
         shell: cmd
-        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
+        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
 
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'

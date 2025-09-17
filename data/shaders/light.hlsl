@@ -76,6 +76,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_specular   = 0.0f;
     float  out_shadow     = 1.0f;
     float3 out_volumetric = 0.0f;
+
+    // we pre-compute the part that we can
+    float3 light_precomputed = surface.alpha * surface.occlusion;
     
     // loop lights and accumulate
     uint light_count = pass_get_f3_value().x;
@@ -90,13 +93,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 L_subsurface    = 0.0f;
         float3 L_volumetric    = 0.0f;
 
-        // we pre-compute this part as it doesn't need per-light computations
-        float3 light_precomputed = surface.alpha * surface.occlusion;
-
         if (!surface.is_sky())
         {
             // shadows
-            if (light.has_shadows() && surface.is_opaque())
+            if (light.has_shadows())
             {
                 L_shadow = compute_shadow(surface, light);
 
@@ -146,8 +146,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
         // volumetric
         if (light.is_volumetric())
+        {
             L_volumetric += compute_volumetric_fog(surface, light, thread_id.xy);
-
+        }
+        
         // convert per light terms to what we actually store in the UAVs
         float3 write_diffuse    = L_diffuse_term * light.radiance * light_precomputed * surface.diffuse_energy + L_subsurface;
         float3 write_specular   = L_specular_sum * light.radiance * light_precomputed;
