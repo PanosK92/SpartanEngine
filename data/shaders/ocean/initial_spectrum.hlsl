@@ -1,5 +1,3 @@
-//static const float PI = 3.14159265f;
-
 #include "../common.hlsl"
 
 static const float G = 9.81f;

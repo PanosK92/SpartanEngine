@@ -41,9 +41,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, resolution_out, true, false);
     OceanParameters params = surface.ocean_parameters;
     
-    float repeatTime = params.repeatTime; //frac(srt->time);
+    float repeatTime = params.repeatTime;
     float w_0 = 2.0f * PI / repeatTime;
-    float dispersion = floor(sqrt(G * kMag) / w_0) * w_0 * buffer_frame.time; //srt - > time;
+    float dispersion = floor(sqrt(G * kMag) / w_0) * w_0 * buffer_frame.time;
 
     float2 exponent = EulerFormula(dispersion);
 
