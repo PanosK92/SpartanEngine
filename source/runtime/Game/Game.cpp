@@ -1687,7 +1687,7 @@ namespace spartan
 
                 auto entity = World::CreateEntity();
 
-                default_ocean = entities::ocean({ 0.0f, 0.0f, 0.0f }, 20.0f, 256.0f);
+                default_ocean = entities::ocean({ 0.0f, 0.0f, 0.0f }, 20.0f, 512);
 
                 default_ocean->SetParent(entity);
 
