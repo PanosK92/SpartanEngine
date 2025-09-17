@@ -227,15 +227,17 @@ namespace spartan
             // ocean
             {
                 uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv;
-                render_target(Renderer_RenderTarget::ocean_initial_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_initial_spectrum");
+                uint32_t texture_size = 512;
 
-                render_target(Renderer_RenderTarget::ocean_displacement_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement_spectrum");
+                render_target(Renderer_RenderTarget::ocean_initial_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_initial_spectrum");
 
-                render_target(Renderer_RenderTarget::ocean_slope_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_slope_spectrum");
+                render_target(Renderer_RenderTarget::ocean_displacement_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement_spectrum");
 
-                render_target(Renderer_RenderTarget::ocean_displacement_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement_map");
+                render_target(Renderer_RenderTarget::ocean_slope_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_slope_spectrum");
 
-                render_target(Renderer_RenderTarget::ocean_slope_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_slope_map");
+                render_target(Renderer_RenderTarget::ocean_displacement_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_displacement_map");
+
+                render_target(Renderer_RenderTarget::ocean_slope_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_slope_map");
             }
 
             // occlusion
