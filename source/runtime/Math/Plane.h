@@ -34,10 +34,10 @@ namespace spartan::math
 
         Plane(const Vector3& normal, float d);
 
-        // Construct from a normal vector and a point on the plane
+        // construct from a normal vector and a point on the plane
         Plane(const Vector3& normal, const Vector3& point);
 
-        // Construct from 3 vertices
+        // construct from 3 vertices
         Plane(const Vector3& a, const Vector3& b, const Vector3& c);
 
         ~Plane() = default;
@@ -49,6 +49,6 @@ namespace spartan::math
         static float Dot(const Plane& p, const Vector3& v);
 
         Vector3 normal = Vector3::Zero;
-        float d = 0.0f; // distance from origin
+        float d        = 0.0f; // distance from origin
     };
 }

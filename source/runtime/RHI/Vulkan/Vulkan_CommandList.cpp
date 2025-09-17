@@ -641,8 +641,8 @@ namespace spartan
         rendering_info.pStencilAttachment   = nullptr;
     
         // color attachments
-        static vector<VkRenderingAttachmentInfo> attachments_color;
-        attachments_color.clear();
+        array<VkRenderingAttachmentInfo, rhi_max_render_target_count> attachments_color;
+        uint32_t attachment_index = 0;
         {
             // swapchain buffer as a render target
             RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
@@ -660,14 +660,14 @@ namespace spartan
     
                 SP_ASSERT(color_attachment.imageView != nullptr);
     
-                attachments_color.push_back(color_attachment);
+                attachments_color[attachment_index++] = color_attachment;
             }
             else // regular render target(s)
-            { 
+            {
+
                 for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                 {
                     RHI_Texture* rt = m_pso.render_target_color_textures[i];
-    
                     if (rt == nullptr)
                         break;
     
@@ -686,10 +686,10 @@ namespace spartan
     
                     SP_ASSERT(color_attachment.imageView != nullptr);
     
-                    attachments_color.push_back(color_attachment);
+                    attachments_color[attachment_index++] = color_attachment;
                 }
             }
-            rendering_info.colorAttachmentCount = static_cast<uint32_t>(attachments_color.size());
+            rendering_info.colorAttachmentCount = attachment_index;
             rendering_info.pColorAttachments    = attachments_color.data();
         }
     
