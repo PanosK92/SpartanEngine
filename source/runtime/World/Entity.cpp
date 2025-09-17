@@ -46,7 +46,6 @@ namespace spartan
         {
             // clone basic properties
             Entity* clone = World::CreateEntity();
-            clone->SetObjectId(SpartanObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->GetActive());
             clone->SetPosition(entity->GetPositionLocal());

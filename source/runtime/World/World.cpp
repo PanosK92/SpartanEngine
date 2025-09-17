@@ -204,6 +204,7 @@ namespace spartan
 
     void World::Initialize()
     {
+
     }
 
     void World::Shutdown()
@@ -220,7 +221,7 @@ namespace spartan
         entities_lights.clear();
         pending_add.clear();
         camera = nullptr;
-        light = nullptr;
+        light  = nullptr;
         file_path.clear();
 
         // clear change tracking
@@ -274,6 +275,7 @@ namespace spartan
         }
 
         // tick
+        // tick
         for (Entity* entity : entities)
         {
             if (entity->GetActive())
@@ -281,60 +283,64 @@ namespace spartan
                 entity->Tick();
 
                 // check for entity changes
-                uint64_t id        = entity->GetObjectId();
-                uint32_t& state    = entity_states[id];
-                uint32_t new_state = state;
-
-                // active state
-                bool was_active = (state & static_cast<uint32_t>(EntityChange::Active)) != 0;
-                if (entity->GetActive() != was_active)
+                uint64_t id = entity->GetObjectId();
+                auto it = entity_states.find(id);
+                if (it != entity_states.end())
                 {
-                    new_state |= static_cast<uint32_t>(EntityChange::Active);
-                    resolve = true;
-                }
+                    uint32_t& state = it->second;
+                    uint32_t new_state = state;
 
-                // component count
-                uint8_t prev_component_count = (state >> 8) & 0xFF;
-                uint8_t curr_component_count = static_cast<uint8_t>(min(entity->GetComponentCount(), 255u));
-                if (curr_component_count != prev_component_count)
-                {
-                    new_state = (new_state & ~0xFF00) | (curr_component_count << 8);
-                    new_state |= static_cast<uint32_t>(EntityChange::Components);
-                    resolve = true;
-                }
-
-                // cull mode
-                uint8_t prev_cull = (state >> 16) & 0xFF;
-                uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
-                {
-                    if (Material* material = renderable->GetMaterial())
+                    // active state
+                    bool was_active = (state & static_cast<uint32_t>(EntityChange::Active)) != 0;
+                    if (entity->GetActive() != was_active)
                     {
-                        curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
+                        new_state |= static_cast<uint32_t>(EntityChange::Active);
+                        resolve = true;
                     }
-                }
-                if (curr_cull != prev_cull)
-                {
-                    new_state  = (new_state & ~0xFF0000) | (curr_cull << 16);
-                    new_state |= static_cast<uint32_t>(EntityChange::CullMode);
-                    resolve = true;
-                }
 
-                // light type
-                uint8_t prev_light_type = (state >> 24) & 0xFF;
-                uint8_t curr_light_type = static_cast<uint8_t>(LightType::Max);
-                if (Light* light_comp = entity->GetComponent<Light>())
-                {
-                    curr_light_type = static_cast<uint8_t>(light_comp->GetLightType());
-                }
-                if (curr_light_type != prev_light_type)
-                {
-                    new_state  = (new_state & ~0xFF000000) | (curr_light_type << 24);
-                    new_state |= static_cast<uint32_t>(EntityChange::LightType);
-                    resolve    = true;
-                }
+                    // component count
+                    uint8_t prev_component_count = (state >> 8) & 0xFF;
+                    uint8_t curr_component_count = static_cast<uint8_t>(min(entity->GetComponentCount(), 255u));
+                    if (curr_component_count != prev_component_count)
+                    {
+                        new_state = (new_state & ~0xFF00) | (curr_component_count << 8);
+                        new_state |= static_cast<uint32_t>(EntityChange::Components);
+                        resolve = true;
+                    }
 
-                state = new_state;
+                    // cull mode
+                    uint8_t prev_cull = (state >> 16) & 0xFF;
+                    uint8_t curr_cull = static_cast<uint8_t>(RHI_CullMode::None);
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        if (Material* material = renderable->GetMaterial())
+                        {
+                            curr_cull = static_cast<uint8_t>(material->GetProperty(MaterialProperty::CullMode));
+                        }
+                    }
+                    if (curr_cull != prev_cull)
+                    {
+                        new_state = (new_state & ~0xFF0000) | (curr_cull << 16);
+                        new_state |= static_cast<uint32_t>(EntityChange::CullMode);
+                        resolve = true;
+                    }
+
+                    // light type
+                    uint8_t prev_light_type = (state >> 24) & 0xFF;
+                    uint8_t curr_light_type = static_cast<uint8_t>(LightType::Max);
+                    if (Light* light_comp = entity->GetComponent<Light>())
+                    {
+                        curr_light_type = static_cast<uint8_t>(light_comp->GetLightType());
+                    }
+                    if (curr_light_type != prev_light_type)
+                    {
+                        new_state = (new_state & ~0xFF000000) | (curr_light_type << 24);
+                        new_state |= static_cast<uint32_t>(EntityChange::LightType);
+                        resolve = true;
+                    }
+
+                    state = new_state;
+                }
             }
         }
 

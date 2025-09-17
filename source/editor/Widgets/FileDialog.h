@@ -54,14 +54,15 @@ public:
     {
         m_path        = path;
         m_icon        = icon;
-        m_id          = spartan::SpartanObject::GenerateObjectId();
+        static uint32_t id = 0;
+        m_id          = id++;
         m_isDirectory = spartan::FileSystem::IsDirectory(path);
         m_label       = spartan::FileSystem::GetFileNameFromFilePath(path);
     }
 
     const auto& GetPath()           const { return m_path; }
     const auto& GetLabel()          const { return m_label; }
-    auto GetId()                    const { return m_id; }
+    uint32_t GetId()                const { return m_id; }
     spartan::RHI_Texture* GetIcon() const { return m_icon; }
     auto IsDirectory()              const { return m_isDirectory; }
     auto GetTimeSinceLastClickMs()  const { return static_cast<float>(m_time_since_last_click.count()); }
@@ -75,7 +76,7 @@ public:
     
 private:
     spartan::RHI_Texture* m_icon;
-    uint64_t m_id;
+    uint32_t m_id;
     std::string m_path;
     std::string m_label;
     bool m_isDirectory;
