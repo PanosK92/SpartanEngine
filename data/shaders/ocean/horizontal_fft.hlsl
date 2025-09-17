@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "fft_common.hlsl"
 
-[numthreads(512, 1, 1)]
+[numthreads(SPECTRUM_TEX_SIZE, 1, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     displacement_spectrum[thread_id.xy] = FFT(thread_id.x, displacement_spectrum[thread_id.xy]);
