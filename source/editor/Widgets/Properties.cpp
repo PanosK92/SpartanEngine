@@ -877,6 +877,8 @@ void Properties::ShowMaterial(Material* material) const
             show_jonswap_params("Foam Bias", "", OceanParameters::FoamBias);
             show_jonswap_params("Foam Threshold", "", OceanParameters::FoamThreshold);
             show_jonswap_params("Foam Add", "", OceanParameters::FoamAdd);
+            show_jonswap_params("Displacement Scale", "", OceanParameters::DisplacementScale);
+            show_jonswap_params("Slope Scale", "", OceanParameters::SlopeScale);
         }
         
         // uv

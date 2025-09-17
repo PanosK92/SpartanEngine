@@ -861,25 +861,27 @@ namespace spartan
                 properties[count].world_space_uv        = material->GetProperty(MaterialProperty::WorldSpaceUv);
 
                 // ocean
-                properties[count].jonswap_parameters.alpha          = material->GetOceanProperty(OceanParameters::Alpha);
-                properties[count].jonswap_parameters.angle          = material->GetOceanProperty(OceanParameters::Angle);
-                properties[count].jonswap_parameters.fetch          = material->GetOceanProperty(OceanParameters::Fetch);
-                properties[count].jonswap_parameters.gamma          = material->GetOceanProperty(OceanParameters::Gamma);
-                properties[count].jonswap_parameters.peakOmega      = material->GetOceanProperty(OceanParameters::PeakOmega);
-                properties[count].jonswap_parameters.repeatTime     = material->GetOceanProperty(OceanParameters::RepeatTime);
-                properties[count].jonswap_parameters.scale          = material->GetOceanProperty(OceanParameters::Scale);
-                properties[count].jonswap_parameters.shortWavesFade = material->GetOceanProperty(OceanParameters::ShortWavesFade);
-                properties[count].jonswap_parameters.spreadBlend    = material->GetOceanProperty(OceanParameters::SpreadBlend);
-                properties[count].jonswap_parameters.swell          = material->GetOceanProperty(OceanParameters::Swell);
-                properties[count].jonswap_parameters.windDirection  = material->GetOceanProperty(OceanParameters::WindDirection);
-                properties[count].jonswap_parameters.windSpeed      = material->GetOceanProperty(OceanParameters::WindSpeed);
-                properties[count].jonswap_parameters.depth          = material->GetOceanProperty(OceanParameters::Depth);
-                properties[count].jonswap_parameters.lowCutoff      = material->GetOceanProperty(OceanParameters::LowCutoff);
-                properties[count].jonswap_parameters.highCutoff     = material->GetOceanProperty(OceanParameters::HighCutoff);
-                properties[count].jonswap_parameters.foamDecayRate  = material->GetOceanProperty(OceanParameters::FoamDecayRate);
-                properties[count].jonswap_parameters.foamBias       = material->GetOceanProperty(OceanParameters::FoamBias);
-                properties[count].jonswap_parameters.foamThreshold  = material->GetOceanProperty(OceanParameters::FoamThreshold);
-                properties[count].jonswap_parameters.foamAdd        = material->GetOceanProperty(OceanParameters::FoamAdd);
+                properties[count].jonswap_parameters.alpha              = material->GetOceanProperty(OceanParameters::Alpha);
+                properties[count].jonswap_parameters.angle              = material->GetOceanProperty(OceanParameters::Angle);
+                properties[count].jonswap_parameters.fetch              = material->GetOceanProperty(OceanParameters::Fetch);
+                properties[count].jonswap_parameters.gamma              = material->GetOceanProperty(OceanParameters::Gamma);
+                properties[count].jonswap_parameters.peakOmega          = material->GetOceanProperty(OceanParameters::PeakOmega);
+                properties[count].jonswap_parameters.repeatTime         = material->GetOceanProperty(OceanParameters::RepeatTime);
+                properties[count].jonswap_parameters.scale              = material->GetOceanProperty(OceanParameters::Scale);
+                properties[count].jonswap_parameters.shortWavesFade     = material->GetOceanProperty(OceanParameters::ShortWavesFade);
+                properties[count].jonswap_parameters.spreadBlend        = material->GetOceanProperty(OceanParameters::SpreadBlend);
+                properties[count].jonswap_parameters.swell              = material->GetOceanProperty(OceanParameters::Swell);
+                properties[count].jonswap_parameters.windDirection      = material->GetOceanProperty(OceanParameters::WindDirection);
+                properties[count].jonswap_parameters.windSpeed          = material->GetOceanProperty(OceanParameters::WindSpeed);
+                properties[count].jonswap_parameters.depth              = material->GetOceanProperty(OceanParameters::Depth);
+                properties[count].jonswap_parameters.lowCutoff          = material->GetOceanProperty(OceanParameters::LowCutoff);
+                properties[count].jonswap_parameters.highCutoff         = material->GetOceanProperty(OceanParameters::HighCutoff);
+                properties[count].jonswap_parameters.foamDecayRate      = material->GetOceanProperty(OceanParameters::FoamDecayRate);
+                properties[count].jonswap_parameters.foamBias           = material->GetOceanProperty(OceanParameters::FoamBias);
+                properties[count].jonswap_parameters.foamThreshold      = material->GetOceanProperty(OceanParameters::FoamThreshold);
+                properties[count].jonswap_parameters.foamAdd            = material->GetOceanProperty(OceanParameters::FoamAdd);
+                properties[count].jonswap_parameters.displacementScale  = material->GetOceanProperty(OceanParameters::DisplacementScale);
+                properties[count].jonswap_parameters.slopeScale         = material->GetOceanProperty(OceanParameters::SlopeScale);
 
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;

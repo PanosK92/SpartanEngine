@@ -102,15 +102,18 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
-    input.position.xyz += displacement_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb;
-    float4 slope = slope_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0);
+    MaterialParameters material = GetMaterial();
+    
+    input.position.xyz += displacement_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
+
+    float4 slope = slope_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0) * material.ocean_parameters.slopeScale;
     input.normal = normalize(float3(-slope.x, 1.0f, -slope.y));
     
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
 
     // transform world space position to clip space
     Surface surface;
-    surface.flags = GetMaterial().flags;
+    surface.flags = material.flags;
     if (!surface.is_tessellated())
     {
         vertex = transform_to_clip_space(vertex);

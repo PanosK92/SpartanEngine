@@ -339,6 +339,9 @@ namespace spartan
                         material->SetOceanProperty(OceanParameters::FoamThreshold, -1.8f);
                         material->SetOceanProperty(OceanParameters::FoamBias, 0.2f);
                         material->SetOceanProperty(OceanParameters::FoamAdd, 0.12f);
+
+                        material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SlopeScale, 1.0f);
                     }
                 }
 

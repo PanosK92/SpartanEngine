@@ -206,6 +206,9 @@ namespace spartan
             float foamBias;
             float foamThreshold;
             float foamAdd;
+
+            float displacementScale;
+            float slopeScale;
         } jonswap_parameters;
     };
 

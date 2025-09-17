@@ -33,7 +33,8 @@ struct VSOUT
 VSOUT main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     VSOUT vs_out;
-    float3 displaced_pos = input.position.xyz + tex.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).xyz;
+    
+    float3 displaced_pos = input.position.xyz + tex.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).xyz * GetMaterial().ocean_parameters.displacementScale;
     float3 wpos = mul(float4(displaced_pos, 1.0f), buffer_pass.transform).xyz;
     vs_out.pos = mul(float4(wpos, 1.0f), buffer_frame.view_projection);
     vs_out.uv = input.uv;

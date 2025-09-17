@@ -126,6 +126,8 @@ namespace spartan
             case spartan::OceanParameters::FoamThreshold:         return "foam_threshold";
             case spartan::OceanParameters::FoamAdd:               return "foam_add";
             case spartan::OceanParameters::FoamBias:              return "foam_bias";
+            case spartan::OceanParameters::DisplacementScale:     return "displacement_scale";
+            case spartan::OceanParameters::SlopeScale:            return "slope_scale";
             case spartan::OceanParameters::Max:                   return "max";
             default:
             {

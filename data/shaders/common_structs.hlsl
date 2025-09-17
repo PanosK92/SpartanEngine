@@ -50,6 +50,9 @@ struct OceanParameters
     float foamBias;
     float foamThreshold;
     float foamAdd;
+    
+    float displacementScale;
+    float slopeScale;
 };
 
 struct Surface
@@ -134,25 +137,27 @@ struct Surface
         diffuse_energy        = 1.0f;
         
         // jonswap parameters
-        ocean_parameters.alpha          = material.ocean_parameters.alpha;
-        ocean_parameters.angle          = material.ocean_parameters.angle;
-        ocean_parameters.fetch          = material.ocean_parameters.fetch;
-        ocean_parameters.gamma          = material.ocean_parameters.gamma;
-        ocean_parameters.peakOmega      = material.ocean_parameters.peakOmega;
-        ocean_parameters.repeatTime     = material.ocean_parameters.repeatTime;
-        ocean_parameters.scale          = material.ocean_parameters.scale;
-        ocean_parameters.shortWavesFade = material.ocean_parameters.shortWavesFade;
-        ocean_parameters.spreadBlend    = material.ocean_parameters.spreadBlend;
-        ocean_parameters.swell          = material.ocean_parameters.swell;
-        ocean_parameters.windDirection  = material.ocean_parameters.windDirection;
-        ocean_parameters.windSpeed      = material.ocean_parameters.windSpeed;
-        ocean_parameters.depth          = material.ocean_parameters.depth;
-        ocean_parameters.lowCutoff      = material.ocean_parameters.lowCutoff;
-        ocean_parameters.highCutoff     = material.ocean_parameters.highCutoff;
-        ocean_parameters.foamDecayRate  = material.ocean_parameters.foamDecayRate;
-        ocean_parameters.foamBias       = material.ocean_parameters.foamBias;
-        ocean_parameters.foamThreshold  = material.ocean_parameters.foamThreshold;
-        ocean_parameters.foamAdd        = material.ocean_parameters.foamAdd;
+        ocean_parameters.alpha             = material.ocean_parameters.alpha;
+        ocean_parameters.angle             = material.ocean_parameters.angle;
+        ocean_parameters.fetch             = material.ocean_parameters.fetch;
+        ocean_parameters.gamma             = material.ocean_parameters.gamma;
+        ocean_parameters.peakOmega         = material.ocean_parameters.peakOmega;
+        ocean_parameters.repeatTime        = material.ocean_parameters.repeatTime;
+        ocean_parameters.scale             = material.ocean_parameters.scale;
+        ocean_parameters.shortWavesFade    = material.ocean_parameters.shortWavesFade;
+        ocean_parameters.spreadBlend       = material.ocean_parameters.spreadBlend;
+        ocean_parameters.swell             = material.ocean_parameters.swell;
+        ocean_parameters.windDirection     = material.ocean_parameters.windDirection;
+        ocean_parameters.windSpeed         = material.ocean_parameters.windSpeed;
+        ocean_parameters.depth             = material.ocean_parameters.depth;
+        ocean_parameters.lowCutoff         = material.ocean_parameters.lowCutoff;
+        ocean_parameters.highCutoff        = material.ocean_parameters.highCutoff;
+        ocean_parameters.foamDecayRate     = material.ocean_parameters.foamDecayRate;
+        ocean_parameters.foamBias          = material.ocean_parameters.foamBias;
+        ocean_parameters.foamThreshold     = material.ocean_parameters.foamThreshold;
+        ocean_parameters.foamAdd           = material.ocean_parameters.foamAdd;
+        ocean_parameters.displacementScale = material.ocean_parameters.displacementScale;
+        ocean_parameters.slopeScale        = material.ocean_parameters.slopeScale;
 
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;

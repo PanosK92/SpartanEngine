@@ -137,6 +137,9 @@ namespace spartan
         FoamThreshold,
         FoamAdd,
 
+        DisplacementScale,
+        SlopeScale,
+
         Max
     };
 
