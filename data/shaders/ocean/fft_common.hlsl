@@ -25,8 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_FFT_COMMON
 #define SPARTAN_FFT_COMMON
 
-static const uint SPECTRUM_TEX_SIZE = 512;
-static const uint LENGTH_SCALE = SPECTRUM_TEX_SIZE / 8;
+#include "common_ocean.hlsl"
 
 static const uint LOG_SIZE = log(SPECTRUM_TEX_SIZE) / log(2); // result of Log base 2 of SPECTRUM_TEX_SIZE
 

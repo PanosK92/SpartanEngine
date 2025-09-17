@@ -22,11 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Inspired by Acerola's Implementation:
 // https://github.com/GarrettGunnell/Water/blob/main/Assets/Shaders/FFTWater.compute
 
-#include "../common.hlsl"
-
-static const uint SPECTRUM_TEX_SIZE = 512;
-
-RWTexture2D<float4> initial_spectrum : register(u9);
+#include "common_ocean.hlsl"
 
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)

@@ -22,12 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Inspired by Acerola's Implementation:
 // https://github.com/GarrettGunnell/Water/blob/main/Assets/Shaders/FFTWater.compute
 
-#include "../common.hlsl"
-
-RWTexture2D<float4> displacement_spectrum : register(u10);
-RWTexture2D<float4> slope_spectrum : register(u11);
-RWTexture2D<float4> displacement_map : register(u12);
-RWTexture2D<float4> slope_map : register(u13);
+#include "common_ocean.hlsl"
 
 float4 Permute(float4 data, float3 id)
 {

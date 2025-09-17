@@ -19,14 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Inspired by Acerola's Implementation:
-// https://github.com/GarrettGunnell/Water/blob/main/Assets/Shaders/FFTWater.compute
+#include "../common.hlsl"
 
-#include "fft_common.hlsl"
+#ifndef SPARTAN_COMMON_OCEAN
+#define SPARTAN_COMMON_OCEAN
 
-[numthreads(512, 1, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
-{
-    displacement_spectrum[thread_id.yx] = FFT(thread_id.x, displacement_spectrum[thread_id.yx]);
-    slope_spectrum[thread_id.yx] = FFT(thread_id.x, slope_spectrum[thread_id.yx]);
-}
+static const uint SPECTRUM_TEX_SIZE = 512;
+static const uint LENGTH_SCALE      = SPECTRUM_TEX_SIZE / 8;
+
+RWTexture2D<float4> initial_spectrum        : register(u9);
+RWTexture2D<float4> displacement_spectrum   : register(u10);
+RWTexture2D<float4> slope_spectrum          : register(u11);
+RWTexture2D<float4> displacement_map        : register(u12);
+RWTexture2D<float4> slope_map               : register(u13);
+
+#endif // SPARTAN_COMMON_OCEAN

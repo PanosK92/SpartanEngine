@@ -22,13 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Inspired by Acerola's Implementation:
 // https://github.com/GarrettGunnell/Water/blob/main/Assets/Shaders/FFTWater.compute
 
-#include "../common.hlsl"
-
-static const float G = 9.81f;
-static const uint SPECTRUM_TEX_SIZE = 512;
-static const uint LENGTH_SCALE = SPECTRUM_TEX_SIZE / 8;
-
-RWTexture2D<float4> initial_spectrum : register(u9);
+#include "common_ocean.hlsl"
 
 float2 UniformToGaussian(float u1, float u2)
 {

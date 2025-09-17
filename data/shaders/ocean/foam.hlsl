@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Inspired by Acerola's Implementation:
 // https://github.com/GarrettGunnell/Water/blob/main/Assets/Shaders/FFTWater.compute
 
-#include "../common.hlsl"
+#include "common_ocean.hlsl"
 
 struct VSOUT
 {
