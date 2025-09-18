@@ -822,6 +822,64 @@ void Properties::ShowMaterial(Material* material) const
             show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
             show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
         }
+
+        // ocean properties
+        if (material->GetProperty(MaterialProperty::IsOcean))
+        {
+            const auto show_jonswap_params = [this, &material](const char* name, const char* tooltip, const OceanParameters params)
+            {
+                bool show_modifier = params != OceanParameters::Max;
+
+                // name
+                if (name)
+                {
+                    ImGui::Text(name);
+
+                    if (tooltip)
+                    {
+                        ImGuiSp::tooltip(tooltip);
+                    }
+
+                    if (show_modifier)
+                    {
+                        ImGui::SameLine(column_pos_x);
+                    }
+                }
+
+                if (show_modifier)
+                {
+                    float value = material->GetOceanProperty(params);
+
+                    float min = 0.0f;
+
+                    // this custom slider already has a unique id
+                    if (ImGuiSp::draw_float_wrap("", &value, 0.004f, min))
+                        material->SetOceanProperty(params, value);
+                }
+            };
+
+            show_jonswap_params("Alpha", "", OceanParameters::Alpha);
+            show_jonswap_params("Angle", "", OceanParameters::Angle);
+            show_jonswap_params("Fetch", "", OceanParameters::Fetch);
+            show_jonswap_params("Gamma", "", OceanParameters::Gamma);
+            show_jonswap_params("Peak Omega", "", OceanParameters::PeakOmega);
+            show_jonswap_params("Repeat Time", "", OceanParameters::RepeatTime);
+            show_jonswap_params("Scale", "", OceanParameters::Scale);
+            show_jonswap_params("Short Waves Fade", "", OceanParameters::ShortWavesFade);
+            show_jonswap_params("Spread Blend", "", OceanParameters::SpreadBlend);
+            show_jonswap_params("Swell", "", OceanParameters::Swell);
+            show_jonswap_params("Wind Direction", "", OceanParameters::WindDirection);
+            show_jonswap_params("Wind Speed", "", OceanParameters::WindSpeed);
+            show_jonswap_params("Depth", "", OceanParameters::Depth);
+            show_jonswap_params("Low Cutoff", "", OceanParameters::LowCutoff);
+            show_jonswap_params("High Cutoff", "", OceanParameters::HighCutoff);
+            show_jonswap_params("Foam Decay Rate", "", OceanParameters::FoamDecayRate);
+            show_jonswap_params("Foam Bias", "", OceanParameters::FoamBias);
+            show_jonswap_params("Foam Threshold", "", OceanParameters::FoamThreshold);
+            show_jonswap_params("Foam Add", "", OceanParameters::FoamAdd);
+            show_jonswap_params("Displacement Scale", "", OceanParameters::DisplacementScale);
+            show_jonswap_params("Slope Scale", "", OceanParameters::SlopeScale);
+        }
         
         // uv
         {
