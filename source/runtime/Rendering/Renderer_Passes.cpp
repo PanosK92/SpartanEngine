@@ -1119,15 +1119,15 @@ namespace spartan
         }
 
         // sharpening
-        if (GetOption<bool>(Renderer_Option::Sharpness) && GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) != Renderer_Upsampling::Fsr3)
+        if (GetOption<bool>(Renderer_Option::Sharpness) && GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) != Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
         {
             swap_output = !swap_output;
             Pass_Sharpening(cmd_list, get_output_in, get_output_out);
         }
         
         // fxaa
-        Renderer_Antialiasing antialiasing  = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
-        bool fxaa_enabled                   = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
+        Renderer_AntiAliasing_Upsampling antialiasing = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        bool fxaa_enabled                            = antialiasing == Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upcale_Linear;
         if (fxaa_enabled)
         {
             swap_output = !swap_output;
@@ -1442,7 +1442,7 @@ namespace spartan
             cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
             cmd_list->InsertPendingBarrierGroup();
 
-            if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3)
+            if (GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
             {
                 RHI_VendorTechnology::FSR3_Dispatch(
                     cmd_list,
@@ -1456,7 +1456,7 @@ namespace spartan
                     tex_out
                 );
             }
-            else if (GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::XeSS)
+            else if (GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
             {
                  RHI_VendorTechnology::XeSS_Dispatch(
                     cmd_list,

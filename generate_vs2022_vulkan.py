@@ -31,7 +31,7 @@ def main():
     script = script_dir / "build_scripts" / "generate_project_files.py"
     
     # run the script with specific arguments
-    subprocess.Popen([sys.executable, str(script), "vs2022", "vulkan_windows"]).communicate()
+    subprocess.Popen([sys.executable, str(script), "vs2022", "vulkan"]).communicate()
     
     # exit the script
     sys.exit(0)

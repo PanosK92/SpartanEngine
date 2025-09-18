@@ -251,28 +251,30 @@ void RenderOptions::OnTickVisible()
             option_value("Resolution scale", Renderer_Option::ResolutionScale, "Adjusts the percentage of the render resolution", 0.01f);
             ImGui::EndDisabled();
 
-            // upsampling
+            // taa/upsampling
             {
-                static vector<string> upsampling_modes =
+                static vector<string> upsamplers =
                 {
-                    "Linear",
-                    "FSR 3",
-                    "XeSS 2"
+                    "Off",   // AA_Off_Upscale_Linear
+                    "FXAA",  // AA_Fxaa_Upscale_Linear
+                    "FSR 3", // AA_Fsr_Upscale_Fsr
+                    "XeSS 2" // AA_Xess_Upscale_Xess
                 };
 
                 bool is_upsampling = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
                 ImGui::BeginDisabled(!is_upsampling);
                 {
-                    uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::Upsampling);
-                    if (option_combo_box("Upsampling", upsampling_modes, upsampling_mode))
+                    uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling);
+                    if (option_combo_box("Anti-aliasing & Upscaling", upsamplers, upsampling_mode))
                     {
-                        Renderer::SetOption(Renderer_Option::Upsampling, static_cast<float>(upsampling_mode));
+                    
+                        Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(upsampling_mode));
                     }
                 }
                 ImGui::EndDisabled();
 
                 // sharpening
-                bool use_rcas  = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3;
+                bool use_rcas  = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
                 string label   = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
                 string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)" : "AMD FidelityFX Contrast Adaptive Sharpening (CAS)";
                 option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
@@ -309,48 +311,15 @@ void RenderOptions::OnTickVisible()
             option_check_box("SSAO - Screen space ambient occlusion", Renderer_Option::ScreenSpaceAmbientOcclusion);
         }
 
-        if (option("Anti-Aliasing"))
-        {
-            // reflect
-            Renderer_Antialiasing antialiasing = Renderer::GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
-
-            // taa
-            bool taa_enabled = antialiasing == Renderer_Antialiasing::Taa || antialiasing == Renderer_Antialiasing::TaaFxaa;
-            option_check_box("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled");
-
-            // fxaa
-            bool fxaa_enabled = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
-            option_check_box("FXAA - Fast approximate anti-aliasing", fxaa_enabled);
-
-            // map
-            if (taa_enabled && fxaa_enabled)
-            {
-                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::TaaFxaa));
-            }
-            else if (taa_enabled)
-            {
-                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Taa));
-            }
-            else if (fxaa_enabled)
-            {
-                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Fxaa));
-            }
-            else
-            {
-                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Disabled));
-            }
-        }
-
         if (option("Camera"))
         {
-            option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled", 0.01f);
+            option_value("Bloom",                                                      Renderer_Option::Bloom,               "Controls the blend factor. If zero, then bloom is disabled", 0.01f);
             option_check_box("Motion blur (controlled by the camera's shutter speed)", Renderer_Option::MotionBlur);
-            option_check_box("Depth of field (controlled by the camera's aperture)", Renderer_Option::DepthOfField);
-            
-            option_check_box("Film grain",           Renderer_Option::FilmGrain,           "Emulates the noise of old film cameras, can be used to add a vintage look to the scene");
-            option_check_box("Chromatic aberration", Renderer_Option::ChromaticAberration, "Emulates the inability of old cameras to focus all colors in the same focal point");
-            option_check_box("VHS",                  Renderer_Option::Vhs,                 "Emulates the look of VHS tapes, can be used to add a vintage look to the scene");
-            option_check_box("Dithering",            Renderer_Option::Dithering,           "Reduces banding artifacts in gradients by adding noise to the image, can be used to improve the quality of the image at lower bit depths");
+            option_check_box("Depth of field (controlled by the camera's aperture)",   Renderer_Option::DepthOfField);
+            option_check_box("Film grain",                                             Renderer_Option::FilmGrain,           "Emulates the noise of old film cameras, can be used to add a vintage look to the scene");
+            option_check_box("Chromatic aberration",                                   Renderer_Option::ChromaticAberration, "Emulates the inability of old cameras to focus all colors in the same focal point");
+            option_check_box("VHS",                                                    Renderer_Option::Vhs,                 "Emulates the look of VHS tapes, can be used to add a vintage look to the scene");
+            option_check_box("Dithering",                                              Renderer_Option::Dithering,           "Reduces banding artifacts in gradients by adding noise to the image, can be used to improve the quality of the image at lower bit depths");
         }
 
         if (option("World"))
