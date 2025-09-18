@@ -1683,7 +1683,7 @@ namespace spartan
             void create()
             {
                 entities::camera();
-                entities::sun(true);
+                //entities::sun(true);
 
                 auto entity = World::CreateEntity();
 
@@ -1691,7 +1691,16 @@ namespace spartan
 
                 default_ocean->SetParent(entity);
 
-                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                auto light_entity = World::CreateEntity();
+
+                Light* point = light_entity->AddComponent<Light>();
+                point->SetLightType(LightType::Point);
+                point->SetRange(20.0f);
+                point->SetTemperature(2500.0f);
+                point->SetIntensity(8500.0f);
+                point->SetObjectName("Point Light");
+
+                //default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
             }
 
             void on_shutdown()

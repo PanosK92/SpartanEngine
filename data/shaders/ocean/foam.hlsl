@@ -45,7 +45,7 @@ VSOUT main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 float4 main_ps(VSOUT vertex) : SV_Target0
 {
     const float4 foam_color = float4(1.0f, 1.0f, 1.0f, 1.0f);
-    const float foam = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv).a * 10.0f;
+    const float foam = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv).a * 1.0f;
 
     return foam_color * foam;
 }
