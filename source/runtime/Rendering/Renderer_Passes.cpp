@@ -120,13 +120,9 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
             }
 
-            // image based lighting
-            Pass_Light_ImageBased(cmd_list_graphics_present);                 // ibl from skysphere and global illumination
-            Pass_TransparencyReflectionRefraction(cmd_list_graphics_present); // ssr
-
-            // render -> output resolution
-            Pass_Upscale(cmd_list_graphics_present);
-
+            Pass_Light_ImageBased(cmd_list_graphics_present);
+            Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
+            Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
         }
         else
@@ -1125,15 +1121,6 @@ namespace spartan
             Pass_Sharpening(cmd_list, get_output_in, get_output_out);
         }
         
-        // fxaa
-        Renderer_AntiAliasing_Upsampling antialiasing = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
-        bool fxaa_enabled                            = antialiasing == Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upcale_Linear;
-        if (fxaa_enabled)
-        {
-            swap_output = !swap_output;
-            Pass_Fxaa(cmd_list, get_output_in, get_output_out);
-        }
-
         // film grain
         if (GetOption<bool>(Renderer_Option::FilmGrain))
         {
@@ -1430,46 +1417,56 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Upscale(RHI_CommandList* cmd_list)
+    void Renderer::Pass_AA_Upscale(RHI_CommandList* cmd_list)
     {
-        // acquire render targets
-        RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        // acquire input
+        RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        RHI_Texture* tex_velocity    = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
+        RHI_Texture* tex_depth       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        const float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
 
-        cmd_list->BeginTimeblock("upscale");
+        cmd_list->BeginTimeblock("aa_upscale");
         {
             // output is displayed in the viewport, so add a barrier to ensure it's not being read by the gpu
             cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
             cmd_list->InsertPendingBarrierGroup();
 
-            if (GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+            Renderer_AntiAliasing_Upsampling method = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+            if (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) // highest quality, most expensive
+            {
+                RHI_VendorTechnology::XeSS_Dispatch(
+                    cmd_list,
+                    resolution_scale,
+                    tex_in,
+                    tex_depth,
+                    tex_velocity,
+                    tex_out
+                );
+            }
+            else if (method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) // high quality, medium expense
             {
                 RHI_VendorTechnology::FSR3_Dispatch(
                     cmd_list,
                     World::GetCamera(),
                     m_cb_frame_cpu.delta_time,
                     GetOption<float>(Renderer_Option::Sharpness),
-                    GetOption<float>(Renderer_Option::ResolutionScale),
+                    resolution_scale,
                     tex_in,
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
+                    tex_depth,
+                    tex_velocity,
                     tex_out
                 );
             }
-            else if (GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+            else if (method == Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upcale_Linear) // low quality, low expense
             {
-                 RHI_VendorTechnology::XeSS_Dispatch(
-                    cmd_list,
-                    GetOption<float>(Renderer_Option::ResolutionScale),
-                    tex_in,
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
-                    GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
-                    tex_out
-                );
+                Pass_Fxaa(cmd_list, tex_in, tex_out);
+                Pass_Fxaa(cmd_list, tex_out, tex_in); // second pass so tex_in holds final result (can't swap due to flag mismatch, doesn't really matter)
+                cmd_list->Blit(tex_in, tex_out, false, resolution_scale);
             }
-            else // no upscale or linear upscale
+            else // linear upscale, lowest quality, cheapest
             {
-                cmd_list->Blit(tex_in, tex_out, false, GetOption<float>(Renderer_Option::ResolutionScale));
+                cmd_list->Blit(tex_in, tex_out, false, resolution_scale);
             }
 
             // wait for vendor tech to finish writing to the texture

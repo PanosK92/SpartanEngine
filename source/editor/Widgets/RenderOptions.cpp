@@ -272,17 +272,11 @@ void RenderOptions::OnTickVisible()
 
                     Vector2 res_render = Renderer::GetResolutionRender();
                     Vector2 res_output = Renderer::GetResolutionOutput();
-                    bool is_upsampling = res_render.x < res_output.x || res_render.y < res_output.y;
-
-                    ImGui::BeginDisabled(!is_upsampling);
+                    uint32_t mode      = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling);
+                    if (option_combo_box("Upsampling method", upsamplers, mode))
                     {
-                        uint32_t mode = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling);
-                        if (option_combo_box("Upsampling method", upsamplers, mode))
-                        {
-                            Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(mode));
-                        }
+                        Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(mode));
                     }
-                    ImGui::EndDisabled();
 
                     bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
                     string label = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
