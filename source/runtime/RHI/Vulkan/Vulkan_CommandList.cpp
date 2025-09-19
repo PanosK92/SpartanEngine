@@ -1478,9 +1478,9 @@ namespace spartan
 
         uint32_t timestamp_index = m_timestamp_index;
 
-        vkCmdWriteTimestamp(
+        vkCmdWriteTimestamp2(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
             m_timestamp_index++
         );
@@ -1492,9 +1492,9 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        vkCmdWriteTimestamp(
+        vkCmdWriteTimestamp2(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
             m_timestamp_index++
         );

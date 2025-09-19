@@ -238,9 +238,9 @@ namespace spartan
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",         // to obtain precise memory usage information from Vulkan Memory Allocator
-            "VK_KHR_fragment_shading_rate", 
-            "VK_EXT_hdr_metadata",          
-            "VK_KHR_robustness2",           
+            "VK_KHR_fragment_shading_rate",
+            "VK_EXT_hdr_metadata",
+            "VK_KHR_robustness2",
             // AMD FidelityFX relies on "VK_KHR_get_memory_requirements2" because it explicitly calls the extension function
             // vkGetBufferMemoryRequirements2KHR instead of the core Vulkan 1.1+ function vkGetBufferMemoryRequirements2,
             // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
@@ -353,9 +353,10 @@ namespace spartan
         {
             "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT",
             "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT",
-            "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD",
-            "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA"
+            //"VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD",
+            //"VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA"
         };
+        static const uint32_t setting_features_count = SP_ARRAY_SIZE(setting_features);
         
         static vector<VkLayerSettingEXT> settings_storage; // persistent storage for VkLayerSettingEXT
         vector<VkLayerSettingEXT>& get_settings()
@@ -393,7 +394,7 @@ namespace spartan
                 { layer_name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },
                 { layer_name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
                 { layer_name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit },
-                { layer_name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 4, setting_features }
+                { layer_name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, setting_features_count, setting_features }
             };
         
             // optionally append GPU-assisted validation
@@ -403,14 +404,14 @@ namespace spartan
         
                 // append to the enables array safely
                 static const char* combined_enables[5];
-                for (int i = 0; i < 4; ++i)
+                for (int i = 0; i < setting_features_count; ++i)
                 {
                     combined_enables[i] = setting_features[i];
                 }
-                combined_enables[4] = setting_enable_gpu_assisted;
+                combined_enables[setting_features_count] = setting_enable_gpu_assisted;
         
                 // replace the last entry in settings_storage
-                settings_storage.back() = { layer_name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 5, combined_enables };
+                settings_storage.back() = { layer_name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, setting_features_count + 1, combined_enables };
             }
         
             return settings_storage;
