@@ -77,7 +77,7 @@ struct Surface
     {
         // initialize properties
         pos = position_screen;
-        uv  = (position_screen + 0.5f) / (resolution_out * buffer_frame.resolution_scale);
+        uv = (position_screen + 0.5f) / resolution_out;
 
         // access resources
         float4 sample_albedo        = !use_albedo ? 0.0f : tex_albedo.SampleLevel(samplers[sampler_point_clamp], uv, 0);

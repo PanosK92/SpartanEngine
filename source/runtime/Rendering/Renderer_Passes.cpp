@@ -692,7 +692,7 @@ namespace spartan
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
-                cmd_list->Dispatch(tex_ssao);
+                cmd_list->Dispatch(tex_ssao, GetOption<float>(Renderer_Option::ResolutionScale));
 
                 cleared = false;
             }
@@ -943,7 +943,7 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // dispatch
-            cmd_list->Dispatch(light_diffuse); // adds read write barrier for light_diffuse internally
+            cmd_list->Dispatch(light_diffuse, GetOption<float>(Renderer_Option::ResolutionScale)); // adds read write barrier for light_diffuse internally
             cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
@@ -985,7 +985,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
 
             // render
-            cmd_list->Dispatch(tex_out);
+            cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
         }
         cmd_list->EndTimeblock();
     }
@@ -1017,7 +1017,7 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // render
-            cmd_list->Dispatch(tex_out);
+            cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
         }
         cmd_list->EndTimeblock();
     }
