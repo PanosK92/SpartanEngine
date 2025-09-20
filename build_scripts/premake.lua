@@ -86,7 +86,8 @@ function spartan_project_configuration()
             RUNTIME_DIR .. "/**.h",   RUNTIME_DIR .. "/**.cpp",
             RUNTIME_DIR .. "/**.hpp", RUNTIME_DIR .. "/**.inl",
             EDITOR_DIR .. "/**.h",    EDITOR_DIR .. "/**.cpp",
-            EDITOR_DIR .. "/**.hpp",  EDITOR_DIR .. "/**.inl"
+            EDITOR_DIR .. "/**.hpp",  EDITOR_DIR .. "/**.inl",
+            RUNTIME_DIR .. "/**.rc"
         }
 
         if ARG_API_GRAPHICS == "d3d12" then

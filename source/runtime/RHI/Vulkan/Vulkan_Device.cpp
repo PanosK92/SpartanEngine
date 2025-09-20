@@ -47,7 +47,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    namespace version
+    namespace vulkan_version
     {
         uint32_t used = 0;
 
@@ -124,9 +124,9 @@ namespace spartan
         {
             VkApplicationInfo app_info  = {};
             app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName   = sp_info::name;             // for gpu vendors to do game specific driver optimizations
+            app_info.pApplicationName   = spartan::version::name;             // for gpu vendors to do game specific driver optimizations
             app_info.pEngineName        = app_info.pApplicationName; // for gpu vendors to do engine specific driver optimizations
-            app_info.engineVersion      = VK_MAKE_VERSION(sp_info::version_major, sp_info::version_minor, sp_info::version_revision);
+            app_info.engineVersion      = VK_MAKE_VERSION(spartan::version::major, spartan::version::minor, spartan::version::patch);
             app_info.applicationVersion = app_info.engineVersion;
 
             // deduce api version to use based on the SDK and what the driver supports
@@ -152,16 +152,16 @@ namespace spartan
                 app_info.apiVersion  = min(sdk_version, driver_version);
 
                 // save the api version we ended up using
-                version::used                = app_info.apiVersion;
-                RHI_Context::api_version_str = version::to_string(version::used).c_str();
+                vulkan_version::used         = app_info.apiVersion;
+                RHI_Context::api_version_str = vulkan_version::to_string(vulkan_version::used).c_str();
 
                 // some checks
                 {
                     // if the driver hasn't been updated to the latest sdk, log a warning
                     if (sdk_version > driver_version)
                     {
-                        string version_driver = version::to_string(driver_version);
-                        string version_sdk    = version::to_string(sdk_version);
+                        string version_driver = vulkan_version::to_string(driver_version);
+                        string version_sdk    = vulkan_version::to_string(sdk_version);
                         SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", version_driver.c_str(), version_sdk.c_str());
                     }
 
@@ -731,7 +731,7 @@ namespace spartan
             allocator_info.physicalDevice   = RHI_Context::device_physical;
             allocator_info.device           = RHI_Context::device;
             allocator_info.instance         = RHI_Context::instance;
-            allocator_info.vulkanApiVersion = version::used;
+            allocator_info.vulkanApiVersion = vulkan_version::used;
             allocator_info.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
             SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
 
@@ -1570,7 +1570,7 @@ namespace spartan
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
                 SP_ASSERT_VK(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device));
-                SP_LOG_INFO("Vulkan %s", version::to_string(version::used).c_str());
+                SP_LOG_INFO("Vulkan %s", vulkan_version::to_string(vulkan_version::used).c_str());
             }
         }
 

@@ -117,7 +117,7 @@ namespace spartan
         }
 
         // create window
-        m_title = string(sp_info::name) + " " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
+        m_title = string(spartan::version::name) + " " + to_string(spartan::version::major) + "." + to_string(spartan::version::minor) + "." + to_string(spartan::version::patch);
         window  = SDL_CreateWindow(
             m_title.c_str(),
             width,
