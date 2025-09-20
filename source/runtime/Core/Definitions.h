@@ -38,36 +38,50 @@ namespace spartan::version
 
     consteval int month()
     {
-        return (__DATE__[0] == 'J' && __DATE__[1] == 'a') ? 1  :
-               (__DATE__[0] == 'F')                       ? 2  :
-               (__DATE__[0] == 'M' && __DATE__[2] == 'r') ? 3  :
-               (__DATE__[0] == 'A' && __DATE__[1] == 'p') ? 4  :
-               (__DATE__[0] == 'M')                       ? 5  :
-               (__DATE__[0] == 'J' && __DATE__[2] == 'n') ? 6  :
-               (__DATE__[0] == 'J')                       ? 7  :
-               (__DATE__[0] == 'A')                       ? 8  :
-               (__DATE__[0] == 'S')                       ? 9  :
-               (__DATE__[0] == 'O')                       ? 10 :
-               (__DATE__[0] == 'N')                       ? 11 : 12;
+        return (__DATE__[0] == 'J' && __DATE__[1] == 'a') ? 1 :
+               (__DATE__[0] == 'F') ? 2 :
+               (__DATE__[0] == 'M' && __DATE__[2] == 'r') ? 3 :
+               (__DATE__[0] == 'A' && __DATE__[1] == 'p') ? 4 :
+               (__DATE__[0] == 'M') ? 5 :
+               (__DATE__[0] == 'J' && __DATE__[2] == 'n') ? 6 :
+               (__DATE__[0] == 'J') ? 7 :
+               (__DATE__[0] == 'A') ? 8 :
+               (__DATE__[0] == 'S') ? 9 :
+               (__DATE__[0] == 'O') ? 10 :
+               (__DATE__[0] == 'N') ? 11 : 12;
     }
 
     consteval int day()
     {
-        return (digit(__DATE__[4]) == 0 ? 0 : digit(__DATE__[4])) * 10 +
-                digit(__DATE__[5]);
+        return (digit(__DATE__[4]) == 0 ? 0 : digit(__DATE__[4])) * 10 + digit(__DATE__[5]);
     }
 
-    consteval int hour()   { return digit(__TIME__[0]) * 10 + digit(__TIME__[1]); }
-    consteval int minute() { return digit(__TIME__[3]) * 10 + digit(__TIME__[4]); }
+    consteval int hour()
+    {
+        return digit(__TIME__[0]) * 10 + digit(__TIME__[1]);
+    }
 
-    // exposed constants
+    consteval int minute()
+    {
+        return digit(__TIME__[3]) * 10 + digit(__TIME__[4]);
+    }
+
+    // version as integers
     inline constexpr int major = year();
     inline constexpr int minor = month();
-    inline constexpr int patch = day() * 10000 + hour() * 100 + minute();
+    inline constexpr int patch = day();
+    inline constexpr int build = hour() * 100 + minute();
 
-    // optional printable version string
-    inline constexpr char string[] = "v" __DATE__ " " __TIME__;
+    // version as const char*
+    inline const char* c_str()
+    {
+        // static buffer, filled once
+        static char buf[32] = {};
+        std::snprintf(buf, sizeof(buf), "Spartan v%d.%d.%d.%d", major, minor, patch, build);
+        return buf;
+    }
 }
+
 
 //= OPTIMISATION ON/OFF ================================================
 #if defined(_MSC_VER)

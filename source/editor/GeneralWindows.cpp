@@ -137,17 +137,17 @@ namespace
         {
             { "Spartan", "Iker Galardi",        "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
             { "Spartan", "Jesse Guerrero",      "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX updates",                                                              "N/A" },
-            { "Spartan", "Konstantinos Benos",  "Greece",         "X",         "https://x.com/deg3x",                                     "Bug fixes & editor theme",                                                "N/A" },
+            { "Spartan", "Konstantinos Benos",  "Greece",         "X",         "https://x.com/deg3x",                                     "Bug fixes & editor theme v2",                                             "N/A" },
             { "Spartan", "Nick Polyderopoulos", "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nick-polyderopoulos-21742397","UX updates",                                                              "N/A" },
             { "Spartan", "Panos Kolyvakis",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",  "Water buoyancy improvements",                                             "N/A" },
             { "Spartan", "Tri Tran",            "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                                        "Starfield" },
-            { "Spartan", "Ege",                 "Turkey",         "X",         "https://x.com/egedq",                                     "Editor themes + save/load system",                                        "N/A" },
+            { "Spartan", "Ege",                 "Turkey",         "X",         "https://x.com/egedq",                                     "Editor theme v3 + save/load themes",                                      "N/A" },
             { "Spartan", "Sandro Mtchedlidze",  "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
-            { "Hoplite", "Apostolos Bouzalas",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "Performance reports",                                                     "N/A" },
+            { "Hoplite", "Apostolos Bouzalas",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                               "N/A" },
             { "Hoplite", "Nikolas Pattakos",    "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
             { "Hoplite", "Roman Koshchei",      "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
-            { "Hoplite", "Kristi Kercyku",      "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue ID",                                                 "N/A" },
-            { "Hoplite", "Kinjal Kishor",       "India",          "X",         "https://x.com/kinjalkishor",                              "Testing & tech support",                                                  "N/A" },
+            { "Hoplite", "Kristi Kercyku",      "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue fix",                                                "N/A" },
+            { "Hoplite", "Kinjal Kishor",       "India",          "X",         "https://x.com/kinjalkishor",                              "A few testing reports",                                                   "N/A" },
         };
 
         void personal_details()
@@ -289,10 +289,8 @@ namespace
              if (!visible)
                 return;
 
-            static const string window_title = "Spartan " + to_string(spartan::version::major) + "." + to_string(spartan::version::minor) + "." + to_string(spartan::version::patch);
-
             ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-            ImGui::Begin(window_title.c_str(), &visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+            ImGui::Begin(spartan::version::c_str(), &visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
             {
                 ImGui::BeginGroup();
                 {
