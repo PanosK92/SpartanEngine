@@ -381,8 +381,8 @@ namespace
             ImGui::Begin("Controls", &visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
             {
                 float table_width = 400.0f;
-                float spacing = ImGui::GetStyle().ItemSpacing.x;
-                float available = ImGui::GetContentRegionAvail().x;
+                float spacing     = ImGui::GetStyle().ItemSpacing.x;
+                float available   = ImGui::GetContentRegionAvail().x;
         
                 bool side_by_side = available >= (table_width * 2.0f + spacing);
         
@@ -405,17 +405,24 @@ namespace
 
     namespace worlds
     {
-        const char* world_names[] =
+        struct World
         {
-            "1. Car Showroom - showcase world for YouTubers/Press, does not use experimental tech",
-            "2. Open world forest (millions of Ghost of Tsushima grass blades) - extremely demanding",
-            "3. Liminal Space (shifts your frequency to a nearby reality) - light",
-            "4. Sponza 4k (high-resolution textures & meshes) - demanding",
-            "5. Subway (gi test, no lights, only emissive textures) - moderate",
-            "6. Minecraft (blocky aesthetic) - light",
-            "7. Basic (light, camera, floor) - light"
+            const char* name;
+            const char* description;
+            const char* performance; // light, moderate, demanding
+            const char* status;      // WIP, Prototype, Complete
         };
 
+        static const World worlds[] =
+        {
+            { "Car Showroom", "Showcase world for YouTubers/Press. Does not use experimental tech.", "Light", "Complete" },
+            { "Open World Forest", "Millions of Ghost of Tsushima grass blades. Extremely demanding.", "Very demanding", "Prototype" },
+            { "Liminal Space", "Shifts your frequency to a nearby reality.", "Light", "Prototype" },
+            { "Sponza 4K", "High-resolution textures & meshes.", "Demanding", "Complete" },
+            { "Subway", "GI test. No lights, only emissive textures.", "Moderate", "Complete" },
+            { "Minecraft", "Blocky aesthetic.", "Light", "Complete" },
+            { "Basic", "Light, camera, floor.", "Light", "Complete" }
+        };
         int world_index = 0;
 
         bool downloaded_and_extracted = false;
@@ -430,9 +437,9 @@ namespace
 
         void download_and_extract()
         {
-             spartan::FileSystem::Command("py download_assets.py", world_on_download_finished, false);
-             spartan::ProgressTracker::SetGlobalLoadingState(true);
-             visible_download_prompt = false;
+            spartan::FileSystem::Command("py download_assets.py", world_on_download_finished, false);
+            spartan::ProgressTracker::SetGlobalLoadingState(true);
+            visible_download_prompt = false;
         }
 
         void window()
@@ -440,33 +447,44 @@ namespace
             if (visible_download_prompt)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                if (ImGui::Begin("Default worlds", &visible_download_prompt, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                if (ImGui::Begin("Default worlds", &visible_download_prompt,
+                    ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    ImGui::Text("No default worlds are present. would you like to download them?");
+                    ImGui::TextWrapped("No default worlds are present. Would you like to download them?");
 
-                    bool python_available = spartan::FileSystem::IsExecutableInPath("py") || spartan::FileSystem::IsExecutableInPath("python") || spartan::FileSystem::IsExecutableInPath("python3");
+                    bool python_available =
+                        spartan::FileSystem::IsExecutableInPath("py") ||
+                        spartan::FileSystem::IsExecutableInPath("python") ||
+                        spartan::FileSystem::IsExecutableInPath("python3");
+
                     if (!python_available)
                     {
                         ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Warning: Python is not installed or not found in your path. Please install it to enable downloading.");
+                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+                            "Error: Python is not installed or not found in your PATH.\n"
+                            "Please install it to enable downloading.");
                     }
-            
+
                     ImGui::Separator();
-            
-                    float button_width = ImGui::CalcTextSize("Download").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
+
+                    float button_width = ImGui::CalcTextSize("Download Worlds").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
                     float offset_x     = (ImGui::GetContentRegionAvail().x - button_width) * 0.5f;
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
-            
+
                     ImGui::BeginGroup();
                     {
                         ImGui::BeginDisabled(!python_available);
-                        if (ImGui::Button("Download"))
+                        if (ImGui::Button("Download Worlds"))
                         {
                             download_and_extract();
                         }
                         ImGui::EndDisabled();
-            
+
                         ImGui::SameLine();
+                        if (ImGui::Button("Cancel"))
+                        {
+                            visible_download_prompt = false;
+                        }
                     }
                     ImGui::EndGroup();
                 }
@@ -476,38 +494,71 @@ namespace
             if (visible_world_list)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-                if (ImGui::Begin("World selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+                if (ImGui::Begin("World Selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
                 {
-                    const char* prompt_text  = "Select the world you would like to load and click \"Ok\". Controls are listed under View > Controls.";
-                    const char* warning_text = "For non-devs: this is a dev build, this means it's raw, experimental, and not guaranteed to behave.";
-                    ImGui::Text(prompt_text);
+                    const char* text_prompt  = "Select the world you would like to load.";
+                    const char* text_warning = "Note: This is a developer build. It is experimental and not guaranteed to behave.";
 
-                    // calculate maximum width of world names and text strings
-                    float max_width = 0.0f;
-                    for (const char* name : world_names)
+                    ImGui::Text(text_prompt);
+                    ImGui::Separator();
+
+                    // calculate height to fit all world names without scrolling
+                    float row_height  = ImGui::GetTextLineHeightWithSpacing();
+                    float list_height = row_height * IM_ARRAYSIZE(worlds) + ImGui::GetStyle().FramePadding.y * 2;
+
+                    // layout: left list, right details
+                    ImGui::BeginChild("left_panel", ImVec2(190, list_height), true);
                     {
-                        ImVec2 size = ImGui::CalcTextSize(name);
-                        max_width   = max(max_width, size.x);
+                        for (int i = 0; i < IM_ARRAYSIZE(worlds); i++)
+                        {
+                            if (ImGui::Selectable(worlds[i].name, world_index == i))
+                            {
+                                world_index = i;
+                            }
+                        }
                     }
-                    max_width = max(max_width, ImGui::CalcTextSize(prompt_text).x);
-                    max_width = max(max_width, ImGui::CalcTextSize(warning_text).x);
-            
-                    // add padding for list box frame and scrollbar
-                    float padding         = ImGui::GetStyle().FramePadding.x * 2;
-                    float scrollbar_width = ImGui::GetStyle().ScrollbarSize;
-                    ImGui::PushItemWidth(max_width + padding + scrollbar_width);
-            
-                    // list box with dynamic width
-                    ImGui::ListBox("##list_box", &world_index, world_names, IM_ARRAYSIZE(world_names), IM_ARRAYSIZE(world_names));
-                    ImGui::PopItemWidth();
+                    ImGui::EndChild();
 
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), warning_text);
+                    ImGui::SameLine();
 
-                    // button
-                    if (ImGuiSp::button_centered_on_line("Ok"))
+                    ImGui::BeginChild("right_panel", ImVec2(0, list_height), true);
+                    {
+                        const World& w = worlds[world_index];
+
+                        // push full window wrap
+                        ImGui::PushTextWrapPos(0.0f);
+                        ImGui::TextWrapped("Description: %s", w.description);
+                        ImGui::Spacing();
+                        ImGui::TextWrapped("Performance: %s", w.performance);
+                        ImGui::Spacing();
+                        ImGui::TextWrapped("Status: %s", w.status);
+                        ImGui::PopTextWrapPos();
+                    }
+                    ImGui::EndChild();
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), text_warning);
+
+                    // buttons
+                    ImGui::Spacing();
+                    float button_width = 100.0f;
+                    float total_width  = button_width * 3 + ImGui::GetStyle().ItemSpacing.x * 2;
+                    float offset_x     = (ImGui::GetContentRegionAvail().x - total_width) * 0.5f;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
+
+                    if (ImGui::Button("Load", ImVec2(button_width, 0)))
                     {
                         spartan::Game::Load(static_cast<spartan::DefaultWorld>(world_index));
                         visible_world_list = false;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel", ImVec2(button_width, 0)))
+                    {
+                        visible_world_list = false;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Controls", ImVec2(button_width, 0)))
+                    {
+                        controls::visible = true;
                     }
                 }
                 ImGui::End();
