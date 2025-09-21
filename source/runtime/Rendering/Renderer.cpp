@@ -914,6 +914,8 @@ namespace spartan
     
         auto fill_light = [&](Light* light_component)
         {
+            //SP_LOG_INFO("Processing light %s", light_component->GetEntity()->GetObjectName().c_str());
+
             const uint32_t index = count++;
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];

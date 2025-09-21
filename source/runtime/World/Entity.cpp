@@ -99,9 +99,12 @@ namespace spartan
         // if this entity is selected, deselect it
         if (Camera* camera = World::GetCamera())
         {
-            if (camera->GetSelectedEntity()->GetObjectId() == GetObjectId())
+            if (Entity* selected_entity = camera->GetSelectedEntity())
             {
-                camera->SetSelectedEntity(nullptr);
+                if (selected_entity->GetObjectId() == GetObjectId())
+                {
+                    camera->SetSelectedEntity(nullptr);
+                }
             }
         }
     }

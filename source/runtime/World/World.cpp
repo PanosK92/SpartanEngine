@@ -162,7 +162,6 @@ namespace spartan
 
     void World::ProcessPendingRemovals()
     {
-
         lock_guard<mutex> lock(entity_access_mutex);
 
         if (pending_remove.empty())
@@ -573,6 +572,12 @@ namespace spartan
         SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
 
         lock_guard<mutex> lock(entity_access_mutex);
+
+        // keep track of the local camera pointer so we don't have a dangling pointer
+        if (Camera* camera_ = entity_to_remove->GetComponent<Camera>())
+        {
+            camera = nullptr;
+        }
 
         // remove the entity and all of its children
         {
