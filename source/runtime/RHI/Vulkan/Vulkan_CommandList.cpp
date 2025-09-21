@@ -1760,7 +1760,7 @@ namespace spartan
             return;
     
         // single barrier if all mips have the same layout
-        static vector<VkImageMemoryBarrier2> barriers;
+        static thread_local vector<VkImageMemoryBarrier2> barriers;
         barriers.clear();
         if (all_mips_same_layout)
         {

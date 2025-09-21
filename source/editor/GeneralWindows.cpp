@@ -521,16 +521,16 @@ namespace
 
                     ImGui::SameLine();
 
-                    ImGui::BeginChild("right_panel", ImVec2(0, list_height), true);
+                    ImGui::BeginChild("right_panel", ImVec2(800, list_height), true);
                     {
                         const World& w = worlds[world_index];
 
                         // push full window wrap
                         ImGui::PushTextWrapPos(0.0f);
                         ImGui::TextWrapped("Description: %s", w.description);
-                        ImGui::Spacing();
+                        ImGui::Separator();
                         ImGui::TextWrapped("Performance: %s", w.performance);
-                        ImGui::Spacing();
+                        ImGui::Separator();
                         ImGui::TextWrapped("Status: %s", w.status);
                         ImGui::PopTextWrapPos();
                     }
