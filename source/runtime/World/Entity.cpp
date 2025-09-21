@@ -95,6 +95,15 @@ namespace spartan
     Entity::~Entity()
     {
         m_components.fill(nullptr);
+
+        // if this entity is selected, deselect it
+        if (Camera* camera = World::GetCamera())
+        {
+            if (camera->GetSelectedEntity()->GetObjectId() == GetObjectId())
+            {
+                camera->SetSelectedEntity(nullptr);
+            }
+        }
     }
 
     Entity* Entity::Clone()

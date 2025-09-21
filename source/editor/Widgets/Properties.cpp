@@ -43,7 +43,6 @@ using namespace spartan;
 using namespace math;
 //======================
 
-Entity* Properties::m_inspected_entity = nullptr;
 weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
@@ -54,6 +53,16 @@ namespace
     string context_menu_id;
     Component* copied_component = nullptr;
 
+    Entity* get_selected_entity()
+    {
+        if (Camera* camera = World::GetCamera())
+        {
+            return camera->GetSelectedEntity();
+        }
+
+        return nullptr;
+    }
+
     void component_context_menu_options(const string& id, Component* component, const bool removable)
     {
         if (ImGui::BeginPopup(id.c_str()))
@@ -62,11 +71,11 @@ namespace
             {
                 if (ImGui::MenuItem("Remove"))
                 {
-                    if (Properties::m_inspected_entity)
+                    if (Entity* entity = get_selected_entity())
                     {
                         if (component)
                         {
-                            Properties::m_inspected_entity->RemoveComponentById(component->GetObjectId());
+                            entity->RemoveComponentById(component->GetObjectId());
                         }
                     }
                 }
@@ -153,19 +162,19 @@ void Properties::OnTickVisible()
     {
         ImGui::PushItemWidth(item_width);
         {
-            if (m_inspected_entity)
+            if (Entity* entity = get_selected_entity())
             {
-                Renderable* renderable = m_inspected_entity->GetComponent<Renderable>();
+                Renderable* renderable = entity->GetComponent<Renderable>();
                 Material* material     = renderable ? renderable->GetMaterial() : nullptr;
 
-                ShowEntity(m_inspected_entity);
-                ShowLight(m_inspected_entity->GetComponent<Light>());
-                ShowCamera(m_inspected_entity->GetComponent<Camera>());
-                ShowTerrain(m_inspected_entity->GetComponent<Terrain>());
-                ShowAudioSource(m_inspected_entity->GetComponent<AudioSource>());
+                ShowEntity(entity);
+                ShowLight(entity->GetComponent<Light>());
+                ShowCamera(entity->GetComponent<Camera>());
+                ShowTerrain(entity->GetComponent<Terrain>());
+                ShowAudioSource(entity->GetComponent<AudioSource>());
                 ShowRenderable(renderable);
                 ShowMaterial(material);
-                ShowPhysics(m_inspected_entity->GetComponent<Physics>());
+                ShowPhysics(entity->GetComponent<Physics>());
 
                 ShowAddComponentButton();
             }
@@ -182,8 +191,6 @@ void Properties::OnTickVisible()
 
 void Properties::Inspect(spartan::Entity* entity)
 {
-    m_inspected_entity = entity;
-
     // If we were previously inspecting a material, save the changes
     if (!m_inspected_material.expired())
     {
@@ -194,7 +201,6 @@ void Properties::Inspect(spartan::Entity* entity)
 
 void Properties::Inspect(const shared_ptr<Material> material)
 {
-    m_inspected_entity = nullptr;
     m_inspected_material = material;
 }
 
@@ -1099,36 +1105,36 @@ void Properties::ComponentContextMenu_Add() const
 {
     if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
     {
-        if (m_inspected_entity)
+        if (Entity* entity = get_selected_entity())
         {
             if (ImGui::MenuItem("Camera"))
             {
-                m_inspected_entity->AddComponent<Camera>();
+                entity->AddComponent<Camera>();
             }
 
             if (ImGui::MenuItem("Renderable"))
             {
-                m_inspected_entity->AddComponent<Renderable>();
+                entity->AddComponent<Renderable>();
             }
 
             if (ImGui::MenuItem("Terrain"))
             {
-                m_inspected_entity->AddComponent<Terrain>();
+                entity->AddComponent<Terrain>();
             }
 
             if (ImGui::BeginMenu("Light"))
             {
                 if (ImGui::MenuItem("Directional"))
                 {
-                    m_inspected_entity->AddComponent<Light>()->SetLightType(LightType::Directional);
+                    entity->AddComponent<Light>()->SetLightType(LightType::Directional);
                 }
                 else if (ImGui::MenuItem("Point"))
                 {
-                    m_inspected_entity->AddComponent<Light>()->SetLightType(LightType::Point);
+                    entity->AddComponent<Light>()->SetLightType(LightType::Point);
                 }
                 else if (ImGui::MenuItem("Spot"))
                 {
-                    m_inspected_entity->AddComponent<Light>()->SetLightType(LightType::Spot);
+                    entity->AddComponent<Light>()->SetLightType(LightType::Spot);
                 }
 
                 ImGui::EndMenu();
@@ -1136,14 +1142,14 @@ void Properties::ComponentContextMenu_Add() const
 
             if (ImGui::MenuItem("Physics"))
             {
-                m_inspected_entity->AddComponent<Physics>();
+                entity->AddComponent<Physics>();
             }
 
             if (ImGui::BeginMenu("Audio"))
             {
                 if (ImGui::MenuItem("Audio Source"))
                 {
-                    m_inspected_entity->AddComponent<AudioSource>();
+                    entity->AddComponent<AudioSource>();
                 }
 
                 ImGui::EndMenu();
