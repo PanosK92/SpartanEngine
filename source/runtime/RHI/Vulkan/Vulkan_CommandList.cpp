@@ -330,7 +330,7 @@ namespace spartan
     {
         namespace timestamp
         {
-            const uint32_t query_count = 128;
+            const uint32_t query_count = 256;
             array<uint64_t, query_count> data;
 
             void update(void* query_pool)
