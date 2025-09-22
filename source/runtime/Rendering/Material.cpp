@@ -740,17 +740,22 @@ namespace spartan
 
     void Material::PrepareForGpu()
     {
-        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared materials can be prepared");
-        m_resource_state = ResourceState::PreparingForGpu;
-
-        for (uint8_t slot = 0; slot < GetUsedSlotCount(); slot++)
         {
-            texture_processing::pack_textures(this, slot);
+            lock_guard<mutex> lock(m_mutex);
+
+            SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared materials can be prepared");
+            m_resource_state = ResourceState::PreparingForGpu;
+
+            for (uint8_t slot = 0; slot < GetUsedSlotCount(); slot++)
+            {
+                texture_processing::pack_textures(this, slot);
+            }
         }
 
-        // PrepareForGpu() generates mips, compresses and uploads to GPU, so we offload it to a thread
         ThreadPool::AddTask([this]()
         {
+            lock_guard<mutex> lock(m_mutex);
+
             // prepare all textures
             for (RHI_Texture* texture : m_textures)
             {
@@ -771,8 +776,8 @@ namespace spartan
                     break;
                 }
             }
+
             SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
-            
             m_resource_state = ResourceState::PreparedForGpu;
         });
     }
