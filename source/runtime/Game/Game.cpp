@@ -1606,9 +1606,6 @@ namespace spartan
 
     void Game::Tick()
     {
-        if (!Engine::IsFlagSet(EngineMode::Playing))
-            return;
-
         car::tick();
 
         if (loaded_world == DefaultWorld::LiminalSpace)
@@ -1623,6 +1620,11 @@ namespace spartan
         {
             worlds::forest::tick();
         }
+    }
+
+    void Game::EditorTick()
+    {
+
     }
 
     void Game::Load(DefaultWorld default_world)
@@ -1653,10 +1655,5 @@ namespace spartan
         });
 
         loaded_world = default_world;
-    }
-
-    DefaultWorld Game::GetLoadedWorld()
-    {
-        return loaded_world;
     }
 }

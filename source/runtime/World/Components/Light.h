@@ -74,7 +74,7 @@ namespace spartan
 
         //= COMPONENT ================================
         void PreTick() override;
-        void OnTick() override;
+        void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
         //============================================

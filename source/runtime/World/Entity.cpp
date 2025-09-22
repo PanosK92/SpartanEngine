@@ -153,7 +153,7 @@ namespace spartan
         {
             if (component)
             {
-                component->OnTick();
+                component->Tick();
             }
         }
 

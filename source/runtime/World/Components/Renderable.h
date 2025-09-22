@@ -48,7 +48,7 @@ namespace spartan
         // icomponent
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
-        void OnTick() override;
+        void Tick() override;
 
         // mesh
         void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);

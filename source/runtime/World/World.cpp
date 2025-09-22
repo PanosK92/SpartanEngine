@@ -388,9 +388,12 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
             world_time::tick();
+            Game::Tick();
         }
-
-        Game::Tick();
+        else
+        {
+            Game::EditorTick();
+        }
     }
 
     bool World::SaveToFile(string file_path)

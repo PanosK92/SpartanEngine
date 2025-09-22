@@ -196,7 +196,7 @@ namespace spartan
         StopClip();
     }
 
-    void AudioSource::OnTick()
+    void AudioSource::Tick()
     {
         if (!m_is_playing)
             return;
