@@ -205,7 +205,7 @@ namespace spartan
                     }
         
                     // normalize gradient magnitude and apply intensity
-                    float scale = 1.0f / 128.0f; // adjusted for 5x5 kernel
+                    float scale = 1.0f / 128.0f;
                     gx *= scale * intensity;
                     gy *= scale * intensity;
         
@@ -260,6 +260,270 @@ namespace spartan
                     normal_data[index + 1] = static_cast<byte>(static_cast<uint8_t>(blurred_normal.y * 255.0f)); // g: y direction
                     normal_data[index + 2] = static_cast<byte>(static_cast<uint8_t>(blurred_normal.z * 255.0f)); // b: z direction
                     normal_data[index + 3] = static_cast<byte>(255); // a: full opacity
+                }
+            }
+        }
+
+        void resize_texture(const vector<byte>& src_data, uint32_t src_width, uint32_t src_height, vector<byte>& dst_data, uint32_t dst_width, uint32_t dst_height)
+        {
+            SP_ASSERT_MSG(src_data.size() == src_width * src_height * 4, "Invalid source data size");
+            dst_data.resize(dst_width * dst_height * 4);
+
+            auto get_pixel = [&](uint32_t x, uint32_t y) -> Vector4
+            {
+                x = clamp(x, 0u, src_width - 1);
+                y = clamp(y, 0u, src_height - 1);
+                uint32_t index = (y * src_width + x) * 4;
+                return Vector4(
+                    static_cast<float>(src_data[index + 0]) / 255.0f,
+                    static_cast<float>(src_data[index + 1]) / 255.0f,
+                    static_cast<float>(src_data[index + 2]) / 255.0f,
+                    static_cast<float>(src_data[index + 3]) / 255.0f
+                );
+            };
+
+            for (uint32_t y = 0; y < dst_height; ++y)
+            {
+                for (uint32_t x = 0; x < dst_width; ++x)
+                {
+                    // bilinear interpolation
+                    float src_x = static_cast<float>(x) * src_width / dst_width;
+                    float src_y = static_cast<float>(y) * src_height / dst_height;
+
+                    uint32_t x0 = static_cast<uint32_t>(src_x);
+                    uint32_t y0 = static_cast<uint32_t>(src_y);
+                    float fx    = src_x - x0;
+                    float fy    = src_y - y0;
+
+                    Vector4 p00 = get_pixel(x0, y0);
+                    Vector4 p10 = get_pixel(x0 + 1, y0);
+                    Vector4 p01 = get_pixel(x0, y0 + 1);
+                    Vector4 p11 = get_pixel(x0 + 1, y0 + 1);
+
+                    Vector4 interpolated = Vector4::Lerp(Vector4::Lerp(p00, p10, fx), Vector4::Lerp(p01, p11, fx), fy);
+                    uint32_t index       = (y * dst_width + x) * 4;
+                    dst_data[index + 0]  = static_cast<byte>(interpolated.x * 255.0f);
+                    dst_data[index + 1]  = static_cast<byte>(interpolated.y * 255.0f);
+                    dst_data[index + 2]  = static_cast<byte>(interpolated.z * 255.0f);
+                    dst_data[index + 3]  = static_cast<byte>(interpolated.w * 255.0f);
+                }
+            }
+        }
+
+        vector<byte> get_texture_data_or_default(RHI_Texture* texture, const size_t expected_size, const byte default_value)
+        {
+            if (texture && !texture->GetMip(0, 0).bytes.empty())
+            {
+                return texture->GetMip(0, 0).bytes;
+            }
+
+            return vector<byte>(expected_size, default_value);
+        }
+
+
+        void pack_textures(Material* material, const uint8_t slot)
+        {
+            // get textures
+            RHI_Texture* texture_color      = material->GetTexture(MaterialTextureType::Color, slot);
+            RHI_Texture* texture_normal     = material->GetTexture(MaterialTextureType::Normal, slot);
+            RHI_Texture* texture_alpha_mask = material->GetTexture(MaterialTextureType::AlphaMask, slot);
+            RHI_Texture* texture_occlusion  = material->GetTexture(MaterialTextureType::Occlusion, slot);
+            RHI_Texture* texture_roughness  = material->GetTexture(MaterialTextureType::Roughness, slot);
+            RHI_Texture* texture_metalness  = material->GetTexture(MaterialTextureType::Metalness, slot);
+            RHI_Texture* texture_height     = material->GetTexture(MaterialTextureType::Height, slot);
+        
+            // check for normal_from_albedo flag
+            if (material->GetProperty(MaterialProperty::NormalFromAlbedo) == 1.0f && texture_color && !texture_color->IsCompressedFormat())
+            {
+                // get albedo dimensions
+                uint32_t width     = texture_color->GetWidth();
+                uint32_t height    = texture_color->GetHeight();
+                uint32_t depth     = texture_color->GetDepth();
+                uint32_t mip_count = texture_color->GetMipCount();
+        
+                // generate normal map name
+                string normal_name = "normal_from_" + texture_color->GetObjectName() + "_slot" + to_string(slot);
+        
+                // check if normal map already exists
+                shared_ptr<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
+                if (!texture_normal_new)
+                {
+                    // create new normal texture
+                    texture_normal_new = make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        width,
+                        height,
+                        depth,
+                        mip_count,
+                        RHI_Format::R8G8B8A8_Unorm,
+                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                        normal_name.c_str()
+                    );
+        
+                    // allocate mip
+                    texture_normal_new->AllocateMip();
+        
+                    // generate normal map data
+                    vector<byte> normal_data;
+                    texture_processing::generate_normal_from_albedo(
+                        texture_color->GetMip(0, 0).bytes,
+                        normal_data,
+                        width,
+                        height
+                    );
+                    texture_normal_new->GetMip(0, 0).bytes = move(normal_data);
+        
+                    // cache the new texture
+                    texture_normal_new->SetResourceFilePath(texture_color->GetObjectName() + "_normal_from_albedo.png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
+                    texture_normal_new = ResourceCache::Cache<RHI_Texture>(texture_normal_new);
+                }
+        
+                // set the new normal texture
+                material->SetTexture(MaterialTextureType::Normal, texture_normal_new, slot);
+                texture_normal = texture_normal_new.get();
+            }
+        
+            // find max resolution among relevant textures
+            uint32_t max_width = 1, max_height = 1;
+            auto check_texture_res = [&](RHI_Texture* tex)
+             {
+                 if (tex && !tex->IsCompressedFormat())
+                 {
+                     max_width  = max(max_width, tex->GetWidth());
+                     max_height = max(max_height, tex->GetHeight());
+                 }
+             };
+            check_texture_res(texture_color);
+            check_texture_res(texture_occlusion);
+            check_texture_res(texture_roughness);
+            check_texture_res(texture_metalness);
+            check_texture_res(texture_height);
+
+            // find max mip count among relevant textures
+            uint32_t max_mip_count = 1;
+            auto check_mip = [&](RHI_Texture* tex)
+            {
+                if (tex && !tex->IsCompressedFormat())
+                {
+                    max_mip_count = max(max_mip_count, tex->GetMipCount());
+                }
+            };
+            check_mip(texture_color);
+            check_mip(texture_occlusion);
+            check_mip(texture_roughness);
+            check_mip(texture_metalness);
+            check_mip(texture_height);
+        
+            // pack textures
+            {
+                // step 1: pack alpha mask into color alpha (resize if needed)
+                if (texture_alpha_mask)
+                {
+                    if (!texture_color)
+                    {
+                        material->SetTexture(MaterialTextureType::Color, texture_alpha_mask);
+                    }
+                    else
+                    {
+                        if (!texture_color->IsCompressedFormat() && !texture_alpha_mask->IsCompressedFormat())
+                        {
+                            if (texture_color->GetWidth() != texture_alpha_mask->GetWidth() || texture_color->GetHeight() != texture_alpha_mask->GetHeight())
+                            {
+                                vector<byte> resized_mask;
+                                texture_processing::resize_texture(
+                                    texture_alpha_mask->GetMip(0, 0).bytes,
+                                    texture_alpha_mask->GetWidth(),
+                                    texture_alpha_mask->GetHeight(),
+                                    resized_mask,
+                                    texture_color->GetWidth(),
+                                    texture_color->GetHeight()
+                                );
+                                texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, resized_mask);
+                            }
+                            else
+                            {
+                                texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                            }
+                        }
+                    }
+                }
+        
+                // step 2: pack occlusion, roughness, metalness, and height into a single texture
+                {
+                    bool textures_are_compressed = (texture_occlusion && texture_occlusion->IsCompressedFormat()) ||
+                        (texture_roughness && texture_roughness->IsCompressedFormat()) ||
+                        (texture_metalness && texture_metalness->IsCompressedFormat()) ||
+                        (texture_height && texture_height->IsCompressedFormat());
+        
+                    // generate unique name by hashing texture IDs
+                    string tex_name = material->GetObjectName() + "_packed";
+                    shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
+                    if (!texture_packed && !textures_are_compressed)
+                    {
+                        // create packed texture
+                        texture_packed = make_shared<RHI_Texture>
+                            (
+                                RHI_Texture_Type::Type2D,
+                                max_width,
+                                max_height,
+                                1, // assuming depth=1
+                                1, // mip_count=1 for now
+                                RHI_Format::R8G8B8A8_Unorm,
+                                RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                                tex_name.c_str()
+                            );
+                        texture_packed->SetResourceFilePath(tex_name + ".png");
+                        texture_packed->AllocateMip();
+        
+                        const size_t packed_size = max_width * max_height * 4;
+                        vector<byte> occlusion_data = texture_processing::get_texture_data_or_default(texture_occlusion, packed_size, static_cast<byte>(255));
+                        vector<byte> roughness_data = texture_processing::get_texture_data_or_default(texture_roughness, packed_size, static_cast<byte>(255));
+                        vector<byte> metalness_data = texture_processing::get_texture_data_or_default(texture_metalness, packed_size, static_cast<byte>(0));
+                        if (!texture_metalness && material->GetProperty(MaterialProperty::Metalness) != 0.0f)
+                        {
+                            fill(metalness_data.begin(), metalness_data.end(), static_cast<byte>(255)); // all ones
+                        }
+                        vector<byte> height_data = texture_processing::get_texture_data_or_default(texture_height, packed_size, static_cast<byte>(127));
+        
+                        // resize if necessary
+                        if (texture_occlusion && (texture_occlusion->GetWidth() != max_width || texture_occlusion->GetHeight() != max_height))
+                        {
+                            texture_processing::resize_texture(texture_occlusion->GetMip(0, 0).bytes, texture_occlusion->GetWidth(), texture_occlusion->GetHeight(), occlusion_data, max_width, max_height);
+                        }
+                        if (texture_roughness && (texture_roughness->GetWidth() != max_width || texture_roughness->GetHeight() != max_height))
+                        {
+                            texture_processing::resize_texture(texture_roughness->GetMip(0, 0).bytes, texture_roughness->GetWidth(), texture_roughness->GetHeight(), roughness_data, max_width, max_height);
+                        }
+                        if (texture_metalness && (texture_metalness->GetWidth() != max_width || texture_metalness->GetHeight() != max_height))
+                        {
+                            texture_processing::resize_texture(texture_metalness->GetMip(0, 0).bytes, texture_metalness->GetWidth(), texture_metalness->GetHeight(), metalness_data, max_width, max_height);
+                        }
+                        if (texture_height && (texture_height->GetWidth() != max_width || texture_height->GetHeight() != max_height))
+                        {
+                            texture_processing::resize_texture(texture_height->GetMip(0, 0).bytes, texture_height->GetWidth(), texture_height->GetHeight(), height_data, max_width, max_height);
+                        }
+        
+                        texture_processing::pack_occlusion_roughness_metalness_height(
+                            move(occlusion_data),
+                            move(roughness_data),
+                            move(metalness_data),
+                            move(height_data),
+                            material->GetProperty(MaterialProperty::Gltf) == 1.0f,
+                            texture_packed->GetMip(0, 0).bytes
+                        );
+                        texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
+                    }
+        
+                    material->SetTexture(MaterialTextureType::Packed, texture_packed, slot);
+        
+                    // step 3: textures that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
+                    {
+                        if (texture_alpha_mask) texture_alpha_mask->SetFlag(RHI_Texture_Thumbnail);
+                        if (texture_occlusion)  texture_occlusion->SetFlag(RHI_Texture_Thumbnail);
+                        if (texture_roughness)  texture_roughness->SetFlag(RHI_Texture_Thumbnail);
+                        if (texture_metalness)  texture_metalness->SetFlag(RHI_Texture_Thumbnail);
+                        if (texture_height)     texture_height->SetFlag(RHI_Texture_Thumbnail);
+                    }
                 }
             }
         }
@@ -479,173 +743,9 @@ namespace spartan
         SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared materials can be prepared");
         m_resource_state = ResourceState::PreparingForGpu;
 
-        auto pack_textures = [this](const uint8_t slot)
-        {
-            // get textures
-            RHI_Texture* texture_color      = GetTexture(MaterialTextureType::Color,     slot);
-            RHI_Texture* texture_normal     = GetTexture(MaterialTextureType::Normal,    slot);
-            RHI_Texture* texture_alpha_mask = GetTexture(MaterialTextureType::AlphaMask, slot);
-            RHI_Texture* texture_occlusion  = GetTexture(MaterialTextureType::Occlusion, slot);
-            RHI_Texture* texture_roughness  = GetTexture(MaterialTextureType::Roughness, slot);
-            RHI_Texture* texture_metalness  = GetTexture(MaterialTextureType::Metalness, slot);
-            RHI_Texture* texture_height     = GetTexture(MaterialTextureType::Height,    slot);
-
-            // check for normal_from_albedo flag
-            if (GetProperty(MaterialProperty::NormalFromAlbedo) == 1.0f && texture_color && !texture_color->IsCompressedFormat())
-            {
-                // get albedo dimensions
-                uint32_t width     = texture_color->GetWidth();
-                uint32_t height    = texture_color->GetHeight();
-                uint32_t depth     = texture_color->GetDepth();
-                uint32_t mip_count = texture_color->GetMipCount();
-
-                // generate normal map name
-                string normal_name = "normal_from_" + texture_color->GetObjectName() + "_slot" + to_string(slot);
-
-                // check if normal map already exists
-                shared_ptr<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
-                if (!texture_normal_new)
-                {
-                    // create new normal texture
-                    texture_normal_new = make_shared<RHI_Texture>(
-                        RHI_Texture_Type::Type2D,
-                        width,
-                        height,
-                        depth,
-                        mip_count,
-                        RHI_Format::R8G8B8A8_Unorm,
-                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
-                        normal_name.c_str()
-                    );
-
-                    // allocate mip
-                    texture_normal_new->AllocateMip();
-
-                    // generate normal map data
-                    vector<byte> normal_data;
-                    texture_processing::generate_normal_from_albedo(
-                        texture_color->GetMip(0, 0).bytes,
-                        normal_data,
-                        width,
-                        height
-                    );
-                    texture_normal_new->GetMip(0, 0).bytes = move(normal_data);
-
-                    // cache the new texture
-                    texture_normal_new->SetResourceFilePath(texture_color->GetObjectName() + "_normal_from_albedo.png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
-                    texture_normal_new = ResourceCache::Cache<RHI_Texture>(texture_normal_new);
-                }
-
-                // set the new normal texture
-                SetTexture(MaterialTextureType::Normal, texture_normal_new, slot);
-                texture_normal = texture_normal_new.get();
-            }
-
-            RHI_Texture* reference_texture = texture_color      ? texture_color      :
-                                             texture_alpha_mask ? texture_alpha_mask :
-                                             texture_occlusion  ? texture_occlusion  :
-                                             texture_roughness  ? texture_roughness  :
-                                             texture_metalness  ? texture_metalness  :
-                                             texture_height;
-                    
-            uint32_t reference_width     = reference_texture ? reference_texture->GetWidth()    : 1;
-            uint32_t reference_height    = reference_texture ? reference_texture->GetHeight()   : 1;
-            uint32_t reference_depth     = reference_texture ? reference_texture->GetDepth()    : 1;
-            uint32_t reference_mip_count = reference_texture ? reference_texture->GetMipCount() : 1;
-
-            // pack textures
-            {
-                // step 1: pack alpha mask into color alpha
-                if (texture_alpha_mask)
-                {
-                    if (!texture_color)
-                    {
-                        SetTexture(MaterialTextureType::Color, texture_alpha_mask);
-                    }
-                    else
-                    {
-                        if (!texture_color->IsCompressedFormat() && !texture_alpha_mask->IsCompressedFormat())
-                        {
-                            texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
-                        }
-                    }
-                }
-                
-                // step 2: pack occlusion, roughness, metalness, and height into a single texture
-                {
-                    bool textures_are_compressed = (texture_occlusion  && texture_occlusion->IsCompressedFormat()) ||
-                                                   (texture_roughness  && texture_roughness->IsCompressedFormat()) ||
-                                                   (texture_metalness  && texture_metalness->IsCompressedFormat()) ||
-                                                   (texture_height     && texture_height->IsCompressedFormat());
-
-                    // generate unique name by hashing texture IDs
-                    string tex_name = GetObjectName() + "_packed";
-                    shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
-                    if (!texture_packed && !textures_are_compressed)
-                    {
-                        // create packed texture
-                        texture_packed = make_shared<RHI_Texture>
-                        (
-                            RHI_Texture_Type::Type2D,
-                            reference_width,
-                            reference_height,
-                            reference_depth,
-                            reference_mip_count,
-                            RHI_Format::R8G8B8A8_Unorm,
-                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
-                            tex_name.c_str()
-                        );
-                        texture_packed->SetResourceFilePath(tex_name + ".png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
-                        texture_packed->AllocateMip();
-
-                        // create some default data to replace missing textures
-                        const size_t texture_size = reference_width * reference_height * 4;
-                        vector<byte> texture_one(texture_size, static_cast<byte>(255));
-                        vector<byte> texture_zero(texture_size, static_cast<byte>(0));
-                        vector<byte> texture_half(texture_size, static_cast<byte>(127));
-
-                        // determine metalness data based on texture and property
-                        vector<byte> metalness_data = texture_zero; // default to zero
-                        if (texture_metalness)
-                        {
-                            metalness_data = texture_metalness->GetMip(0, 0).bytes; // use texture if available
-                        }
-                        else if (GetProperty(MaterialProperty::Metalness) != 0.0f)
-                        {
-                            metalness_data = texture_one; // use all ones if Metalness property is non-zero and no texture
-                        }
-
-                        // create packed data and fallback to default data when needed
-                        texture_processing::pack_occlusion_roughness_metalness_height
-                        (
-                            (texture_occlusion && !texture_occlusion->GetMip(0, 0).bytes.empty()) ? texture_occlusion->GetMip(0, 0).bytes : texture_one,
-                            (texture_roughness && !texture_roughness->GetMip(0, 0).bytes.empty()) ? texture_roughness->GetMip(0, 0).bytes : texture_one,
-                            metalness_data,
-                            (texture_height    && !texture_height->GetMip(0, 0).bytes.empty())    ? texture_height->GetMip(0, 0).bytes    : texture_half,
-                            GetProperty(MaterialProperty::Gltf) == 1.0f,
-                            texture_packed->GetMip(0, 0).bytes
-                        );
- 
-                        texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
-                    }
-
-                    SetTexture(MaterialTextureType::Packed, texture_packed, slot);
-
-                    // step 3: textures that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
-                    {
-                        if (texture_alpha_mask) texture_alpha_mask->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_occlusion)  texture_occlusion->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_roughness)  texture_roughness->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_metalness)  texture_metalness->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_height)     texture_height->SetFlag(RHI_Texture_Thumbnail);
-                    }
-                }
-            }
-        };
-
         for (uint8_t slot = 0; slot < GetUsedSlotCount(); slot++)
         {
-            pack_textures(slot);
+            texture_processing::pack_textures(this, slot);
         }
 
         // PrepareForGpu() generates mips, compresses and uploads to GPU, so we offload it to a thread
