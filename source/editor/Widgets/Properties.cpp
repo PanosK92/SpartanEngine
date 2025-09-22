@@ -885,6 +885,10 @@ void Properties::ShowMaterial(Material* material) const
             show_jonswap_params("Foam Add", "", OceanParameters::FoamAdd);
             show_jonswap_params("Displacement Scale", "", OceanParameters::DisplacementScale);
             show_jonswap_params("Slope Scale", "", OceanParameters::SlopeScale);
+
+            int tile_count = material->GetOceanTileCount();
+            ImGui::InputInt("Ocean Tiles", &tile_count);
+            material->SetOceanTileCount(tile_count);
         }
         
         // uv

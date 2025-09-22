@@ -187,6 +187,8 @@ namespace spartan
         uint32_t GetIndex() const           { return m_index; }
         bool ShouldComputeSpectrum() const { return m_should_compute_spectrum; }
         void MarkSpectrumAsComputed() { m_should_compute_spectrum = false; }
+        void SetOceanTileCount(const uint32_t count) { m_ocean_tiles = count; }
+        uint32_t GetOceanTileCount() const { return m_ocean_tiles; }
 
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
         const std::array<float, static_cast<uint32_t>(OceanParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
@@ -197,5 +199,6 @@ namespace spartan
         std::array<float, static_cast<uint32_t>(OceanParameters::Max)> m_ocean_properties;
         uint32_t m_index = 0;
         bool m_should_compute_spectrum = true;
+        uint32_t m_ocean_tiles = 1;
     };
 }
