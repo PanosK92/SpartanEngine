@@ -1829,7 +1829,10 @@ namespace spartan
 
     void Game::EditorTick()
     {
-
+        if (loaded_world == DefaultWorld::Ocean)
+        {
+            worlds::ocean::tick();
+        }
     }
 
     void Game::Load(DefaultWorld default_world)
