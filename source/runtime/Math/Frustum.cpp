@@ -88,52 +88,56 @@ namespace spartan::math
     
         bool intersects = false;
     
-        for (size_t i = 0; i < 6; i++)
+        // skip near and far plane checks if depth is to be ignored
+        const int start = ignore_depth ? 2 : 0;
+    
+        for (int i = start; i < 6; i++)
         {
-            if (ignore_depth && (i == 0 || i == 1))
-                continue;
-    
             const Plane& plane = m_planes[i];
-            const Vector3 normal_abs = plane.normal.Abs();
     
-            float d = Vector3::Dot(plane.normal, center) + plane.d;
-            float r = Vector3::Dot(normal_abs, extent);
+            // signed distance from cube center to plane
+            const float d = Vector3::Dot(plane.normal, center) + plane.d;
     
+            // projected radius of cube on plane normal
+            const float r = Vector3::Dot(plane.normal.Abs(), extent);
+    
+            // if the cube is completely outside any plane, then it's outside
             if (d + r < 0.0f)
                 return Intersection::Outside;
     
+            // if the cube intersects the plane, mark as intersecting
             if (d - r < 0.0f)
                 intersects = true;
         }
     
+        // return the final classification
         return intersects ? Intersection::Intersects : Intersection::Inside;
     }
-
+       
     Intersection Frustum::CheckSphere(const Vector3& center, float radius, float ignore_depth) const
     {
         SP_ASSERT(!center.IsNaN() && radius > 0.0f);
-
+    
+        // skip near and far plane checks if depth is to be ignored
+        const int start = ignore_depth ? 2 : 0;
+    
         // calculate our distances to each of the planes
-        for (size_t i = 0; i < 6; i++)
+        for (int i = start; i < 6; i++)
         {
-            // skip near and far plane checks if depth is to be ignored
-            if (ignore_depth && (i == 0 || i == 1))
-                continue;
-
-            const auto& plane = m_planes[i];
-
+            const Plane& plane = m_planes[i];
+    
             // find the distance to this plane
             const float distance = Vector3::Dot(plane.normal, center) + plane.d;
-
+    
             // if this distance is < -sphere.radius, we are outside
             if (distance < -radius)
                 return Intersection::Outside;
-
+    
             // else if the distance is between +- radius, then we intersect
-            if (static_cast<float>(abs(distance)) < radius)
+            if (distance < radius)
                 return Intersection::Intersects;
         }
-
+    
         // otherwise we are fully in view
         return Intersection::Inside;
     }

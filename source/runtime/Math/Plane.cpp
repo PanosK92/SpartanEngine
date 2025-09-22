@@ -28,7 +28,7 @@ namespace spartan::math
     Plane::Plane(const Vector3& normal, float d)
     {
         this->normal = normal;
-        this->d = d;
+        this->d      = d;
     }
 
     Plane::Plane(const Vector3& a, const Vector3& b, const Vector3& c)
@@ -37,8 +37,8 @@ namespace spartan::math
         const Vector3 ac = c - a;
 
         const Vector3 cross = Vector3::Cross(ab, ac);
-        this->normal = Vector3::Normalize(cross);
-        this->d = -Vector3::Dot(normal, a);
+        this->normal        = Vector3::Normalize(cross);
+        this->d             = -Vector3::Dot(normal, a);
     }
 
     Plane::Plane(const Vector3& normal, const Vector3& point)

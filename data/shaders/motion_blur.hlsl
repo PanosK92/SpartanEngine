@@ -23,40 +23,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const uint   g_motion_blur_samples_max = 64;
-static const uint   g_motion_blur_samples_min = 8;
-static const float  g_velocity_scale          = 1.0f;  // adjust this to control overall blur intensity
-static const float  g_velocity_threshold      = 0.01f; // threshold for skipping low-motion pixels
-static const float  g_adaptive_threshold      = 0.1f;  // threshold for max adaptive sampling
-static const float  g_depth_scale             = 1.0f;  // adjust this to control depth difference sensitivity
+static const uint g_motion_blur_samples = 32;
+static const float g_velocity_scale     = 1.0f;
+static const float g_velocity_threshold = 0.005f;
+static const float g_depth_scale        = 1.0f;
+static const float g_color_scale        = 0.5f;
 
 groupshared uint g_tile_max_velocity_sqr;
 
-float2 get_velocity_3x3_average(float2 uv, float2 resolution_out)
+// use dilated velocity to capture the maximum motion in a 3x3 neighborhood
+float2 get_velocity_dilated(float2 uv, float2 resolution_out)
 {
-    float2 texel_size     = 1.0f / resolution_out;
-    float2 total_velocity = 0.0f;
-    int    sample_count   = 0;
+    float2 texel_size   = 1.0f / resolution_out;
+    float2 max_velocity = 0.0f;
+    float max_len       = 0.0f;
     [unroll]
     for (int y = -1; y <= 1; ++y)
     {
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            float2 offset   = float2(x, y) * texel_size;
-            float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp], (uv + offset) * buffer_frame.resolution_scale, 0).xy;
-            total_velocity += velocity;
-            ++sample_count;
+            float2 offset = float2(x, y) * texel_size;
+            float2 v      = tex_velocity.SampleLevel(samplers[sampler_point_clamp], (uv + offset) * buffer_frame.resolution_scale, 0).xy;
+            float len     = length(v);
+            if (len > max_len)
+            {
+                max_len = len;
+                max_velocity = v;
+            }
         }
     }
-    return total_velocity / float(sample_count);
-}
-
-uint get_adaptive_sample_count(float2 velocity_UV)
-{
-    float velocity_length = length(velocity_UV);
-    float t = saturate(velocity_length / g_adaptive_threshold);
-    return (uint)lerp(g_motion_blur_samples_min, g_motion_blur_samples_max, t);
+    return max_velocity;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -64,69 +61,77 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    float2 uv       = (thread_id.xy + 0.5f) / resolution_out;
-    float4 color    = tex[thread_id.xy];
-    float2 velocity = get_velocity_3x3_average(uv, resolution_out);
-    
-    // Convert velocity from NDC to UV space
+    float2 uv           = (thread_id.xy + 0.5f) / resolution_out;
+    float4 center_color = tex[thread_id.xy];
+    float2 velocity     = get_velocity_dilated(uv, resolution_out);
+
+    // convert velocity from NDC to UV space
     float2 velocity_UV = velocity / 2.0f;
-    
+
     // compute motion blur strength from camera's shutter speed
     float camera_shutter_speed = pass_get_f3_value().x;
-    float motion_blur_strength = saturate(camera_shutter_speed);
-    
-    // scale velocity by the motion blur strength, delta time, and additional scale factor
+    float motion_blur_strength = saturate(camera_shutter_speed * 1.5f);
+
+    // scale velocity by motion blur strength, delta time, and additional scale factor
     velocity_UV *= motion_blur_strength * g_velocity_scale / (buffer_frame.delta_time + FLT_MIN);
-    
+
     // compute max velocity squared for the tile
     if (group_index == 0)
     {
         g_tile_max_velocity_sqr = 0;
     }
     GroupMemoryBarrierWithGroupSync();
-    
-    uint velocity_sqr = (uint)(dot(velocity_UV, velocity_UV) * 1000000.0f); // Use velocity_UV
+
+    uint velocity_sqr = (uint) (dot(velocity_UV, velocity_UV) * 1000000.0f);
     InterlockedMax(g_tile_max_velocity_sqr, velocity_sqr);
-    
+
     GroupMemoryBarrierWithGroupSync();
-    
-    // skip blur calculation for low-motion tiles
+
+    // early exit for low-motion tiles
     if (sqrt(float(g_tile_max_velocity_sqr) / 1000000.0f) < g_velocity_threshold)
     {
-        tex_uav[thread_id.xy] = color;
+        tex_uav[thread_id.xy] = center_color;
         return;
     }
-    
-    // skip blur calculation for low-motion pixels
+
+    // early exit for low-motion pixels
     if (length(velocity_UV) < g_velocity_threshold)
     {
-        tex_uav[thread_id.xy] = color;
+        tex_uav[thread_id.xy] = center_color;
         return;
     }
-    
-    // determine adaptive sample count
-    uint sample_count = get_adaptive_sample_count(velocity_UV);
-    
-    float total_weight = 1.0f;
-    float center_depth = get_linear_depth(uv);
-    
-    [loop] // for variable iteration count
-    for (uint i = 1; i < sample_count; ++i)
+
+    float4 color            = center_color;
+    float total_weight      = 1.0f;
+    float center_depth      = get_linear_depth(uv);
+    float3 center_color_rgb = center_color.rgb;
+
+    [unroll]
+    for (uint i = 1; i < g_motion_blur_samples; ++i)
     {
-        float  t             = (float(i) / float(sample_count - 1) - 0.5f);
+        float t              = (float(i) / float(g_motion_blur_samples - 1)) - 0.5f;
         float2 sample_offset = velocity_UV * t;
         float2 sample_uv     = uv + sample_offset;
-        
-        float sample_depth = get_linear_depth(sample_uv);
+
+        // zero out weight for off-screen samples without branching (allows full unroll)
+        float is_on_screen = step(0.0f, sample_uv.x) * step(sample_uv.x, 1.0f) * step(0.0f, sample_uv.y) * step(sample_uv.y, 1.0f);
+
+        float sample_depth     = get_linear_depth(sample_uv);
         float depth_difference = abs(center_depth - sample_depth);
-        float depth_weight = exp(-depth_difference * g_depth_scale);
-        
-        float4 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0);
-        color += sample_color * depth_weight;
-        total_weight += depth_weight;
+        float depth_weight     = exp(-depth_difference * g_depth_scale);
+
+        float4 sample_color     = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0);
+        float3 sample_color_rgb = sample_color.rgb;
+        float color_difference  = length(center_color_rgb - sample_color_rgb);
+        float color_weight      = exp(-color_difference * g_color_scale);
+
+        float weight  = depth_weight * color_weight * is_on_screen;
+        color        += sample_color * weight;
+        total_weight += weight;
     }
-    
-    // Nnormalize the accumulated color
-    color /= total_weight;
+
+    // normalize the accumulated color
+    color /= total_weight + FLT_MIN;
+
     tex_uav[thread_id.xy] = float4(color.rgb, 1.0f);
 }

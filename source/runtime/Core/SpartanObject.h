@@ -27,13 +27,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    // globals
-    extern uint64_t g_id;
-
     class SpartanObject
     {
     public:
-        SpartanObject();
+        SpartanObject()
+        {
+            // stack-only, deterministic pseudo-random ID
+            auto time_now = static_cast<uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+
+            // simple stack-safe thread-unique value
+            uint64_t thread_unique = reinterpret_cast<uint64_t>(GetThreadUniqueAddress());
+
+            uint64_t random_value = (time_now ^ thread_unique) * 2654435761u;
+            random_value           ^= (random_value >> 16);
+
+            m_object_id = random_value;
+        }
         
         // name
         const std::string& GetObjectName() const    { return m_object_name; }
@@ -42,7 +51,6 @@ namespace spartan
         // id
         const uint64_t GetObjectId() const  { return m_object_id; }
         void SetObjectId(const uint64_t id) { m_object_id = id; }
-        static uint64_t GenerateObjectId();
 
         // sizes
         const uint64_t GetObjectSize() const { return m_object_size; }
@@ -51,5 +59,12 @@ namespace spartan
         std::string m_object_name;
         uint64_t m_object_id   = 0;
         uint64_t m_object_size = 0;
+
+    private:
+        static void* GetThreadUniqueAddress()
+        {
+            thread_local int dummy;
+            return &dummy;
+        }
     };
 }

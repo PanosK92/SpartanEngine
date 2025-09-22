@@ -35,7 +35,7 @@ namespace spartan
 {
     namespace
     {
-        static const std::vector<std::string> supported_formats_image
+        static const vector<string> supported_formats_image
         {
             ".jpg",
             ".png",
@@ -71,7 +71,7 @@ namespace spartan
             ".xpm"
         };
 
-        static const std::vector<std::string> supported_formats_audio
+        static const vector<string> supported_formats_audio
         {
             ".aiff",
             ".asf",
@@ -96,7 +96,7 @@ namespace spartan
             ".xma" // XBOX 360
         };
 
-        static const std::vector<std::string> supported_formats_model
+        static const vector<string> supported_formats_model
         {
             ".3ds",
             ".obj",
@@ -133,12 +133,12 @@ namespace spartan
             ".ndo"
         };
 
-        static const std::vector<std::string> supported_formats_shader
+        static const vector<string> supported_formats_shader
         {
             ".hlsl"
         };
 
-        static const std::vector<std::string> supported_formats_font
+        static const vector<string> supported_formats_font
         {
             ".ttf",
             ".ttc",
@@ -516,6 +516,70 @@ namespace spartan
         return file_paths;
     }
 
+    vector<string> FileSystem::SplitPath(const string& path)
+    {
+        vector<string> components;
+        stringstream ss(path);
+        string item;
+
+        // Split by both forward and backward slashes
+        while (getline(ss, item, '/'))
+        {
+            if (!item.empty())
+            {
+                stringstream item_ss(item);
+                string sub_item;
+                while (getline(item_ss, sub_item, '\\'))
+                {
+                    if (!sub_item.empty())
+                    {
+                        components.push_back(sub_item);
+                    }
+                }
+            }
+        }
+
+        // Handle root directory (e.g., "C:" on Windows)
+        if (path.size() > 1 && path[1] == ':')
+        {
+            components.insert(components.begin(), path.substr(0, 2));
+        }
+
+        return components;
+    }
+
+    string FileSystem::GetLastWriteTime(const string& path)
+    {
+        try
+        {
+            namespace fs         = filesystem;
+            auto last_write_time = fs::last_write_time(path);
+            auto time_point      = chrono::time_point_cast<chrono::system_clock::duration>(last_write_time - fs::file_time_type::clock::now() + chrono::system_clock::now());
+            time_t time          = chrono::system_clock::to_time_t(time_point);
+
+            stringstream ss;
+            ss << put_time(localtime(&time), "%Y-%m-%d %H:%M:%S");
+            return ss.str();
+        }
+        catch (const filesystem::filesystem_error& e)
+        {
+            SP_LOG_ERROR("Failed to get last write time for %s: %s", path.c_str(), e.what());
+            return "Unknown";
+        }
+    }
+
+    void FileSystem::Rename(const std::string& old_name, const std::string& new_name)
+    {
+        try
+        {
+            filesystem::rename(old_name, new_name);
+        }
+        catch (const filesystem::filesystem_error& e)
+        {
+            SP_LOG_ERROR("Failed to rename %s to %s: %s", old_name.c_str(), new_name.c_str(), e.what());
+        }
+    }
+
     bool FileSystem::IsSupportedAudioFile(const string& path)
     {
         const string extension = GetExtensionFromFilePath(path);
@@ -611,12 +675,12 @@ namespace spartan
         return GetExtensionFromFilePath(path) == EXTENSION_SHADER;
     }
 
-    bool FileSystem::IsEngineTextureFile(const std::string& path)
+    bool FileSystem::IsEngineTextureFile(const string& path)
     {
         return GetExtensionFromFilePath(path) == EXTENSION_TEXTURE;
     }
 
-    bool FileSystem::IsEngineWorldFile(const std::string& path)
+    bool FileSystem::IsEngineWorldFile(const string& path)
     {
         return GetExtensionFromFilePath(path) == EXTENSION_WORLD;
     }

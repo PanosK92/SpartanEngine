@@ -13,7 +13,7 @@ all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
@@ -135,16 +135,15 @@ namespace spartan
             m_options.clear();
             SetOption(Renderer_Option::WhitePoint,                  350.0f);
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);                                           // non-zero values activate it and control the intensity
+            SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
             SetOption(Renderer_Option::MotionBlur,                  1.0f);
             SetOption(Renderer_Option::DepthOfField,                1.0f);
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
             SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);                                           // becomes the upscaler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);                                            // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::Antialiasing,                static_cast<float>(Renderer_Antialiasing::Taa)); // this is using fsr 3 for taa
-            SetOption(Renderer_Option::Upsampling,                  static_cast<float>(Renderer_Upsampling::Fsr3));
+            SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
+            SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
+            SetOption(Renderer_Option::AntiAliasing_Upsampling,      static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);
             SetOption(Renderer_Option::Vsync,                       0.0f);
@@ -512,26 +511,25 @@ namespace spartan
             }
         }
 
-        // generate jitter sample in case FSR (which also does TAA) is enabled
-        Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
-        if (GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
+        // generate jitter samples in case of fsr or xess
+        Renderer_AntiAliasing_Upsampling upsampling_mode = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
         {
-            if (upsampling_mode == Renderer_Upsampling::Fsr3)
-            { 
+            if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+            {
                 RHI_VendorTechnology::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
             }
-            else if (upsampling_mode == Renderer_Upsampling::XeSS)
-            { 
+            else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+            {
                 RHI_VendorTechnology::XeSS_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
             }
+            else
+            {
+                jitter_offset = Vector2::Zero;
+            }
+        }
 
-            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
-        }
-        else
-        {
-            jitter_offset = Vector2::Zero;
-        }
-        
         // update the remaining of the frame buffer
         m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
         m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
@@ -674,9 +672,9 @@ namespace spartan
                     }
                 }
             }
-            else if (option == Renderer_Option::Upsampling)
+            else if (option == Renderer_Option::AntiAliasing_Upsampling)
             {
-                if (value == static_cast<float>(Renderer_Upsampling::XeSS))
+                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
                 {
                     if (!RHI_Device::PropertyIsXessSupported())
                     { 
@@ -692,47 +690,13 @@ namespace spartan
 
         // handle cascading changes
         {
-            // antialiasing
-            if (option == Renderer_Option::Antialiasing)
+            // upsampling and anti-aliasing
+            if (option == Renderer_Option::AntiAliasing_Upsampling)
             {
-                bool taa_enabled        = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
-                bool upsampling_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::Fsr3 || GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::XeSS;
-
-                if (taa_enabled)
+                // reset history for temporal filters
+                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) || value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
                 {
-                    if (!upsampling_enabled)
-                    {
-                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::XeSS); // if the user can run at native, they can run xess (a bit more expensive than fsr)
-                        RHI_VendorTechnology::ResetHistory();
-                    }
-                }
-                else
-                {
-                    if (upsampling_enabled)
-                    {
-                        m_options[Renderer_Option::Upsampling] = static_cast<float>(Renderer_Upsampling::Linear);
-                    }
-                }
-            }
-            // upsampling
-            else if (option == Renderer_Option::Upsampling)
-            {
-                bool taa_enabled = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa;
-
-                if (value == static_cast<float>(Renderer_Upsampling::Linear))
-                {
-                    if (taa_enabled)
-                    {
-                        m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Disabled);
-                    }
-                }
-                else // fsr or xess
-                {
-                    if (!taa_enabled)
-                    {
-                        m_options[Renderer_Option::Antialiasing] = static_cast<float>(Renderer_Antialiasing::Taa);
-                        RHI_VendorTechnology::ResetHistory();
-                    }
+                    RHI_VendorTechnology::ResetHistory();
                 }
             }
             else if (option == Renderer_Option::Hdr)
@@ -950,6 +914,8 @@ namespace spartan
     
         auto fill_light = [&](Light* light_component)
         {
+            //SP_LOG_INFO("Processing light %s", light_component->GetEntity()->GetObjectName().c_str());
+
             const uint32_t index = count++;
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];

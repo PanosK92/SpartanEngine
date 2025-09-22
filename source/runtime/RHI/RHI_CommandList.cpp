@@ -48,7 +48,7 @@ namespace spartan
         }
 
         // wait
-        uint64_t timeout_nanoseconds = 60'000'000'000; // 60 seconds
+        uint64_t timeout_nanoseconds = 10'000'000'000; // 10 seconds
         m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds);
         m_state = RHI_CommandListState::Idle;
 
@@ -60,19 +60,28 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::Dispatch(RHI_Texture* texture)
+    void RHI_CommandList::Dispatch(RHI_Texture* texture, float resolution_scale /*= 1.0f*/)
     {
-        // compute dimensions and dispatch
-        const uint32_t thread_group_count   = 8;
-        const uint32_t thread_group_count_x = (texture->GetWidth() + thread_group_count - 1) / thread_group_count;
-        const uint32_t thread_group_count_y = (texture->GetHeight() + thread_group_count - 1) / thread_group_count;
-        const uint32_t thread_group_count_z = (texture->GetType() == RHI_Texture_Type::Type3D) ? (texture->GetDepth() + thread_group_count - 1) / thread_group_count : 1;
+        // clamp scale
+        resolution_scale = clamp(resolution_scale, 0.5f, 1.0f);
 
-        Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z);
+        const uint32_t thread_group_size = 8;
+
+        // scaled dimensions (round up to ensure coverage)
+        const uint32_t scaled_width  = static_cast<uint32_t>(ceil(texture->GetWidth() * resolution_scale));
+        const uint32_t scaled_height = static_cast<uint32_t>(ceil(texture->GetHeight() * resolution_scale));
+        const uint32_t scaled_depth  = (texture->GetType() == RHI_Texture_Type::Type3D) ? static_cast<uint32_t>(ceil(texture->GetDepth() * resolution_scale)): 1;
+
+        // conservative dispatch counts
+        const uint32_t dispatch_x = (scaled_width + thread_group_size - 1) / thread_group_size;
+        const uint32_t dispatch_y = (scaled_height + thread_group_size - 1) / thread_group_size;
+        const uint32_t dispatch_z = (scaled_depth + thread_group_size - 1) / thread_group_size;
+
+        Dispatch(dispatch_x, dispatch_y, dispatch_z);
 
         // synchronize writes to the texture
         if (GetImageLayout(texture->GetRhiResource(), 0) == RHI_Image_Layout::General)
-        { 
+        {
             InsertBarrierReadWrite(texture, RHI_BarrierType::EnsureWriteThenRead);
         }
     }

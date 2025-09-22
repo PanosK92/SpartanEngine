@@ -104,6 +104,7 @@ namespace
                         show_file_dialog = false;
                     }
                 }
+
                 // save world
                 else if (file_dialog->GetOperation() == FileDialog_Op_Save)
                 {
@@ -134,28 +135,22 @@ namespace
 
                 ImGui::Separator();
 
-                // the engine has changed a lot, so I need to re-write resource cache serialization/deserialization
-                // grey out the options so users know that the functionality is part of the engine but currently disabled
-                ImGui::BeginDisabled(true);
+                if (ImGui::MenuItem("Load"))
                 {
-                    if (ImGui::MenuItem("Load"))
-                    {
-                        windows::ShowWorldLoadDialog();
-                    }
-
-                    ImGui::Separator();
-
-                    if (ImGui::MenuItem("Save", "Ctrl+S"))
-                    {
-                        windows::ShowWorldSaveDialog();
-                    }
-
-                    if (ImGui::MenuItem("Save As...", "Ctrl+S"))
-                    {
-                        windows::ShowWorldSaveDialog();
-                    }
+                    windows::ShowWorldLoadDialog();
                 }
-                ImGui::EndDisabled();
+
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("Save", "Ctrl+S"))
+                {
+                    windows::ShowWorldSaveDialog();
+                }
+
+                if (ImGui::MenuItem("Save As...", "Ctrl+S"))
+                {
+                    windows::ShowWorldSaveDialog();
+                }
 
                 ImGui::EndMenu();
             }

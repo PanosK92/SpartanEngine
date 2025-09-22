@@ -47,7 +47,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    namespace version
+    namespace vulkan_version
     {
         uint32_t used = 0;
 
@@ -124,9 +124,9 @@ namespace spartan
         {
             VkApplicationInfo app_info  = {};
             app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName   = sp_info::name;             // for gpu vendors to do game specific driver optimizations
+            app_info.pApplicationName   = spartan::version::name;             // for gpu vendors to do game specific driver optimizations
             app_info.pEngineName        = app_info.pApplicationName; // for gpu vendors to do engine specific driver optimizations
-            app_info.engineVersion      = VK_MAKE_VERSION(sp_info::version_major, sp_info::version_minor, sp_info::version_revision);
+            app_info.engineVersion      = VK_MAKE_VERSION(spartan::version::major, spartan::version::minor, spartan::version::patch);
             app_info.applicationVersion = app_info.engineVersion;
 
             // deduce api version to use based on the SDK and what the driver supports
@@ -152,16 +152,16 @@ namespace spartan
                 app_info.apiVersion  = min(sdk_version, driver_version);
 
                 // save the api version we ended up using
-                version::used                = app_info.apiVersion;
-                RHI_Context::api_version_str = version::to_string(version::used).c_str();
+                vulkan_version::used         = app_info.apiVersion;
+                RHI_Context::api_version_str = vulkan_version::to_string(vulkan_version::used).c_str();
 
                 // some checks
                 {
                     // if the driver hasn't been updated to the latest sdk, log a warning
                     if (sdk_version > driver_version)
                     {
-                        string version_driver = version::to_string(driver_version);
-                        string version_sdk    = version::to_string(sdk_version);
+                        string version_driver = vulkan_version::to_string(driver_version);
+                        string version_sdk    = vulkan_version::to_string(sdk_version);
                         SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", version_driver.c_str(), version_sdk.c_str());
                     }
 
@@ -238,9 +238,9 @@ namespace spartan
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",         // to obtain precise memory usage information from Vulkan Memory Allocator
-            "VK_KHR_fragment_shading_rate", 
-            "VK_EXT_hdr_metadata",          
-            "VK_KHR_robustness2",           
+            "VK_KHR_fragment_shading_rate",
+            "VK_EXT_hdr_metadata",
+            "VK_KHR_robustness2",
             // AMD FidelityFX relies on "VK_KHR_get_memory_requirements2" because it explicitly calls the extension function
             // vkGetBufferMemoryRequirements2KHR instead of the core Vulkan 1.1+ function vkGetBufferMemoryRequirements2,
             // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
@@ -353,9 +353,10 @@ namespace spartan
         {
             "VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT",
             "VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT",
-            "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD",
-            "VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA"
+            //"VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD",
+            //"VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_NVIDIA"
         };
+        static const uint32_t setting_features_count = SP_ARRAY_SIZE(setting_features);
         
         static vector<VkLayerSettingEXT> settings_storage; // persistent storage for VkLayerSettingEXT
         vector<VkLayerSettingEXT>& get_settings()
@@ -393,7 +394,7 @@ namespace spartan
                 { layer_name, "report_flags",            VK_LAYER_SETTING_TYPE_STRING_EXT, 5, setting_report_flags },
                 { layer_name, "enable_message_limit",    VK_LAYER_SETTING_TYPE_BOOL32_EXT, 1, &setting_enable_message_limit },
                 { layer_name, "duplicate_message_limit", VK_LAYER_SETTING_TYPE_INT32_EXT,  1, &setting_duplicate_message_limit },
-                { layer_name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, 4, setting_features }
+                { layer_name, "enables",                 VK_LAYER_SETTING_TYPE_STRING_EXT, setting_features_count, setting_features }
             };
         
             // optionally append GPU-assisted validation
@@ -403,14 +404,14 @@ namespace spartan
         
                 // append to the enables array safely
                 static const char* combined_enables[5];
-                for (int i = 0; i < 4; ++i)
+                for (int i = 0; i < setting_features_count; ++i)
                 {
                     combined_enables[i] = setting_features[i];
                 }
-                combined_enables[4] = setting_enable_gpu_assisted;
+                combined_enables[setting_features_count] = setting_enable_gpu_assisted;
         
                 // replace the last entry in settings_storage
-                settings_storage.back() = { layer_name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, 5, combined_enables };
+                settings_storage.back() = { layer_name, "enables", VK_LAYER_SETTING_TYPE_STRING_EXT, setting_features_count + 1, combined_enables };
             }
         
             return settings_storage;
@@ -730,7 +731,7 @@ namespace spartan
             allocator_info.physicalDevice   = RHI_Context::device_physical;
             allocator_info.device           = RHI_Context::device;
             allocator_info.instance         = RHI_Context::instance;
-            allocator_info.vulkanApiVersion = version::used;
+            allocator_info.vulkanApiVersion = vulkan_version::used;
             allocator_info.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
             SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
 
@@ -1569,7 +1570,7 @@ namespace spartan
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
                 SP_ASSERT_VK(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device));
-                SP_LOG_INFO("Vulkan %s", version::to_string(version::used).c_str());
+                SP_LOG_INFO("Vulkan %s", vulkan_version::to_string(vulkan_version::used).c_str());
             }
         }
 

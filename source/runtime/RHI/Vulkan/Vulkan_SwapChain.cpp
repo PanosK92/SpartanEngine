@@ -95,7 +95,6 @@ namespace spartan
 
         VkPresentModeKHR get_present_mode(const VkSurfaceKHR surface, const RHI_Present_Mode present_mode)
         {
-            // convert RHI_Present_Mode to VkPresentModeKHR
             VkPresentModeKHR vk_present_mode = VK_PRESENT_MODE_FIFO_KHR;
             if (present_mode == RHI_Present_Mode::Immediate)
             {
