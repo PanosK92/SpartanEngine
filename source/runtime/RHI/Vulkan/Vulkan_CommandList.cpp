@@ -641,8 +641,8 @@ namespace spartan
         rendering_info.pStencilAttachment   = nullptr;
     
         // color attachments
-        static vector<VkRenderingAttachmentInfo> attachments_color;
-        attachments_color.clear();
+        array<VkRenderingAttachmentInfo, rhi_max_render_target_count> attachments_color;
+        uint32_t attachment_index = 0;
         {
             // swapchain buffer as a render target
             RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
@@ -660,14 +660,14 @@ namespace spartan
     
                 SP_ASSERT(color_attachment.imageView != nullptr);
     
-                attachments_color.push_back(color_attachment);
+                attachments_color[attachment_index++] = color_attachment;
             }
             else // regular render target(s)
-            { 
+            {
+
                 for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
                 {
                     RHI_Texture* rt = m_pso.render_target_color_textures[i];
-    
                     if (rt == nullptr)
                         break;
     
@@ -686,10 +686,10 @@ namespace spartan
     
                     SP_ASSERT(color_attachment.imageView != nullptr);
     
-                    attachments_color.push_back(color_attachment);
+                    attachments_color[attachment_index++] = color_attachment;
                 }
             }
-            rendering_info.colorAttachmentCount = static_cast<uint32_t>(attachments_color.size());
+            rendering_info.colorAttachmentCount = attachment_index;
             rendering_info.pColorAttachments    = attachments_color.data();
         }
     
@@ -750,7 +750,7 @@ namespace spartan
             RHI_Device::SetVariableRateShading(this, m_pso.vrs_input_texture != nullptr);
     
             // set viewport
-            static RHI_Viewport viewport;
+            RHI_Viewport viewport;
             viewport.width  = static_cast<float>(m_pso.GetWidth());
             viewport.height = static_cast<float>(m_pso.GetHeight());
             SetViewport(viewport);
@@ -1478,9 +1478,9 @@ namespace spartan
 
         uint32_t timestamp_index = m_timestamp_index;
 
-        vkCmdWriteTimestamp(
+        vkCmdWriteTimestamp2(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
             m_timestamp_index++
         );
@@ -1492,9 +1492,9 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        vkCmdWriteTimestamp(
+        vkCmdWriteTimestamp2(
             static_cast<VkCommandBuffer>(m_rhi_resource),
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
             static_cast<VkQueryPool>(m_rhi_query_pool_timestamps),
             m_timestamp_index++
         );
@@ -1760,7 +1760,7 @@ namespace spartan
             return;
     
         // single barrier if all mips have the same layout
-        static vector<VkImageMemoryBarrier2> barriers;
+        static thread_local vector<VkImageMemoryBarrier2> barriers;
         barriers.clear();
         if (all_mips_same_layout)
         {

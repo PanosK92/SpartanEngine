@@ -46,7 +46,6 @@ namespace spartan
         {
             // clone basic properties
             Entity* clone = World::CreateEntity();
-            clone->SetObjectId(SpartanObject::GenerateObjectId());
             clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->GetActive());
             clone->SetPosition(entity->GetPositionLocal());
@@ -96,6 +95,18 @@ namespace spartan
     Entity::~Entity()
     {
         m_components.fill(nullptr);
+
+        // if this entity is selected, deselect it
+        if (Camera* camera = World::GetCamera())
+        {
+            if (Entity* selected_entity = camera->GetSelectedEntity())
+            {
+                if (selected_entity->GetObjectId() == GetObjectId())
+                {
+                    camera->SetSelectedEntity(nullptr);
+                }
+            }
+        }
     }
 
     Entity* Entity::Clone()

@@ -53,9 +53,8 @@ namespace spartan
         Vhs,
         ChromaticAberration,
         Anisotropy,
-        Antialiasing,
         Tonemapping,
-        Upsampling,
+        AntiAliasing_Upsampling,
         Sharpness,
         Dithering,
         Hdr,
@@ -70,14 +69,6 @@ namespace spartan
         Max
     };
 
-    enum class Renderer_Antialiasing : uint32_t
-    {
-        Disabled,
-        Fxaa,
-        Taa,
-        TaaFxaa
-    };
-
     enum class Renderer_Tonemapping : uint32_t
     {
         Aces,
@@ -87,11 +78,12 @@ namespace spartan
         Max,
     };
 
-    enum class Renderer_Upsampling : uint32_t
+    enum class Renderer_AntiAliasing_Upsampling : uint32_t
     {
-        Linear,
-        Fsr3,
-        XeSS
+        AA_Off_Upscale_Linear,
+        AA_Fxaa_Upcale_Linear,
+        AA_Fsr_Upscale_Fsr,
+        AA_Xess_Upscale_Xess
     };
 
     enum class Renderer_BindingsCb

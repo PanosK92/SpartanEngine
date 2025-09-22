@@ -36,14 +36,19 @@ using namespace spartan::math;
 
 namespace
 {
-    #define OPERATION_NAME (m_operation == FileDialog_Op_Open) ? "Open"      : (m_operation == FileDialog_Op_Load)   ? "Load"       : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
-    #define FILTER_NAME    (m_filter == FileDialog_Filter_All) ? "All (*.*)" : (m_filter == FileDialog_Filter_Model) ? "Model(*.*)" : "World (*.world)"
+    #define OPERATION_NAME (m_operation == FileDialog_Op_Open) ? "Open"      : (m_operation == FileDialog_Op_Load)   ? "Load"        : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
+    #define FILTER_NAME    (m_filter == FileDialog_Filter_All) ? "All (*.*)" : (m_filter == FileDialog_Filter_Model) ? "Model (*.*)" : "World (*.world)"
 
     void set_cursor_position_x(float pos_x)
     {
         ImGui::SetCursorPosX(pos_x);
         ImGui::Dummy(ImVec2(0, 0)); // imgui requirement to avoid assert
     }
+
+    // options
+    const float item_size_min         = 32.0f;
+    const float item_size_max         = 256;
+    const float item_background_alpha = 32.0f;
 }
 
 FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type, const FileDialog_Operation operation, const FileDialog_Filter filter)
@@ -51,7 +56,6 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_type                            = type;
     m_operation                       = operation;
     m_filter                          = filter;
-    m_type                            = type;
     m_title                           = OPERATION_NAME;
     m_is_window                       = standalone_window;
     m_item_size                       = 150.0f;
@@ -60,6 +64,11 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_callback_on_item_clicked        = nullptr;
     m_callback_on_item_double_clicked = nullptr;
     m_current_path                    = ResourceCache::GetProjectDirectory();
+    m_sort_column                     = Sort_Name;
+    m_sort_ascending                  = true;
+    m_view_mode                       = View_Grid;
+    m_history_index                   = 0;
+    m_history.push_back(m_current_path);
 }
 
 void FileDialog::SetOperation(const FileDialog_Operation operation)
@@ -72,7 +81,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
 {
     if (!(*is_visible))
     {
-        m_is_dirty = true; // set as dirty as things can change till next time
+        m_is_dirty = true;
         return false;
     }
 
@@ -80,9 +89,9 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
     m_is_hovering_item   = false;
     m_is_hovering_window = false;
 
-    ShowTop(is_visible, editor); // top menu
-    ShowMiddle();                // contents of the current directory
-    ShowBottom(is_visible);      // bottom menu
+    ShowTop(is_visible, editor);
+    ShowMiddle();
+    ShowBottom(is_visible);
 
     if (m_is_window)
     {
@@ -99,7 +108,6 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
         {
             DialogUpdateFromDirectory(m_current_path);
         }
-
         m_is_dirty = false;
     }
 
@@ -109,7 +117,6 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
         {
             (*directory) = m_current_path;
         }
-
         if (file_path)
         {
             (*file_path) = FileSystem::GetDirectoryFromFilePath(m_current_path) + string(m_input_box);
@@ -117,6 +124,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
     }
 
     EmptyAreaContextMenu();
+    HandleKeyboardNavigation();
 
     return m_selection_made;
 }
@@ -131,40 +139,139 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         ImGui::SetWindowFocus();
     }
 
-    // directory navigation buttons
+    // navigation buttons
     {
-        // go backwards
+        // back button
+        ImGui::BeginDisabled(m_history_index == 0);
         if (ImGuiSp::button("<"))
         {
-            m_current_path = FileSystem::GetParentDirectory(m_current_path);
-            m_is_dirty     = true;
+            if (m_history_index > 0)
+            {
+                m_history_index--;
+                m_current_path = m_history[m_history_index];
+                m_is_dirty = true;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+
+        // forward button
+        ImGui::BeginDisabled(m_history_index == m_history.size() - 1);
+        if (ImGuiSp::button(">"))
+        {
+            if (m_history_index < m_history.size() - 1)
+            {
+                m_history_index++;
+                m_current_path = m_history[m_history_index];
+                m_is_dirty     = true;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+
+        // breadcrumb navigation
+        const string root_path    = ResourceCache::GetProjectDirectory();
+        vector<string> path_parts = FileSystem::SplitPath(m_current_path);
+        string accumulated_path   = path_parts[0] + "/"; // start with drive root (e.g., C:/)
+
+        // show root directory button if not at root
+        if (m_current_path != root_path)
+        {
+            string root_label = FileSystem::GetFileNameFromFilePath(root_path); // e.g., "project" or root dir name
+            if (root_label.empty()) root_label = "Root"; // fallback label
+            if (ImGuiSp::button(root_label.c_str()))
+            {
+                m_current_path = root_path;
+                m_history.push_back(m_current_path);
+                m_history_index = m_history.size() - 1;
+                m_is_dirty      = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text(">");
+            ImGui::SameLine();
         }
 
-        // display current path
-        ImGui::SameLine();
-        ImGui::Text("%s", m_current_path.c_str());
+        // show remaining path parts
+        for (size_t i = 1; i < path_parts.size(); ++i)
+        {
+            accumulated_path += path_parts[i] + "/";
+
+            // skip root_path in breadcrumbs if it matches accumulated_path
+            if (FileSystem::GetDirectoryFromFilePath(accumulated_path) == root_path)
+                continue;
+
+            if (ImGuiSp::button(path_parts[i].c_str()))
+            {
+                m_current_path  = accumulated_path;
+                m_history.push_back(m_current_path);
+                m_history_index = m_history.size() - 1;
+                m_is_dirty      = true;
+            }
+            ImGui::SameLine();
+            ImGui::Text(">");
+            ImGui::SameLine();
+        }
     }
 
-    // size slider
-    const float slider_width = 200.0f;
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x - slider_width);
-    ImGui::PushItemWidth(slider_width);
-    const float previous_width = m_item_size.x;
-    ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, m_item_size_min, m_item_size_max);
-    m_item_size.y += m_item_size.x - previous_width;
-    ImGui::PopItemWidth();
+    // size slider (only for grid view) + view toggle button
+    {
+        float button_width = ImGui::CalcTextSize(m_view_mode == View_Grid ? "List View" : "Grid View").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+        float slider_width = m_view_mode == View_Grid ? 150.0f : 0.0f; // allocate space for slider only in grid view
+        float total_width  = button_width + slider_width + ImGui::GetStyle().ItemSpacing.x;
+        float region_width = ImGui::GetContentRegionAvail().x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + region_width - total_width);
+
+        // slider
+        if (m_view_mode == View_Grid)
+        {
+            ImGui::SetNextItemWidth(slider_width);
+            ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, item_size_min, item_size_max);
+            ImGui::SameLine();
+        }
+
+        // view mode toggle
+        if (ImGuiSp::button(m_view_mode == View_Grid ? "List View" : "Grid View"))
+        {
+            m_view_mode = (m_view_mode == View_Grid) ? View_List : View_Grid;
+            m_is_dirty = true;
+        }
+    }
 
     // search filter
     const float label_width = 37.0f * spartan::Window::GetDpiScale();
-    m_search_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
+    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - label_width - 30.0f);
+    m_search_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width - 30.0f);
+    ImGui::PopItemWidth();
 
+    // file filter dropdown
+    if (m_type != FileDialog_Type_Browser)
+    {
+        ImGui::SameLine();
+        if (ImGui::BeginCombo("##FileFilter", FILTER_NAME))
+        {
+            if (ImGui::Selectable("All (*.*)", m_filter == FileDialog_Filter_All))
+            {
+                m_filter = FileDialog_Filter_All;
+                m_is_dirty = true;
+            }
+            if (ImGui::Selectable("Model (*.*)", m_filter == FileDialog_Filter_Model))
+            {
+                m_filter = FileDialog_Filter_Model;
+                m_is_dirty = true;
+            }
+            if (ImGui::Selectable("World (*.world)", m_filter == FileDialog_Filter_World))
+            {
+                m_filter = FileDialog_Filter_World;
+                m_is_dirty = true;
+            }
+            ImGui::EndCombo();
+        }
+    }
     ImGui::Separator();
 }
 
 void FileDialog::ShowMiddle()
 {
-    // compute some useful stuff
-    const auto window         = ImGui::GetCurrentWindowRead();
     const auto content_width  = ImGui::GetContentRegionAvail().x;
     const auto content_height = ImGui::GetContentRegionAvail().y - m_offset_bottom;
     ImGuiContext& g           = *GImGui;
@@ -176,58 +283,82 @@ void FileDialog::ShowMiddle()
     float pen_x               = 0.0f;
     bool new_line             = true;
     m_displayed_item_count    = 0;
-    ImRect rect_button;
-    ImRect rect_label;
 
-    lock_guard lock(m_mutex_items);
-
-    // remove border
     ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
-
     if (ImGui::BeginChild("##ContentRegion", ImVec2(content_width, content_height), true))
     {
-        m_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) ? true : m_is_hovering_window;
+        m_is_hovering_window = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 
-        // set starting position
+        if (m_view_mode == View_List)
         {
-            float offset = ImGui::GetStyle().ItemSpacing.x;
-            pen_x_min    = ImGui::GetCursorPosX() + offset;
-            set_cursor_position_x(pen_x_min);
-        }
-
-        // go through all the items
-        for (int i = 0; i < m_items.size(); i++)
-        {
-            // get item to be displayed
-            auto& item = m_items[i];
-
-            // apply search filter
-            if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
-                continue;
-
-            m_displayed_item_count++;
-
-            // start new line ?
-            if (new_line)
+            // list view with sortable columns
+            if (ImGui::BeginTable("##FileTable", 3, ImGuiTableFlags_Sortable | ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders))
             {
-                ImGui::BeginGroup();
-                new_line = false;
-            }
+                ImGui::TableSetupColumn("Name",     ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Type",     ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                ImGui::TableSetupColumn("Modified", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+                ImGui::TableHeadersRow();
 
-            ImGui::BeginGroup();
-            {
-                // compute rectangles for elements that make up an item
+                // handle sorting
+                if (ImGuiTableSortSpecs* sorts_specs = ImGui::TableGetSortSpecs())
                 {
-                    rect_button = ImRect
-                    (
+                    if (sorts_specs->SpecsDirty)
+                    {
+                        m_sort_column           = sorts_specs->Specs[0].ColumnIndex == 0 ? Sort_Name : (sorts_specs->Specs[0].ColumnIndex == 1 ? Sort_Type : Sort_Modified);
+                        m_sort_ascending        = sorts_specs->Specs[0].SortDirection == ImGuiSortDirection_Ascending;
+                        m_is_dirty              = true;
+                        sorts_specs->SpecsDirty = false;
+                    }
+                }
+
+                lock_guard lock(m_mutex_items);
+                for (int i = 0; i < m_items.size(); i++)
+                {
+                    auto& item = m_items[i];
+                    if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
+                        continue;
+
+                    m_displayed_item_count++;
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    RenderItem(&item, ImVec2(0, 0), true);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text(item.IsDirectory() ? "Folder" : FileSystem::GetExtensionFromFilePath(item.GetPath()).c_str());
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text(FileSystem::GetLastWriteTime(item.GetPath()).c_str());
+                }
+                ImGui::EndTable();
+            }
+        }
+        else
+        {
+            // grid view
+            set_cursor_position_x(ImGui::GetCursorPosX() + ImGui::GetStyle().ItemSpacing.x);
+            pen_x_min = ImGui::GetCursorPosX();
+            lock_guard lock(m_mutex_items);
+            for (int i = 0; i < m_items.size(); i++)
+            {
+                auto& item = m_items[i];
+                if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
+                    continue;
+
+                m_displayed_item_count++;
+                if (new_line)
+                {
+                    ImGui::BeginGroup();
+                    new_line = false;
+                }
+
+                ImGui::BeginGroup();
+                ImRect rect_button, rect_label;
+                {
+                    rect_button = ImRect(
                         ImGui::GetCursorScreenPos().x,
                         ImGui::GetCursorScreenPos().y,
                         ImGui::GetCursorScreenPos().x + m_item_size.x,
                         ImGui::GetCursorScreenPos().y + m_item_size.y
                     );
-
-                    rect_label = ImRect
-                    (
+                    rect_label = ImRect(
                         rect_button.Min.x,
                         rect_button.Max.y - label_height - style.FramePadding.y,
                         rect_button.Max.x,
@@ -235,165 +366,29 @@ void FileDialog::ShowMiddle()
                     );
                 }
 
-                // drop shadow effect
-                if (m_drop_shadow)
-                {
-                    static const float shadow_thickness = 2.0f;
-                    ImVec4 color = {1.0f, 1.0f, 4.0f, 0.1f};
-                    ImGui::GetWindowDrawList()->AddRectFilled(
-                        rect_button.Min,
-                        ImVec2(rect_label.Max.x + shadow_thickness, rect_label.Max.y + shadow_thickness),
-                        IM_COL32(color.x * 255, color.y * 255, color.z * 255, color.w * 255),
-                        5.0f);
-                }
-
-                // THUMBNAIL
-                {
-                    ImGui::PushID(i);
-                    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
-                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-
-                    if (ImGuiSp::button("##dummy", m_item_size))
-                    {
-                        // determine type of click
-                        item.Clicked();
-                        const bool is_single_click = item.GetTimeSinceLastClickMs() > 500;
-
-                        if (is_single_click)
-                        {
-                            // updated input box
-                            m_input_box = item.GetLabel();
-
-                            // callback
-                            if (m_callback_on_item_clicked) m_callback_on_item_clicked(item.GetPath());
-                        }
-                        else // double click
-                        {
-                            m_current_path   = item.GetPath();
-                            m_is_dirty       = true;
-                            m_selection_made = !item.IsDirectory();
-
-                            // when browsing files, open them on double click
-                            if (m_type == FileDialog_Type_Browser)
-                            {
-                                if (!item.IsDirectory())
-                                {
-                                    FileSystem::OpenUrl(item.GetPath());
-                                }
-                            }
-
-                            // callback
-                            if (m_callback_on_item_double_clicked)
-                            {
-                                m_callback_on_item_double_clicked(m_current_path);
-                            }
-                        }
-                    }
-
-                    // Item functionality
-                    {
-                        // manually detect some useful states
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-                        {
-                            m_is_hovering_item = true;
-                            m_hovered_item_path = item.GetPath();
-                        }
-
-                        ItemClick(&item);
-                        ItemContextMenu(&item);
-                        ItemDrag(&item);
-                    }
-
-                    // Image
-                    if (spartan::RHI_Texture* texture = item.GetIcon())
-                    {
-                        if (texture->GetResourceState() == ResourceState::PreparedForGpu) // This is possible for when the editor is reading from drive
-                        {
-                            // compute thumbnail size
-                            ImVec2 image_size     = ImVec2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
-                            ImVec2 image_size_max = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
-
-                            // scale the image size to fit the max available size while respecting its aspect ratio
-                            {
-                                float width_scale  = image_size_max.x / image_size.x;
-                                float height_scale = image_size_max.y / image_size.y;
-                                float scale        = (width_scale < height_scale) ? width_scale : height_scale;
-
-                                image_size.x *= scale;
-                                image_size.y *= scale;
-                            }
-
-                            // calculate button center and image position
-                            ImVec2 button_center = ImVec2(
-                                rect_button.Min.x + (rect_button.Max.x - rect_button.Min.x) / 2,
-                                rect_button.Min.y + (rect_button.Max.y - rect_button.Min.y - label_height - 5.0f) / 2
-                            );
-
-                            ImVec2 image_pos = ImVec2(
-                                button_center.x - image_size.x / 2,
-                                button_center.y - image_size.y / 2
-                            );
-
-                            // position the image within the square border
-                            ImGui::SetCursorScreenPos(image_pos);
-
-                            // draw the image
-                            ImGuiSp::image(item.GetIcon(), image_size);
-                        }
-                    }
-
-                    ImGui::PopStyleColor(2);
-                    ImGui::PopStyleVar(1);
-                    ImGui::PopID();
-                }
-
-                // LABEL
-                {
-                    const char* label_text  = item.GetLabel().c_str();
-                    const ImVec2 label_size = ImGui::CalcTextSize(label_text, nullptr, true);
-
-                    // draw text background
-                    ImGui::GetWindowDrawList()->AddRectFilled(rect_label.Min, rect_label.Max, ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_ChildBg]),style.ChildRounding,0);
-                    //ImGui::GetWindowDrawList()->AddRect(rect_label.Min, rect_label.Max, IM_COL32(255, 0, 0, 255)); // debug
-
-                    // draw text
-                    ImGui::SetCursorScreenPos(ImVec2(rect_label.Min.x + text_offset, rect_label.Min.y + text_offset));
-                    if (label_size.x <= m_item_size.x && label_size.y <= m_item_size.y)
-                    {
-                        ImGui::TextUnformatted(label_text);
-                    }
-                    else
-                    {
-                        ImGui::RenderTextClipped(rect_label.Min, rect_label.Max, label_text, nullptr, &label_size, ImVec2(0, 0), &rect_label);
-                    }
-                }
-
+                RenderItem(&item, m_item_size, false);
                 ImGui::EndGroup();
-            }
 
-            // decide whether we should switch to the next column or switch row
-            pen_x += m_item_size.x + ImGui::GetStyle().ItemSpacing.x;
-            if (pen_x >= content_width - m_item_size.x)
+                pen_x += m_item_size.x + ImGui::GetStyle().ItemSpacing.x;
+                if (pen_x >= content_width - m_item_size.x)
+                {
+                    ImGui::EndGroup();
+                    pen_x = pen_x_min;
+                    set_cursor_position_x(pen_x);
+                    new_line = true;
+                }
+                else
+                {
+                    ImGui::SameLine();
+                }
+            }
+            if (!new_line)
             {
                 ImGui::EndGroup();
-                pen_x = pen_x_min;
-                set_cursor_position_x(pen_x);
-                new_line = true;
             }
-            else
-            {
-                ImGui::SameLine();
-            }
-        }
-
-        if (!new_line)
-        {
-            ImGui::EndGroup();
         }
     }
-
-    ImGui::EndChild(); // BeginChild() requires EndChild() to always be called
+    ImGui::EndChild();
     ImGui::PopStyleVar();
 }
 
@@ -401,40 +396,191 @@ void FileDialog::ShowBottom(bool* is_visible)
 {
     if (m_type == FileDialog_Type_Browser)
     {
-        // move to the bottom of the window
         m_offset_bottom = 24.0f * spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
-
-        static char text[16]; // Sufficient for "%d item" or "%d items" with reasonable integer sizes
+        static char text[16];
         snprintf(text, sizeof(text), (m_displayed_item_count == 1) ? "%d item" : "%d items", m_displayed_item_count);
         ImGui::Text(text);
     }
     else
     {
-        // move to the bottom of the window
         m_offset_bottom = 35.0f * spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
-
         ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235 * spartan::Window::GetDpiScale());
         ImGui::InputText("##InputBox", &m_input_box);
         ImGui::PopItemWidth();
-
         ImGui::SameLine();
         ImGui::Text(FILTER_NAME);
-
         ImGui::SameLine();
         if (ImGuiSp::button(OPERATION_NAME))
         {
             m_selection_made = true;
         }
-
         ImGui::SameLine();
         if (ImGuiSp::button("Cancel"))
         {
             m_selection_made = false;
-            (*is_visible) = false;
+            (*is_visible)    = false;
         }
     }
+}
+
+void FileDialog::RenderItem(FileDialogItem* item, const ImVec2& size, bool is_list_view)
+{
+    ImGui::PushID(item->GetId());
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
+
+    bool button_pressed = false;
+    ImRect button_rect;
+    if (is_list_view)
+    {
+        // list view: use selectable for click detection, spans the cell
+        ImGui::BeginGroup(); // group icon + label
+        button_pressed = ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick);
+        button_rect    = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+    }
+    else
+    {
+        // grid view: sized invisible button
+        button_pressed = ImGui::InvisibleButton("##dummy", size);
+        button_rect    = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+    }
+
+    if (button_pressed)
+    {
+        item->Clicked();
+        const bool is_single_click = item->GetTimeSinceLastClickMs() > 500 || is_list_view; // selectable handles double-click separately
+        if (is_single_click)
+        {
+            m_input_box = item->GetLabel();
+            if (m_callback_on_item_clicked) m_callback_on_item_clicked(item->GetPath());
+        }
+        else
+        {
+            m_current_path   = item->GetPath();
+            m_history.push_back(m_current_path);
+            m_history_index  = m_history.size() - 1;
+            m_is_dirty       = true;
+            m_selection_made = !item->IsDirectory();
+
+            if (m_type == FileDialog_Type_Browser && !item->IsDirectory())
+            {
+                FileSystem::OpenUrl(item->GetPath());
+            }
+
+            if (m_callback_on_item_double_clicked)
+            {
+                m_callback_on_item_double_clicked(m_current_path);
+            }
+        }
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
+    {
+        m_is_hovering_item  = true;
+        m_hovered_item_path = item->GetPath();
+    }
+
+    ItemClick(item);
+    ItemContextMenu(item);
+    ItemDrag(item);
+
+    // drop shadow and hover effect (grid view only)
+    if (!is_list_view)
+    {
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(
+            ImVec2(button_rect.Min.x - 2.0f, button_rect.Min.y - 2.0f),
+            ImVec2(button_rect.Max.x + 2.0f, button_rect.Max.y + 2.0f),
+            IM_COL32(0, 0, 0, item_background_alpha),
+            5.0f);
+    }
+
+    // hover outline (grid view only)
+    if (ImGui::IsItemHovered() && !is_list_view)
+    {
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRect(
+            button_rect.Min,
+            button_rect.Max,
+            IM_COL32(100, 149, 237, 255),
+            5.0f,
+            0,
+            1.0f);
+    }
+
+    // render icon if available
+    if (RHI_Texture* texture = item->GetIcon())
+    {
+        if (texture->GetResourceState() == ResourceState::PreparedForGpu)
+        {
+            ImVec2 image_size(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
+            ImVec2 image_size_max;
+            if (is_list_view)
+            {
+                image_size_max = ImVec2(32.0f, 32.0f);
+            }
+            else
+            {
+                const float padding = ImGui::GetStyle().FramePadding.x;
+                image_size_max = ImVec2(button_rect.GetWidth() - padding * 2.0f, button_rect.GetHeight() - padding * 2.0f - ImGui::GetFont()->FontSize - 5.0f);
+            }
+
+            float scale   = min(image_size_max.x / image_size.x, image_size_max.y / image_size.y);
+            image_size.x *= scale;
+            image_size.y *= scale;
+
+            if (is_list_view)
+            {
+                // list view: Inline icon, no cursor manipulation
+                ImGuiSp::image(item->GetIcon(), image_size);
+                ImGui::SameLine();
+            }
+            else
+            {
+                // grid view: center icon
+                ImVec2 image_pos(button_rect.GetCenter().x - image_size.x * 0.5f, button_rect.Min.y + (button_rect.GetHeight() - image_size.y - ImGui::GetFont()->FontSize - 5.0f) * 0.5f);
+                ImGui::SetCursorScreenPos(image_pos);
+                ImGuiSp::image(item->GetIcon(), image_size);
+            }
+        }
+    }
+
+    // render label
+    {
+        ImGuiContext& g     = *GImGui;
+        ImGuiWindow* window = g.CurrentWindow;
+        const char* label   = item->GetLabel().c_str();
+
+        if (is_list_view)
+        {
+            ImGui::SameLine();
+            ImGui::TextUnformatted(item->GetLabel().c_str());
+            ImGui::EndGroup();
+        }
+        else
+        {
+            // grid view: bottom-align label
+            const ImVec2 label_pos(button_rect.Min.x + ImGui::GetStyle().FramePadding.x, button_rect.Max.y - ImGui::GetFont()->FontSize - ImGui::GetStyle().FramePadding.y - 2.0f);
+            ImGui::SetCursorScreenPos(label_pos);
+            ImGui::RenderTextEllipsis(
+                window->DrawList,
+                label_pos,
+                button_rect.Max, // clipping bounds
+                button_rect.Max.x, // min_x for ellipsis
+                button_rect.Max.x, // max_x for ellipsis
+                label,
+                nullptr,
+                nullptr
+            );
+        }
+    }
+
+    ImGui::PopStyleColor(2);
+    ImGui::PopStyleVar();
+    ImGui::PopID();
 }
 
 void FileDialog::ItemDrag(FileDialogItem* item) const
@@ -456,9 +602,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
         if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Audio,    item->GetPath()); }
         if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Material, item->GetPath()); }
 
-        // preview
-        ImGuiSp::image(item->GetIcon(), 50);
-
+        ImGuiSp::image(item->GetIcon(), ImVec2(50, 50));
         ImGui::EndDragDropSource();
     }
 }
@@ -467,8 +611,6 @@ void FileDialog::ItemClick(FileDialogItem* item) const
 {
     if (!item || !m_is_hovering_window)
         return;
-
-    // context menu on right click
     if (ImGui::IsItemClicked(1))
     {
         m_context_menu_id = item->GetId();
@@ -478,35 +620,72 @@ void FileDialog::ItemClick(FileDialogItem* item) const
 
 void FileDialog::ItemContextMenu(FileDialogItem* item)
 {
+    // ensure the context menu is for the correct item
     if (m_context_menu_id != item->GetId())
         return;
 
-    if (!ImGui::BeginPopup("##FileDialogContextMenu"))
-        return;
-
-    if (ImGui::MenuItem("Delete"))
+    // open and render the context menu
+    if (ImGui::BeginPopup("##FileDialogContextMenu"))
     {
-        if (item->IsDirectory())
+        if (ImGui::MenuItem("Rename"))
+        {
+            m_is_renaming    = true;
+            m_rename_buffer  = item->GetLabel();
+            m_rename_item_id = item->GetId();
+            ImGui::OpenPopup("##RenameDialog"); // move OpenPopup here to ensure it's called in the same frame
+        }
+
+        if (ImGui::MenuItem("Delete"))
         {
             FileSystem::Delete(item->GetPath());
             m_is_dirty = true;
         }
-        else
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Open in file explorer"))
         {
-            FileSystem::Delete(item->GetPath());
-            m_is_dirty = true;
+            FileSystem::OpenUrl(item->GetPath());
+        }
+
+        ImGui::EndPopup();
+    }
+
+    // handle renaming popup
+    if (m_is_renaming && m_rename_item_id == item->GetId())
+    {
+        // ensure the popup is opened every frame while renaming
+        ImGui::OpenPopup("##RenameDialog");
+
+        // create a modal popup for renaming
+        if (ImGui::BeginPopupModal("##RenameDialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            // input text field for the new name
+            ImGui::InputText("##RenameInput", &m_rename_buffer);
+
+            // ok button to confirm renaming
+            if (ImGui::Button("OK"))
+            {
+                string new_path = FileSystem::GetDirectoryFromFilePath(item->GetPath()) + m_rename_buffer;
+                FileSystem::Rename(item->GetPath(), new_path);
+                m_is_dirty    = true;
+                m_is_renaming = false;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::SameLine();
+
+            // cancel button to abort renaming
+            if (ImGui::Button("Cancel"))
+            {
+                m_is_renaming = false;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
         }
     }
-
-    ImGui::Separator();
-    if (ImGui::MenuItem("Open in file explorer"))
-    {
-        FileSystem::OpenUrl(item->GetPath());
-    }
-
-    ImGui::EndPopup();
 }
-
 void FileDialog::DialogUpdateFromDirectory(const string& file_path)
 {
     if (!FileSystem::IsDirectory(file_path))
@@ -517,61 +696,54 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
 
     lock_guard<mutex> lock(m_mutex_items);
     m_items.clear();
-
-    // assign folder icon to all directories
     auto directories = FileSystem::GetDirectoriesInDirectory(file_path);
     for (const string& directory : directories)
     {
         m_items.emplace_back(directory, spartan::ResourceCache::GetIcon(spartan::IconType::Folder));
     }
 
-    // assign appropriate icon to files
     vector<string> paths_anything = FileSystem::GetFilesInDirectory(file_path);
     if (m_filter == FileDialog_Filter_All)
     {
         for (const string& file_path : paths_anything)
         {
-           if (FileSystem::IsSupportedImageFile(file_path))
-           {
-               // load texture
-               ThreadPool::AddTask([this, file_path]()
-               {
-                   // load in parallel
-                   auto texture = spartan::ResourceCache::Load<RHI_Texture>(file_path);
-               
-                   // serialize the append
-                   lock_guard<mutex> lock(m_mutex_items);
-                   m_items.emplace_back(file_path, texture.get());
-               });
-           }
-           else if (FileSystem::IsSupportedAudioFile(file_path))
-           {
-               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Audio));
-           }
-           else if (FileSystem::IsSupportedModelFile(file_path))
-           {
-               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
-           }
-           else if (FileSystem::IsSupportedFontFile(file_path))
-           {
-               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Font));
-           }
-           else if (FileSystem::IsEngineMaterialFile(file_path))
-           {
-               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Material));
-           }
-           else if (FileSystem::IsEngineWorldFile(file_path))
-           {
-               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::World));
-           }
-           else if (FileSystem::GetExtensionFromFilePath(file_path) == ".7z")
-           {
-               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
-           }
-           else
-           {
-               m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
-           }
+            if (FileSystem::IsSupportedImageFile(file_path))
+            {
+                ThreadPool::AddTask([this, file_path]()
+                    {
+                        auto texture = spartan::ResourceCache::Load<RHI_Texture>(file_path);
+                        lock_guard<mutex> lock(m_mutex_items);
+                        m_items.emplace_back(file_path, texture.get());
+                    });
+            }
+            else if (FileSystem::IsSupportedAudioFile(file_path))
+            {
+                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Audio));
+            }
+            else if (FileSystem::IsSupportedModelFile(file_path))
+            {
+                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
+            }
+            else if (FileSystem::IsSupportedFontFile(file_path))
+            {
+                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Font));
+            }
+            else if (FileSystem::IsEngineMaterialFile(file_path))
+            {
+                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Material));
+            }
+            else if (FileSystem::IsEngineWorldFile(file_path))
+            {
+                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::World));
+            }
+            else if (FileSystem::GetExtensionFromFilePath(file_path) == ".7z")
+            {
+                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
+            }
+            else
+            {
+                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
+            }
         }
     }
     else if (m_filter == FileDialog_Filter_World)
@@ -594,6 +766,29 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
             }
         }
     }
+
+    // sort items
+    sort(m_items.begin(), m_items.end(), [this](const FileDialogItem& a, const FileDialogItem& b)
+    {
+        bool a_is_dir = FileSystem::IsDirectory(a.GetPath());
+        bool b_is_dir = FileSystem::IsDirectory(b.GetPath());
+
+        if (a_is_dir != b_is_dir)
+            return a_is_dir;
+
+        if (m_sort_column == Sort_Name)
+            return m_sort_ascending ? a.GetLabel() < b.GetLabel() : a.GetLabel() > b.GetLabel();
+
+        if (m_sort_column == Sort_Type)
+            return m_sort_ascending ? FileSystem::GetExtensionFromFilePath(a.GetPath()) < FileSystem::GetExtensionFromFilePath(b.GetPath()) :
+                                      FileSystem::GetExtensionFromFilePath(a.GetPath()) > FileSystem::GetExtensionFromFilePath(b.GetPath());
+
+        if (m_sort_column == Sort_Modified)
+            return m_sort_ascending ? FileSystem::GetLastWriteTime(a.GetPath()) < FileSystem::GetLastWriteTime(b.GetPath()) :
+                                      FileSystem::GetLastWriteTime(a.GetPath()) > FileSystem::GetLastWriteTime(b.GetPath());
+
+        return false;
+    });
 }
 
 void FileDialog::EmptyAreaContextMenu()
@@ -614,7 +809,7 @@ void FileDialog::EmptyAreaContextMenu()
 
     if (ImGui::MenuItem("Create material"))
     {
-        Material material = Material();
+        Material material      = Material();
         const string file_path = m_current_path + "/new_material" + EXTENSION_MATERIAL;
         material.SetResourceFilePath(file_path);
         material.SaveToFile(file_path);
@@ -627,4 +822,24 @@ void FileDialog::EmptyAreaContextMenu()
     }
 
     ImGui::EndPopup();
+}
+
+void FileDialog::HandleKeyboardNavigation()
+{
+    if (!m_is_hovering_window || m_is_renaming)
+        return;
+
+    if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+    {
+        // todo
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+    {
+        // todo
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_Enter) && !m_input_box.empty())
+    {
+        m_selection_made = true;
+    }
 }

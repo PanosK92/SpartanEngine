@@ -80,7 +80,7 @@ namespace spartan
 
         // dispatch
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
-        void Dispatch(RHI_Texture* texture);
+        void Dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
 
         // blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);

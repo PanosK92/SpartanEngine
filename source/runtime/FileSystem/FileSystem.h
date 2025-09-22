@@ -81,6 +81,9 @@ namespace spartan
         static std::string GetParentDirectory(const std::string& path);
         static std::vector<std::string> GetDirectoriesInDirectory(const std::string& path);
         static std::vector<std::string> GetFilesInDirectory(const std::string& path);
+        static std::vector<std::string> SplitPath(const std::string& path);
+        static std::string GetLastWriteTime(const std::string& path);
+        static void Rename(const std::string& old_name, const std::string& new_name);
         static bool Exists(const std::string& path);
         static bool IsDirectoryEmpty(const std::string& path);
         static bool IsDirectory(const std::string& path);

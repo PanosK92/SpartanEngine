@@ -187,7 +187,7 @@ namespace spartan
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Dithering(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Upscale(RHI_CommandList* cmd_list);
+        static void Pass_AA_Upscale(RHI_CommandList* cmd_list);
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         // passes - utility
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
