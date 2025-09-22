@@ -212,6 +212,8 @@ namespace spartan
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
 
         // clear entities
+        camera = nullptr;
+        light  = nullptr;
         for (Entity* entity : entities)
         {
             delete entity;
@@ -388,9 +390,12 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
             world_time::tick();
+            Game::Tick();
         }
-
-        Game::Tick();
+        else
+        {
+            Game::EditorTick();
+        }
     }
 
     bool World::SaveToFile(string file_path)

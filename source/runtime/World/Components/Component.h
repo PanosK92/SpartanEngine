@@ -78,7 +78,7 @@ namespace spartan
         virtual void PreTick() {}
 
         // called every frame
-        virtual void OnTick() {}
+        virtual void Tick() {}
 
         // called when the entity is being saved
         virtual void Save(pugi::xml_node& node) {}

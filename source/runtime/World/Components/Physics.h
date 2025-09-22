@@ -66,7 +66,7 @@ namespace spartan
         // component
         void Initialize() override;
         void Remove() override;
-        void OnTick() override;
+        void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 

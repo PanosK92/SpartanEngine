@@ -122,7 +122,7 @@ namespace spartan
         }
     }
 
-    void Physics::OnTick()
+    void Physics::Tick()
     {
         // map transform from physx to engine and vice versa
         if (m_body_type == BodyType::Controller)
