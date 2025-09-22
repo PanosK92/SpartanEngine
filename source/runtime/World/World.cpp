@@ -212,6 +212,8 @@ namespace spartan
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
 
         // clear entities
+        camera = nullptr;
+        light  = nullptr;
         for (Entity* entity : entities)
         {
             delete entity;
