@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
+Texture2D<float4> slope_map : register(t7);
+
 float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
 {
     const float smoothness = 1.0f - roughness;
@@ -86,4 +88,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     ibl *= surface.alpha;
 
     tex_uav[thread_id.xy] += float4(ibl, 0.0f);
+
+  //  if (/*!surface.is_sky() &&*/ surface.is_ocean())
+  //  {
+  //      float3 foamColor = float3(1.0f, 1.0f, 1.0f);
+        
+  //      float2 uv = world_to_uv(surface.position, true);
+		//float4 slope = slope_map.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+  //      float foam = slope.a * 300.0f;
+		
+  //      tex_uav[thread_id.xy].rgb = lerp(tex_uav[thread_id.xy].rgb, foamColor, foam);
+  //  	//tex_uav[thread_id.xy].rgb = float3(uv, 0.0f);
+  //  }
 }
