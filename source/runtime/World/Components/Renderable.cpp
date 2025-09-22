@@ -308,11 +308,11 @@ namespace spartan
         }
         else if (m_mesh)
         {
-            OnTick();
+            Tick();
         }
     }
 
-    void Renderable::OnTick()
+    void Renderable::Tick()
     {
         // update bounding boxes on transform change
         if (Entity* entity = GetEntity())
@@ -391,7 +391,7 @@ namespace spartan
             m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
         }
 
-        OnTick(); // update bounding boxes, frustum and distance culling
+        Tick(); // update bounding boxes, frustum and distance culling
     }
 
     void Renderable::SetMesh(const MeshType type)

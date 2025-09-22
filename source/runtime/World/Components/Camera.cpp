@@ -56,7 +56,7 @@ namespace spartan
         ComputeMatrices();
     }
 
-    void Camera::OnTick()
+    void Camera::Tick()
     {
         const auto& current_viewport = Renderer::GetViewport();
         if (m_last_known_viewport != current_viewport)

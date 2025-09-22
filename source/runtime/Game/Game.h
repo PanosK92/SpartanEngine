@@ -39,9 +39,16 @@ namespace spartan
     class Game
     {
     public:
+        // called once on world shutdown
         static void Shutdown();
+
+        // called every frame in play mode
         static void Tick();
+
+        // called every frame when in editor mode
+        static void EditorTick();
+
+        // load a default world
         static void Load(DefaultWorld default_world);
-        static DefaultWorld GetLoadedWorld();
     };
 }

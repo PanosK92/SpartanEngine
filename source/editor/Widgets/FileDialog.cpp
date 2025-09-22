@@ -431,27 +431,93 @@ void FileDialog::RenderItem(FileDialogItem* item, const ImVec2& size, bool is_li
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-
     bool button_pressed = false;
     ImRect button_rect;
     if (is_list_view)
     {
         // list view: use selectable for click detection, spans the cell
-        ImGui::BeginGroup(); // group icon + label
         button_pressed = ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick);
-        button_rect    = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        button_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        // render icon if available
+        if (RHI_Texture* texture = item->GetIcon())
+        {
+            if (texture->GetResourceState() == ResourceState::PreparedForGpu)
+            {
+                ImVec2 image_size(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
+                ImVec2 image_size_max(32.0f, 32.0f);
+                float scale = min(image_size_max.x / image_size.x, image_size_max.y / image_size.y);
+                image_size.x *= scale;
+                image_size.y *= scale;
+                // Adjust cursor to align icon vertically centered in the row
+                float row_height = ImGui::GetCurrentTable()->RowMinHeight;
+                float icon_y_offset = (row_height - image_size.y) * 0.5f;
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + icon_y_offset);
+                ImGuiSp::image(item->GetIcon(), image_size);
+                ImGui::SameLine();
+            }
+        }
+        // render label
+        ImGui::TextUnformatted(item->GetLabel().c_str());
     }
     else
     {
         // grid view: sized invisible button
         button_pressed = ImGui::InvisibleButton("##dummy", size);
-        button_rect    = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        button_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        // hover outline (grid view only)
+        if (ImGui::IsItemHovered() && !is_list_view)
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRect(
+                button_rect.Min,
+                button_rect.Max,
+                IM_COL32(100, 149, 237, 255),
+                5.0f,
+                0,
+                1.0f);
+        }
+        // drop shadow (grid view only)
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(
+            ImVec2(button_rect.Min.x - 2.0f, button_rect.Min.y - 2.0f),
+            ImVec2(button_rect.Max.x + 2.0f, button_rect.Max.y + 2.0f),
+            IM_COL32(0, 0, 0, item_background_alpha),
+            5.0f);
+        // render icon if available
+        if (RHI_Texture* texture = item->GetIcon())
+        {
+            if (texture->GetResourceState() == ResourceState::PreparedForGpu)
+            {
+                ImVec2 image_size(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
+                const float padding = ImGui::GetStyle().FramePadding.x;
+                ImVec2 image_size_max(button_rect.GetWidth() - padding * 2.0f, button_rect.GetHeight() - padding * 2.0f - ImGui::GetFont()->FontSize - 5.0f);
+                float scale = min(image_size_max.x / image_size.x, image_size_max.y / image_size.y);
+                image_size.x *= scale;
+                image_size.y *= scale;
+                // grid view: center icon
+                ImVec2 image_pos(button_rect.GetCenter().x - image_size.x * 0.5f, button_rect.Min.y + (button_rect.GetHeight() - image_size.y - ImGui::GetFont()->FontSize - 5.0f) * 0.5f);
+                ImGui::SetCursorScreenPos(image_pos);
+                ImGuiSp::image(item->GetIcon(), image_size);
+            }
+        }
+        // render label
+        const ImVec2 label_pos(button_rect.Min.x + ImGui::GetStyle().FramePadding.x, button_rect.Max.y - ImGui::GetFont()->FontSize - ImGui::GetStyle().FramePadding.y - 2.0f);
+        ImGui::SetCursorScreenPos(label_pos);
+        ImGui::RenderTextEllipsis(
+            ImGui::GetWindowDrawList(),
+            label_pos,
+            button_rect.Max,
+            button_rect.Max.x,
+            button_rect.Max.x,
+            item->GetLabel().c_str(),
+            nullptr,
+            nullptr
+        );
     }
-
     if (button_pressed)
     {
         item->Clicked();
-        const bool is_single_click = item->GetTimeSinceLastClickMs() > 500 || is_list_view; // selectable handles double-click separately
+        const bool is_single_click = item->GetTimeSinceLastClickMs() > 500 || is_list_view;
         if (is_single_click)
         {
             m_input_box = item->GetLabel();
@@ -459,125 +525,29 @@ void FileDialog::RenderItem(FileDialogItem* item, const ImVec2& size, bool is_li
         }
         else
         {
-            m_current_path   = item->GetPath();
+            m_current_path = item->GetPath();
             m_history.push_back(m_current_path);
             m_history_index  = m_history.size() - 1;
             m_is_dirty       = true;
             m_selection_made = !item->IsDirectory();
-
             if (m_type == FileDialog_Type_Browser && !item->IsDirectory())
             {
                 FileSystem::OpenUrl(item->GetPath());
             }
-
             if (m_callback_on_item_double_clicked)
             {
                 m_callback_on_item_double_clicked(m_current_path);
             }
         }
     }
-
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
     {
-        m_is_hovering_item  = true;
+        m_is_hovering_item = true;
         m_hovered_item_path = item->GetPath();
     }
-
     ItemClick(item);
     ItemContextMenu(item);
     ItemDrag(item);
-
-    // drop shadow and hover effect (grid view only)
-    if (!is_list_view)
-    {
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRectFilled(
-            ImVec2(button_rect.Min.x - 2.0f, button_rect.Min.y - 2.0f),
-            ImVec2(button_rect.Max.x + 2.0f, button_rect.Max.y + 2.0f),
-            IM_COL32(0, 0, 0, item_background_alpha),
-            5.0f);
-    }
-
-    // hover outline (grid view only)
-    if (ImGui::IsItemHovered() && !is_list_view)
-    {
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRect(
-            button_rect.Min,
-            button_rect.Max,
-            IM_COL32(100, 149, 237, 255),
-            5.0f,
-            0,
-            1.0f);
-    }
-
-    // render icon if available
-    if (RHI_Texture* texture = item->GetIcon())
-    {
-        if (texture->GetResourceState() == ResourceState::PreparedForGpu)
-        {
-            ImVec2 image_size(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
-            ImVec2 image_size_max;
-            if (is_list_view)
-            {
-                image_size_max = ImVec2(32.0f, 32.0f);
-            }
-            else
-            {
-                const float padding = ImGui::GetStyle().FramePadding.x;
-                image_size_max = ImVec2(button_rect.GetWidth() - padding * 2.0f, button_rect.GetHeight() - padding * 2.0f - ImGui::GetFont()->FontSize - 5.0f);
-            }
-
-            float scale   = min(image_size_max.x / image_size.x, image_size_max.y / image_size.y);
-            image_size.x *= scale;
-            image_size.y *= scale;
-
-            if (is_list_view)
-            {
-                // list view: Inline icon, no cursor manipulation
-                ImGuiSp::image(item->GetIcon(), image_size);
-                ImGui::SameLine();
-            }
-            else
-            {
-                // grid view: center icon
-                ImVec2 image_pos(button_rect.GetCenter().x - image_size.x * 0.5f, button_rect.Min.y + (button_rect.GetHeight() - image_size.y - ImGui::GetFont()->FontSize - 5.0f) * 0.5f);
-                ImGui::SetCursorScreenPos(image_pos);
-                ImGuiSp::image(item->GetIcon(), image_size);
-            }
-        }
-    }
-
-    // render label
-    {
-        ImGuiContext& g     = *GImGui;
-        ImGuiWindow* window = g.CurrentWindow;
-        const char* label   = item->GetLabel().c_str();
-
-        if (is_list_view)
-        {
-            ImGui::SameLine();
-            ImGui::TextUnformatted(item->GetLabel().c_str());
-            ImGui::EndGroup();
-        }
-        else
-        {
-            // grid view: bottom-align label
-            const ImVec2 label_pos(button_rect.Min.x + ImGui::GetStyle().FramePadding.x, button_rect.Max.y - ImGui::GetFont()->FontSize - ImGui::GetStyle().FramePadding.y - 2.0f);
-            ImGui::SetCursorScreenPos(label_pos);
-            ImGui::RenderTextEllipsis(
-                window->DrawList,
-                label_pos,
-                button_rect.Max, // clipping bounds
-                button_rect.Max.x, // min_x for ellipsis
-                button_rect.Max.x, // max_x for ellipsis
-                label,
-                nullptr,
-                nullptr
-            );
-        }
-    }
-
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
     ImGui::PopID();

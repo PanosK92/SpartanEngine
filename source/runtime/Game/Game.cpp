@@ -1808,11 +1808,6 @@ namespace spartan
 
     void Game::Tick()
     {
-        if (loaded_world == DefaultWorld::Ocean)
-        {
-            worlds::ocean::tick();
-        }
-
         if (!Engine::IsFlagSet(EngineMode::Playing))
             return;
 
@@ -1830,10 +1825,11 @@ namespace spartan
         {
             worlds::forest::tick();
         }
-        else if (loaded_world == DefaultWorld::Ocean)
-        {
-            worlds::ocean::tick();
-        }
+    }
+
+    void Game::EditorTick()
+    {
+
     }
 
     void Game::Load(DefaultWorld default_world)
@@ -1865,10 +1861,5 @@ namespace spartan
         });
 
         loaded_world = default_world;
-    }
-
-    DefaultWorld Game::GetLoadedWorld()
-    {
-        return loaded_world;
     }
 }

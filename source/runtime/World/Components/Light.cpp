@@ -110,7 +110,7 @@ namespace spartan
         m_changed_this_frame = false;
     }
 
-    void Light::OnTick()
+    void Light::Tick()
     {
         // detect transform change
         bool update_matrices = false;
