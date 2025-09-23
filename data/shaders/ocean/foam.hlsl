@@ -33,9 +33,13 @@ struct VSOUT
 VSOUT main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     VSOUT vs_out;
+
+    float2 map_flags = pass_get_f2_value();
     
     float3 displaced_pos = input.position.xyz + tex.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).xyz * GetMaterial().ocean_parameters.displacementScale;
     float3 wpos = mul(float4(displaced_pos, 1.0f), buffer_pass.transform).xyz;
+    if (any(map_flags) == 1.0f)
+        wpos = mul(float4(input.position.xyz, 1.0f), buffer_pass.transform).xyz;
     vs_out.pos = mul(float4(wpos, 1.0f), buffer_frame.view_projection);
     vs_out.uv = input.uv;
 
@@ -47,5 +51,12 @@ float4 main_ps(VSOUT vertex) : SV_Target0
     const float4 foam_color = float4(1.0f, 1.0f, 1.0f, 1.0f);
     const float foam = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv).a * 1.0f;
 
+    float2 map_flags = pass_get_f2_value();
+
+    if (map_flags.x == 1.0f)
+        return float4(tex.Sample(samplers[sampler_point_clamp], vertex.uv).rgb, 1.0f);
+    if (map_flags.y == 1.0f)
+        return float4(tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv).rgb, 1.0f);
+    
     return foam_color * foam;
 }

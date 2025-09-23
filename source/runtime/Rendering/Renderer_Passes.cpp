@@ -686,11 +686,14 @@ namespace spartan
 
                     if (material->IsOcean())
                     {
-                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
-                        cmd_list->SetTexture(17, displacement_map);
+                        if (!material->GetShowDisplacement() && !material->GetShowSlope())
+                        {
+                            RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                            cmd_list->SetTexture(17, displacement_map);
 
-                        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
-                        cmd_list->SetTexture(18, slope_map);
+                            RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+                            cmd_list->SetTexture(18, slope_map);
+                        }
                     }
 
                     cmd_list->DrawIndexed(
@@ -1277,6 +1280,11 @@ namespace spartan
                 {
                     m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(true, material->GetIndex());
+
+                    float a = material->GetShowDisplacement() ? 1.0f : 0.0f;
+                    float b = material->GetShowSlope() ? 1.0f : 0.0f;
+                    m_pcb_pass_cpu.set_f2_value(a, b);
+
                     cmd_list->PushConstants(m_pcb_pass_cpu);
                 }
 

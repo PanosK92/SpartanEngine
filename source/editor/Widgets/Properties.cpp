@@ -889,6 +889,14 @@ void Properties::ShowMaterial(Material* material) const
             int tile_count = material->GetOceanTileCount();
             ImGui::InputInt("Ocean Tiles", &tile_count);
             material->SetOceanTileCount(tile_count);
+
+            bool show_displacement = material->GetShowDisplacement();
+            ImGui::Checkbox("Show Displacement Map", &show_displacement);
+            material->SetShowDiplacement(show_displacement);
+
+            bool show_slope = material->GetShowSlope();
+            ImGui::Checkbox("Show Slope Map", &show_slope);
+            material->SetShowSlope(show_slope);
         }
         
         // uv

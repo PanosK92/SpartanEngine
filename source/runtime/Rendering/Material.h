@@ -179,6 +179,10 @@ namespace spartan
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
         bool IsOcean() const { return GetProperty(MaterialProperty::IsOcean) == 1.0f; }
+        void SetShowDiplacement(bool show) { m_show_displacement = show; }
+        bool GetShowDisplacement() const { return m_show_displacement; }
+        void SetShowSlope(bool show) { m_show_slope = show; }
+        bool GetShowSlope() const { return m_show_slope; }
 
         // misc
         void PrepareForGpu();
@@ -199,6 +203,8 @@ namespace spartan
         std::array<float, static_cast<uint32_t>(OceanParameters::Max)> m_ocean_properties;
         uint32_t m_index = 0;
         bool m_should_compute_spectrum = true;
+        bool m_show_displacement = false;
+        bool m_show_slope = false;
         uint32_t m_ocean_tiles = 1;
     };
 }
