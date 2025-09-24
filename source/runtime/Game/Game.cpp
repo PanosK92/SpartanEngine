@@ -321,12 +321,12 @@ namespace spartan
                         material->SetOceanProperty(OceanParameters::Alpha, 0.0f); // handled internally
                         material->SetOceanProperty(OceanParameters::PeakOmega, 0.0f); // handled internally
 
-                        material->SetOceanProperty(OceanParameters::Scale, 0.01f);
+                        material->SetOceanProperty(OceanParameters::Scale, 1.0f);
                         material->SetOceanProperty(OceanParameters::SpreadBlend, 0.9f);
                         material->SetOceanProperty(OceanParameters::Swell, 1.0f);
-                        material->SetOceanProperty(OceanParameters::Fetch, 10000.0f);
-                        material->SetOceanProperty(OceanParameters::WindDirection, 90.0f);
-                        material->SetOceanProperty(OceanParameters::WindSpeed, 100.0f);
+                        material->SetOceanProperty(OceanParameters::Fetch, 100000.0f);
+                        material->SetOceanProperty(OceanParameters::WindDirection, 135.0f);
+                        material->SetOceanProperty(OceanParameters::WindSpeed, 3.0f);
                         material->SetOceanProperty(OceanParameters::Gamma, 3.3f);
                         material->SetOceanProperty(OceanParameters::ShortWavesFade, 0.0f);
                         material->SetOceanProperty(OceanParameters::RepeatTime, 200.0f);
@@ -336,13 +336,13 @@ namespace spartan
                         material->SetOceanProperty(OceanParameters::HighCutoff, 1000.0f);
 
                         material->SetOceanProperty(OceanParameters::FoamDecayRate, 3.0f);
-                        material->SetOceanProperty(OceanParameters::FoamThreshold, -1.8f);
-                        material->SetOceanProperty(OceanParameters::FoamBias, 0.2f);
-                        material->SetOceanProperty(OceanParameters::FoamAdd, 0.12f);
+                        material->SetOceanProperty(OceanParameters::FoamThreshold, 0.0f);
+                        material->SetOceanProperty(OceanParameters::FoamBias, 1.2f);
+                        material->SetOceanProperty(OceanParameters::FoamAdd, 1.0f);
 
-                        material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
-                        material->SetOceanProperty(OceanParameters::SlopeScale, 1.0f);
-                        material->SetOceanProperty(OceanParameters::LengthScale, 64.0f);
+                        material->SetOceanProperty(OceanParameters::DisplacementScale, 0.8f);
+                        material->SetOceanProperty(OceanParameters::SlopeScale, 0.8f);
+                        material->SetOceanProperty(OceanParameters::LengthScale, 32.0f);
                     }
                 }
 
