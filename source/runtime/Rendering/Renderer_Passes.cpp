@@ -155,7 +155,7 @@ namespace spartan
             Pass_Light_ImageBased(cmd_list_graphics_present);
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
             
-            Pass_ApplyFoam(cmd_list_graphics_present);
+            //Pass_ApplyFoam(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);

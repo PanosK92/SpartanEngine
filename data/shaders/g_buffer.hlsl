@@ -99,13 +99,78 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     return color;
 }
 
+static const float2 hexRatio = float2(1.0f, sqrt(3.0f));
+
+float4 GetHexGridInfo(float2 uv)
+{
+    float4 hexIndex = round(float4(uv, uv - float2(0.5f, 1.0f)) / hexRatio.xyxy);
+    float4 hexCenter = float4(hexIndex.xy * hexRatio, (hexIndex.zw + 0.5f) * hexRatio);
+    float4 offset = uv.xyxy - hexCenter;
+    return dot(offset.xy, offset.xy) < dot(offset.zw, offset.zw) ?
+    float4(hexCenter.xy, hexIndex.xy) :
+    float4(hexCenter.zw, hexIndex.zw);
+}
+
+float GetHexSDF(in float2 p)
+{
+    p = abs(p);
+    return 0.5f - max(dot(p, hexRatio * 0.5f), p.x);
+}
+
+//xy: node pos, z: weight
+float3 GetTriangleInterpNode(in float2 pos, in float freq, in int nodeIndex)
+{
+    float2 nodeOffsets[3] =
+    {
+        float2(0.0f, 0.0f),
+        float2(1.0f, 1.0f),
+        float2(1.0f, -1.0f)
+    };
+
+    float2 uv = pos * freq + nodeOffsets[nodeIndex] / hexRatio.xy * 0.5f;
+    float4 hexInfo = GetHexGridInfo(uv);
+    float dist = GetHexSDF(uv - hexInfo.xy) * 2.0f;
+    return float3(hexInfo.xy / freq, dist);
+}
+
+float3 hash33(float3 p)
+{
+    p = float3(dot(p, float3(127.1f, 311.7f, 74.7f)),
+			  dot(p, float3(269.5f, 183.3f, 246.1f)),
+			  dot(p, float3(113.5f, 271.9f, 124.6f)));
+
+    return frac(sin(p) * 43758.5453123f);
+}
+
+float4 GetTextureSample(Texture2D texture, float2 pos, float freq, float2 nodePoint)
+{
+    const float3 hash = hash33(float3(nodePoint.xy, 0.0f));
+    const float ang = hash.x * 2.0f * 3.14159265f;
+    
+    const float2x2 rotation = float2x2(
+        cos(ang), sin(ang),
+       -sin(ang), cos(ang)
+    );
+
+    const float2 uv = mul(rotation, pos * freq) + hash.yz;
+    
+    return texture.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+}
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     MaterialParameters material = GetMaterial();
     
-    input.position.xyz += displacement_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
+    //input.position.xyz += displacement_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
+    float3 displacement;
+    for (int i = 0; i < 3; i++)
+    {
+        float3 interpNode = GetTriangleInterpNode(input.uv, 20.0f, i);
+        displacement += GetTextureSample(displacement_map, input.uv, 10.0f, interpNode.xy) * interpNode.z;
+    }
 
+    input.position.xyz += displacement;
+    
     float4 slope = slope_map.SampleLevel(samplers[sampler_point_clamp], input.uv, 0) * material.ocean_parameters.slopeScale;
     input.normal = normalize(float3(-slope.x, 1.0f, -slope.y));
     
