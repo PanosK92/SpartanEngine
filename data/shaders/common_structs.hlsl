@@ -53,6 +53,7 @@ struct OceanParameters
     
     float displacementScale;
     float slopeScale;
+    float lengthScale;
 };
 
 struct Surface
@@ -158,6 +159,7 @@ struct Surface
         ocean_parameters.foamAdd           = material.ocean_parameters.foamAdd;
         ocean_parameters.displacementScale = material.ocean_parameters.displacementScale;
         ocean_parameters.slopeScale        = material.ocean_parameters.slopeScale;
+        ocean_parameters.lengthScale       = material.ocean_parameters.lengthScale;
 
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;

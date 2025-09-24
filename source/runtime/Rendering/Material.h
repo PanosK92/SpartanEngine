@@ -139,6 +139,7 @@ namespace spartan
 
         DisplacementScale,
         SlopeScale,
+        LengthScale,
 
         Max
     };

@@ -342,6 +342,7 @@ namespace spartan
 
                         material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
                         material->SetOceanProperty(OceanParameters::SlopeScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::LengthScale, 64.0f);
                     }
                 }
 

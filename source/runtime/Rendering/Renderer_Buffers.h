@@ -209,6 +209,7 @@ namespace spartan
 
             float displacementScale;
             float slopeScale;
+            float lengthScale;
         } jonswap_parameters;
     };
 

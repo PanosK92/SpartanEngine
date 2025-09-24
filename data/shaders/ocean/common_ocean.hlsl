@@ -25,12 +25,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_COMMON_OCEAN
 
 static const uint SPECTRUM_TEX_SIZE = 512;
-static const uint LENGTH_SCALE      = SPECTRUM_TEX_SIZE / 8;
 
 RWTexture2D<float4> initial_spectrum        : register(u9);
 RWTexture2D<float4> displacement_spectrum   : register(u10);
 RWTexture2D<float4> slope_spectrum          : register(u11);
 RWTexture2D<float4> displacement_map        : register(u12);
 RWTexture2D<float4> slope_map               : register(u13);
+
+float Dispersion(float kMag, float depth)
+{
+    return sqrt(G * kMag * tanh(min(kMag * depth, 20)));
+}
 
 #endif // SPARTAN_COMMON_OCEAN

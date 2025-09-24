@@ -41,8 +41,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 h0 = initialSignal.rg;
     float2 h0conj = initialSignal.ba;
     
+    float2 resolution_out;
+    initial_spectrum.GetDimensions(resolution_out.x, resolution_out.y);
+    Surface surface;
+    surface.Build(thread_id.xy, resolution_out, true, false);
+    OceanParameters params = surface.ocean_parameters;
+    
     float halfN = SPECTRUM_TEX_SIZE / 2.0f;
-    float2 K = (thread_id.xy - halfN) * 2.0f * PI / LENGTH_SCALE;
+    float2 K = (thread_id.xy - halfN) * 2.0f * PI / params.lengthScale;
     float kMag = length(K);
     float kMagRcp = rcp(kMag);
 
@@ -51,15 +57,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         kMagRcp = 1.0f;
     }
 
-    float2 resolution_out;
-    initial_spectrum.GetDimensions(resolution_out.x, resolution_out.y);
-    Surface surface;
-    surface.Build(thread_id.xy, resolution_out, true, false);
-    OceanParameters params = surface.ocean_parameters;
     
     float repeatTime = params.repeatTime;
     float w_0 = 2.0f * PI / repeatTime;
-    float dispersion = floor(sqrt(G * kMag) / w_0) * w_0 * buffer_frame.time;
+    float dispersion = Dispersion(kMag, params.depth) * buffer_frame.time;
 
     float2 exponent = EulerFormula(dispersion);
 

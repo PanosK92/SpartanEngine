@@ -128,6 +128,7 @@ namespace spartan
             case spartan::OceanParameters::FoamBias:              return "foam_bias";
             case spartan::OceanParameters::DisplacementScale:     return "displacement_scale";
             case spartan::OceanParameters::SlopeScale:            return "slope_scale";
+            case spartan::OceanParameters::LengthScale:           return "length_scale";
             case spartan::OceanParameters::Max:                   return "max";
             default:
             {

@@ -32,11 +32,6 @@ float2 UniformToGaussian(float u1, float u2)
     return float2(R * cos(theta), R * sin(theta));
 }
 
-float Dispersion(float kMag, float depth)
-{
-    return sqrt(G * kMag * tanh(min(kMag * depth, 20)));
-}
-
 float DispersionDerivative(float kMag, float depth)
 {
     float th = tanh(min(kMag * depth, 20));
@@ -146,7 +141,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     float halfN = SPECTRUM_TEX_SIZE / 2.0f;
 
-    float deltaK = 2.0f * PI / LENGTH_SCALE;
+    float deltaK = 2.0f * PI / params.lengthScale;
     float2 K = (thread_id.xy - halfN) * deltaK;
     float kLength = length(K);
 
