@@ -117,6 +117,7 @@ namespace spartan
                 bool is_transparent = true;
 
                 // Ocean Passes
+                Material* prev_material = nullptr;
                 for (uint32_t i = 0; i < m_draw_call_count; i++)
                 {
                     const Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -124,8 +125,10 @@ namespace spartan
                     Material* material = renderable->GetMaterial();
 
                     // get ocean material
-                    if (!material->IsOcean())
+                    if (!material->IsOcean() || material == prev_material)
                         continue;
+
+                    prev_material = material;
 
                     if (material->ShouldComputeSpectrum())
                     {

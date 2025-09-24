@@ -302,6 +302,7 @@ namespace spartan
                 Entity* water = World::CreateEntity();
                 water->SetObjectName("ocean");
                 water->SetPosition(position);
+                water->SetScale({ 1.0f, 1.0f, 1.0f });
 
                 // material
                 {
@@ -359,7 +360,9 @@ namespace spartan
                     // create mesh if it doesn't exist
                     shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
                     mesh->SetObjectName(name);
+                    mesh->SetRootEntity(water);
                     mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
                     mesh->AddGeometry(vertices, indices, false);
                     mesh->CreateGpuBuffers();
 
