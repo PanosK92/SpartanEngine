@@ -1,0 +1,112 @@
+/*
+Copyright(c) 2025 George Bolba
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+#include "common_ocean.hlsl"
+
+static const float2 hexRatio = float2(1.0f, sqrt(3.0f));
+
+float4 GetHexGridInfo(float2 uv)
+{
+    float4 hexIndex = round(float4(uv, uv - float2(0.5f, 1.0f)) / hexRatio.xyxy);
+    float4 hexCenter = float4(hexIndex.xy * hexRatio, (hexIndex.zw + 0.5f) * hexRatio);
+    float4 offset = uv.xyxy - hexCenter;
+    return dot(offset.xy, offset.xy) < dot(offset.zw, offset.zw) ?
+    float4(hexCenter.xy, hexIndex.xy) :
+    float4(hexCenter.zw, hexIndex.zw);
+}
+
+float GetHexSDF(in float2 p)
+{
+    p = abs(p);
+    return 0.5f - max(dot(p, hexRatio * 0.5f), p.x);
+}
+
+//xy: node pos, z: weight
+float3 GetTriangleInterpNode(in float2 pos, in float freq, in int nodeIndex)
+{
+    float2 nodeOffsets[3] =
+    {
+        float2(0.0f, 0.0f),
+        float2(1.0f, 1.0f),
+        float2(1.0f, -1.0f)
+    };
+
+    float2 uv = pos * freq + nodeOffsets[nodeIndex] / hexRatio.xy * 0.5f;
+    float4 hexInfo = GetHexGridInfo(uv);
+    float dist = GetHexSDF(uv - hexInfo.xy) * 2.0f;
+    return float3(hexInfo.xy / freq, dist);
+}
+
+float3 hash33(float3 p)
+{
+    p = float3(dot(p, float3(127.1f, 311.7f, 74.7f)),
+			  dot(p, float3(269.5f, 183.3f, 246.1f)),
+			  dot(p, float3(113.5f, 271.9f, 124.6f)));
+
+    return frac(sin(p) * 43758.5453123f);
+}
+
+float4 GetTextureSample(Texture2D texture, float2 pos, float freq, float2 nodePoint)
+{
+    const float3 hash = hash33(float3(nodePoint.xy, 0.0f));
+    const float ang = hash.x * 2.0f * 3.14159265f;
+    
+    const float2x2 rotation = float2x2(
+        cos(ang), sin(ang),
+       -sin(ang), cos(ang)
+    );
+
+    float2 uv = mul(pos * freq, rotation) + hash.yz;
+    uv = pos * freq + hash.yz;
+    return texture.SampleLevel(samplers[sampler_point_wrap], uv, 0);
+}
+
+float3 PreserveVariance(float3 linearColor, float3 meanColor, float moment2)
+{
+    return (linearColor - meanColor) / sqrt(moment2) + meanColor;
+}
+
+[numthreads(8, 8, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    const uint2 pixel_coord = thread_id.xy;
+    uint2 texture_size;
+    synthesised_displacement.GetDimensions(texture_size.x, texture_size.y);
+    
+    float2 uv = (pixel_coord + 0.5f) / texture_size;
+
+    const float tex_freq = 0.5f;
+    const float tile_freq = 2.0f;
+
+    float3 output = float3(0.0f, 0.0f, 0.0f);
+    float moment2 = 0.0f;
+    for (int i = 0; i < 3; i++)
+    {
+        float3 interp_node = GetTriangleInterpNode(uv, tile_freq, i);
+        // tex2 = displacement_map as SRV
+        output.xyz += GetTextureSample(tex2, uv, tex_freq, interp_node.xy) * interp_node.z;
+
+        moment2 = interp_node.z * interp_node.z;
+    }
+    const float3 mean_color = tex2.SampleLevel(samplers[sampler_point_clamp], uv, 9);
+    
+    synthesised_displacement[thread_id.xy] = float4(output, 1.0f);
+}

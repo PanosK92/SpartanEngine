@@ -670,6 +670,33 @@ namespace spartan
                     }
                 }
 
+                // displacement map synthesis
+                if (material->IsOcean())
+                {
+                    cmd_list->BeginTimeblock("Ocean Displacement Map Synthesis");
+
+                    RHI_Texture* displacement_map         = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                    RHI_Texture* synthesised_displacement = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
+
+                    displacement_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, rhi_all_mips, 10);
+
+                    RHI_PipelineState pso2;
+                    pso2.name = "ocean_displacement_map_synthesis";
+                    pso2.shaders[Compute] = GetShader(Renderer_Shader::ocean_synthesise_maps_c);
+                    cmd_list->SetPipelineState(pso2);
+
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_displacement, synthesised_displacement);
+
+                    cmd_list->Dispatch(synthesised_displacement);
+
+                    //synthesised_displacement->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+
+                    cmd_list->EndTimeblock();
+                }
+
+                cmd_list->SetPipelineState(pso);
+
                 // pass constants
                 {
                     Entity* entity           = renderable->GetEntity();
@@ -691,8 +718,8 @@ namespace spartan
                     {
                         if (!material->GetShowDisplacement() && !material->GetShowSlope())
                         {
-                            RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
-                            cmd_list->SetTexture(17, displacement_map);
+                            RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
 
                             RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
                             cmd_list->SetTexture(18, slope_map);
@@ -1239,7 +1266,7 @@ namespace spartan
             // for the lifetime of the engine, this will be read as an srv, so transition here
             //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
 
-            Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Max);
+            Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Min);
 
             slope_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }

@@ -26,11 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint SPECTRUM_TEX_SIZE = 512;
 
-RWTexture2D<float4> initial_spectrum        : register(u9);
-RWTexture2D<float4> displacement_spectrum   : register(u10);
-RWTexture2D<float4> slope_spectrum          : register(u11);
-RWTexture2D<float4> displacement_map        : register(u12);
-RWTexture2D<float4> slope_map               : register(u13);
+RWTexture2D<float4> initial_spectrum         : register(u9);
+RWTexture2D<float4> displacement_spectrum    : register(u10);
+RWTexture2D<float4> slope_spectrum           : register(u11);
+RWTexture2D<float4> displacement_map         : register(u12);
+RWTexture2D<float4> slope_map                : register(u13);
+RWTexture2D<float4> synthesised_displacement : register(u14);
 
 float Dispersion(float kMag, float depth)
 {
