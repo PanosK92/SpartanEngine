@@ -62,17 +62,6 @@ static float3 extract_position(matrix transform)
     return float3(transform._31, transform._32, transform._33);
 }
 
-static bool is_identity_matrix(matrix m)
-{
-    const float epsilon = 1e-5f;
-
-    return
-        all(abs(m[0] - float4(1, 0, 0, 0)) < epsilon) &&
-        all(abs(m[1] - float4(0, 1, 0, 0)) < epsilon) &&
-        all(abs(m[2] - float4(0, 0, 1, 0)) < epsilon) &&
-        all(abs(m[3] - float4(0, 0, 0, 1)) < epsilon);
-}
-
 // create a 3x3 rotation matrix using Rodrigues' rotation formula
 static float3x3 rotation_matrix(float3 axis, float angle)
 {
@@ -303,28 +292,16 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float width_percent       = (input.position.xyz.x) / material.local_width;
     vertex.height_percent     = (input.position.xyz.y - position_transform.y) / material.local_height;
 
-    // vertex processing - local space
+    // process in local space
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
-
-    // compute world transform
-    matrix transform_instance = input.instance_transform;                // identity for non-instanced
-    bool is_instanced         = !is_identity_matrix(transform_instance); // in case an instance transform is identity, this will still work
-    transform                 = mul(transform, transform_instance);
-    matrix full               = pass_get_transform_previous();
-    matrix<float, 3, 3> temp  = (float3x3)full;                          // clip the last row as it has encoded data in the first two elements
-    matrix transform_previous = matrix(                                  // manually construct a matrix that can be multiplied with another matrix
-        temp._m00, temp._m01, temp._m02, 0.0f,
-        temp._m10, temp._m11, temp._m12, 0.0f,
-        temp._m20, temp._m21, temp._m22, 0.0f,
-        0.0f,      0.0f,      0.0f,      1.0f
-    );
-    transform_previous = is_instanced ? mul(transform_previous, transform_instance) : full;
-
+  
     // transform to world space
-    vertex.position          = mul(input.position, transform).xyz;
-    vertex.position_previous = mul(input.position, transform_previous).xyz;
-    vertex.normal            = normalize(mul(input.normal, (float3x3)transform));
-    vertex.tangent           = normalize(mul(input.tangent, (float3x3)transform));
+    transform                 = mul(input.instance_transform, transform); // identity for non-instanced
+    matrix transform_previous = mul(input.instance_transform, pass_get_transform_previous());
+    vertex.position           = mul(input.position, transform).xyz;
+    vertex.position_previous  = mul(input.position, transform_previous).xyz;
+    vertex.normal             = normalize(mul(input.normal, (float3x3)transform));
+    vertex.tangent            = normalize(mul(input.tangent, (float3x3)transform));
 
     // compute (world-space) uv
     float3 abs_normal = abs(vertex.normal); // absolute normal for weights
@@ -336,7 +313,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float2 mesh_uv    = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
     vertex.uv         = lerp(mesh_uv, world_uv, material.world_space_uv);
 
-    // vertex processing - world space
+    // process in world space
     vertex_processing::process_world_space(surface, vertex.position, vertex, input.position.xyz, transform, instance_id, 0.0f);
     vertex_processing::process_world_space(surface, vertex.position_previous, vertex, input.position.xyz, transform_previous, instance_id, -buffer_frame.delta_time);
 

@@ -215,17 +215,10 @@ void Properties::ShowEntity(Entity* entity) const
             entity->SetActive(is_active);
         }
 
-        // global toggle for world/local space
-        bool use_world_space = Editor::GetWorldSpaceTransforms();
-        if (ImGui::Checkbox("World Space", &use_world_space))
-        {
-            Editor::SetWorldSpaceTransforms(use_world_space);
-        }
-
         // reflect transforms based on mode
-        Vector3 position    = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
-        Quaternion rotation = use_world_space ? entity->GetRotation() : entity->GetRotationLocal();
-        Vector3 scale       = use_world_space ? entity->GetScale()    : entity->GetScaleLocal();
+        Vector3 position    = entity->GetPositionLocal();
+        Quaternion rotation = entity->GetRotationLocal();
+        Vector3 scale       = entity->GetScaleLocal();
 
         // per-entity tracking for euler angles
         static std::unordered_map<uintptr_t, Vector3> last_euler_map;
@@ -266,29 +259,13 @@ void Properties::ShowEntity(Entity* entity) const
         last_frame_euler            = current_euler;
         Quaternion delta_quaternion = Quaternion::FromEulerAngles(delta_euler);
         Quaternion new_rotation;
-        if (use_world_space)
-        {
-            new_rotation = delta_quaternion * rotation; // world space: pre-multiply
-        }
-        else
-        {
-            new_rotation = rotation * delta_quaternion; // local space: post-multiply
-        }
+        new_rotation = rotation * delta_quaternion;
         new_rotation.Normalize();
 
         // apply transforms based on mode
-        if (use_world_space)
-        {
-            entity->SetPosition(position);
-            entity->SetRotation(new_rotation);
-            entity->SetScale(scale);
-        }
-        else
-        {
-            entity->SetPositionLocal(position);
-            entity->SetRotationLocal(new_rotation);
-            entity->SetScaleLocal(scale);
-        }
+        entity->SetPositionLocal(position);
+        entity->SetRotationLocal(new_rotation);
+        entity->SetScaleLocal(scale);
     }
     component_end();
 }
@@ -444,15 +421,14 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
     if (component_begin("Renderable", renderable))
     {
-        //= REFLECT =======================================================================
-        string name_mesh              = renderable->GetMeshName();
-        Material* material            = renderable->GetMaterial();
-        uint32_t instance_count       = renderable->GetInstanceCount();
-        uint32_t instance_group_count = renderable->GetInstanceGroupCount();
-        string name_material          = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows             = renderable->HasFlag(RenderableFlags::CastsShadows);
-        bool is_visible               = renderable->IsVisible();
-        //=================================================================================
+        //= REFLECT =================================================================
+        string name_mesh        = renderable->GetMeshName();
+        Material* material      = renderable->GetMaterial();
+        uint32_t instance_count = renderable->GetInstanceCount();
+        string name_material    = material ? material->GetObjectName() : "N/A";
+        bool cast_shadows       = renderable->HasFlag(RenderableFlags::CastsShadows);
+        bool is_visible         = renderable->IsVisible();
+        //===========================================================================
 
         // mesh
         ImGui::Text("Mesh");
@@ -517,15 +493,52 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         }
 
         // instancing
-        if (instance_count != 0)
         {
+            // count
             ImGui::Text("Instances");
             ImGui::SameLine(column_pos_x);
             ImGui::LabelText("##renderable_instance_count", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
-            ImGui::Text("Instance Groups");
-            ImGui::SameLine(column_pos_x);
-            ImGui::LabelText("##renderable_instance_group_count", to_string(instance_group_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+            // position, rotation, scale
+            vector<Matrix>& instances = renderable->GetInstances();
+            if (!instances.empty())
+            {
+                if (ImGui::TreeNode("Instance Transforms"))
+                {
+                    for (size_t i = 0; i < instances.size(); i++)
+                    {
+                        ImGui::PushID(static_cast<int>(i));
+
+                        Vector3 pos, scale;
+                        Quaternion rot;
+                        instances[i].Decompose(scale, rot, pos);
+
+                        Vector3 euler = rot.ToEulerAngles();
+
+                        if (ImGui::TreeNode(("Instance " + to_string(i)).c_str()))
+                        {
+                            if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
+                            {
+                                instances[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
+                            }
+
+                            if (ImGui::DragFloat3("Rotation", &euler.x, 0.5f))
+                            {
+                                rot          = Quaternion::FromEulerAngles(euler.y, euler.x, euler.z);
+                                instances[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
+                            }
+
+                            if (ImGui::DragFloat3("Scale", &scale.x, 0.1f))
+                                instances[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
+
+                            ImGui::TreePop();
+                        }
+
+                        ImGui::PopID();
+                    }
+                    ImGui::TreePop();
+                }
+            }
         }
 
         // draw distance

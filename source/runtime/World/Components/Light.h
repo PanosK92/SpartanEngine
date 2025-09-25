@@ -116,7 +116,7 @@ namespace spartan
         const math::Matrix GetViewProjectionMatrix(uint32_t index) const { return m_matrix_view[index] * m_matrix_projection[index]; }
 
         // frustum
-        bool IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index = 0) const;
+        bool IsInViewFrustum(Renderable* renderable, const uint32_t array_index) const;
 
         // index
         void SetIndex(const uint32_t index) { m_index = index; }

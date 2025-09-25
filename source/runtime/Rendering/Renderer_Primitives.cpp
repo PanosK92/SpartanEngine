@@ -254,12 +254,12 @@ namespace spartan
         
         if (GetOption<bool>(Renderer_Option::Aabb))
         {
-            auto get_color = [](Renderable* renderable, const uint32_t instance_group_index)
+            auto get_color = [](Renderable* renderable)
             {
                 const Color color_visible  = Color::standard_renderer_lines;
                 const Color color_occluded = Color(1.0f, 0.0f, 0.0f, 1.0f);
 
-                return renderable->IsVisible(instance_group_index) ? color_visible : color_occluded;
+                return renderable->IsVisible() ? color_visible : color_occluded;
             };
 
             for (Entity* entity : World::GetEntities())
@@ -272,31 +272,14 @@ namespace spartan
                 {
                     if (Camera* camera = World::GetCamera())
                     {
-                        const Vector3 camera_position = camera->GetEntity()->GetPosition();
-                        if (!renderable->HasInstancing())
-                        {
-                            const BoundingBox& bounding_box = renderable->GetBoundingBox();
-                            const float distance = bounding_box.GetClosestPoint(camera_position).Distance(camera_position);
-            
-                            if (distance > renderable->GetMaxRenderDistance())
-                                continue;
-            
-                            DrawBox(bounding_box, get_color(renderable, 0));
-                        }
-                        else
-                        {
-                            const uint32_t group_count = static_cast<uint32_t>(renderable->GetBoundingBoxGroupEndIndices().size());
-            
-                            for (uint32_t instance_group_index = 0; instance_group_index < group_count; instance_group_index++)
-                            {
-                                const BoundingBox& bounding_box_group = renderable->GetBoundingBoxInstanceGroup(instance_group_index);
-                                const float distance = bounding_box_group.GetClosestPoint(camera_position).Distance(camera_position);
-                                if (distance > renderable->GetMaxRenderDistance())
-                                    continue;
-            
-                                DrawBox(bounding_box_group, get_color(renderable, instance_group_index));
-                            }
-                        }
+                        const Vector3 camera_position   = camera->GetEntity()->GetPosition();
+                        const BoundingBox& bounding_box = renderable->GetBoundingBox();
+                        const float distance            = bounding_box.GetClosestPoint(camera_position).Distance(camera_position);
+
+                        if (distance > renderable->GetMaxRenderDistance())
+                            continue;
+
+                        DrawBox(bounding_box, get_color(renderable));
                     }
                 }
 

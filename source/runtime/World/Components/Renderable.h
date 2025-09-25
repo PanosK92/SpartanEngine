@@ -55,7 +55,7 @@ namespace spartan
         void SetMesh(const MeshType type);
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
         uint32_t GetLodCount() const;
-        uint32_t GetLodIndex(const uint32_t instance_group_index = 0) const { return m_lod_indices[instance_group_index]; }
+        uint32_t GetLodIndex() const { return m_lod_index; }
         uint32_t GetIndexOffset(const uint32_t lod = 0) const;
         uint32_t GetIndexCount(const uint32_t lod = 0) const;
         uint32_t GetVertexOffset(const uint32_t lod = 0) const;
@@ -65,11 +65,7 @@ namespace spartan
         const std::string& GetMeshName() const;
 
         // bounding box
-        const std::vector<uint32_t>& GetBoundingBoxGroupEndIndices() const               { return m_instance_group_end_indices; }
-        uint32_t GetInstanceGroupCount() const                                           { return static_cast<uint32_t>(m_instance_group_end_indices.size()); }
-        const math::BoundingBox& GetBoundingBox() const                                  { return m_bounding_box;}
-        const math::BoundingBox& GetBoundingBoxInstance(const uint32_t index) const      { return m_bounding_box_instances.empty()      ? math::BoundingBox::Unit : m_bounding_box_instances[index]; }
-        const math::BoundingBox& GetBoundingBoxInstanceGroup(const uint32_t index) const { return m_bounding_box_instance_group.empty() ? math::BoundingBox::Unit : m_bounding_box_instance_group[index]; }
+        const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}
 
         // material
         void SetMaterial(const std::shared_ptr<Material>& material);
@@ -79,15 +75,12 @@ namespace spartan
         Material* GetMaterial() const { return m_material; }
 
         // instancing
-        const std::vector<math::Matrix>& GetInstances() const   { return m_instances; }
+        std::vector<math::Matrix>& GetInstances()               { return m_instances; }
         bool HasInstancing() const                              { return !m_instances.empty(); }
         RHI_Buffer* GetInstanceBuffer() const                   { return m_instance_buffer.get(); }
         math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
-        uint32_t GetInstanceCount()  const                      { return static_cast<uint32_t>(m_instances.size()); }
-        uint32_t GetInstanceGroupStartIndex(uint32_t group_index) const;
-        uint32_t GetInstanceGroupCount(uint32_t group_index) const;
+        uint32_t GetInstanceCount()  const                      { return m_instances.empty() ? 1 : static_cast<uint32_t>(m_instances.size()); }
         void SetInstances(const std::vector<math::Matrix>& transforms);
-        void SetInstance(const uint32_t index, const math::Matrix& transform);
 
         // render distance
         float GetMaxRenderDistance() const                         { return m_max_distance_render; }
@@ -98,9 +91,9 @@ namespace spartan
         void SetMaxShadowDistance(const float max_shadow_distance) { m_max_distance_shadow = max_shadow_distance; }
 
         // distance & visibility
-        float GetDistanceSquared(const uint32_t instance_group_index = 0) const      { return m_distance_squared[instance_group_index]; }
-        bool IsVisible(const uint32_t instance_group_index = 0) const                { return m_is_visible[instance_group_index]; }
-        void SetVisible(const bool visible, const uint32_t instance_group_index = 0) { m_is_visible[instance_group_index] = visible; }
+        float GetDistanceSquared() const    { return m_distance_squared; }
+        bool IsVisible() const              { return m_is_visible; }
+        void SetVisible(const bool visible) { m_is_visible = visible; }
 
         // flags
         bool HasFlag(const RenderableFlags flag) const { return m_flags & flag; }
@@ -111,6 +104,7 @@ namespace spartan
         void SetPreviousLights(uint64_t lights) { m_previous_lights = lights; }
 
     private:
+        void UpdateAabb();
         void UpdateFrustumAndDistanceCulling();
         void UpdateLodIndices();
 
@@ -120,8 +114,6 @@ namespace spartan
         bool m_bounding_box_dirty             = true;
         math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Unit;
         math::BoundingBox m_bounding_box      = math::BoundingBox::Unit;
-        std::vector<math::BoundingBox> m_bounding_box_instances;
-        std::vector<math::BoundingBox> m_bounding_box_instance_group;
 
         // material
         bool m_material_default = false;
@@ -129,7 +121,6 @@ namespace spartan
 
         // instancing
         std::vector<math::Matrix> m_instances;
-        std::vector<uint32_t> m_instance_group_end_indices;
         std::shared_ptr<RHI_Buffer> m_instance_buffer;
 
         // misc
@@ -137,11 +128,11 @@ namespace spartan
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
         // visibility & lods
-        float m_max_distance_render                                   = FLT_MAX;
-        float m_max_distance_shadow                                   = FLT_MAX;
-        std::array<float, renderer_max_draw_calls> m_distance_squared = { 0.0f };
-        std::array<bool, renderer_max_draw_calls> m_is_visible        = { false };
-        std::array<uint32_t, renderer_max_draw_calls> m_lod_indices   = { 0 };
-        uint64_t m_previous_lights                                    = 0; // lights whose frustums this renderable was in last frame
+        float m_max_distance_render = FLT_MAX;
+        float m_max_distance_shadow = FLT_MAX;
+        float m_distance_squared    = 0.0f;
+        bool m_is_visible           = false;
+        uint32_t m_lod_index        = 0;
+        uint64_t m_previous_lights  = 0; // lights whose frustums this renderable was in last frame
     };
 }

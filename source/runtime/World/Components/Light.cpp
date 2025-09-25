@@ -572,9 +572,9 @@ namespace spartan
         }
     }
 
-    bool Light::IsInViewFrustum(Renderable* renderable, const uint32_t array_index, const uint32_t instance_group_index) const
+    bool Light::IsInViewFrustum(Renderable* renderable, const uint32_t array_index) const
     {
-        const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(instance_group_index) : renderable->GetBoundingBox();
+        const BoundingBox& bounding_box = renderable->GetBoundingBox();
         const Vector3 center            = bounding_box.GetCenter();
         const Vector3 extents           = bounding_box.GetExtents();
         const bool ignore_depth         = m_light_type == LightType::Directional; // orthographic

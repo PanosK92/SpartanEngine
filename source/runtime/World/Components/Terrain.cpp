@@ -51,7 +51,7 @@ namespace spartan
         const bool create_border = true;   // adds a natural border to block player exit
     }
 
-    namespace
+    namespace placement
     {
         struct TriangleData
         {
@@ -64,86 +64,111 @@ namespace spartan
             float height_max;
             Quaternion rotation_to_normal;
         };
-        static vector<TriangleData> triangle_data;
+        static unordered_map<uint64_t, vector<TriangleData>> triangle_data;
 
-        void compute_triangle_data(const vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, const vector<uint32_t>& terrain_indices)
+        void compute_triangle_data(
+            const vector<vector<RHI_Vertex_PosTexNorTan>>& vertices_terrain,
+            const vector<vector<uint32_t>>& indices_terrain,
+            uint32_t tile_index
+        )
         {
-            uint32_t triangle_count = static_cast<uint32_t>(terrain_indices.size() / 3);
-            triangle_data.resize(triangle_count);
-        
-            auto compute_triangle = [&terrain_vertices, &terrain_indices](uint32_t start_index, uint32_t end_index)
+            const vector<RHI_Vertex_PosTexNorTan>& vertices_tile = vertices_terrain[tile_index];
+            const vector<uint32_t>& indices_tile                 = indices_terrain[tile_index];
+
+            uint32_t triangle_count = static_cast<uint32_t>(indices_tile.size() / 3);
+            auto& tile_triangle_data = triangle_data[tile_index];
+            tile_triangle_data.resize(triangle_count);
+
+            auto compute_triangle = [&vertices_tile, &indices_tile, &tile_triangle_data](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
-                    uint32_t idx0 = terrain_indices[i * 3];
-                    uint32_t idx1 = terrain_indices[i * 3 + 1];
-                    uint32_t idx2 = terrain_indices[i * 3 + 2];
-        
-                    Vector3 v0(terrain_vertices[idx0].pos[0], terrain_vertices[idx0].pos[1], terrain_vertices[idx0].pos[2]);
-                    Vector3 v1(terrain_vertices[idx1].pos[0], terrain_vertices[idx1].pos[1], terrain_vertices[idx1].pos[2]);
-                    Vector3 v2(terrain_vertices[idx2].pos[0], terrain_vertices[idx2].pos[1], terrain_vertices[idx2].pos[2]);
-        
+                    uint32_t idx0 = indices_tile[i * 3];
+                    uint32_t idx1 = indices_tile[i * 3 + 1];
+                    uint32_t idx2 = indices_tile[i * 3 + 2];
+
+                    // apply tile offset so vertices are in world space
+                    Vector3 v0(vertices_tile[idx0].pos[0], vertices_tile[idx0].pos[1], vertices_tile[idx0].pos[2]);
+                    Vector3 v1(vertices_tile[idx1].pos[0], vertices_tile[idx1].pos[1], vertices_tile[idx1].pos[2]);
+                    Vector3 v2(vertices_tile[idx2].pos[0], vertices_tile[idx2].pos[1], vertices_tile[idx2].pos[2]);
+
                     Vector3 normal                = Vector3::Cross(v1 - v0, v2 - v0).Normalized();
                     float slope_radians           = acos(Vector3::Dot(normal, Vector3::Up));
-                    float height_min              = min({v0.y, v1.y, v2.y});
-                    float height_max              = max({v0.y, v1.y, v2.y});
+                    float height_min              = min({ v0.y, v1.y, v2.y });
+                    float height_max              = max({ v0.y, v1.y, v2.y });
                     Vector3 v1_minus_v0           = v1 - v0;
                     Vector3 v2_minus_v0           = v2 - v0;
                     Quaternion rotation_to_normal = Quaternion::FromToRotation(Vector3::Up, normal);
-        
-                    triangle_data[i] = { normal, v0, v1_minus_v0, v2_minus_v0, slope_radians, height_min, height_max, rotation_to_normal };
+
+                    tile_triangle_data[i] = { normal, v0, v1_minus_v0, v2_minus_v0, slope_radians, height_min, height_max, rotation_to_normal };
                 }
             };
-        
+
             ThreadPool::ParallelLoop(compute_triangle, triangle_count);
         }
 
-        vector<Matrix> find_transforms(
+        void find_transforms(
             const uint32_t transform_count,
-            const float max_slope_radians,             // the maximum slope in radians that is acceptable for placing the mesh
-            const bool rotate_to_match_surface_normal, // if true, the mesh will be rotated to match the surface normal of the terrain
-            const float terrain_offset,                // the offset to apply to the terrain height, useful for placing meshes a bit below the terrain surface
-            const float height_min,                    // the minimum height of the terrain to place the mesh
-            const float height_max,                    // the maximum height of the terrain to place the mesh
-            const float scale_min,                     // the minimum scale of the mesh
-            const float scale_max,                     // the maximum scale of the mesh
-            const bool scale_by_slope,                 // in real life, larger rocks tend to settle on flatter terrain, while steeper slopes hold smaller debris or fragments
-            const float height_jitter                  // the amount of height jitter to apply to the mesh placement, useful for adding some organic variation instead of getting perfect lines
+            const float max_slope_radians,
+            const bool rotate_to_match_surface_normal,
+            const float terrain_offset,
+            const float height_min,
+            const float height_max,
+            const float scale_min,
+            const float scale_max,
+            const bool scale_by_slope,
+            const float height_jitter,
+            uint32_t tile_index,
+            vector<Matrix>& transforms_out
         )
         {
-            SP_ASSERT(!triangle_data.empty());
-        
+            auto it = triangle_data.find(tile_index);
+            if (it == triangle_data.end())
+            {
+                SP_LOG_ERROR("No triangle data found for tile %d", tile_index);
+                return;
+            }
+            const auto& tile_triangle_data = it->second;
+            SP_ASSERT(!tile_triangle_data.empty());
+
             // step 1: filter acceptable triangles using precomputed data
             vector<uint32_t> acceptable_triangles;
-            acceptable_triangles.reserve(triangle_data.size());
+            acceptable_triangles.reserve(tile_triangle_data.size());
             {
                 mt19937 generator(random_device{}());
                 uniform_real_distribution<float> jitter_dist(0.0f, height_jitter);
                 float jitter_amount = jitter_dist(generator);
-
-                for (uint32_t i = 0; i < triangle_data.size(); i++)
+                for (uint32_t i = 0; i < tile_triangle_data.size(); i++)
                 {
-                    if (triangle_data[i].slope_radians <= max_slope_radians &&
-                        triangle_data[i].height_min >= height_min - jitter_amount &&
-                        triangle_data[i].height_max <= height_max + jitter_amount)
+                    if (tile_triangle_data[i].slope_radians <= max_slope_radians &&
+                        tile_triangle_data[i].height_min >= height_min - jitter_amount &&
+                        tile_triangle_data[i].height_max <= height_max + jitter_amount)
                     {
                         acceptable_triangles.push_back(i);
                         jitter_amount = jitter_dist(generator);
                     }
                 }
-        
+
                 if (acceptable_triangles.empty())
-                {
-                    SP_LOG_WARNING("No acceptable triangles found for the given criteria");
-                    return {};
-                }
+                    return;
             }
-        
+
             // step 2: pre-allocate output vector
-            vector<Matrix> transforms(transform_count);
-        
+            transforms_out.resize(transform_count);
+
             // step 3: parallel placement without mutex by direct assignment
-            auto place_mesh = [&](uint32_t start_index, uint32_t end_index)
+            auto place_mesh = [
+                &transforms_out,
+                &tile_triangle_data,
+                &acceptable_triangles,
+                scale_by_slope,
+                scale_min,
+                scale_max,
+                rotate_to_match_surface_normal,
+                terrain_offset,
+                max_slope_radians
+            ]
+                (uint32_t start_index, uint32_t end_index)
             {
                 mt19937 generator(random_device{}());
                 const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
@@ -151,11 +176,11 @@ namespace spartan
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
                 uniform_real_distribution<float> scale_dist(scale_min, scale_max);
-        
+
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
                     uint32_t tri_idx        = acceptable_triangles[triangle_dist(generator)];
-                    const TriangleData& tri = triangle_data[tri_idx];
+                    const TriangleData& tri = tile_triangle_data[tri_idx];
 
                     // position
                     Vector3 position = Vector3::Zero;
@@ -192,16 +217,17 @@ namespace spartan
                         slope_normalized       = clamp(slope_normalized, 0.0f, 1.0f);
                         scale                  = lerp(scale_max, scale_min, slope_normalized);
                     }
-        
-                    transforms[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
+
+                    transforms_out[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
                 }
             };
-        
-            ThreadPool::ParallelLoop(place_mesh, transform_count);
-        
-            return transforms;
-        }
 
+            ThreadPool::ParallelLoop(place_mesh, transform_count);
+        }
+    }
+
+    namespace
+    {
         float compute_surface_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices)
         {
             float area_m2 = 0.0f;
@@ -916,11 +942,11 @@ namespace spartan
         m_height_texture = nullptr;
     }
 
-    void Terrain::GenerateTransforms(vector<Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop, float offset_y)
+    void Terrain::FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, vector<Matrix>& transforms_out)
     {
         bool rotate_match_surface_normal = false;                        // don't rotate to match the surface normal
         float max_slope                  = 0.0f;                         // don't allow slope
-        float terrain_offset             = offset_y;                     // 0.0f places exactly on the terrain
+        float terrain_offset             = 0.0f;                         // 0.0f places exactly on the terrain
         float height_min                 = parameters::level_sea;        // start spawning at sea level
         float height_max                 = numeric_limits<float>::max(); // no height limit
         float scale_min                  = 0.0f;
@@ -960,8 +986,21 @@ namespace spartan
         {
             SP_ASSERT_MSG(false, "Unknown terrain prop type for GenerateTransforms");
         }
-    
-        *transforms = find_transforms(count, max_slope, rotate_match_surface_normal, terrain_offset, height_min, height_max, scale_min, scale_max, scale_by_slope, height_variation);
+
+        placement::find_transforms(
+            count,
+            max_slope,
+            rotate_match_surface_normal,
+            terrain_offset,
+            height_min,
+            height_max,
+            scale_min,
+            scale_max,
+            scale_by_slope,
+            height_variation,
+            tile_index,
+            transforms_out
+        );
     }
 
     void Terrain::SaveToFile(const char* file_path)
@@ -972,31 +1011,37 @@ namespace spartan
             SP_LOG_ERROR("failed to open file for writing: %s", file_path);
             return;
         }
-    
-        uint32_t width            = GetWidth();
-        uint32_t height           = GetHeight();
+
+        uint32_t width = GetWidth();
+        uint32_t height = GetHeight();
         uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
-        uint32_t vertex_count     = static_cast<uint32_t>(m_vertices.size());
-        uint32_t index_count      = static_cast<uint32_t>(m_indices.size());
-        uint32_t tile_count       = static_cast<uint32_t>(m_tile_vertices.size());
-        uint32_t placement_count  = static_cast<uint32_t>(triangle_data.size());
-        uint32_t offset_count     = static_cast<uint32_t>(m_tile_offsets.size());
-    
+        uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
+        uint32_t index_count = static_cast<uint32_t>(m_indices.size());
+        uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
+        uint32_t triangle_data_count = static_cast<uint32_t>(placement::triangle_data.size());
+        uint32_t offset_count = static_cast<uint32_t>(m_tile_offsets.size());
+
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height_data_size), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&vertex_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&index_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(&placement_count), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&triangle_data_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&offset_count), sizeof(uint32_t));
-
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
-        file.write(reinterpret_cast<const char*>(triangle_data.data()), placement_count * sizeof(TriangleData));
         file.write(reinterpret_cast<const char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
-    
+
+        for (const auto& [tile_id, tile_triangles] : placement::triangle_data)
+        {
+            file.write(reinterpret_cast<const char*>(&tile_id), sizeof(uint64_t));
+            uint32_t triangle_count = static_cast<uint32_t>(tile_triangles.size());
+            file.write(reinterpret_cast<const char*>(&triangle_count), sizeof(uint32_t));
+            file.write(reinterpret_cast<const char*>(tile_triangles.data()), triangle_count * sizeof(placement::TriangleData));
+        }
+
         for (uint32_t i = 0; i < tile_count; i++)
         {
             uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
@@ -1006,73 +1051,82 @@ namespace spartan
             file.write(reinterpret_cast<const char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
             file.write(reinterpret_cast<const char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
         }
-    
+
         file.close();
-    
-        SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, offset_count=%u",
-                    file_path, width, height, height_data_size, vertex_count, index_count, tile_count, offset_count);
+
+        SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u",
+            file_path, width, height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count);
     }
-    
+
     void Terrain::LoadFromFile(const char* file_path)
     {
         ifstream file(file_path, ios::binary);
         if (!file.is_open())
             return;
-    
+
         uint32_t height_data_size = 0;
-        uint32_t vertex_count     = 0;
-        uint32_t index_count      = 0;
-        uint32_t tile_count       = 0;
-        uint32_t placement_count  = 0;
-        uint32_t offset_count     = 0;
-    
+        uint32_t vertex_count = 0;
+        uint32_t index_count = 0;
+        uint32_t tile_count = 0;
+        uint32_t triangle_data_count = 0;
+        uint32_t offset_count = 0;
+
         file.read(reinterpret_cast<char*>(&m_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_height), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&vertex_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&index_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(&placement_count), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&triangle_data_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&offset_count), sizeof(uint32_t));
-
         if (tile_count > 10000 || offset_count > 10000)
         {
             SP_LOG_ERROR("invalid tile_count (%u) or offset_count (%u) read from file, aborting load", tile_count, offset_count);
             file.close();
             return;
         }
-    
+
         m_height_data.resize(height_data_size);
         m_vertices.resize(vertex_count);
         m_indices.resize(index_count);
         m_tile_vertices.resize(tile_count);
         m_tile_indices.resize(tile_count);
         m_tile_offsets.resize(offset_count);
-        triangle_data.resize(placement_count);
-    
+        placement::triangle_data.clear();
+
         file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
-        file.read(reinterpret_cast<char*>(triangle_data.data()), placement_count * sizeof(TriangleData));
         file.read(reinterpret_cast<char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
-    
+
+        for (uint32_t i = 0; i < triangle_data_count; i++)
+        {
+            uint64_t tile_id;
+            uint32_t triangle_count;
+            file.read(reinterpret_cast<char*>(&tile_id), sizeof(uint64_t));
+            file.read(reinterpret_cast<char*>(&triangle_count), sizeof(uint32_t));
+            vector<placement::TriangleData>& tile_triangles = placement::triangle_data[tile_id];
+            tile_triangles.resize(triangle_count);
+            file.read(reinterpret_cast<char*>(tile_triangles.data()), triangle_count * sizeof(placement::TriangleData));
+        }
+
         for (uint32_t i = 0; i < tile_count; i++)
         {
             uint32_t vertex_size, index_size;
             file.read(reinterpret_cast<char*>(&vertex_size), sizeof(uint32_t));
             file.read(reinterpret_cast<char*>(&index_size), sizeof(uint32_t));
-    
+
             m_tile_vertices[i].resize(vertex_size);
             m_tile_indices[i].resize(index_size);
-    
+
             file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
             file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
         }
-    
+
         file.close();
-    
-        SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, offset_count=%u",
-                    file_path, m_width, m_height, height_data_size, vertex_count, index_count, tile_count, offset_count);
+
+        SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u",
+            file_path, m_width, m_height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count);
     }
 
     uint32_t Terrain::GetDensity() const
@@ -1184,18 +1238,21 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 7. compute triangle data for placement
-            {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
-                compute_triangle_data(m_vertices, m_indices);
-                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            }
-    
-            // 8. split into tiles
+            // 7. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
                 uint32_t tile_count = 16;
-                spartan::geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
+                geometry_processing::split_surface_into_tiles(m_vertices, m_indices, tile_count, m_tile_vertices, m_tile_indices, m_tile_offsets);
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
+
+            // 8. compute triangle data for placement
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
+                for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
+                {
+                    placement::compute_triangle_data(m_tile_vertices, m_tile_indices, tile_index);
+                }
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
@@ -1209,7 +1266,7 @@ namespace spartan
         m_triangle_count = m_index_count / 3;
         m_area_km2       = compute_surface_area_km2(m_vertices, m_indices);
 
-        // 9. create a mesh for each tile
+        // 9. create an entity for each tile and create a single gpu-buffer (for now)
         {
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
             m_mesh = make_shared<Mesh>();
@@ -1223,7 +1280,7 @@ namespace spartan
                 uint32_t sub_mesh_index = 0;
                 m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
                 Entity* entity = World::CreateEntity();
-                entity->SetObjectName("tile_" + to_string(tile_index));
+                entity->SetObjectName("tile_" + to_string(tile_index + 1)); // +1 so it makes more sense in the editor
                 entity->SetParent(GetEntity());
                 entity->SetPosition(m_tile_offsets[tile_index]);
 

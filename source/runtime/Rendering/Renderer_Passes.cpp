@@ -232,7 +232,7 @@ namespace spartan
                             continue;
 
                         // todo: this needs to be recalculate only when the light or the renderable moves, not every frame
-                        if (!light->IsInViewFrustum(renderable, array_index, draw_call.instance_group_index))
+                        if (!light->IsInViewFrustum(renderable, array_index))
                             continue;
 
                         // pixel shader

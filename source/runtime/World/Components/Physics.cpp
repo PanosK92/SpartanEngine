@@ -201,7 +201,7 @@ namespace spartan
                         math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
                         if (has_instances && renderable && i < instances.size())
                         {
-                            renderable->SetInstance(static_cast<uint32_t>(i), transform);
+                            //renderable->SetInstance(static_cast<uint32_t>(i), transform); // implement if needed
                         }
                         else if (i == 0)
                         {
@@ -254,7 +254,7 @@ namespace spartan
                     {
                         if (PxRigidActor* actor = static_cast<PxRigidActor*>(m_bodies[i]))
                         { 
-                            const BoundingBox& bounding_box = renderable->HasInstancing() ? renderable->GetBoundingBoxInstance(static_cast<uint32_t>(i)) : renderable->GetBoundingBox();
+                            const BoundingBox& bounding_box = renderable->GetBoundingBox();
                             const Vector3 closest_point     = bounding_box.GetClosestPoint(camera_pos);
                             const float distance_to_camera  = Vector3::Distance(camera_pos, closest_point);
                             if (distance_to_camera > distance_deactivate && actor->getScene())
@@ -1007,7 +1007,7 @@ namespace spartan
         PxScene* scene                        = static_cast<PxScene*>(PhysicsWorld::GetScene());
         Renderable* renderable                = GetEntity()->GetComponent<Renderable>();
         const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
-        size_t instance_count                 = instances.empty() ? 1 : instances.size();
+        uint32_t instance_count               = renderable->GetInstanceCount();
 
         // create bodies and shapes
         m_bodies.resize(instance_count, nullptr);
@@ -1124,6 +1124,7 @@ namespace spartan
                     break;
                 }
             }
+            
             if (shape)
             {
                 shape->setFlag(PxShapeFlag::eVISUALIZATION, true);

@@ -264,7 +264,7 @@ namespace spartan::geometry_generation
             }
         }
 
-        // Build top cap
+        // build top cap
         int baseIndex = (int)vertices->size();
         float y = 0.5f * height;
         const float dTheta = 2.0f * pi / slices;
