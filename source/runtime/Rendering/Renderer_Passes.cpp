@@ -1239,6 +1239,8 @@ namespace spartan
             // for the lifetime of the engine, this will be read as an srv, so transition here
             //initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
 
+            Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Max);
+
             slope_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
