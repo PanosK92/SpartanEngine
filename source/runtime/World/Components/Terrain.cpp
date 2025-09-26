@@ -135,17 +135,13 @@ namespace spartan
             vector<uint32_t> acceptable_triangles;
             acceptable_triangles.reserve(tile_triangle_data.size());
             {
-                mt19937 generator(random_device{}());
-                uniform_real_distribution<float> jitter_dist(0.0f, height_jitter);
-                float jitter_amount = jitter_dist(generator);
                 for (uint32_t i = 0; i < tile_triangle_data.size(); i++)
                 {
                     if (tile_triangle_data[i].slope_radians <= max_slope_radians &&
-                        tile_triangle_data[i].height_min >= height_min - jitter_amount &&
-                        tile_triangle_data[i].height_max <= height_max + jitter_amount)
+                        tile_triangle_data[i].height_min >= height_min  &&
+                        tile_triangle_data[i].height_max <= height_max )
                     {
                         acceptable_triangles.push_back(i);
-                        jitter_amount = jitter_dist(generator);
                     }
                 }
 
