@@ -69,14 +69,8 @@ float3 hash33(float3 p)
 float4 GetTextureSample(Texture2D texture, float2 pos, float freq, float2 nodePoint)
 {
     const float3 hash = hash33(float3(nodePoint.xy, 0.0f));
-    const float ang = hash.x * 2.0f * 3.14159265f;
-    
-    const float2x2 rotation = float2x2(
-        cos(ang), sin(ang),
-       -sin(ang), cos(ang)
-    );
 
-    float2 uv = mul(pos * freq, rotation) + hash.yz;
+    float2 uv = pos * freq + hash.yz;
     uv = pos * freq + hash.yz;
     return texture.SampleLevel(samplers[sampler_point_wrap], uv, 0);
 }
