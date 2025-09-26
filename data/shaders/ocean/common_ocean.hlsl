@@ -32,6 +32,7 @@ RWTexture2D<float4> slope_spectrum           : register(u11);
 RWTexture2D<float4> displacement_map         : register(u12);
 RWTexture2D<float4> slope_map                : register(u13);
 RWTexture2D<float4> synthesised_displacement : register(u14);
+RWTexture2D<float4> synthesised_slope        : register(u15);
 
 float Dispersion(float kMag, float depth)
 {
