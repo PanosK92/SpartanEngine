@@ -751,7 +751,7 @@ namespace spartan
             {
                 const float render_distance_trees          = 1'500.0f;
                 const float render_distance_grass          = 1'000.0f;
-                const uint32_t per_tile_count_grass_blades = 280'000;
+                const uint32_t per_tile_count_grass_blades = 450'000;
                 const uint32_t per_tile_count_tree         = 32;
                 const uint32_t per_tile_count_rock         = 64;
                 const float shadow_distance                = 150.0f; // tree and rock shadow distance (from the player) - beyond that screen space shadows are enough
@@ -760,10 +760,11 @@ namespace spartan
                 entities::sun(true);
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetIntensity(50'000.0f);
-                sun->SetTemperature(7'000.0f); // kelvin - warm light
+                sun->SetTemperature(3'800.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, false);
+                sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(10.0f, -100.0f, -0.5f));
 
-                entities::camera(Vector3(-1437.9974f, 329.2f, 2144.2534f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::camera(Vector3(-1589.1864f, 46.1022, 1938.1659f), Vector3(0.0f, 0.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
 
                 // create
@@ -915,21 +916,20 @@ namespace spartan
 
                             // tree
                             {
-                                //Entity* entity = mesh_tree->GetRootEntity()->Clone();
-                                //entity->SetObjectName("tree");
-                                //entity->SetScale(0.04f);
-                                //entity->SetParent(terrain_tile);
-                                //
-                                //// generate instances
-                                //vector<Matrix> transforms;
-                                //terrain->FindTransforms(tile_index, per_tile_count_tree, TerrainProp::Tree, transforms);
-                                //
+                                Entity* entity = mesh_tree->GetRootEntity()->Clone();
+                                entity->SetObjectName("tree");
+                                entity->SetParent(terrain_tile);
+                                entity->SetScale(0.1f);
+
+                                // generate instances
+                                vector<Matrix> transforms;
+                                terrain->FindTransforms(tile_index, per_tile_count_tree, TerrainProp::Tree, transforms);
+                            
                                 //if (Entity* leaf = entity->GetChildByIndex(1))
                                 //{
                                 //    // create a material (textures are cached so it's ok to create multiple instances)
                                 //    shared_ptr<Material> material_leaf;
                                 //    material_leaf = make_shared<Material>();
-                                //    material_leaf->SetObjectName("tree_leaf");
                                 //    material_leaf->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\Twig_Base_Material_2.png");
                                 //    material_leaf->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\Twig_Normal.png");
                                 //    material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project\\models\\tree\\Twig_Opacity_Map.jpg");
@@ -943,27 +943,26 @@ namespace spartan
                                 //    renderable->SetInstances(transforms);
                                 //    renderable->SetMaxRenderDistance(render_distance_trees);
                                 //    renderable->SetMaxShadowDistance(shadow_distance);
-                                //    renderable->SetMaterial(material_leaf);
+                                //    //renderable->SetMaterial(material_leaf);
                                 //}
-                                //
-                                //if (Entity* body = entity->GetChildByIndex(0))
-                                //{
-                                //    // create a material (textures are cached so it's ok to create multiple instances)
-                                //    shared_ptr<Material> material_body;
-                                //    material_body = make_shared<Material>();
-                                //    material_body->SetObjectName("tree_body");
-                                //    material_body->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\tree_bark_diffuse.png");
-                                //    material_body->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\tree_bark_normal.png");
-                                //    material_body->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
-                                //    material_body->SetResourceFilePath("project\\temp\\tree_body" + string(EXTENSION_MATERIAL));
-                                //
-                                //    // set renderable component
-                                //    Renderable* renderable = body->GetComponent<Renderable>();
-                                //    renderable->SetInstances(transforms);
-                                //    renderable->SetMaxRenderDistance(render_distance_trees);
-                                //    renderable->SetMaxShadowDistance(shadow_distance);
-                                //    renderable->SetMaterial(material_body);
-                                //}
+                            
+                                if (Entity* body = entity->GetChildByIndex(0))
+                                {
+                                    // create a material (textures are cached so it's ok to create multiple instances)
+                                    shared_ptr<Material> material_body;
+                                    material_body = make_shared<Material>();
+                                    material_body->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\tree_bark_diffuse.png");
+                                    material_body->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\tree_bark_normal.png");
+                                    material_body->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
+                                    material_body->SetResourceFilePath("project\\temp\\tree_body" + string(EXTENSION_MATERIAL));
+
+                                    // set renderable component
+                                    Renderable* renderable = body->GetComponent<Renderable>();
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaxRenderDistance(render_distance_trees);
+                                    renderable->SetMaxShadowDistance(shadow_distance);
+                                    //renderable->SetMaterial(material_body);
+                                }
                             }
 
                             // rock
