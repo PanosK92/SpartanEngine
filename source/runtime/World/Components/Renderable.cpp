@@ -423,7 +423,7 @@ namespace spartan
         };
 
         const uint32_t lod_count = GetLodCount();
-        const uint32_t max_lod = lod_count > 0 ? lod_count - 1 : 0;
+        const uint32_t max_lod   = lod_count > 0 ? lod_count - 1 : 0;
         Camera* camera = World::GetCamera();
 
         // if no camera, use lowest detail lod for all

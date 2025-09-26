@@ -52,7 +52,7 @@ namespace spartan
 
         // splash-screen
         bool m_show_splash_screen              = true;
-        SDL_Window* m_splash_screen_window      = nullptr;
+        SDL_Window* m_splash_screen_window     = nullptr;
         SDL_Renderer* m_splash_screen_renderer = nullptr;
         SDL_Texture* m_splash_screen_texture   = nullptr;
 
