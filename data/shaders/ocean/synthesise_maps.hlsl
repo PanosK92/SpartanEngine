@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common_ocean.hlsl"
 
+// Inspired by https://www.shadertoy.com/view/tsVGRd
+
 static const float2 hexRatio = float2(1.0f, sqrt(3.0f));
 
 float4 GetHexGridInfo(float2 uv)
