@@ -217,7 +217,7 @@ struct vertex_processing
             
             // wind direction vector and rotation axis
             float3 wind_dir      = float3(cos(wind_direction), 0, sin(wind_direction));
-            float3 rotation_axis = normalize(cross(instance_up, wind_dir));
+            float3 rotation_axis = normalize(cross(instance_up, -wind_dir));
             
             // apply wind bend based on height
             float total_height = 1.0f; // this can be passed from the cpu, but it's currently not needed
