@@ -68,7 +68,7 @@ namespace spartan
 
         // generate
         void Generate();
-        void FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, std::vector<math::Matrix>& transforms_out);
+        void FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, Entity* entity, const float scale, std::vector<math::Matrix>& transforms_out);
 
         // io
         void SaveToFile(const char* file_path);

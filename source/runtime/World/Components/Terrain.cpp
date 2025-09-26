@@ -211,7 +211,10 @@ namespace spartan
                     {
                         float slope_normalized = tri.slope_radians / max_slope_radians;
                         slope_normalized       = clamp(slope_normalized, 0.0f, 1.0f);
-                        scale                  = lerp(scale_max, scale_min, slope_normalized);
+
+                        // influence the random scale on top
+                        float slope_scale  = lerp(1.0f, scale_max / scale_min, slope_normalized);
+                        scale             *= slope_scale;
                     }
 
                     transforms_out[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
@@ -335,7 +338,7 @@ namespace spartan
                 const uint32_t border_backface_width = 2;      // width of the thin outer edge to push down for backface creation (prevents see-through from outside)
                 const uint32_t border_plateau_width  = 25;     // width of the flat plateau at max height inward from the backface
                 const uint32_t border_blend_width    = 20;     // width over which to blend down from max height further inward (slope of the inner wall)
-                const float border_height_max        = 280.0f; // maximum height to raise borders (e.g., 1.5x original max for prominent mountains)
+                const float border_height_max        = 150.0f; // maximum height to raise borders
 
                 // create the borders
                 auto apply_border = [&height_data_out, width, height, border_backface_width, border_plateau_width, border_blend_width, border_height_max, min_y](uint32_t start_index, uint32_t end_index)
@@ -938,14 +941,14 @@ namespace spartan
         m_height_texture = nullptr;
     }
 
-    void Terrain::FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, vector<Matrix>& transforms_out)
+    void Terrain::FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, Entity* entity, const float scale, vector<Matrix>& transforms_out)
     {
         bool rotate_match_surface_normal = false;                        // don't rotate to match the surface normal
         float max_slope                  = 0.0f;                         // don't allow slope
         float terrain_offset             = 0.0f;                         // 0.0f places exactly on the terrain
         float height_min                 = parameters::level_sea;        // start spawning at sea level
         float height_max                 = numeric_limits<float>::max(); // no height limit
-        float scale_min                  = 0.0f;
+        float scale_min                  = 1.0f;
         float scale_max                  = 1.0f;
         bool scale_by_slope              = false;                        // relevant for rocks (in real life, larger rocks tend to settle on flatter terrain)
         float height_variation           = 0.0f;
@@ -955,8 +958,8 @@ namespace spartan
             max_slope  = 30.0f * math::deg_to_rad;     // tighter slope for trees in harsh
             height_min = parameters::level_sea + 5.0f; // a bit above sea level
             height_max = parameters::level_snow + 20;  // stop a bit above the snow
-            scale_min  = 0.8f;
-            scale_max  = 1.5f;
+            scale_min  = scale * 0.5f;
+            scale_max  = scale * 1.5f;
         }
         else if (terrain_prop == TerrainProp::Grass)
         {
@@ -964,8 +967,8 @@ namespace spartan
             rotate_match_surface_normal = true;                         // small plants align with terrain normal
             height_min                  = parameters::level_sea + 5.0f; // a bit above sea level
             height_max                  = parameters::level_snow;       // stop when snow shows up
-            scale_min                   = 1.0f;
-            scale_max                   = 1.5f;
+            scale_min                   = scale;
+            scale_max                   = scale;
             height_variation            = 5.0f;                         // ensure grass doesn't hit a min or max limit and form a perfect line
         }
         else if (terrain_prop == TerrainProp::Rock)
@@ -974,8 +977,8 @@ namespace spartan
             rotate_match_surface_normal = true;                          // small plants align with terrain normal
             height_min                  = parameters::level_sea - 10.0f; // can spawn underwater
             height_max                  = numeric_limits<float>::max();  // can spawn at any height
-            scale_min                   = 0.1f;
-            scale_max                   = 1.5f;
+            scale_min                   = scale * 0.2f;
+            scale_max                   = scale * 1.4f;
             scale_by_slope              = true;
         }
         else
@@ -997,6 +1000,16 @@ namespace spartan
             tile_index,
             transforms_out
         );
+
+        // counter-act any scaling since it's baked into the instance transforms and can be controled via scale_min and scale_max
+        if (entity->GetScale() != Vector3::One && entity->GetScale() != Vector3::Zero)
+        {
+            Matrix root_scale_matrix = Matrix::CreateScale(Vector3::One / entity->GetScale());
+            for (Matrix& t : transforms_out)
+            {
+                t *= root_scale_matrix;
+            }
+        }
     }
 
     void Terrain::SaveToFile(const char* file_path)
