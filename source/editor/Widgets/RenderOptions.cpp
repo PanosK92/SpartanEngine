@@ -378,7 +378,7 @@ void RenderOptions::OnTickVisible()
 
                     bool changed = false;
                     changed |= ImGui::SliderFloat("Strength", &strength, 0.1f, 10.0f, "%.1f");
-                    changed |= ImGui::SliderFloat("Direction (deg)", &direction, 0.0f, 180.0f, "%.1f");
+                    changed |= ImGui::SliderFloat("Direction (deg)", &direction, 0.0f, 360.0f, "%.1f");
 
                     if (changed)
                     {

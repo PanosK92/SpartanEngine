@@ -456,23 +456,23 @@ namespace spartan
                         (texture_height && texture_height->IsCompressedFormat());
         
                     // generate unique name by hashing texture IDs
-                    string tex_name = material->GetObjectName() + "_packed";
+                    string tex_name = FileSystem::GetFilePathWithoutExtension(material->GetObjectName()) + "_packed";
                     shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
                     if (!texture_packed && !textures_are_compressed)
                     {
                         // create packed texture
                         texture_packed = make_shared<RHI_Texture>
-                            (
-                                RHI_Texture_Type::Type2D,
-                                max_width,
-                                max_height,
-                                1, // assuming depth=1
-                                1, // mip_count=1 for now
-                                RHI_Format::R8G8B8A8_Unorm,
-                                RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
-                                tex_name.c_str()
-                            );
-                        texture_packed->SetResourceFilePath(tex_name + ".png");
+                        (
+                            RHI_Texture_Type::Type2D,
+                            max_width,
+                            max_height,
+                            1, // assuming depth=1
+                            1, // mip_count=1 for now
+                            RHI_Format::R8G8B8A8_Unorm,
+                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                            tex_name.c_str()
+                        );
+                        texture_packed->SetResourceName(tex_name + ".tex_packed");
                         texture_packed->AllocateMip();
         
                         const size_t packed_size = max_width * max_height * 4;

@@ -153,10 +153,7 @@ namespace spartan
                 material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
                 material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
                 material->SetProperty(MaterialProperty::Tessellation, 1.0f);
-                
-                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
-                material->SetResourceFilePath(file_path);
+                material->SetResourceName("crate_space" + string(EXTENSION_MATERIAL));
                 
                 // add a renderable component
                 Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
@@ -228,9 +225,7 @@ namespace spartan
                 // material
                 shared_ptr<Material> material = make_shared<Material>();
                 {
-                    material->SetObjectName("material_water");
-                    material->SetResourceFilePath("water" + string(EXTENSION_MATERIAL));
-
+                    material->SetResourceName("water" + string(EXTENSION_MATERIAL));
                     material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); // pool water color
                     material->SetTexture(MaterialTextureType::Normal,            "project\\materials\\water\\normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
@@ -830,7 +825,7 @@ namespace spartan
                         shared_ptr<Material> material = terrain->GetMaterial();
 
                         // set properties
-                        material->SetResourceFilePath(string("project\\materials\\material_terrain") + string(EXTENSION_MATERIAL));
+                        material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
                         material->SetProperty(MaterialProperty::TextureTilingX, 250.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY, 250.0f);
@@ -920,29 +915,29 @@ namespace spartan
                         material_leaf->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                         material_leaf->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
                         material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                        material_leaf->SetResourceFilePath("project\\materials\\tree_leaf" + string(EXTENSION_MATERIAL));
+                        material_leaf->SetResourceName("tree_leaf" + string(EXTENSION_MATERIAL));
 
                         material_body = make_shared<Material>();
                         material_body->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\tree_bark_diffuse.png");
                         material_body->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\tree_bark_normal.png");
                         material_body->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
-                        material_body->SetResourceFilePath("project\\materials\\tree_body" + string(EXTENSION_MATERIAL));
+                        material_body->SetResourceName("tree_body" + string(EXTENSION_MATERIAL));
 
                         material_rock = make_shared<Material>();
-                        material_rock->SetResourceFilePath("project\\materials\\material_rock" + string(EXTENSION_MATERIAL));
                         material_rock->SetTexture(MaterialTextureType::Color, "project\\models\\rock_2\\albedo.png");
                         material_rock->SetTexture(MaterialTextureType::Normal, "project\\models\\rock_2\\normal.png");
                         material_rock->SetTexture(MaterialTextureType::Roughness, "project\\models\\rock_2\\roughness.png");
                         material_rock->SetTexture(MaterialTextureType::Occlusion, "project\\models\\rock_2\\occlusion.png");
+                        material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
 
                         material_grass = make_shared<Material>();
-                        material_grass->SetResourceFilePath("project\\materials\\material_grass_blade" + string(EXTENSION_MATERIAL));
                         material_grass->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
                         material_grass->SetProperty(MaterialProperty::Roughness, 1.0f);
                         material_grass->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                         material_grass->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
                         material_grass->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                         material_grass->SetColor(Color::standard_white);
+                        material_grass->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
                     }
 
                     // place props on each terrain tile
@@ -1286,7 +1281,7 @@ namespace spartan
             {
                 // shared material for surfaces
                 shared_ptr<Material> tile_material = make_shared<Material>();
-                tile_material->SetResourceFilePath("project\\materials\\material_floor_tile" + string(EXTENSION_MATERIAL));
+                tile_material->SetResourceName("floor_tile" + string(EXTENSION_MATERIAL));
                 tile_material->SetTexture(MaterialTextureType::Color, "project\\materials\\tile_white\\albedo.png");
                 tile_material->SetTexture(MaterialTextureType::Normal, "project\\materials\\tile_white\\normal.png");
                 tile_material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\tile_white\\metallic.png");
@@ -1310,14 +1305,14 @@ namespace spartan
             
                     // outer metallic ring
                     shared_ptr<Material> material_metal = make_shared<Material>();
-                    material_metal->SetResourceFilePath("project\\materials\\material_metal" + string(EXTENSION_MATERIAL));
+                    material_metal->SetResourceName("material_metal" + string(EXTENSION_MATERIAL));
                     material_metal->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_metal->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle")->GetComponent<Renderable>()->SetMaterial(material_metal);
             
                     // inner light paraboloid
                     shared_ptr<Material> material_paraboloid = make_shared<Material>();
-                    material_paraboloid->SetResourceFilePath("project\\materials\\material_paraboloid" + string(EXTENSION_MATERIAL));
+                    material_paraboloid->SetResourceName("material_paraboloid" + string(EXTENSION_MATERIAL));
                     material_paraboloid->SetTexture(MaterialTextureType::Emission, "project\\models\\pool_light\\emissive.png");
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_paraboloid->SetProperty(MaterialProperty::Metalness, 1.0f);
