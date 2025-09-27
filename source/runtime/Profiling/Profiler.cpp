@@ -103,14 +103,12 @@ namespace spartan
         bool poll                 = false;
         bool allow_time_block_end = true;
 
-        string get_cpu_name()
+        const char* get_cpu_name()
         {
-            #ifdef _WIN32
+#ifdef _WIN32
+            static char cpu_id_name[49] = { 0 };
+            int cpu_info[4] = { -1 };
 
-            // windows: use __cpuid to get CPU name
-            int cpu_info[4]   = { -1 };
-            char cpu_id_name[49] = { 0 };
-            
             __cpuid(cpu_info, 0x80000002);
             memcpy(cpu_id_name, cpu_info, sizeof(cpu_info));
 
@@ -120,28 +118,26 @@ namespace spartan
             __cpuid(cpu_info, 0x80000004);
             memcpy(cpu_id_name + 32, cpu_info, sizeof(cpu_info));
 
-            return string(cpu_id_name);
+            return cpu_id_name;
 
-            #elif __linux__
-
-            // linux: read from /proc/cpuinfo
-            ifstream cpuinfo("/proc/cpuinfo");
-            string line;
-            while (getline(cpuinfo, line))
+#elif __linux__
+            static std::string name;
+            std::ifstream cpuinfo("/proc/cpuinfo");
+            std::string line;
+            while (std::getline(cpuinfo, line))
             {
-                if (line.find("model name") != string::npos)
+                if (line.find("model name") != std::string::npos)
                 {
-                    return line.substr(line.find(":") + 2);
+                    name = line.substr(line.find(":") + 2);
+                    return name.c_str();
                 }
             }
-            return "Unknown CPU";
+            name = "Unknown CPU";
+            return name.c_str();
 
-            #else
-
-            // unsupported platform
+#else
             return "N/A";
-
-            #endif
+#endif
         }
     }
   
@@ -152,7 +148,7 @@ namespace spartan
         m_time_blocks_write.reserve(max_timeblocks);
         m_time_blocks_write.resize(max_timeblocks);
 
-        cpu_name = get_cpu_name().c_str();
+        cpu_name = get_cpu_name();
     }
 
     void Profiler::PostTick()
