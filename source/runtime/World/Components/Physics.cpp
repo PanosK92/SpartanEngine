@@ -1004,7 +1004,6 @@ namespace spartan
     void Physics::CreateBodies()
     {
         PxPhysics* physics                    = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
-        PxScene* scene                        = static_cast<PxScene*>(PhysicsWorld::GetScene());
         Renderable* renderable                = GetEntity()->GetComponent<Renderable>();
         const vector<math::Matrix>& instances = renderable ? renderable->GetInstances() : vector<math::Matrix>();
         uint32_t instance_count               = renderable->GetInstanceCount();
@@ -1131,7 +1130,8 @@ namespace spartan
                 actor->attachShape(*shape);
             }
             actor->userData = reinterpret_cast<void*>(GetEntity());
-            scene->addActor(*actor);
+
+            PhysicsWorld::AddActor(actor);
         
             m_bodies[i] = actor;
         }

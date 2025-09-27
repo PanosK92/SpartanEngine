@@ -749,11 +749,12 @@ namespace spartan
         {
             void create()
             {
+                // tweak for without exceeding a vram usage of 8 GB
                 const float render_distance_trees          = 1'500.0f;
-                const float render_distance_grass          = 700.0f;
-                const uint32_t per_tile_count_grass_blades = 300'000;
-                const uint32_t per_tile_count_tree         = 32;
-                const uint32_t per_tile_count_rock         = 64;
+                const float render_distance_grass          = 500.0f;
+                const uint32_t per_tile_count_grass_blades = 250'000;
+                const uint32_t per_tile_count_tree         = 16;
+                const uint32_t per_tile_count_rock         = 32;
                 const float shadow_distance                = 150.0f; // beyond that, screen space shadows are enough
 
                 // sun/lighting/mood
@@ -764,7 +765,7 @@ namespace spartan
                 sun->SetFlag(LightFlags::Volumetric, false);
                 sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(10.0f, -100.0f, -0.5f));
 
-                entities::camera(Vector3(-1407.2230f, 10.0f, 1211.5563f), Vector3(-3.6f, 90.0f, 0.0f));
+                entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
 
                 // create
@@ -942,7 +943,6 @@ namespace spartan
                         material_grass->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
                         material_grass->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
                         material_grass->SetColor(Color::standard_white);
-
                     }
 
                     // place props on each terrain tile
@@ -1008,14 +1008,18 @@ namespace spartan
                                     vector<Matrix> transforms;
                                     terrain->FindTransforms(tile_index, per_tile_count_rock, TerrainProp::Rock, entity, 2.0f, transforms);
 
-                                    // set renderable component
                                     if (Entity* rock_entity = entity->GetDescendantByName("untitled")) // where the model keeps the mesh
                                     {
+                                        // set renderable component
                                         Renderable* renderable = rock_entity->GetComponent<Renderable>();
                                         renderable->SetInstances(transforms);
                                         renderable->SetMaxRenderDistance(render_distance_trees);
                                         renderable->SetMaxShadowDistance(shadow_distance);
                                         renderable->SetMaterial(material_rock);
+
+                                        // add physics so we can collide with rocks
+                                        //Physics* physics = rock_entity->AddComponent<Physics>();
+                                        //physics->SetBodyType(BodyType::Mesh);
                                     }
                                 }
                             }

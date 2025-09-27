@@ -49,6 +49,11 @@ using namespace physx;
 
 namespace spartan
 {
+    namespace
+    {
+        mutex scene_mutex;
+    }
+
     namespace settings
     {
         float gravity = -9.81f; // gravity value in m/s^2
@@ -304,6 +309,15 @@ namespace spartan
                 );
                 Renderer::DrawLine(start, end, color, color);
             }
+        }
+    }
+
+    void PhysicsWorld::AddActor(PxRigidActor* actor)
+    {
+        if (actor && scene)
+        {
+            lock_guard<mutex> lock(scene_mutex);
+            scene->addActor(*actor);
         }
     }
 
