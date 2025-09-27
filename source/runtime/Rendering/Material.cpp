@@ -456,7 +456,7 @@ namespace spartan
                         (texture_height && texture_height->IsCompressedFormat());
         
                     // generate unique name by hashing texture IDs
-                    string tex_name = FileSystem::GetFilePathWithoutExtension(material->GetObjectName()) + "_packed";
+                    string tex_name = material->GetObjectName() + "_packed";
                     shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
                     if (!texture_packed && !textures_are_compressed)
                     {
