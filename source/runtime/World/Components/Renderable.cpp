@@ -412,44 +412,43 @@ namespace spartan
     {
         // note: using projected angle for LOD selection, which is more perceptually accurate
         // than screen height ratio, for example it will be more consistent across different resolutions
-
-        // thresholds for projected angle (defined in degrees, converted to radians)
+        // Balanced aggressive thresholds for open-world forest (one-size-fits-all: trees/grass/rocks/terrain)
+        // LOD0 >20° (close, high detail), LOD1 >10° (mid), LOD2 >5° (far), LOD3 >2.5° (ultra-far)
         static const array<float, 4> lod_angle_thresholds =
         {
-            23.0f * math::deg_to_rad,
-            11.5f * math::deg_to_rad,
-            5.7f  * math::deg_to_rad,
-            2.9f  * math::deg_to_rad
+            23.0f * math::deg_to_rad, // ~0.349 rad: Aggressive for dense instanced geo like trees/grass
+            11.5f * math::deg_to_rad, // ~0.175 rad: Mid drop for ~50% vert reduction
+            5.7f  * math::deg_to_rad, // ~0.087 rad: Far switch, leverages aggressive mesh dropoff
+            2.9f  * math::deg_to_rad  // ~0.044 rad: Ultra-far threshold; below this, cull for perf
         };
-
         const uint32_t lod_count = GetLodCount();
-        const uint32_t max_lod   = lod_count > 0 ? lod_count - 1 : 0;
+        if (lod_count == 0)
+        {
+            m_lod_index = 0;
+            return;
+        }
         Camera* camera = World::GetCamera();
 
         // if no camera, use lowest detail lod for all
         if (!camera)
         {
-            m_lod_index = max_lod;
+            m_lod_index = lod_count - 1;
             return;
         }
-
-        const BoundingBox& box        = GetBoundingBox();
-        const Vector3 camera_position = camera->GetEntity()->GetPosition();
 
         // if not visible, use lowest detail lod
         if (!IsVisible())
         {
-            m_lod_index = max_lod;
+            m_lod_index = lod_count - 1;
             return;
         }
 
-        // compute bounding sphere from aabb for radius
-        float radius = box.GetExtents().Length(); // radius is length of extents vector
-
-        // compute distance from camera to closest point on AABB
-        Vector3 closest_point = box.GetClosestPoint(camera_position);
-        Vector3 to_closest    = closest_point - camera_position;
-        float distance        = to_closest.Length();
+        // compute distance from camera to closest point on aabb
+        const BoundingBox& box        = GetBoundingBox();
+        const Vector3 camera_position = camera->GetEntity()->GetPosition();
+        Vector3 closest_point         = box.GetClosestPoint(camera_position);
+        Vector3 to_closest            = closest_point - camera_position;
+        float distance                = to_closest.Length();
 
         // if camera is inside or very close to the AABB, use highest detail lod
         if (box.Contains(camera_position))
@@ -459,11 +458,12 @@ namespace spartan
         }
 
         // compute projected angle (in radians) using the sphere approximation
+        float radius          = box.GetExtents().Length();
         float projected_angle = 2.0f * atan(radius / distance);
 
         // determine lod index based on projected angle
-        uint32_t lod_index = max_lod;
-        for (uint32_t i = 0; i < max_lod; i++)
+        uint32_t lod_index = lod_count - 1;
+        for (uint32_t i = 0; i < lod_count; i++)
         {
             if (projected_angle > lod_angle_thresholds[i])
             {

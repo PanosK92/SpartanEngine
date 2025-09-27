@@ -46,8 +46,9 @@ namespace spartan
 
     enum class MeshLodDropoff
     {
-        Exponential,
-        Linear,
+        Exponential, // slow early, fast late poly reduction (t^2), detail-heavy mid-range.
+        Linear,      // een poly reduction across LODs (t), balanced for general use.
+        Aggressive,  // fast early, slow late reduction (sqrt(t)), optimizes distant objects.
         Max
     };
 
@@ -135,6 +136,6 @@ namespace spartan
         std::mutex m_mutex;
         Entity* m_root_entity        = nullptr;
         MeshType m_type              = MeshType::Max;
-        MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Exponential;
+        MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Aggressive;
     };
 }
