@@ -163,65 +163,88 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
             {
                 m_history_index++;
                 m_current_path = m_history[m_history_index];
-                m_is_dirty     = true;
+                m_is_dirty = true;
             }
         }
         ImGui::EndDisabled();
         ImGui::SameLine();
 
         // breadcrumb navigation
-        const string root_path    = ResourceCache::GetProjectDirectory();
-        vector<string> path_parts = FileSystem::SplitPath(m_current_path);
-        string accumulated_path   = path_parts[0] + "/"; // start with drive root (e.g., C:/)
+        const char* root_path = ResourceCache::GetProjectDirectory();
+
+        char accumulated_path[1024];
+        accumulated_path[0] = '\0';
+
+        char current_path[1024];
+        strncpy_s(current_path, sizeof(current_path), m_current_path.c_str(), _TRUNCATE);
 
         // show root directory button if not at root
-        if (m_current_path != root_path)
+        if (strcmp(m_current_path.c_str(), root_path) != 0)
         {
-            string root_label = FileSystem::GetFileNameFromFilePath(root_path); // e.g., "project" or root dir name
-            if (root_label.empty()) root_label = "Root"; // fallback label
-            if (ImGuiSp::button(root_label.c_str()))
+            const char* root_label = FileSystem::GetFileNameFromFilePath(root_path).c_str();
+            if (!root_label || root_label[0] == '\0')
+                root_label = "Root";
+
+            if (ImGuiSp::button(root_label))
             {
                 m_current_path = root_path;
                 m_history.push_back(m_current_path);
                 m_history_index = m_history.size() - 1;
-                m_is_dirty      = true;
+                m_is_dirty = true;
             }
             ImGui::SameLine();
             ImGui::Text(">");
             ImGui::SameLine();
         }
 
-        // show remaining path parts
-        for (size_t i = 1; i < path_parts.size(); ++i)
+        // split manually
+        const char* delimiters = "/\\";
+        char* context = nullptr;
+        char* token = strtok_s(current_path, delimiters, &context);
+        bool first = true;
+
+        while (token)
         {
-            accumulated_path += path_parts[i] + "/";
-
-            // skip root_path in breadcrumbs if it matches accumulated_path
-            if (FileSystem::GetDirectoryFromFilePath(accumulated_path) == root_path)
-                continue;
-
-            if (ImGuiSp::button(path_parts[i].c_str()))
+            if (first)
             {
-                m_current_path  = accumulated_path;
+                snprintf(accumulated_path, sizeof(accumulated_path), "%s/", token);
+                first = false;
+            }
+            else
+            {
+                strncat_s(accumulated_path, sizeof(accumulated_path), token, _TRUNCATE);
+                strncat_s(accumulated_path, sizeof(accumulated_path), "/", _TRUNCATE);
+            }
+
+            if (FileSystem::GetDirectoryFromFilePath(accumulated_path) == root_path)
+            {
+                token = strtok_s(nullptr, delimiters, &context);
+                continue;
+            }
+
+            if (ImGuiSp::button(token))
+            {
+                m_current_path = accumulated_path;
                 m_history.push_back(m_current_path);
                 m_history_index = m_history.size() - 1;
-                m_is_dirty      = true;
+                m_is_dirty = true;
             }
             ImGui::SameLine();
             ImGui::Text(">");
             ImGui::SameLine();
+
+            token = strtok_s(nullptr, delimiters, &context);
         }
     }
 
-    // size slider (only for grid view) + view toggle button
+    // size slider + view toggle
     {
         float button_width = ImGui::CalcTextSize(m_view_mode == View_Grid ? "List View" : "Grid View").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-        float slider_width = m_view_mode == View_Grid ? 150.0f : 0.0f; // allocate space for slider only in grid view
-        float total_width  = button_width + slider_width + ImGui::GetStyle().ItemSpacing.x;
+        float slider_width = m_view_mode == View_Grid ? 150.0f : 0.0f;
+        float total_width = button_width + slider_width + ImGui::GetStyle().ItemSpacing.x;
         float region_width = ImGui::GetContentRegionAvail().x;
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + region_width - total_width);
 
-        // slider
         if (m_view_mode == View_Grid)
         {
             ImGui::SetNextItemWidth(slider_width);
@@ -229,7 +252,6 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
             ImGui::SameLine();
         }
 
-        // view mode toggle
         if (ImGuiSp::button(m_view_mode == View_Grid ? "List View" : "Grid View"))
         {
             m_view_mode = (m_view_mode == View_Grid) ? View_List : View_Grid;
