@@ -89,9 +89,9 @@ namespace spartan
         vector<TimeBlock> m_time_blocks_read;
 
         // gpu
-        string gpu_name   = "N/A";
-        string gpu_driver = "N/A";
-        string gpu_api    = "N/A";
+        const char* gpu_name   = "N/A";
+        const char* gpu_driver = "N/A";
+        const char* gpu_api    = "N/A";
 
         // stutter detection
         float stutter_delta_ms = 1.0f;
@@ -99,7 +99,7 @@ namespace spartan
         bool is_stuttering_gpu = false;
 
         // misc
-        string cpu_name           = "N/A";
+        const char* cpu_name      = "N/A";
         bool poll                 = false;
         bool allow_time_block_end = true;
 
@@ -152,7 +152,7 @@ namespace spartan
         m_time_blocks_write.reserve(max_timeblocks);
         m_time_blocks_write.resize(max_timeblocks);
 
-        cpu_name = get_cpu_name();
+        cpu_name = get_cpu_name().c_str();
     }
 
     void Profiler::PostTick()
@@ -394,7 +394,7 @@ namespace spartan
         {
             gpu_name   = physical_device->GetName();
             gpu_driver = physical_device->GetDriverVersion();
-            gpu_api    = RHI_Context::api_version_str;
+            gpu_api    = RHI_Context::api_version_cstr;
         }
     }
 
@@ -403,7 +403,7 @@ namespace spartan
         // static buffer to avoid allocations
         static char metrics_buffer[16384];
         static float metrics_time_since_last_update = profiling_interval_sec;
-    
+
         metrics_time_since_last_update += static_cast<float>(Timer::GetDeltaTimeSec());
         if (metrics_time_since_last_update >= profiling_interval_sec)
         {
@@ -434,18 +434,18 @@ namespace spartan
             // gpu
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
                                "GPU\nName:\t\t%s\nMemory:\t%u/%u MB\nAPI:\t\t\t\t%s %s\nDriver:\t\t%s %s\n\n",
-                               gpu_name.c_str(),
+                               gpu_name,
                                static_cast<unsigned int>(RHI_Device::MemoryGetAllocatedMb()),
                                static_cast<unsigned int>(RHI_Device::MemoryGetAvailableMb()),
                                RHI_Context::api_type_str,
-                               gpu_api.c_str(),
+                               gpu_api,
                                RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName(),
-                               gpu_driver.c_str());
+                               gpu_driver);
     
             // cpu
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
                                "CPU\nName:\t\t\t\t\t%s\nWorker threads:\t%u/%u\nAVX2:\t\t%s\n\n",
-                               cpu_name.c_str(),
+                               cpu_name,
                                static_cast<unsigned int>(ThreadPool::GetWorkingThreadCount()),
                                static_cast<unsigned int>(ThreadPool::GetThreadCount()),
     #ifdef __AVX2__

@@ -44,5 +44,5 @@ namespace spartan
 #endif
 
     // api agnostic
-    const char* RHI_Context::api_version_str;
+    const char* RHI_Context::api_version_cstr;
 }
