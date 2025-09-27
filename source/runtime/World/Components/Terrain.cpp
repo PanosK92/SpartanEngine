@@ -1280,10 +1280,9 @@ namespace spartan
             ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
             m_mesh = make_shared<Mesh>();
             m_mesh->SetObjectName("terrain_mesh");
-            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true); // so that nearby tiles with low lods don't have visible seams
-            m_mesh->SetLodDropoff(MeshLodDropoff::Linear);
-    
+            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);            // meshes are build to spec, so don't mesh with them
+            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true); // preserve edges when generating lods, to ensure the tiles meet each other
+
             for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
             {
                 uint32_t sub_mesh_index = 0;
