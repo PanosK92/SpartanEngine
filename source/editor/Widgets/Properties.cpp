@@ -500,18 +500,20 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             ImGui::LabelText("##renderable_instance_count", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
             // position, rotation, scale
-            vector<Matrix>& instances = renderable->GetInstances();
-            if (!instances.empty())
+            if (renderable->HasInstancing())
             {
                 if (ImGui::TreeNode("Instance Transforms"))
                 {
-                    for (size_t i = 0; i < instances.size(); i++)
+                    for (uint32_t i = 0; i < renderable->GetInstanceCount(); i++)
                     {
+                        // TODO: This has to be a reference to be modifiable
+                        Matrix instance = renderable->GetInstance(i, true);
+
                         ImGui::PushID(static_cast<int>(i));
 
                         Vector3 pos, scale;
                         Quaternion rot;
-                        instances[i].Decompose(scale, rot, pos);
+                        instance.Decompose(scale, rot, pos);
 
                         Vector3 euler = rot.ToEulerAngles();
 
@@ -519,17 +521,17 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                         {
                             if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
                             {
-                                instances[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
+                                instance = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
                             }
 
                             if (ImGui::DragFloat3("Rotation", &euler.x, 0.5f))
                             {
-                                rot          = Quaternion::FromEulerAngles(euler.y, euler.x, euler.z);
-                                instances[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
+                                rot      = Quaternion::FromEulerAngles(euler.y, euler.x, euler.z);
+                                instance = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
                             }
 
                             if (ImGui::DragFloat3("Scale", &scale.x, 0.1f))
-                                instances[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
+                                instance = Matrix::CreateScale(scale) * Matrix::CreateRotation(rot) * Matrix::CreateTranslation(pos);
 
                             ImGui::TreePop();
                         }

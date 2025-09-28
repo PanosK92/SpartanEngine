@@ -967,14 +967,18 @@ namespace spartan
                                 vector<Matrix> transforms;
                                 terrain->FindTransforms(tile_index, per_tile_count_tree, TerrainProp::Tree, entity, 0.04f, transforms);
 
-                                // set renderable component
                                 if (Entity* trunk = entity->GetChildByIndex(0))
                                 {
+                                    // set renderable component
                                     Renderable* renderable = trunk->GetComponent<Renderable>();
                                     renderable->SetInstances(transforms);
                                     renderable->SetMaxRenderDistance(render_distance_trees);
                                     renderable->SetMaxShadowDistance(shadow_distance);
                                     renderable->SetMaterial(material_body);
+
+                                    // add physics so we can collide with rocks
+                                    Physics* physics = trunk->AddComponent<Physics>();
+                                    physics->SetBodyType(BodyType::Mesh);
                                 }
 
                                 // set renderable component
@@ -1009,8 +1013,8 @@ namespace spartan
                                         renderable->SetMaterial(material_rock);
 
                                         // add physics so we can collide with rocks
-                                        //Physics* physics = rock_entity->AddComponent<Physics>();
-                                        //physics->SetBodyType(BodyType::Mesh);
+                                        Physics* physics = rock_entity->AddComponent<Physics>();
+                                        physics->SetBodyType(BodyType::Mesh);
                                     }
                                 }
                             }

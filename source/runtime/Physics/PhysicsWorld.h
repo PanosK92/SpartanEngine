@@ -41,6 +41,7 @@ namespace spartan
         static void Tick();
 
         static void AddActor(physx::PxRigidActor* actor);
+        static void RemoveActor(physx::PxRigidActor* actor);
 
         static math::Vector3 GetGravity();
         static void* GetScene();

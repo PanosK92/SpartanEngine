@@ -210,7 +210,7 @@ namespace spartan
             float min_width  = FLT_MAX;
             float max_width  = -FLT_MAX;
 
-            Matrix transform = HasInstancing() ? GetEntity()->GetMatrix() * GetInstanceTransform(0) : GetEntity()->GetMatrix();
+            Matrix transform = HasInstancing() ? GetInstance(0, true) : GetEntity()->GetMatrix();
             for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
             {
                 Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
@@ -288,6 +288,11 @@ namespace spartan
             return no_mesh;
 
         return m_mesh->GetObjectName();
+    }
+
+    math::Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)
+    {
+        return to_world ? m_instances[index] * GetEntity()->GetMatrix() : m_instances[index];
     }
 
     void Renderable::SetInstances(const vector<Matrix>& transforms)
@@ -435,8 +440,8 @@ namespace spartan
             return;
         }
 
-        // lod thresholds in degrees 
-        static const array<float, mesh_lod_count> lod_angle_thresholds =
+        // lod thresholds in degrees (decreasing for lower detail)
+        static const array<float, 5> lod_angle_thresholds =
         {
             4.0f  * math::deg_to_rad,
             3.0f  * math::deg_to_rad,
@@ -445,21 +450,23 @@ namespace spartan
             0.86f * math::deg_to_rad
         };
 
-        // projected angle
-        float radius          = box.GetExtents().Max();
+        // compute projected angle from bounding sphere
+        float radius          = box.GetExtents().Length();
         float projected_angle = 2.0f * atan(radius / distance);
-        uint32_t lod_index    = lod_count - 1;
-        for (uint32_t i = 0; i < lod_count; i++)
+
+        // hysteresis: relax threshold for downgrade to prevent popping
+        const float hysteresis_factor     = (m_lod_index < lod_count - 1) ? 1.1f : 1.0f; // 10% buffer when at higher LOD
+        uint32_t lod_index                = lod_count - 1;
+        const uint32_t effective_lod_count = min(lod_count, static_cast<uint32_t>(lod_angle_thresholds.size()));
+        for (uint32_t i = 0; i < effective_lod_count; i++)
         {
-            // scale threshold by object radius
-            float threshold = lod_angle_thresholds[i];
+            float threshold = lod_angle_thresholds[i] * hysteresis_factor;
             if (projected_angle > threshold)
             {
                 lod_index = i;
                 break;
             }
         }
-
         m_lod_index = lod_index;
     }
 }

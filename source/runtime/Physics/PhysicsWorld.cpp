@@ -314,10 +314,19 @@ namespace spartan
 
     void PhysicsWorld::AddActor(PxRigidActor* actor)
     {
-        if (actor && scene)
+        if (actor && scene && !actor->getScene())
         {
             lock_guard<mutex> lock(scene_mutex);
             scene->addActor(*actor);
+        }
+    }
+
+    void PhysicsWorld::RemoveActor(PxRigidActor* actor)
+    {
+        if (actor && scene && actor->getScene() == scene)
+        {
+            lock_guard<mutex> lock(scene_mutex);
+            scene->removeActor(*actor);
         }
     }
 

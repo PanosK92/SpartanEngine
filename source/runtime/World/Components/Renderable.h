@@ -75,11 +75,10 @@ namespace spartan
         Material* GetMaterial() const { return m_material; }
 
         // instancing
-        std::vector<math::Matrix>& GetInstances()               { return m_instances; }
-        bool HasInstancing() const                              { return !m_instances.empty(); }
-        RHI_Buffer* GetInstanceBuffer() const                   { return m_instance_buffer.get(); }
-        math::Matrix GetInstanceTransform(const uint32_t index) { return m_instances[index]; }
-        uint32_t GetInstanceCount()  const                      { return m_instances.empty() ? 1 : static_cast<uint32_t>(m_instances.size()); }
+        bool HasInstancing() const            { return !m_instances.empty(); }
+        RHI_Buffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
+        uint32_t GetInstanceCount()  const    { return m_instances.empty() ? 1 : static_cast<uint32_t>(m_instances.size()); }
+        math::Matrix GetInstance(const uint32_t index, const bool to_world);
         void SetInstances(const std::vector<math::Matrix>& transforms);
 
         // render distance
