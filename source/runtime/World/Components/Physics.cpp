@@ -1029,7 +1029,7 @@ namespace spartan
                     {
                         if (IsStatic() || IsKinematic())
                         {
-                            Vector3 scale = renderable->HasInstancing() ? transform.GetScale() : Vector3::One;
+                            Vector3 scale = renderable->HasInstancing() ? renderable->GetInstance(i, false).GetScale() : Vector3::One;
                             PxMeshScale mesh_scale(PxVec3(scale.x, scale.y, scale.z)); // this is a runtime transform, cheap for statics but it won't be reflected for the internal baked shape (raycasts etc)
                             PxTriangleMeshGeometry geometry(static_cast<PxTriangleMesh*>(m_mesh), mesh_scale);
                             shape = physics->createShape(geometry, *material);
