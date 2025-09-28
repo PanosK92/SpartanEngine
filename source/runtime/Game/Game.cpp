@@ -893,11 +893,11 @@ namespace spartan
                             mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 1
                         }
 
-                        // lod 2: medium quality grass blade (1 segment)
+                        // lod 2: low quality grass blade (1 segment)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // medium detail
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // low detail
                             mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 2
                         }
 

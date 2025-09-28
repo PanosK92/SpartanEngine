@@ -42,7 +42,6 @@ struct gbuffer_vertex
     float3 position               : POS_WORLD;
     float3 position_previous      : POS_WORLD_PREVIOUS;
     float4 position_clip          : SV_POSITION;
-    float4 position_clip_current  : POS_CLIP;
     float4 position_clip_previous : POS_CLIP_PREVIOUS;
     float3 normal                 : NORMAL_WORLD;
     float3 tangent                : TANGENT_WORLD;
@@ -262,7 +261,6 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     // set to silence validation errors (in case these are never set later)
     vertex.position_clip          = 0.0f;
-    vertex.position_clip_current  = 0.0f;
     vertex.position_clip_previous = 0.0f;
     
     return vertex;
@@ -271,7 +269,6 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 {
     vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
-    vertex.position_clip_current  = vertex.position_clip;
     vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
 
     return vertex;

@@ -157,6 +157,11 @@ float2 ndc_to_uv(float3 x)
     return x.xy * float2(0.5f, -0.5f) + 0.5f;
 }
 
+float2 uv_to_ndc(float2 uv)
+{
+    return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f); // flip y for dx style
+}
+
 float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, float far_plane)
 {
     // normalize light to vertex

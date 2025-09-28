@@ -96,7 +96,6 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     return color;
 }
 
-
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
@@ -129,15 +128,15 @@ gbuffer main_ps(gbuffer_vertex vertex)
 
     // velocity
     {
-        // convert to ndc
-        float2 position_ndc_current  = (vertex.position_clip_current.xy / vertex.position_clip_current.w);
+        // current and previous ndc position
+        float2 position_ndc_current  = uv_to_ndc(vertex.position_clip.xy / buffer_frame.resolution_render);
         float2 position_ndc_previous = (vertex.position_clip_previous.xy / vertex.position_clip_previous.w);
 
-        // remove the ndc jitter
+        // remove jitter
         position_ndc_current  -= buffer_frame.taa_jitter_current;
         position_ndc_previous -= buffer_frame.taa_jitter_previous;
 
-        // compute the velocity
+        // celocity
         velocity = position_ndc_current - position_ndc_previous;
     }
 
