@@ -235,7 +235,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest (it works in the small liminal space world)
+                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest
                     material->SetProperty(MaterialProperty::Normal,              normal_strength);
                     material->SetProperty(MaterialProperty::TextureTilingX,      tiling);
                     material->SetProperty(MaterialProperty::TextureTilingY,      tiling);
@@ -280,10 +280,6 @@ namespace spartan
                                 renderable->SetMaterial(material);
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                             }
-
-                            // enable buoyancy
-                           Physics* physics = entity_tile->AddComponent<Physics>();
-                           physics->SetBodyType(BodyType::Water);
                         }
                     }
                 }

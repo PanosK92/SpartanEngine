@@ -1,4 +1,4 @@
-f/*
+ï»¿f/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -410,62 +410,50 @@ namespace spartan
 
     void Renderable::UpdateLodIndices()
     {
-        // note: using projected angle for LOD selection, which is more perceptually accurate
-        // than screen height ratio, for example it will be more consistent across different resolutions
-        // Balanced aggressive thresholds for open-world forest (one-size-fits-all: trees/grass/rocks/terrain)
-        // LOD0 >20° (close, high detail), LOD1 >10° (mid), LOD2 >5° (far), LOD3 >2.5° (ultra-far)
-        static const array<float, 4> lod_angle_thresholds =
-        {
-            23.0f * math::deg_to_rad, // ~0.349 rad: Aggressive for dense instanced geo like trees/grass
-            11.5f * math::deg_to_rad, // ~0.175 rad: Mid drop for ~50% vert reduction
-            5.7f  * math::deg_to_rad, // ~0.087 rad: Far switch, leverages aggressive mesh dropoff
-            2.9f  * math::deg_to_rad  // ~0.044 rad: Ultra-far threshold; below this, cull for perf
-        };
         const uint32_t lod_count = GetLodCount();
         if (lod_count == 0)
         {
             m_lod_index = 0;
             return;
         }
+
         Camera* camera = World::GetCamera();
-
-        // if no camera, use lowest detail lod for all
-        if (!camera)
+        if (!camera || !IsVisible())
         {
-            m_lod_index = lod_count - 1;
+            m_lod_index = lod_count - 1; // fallback: lowest LOD
             return;
         }
 
-        // if not visible, use lowest detail lod
-        if (!IsVisible())
-        {
-            m_lod_index = lod_count - 1;
-            return;
-        }
-
-        // compute distance from camera to closest point on aabb
         const BoundingBox& box        = GetBoundingBox();
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
         Vector3 closest_point         = box.GetClosestPoint(camera_position);
         Vector3 to_closest            = closest_point - camera_position;
         float distance                = to_closest.Length();
-
-        // if camera is inside or very close to the AABB, use highest detail lod
         if (box.Contains(camera_position))
         {
-            m_lod_index = 0;
+            m_lod_index = 0; // inside object: max detail
             return;
         }
 
-        // compute projected angle (in radians) using the sphere approximation
-        float radius          = box.GetExtents().Length();
-        float projected_angle = 2.0f * atan(radius / distance);
+        // lod thresholds in degrees 
+        static const array<float, mesh_lod_count> lod_angle_thresholds =
+        {
+            4.0f  * math::deg_to_rad,
+            3.0f  * math::deg_to_rad,
+            2.5f  * math::deg_to_rad,
+            1.7f  * math::deg_to_rad,
+            0.86f * math::deg_to_rad
+        };
 
-        // determine lod index based on projected angle
-        uint32_t lod_index = lod_count - 1;
+        // projected angle
+        float radius          = box.GetExtents().Max();
+        float projected_angle = 2.0f * atan(radius / distance);
+        uint32_t lod_index    = lod_count - 1;
         for (uint32_t i = 0; i < lod_count; i++)
         {
-            if (projected_angle > lod_angle_thresholds[i])
+            // scale threshold by object radius
+            float threshold = lod_angle_thresholds[i];
+            if (projected_angle > threshold)
             {
                 lod_index = i;
                 break;
