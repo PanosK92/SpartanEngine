@@ -90,65 +90,8 @@ static float3x3 rotation_matrix(float3 axis, float angle)
 
 struct vertex_processing
 {
-    struct water
-    {
-        static void compute_wave_offset(inout float3 position_vertex, inout float3 dp_dx, inout float3 dp_dz, float time, float amplitude, float wavelength, float frequency, float fade_factor)
-        {
-            const float2 direction = normalize(buffer_frame.wind.xz);
-            
-            // gerstner wave parameters
-            float k = PI2 / wavelength; // wave number (2π / wavelength)
-            float w = PI2 * frequency;  // angular frequency (2π * frequency in hz)
-            
-            // phase calculation
-            float phase = dot(direction, position_vertex.xz) * k + time * w;
-            float c     = cos(phase);
-            float s     = sin(phase);
-
-            // position offset
-            position_vertex.x += amplitude * direction.x * c * fade_factor;
-            position_vertex.z += amplitude * direction.y * c * fade_factor;
-            position_vertex.y += amplitude * s * fade_factor;
-            
-            // accumulate wave direction
-            {
-                float kx = k * direction.x;
-                float kz = k * direction.y;
-                float A  = amplitude;
-
-                // tangent
-                dp_dx += float3(-A * direction.x * kx * s,  // dx/dx
-                                 A * kx * c,                // dy/dx
-                                -A * direction.y * kx * s); // dz/dx
-            
-                // bitangent
-                dp_dz += float3(-A * direction.x * kz * s,  // dx/dz
-                                 A * kz * c,                // dy/dz
-                                -A * direction.y * kz * s); // dz/dz
-            }
-        }
-        
-        static void apply_wave(inout float3 position, inout float3 normal, inout float3 tangent, float time, float fade_factor)
-        {
-            // small waves: high-frequency small ripples (SI units)
-            const float amplitude  = 0.1f;
-            const float wavelength = 1.0f;
-            const float frequency  = 1.0f; 
-            
-            float3 dp_dx = tangent;
-            float3 dp_dz = normalize(cross(normal, tangent)); // bitangent
-        
-            // update position
-            compute_wave_offset(position, dp_dx, dp_dz, time, amplitude, wavelength, frequency, fade_factor);
-        
-            // update normal
-            tangent          = normalize(dp_dx);
-            float3 bitangent = normalize(dp_dz);
-            normal           = normalize(cross(bitangent, tangent));
-        }
-    };
-
-    static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, float width_percent, uint instance_id)
+   
+    static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, const float width_percent, const float height_percent, uint instance_id)
     {
         if (!surface.is_grass_blade())
             return;
@@ -157,7 +100,7 @@ struct vertex_processing
         const float3 right = float3(1, 0, 0);
     
         // replace flat normals with curved ones
-        const float total_curvature = 60.0f * DEG_TO_RAD;
+        const float total_curvature = 80.0f * DEG_TO_RAD;
         float t                     = (width_percent - 0.5f) * 2.0f;
         float harsh_factor          = t * t * t;
         float curve_angle           = harsh_factor * (total_curvature / 2.0f);
@@ -165,10 +108,10 @@ struct vertex_processing
         input.normal                = mul(curvature_rotation, input.normal);
         input.tangent               = mul(curvature_rotation, input.tangent);
     
-        // gravity + wind bend
+        // bending due to gravity and a subtle breeze (proper wind simulation is done in world space)
         float random_lean      = hash(instance_id);
-        float gravity_angle    = random_lean * vertex.height_percent;
-        float wind_angle       = noise_perlin((float)buffer_frame.time) * 0.2f;
+        float gravity_angle    = random_lean * height_percent;
+        float wind_angle       = noise_perlin(float(buffer_frame.time * 0.5f) + input.position.x * 0.05f + input.position.z * 0.05f + float(instance_id) * 0.17f) * 0.2f;
         float3x3 bend_rotation = rotation_matrix(right, gravity_angle + wind_angle);
         input.position.xyz     = mul(bend_rotation, input.position.xyz);
         input.normal           = mul(bend_rotation, input.normal);
@@ -288,12 +231,12 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.instance_id = instance_id;
     
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
-    float3 position_transform = extract_position(transform); // bottom-left of the grass blade
-    float width_percent       = (input.position.xyz.x) / material.local_width;
+    float3 position_transform = extract_position(transform); // bottom of the grass blade
+    float width_percent       = (input.position.xyz.x + material.local_width * 0.5) / material.local_width;
     vertex.height_percent     = (input.position.xyz.y - position_transform.y) / material.local_height;
 
     // process in local space
-    vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
+    vertex_processing::process_local_space(surface, input, vertex, width_percent, vertex.height_percent, instance_id);
   
     // transform to world space
     transform                 = mul(input.instance_transform, transform); // identity for non-instanced
@@ -421,17 +364,6 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
             vertex.position          += displacement;
             vertex.position_previous += displacement;
         }
-    }
-
-    // for the water, apply some wave patterns
-    if (surface.is_water())
-    {
-        float time          = (float)buffer_frame.time;
-        float time_previous = time - (float)buffer_frame.delta_time;
-        
-        float3 normal, tangent;
-        vertex_processing::water::apply_wave(vertex.position_previous, normal,        tangent,        time_previous, fade_factor);
-        vertex_processing::water::apply_wave(vertex.position,          vertex.normal, vertex.tangent, time,          fade_factor);
     }
 
     return transform_to_clip_space(vertex);

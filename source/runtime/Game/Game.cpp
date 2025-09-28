@@ -873,25 +873,32 @@ namespace spartan
                     shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
                     {
                         mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
-                        mesh_grass_blade->SetLodDropoff(MeshLodDropoff::Linear);                                 // linear dropoff - more aggressive
-
+ 
                         // create sub-mesh and add three lods for the grass blade
                         uint32_t sub_mesh_index = 0;
 
-                        // lod 0: high quality grass blade (6 segments)
+                        // lod 0: high quality grass blade (5 segments)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 6);        // high detail
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 5);        // high detail
                             mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index); // add lod 0, no auto-lod generation
                         }
 
-                        // lod 1: medium quality grass blade (2 segments)
+                        // lod 1: medium quality grass blade (3 segment)
+                        {
+                            vector<RHI_Vertex_PosTexNorTan> vertices;
+                            vector<uint32_t> indices;
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 3); // medium detail
+                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 1
+                        }
+
+                        // lod 2: medium quality grass blade (1 segment)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
                             geometry_generation::generate_grass_blade(&vertices, &indices, 1); // medium detail
-                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 1
+                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 2
                         }
 
                         mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
