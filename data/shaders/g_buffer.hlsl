@@ -105,9 +105,6 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     
     input.position.xyz += tex2.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
     
-    float4 slope = tex3.SampleLevel(samplers[sampler_point_clamp], input.uv, 0) * material.ocean_parameters.slopeScale;
-    input.normal = normalize(float3(-slope.x, 1.0f, -slope.y));
-    
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
 
     // transform world space position to clip space
@@ -258,6 +255,11 @@ gbuffer main_ps(gbuffer_vertex vertex)
         tangent_normal.xy         *= normal_intensity;
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
+    }
+    else if (surface.is_ocean())
+    {
+        float4 slope = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv) * material.ocean_parameters.slopeScale;
+        normal = normalize(float3(-slope.x, 1.0f, -slope.y));
     }
     
     // occlusion, roughness, metalness, height sample
