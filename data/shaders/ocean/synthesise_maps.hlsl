@@ -66,9 +66,9 @@ float3 hash33(float3 p)
     return frac(sin(p) * 43758.5453123f);
 }
 
-float4 GetTextureSample(Texture2D texture, float2 pos, float freq, float2 nodePoint)
+float4 GetTextureSample(Texture2D texture, float2 pos, float freq, float2 nodePoint, float z)
 {
-    const float3 hash = hash33(float3(nodePoint.xy, 0.0f));
+    const float3 hash = hash33(float3(nodePoint.xy, z));
 
     float2 uv = pos * freq + hash.yz;
     uv = pos * freq + hash.yz;
@@ -104,8 +104,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         float3 interp_node = GetTriangleInterpNode(uv, tile_freq, i);
         // tex2 = displacement_map as SRV
-        displacement.xyz += GetTextureSample(tex2, uv, tex_freq, interp_node.xy).rgb * interp_node.z;
-        slope += GetTextureSample(tex3, uv, tex_freq, interp_node.xy) * interp_node.z;
+        const float ocean_tile_index = pass_get_f2_value().x;
+        displacement.xyz += GetTextureSample(tex2, uv, tex_freq, interp_node.xy, ocean_tile_index).rgb * interp_node.z;
+        slope += GetTextureSample(tex3, uv, tex_freq, interp_node.xy, ocean_tile_index) * interp_node.z;
 
         moment2 += interp_node.z * interp_node.z;
     }

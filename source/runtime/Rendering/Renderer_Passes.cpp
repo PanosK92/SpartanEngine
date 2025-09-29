@@ -155,7 +155,7 @@ namespace spartan
             Pass_Light_ImageBased(cmd_list_graphics_present);
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
             
-            Pass_ApplyFoam(cmd_list_graphics_present);
+            //Pass_ApplyFoam(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
@@ -648,6 +648,8 @@ namespace spartan
             pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
             cmd_list->SetPipelineState(pso);
 
+            // TEMPORARY
+            uint32_t tile_index = 0;
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -670,9 +672,11 @@ namespace spartan
                     }
                 }
 
-                // displacement map synthesis
+                // ocean synthesis
                 if (material->IsOcean())
                 {
+                    tile_index++;
+
                     cmd_list->BeginTimeblock("Ocean Displacement Map Synthesis");
 
                     RHI_Texture* displacement_map         = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
@@ -692,6 +696,9 @@ namespace spartan
                     cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
                     cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_displacement, synthesised_displacement);
                     cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_slope, synthesised_slope);
+
+                    m_pcb_pass_cpu.set_f2_value(static_cast<float>(tile_index), 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     cmd_list->Dispatch(synthesised_displacement);
 
