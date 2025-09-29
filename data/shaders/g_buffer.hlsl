@@ -103,7 +103,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     MaterialParameters material = GetMaterial();
     
-    input.position.xyz += tex2.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
+    //input.position.xyz += tex2.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
     
     gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
 
@@ -260,6 +260,8 @@ gbuffer main_ps(gbuffer_vertex vertex)
     {
         float4 slope = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv) * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
+
+        albedo = tex2.SampleLevel(samplers[sampler_point_clamp], vertex.uv, 0).rgba * material.ocean_parameters.displacementScale;
     }
     
     // occlusion, roughness, metalness, height sample
