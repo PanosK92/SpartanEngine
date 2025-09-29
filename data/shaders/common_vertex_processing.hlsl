@@ -43,7 +43,7 @@ struct gbuffer_vertex
     float4 position_previous : POS_CLIP_PREVIOUS;
     float3 normal            : NORMAL_WORLD;
     float3 tangent           : TANGENT_WORLD;
-    float4 uv_misc           : TEXCOORD; // .xy=uv (mesh_uv), .z=height_percent, .w=(float)instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
+    float4 uv_misc           : TEXCOORD; // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
 }; 
 
 // remap a value from one range to another
