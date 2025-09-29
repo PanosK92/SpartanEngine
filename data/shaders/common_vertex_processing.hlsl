@@ -44,6 +44,8 @@ struct gbuffer_vertex
     float3 normal            : NORMAL_WORLD;
     float3 tangent           : TANGENT_WORLD;
     float4 uv_misc           : TEXCOORD; // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
+    float3 instance_up       : TEXCOORD1; // temp, will remove
+    float width_percent      : TEXCOORD2; // temp, will remove
 }; 
 
 // remap a value from one range to another
@@ -57,17 +59,14 @@ static float3 extract_position(matrix transform)
     return float3(transform._31, transform._32, transform._33);
 }
 
-// create a 3x3 rotation matrix using Rodrigues' rotation formula
 static float3x3 rotation_matrix(float3 axis, float angle)
 {
     float c = cos(angle);
     float s = sin(angle);
     float t = 1.0f - c;
     
-    // normalize the axis to ensure proper rotation
     axis = normalize(axis);
     
-    // rodrigues' rotation formula
     return float3x3(
         t * axis.x * axis.x + c,
         t * axis.x * axis.y - s * axis.z,
@@ -94,15 +93,6 @@ struct vertex_processing
         const float3 up    = float3(0, 1, 0);
         const float3 right = float3(1, 0, 0);
     
-        // replace flat normals with curved ones
-        const float total_curvature = 80.0f * DEG_TO_RAD;
-        float t                     = (width_percent - 0.5f) * 2.0f;
-        float harsh_factor          = t * t * t;
-        float curve_angle           = harsh_factor * (total_curvature / 2.0f);
-        float3x3 curvature_rotation = rotation_matrix(up, curve_angle);
-        input.normal                = mul(curvature_rotation, input.normal);
-        input.tangent               = mul(curvature_rotation, input.tangent);
-    
         // bending due to gravity and a subtle breeze (proper wind simulation is done in world space)
         float random_lean      = hash(instance_id);
         float gravity_angle    = random_lean * vertex.uv_misc.z;
@@ -122,6 +112,7 @@ struct vertex_processing
         float scaled_gust_scale           = 0.01f * (1.0f + base_wind_magnitude);        // base slow, +mag for quicker gust cycles
         float scaled_direction_time_scale = 0.05f * (1.0f + base_wind_magnitude / 2.0f); // milder scale for direction to avoid chaos
         float3 instance_up                = normalize(transform[1].xyz);
+        vertex.instance_up                = instance_up;
         
         // wind simulation
         float distance_to_camera = fast_length(position_world - buffer_frame.camera_position);
@@ -158,8 +149,8 @@ struct vertex_processing
             float3 rotation_axis = normalize(cross(instance_up, -wind_dir));
             
             // apply wind bend based on height
-            float total_height = 1.0f; // this can be passed from the cpu, but it's currently not needed
-            float curve_angle  = (wind_lean_angle / total_height) * vertex.uv_misc.z;
+            float total_height = GetMaterial().local_height;
+            float curve_angle  = (wind_lean_angle / total_height) * vertex.uv_misc.z; // taller parts bend more
             
             // rotate position, normal, and tangent around the axis
             float3x3 rotation    = rotation_matrix(rotation_axis, curve_angle);
@@ -170,8 +161,7 @@ struct vertex_processing
             vertex.normal        = mul(rotation, vertex.normal);
             vertex.tangent       = mul(rotation, vertex.tangent);
         }
-        
-        if (surface.has_wind_animation() && !surface.is_grass_blade()) // grass has its own wind (now unified via buffer)
+        else if (surface.has_wind_animation()) // anything non-grass gets generic wind sway
         {
             const float sway_extent       = 0.2f; // maximum sway amplitude
             const float noise_scale       = 0.1f; // scale of low-frequency noise
@@ -198,20 +188,6 @@ struct vertex_processing
             // apply the calculated sway to the vertex
             position_world += sway_offset;
         }
-    
-        if (surface.has_wind_animation() || surface.is_grass_blade())
-        {
-            // This appears to be camera-based bending, not wind-related (e.g., simulating displacement from player/camera proximity)
-            // Kept as-is since it's separate from wind simulation
-            float distance                    = length(float2(position_world.x - buffer_frame.camera_position.x, position_world.z - buffer_frame.camera_position.z));
-            float bending_strength            = saturate(1.0f / (distance * distance + 1.0f));
-            float2 direction_away_from_player = normalize(position_world.xz - buffer_frame.camera_position.xz);
-            float3 bending_offset             = float3(direction_away_from_player * bending_strength * vertex.uv_misc.z, bending_strength * vertex.uv_misc.z * 0.5f);
-        
-            // adjust position: apply both horizontal and vertical bending
-            position_world.xz += bending_offset.xz * 0.5f; // horizontal effect
-            position_world.y  += bending_offset.y;         // vertical effect
-        }
     }
 };
 
@@ -230,9 +206,11 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
     float3 position_transform = extract_position(transform); // bottom of the grass blade
-    float width_percent       = (input.position.xyz.x + material.local_width * 0.5) / material.local_width;
-    vertex.uv_misc.z          = (input.position.xyz.y - position_transform.y) / material.local_height;
-
+    float width_percent       = saturate((input.position.x + material.local_width * 0.5f) / material.local_width);
+    float height_percent      = saturate(input.position.y / material.local_height);
+    vertex.uv_misc.z = height_percent;
+    vertex.width_percent = width_percent;
+    
     // process in local space
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
   

@@ -939,6 +939,7 @@ namespace spartan
                         material_grass->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                         material_grass->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
                         material_grass->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_grass->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         material_grass->SetColor(Color::standard_white);
                         material_grass->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
                     }

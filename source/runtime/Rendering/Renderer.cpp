@@ -158,7 +158,7 @@ namespace spartan
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
 
-            SetWind(Vector3(1.0f, 0.0f, 0.5f) * 2.5f);
+            SetWind(Vector3(1.0f, 0.0f, 1.0f) * 3.0f);
         }
 
         // resolution
