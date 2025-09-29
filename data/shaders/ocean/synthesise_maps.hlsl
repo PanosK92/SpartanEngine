@@ -80,6 +80,11 @@ float3 PreserveVariance(float3 linearColor, float3 meanColor, float moment2)
     return (linearColor - meanColor) / sqrt(moment2) + meanColor;
 }
 
+float4 PreserveVariance(float4 linearColor, float4 meanColor, float moment2)
+{
+    return (linearColor - meanColor) / sqrt(moment2) + meanColor;
+}
+
 [numthreads(8, 8, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -93,23 +98,20 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float tile_freq = 1.0f;
 
     float3 displacement = float3(0.0f, 0.0f, 0.0f);
-    float3 slope = float3(0.0f, 0.0f, 0.0f);
+    float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
     float moment2 = 0.0f;
     for (int i = 0; i < 3; i++)
     {
         float3 interp_node = GetTriangleInterpNode(uv, tile_freq, i);
         // tex2 = displacement_map as SRV
         displacement.xyz += GetTextureSample(tex2, uv, tex_freq, interp_node.xy).rgb * interp_node.z;
-        slope.xyz += GetTextureSample(tex3, uv, tex_freq, interp_node.xy).rgb * interp_node.z;
+        slope += GetTextureSample(tex3, uv, tex_freq, interp_node.xy) * interp_node.z;
 
         moment2 += interp_node.z * interp_node.z;
     }
     const float3 mean_displacement = tex2.SampleLevel(samplers[sampler_point_clamp], uv, 9).rgb;
-    const float3 mean_slope = tex3.SampleLevel(samplers[sampler_point_clamp], uv, 9).rgb;
+    const float4 mean_slope = tex3.SampleLevel(samplers[sampler_point_clamp], uv, 9);
     
     synthesised_displacement[thread_id.xy] = float4(PreserveVariance(displacement, mean_displacement, moment2), 1.0f);
-    synthesised_slope[thread_id.xy] = float4(PreserveVariance(slope, mean_slope, moment2), tex3[thread_id.xy].a);
-
-    //synthesised_slope[thread_id.xy] = tex3.SampleLevel(samplers[sampler_point_clamp], uv, 0);
-    //synthesised_displacement[thread_id.xy] = tex2.SampleLevel(samplers[sampler_point_clamp], uv, 0);
+    synthesised_slope[thread_id.xy] = PreserveVariance(slope, mean_slope, moment2);
 }

@@ -155,7 +155,7 @@ namespace spartan
             Pass_Light_ImageBased(cmd_list_graphics_present);
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
             
-            //Pass_ApplyFoam(cmd_list_graphics_present);
+            Pass_ApplyFoam(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
@@ -1268,8 +1268,8 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
             cmd_list->Dispatch(displacement_map);
 
-            Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Min);
-            Pass_Downscale(cmd_list, slope_map, Renderer_DownsampleFilter::Min);
+            Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Average);
+            Pass_Downscale(cmd_list, slope_map, Renderer_DownsampleFilter::Average);
 
             slope_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
@@ -1281,8 +1281,8 @@ namespace spartan
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
         RHI_Texture* tex_out   = GetRenderTarget(Renderer_RenderTarget::frame_render);
 
-        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
-        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
 
         tex_out->SetLayout(RHI_Image_Layout::General, cmd_list);
 
