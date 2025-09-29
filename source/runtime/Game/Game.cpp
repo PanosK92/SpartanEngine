@@ -742,8 +742,8 @@ namespace spartan
             {
                 // tweak without exceeding a vram usage of 8 GB (that is until streaming is implemented)
                 const float render_distance_trees          = 2'000.0f;
-                const float render_distance_grass          = 350.0f; // grass is expensive
-                const uint32_t per_tile_count_grass_blades = 250'000;
+                const float render_distance_grass          = 512.0f; // grass is expensive
+                const uint32_t per_tile_count_grass_blades = 256'000;
                 const uint32_t per_tile_count_tree         = 16;
                 const uint32_t per_tile_count_rock         = 32;
                 const float shadow_distance                = 150.0f; // beyond that, screen space shadows are enough

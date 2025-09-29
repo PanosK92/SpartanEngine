@@ -27,14 +27,16 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 {
     gbuffer_vertex vertex;
     
-    // to world space
-    vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
+    // transform to world space
+    float3 position_world          = 0.0f;
+    float3 position_world_previous = 0.0f;
+    vertex                         = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
 
-    // to clip space
+    // transform to clip space
     const bool is_tesselated = pass_get_f3_value().x == 1.0f;
     if (!is_tesselated)
     {
-        vertex = transform_to_clip_space(vertex);
+        vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
     }
 
     return vertex;
@@ -42,8 +44,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 
 void main_ps(gbuffer_vertex vertex)
 {
+    // distance based alpha threshold
     const bool has_albedo       = pass_get_f3_value().y == 1.0f;
-    const float alpha_threshold = get_alpha_threshold(vertex.position); // distance based alpha threshold
+    const float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;
+    const float3 position_world = get_position(vertex.position.z, screen_uv);
+    const float alpha_threshold = get_alpha_threshold(position_world);
 
     if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold)
         discard;

@@ -39,15 +39,13 @@ struct Vertex_PosUvNorTan
 // vertex buffer output
 struct gbuffer_vertex
 {
-    float3 position               : POS_WORLD;
-    float3 position_previous      : POS_WORLD_PREVIOUS;
-    float4 position_clip          : SV_POSITION;
-    float4 position_clip_previous : POS_CLIP_PREVIOUS;
-    float3 normal                 : NORMAL_WORLD;
-    float3 tangent                : TANGENT_WORLD;
-    float2 uv                     : TEXCOORD;
-    float height_percent          : HEIGHT_PERCENT;
-    uint instance_id              : INSTANCE_ID;
+    float4 position          : SV_POSITION;
+    float4 position_previous : POS_CLIP_PREVIOUS;
+    float3 normal            : NORMAL_WORLD;
+    float3 tangent           : TANGENT_WORLD;
+    float2 uv                : TEXCOORD;
+    float height_percent     : HEIGHT_PERCENT;
+    uint instance_id         : INSTANCE_ID;
 }; 
 
 // remap a value from one range to another
@@ -219,7 +217,7 @@ struct vertex_processing
     }
 };
 
-gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform)
+gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_id, matrix transform, inout float3 position_world, inout float3 position_world_previous)
 {
     MaterialParameters material = GetMaterial();
     Surface surface;
@@ -227,7 +225,10 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     // start building the vertex
     gbuffer_vertex vertex;
-    vertex.instance_id = instance_id;
+    vertex.instance_id       = instance_id;
+    vertex.uv                = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
+    vertex.position          = 0.0f; // set to silence validation errors (in case it's never set later)
+    vertex.position_previous = 0.0f; // set to silence validation errors (in case it's never set later)
     
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
     float3 position_transform = extract_position(transform); // bottom of the grass blade
@@ -240,36 +241,25 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // transform to world space
     transform                 = mul(input.instance_transform, transform); // identity for non-instanced
     matrix transform_previous = mul(input.instance_transform, pass_get_transform_previous());
-    vertex.position           = mul(input.position, transform).xyz;
-    vertex.position_previous  = mul(input.position, transform_previous).xyz;
+    float3 position           = mul(input.position, transform).xyz;
+    float3 position_previous  = mul(input.position, transform_previous).xyz;
     vertex.normal             = normalize(mul(input.normal, (float3x3)transform));
     vertex.tangent            = normalize(mul(input.tangent, (float3x3)transform));
 
-    // compute (world-space) uv
-    float3 abs_normal = abs(vertex.normal); // absolute normal for weights
-    float3 weights    = abs_normal / (abs_normal.x + abs_normal.y + abs_normal.z + FLT_MIN); // normalize weights
-    float2 uv_xy      = float2(-vertex.position.x, vertex.position.y) / material.tiling + material.offset;
-    float2 uv_xz      = float2(-vertex.position.x, vertex.position.z) / material.tiling + material.offset;
-    float2 uv_yz      = float2(-vertex.position.y, vertex.position.z) / material.tiling + material.offset;
-    float2 world_uv   = uv_xy * weights.z + uv_xz * weights.y + uv_yz * weights.x;
-    float2 mesh_uv    = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
-    vertex.uv         = lerp(mesh_uv, world_uv, material.world_space_uv);
-
     // process in world space
-    vertex_processing::process_world_space(surface, vertex.position, vertex, input.position.xyz, transform, instance_id, 0.0f);
-    vertex_processing::process_world_space(surface, vertex.position_previous, vertex, input.position.xyz, transform_previous, instance_id, -buffer_frame.delta_time);
+    vertex_processing::process_world_space(surface, position, vertex, input.position.xyz, transform, instance_id, 0.0f);
+    vertex_processing::process_world_space(surface, position_previous, vertex, input.position.xyz, transform_previous, instance_id, -buffer_frame.delta_time);
 
-    // set to silence validation errors (in case these are never set later)
-    vertex.position_clip          = 0.0f;
-    vertex.position_clip_previous = 0.0f;
-    
+    // out and return
+    position_world          = position;
+    position_world_previous = position_previous;
     return vertex;
 }
 
-gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
+gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position, float3 position_previous)
 {
-    vertex.position_clip          = mul(float4(vertex.position, 1.0f), buffer_frame.view_projection);
-    vertex.position_clip_previous = mul(float4(vertex.position_previous, 1.0f), buffer_frame.view_projection_previous);
+    vertex.position          = mul(float4(position, 1.0f), buffer_frame.view_projection);
+    vertex.position_previous = mul(float4(position_previous, 1.0f), buffer_frame.view_projection_previous);
 
     return vertex;
 }
@@ -284,8 +274,8 @@ gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex)
 // hull shader constant data
 struct HsConstantDataOutput
 {
-    float edges[3] : SV_TessFactor;       // edge tessellation factors
-    float inside   : SV_InsideTessFactor; // inside tessellation factor
+    float edges[3] : SV_TessFactor;     // edge tessellation factors
+    float inside : SV_InsideTessFactor; // inside tessellation factor
 };
 
 // hull shader (control point phase) - pass-through
@@ -304,19 +294,27 @@ gbuffer_vertex main_hs(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint 
 HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POINTS> input_patch, uint patch_id : SV_PrimitiveID)
 {
     HsConstantDataOutput output;
-    
+   
     // calculate distance from camera to triangle center
-    float3 avg_pos         = (input_patch[0].position + input_patch[1].position + input_patch[2].position) / 3.0f;
-    float3 to_camera       = avg_pos - buffer_frame.camera_position;
-    float distance_squared = dot(to_camera, to_camera);
-    float tess_factor      = (distance_squared <= TESS_DISTANCE_SQUARED) ? TESS_FACTOR : 1.0f;
-
+    float3 avg_pos = 0.0f;
+    for (int i = 0; i < 3; i++)
+    {
+        float clip_w      = input_patch[i].position.w;
+        float2 ndc        = input_patch[i].position.xy / clip_w;
+        float depth       = input_patch[i].position.z / clip_w;
+        float2 screen_uv  = float2(ndc.x * 0.5f + 0.5f, 0.5f - ndc.y * 0.5f);
+        avg_pos          += get_position(depth, screen_uv);
+    }
+    avg_pos                /= 3.0f;
+    float3 to_camera        = avg_pos - buffer_frame.camera_position;
+    float distance_squared  = dot(to_camera, to_camera);
+    float tess_factor       = (distance_squared <= TESS_DISTANCE_SQUARED) ? TESS_FACTOR : 1.0f;
+    
     // set tessellation factors
     output.edges[0] = tess_factor;
     output.edges[1] = tess_factor;
     output.edges[2] = tess_factor;
     output.inside   = tess_factor;
-
     return output;
 }
 
@@ -325,43 +323,61 @@ HsConstantDataOutput patch_constant_function(InputPatch<gbuffer_vertex, MAX_POIN
 gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_DomainLocation, const OutputPatch<gbuffer_vertex, 3> patch)
 {
     gbuffer_vertex vertex;
-
-    // interpolate vertex attributes
-    vertex.position          = patch[0].position          * bary_coords.x + patch[1].position          * bary_coords.y + patch[2].position          * bary_coords.z;
-    vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
-    vertex.normal            = normalize(patch[0].normal  * bary_coords.x + patch[1].normal            * bary_coords.y + patch[2].normal            * bary_coords.z);
-    vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent           * bary_coords.y + patch[2].tangent           * bary_coords.z);
-    vertex.uv                = patch[0].uv                * bary_coords.x + patch[1].uv                * bary_coords.y + patch[2].uv                * bary_coords.z;
-    vertex.height_percent    = patch[0].height_percent    * bary_coords.x + patch[1].height_percent    * bary_coords.y + patch[2].height_percent    * bary_coords.z; // pass through to avoid the compile optimizing out
     
+    // interpolate vertex attributes
+    vertex.position          = patch[0].position * bary_coords.x + patch[1].position * bary_coords.y + patch[2].position * bary_coords.z;
+    vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
+    vertex.normal            = normalize(patch[0].normal * bary_coords.x + patch[1].normal * bary_coords.y + patch[2].normal * bary_coords.z);
+    vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent * bary_coords.y + patch[2].tangent * bary_coords.z);
+    vertex.uv                = patch[0].uv * bary_coords.x + patch[1].uv * bary_coords.y + patch[2].uv * bary_coords.z;
+    vertex.height_percent    = patch[0].height_percent * bary_coords.x + patch[1].height_percent * bary_coords.y + patch[2].height_percent * bary_coords.z; // pass through to avoid the compile optimizing out
+   
+    // recon position and position_previous from interpolated clip
+    float clip_w              = vertex.position.w;
+    float clip_previous_w     = vertex.position_previous.w;
+    float2 ndc_current        = vertex.position.xy / clip_w;
+    float2 ndc_previous       = vertex.position_previous.xy / clip_previous_w;
+    float depth_current       = vertex.position.z / clip_w;
+    float depth_previous      = vertex.position_previous.z / clip_previous_w;
+    float2 screen_uv_current  = float2(ndc_current.x * 0.5f + 0.5f, 0.5f - ndc_current.y * 0.5f);
+    float2 screen_uv_previous = float2(ndc_previous.x * 0.5f + 0.5f, 0.5f - ndc_previous.y * 0.5f);
+    float3 position           = get_position(depth_current, screen_uv_current);
+    float3 position_previous  = 0.0f;// get_position_previous(depth_previous, screen_uv_previous);
+
     // calculate fade factor based on actual distance from camera
-    float3 vec_to_vertex      = vertex.position.xyz - buffer_frame.camera_position;
+    float3 vec_to_vertex      = position - buffer_frame.camera_position;
     float distance_from_cam   = length(vec_to_vertex);
     const float fade_distance = 4.0f; // distance from the end at which tessellation starts to fade to 0
     float fade_factor         = saturate((TESS_DISTANCE - distance_from_cam) / fade_distance);
-
+    
     // displace
-    MaterialParameters material = GetMaterial(); Surface surface; surface.flags = material.flags;
-    bool tessellated            = input.edges[0] > 1.0f || input.edges[1] > 1.0f || input.edges[2] > 1.0f || input.inside > 1.0f;
+    MaterialParameters material = GetMaterial();
+    Surface surface;
+    surface.flags = material.flags;
+    bool tessellated = input.edges[0] > 1.0f || input.edges[1] > 1.0f || input.edges[2] > 1.0f || input.inside > 1.0f;
     if (tessellated)
     {
         if (surface.has_texture_height())
         {
-            float height              = GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv, 0.0f).a * 0.04f;
-            float3 displacement       = vertex.normal * height * material.height * fade_factor;
-            vertex.position          += displacement;
-            vertex.position_previous += displacement;
+            float height = GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv, 0.0f).a * 0.04f;
+            float3 displacement  = vertex.normal * height * material.height * fade_factor;
+            position            += displacement;
+            position_previous   += displacement;
         }
-
+        
         // for the terrain, add some perlin noise to make it look less flat
         if (surface.is_terrain())
         {
-            float height              = noise_perlin(vertex.position.xz * 8.0f) * 0.1f;
-            float3 displacement       = vertex.normal * height * fade_factor;
-            vertex.position          += displacement;
-            vertex.position_previous += displacement;
+            float height         = noise_perlin(position.xz * 8.0f) * 0.1f;
+            float3 displacement  = vertex.normal * height * fade_factor;
+            position            += displacement;
+            position_previous   += displacement;
         }
     }
-
-    return transform_to_clip_space(vertex);
+    
+    // recompute clips from new position
+    vertex.position          = mul(float4(position, 1.0f), buffer_frame.view_projection);
+    vertex.position_previous = mul(float4(position_previous, 1.0f), buffer_frame.view_projection_previous);
+    
+    return vertex;
 }
