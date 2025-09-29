@@ -49,6 +49,6 @@ void main_ps(gbuffer_vertex vertex)
     const float3 position_world = get_position(vertex.position.z, screen_uv);
     float alpha_threshold       = get_alpha_threshold(position_world);
     
-    if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv).a <= alpha_threshold)
+    if (has_albedo && GET_TEXTURE(material_texture_index_albedo).Sample(samplers[sampler_anisotropic_wrap], vertex.uv_misc.xy).a <= alpha_threshold)
         discard;
 }

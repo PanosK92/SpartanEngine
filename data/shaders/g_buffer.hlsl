@@ -72,9 +72,9 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     if (surface.is_terrain())
     {
         // sample base color without tiling
-        color           = sample_reduce_tiling(texture_index, vertex.uv, world_position);
-        float4 tex_rock = sample_reduce_tiling(texture_index + 1, vertex.uv, world_position);
-        float4 tex_sand = sample_reduce_tiling(texture_index + 2, vertex.uv, world_position);
+        color           = sample_reduce_tiling(texture_index,     vertex.uv_misc.xy, world_position);
+        float4 tex_rock = sample_reduce_tiling(texture_index + 1, vertex.uv_misc.xy, world_position);
+        float4 tex_sand = sample_reduce_tiling(texture_index + 2, vertex.uv_misc.xy, world_position);
 
         const float sand_offset    = 0.75f;
         const float rock_angle     = 50.0f * DEG_TO_RAD; // start blending here
@@ -90,7 +90,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     else
     {
         // sample base color with tiling for non-terrain
-        color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
+        color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
     }
 
     return color;
@@ -152,7 +152,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float2 uv_x       = position_world.yz;
         float2 uv_y       = position_world.xz;
         float2 uv_z       = position_world.xy;
-        vertex.uv         = (uv_x * abs_normal.x + uv_y * abs_normal.y + uv_z * abs_normal.z) * material.world_space_uv;
+        vertex.uv_misc.xy = (uv_x * abs_normal.x + uv_y * abs_normal.y + uv_z * abs_normal.z) * material.world_space_uv;
     }
     
     // albedo
@@ -172,15 +172,17 @@ gbuffer main_ps(gbuffer_vertex vertex)
             static const float3 vegetation_yellower   = float3(0.45f, 0.4f, 0.15f);
             static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);
             const float vegetation_variation_strength = 0.15f;
-            float variation                           = hash(vertex.instance_id);
+            uint instance_id                          = vertex.uv_misc.w;
+            float variation                           = hash(instance_id);
 
             // --- grass-specific tint based on local blade height and instance variation ---
             if (surface.is_grass_blade())
             {
                 const float3 grass_base = float3(0.0f, 0.05f, 0.005f);
                 const float3 grass_tip  = float3(0.02f, 0.15f, 0.015f);
-                float t = smoothstep(0, 1, vertex.height_percent);
-                float3 grass_tint = lerp(grass_base, grass_tip, t);
+                float height_percent    = vertex.uv_misc.z;
+                float t                 = smoothstep(0, 1, height_percent);
+                float3 grass_tint       = lerp(grass_base, grass_tip, t);
         
                 // blend between greener, yellower, browner based on variation
                 float3 variation_color = vegetation_greener;
@@ -217,7 +219,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     }
     else if (surface.has_texture_emissive())
     {
-        float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
+        float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
         albedo.rgb            += emissive_color;            // overwrite the albedo color
         emission               = luminance(emissive_color); // use the luminance later to boost it (no need to carry a float3 around)
     }
@@ -238,7 +240,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
             float speed      = 0.2;
             float time       = (float)buffer_frame.time;
             float2 uv_offset = direction * speed * time;
-            float2 noise_uv  = (vertex.uv + uv_offset) * 5.0f; // scale UVs for wave size
+            float2 noise_uv  = (vertex.uv_misc.xy + uv_offset) * 5.0f; // scale UVs for wave size
             float noise      = noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
             float is_water   = (float) surface.is_water();
             float angle      = noise * PI2 * is_water; // map noise [0,1] to angle [0, 2π] for water only

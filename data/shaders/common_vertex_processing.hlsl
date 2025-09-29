@@ -43,9 +43,7 @@ struct gbuffer_vertex
     float4 position_previous : POS_CLIP_PREVIOUS;
     float3 normal            : NORMAL_WORLD;
     float3 tangent           : TANGENT_WORLD;
-    float2 uv                : TEXCOORD;
-    float height_percent     : HEIGHT_PERCENT;
-    uint instance_id         : INSTANCE_ID;
+    float4 uv_misc           : TEXCOORD; // .xy=uv (mesh_uv), .z=height_percent, .w=(float)instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
 }; 
 
 // remap a value from one range to another
@@ -88,7 +86,7 @@ static float3x3 rotation_matrix(float3 axis, float angle)
 struct vertex_processing
 {
    
-    static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, const float width_percent, const float height_percent, uint instance_id)
+    static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, const float width_percent, uint instance_id)
     {
         if (!surface.is_grass_blade())
             return;
@@ -107,7 +105,7 @@ struct vertex_processing
     
         // bending due to gravity and a subtle breeze (proper wind simulation is done in world space)
         float random_lean      = hash(instance_id);
-        float gravity_angle    = random_lean * height_percent;
+        float gravity_angle    = random_lean * vertex.uv_misc.z;
         float wind_angle       = noise_perlin(float(buffer_frame.time * 0.5f) + input.position.x * 0.05f + input.position.z * 0.05f + float(instance_id) * 0.17f) * 0.2f;
         float3x3 bend_rotation = rotation_matrix(right, gravity_angle + wind_angle);
         input.position.xyz     = mul(bend_rotation, input.position.xyz);
@@ -161,7 +159,7 @@ struct vertex_processing
             
             // apply wind bend based on height
             float total_height = 1.0f; // this can be passed from the cpu, but it's currently not needed
-            float curve_angle  = (wind_lean_angle / total_height) * vertex.height_percent;
+            float curve_angle  = (wind_lean_angle / total_height) * vertex.uv_misc.z;
             
             // rotate position, normal, and tangent around the axis
             float3x3 rotation    = rotation_matrix(rotation_axis, curve_angle);
@@ -195,7 +193,7 @@ struct vertex_processing
         
             // combine all factors for sway
             float combined_wave = base_wave + flutter;
-            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * vertex.height_percent * base_wind_magnitude;
+            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * vertex.uv_misc.z * base_wind_magnitude;
         
             // apply the calculated sway to the vertex
             position_world += sway_offset;
@@ -208,7 +206,7 @@ struct vertex_processing
             float distance                    = length(float2(position_world.x - buffer_frame.camera_position.x, position_world.z - buffer_frame.camera_position.z));
             float bending_strength            = saturate(1.0f / (distance * distance + 1.0f));
             float2 direction_away_from_player = normalize(position_world.xz - buffer_frame.camera_position.xz);
-            float3 bending_offset             = float3(direction_away_from_player * bending_strength * vertex.height_percent, bending_strength * vertex.height_percent * 0.5f);
+            float3 bending_offset             = float3(direction_away_from_player * bending_strength * vertex.uv_misc.z, bending_strength * vertex.uv_misc.z * 0.5f);
         
             // adjust position: apply both horizontal and vertical bending
             position_world.xz += bending_offset.xz * 0.5f; // horizontal effect
@@ -225,18 +223,18 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
 
     // start building the vertex
     gbuffer_vertex vertex;
-    vertex.instance_id       = instance_id;
-    vertex.uv                = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
+    vertex.uv_misc.w         = instance_id;
+    vertex.uv_misc.xy        = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
     vertex.position          = 0.0f; // set to silence validation errors (in case it's never set later)
     vertex.position_previous = 0.0f; // set to silence validation errors (in case it's never set later)
     
     // compute width and height percent, they represent the position of the vertex relative to the grass blade
     float3 position_transform = extract_position(transform); // bottom of the grass blade
     float width_percent       = (input.position.xyz.x + material.local_width * 0.5) / material.local_width;
-    vertex.height_percent     = (input.position.xyz.y - position_transform.y) / material.local_height;
+    vertex.uv_misc.z          = (input.position.xyz.y - position_transform.y) / material.local_height;
 
     // process in local space
-    vertex_processing::process_local_space(surface, input, vertex, width_percent, vertex.height_percent, instance_id);
+    vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
   
     // transform to world space
     transform                 = mul(input.instance_transform, transform); // identity for non-instanced
@@ -329,8 +327,8 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     vertex.position_previous = patch[0].position_previous * bary_coords.x + patch[1].position_previous * bary_coords.y + patch[2].position_previous * bary_coords.z;
     vertex.normal            = normalize(patch[0].normal * bary_coords.x + patch[1].normal * bary_coords.y + patch[2].normal * bary_coords.z);
     vertex.tangent           = normalize(patch[0].tangent * bary_coords.x + patch[1].tangent * bary_coords.y + patch[2].tangent * bary_coords.z);
-    vertex.uv                = patch[0].uv * bary_coords.x + patch[1].uv * bary_coords.y + patch[2].uv * bary_coords.z;
-    vertex.height_percent    = patch[0].height_percent * bary_coords.x + patch[1].height_percent * bary_coords.y + patch[2].height_percent * bary_coords.z; // pass through to avoid the compile optimizing out
+    vertex.uv_misc.xy        = patch[0].uv_misc.xy * bary_coords.x + patch[1].uv_misc.xy * bary_coords.y + patch[2].uv_misc.xy * bary_coords.z;
+    vertex.uv_misc.z         = patch[0].uv_misc.z * bary_coords.x + patch[1].uv_misc.z * bary_coords.y + patch[2].uv_misc.z * bary_coords.z; // pass through to avoid the compile optimizing out
    
     // recon position and position_previous from interpolated clip
     float clip_w              = vertex.position.w;
@@ -359,7 +357,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     {
         if (surface.has_texture_height())
         {
-            float height = GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv, 0.0f).a * 0.04f;
+            float height         = GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy, 0.0f).a * 0.04f;
             float3 displacement  = vertex.normal * height * material.height * fade_factor;
             position            += displacement;
             position_previous   += displacement;
