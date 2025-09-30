@@ -175,6 +175,7 @@ namespace spartan
 
         // misc
         uint64_t m_buffer_id_vertex                          = 0;
+        uint64_t m_buffer_id_instance                        = 0;
         uint64_t m_buffer_id_index                           = 0;
         uint32_t m_timestamp_index                           = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;

@@ -157,6 +157,11 @@ float2 ndc_to_uv(float3 x)
     return x.xy * float2(0.5f, -0.5f) + 0.5f;
 }
 
+float2 uv_to_ndc(float2 uv)
+{
+    return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f); // flip y for dx style
+}
+
 float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, float far_plane)
 {
     // normalize light to vertex
@@ -537,7 +542,8 @@ static const float3 hemisphere_samples[64] =
 float get_alpha_threshold(float3 position_world)
 {
     static const float ALPHA_THRESHOLD_DEFAULT = 0.6f;
-    static const float ALPHA_MAX_DISTANCE_SQ   = 200.0f * 200.0f;
+    static const float ALPHA_MAX_DISTANCE      = 256.0f;
+    static const float ALPHA_MAX_DISTANCE_SQ = ALPHA_MAX_DISTANCE * ALPHA_MAX_DISTANCE;
 
     // beyond max distance, no alpha testing (threshold = 0)
     float3 offset           = position_world - buffer_frame.camera_position;

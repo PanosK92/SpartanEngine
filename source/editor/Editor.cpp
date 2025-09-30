@@ -48,10 +48,9 @@ using namespace std;
 
 namespace
 {
-    float font_size             = 18.0f;
-    float font_scale            = 1.0f;
-    Widget* widget_world        = nullptr;
-    bool world_space_transforms = true;
+    float font_size      = 18.0f;
+    float font_scale     = 1.0f;
+    Widget* widget_world = nullptr;
 
     void process_event(spartan::sp_variant data)
     {
@@ -181,16 +180,6 @@ void Editor::Tick()
             }
         }
     }
-}
-
-bool Editor::GetWorldSpaceTransforms()
-{
-    return world_space_transforms;
-}
-
-void Editor::SetWorldSpaceTransforms(bool world_space)
-{
-    world_space_transforms = world_space;
 }
 
 void Editor::BeginWindow()

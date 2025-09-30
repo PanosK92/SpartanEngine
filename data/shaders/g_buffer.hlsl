@@ -65,16 +65,16 @@ static float4 sample_reduce_tiling(uint texture_index, float2 uv, float3 world_p
     return GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), final_uv);
 }
 
-static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface)
+static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface surface, const float3 world_position)
 {
     float4 color;
 
     if (surface.is_terrain())
     {
         // sample base color without tiling
-        color           = sample_reduce_tiling(texture_index, vertex.uv, vertex.position);
-        float4 tex_rock = sample_reduce_tiling(texture_index + 1, vertex.uv, vertex.position);
-        float4 tex_sand = sample_reduce_tiling(texture_index + 2, vertex.uv, vertex.position);
+        color           = sample_reduce_tiling(texture_index,     vertex.uv_misc.xy, world_position);
+        float4 tex_rock = sample_reduce_tiling(texture_index + 1, vertex.uv_misc.xy, world_position);
+        float4 tex_sand = sample_reduce_tiling(texture_index + 2, vertex.uv_misc.xy, world_position);
 
         const float sand_offset    = 0.75f;
         const float rock_angle     = 50.0f * DEG_TO_RAD; // start blending here
@@ -82,7 +82,7 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 
         float surface_angle = acos(dot(vertex.normal, float3(0, 1, 0)));
         float slope         = saturate((surface_angle - rock_angle) / rock_sharpness);
-        float sand_factor   = saturate((vertex.position.y - sea_level) / sand_offset);
+        float sand_factor   = saturate((world_position.y - sea_level) / sand_offset);
 
         float4 terrain = lerp(tex_rock, color, 1.0f - slope);
         color          = lerp(terrain, tex_sand, 1.0f - sand_factor);
@@ -90,63 +90,77 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
     else
     {
         // sample base color with tiling for non-terrain
-        color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv);
+        color = GET_TEXTURE(texture_index).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy);
     }
 
     return color;
 }
 
-
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
-    gbuffer_vertex vertex = transform_to_world_space(input, instance_id, buffer_pass.transform);
+    float3 position_world          = 0.0f;
+    float3 position_world_previous = 0.0f;
+    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
 
     // transform world space position to clip space
     Surface surface;
     surface.flags = GetMaterial().flags;
     if (!surface.is_tessellated())
     {
-        vertex = transform_to_clip_space(vertex);
+        vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
     }
 
     return vertex;
 }
 
 [earlydepthstencil]
-gbuffer main_ps(gbuffer_vertex vertex)
+gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 {
     // setup
-    MaterialParameters material = GetMaterial();
-    float4 albedo               = material.color;
-    float3 normal               = vertex.normal.xyz;
-    float roughness             = material.roughness;
-    float metalness             = material.metallness;
-    float emission              = 0.0f;
-    float2 velocity             = 0.0f;
-    float occlusion             = 1.0f;
-    Surface surface;
-    surface.flags = material.flags;
+    MaterialParameters material    = GetMaterial();
+    float4 albedo                  = material.color;
+    float3 normal                  = vertex.normal.xyz;
+    float roughness                = material.roughness;
+    float metalness                = material.metallness;
+    float emission                 = 0.0f;
+    float2 velocity                = 0.0f;
+    float occlusion                = 1.0f;
+    Surface surface; surface.flags = material.flags;
+
+    // reconstruct world position
+    float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;
+    float3 position_world = get_position(vertex.position.z, screen_uv);
 
     // velocity
     {
-        // convert to ndc
-        float2 position_ndc_current  = (vertex.position_clip_current.xy / vertex.position_clip_current.w);
-        float2 position_ndc_previous = (vertex.position_clip_previous.xy / vertex.position_clip_previous.w);
+        // current and previous ndc position
+        float2 position_ndc_current  = uv_to_ndc(vertex.position.xy / buffer_frame.resolution_render);
+        float2 position_ndc_previous = (vertex.position_previous.xy / vertex.position_previous.w);
 
-        // remove the ndc jitter
+        // remove jitter
         position_ndc_current  -= buffer_frame.taa_jitter_current;
         position_ndc_previous -= buffer_frame.taa_jitter_previous;
 
-        // compute the velocity
+        // celocity
         velocity = position_ndc_current - position_ndc_previous;
     }
 
+    // world space uv (if requested)
+    if (any(material.world_space_uv))
+    {
+        float3 abs_normal = abs(normal);
+        float2 uv_x       = position_world.yz;
+        float2 uv_y       = position_world.xz;
+        float2 uv_z       = position_world.xy;
+        vertex.uv_misc.xy = (uv_x * abs_normal.x + uv_y * abs_normal.y + uv_z * abs_normal.z) * material.world_space_uv;
+    }
+    
     // albedo
     {
         float4 albedo_sample = 1.0f;
         if (surface.has_texture_albedo())
         {
-            albedo_sample      = sample_texture(vertex, material_texture_index_albedo, surface);
+            albedo_sample      = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
             albedo_sample.rgb  = srgb_to_linear(albedo_sample.rgb);
             albedo            *= albedo_sample;
         }
@@ -158,15 +172,17 @@ gbuffer main_ps(gbuffer_vertex vertex)
             static const float3 vegetation_yellower   = float3(0.45f, 0.4f, 0.15f);
             static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);
             const float vegetation_variation_strength = 0.15f;
-            float variation                           = hash(vertex.instance_id);
+            uint instance_id                          = vertex.uv_misc.w;
+            float variation                           = hash(instance_id);
 
-            // --- grass-specific tint based on local blade height and instance variation ---
+            //  grass-specific tint based on local blade height and instance variation
             if (surface.is_grass_blade())
             {
                 const float3 grass_base = float3(0.0f, 0.05f, 0.005f);
                 const float3 grass_tip  = float3(0.02f, 0.15f, 0.015f);
-                float t = smoothstep(0, 1, vertex.height_percent);
-                float3 grass_tint = lerp(grass_base, grass_tip, t);
+                float height_percent    = vertex.uv_misc.z;
+                float t                 = smoothstep(0, 1, height_percent);
+                float3 grass_tint       = lerp(grass_tip, grass_tip, t);
         
                 // blend between greener, yellower, browner based on variation
                 float3 variation_color = vegetation_greener;
@@ -186,9 +202,9 @@ gbuffer main_ps(gbuffer_vertex vertex)
         
                 albedo.rgb = lerp(albedo.rgb, variation_color, vegetation_variation_strength * (float)surface.color_variation_from_instance());
             }
-        
-            // --- snow blending based on world-space height and normal ---
-            float snow_blend_factor = get_snow_blend_factor(vertex.position, vertex.normal);
+       
+            // snow blending based on world-space height and normal
+            float snow_blend_factor = get_snow_blend_factor(position_world, vertex.normal);
             albedo.rgb = lerp(albedo.rgb, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
         }
         
@@ -203,7 +219,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     }
     else if (surface.has_texture_emissive())
     {
-        float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv).rgb;
+        float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
         albedo.rgb            += emissive_color;            // overwrite the albedo color
         emission               = luminance(emissive_color); // use the luminance later to boost it (no need to carry a float3 around)
     }
@@ -212,7 +228,7 @@ gbuffer main_ps(gbuffer_vertex vertex)
     if (surface.has_texture_normal())
     {
         // get tangent space normal and apply the user defined intensity, then transform it to world space
-        float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, surface).xyz;
+        float3 normal_sample  = sample_texture(vertex, material_texture_index_normal, surface, position_world).xyz;
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a bc5 two channel normal map
@@ -224,14 +240,14 @@ gbuffer main_ps(gbuffer_vertex vertex)
             float speed      = 0.2;
             float time       = (float)buffer_frame.time;
             float2 uv_offset = direction * speed * time;
-            float2 noise_uv  = (vertex.uv + uv_offset) * 5.0f; // scale UVs for wave size
+            float2 noise_uv  = (vertex.uv_misc.xy + uv_offset) * 5.0f;            // scale UVs for wave size
             float noise      = noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
             float is_water   = (float) surface.is_water();
-            float angle      = noise * PI2 * is_water; // map noise [0,1] to angle [0, 2π] for water only
+            float angle      = noise * PI2 * is_water;                            // map noise [0,1] to angle [0, 2π] for water only
     
             // rotate tangent normal.xy around Z-axis (tangent space)
-            float cos_a = cos(angle);
-            float sin_a = sin(angle);
+            float cos_a       = cos(angle);
+            float sin_a       = sin(angle);
             float2 rotated_xy = float2(
                 tangent_normal.x * cos_a - tangent_normal.y * sin_a,
                 tangent_normal.x * sin_a + tangent_normal.y * cos_a
@@ -250,10 +266,32 @@ gbuffer main_ps(gbuffer_vertex vertex)
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
     }
+
+    // apply curved normals for grass blades
+    if (surface.is_grass_blade())
+    {
+        // compute curvature angle based on width percent
+        const float total_curvature = 160.0f * DEG_TO_RAD;
+        float t                     = (vertex.width_percent - 0.5f) * 2.0f; // [left, right] -> [-1, 1]
+        float harsh_factor          = t;
+        float curve_angle           = harsh_factor * (total_curvature / 2.0f); // += half total
+        curve_angle                 = clamp(curve_angle, -PI * 0.5f, PI * 0.5f);
+       
+        // rotate around the blade up axis
+        float3 rotation_axis        = normalize(cross(vertex.normal, vertex.tangent)); // up
+        float3x3 curvature_rotation = rotation_matrix(rotation_axis, curve_angle);
+        normal                      = normalize(mul(curvature_rotation, normal));
+        vertex.tangent              = normalize(mul(curvature_rotation, vertex.tangent));
+
+        // grass blade has no back-face, so flip the normals to make it appear like it does
+        float face_sign  = is_front_face * 2.0f - 1.0f; // [back, front] -> [-1, 1]
+        normal          *= face_sign;
+        vertex.tangent  *= face_sign;
+    }
     
     // occlusion, roughness, metalness, height sample
     {
-        float4 packed_sample  = sample_texture(vertex, material_texture_index_packed, surface);
+        float4 packed_sample  = sample_texture(vertex, material_texture_index_packed, surface, position_world);
         occlusion             = lerp(occlusion, packed_sample.r, material.has_texture_occlusion() ? 1.0f : 0.0f);
         roughness            *= lerp(1.0f,      packed_sample.g, material.has_texture_roughness() ? 1.0f : 0.0f);
         metalness            *= lerp(1.0f,      packed_sample.b, material.has_texture_metalness() ? 1.0f : 0.0f);

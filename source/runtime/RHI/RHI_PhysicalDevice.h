@@ -126,10 +126,10 @@ namespace spartan
 
         // fixed-size buffers (stack, no heap allocations)
         static const size_t buffer_size  = 128;
-        char api_version[buffer_size]    = "Unknown";                    // vulkan/directx/opengl api version supported
-        char driver_version[buffer_size] = "Unknown";                    // gpu driver version provided by vendor
-        char vendor_name[buffer_size]    = "Unknown";                    // gpu vendor name (e.g., nvidia, amd)
-        char name[buffer_size]           = "Unknown";                    // gpu device name/model
+        char api_version[buffer_size]    = "N/A";                        // vulkan/directx/opengl api version supported
+        char driver_version[buffer_size] = "N/A";                        // gpu driver version provided by vendor
+        char vendor_name[buffer_size]    = "N/A";                        // gpu vendor name (e.g., nvidia, amd)
+        char name[buffer_size]           = "N/A";                        // gpu device name/model
         uint32_t vendor_id               = 0;                            // vendor unique id
         RHI_PhysicalDevice_Type type     = RHI_PhysicalDevice_Type::Max; // type of device (discrete, integrated, etc.)
         uint32_t memory                  = 0;                            // total device memory in mb

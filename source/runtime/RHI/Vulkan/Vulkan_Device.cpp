@@ -49,11 +49,16 @@ namespace spartan
 {
     namespace vulkan_version
     {
-        uint32_t used = 0;
+        uint32_t used      = 0;
+        string version_str = "N/A";
 
-        string to_string(uint32_t version)
+        const char* to_string(uint32_t version)
         {
-            return std::to_string(VK_VERSION_MAJOR(version)) + "." + std::to_string(VK_VERSION_MINOR(version)) + "." + std::to_string(VK_VERSION_PATCH(version));
+            version_str = std::to_string(VK_VERSION_MAJOR(version)) + "." +
+                          std::to_string(VK_VERSION_MINOR(version)) + "." +
+                          std::to_string(VK_VERSION_PATCH(version));
+
+            return version_str.c_str();
         }
     }
 
@@ -152,8 +157,8 @@ namespace spartan
                 app_info.apiVersion  = min(sdk_version, driver_version);
 
                 // save the api version we ended up using
-                vulkan_version::used         = app_info.apiVersion;
-                RHI_Context::api_version_str = vulkan_version::to_string(vulkan_version::used).c_str();
+                vulkan_version::used          = app_info.apiVersion;
+                RHI_Context::api_version_cstr = vulkan_version::to_string(vulkan_version::used);
 
                 // some checks
                 {
@@ -1570,7 +1575,7 @@ namespace spartan
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
                 SP_ASSERT_VK(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device));
-                SP_LOG_INFO("Vulkan %s", vulkan_version::to_string(vulkan_version::used).c_str());
+                SP_LOG_INFO("Vulkan %s", vulkan_version::to_string(vulkan_version::used));
             }
         }
 

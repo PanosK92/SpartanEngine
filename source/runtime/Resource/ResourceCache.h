@@ -122,6 +122,12 @@ namespace spartan
             if (!resource)
                 return nullptr;
 
+            if (resource->GetResourceFilePath().empty())
+            {
+                SP_LOG_ERROR("Resource \"%s\" has an empty file path and cannot be cached.", resource->GetObjectName().c_str());
+                return nullptr;
+            }
+
             // return cached resource if it already exists
             std::shared_ptr<T> existing = GetByPath<T>(resource->GetResourceFilePath());
             if (existing.get() != nullptr)

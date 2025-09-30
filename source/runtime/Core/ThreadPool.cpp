@@ -32,61 +32,73 @@ namespace spartan
 {
     namespace
     {
-        // Stats
-        static uint32_t thread_count                 = 0;
+        // stats
+        static uint32_t thread_count = 0;
         static atomic<uint32_t> working_thread_count = 0;
 
-        // Sync objects
+        // sync objects
         static mutex mutex_tasks;
         static condition_variable condition_var;
 
-        // Threads
+        // threads
         static vector<thread> threads;
 
-        // Tasks
+        // tasks
         static deque<Task> tasks;
 
-        // Misc
-        static bool is_stopping;
+        // misc
+        static bool is_stopping = false;
     }
 
     static void thread_loop()
     {
         while (true)
         {
-            // Lock tasks mutex
-            unique_lock<mutex> lock(mutex_tasks);
+            Task task;
+            {
+                unique_lock<mutex> lock(mutex_tasks);
 
-            // Check condition on notification
-            condition_var.wait(lock, [] { return !tasks.empty() || is_stopping; });
+                condition_var.wait(lock, [] { return !tasks.empty() || is_stopping; });
 
-            // If m_stopping is true, it's time to shut everything down
-            if (is_stopping && tasks.empty())
-                return;
+                if (is_stopping && tasks.empty())
+                    return;
 
-            // Get next task in the queue.
-            Task task = tasks.front();
+                // move the task out of the queue
+                task = std::move(tasks.front());
+                tasks.pop_front();
+            }
 
-            // Remove it from the queue.
-            tasks.pop_front();
-
-            // Unlock the mutex
-            lock.unlock();
-
-            // Execute the task.
-            working_thread_count++;
-            task();
-            working_thread_count--;
+            // execute the task outside the lock
+            working_thread_count.fetch_add(1, memory_order_relaxed);
+            try
+            {
+                task();
+            }
+            catch (...)
+            {
+                // swallow exceptions to avoid terminating the thread
+            }
+            working_thread_count.fetch_sub(1, memory_order_relaxed);
         }
     }
 
     void ThreadPool::Initialize()
     {
+        // reset stopping flag in case of reinitialization attempts.
         is_stopping = false;
 
-        uint32_t core_count = thread::hardware_concurrency() / 2;  // assume physical cores
-        thread_count        = min(core_count * 2, core_count + 4); // 2x for I/O-bound, cap at core_count + 4
+        // determine core count safely
+        uint32_t hw_conc = thread::hardware_concurrency();
+        if (hw_conc == 0)
+        {
+            hw_conc = 4; // fallback
+        }
 
+        uint32_t core_count = max(1u, hw_conc / 2);         // assume physical cores
+        thread_count = min(core_count * 2, core_count + 4); // 2x for I/O bound, cap at core_count + 4
+
+        // create threads
+        threads.reserve(thread_count);
         for (uint32_t i = 0; i < thread_count; i++)
         {
             threads.emplace_back(thread(&thread_loop));
@@ -97,121 +109,127 @@ namespace spartan
 
     void ThreadPool::Shutdown()
     {
+        // ensure queued tasks are flushed and optionally removed by caller
         Flush(true);
 
-        // put unique lock on task mutex
-        unique_lock<mutex> lock(mutex_tasks);
-
-        // set termination flag to true
-        is_stopping = true;
-
-        // unlock the mutex
-        lock.unlock();
-
-        // Wake up all threads
-        condition_var.notify_all();
-
-        // join all threads
-        for (auto& thread : threads)
         {
-            thread.join();
+            unique_lock<mutex> lock(mutex_tasks);
+            is_stopping = true;
         }
 
-        // empty worker threads
+        // wake up all threads so they can exit
+        condition_var.notify_all();
+
+        for (auto& t : threads)
+        {
+            if (t.joinable())
+                t.join();
+        }
+
         threads.clear();
+
+        // reset counters
+        working_thread_count.store(0, memory_order_relaxed);
+        thread_count = 0;
     }
 
     future<void> ThreadPool::AddTask(Task&& task)
     {
-        // create a packaged task that will give us a future
+        // packaged_task to get a future back
         auto packaged_task = make_shared<std::packaged_task<void()>>(std::forward<Task>(task));
-        
-        // get the future before we move the packaged_task into the lambda
-        future<void> future = packaged_task->get_future();
-        
-        // lock tasks mutex
+        future<void> fut = packaged_task->get_future();
+
         unique_lock<mutex> lock(mutex_tasks);
-        
-        // save the task - wrap the packaged_task in a lambda that will execute it
+
+        // wrap the packaged task execution in a simple lambda that will be stored in the deque
         tasks.emplace_back([packaged_task]()
         {
-            (*packaged_task)();
+            try
+            {
+                (*packaged_task)();
+            }
+            catch (...)
+            {
+                // rethrow inside packaged_task will be captured by future
+                throw;
+            }
         });
-        
-        // unlock the mutex
-        lock.unlock();
-        
-        // wake up a thread
+
+        // notify one thread that there is work
         condition_var.notify_one();
-        
-        // return the future that can be used to wait for task completion
-        return future;
+
+        return fut;
     }
 
-    void ThreadPool::ParallelLoop(function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, const uint32_t work_total)
+    void ThreadPool::ParallelLoop(function<void(uint32_t, uint32_t)>&& function, const uint32_t work_total)
     {
-        SP_ASSERT_MSG(work_total > 0, "A parallel loop must have a work_total of at least 1");
+        // ensure there is at least one unit of work
+        SP_ASSERT_MSG(work_total > 0, "a parallel loop must have a work_total of at least 1");
 
-        // ensure we have available threads, if not, execute the function in the caller thread
-        uint32_t available_threads = GetIdleThreadCount();
-        if (available_threads == 0)
+        // if all worker threads are busy or there are no threads,
+        // run the work serially on the calling thread to avoid deadlock
+        if (GetWorkingThreadCount() == thread_count || threads.empty())
         {
             function(0, work_total);
             return;
         }
 
-        uint32_t work_per_thread   = work_total / available_threads;
-        uint32_t work_remainder    = work_total % available_threads;
-        uint32_t work_index        = 0;
-        atomic<uint32_t> work_done = 0;
-        condition_variable cv;
-        mutex cv_m;
+        // decide how many workers will be used (at least 1)
+        uint32_t workers = max(1u, thread_count);
 
-        // split work into multiple tasks
-        while (work_index < work_total)
+        // divide the work as evenly as possible among workers
+        uint32_t base_work = work_total / workers; // minimum amount of work per worker
+        uint32_t remainder = work_total % workers; // leftover work distributed one per worker
+
+        // store futures so we can wait for all tasks to complete
+        vector<future<void>> futures;
+        futures.reserve(workers);
+
+        uint32_t work_index = 0;
+        for (uint32_t i = 0; i < workers && work_index < work_total; ++i)
         {
-            uint32_t work_to_do = work_per_thread;
-
-            // if the work doesn't divide evenly across threads, add the remainder work to the first thread.
-            if (work_remainder != 0)
+            // each worker gets base_work, and if remainder > 0, give one extra unit of work
+            uint32_t work_to_do = base_work + (remainder > 0 ? 1u : 0u);
+            if (remainder > 0)
             {
-                work_to_do     += work_remainder;
-                work_remainder = 0;
+                --remainder;
             }
 
-            AddTask([&function, &work_done, &cv, work_index, work_to_do]()
-            {
-                function(work_index, work_index + work_to_do);
-                work_done += work_to_do;
+            // define the start and end of this worker's range
+            uint32_t start = work_index;
+            uint32_t end   = work_index + work_to_do;
 
-                cv.notify_one(); // notify that a thread has finished its work
-            });
+            // enqueue the task into the thread pool
+            futures.emplace_back(AddTask([fn = function, start, end]() mutable { fn(start, end); }));
 
-            work_index += work_to_do;
+            // move to the next block of work
+            work_index = end;
         }
 
-        // wait for threads to finish work
-        unique_lock<mutex> lk(cv_m);
-        cv.wait(lk, [&]() { return work_done == work_total; });
+        // wait for all worker tasks to finish
+        for (auto& f : futures)
+        {
+            f.get();
+        }
     }
 
     void ThreadPool::Flush(bool remove_queued /*= false*/)
     {
-        // clear any queued tasks
         if (remove_queued)
         {
+            unique_lock<mutex> lock(mutex_tasks);
             tasks.clear();
         }
 
-        // wait for any tasks to complete
+        // Wait until there are no working threads
         while (AreTasksRunning())
         {
             this_thread::sleep_for(chrono::milliseconds(16));
         }
     }
 
-    uint32_t ThreadPool::GetThreadCount()        { return thread_count; }
-    uint32_t ThreadPool::GetWorkingThreadCount() { return working_thread_count; }
-    uint32_t ThreadPool::GetIdleThreadCount()    { return thread_count - working_thread_count; }
-    bool ThreadPool::AreTasksRunning()           { return GetIdleThreadCount() != GetThreadCount(); }
+    uint32_t ThreadPool::GetThreadCount() { return thread_count; }
+    uint32_t ThreadPool::GetWorkingThreadCount() { return working_thread_count.load(memory_order_relaxed); }
+    uint32_t ThreadPool::GetIdleThreadCount() { return (thread_count > GetWorkingThreadCount()) ? (thread_count - GetWorkingThreadCount()) : 0; }
+    bool ThreadPool::AreTasksRunning() { return GetWorkingThreadCount() != 0; }
 }

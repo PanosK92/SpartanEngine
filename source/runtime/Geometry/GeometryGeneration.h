@@ -264,7 +264,7 @@ namespace spartan::geometry_generation
             }
         }
 
-        // Build top cap
+        // build top cap
         int baseIndex = (int)vertices->size();
         float y = 0.5f * height;
         const float dTheta = 2.0f * pi / slices;
@@ -333,26 +333,25 @@ namespace spartan::geometry_generation
     static void generate_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count)
     {
         using namespace math;
-    
+
         // constants
-        const float grass_width    = 0.1f;  // base width
-        const float grass_height   = 1.0f;  // blade height
+        const float grass_width    = 0.2f; // base width
+        const float grass_height   = 1.2f;  // blade height
         const float thinning_start = 0.4f;  // thinning start (0=base, 1=top)
         const float thinning_power = 1.0f;  // thinning sharpness
-        const float back_offset_z  = 0.02f; // small offset for back face to avoid z-fighting
-    
+
         // clear output vectors
         vertices->clear();
         indices->clear();
-    
+
         // helper to compute width factor
         auto compute_width_factor = [=](float t) -> float
         {
             return (t <= thinning_start) ? 1.0f : std::pow(1.0f - ((t - thinning_start) / (1.0f - thinning_start)), thinning_power);
         };
-    
+
         // helper to push vertex
-        auto push_vertex = [&](const Vector3 &pos, const Vector2 &tex)
+        auto push_vertex = [&](const Vector3& pos, const Vector2& tex)
         {
             RHI_Vertex_PosTexNorTan v{};
             v.pos[0] = pos.x; v.pos[1] = pos.y; v.pos[2] = pos.z;
@@ -361,107 +360,90 @@ namespace spartan::geometry_generation
             v.tan[0] = 0.0f; v.tan[1] = 0.0f; v.tan[2] = 0.0f;
             vertices->push_back(v);
         };
-    
-        // total verts per face (excluding top vertex)
+
+        // total verts per face
         uint32_t verts_per_strip = (segment_count + 1) * 2 - 1;
-        uint32_t total_vertices = verts_per_strip * 2; // front + back
-    
+        uint32_t total_vertices = verts_per_strip;
         vertices->reserve(total_vertices);
-    
-        // generate vertices for front and back face
-        // back face z offset and inverted winding to avoid z-fighting and normals flipped
-        for (int face = 0; face < 2; ++face)
+
+        // generate vertices for front face
+        for (uint32_t i = 0; i <= segment_count; ++i)
         {
-            float z_offset    = (face == 0) ? 0.0f : -back_offset_z;
-            float normal_flip = (face == 0) ? 1.0f : -1.0f;
-    
-            for (uint32_t i = 0; i <= segment_count; ++i)
+            float t            = float(i) / segment_count;
+            float y            = t * grass_height;
+            float width_factor = compute_width_factor(t);
+            if (i < segment_count)
             {
-                float t = float(i) / segment_count;
-                float y = t * grass_height;
-                float width_factor = compute_width_factor(t);
-    
-                if (i < segment_count)
-                {
-                    // left vertex
-                    push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, z_offset), Vector2(0.0f, t));
-                    // right vertex
-                    push_vertex(Vector3(grass_width * 0.5f * width_factor, y, z_offset), Vector2(1.0f, t));
-                }
-                else
-                {
-                    // top vertex (single vertex at tip)
-                    push_vertex(Vector3(0.0f, y, z_offset), Vector2(0.5f, t));
-                }
+                // left vertex
+                push_vertex(Vector3(-grass_width * 0.5f * width_factor, y, 0.0f), Vector2(0.0f, t));
+                // right vertex
+                push_vertex(Vector3(grass_width * 0.5f * width_factor, y, 0.0f), Vector2(1.0f, t));
+            }
+            else
+            {
+                // top vertex (single vertex at tip)
+                push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t));
             }
         }
-    
-        // build indices for front and back face
+
+        // build indices for front face
         uint32_t verts_per_face = verts_per_strip;
-        for (int face = 0; face < 2; ++face)
+        uint32_t offset         = 0;
+        bool invert_winding     = false;
+        for (uint32_t i = 0; i < segment_count; ++i)
         {
-            uint32_t offset = face * verts_per_face;
-            bool invert_winding = (face == 1); // back face inverted winding
-    
-            for (uint32_t i = 0; i < segment_count; ++i)
+            if (i < segment_count - 1)
             {
-                if (i < segment_count - 1)
+                if (!invert_winding)
                 {
-                    if (!invert_winding)
-                    {
-                        indices->push_back(offset + i * 2);
-                        indices->push_back(offset + i * 2 + 1);
-                        indices->push_back(offset + i * 2 + 2);
-    
-                        indices->push_back(offset + i * 2 + 2);
-                        indices->push_back(offset + i * 2 + 1);
-                        indices->push_back(offset + i * 2 + 3);
-                    }
-                    else
-                    {
-                        indices->push_back(offset + i * 2 + 2);
-                        indices->push_back(offset + i * 2 + 1);
-                        indices->push_back(offset + i * 2);
-    
-                        indices->push_back(offset + i * 2 + 3);
-                        indices->push_back(offset + i * 2 + 1);
-                        indices->push_back(offset + i * 2 + 2);
-                    }
+                    indices->push_back(offset + i * 2);
+                    indices->push_back(offset + i * 2 + 1);
+                    indices->push_back(offset + i * 2 + 2);
+                    indices->push_back(offset + i * 2 + 2);
+                    indices->push_back(offset + i * 2 + 1);
+                    indices->push_back(offset + i * 2 + 3);
                 }
                 else
                 {
-                    // last triangle at tip
-                    if (!invert_winding)
-                    {
-                        indices->push_back(offset + i * 2);
-                        indices->push_back(offset + i * 2 + 1);
-                        indices->push_back(offset + i * 2 + 2);
-                    }
-                    else
-                    {
-                        indices->push_back(offset + i * 2 + 2);
-                        indices->push_back(offset + i * 2 + 1);
-                        indices->push_back(offset + i * 2);
-                    }
+                    indices->push_back(offset + i * 2 + 2);
+                    indices->push_back(offset + i * 2 + 1);
+                    indices->push_back(offset + i * 2);
+                    indices->push_back(offset + i * 2 + 3);
+                    indices->push_back(offset + i * 2 + 1);
+                    indices->push_back(offset + i * 2 + 2);
+                }
+            }
+            else
+            {
+                // last triangle at tip
+                if (!invert_winding)
+                {
+                    indices->push_back(offset + i * 2);
+                    indices->push_back(offset + i * 2 + 1);
+                    indices->push_back(offset + i * 2 + 2);
+                }
+                else
+                {
+                    indices->push_back(offset + i * 2 + 2);
+                    indices->push_back(offset + i * 2 + 1);
+                    indices->push_back(offset + i * 2);
                 }
             }
         }
-    
+
         // compute normals and tangents
         for (size_t i = 0; i < indices->size(); i += 3)
         {
             uint32_t i0 = (*indices)[i];
             uint32_t i1 = (*indices)[i + 1];
             uint32_t i2 = (*indices)[i + 2];
-    
             Vector3 p0((*vertices)[i0].pos[0], (*vertices)[i0].pos[1], (*vertices)[i0].pos[2]);
             Vector3 p1((*vertices)[i1].pos[0], (*vertices)[i1].pos[1], (*vertices)[i1].pos[2]);
             Vector3 p2((*vertices)[i2].pos[0], (*vertices)[i2].pos[1], (*vertices)[i2].pos[2]);
-    
             Vector3 edge1 = p1 - p0;
             Vector3 edge2 = p2 - p0;
             Vector3 face_normal = Vector3::Normalize(Vector3::Cross(edge1, edge2));
-    
+
             // add face normal to vertices
             (*vertices)[i0].nor[0] += face_normal.x;
             (*vertices)[i0].nor[1] += face_normal.y;
@@ -472,7 +454,7 @@ namespace spartan::geometry_generation
             (*vertices)[i2].nor[0] += face_normal.x;
             (*vertices)[i2].nor[1] += face_normal.y;
             (*vertices)[i2].nor[2] += face_normal.z;
-    
+
             // approximate tangent as direction along width (x axis), assuming grass blade vertical along y
             Vector3 tangent = Vector3::Normalize(Vector3(edge1.x, 0.0f, edge1.z));
             (*vertices)[i0].tan[0] += tangent.x;
@@ -485,14 +467,13 @@ namespace spartan::geometry_generation
             (*vertices)[i2].tan[1] += tangent.y;
             (*vertices)[i2].tan[2] += tangent.z;
         }
-    
+
         // normalize normals and tangents per vertex
         for (auto& v : *vertices)
         {
             Vector3 n(v.nor[0], v.nor[1], v.nor[2]);
             n = Vector3::Normalize(n);
             v.nor[0] = n.x; v.nor[1] = n.y; v.nor[2] = n.z;
-    
             Vector3 t(v.tan[0], v.tan[1], v.tan[2]);
             t = Vector3::Normalize(t);
             v.tan[0] = t.x; v.tan[1] = t.y; v.tan[2] = t.z;

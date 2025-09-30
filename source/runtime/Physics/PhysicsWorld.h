@@ -26,6 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 //==========================
 
+namespace physx
+{
+    class PxRigidActor;
+}
+
 namespace spartan
 {
     class PhysicsWorld
@@ -34,6 +39,9 @@ namespace spartan
         static void Initialize();
         static void Shutdown();
         static void Tick();
+
+        static void AddActor(physx::PxRigidActor* actor);
+        static void RemoveActor(physx::PxRigidActor* actor);
 
         static math::Vector3 GetGravity();
         static void* GetScene();

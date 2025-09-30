@@ -153,10 +153,7 @@ namespace spartan
                 material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
                 material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
                 material->SetProperty(MaterialProperty::Tessellation, 1.0f);
-                
-                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
-                material->SetResourceFilePath(file_path);
+                material->SetResourceName("crate_space" + string(EXTENSION_MATERIAL));
                 
                 // add a renderable component
                 Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
@@ -228,9 +225,7 @@ namespace spartan
                 // material
                 shared_ptr<Material> material = make_shared<Material>();
                 {
-                    material->SetObjectName("material_water");
-                    material->SetResourceFilePath("water" + string(EXTENSION_MATERIAL));
-
+                    material->SetResourceName("water" + string(EXTENSION_MATERIAL));
                     material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); // pool water color
                     material->SetTexture(MaterialTextureType::Normal,            "project\\materials\\water\\normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
@@ -240,7 +235,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest (it works in the small liminal space world)
+                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest
                     material->SetProperty(MaterialProperty::Normal,              normal_strength);
                     material->SetProperty(MaterialProperty::TextureTilingX,      tiling);
                     material->SetProperty(MaterialProperty::TextureTilingY,      tiling);
@@ -285,10 +280,6 @@ namespace spartan
                                 renderable->SetMaterial(material);
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                             }
-
-                            // enable buoyancy
-                           Physics* physics = entity_tile->AddComponent<Physics>();
-                           physics->SetBodyType(BodyType::Water);
                         }
                     }
                 }
@@ -749,21 +740,23 @@ namespace spartan
         {
             void create()
             {
-                const float render_distance_trees = 1'500.0f;
-                const float render_distance_grass = 750.0f;
-                const uint32_t grass_blade_count  = 33'000'000; // above 33 million it will hit a max buffer size validation layer error (still works but it's risky)
-                const uint32_t tree_count         = 5'000;
-                const uint32_t rock_count         = 5'000;      // these are small and on the ground, we can have more
-                const float shadow_distance       = 150.0f;     // tree and rock shadow distance (from the player)
+                // tweak without exceeding a vram usage of 8 GB (that is until streaming is implemented)
+                const float render_distance_trees          = 2'000.0f;
+                const float render_distance_grass          = 400.0f;  // grass is expensive
+                const uint32_t per_tile_count_grass_blades = 420'000; // approximate, only open flat terrain tiles can fit them all
+                const uint32_t per_tile_count_tree         = 16;
+                const uint32_t per_tile_count_rock         = 32;
+                const float shadow_distance                = 150.0f;  // beyond that, screen space shadows are enough
 
                 // sun/lighting/mood
                 entities::sun(true);
                 Light* sun = default_light_directional->GetComponent<Light>();
-                sun->SetIntensity(50'000.0f);
-                sun->SetTemperature(7'000.0f); // kelvin - warm light
+                sun->SetIntensity(20'000.0f);
+                sun->SetTemperature(3'800.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, false);
+                sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(10.0f, -100.0f, -0.5f));
 
-                entities::camera(Vector3(-1437.9974f, 329.2f, 2144.2534f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
 
                 // create
@@ -774,7 +767,6 @@ namespace spartan
                 {
                     Entity* entity = World::CreateEntity();
                     entity->SetObjectName("audio");
-                    entity->SetParent(default_terrain);
 
                     // footsteps grass
                     {
@@ -829,8 +821,8 @@ namespace spartan
                         shared_ptr<Material> material = terrain->GetMaterial();
 
                         // set properties
-                        material->SetResourceFilePath(string("project\\materials\\material_terrain") + string(EXTENSION_MATERIAL));
-                        material->SetProperty(MaterialProperty::IsTerrain,      1.0f);
+                        material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
+                        material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
                         material->SetProperty(MaterialProperty::TextureTilingX, 250.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY, 250.0f);
 
@@ -850,182 +842,215 @@ namespace spartan
                         material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\sand\\occlusion.png",                2);
                         material->SetProperty(MaterialProperty::Tessellation, 0.0f);
                     }
-                    
+
                     // generate a terrain from a height map
                     shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
                     terrain->SetHeightMap(height_map.get());
                     terrain->Generate();
 
                     // add physics so we can walk on it
-                    for(Entity* entity : terrain->GetEntity()->GetChildren())
+                    for (Entity* terrain_tile : terrain->GetEntity()->GetChildren())
                     {
-                        Physics* physics_body = entity->AddComponent<Physics>();
+                        Physics* physics_body = terrain_tile->AddComponent<Physics>();
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
 
                 // water
-                const float dimension          = 8000; // meters
-                const uint32_t density         = 64;   // geometric
+                const float dimension  = 8000; // meters
+                const uint32_t density = 64;   // geometric
                 const Color forest_water_color = Color(0.0f / 255.0f, 150.0f / 255.0f, 70.0f / 255.0f, 220.0f / 255.0f);
                 entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f, 0.1f);
-                
-                // tree (it has a gazillion entities so bake everything together using MeshFlags::ImportCombineMeshes)
-                uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags))
+
+                // props: trees, rocks, grass
                 {
-                    Entity* entity = mesh->GetRootEntity();
-                    entity->SetObjectName("tree");
-                    entity->SetScale(0.04f);
-                
-                    // generate instances
+                    // load meshes
+                    uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes); // combine gazillion entities tree entites into one
+                    shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
+                    shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
+
+                    // create mesh for grass blade
+                    shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
                     {
-                        vector<Matrix> transforms;
-                        terrain->GenerateTransforms(&transforms, tree_count, TerrainProp::Tree, -3.0f);
-                        
-                        if (Entity* leaf = entity->GetChildByIndex(1))
-                        {
-                            Renderable* renderable = leaf->GetComponent<Renderable>();
-                
-                            renderable->SetInstances(transforms);
-                            renderable->SetMaxRenderDistance(render_distance_trees);
-                            renderable->SetMaxShadowDistance(shadow_distance);
-                
-                            // create material
-                            shared_ptr<Material> material = make_shared<Material>();
-                            {
-                                material->SetObjectName("tree_leaf");
-                                material->SetTexture(MaterialTextureType::Color,                    "project\\models\\tree\\Twig_Base_Material_2.png");
-                                material->SetTexture(MaterialTextureType::Normal,                   "project\\models\\tree\\Twig_Normal.png");
-                                material->SetTexture(MaterialTextureType::AlphaMask,                "project\\models\\tree\\Twig_Opacity_Map.jpg");
-                                material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
-                                material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
-                                material->SetProperty(MaterialProperty::SubsurfaceScattering,       0.0f);
-                                // create a file path for this material (required for the material to be able to be cached by the resource cache)
-                                material->SetResourceFilePath("project\\terrain\\tree_leaf_material" + string(EXTENSION_MATERIAL));
-                            }
-                
-                            renderable->SetMaterial(material);
-                        }
-                        
-                        if (Entity* body = entity->GetChildByIndex(0))
-                        {
-                            Renderable* renderable = body->GetComponent<Renderable>();
-                            renderable->SetInstances(transforms);
-                            renderable->SetMaxRenderDistance(render_distance_trees);
-                            renderable->SetMaxShadowDistance(shadow_distance);
-
-                            // create material
-                            shared_ptr<Material> material = make_shared<Material>();
-                            {
-                                material->SetObjectName("tree_body");
-                                material->SetTexture(MaterialTextureType::Color,     "project\\models\\tree\\tree_bark_diffuse.png");
-                                material->SetTexture(MaterialTextureType::Normal,    "project\\models\\tree\\tree_bark_normal.png");
-                                material->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
-                            }
-                            material->SetResourceFilePath("project\\temp\\tree_body" + string(EXTENSION_MATERIAL)); // filepath needed for caching - inconvenient - fix
-                            renderable->SetMaterial(material);
-
-                            // enable physics
-                            body->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
-                        }
-                    }
-                }
-                
-                // rock
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj"))
-                {
-                    Entity* entity = mesh->GetRootEntity();
-                    entity->SetObjectName("rock");
-                    entity->SetScale(2.0f);
-
-                    // generate instances
-                    {
-                        vector<Matrix> transforms;
-                        terrain->GenerateTransforms(&transforms, rock_count, TerrainProp::Rock, -0.25f);
-                        
-                        if (Entity* rock_entity = entity->GetDescendantByName("untitled"))
-                        {
-                            Renderable* renderable = rock_entity->GetComponent<Renderable>();
-                            renderable->SetInstances(transforms);
-                            renderable->SetMaxRenderDistance(render_distance_trees);
-                            renderable->SetMaxShadowDistance(shadow_distance);
-
-                            // create material
-                            shared_ptr<Material> material = make_shared<Material>();
-                            {
-                                material->SetObjectName("rock");
-                                material->SetTexture(MaterialTextureType::Color,     "project\\models\\rock_2\\albedo.png");
-                                material->SetTexture(MaterialTextureType::Normal,    "project\\models\\rock_2\\normal.png");
-                                material->SetTexture(MaterialTextureType::Roughness, "project\\models\\rock_2\\roughness.png");
-                                material->SetTexture(MaterialTextureType::Occlusion, "project\\models\\rock_2\\occlusion.png");
-                            }
-                            material->SetResourceFilePath("project\\temp\\rock_material" + string(EXTENSION_MATERIAL)); // filepath needed for caching - inconvenient - fix
-                            renderable->SetMaterial(material);
-
-                            // enable physics
-                            rock_entity->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
-                        }
-                    }
-                }
-                
-                // grass
-                {
-                    // create entity
-                    Entity* entity = World::CreateEntity();
-                    entity->SetObjectName("grass");
-                
-                    // create a mesh with a grass blade
-                    shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
-                    {
-                        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
-                        mesh->SetLodDropoff(MeshLodDropoff::Linear); // linear dropoff - more aggressive
-                
+                        mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
+ 
                         // create sub-mesh and add three lods for the grass blade
                         uint32_t sub_mesh_index = 0;
-                    
-                        // lod 0: high quality grass blade (6 segments)
+
+                        // lod 0: high quality grass blade (5 segments)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 6); // high detail
-                            mesh->AddGeometry(vertices, indices, false, &sub_mesh_index);      // add lod 0, no auto-lod generation
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 5);        // high detail
+                            mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index); // add lod 0, no auto-lod generation
                         }
-                    
-                        // lod 1: medium quality grass blade (2 segments)
+
+                        // lod 1: medium quality grass blade (3 segment)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // medium detail
-                            mesh->AddLod(vertices, indices, sub_mesh_index);                   // add lod 1
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 3); // medium detail
+                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 1
                         }
-                
-                        mesh->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
-                        mesh->CreateGpuBuffers();                                                                            // aabb, gpu buffers, etc.
+
+                        // lod 2: low quality grass blade (1 segment)
+                        {
+                            vector<RHI_Vertex_PosTexNorTan> vertices;
+                            vector<uint32_t> indices;
+                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // low detail
+                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 2
+                        }
+
+                        mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
+                        mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc.
                     }
-                
-                    // generate instances
-                    vector<Matrix> transforms;
-                    terrain->GenerateTransforms(&transforms, grass_blade_count, TerrainProp::Grass);
-                
-                    // add renderable component
-                    Renderable* renderable = entity->AddComponent<Renderable>();
-                    renderable->SetMesh(mesh.get());
-                    renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
-                    renderable->SetInstances(transforms);
-                
-                    // create a material
-                    shared_ptr<Material> material = make_shared<Material>();
-                    material->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "grass_blade_material" + string(EXTENSION_MATERIAL));
-                    material->SetProperty(MaterialProperty::IsGrassBlade,         1.0f);
-                    material->SetProperty(MaterialProperty::Roughness,            1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat,            1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat_Roughness,  0.2f);
-                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                    material->SetColor(Color::standard_white);
-                    renderable->SetMaterial(material);
-                
-                    renderable->SetMaxRenderDistance(render_distance_grass);
+
+                    // materials
+                    shared_ptr<Material> material_leaf;
+                    shared_ptr<Material> material_body;
+                    shared_ptr<Material> material_rock;
+                    shared_ptr<Material> material_grass;
+                    {
+                        material_leaf = make_shared<Material>();
+                        material_leaf->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\Twig_Base_Material_2.png");
+                        material_leaf->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\Twig_Normal.png");
+                        material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project\\models\\tree\\Twig_Opacity_Map.jpg");
+                        material_leaf->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                        material_leaf->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
+                        material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_leaf->SetResourceName("tree_leaf" + string(EXTENSION_MATERIAL));
+
+                        material_body = make_shared<Material>();
+                        material_body->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\tree_bark_diffuse.png");
+                        material_body->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\tree_bark_normal.png");
+                        material_body->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
+                        material_body->SetResourceName("tree_body" + string(EXTENSION_MATERIAL));
+
+                        material_rock = make_shared<Material>();
+                        material_rock->SetTexture(MaterialTextureType::Color, "project\\models\\rock_2\\albedo.png");
+                        material_rock->SetTexture(MaterialTextureType::Normal, "project\\models\\rock_2\\normal.png");
+                        material_rock->SetTexture(MaterialTextureType::Roughness, "project\\models\\rock_2\\roughness.png");
+                        material_rock->SetTexture(MaterialTextureType::Occlusion, "project\\models\\rock_2\\occlusion.png");
+                        material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
+
+                        material_grass = make_shared<Material>();
+                        material_grass->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
+                        material_grass->SetProperty(MaterialProperty::Roughness, 1.0f);
+                        material_grass->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                        material_grass->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
+                        material_grass->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_grass->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material_grass->SetColor(Color::standard_white);
+                        material_grass->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
+                    }
+
+                    // place props on each terrain tile
+                    vector<Entity*> children = terrain->GetEntity()->GetChildren();
+                    auto place_props_on_tiles = [
+                        &children,
+                        &mesh_rock,
+                        &mesh_tree,
+                        &mesh_grass_blade,
+                        &terrain,
+                        render_distance_trees,
+                        render_distance_grass,
+                        shadow_distance,
+                        material_leaf,
+                        material_body,
+                        material_rock,
+                        material_grass
+                    ](uint32_t start_index, uint32_t end_index)
+                    {
+                        for (uint32_t tile_index = start_index; tile_index < end_index; tile_index++)
+                        {
+                            Entity* terrain_tile = children[tile_index];
+
+                            // tree
+                            {
+                                Entity* entity = mesh_tree->GetRootEntity()->Clone();
+                                entity->SetObjectName("tree");
+                                entity->SetParent(terrain_tile);
+
+                                // generate instances
+                                vector<Matrix> transforms;
+                                terrain->FindTransforms(tile_index, per_tile_count_tree, TerrainProp::Tree, entity, 0.04f, transforms);
+
+                                if (Entity* trunk = entity->GetChildByIndex(0))
+                                {
+                                    // set renderable component
+                                    Renderable* renderable = trunk->GetComponent<Renderable>();
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaxRenderDistance(render_distance_trees);
+                                    renderable->SetMaxShadowDistance(shadow_distance);
+                                    renderable->SetMaterial(material_body);
+
+                                    // add physics so we can collide with rocks
+                                    Physics* physics = trunk->AddComponent<Physics>();
+                                    physics->SetBodyType(BodyType::Mesh);
+                                }
+
+                                // set renderable component
+                                if (Entity* leafs = entity->GetChildByIndex(1))
+                                {
+                                    Renderable* renderable = leafs->GetComponent<Renderable>();
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaxRenderDistance(render_distance_trees);
+                                    renderable->SetMaxShadowDistance(shadow_distance);
+                                    renderable->SetMaterial(material_leaf);
+                                }
+                            }
+
+                            // rock
+                            {
+                                Entity* entity = mesh_rock->GetRootEntity()->Clone();
+                                entity->SetObjectName("rock");
+                                entity->SetParent(terrain_tile);
+
+                                // generate instances
+                                {
+                                    vector<Matrix> transforms;
+                                    terrain->FindTransforms(tile_index, per_tile_count_rock, TerrainProp::Rock, entity, 2.0f, transforms);
+
+                                    if (Entity* rock_entity = entity->GetDescendantByName("untitled")) // where the model keeps the mesh
+                                    {
+                                        // set renderable component
+                                        Renderable* renderable = rock_entity->GetComponent<Renderable>();
+                                        renderable->SetInstances(transforms);
+                                        renderable->SetMaxRenderDistance(render_distance_trees);
+                                        renderable->SetMaxShadowDistance(shadow_distance);
+                                        renderable->SetMaterial(material_rock);
+
+                                        // add physics so we can collide with rocks
+                                        Physics* physics = rock_entity->AddComponent<Physics>();
+                                        physics->SetBodyType(BodyType::Mesh);
+                                    }
+                                }
+                            }
+
+                            // grass
+                            {
+                               // create entity
+                               Entity* entity = World::CreateEntity();
+                               entity->SetObjectName("grass");
+                               entity->SetParent(terrain_tile);
+
+                               // generate instances
+                               vector<Matrix> transforms;
+                               terrain->FindTransforms(tile_index, per_tile_count_grass_blades, TerrainProp::Grass, entity, 1.0f, transforms);
+
+                               // set renderable component
+                               Renderable* renderable = entity->AddComponent<Renderable>();
+                               renderable->SetMesh(mesh_grass_blade.get());
+                               renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
+                               renderable->SetInstances(transforms);
+                               renderable->SetMaterial(material_grass);
+                               renderable->SetMaxRenderDistance(render_distance_grass);
+                            }
+                        }
+                    };
+
+                    // execute in parallel
+                    ThreadPool::ParallelLoop(place_props_on_tiles, static_cast<uint32_t>(children.size()));
                 }
             }
 
@@ -1264,7 +1289,7 @@ namespace spartan
             {
                 // shared material for surfaces
                 shared_ptr<Material> tile_material = make_shared<Material>();
-                tile_material->SetResourceFilePath("project\\materials\\material_floor_tile" + string(EXTENSION_MATERIAL));
+                tile_material->SetResourceName("floor_tile" + string(EXTENSION_MATERIAL));
                 tile_material->SetTexture(MaterialTextureType::Color, "project\\materials\\tile_white\\albedo.png");
                 tile_material->SetTexture(MaterialTextureType::Normal, "project\\materials\\tile_white\\normal.png");
                 tile_material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\tile_white\\metallic.png");
@@ -1288,14 +1313,14 @@ namespace spartan
             
                     // outer metallic ring
                     shared_ptr<Material> material_metal = make_shared<Material>();
-                    material_metal->SetResourceFilePath("project\\materials\\material_metal" + string(EXTENSION_MATERIAL));
+                    material_metal->SetResourceName("material_metal" + string(EXTENSION_MATERIAL));
                     material_metal->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_metal->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle")->GetComponent<Renderable>()->SetMaterial(material_metal);
             
                     // inner light paraboloid
                     shared_ptr<Material> material_paraboloid = make_shared<Material>();
-                    material_paraboloid->SetResourceFilePath("project\\materials\\material_paraboloid" + string(EXTENSION_MATERIAL));
+                    material_paraboloid->SetResourceName("material_paraboloid" + string(EXTENSION_MATERIAL));
                     material_paraboloid->SetTexture(MaterialTextureType::Emission, "project\\models\\pool_light\\emissive.png");
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_paraboloid->SetProperty(MaterialProperty::Metalness, 1.0f);

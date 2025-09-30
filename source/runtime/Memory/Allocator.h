@@ -36,7 +36,7 @@ namespace spartan
         // free previously allocated memory
         static void Free(void* ptr);
 
-        // calld once per frame
+        // caleld once per frame
         static void Tick();
 
         // total memory allocated by the engine
