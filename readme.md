@@ -1,13 +1,13 @@
 
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
-<p>Spartan Engine is one of the most advanced one-man game engines out there, it even comes with a <a href="https://www.youtube.com/@panos_karabelas">podcast</a>. It is built for research and experimentation, ideal for industry veterans, not individuals looking to build a game.</p>
+<p>Spartan Engine is a highly capable one-man game engine, designed for research, experimentation, and pushing the boundaries of rendering and simulation. The engine is particularly suited for industry professionals exploring advanced workflows rather than users focused solely on game creation.</p>
 
-<p>What started as a simple portfolio project helped me learn, land jobs, make friends, and grow my network. Since then, it has evolved beyond anything I imagined, now backed by a thriving Discord community with over 600 members, including seasoned professionals and a dedicated jobs channel.</p>
+<p>Originally developed as a personal learning project, Spartan Engine has grown into a community that fosters collaboration and experimentation. Its Discord community of over 600 members, including seasoned professionals, provides an active space for knowledge-sharing and networking (jobs channel).</p>
 
-<p>You can benefit from this project the same way I did. That is why there are incredible <a href="https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor">contribution perks</a> to help you get started, grow your skills, and build something meaningful. The most capable and ambitious young contributors will get direct support from me to reach their potential.</p>
+<p>Contributors can access a range of <a href="https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor">perks</a> designed to accelerate learning, skill development, and experimentation. Ambitious contributors are supported directly to maximize their growth and contribution potential.</p>
 
-<p>This project now serves an altruistic purpose. It exists to give back, enable others, and push the limits of what is possible.</p>
+<p>Spartan Engine now serves a broader purpose: enabling others to explore, experiment, and push the boundaries of what’s possible in game and rendering technology.</p>
 
 - <img align="left" width="32" src="https://i.pinimg.com/736x/99/65/5e/99655e9fe24eb0a7ea38de683cedb735.jpg"/>For occasional updates regarding the project's development, you can follow me on <a href="https://twitter.com/panoskarabelas1?ref_src=twsrc%5Etfw">X</a>.
   
@@ -51,43 +51,51 @@ The Forest is the most advanced and demanding world. It features **64 million** 
 
 #### Rendering
 
-- Cutting edge Vulkan renderer.
-- 128-byte push constant buffer for lightning fast CPU to GPU data transfer.
-- On the fly single dispatch GPU-based mip generation for render targets (FidelityFX SPD).
-- On the fly compression and mip generation for material textures (FidelityFX Compressonator).
-- Fully bindless design (materials, lights, even the samplers).
-- Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders.
-- Unified deferred rendering with transparency (BSDF with same render path).
-- Atmospheric scattering, real-time filtering and image-based lighting (with bent normals).
-- Screen space shadows (Bend Studio's Days Gone).
-- Screen space ambient occlusion (XeGTAO + visibility bitfield).
-- Screen space reflections (FidelityFX SSSR).
-- Fast shadow mapping for dozens of lights via a shadow map atlas.
-- Variable rate shading.
-- Upscaling (XeSS 2 & FSR 3).
-- Dynamic resolution scaling (fed directly into the upscalers).
-- Temporal anti-aliasing.
-- Breadcrumbs for tracing GPU crashes on AMD (FidelityFX Breadcrumbs).
-- Advanced shadow features with penumbra and colored translucency.
-- Physical light units (intensity from lumens and color from kelvin).
-- Frustum & occlusion (Hi-Z) culling.
-- Physically based camera.
-- Auto-exposure.
-- Volumetric fog.
-- HDR10 output.
-- Tonemappers like ACES, AgX and others.
-- Post-process effects like fxaa, bloom, motion-blur, depth of field, chromatic aberration etc.
+- Renderer
+  - Cutting-edge Vulkan renderer
+  - 128-byte push constant buffer across passes for lightning-fast CPU-to-GPU data transfer
+  - On-the-fly single-dispatch GPU-based mip generation for render targets (FidelityFX SPD)
+  - On-the-fly compression and mip generation for material textures (FidelityFX Compressonator)
+  - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders
+  - Fully bindless design (materials, lights, samplers)
+  - Unified deferred rendering with transparency (BSDF with same render path)
+- Lighting & Shadows
+  - Atmospheric scattering, real-time filtering, IBL with bent normals
+  - Screen-space shadows (from *Days Gone*)
+  - Screen-space ambient occlusion (XeGTAO + visibility bitfield)
+  - Screen-space reflections (FidelityFX SSSR)
+  - Fast shadow mapping with penumbra, supporting dozens of lights via a shadow map atlas
+  - Volumetric fog
+- Performance & Upscaling
+  - Variable rate shading
+  - Upscaling: XeSS 2 & FSR 3
+  - Dynamic resolution scaling
+  - Temporal anti-aliasing
+  - Breadcrumbs for tracing GPU crashes on AMD (FidelityFX Breadcrumbs)
+- Camera & Environment
+  - Physically based camera
+  - Auto-exposure
+  - Physical light units (lumens & kelvin)
+  - Frustum & occlusion (Hi-Z) culling
+- Post-processing
+  - Tonemappers: ACES, AgX, others
+  - HDR10 output
+  - Post-processing effects: FXAA, bloom, motion blur, depth of field, chromatic aberration
 
 ###### General
 
-- One-click project generation for easy setup.
-- Universal input support, keyboard & mouse, controllers (tested a PS5 controller) and steering wheels.
-- Comprehensive physics features (PhysX).
-- CPU & GPU profiling.
-- XML support for data handling.
-- Thread pool that can consume any workload.
-- Entity-component, event systems and most things you'll expect to find in a modern engine.
-- Wide file format support: 10+ for fonts, 30+ for images, and 40+ for models.
+- Project & Input
+  - One-click project generation
+  - Keyboard, mouse, controllers, steering wheels
+- Physics & Profiling
+  - Comprehensive physics features (PhysX)
+  - CPU & GPU profiling
+- Data & Systems
+  - XML support
+  - Thread pool for any workload
+  - Entity-component and event systems
+- File support
+  - 10+ font formats, 30+ image formats, 40+ model formats
 
 # Documentation
 
