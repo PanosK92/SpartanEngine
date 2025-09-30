@@ -240,14 +240,14 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float speed      = 0.2;
             float time       = (float)buffer_frame.time;
             float2 uv_offset = direction * speed * time;
-            float2 noise_uv  = (vertex.uv_misc.xy + uv_offset) * 5.0f; // scale UVs for wave size
+            float2 noise_uv  = (vertex.uv_misc.xy + uv_offset) * 5.0f;            // scale UVs for wave size
             float noise      = noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
             float is_water   = (float) surface.is_water();
-            float angle      = noise * PI2 * is_water; // map noise [0,1] to angle [0, 2π] for water only
+            float angle      = noise * PI2 * is_water;                            // map noise [0,1] to angle [0, 2π] for water only
     
             // rotate tangent normal.xy around Z-axis (tangent space)
-            float cos_a = cos(angle);
-            float sin_a = sin(angle);
+            float cos_a       = cos(angle);
+            float sin_a       = sin(angle);
             float2 rotated_xy = float2(
                 tangent_normal.x * cos_a - tangent_normal.y * sin_a,
                 tangent_normal.x * sin_a + tangent_normal.y * cos_a
@@ -278,8 +278,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         curve_angle                 = clamp(curve_angle, -PI * 0.5f, PI * 0.5f);
        
         // rotate around the blade up axis
-        float3 instance_up          = normalize(cross(vertex.normal, vertex.tangent));
-        float3 rotation_axis = instance_up;
+        float3 rotation_axis        = normalize(cross(vertex.normal, vertex.tangent)); // up
         float3x3 curvature_rotation = rotation_matrix(rotation_axis, curve_angle);
         normal                      = normalize(mul(curvature_rotation, normal));
         vertex.tangent              = normalize(mul(curvature_rotation, vertex.tangent));

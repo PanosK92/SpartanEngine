@@ -116,12 +116,12 @@ struct vertex_processing
         float distance_to_camera = fast_length(position_world - buffer_frame.camera_position);
         if (surface.is_grass_blade() && distance_to_camera <= 300.0f)
         {
-            const float wind_direction_scale      = 0.05f; // scale for wind direction noise (larger scale = broader patterns)
+            const float wind_direction_scale      = 0.05f;                                           // scale for wind direction noise (larger scale = broader patterns)
             const float wind_direction_variation  = PI / 4.0f * (0.5f + base_wind_magnitude / 2.0f); // scale variation width (e.g., wider swings at high mag)
-            const float wind_strength_scale       = 0.25f; // scale for wind strength noise
-            const float wind_strength_amplitude   = 2.0f;  // amplifies the wind strength noise
-            const float min_wind_lean             = 0.25f; // minimum grass lean angle
-            const float max_wind_lean             = 1.0f;  // maximum grass lean angle
+            const float wind_strength_scale       = 0.25f;                                           // scale for wind strength noise
+            const float wind_strength_amplitude   = 2.0f;                                            // amplifies the wind strength noise
+            const float min_wind_lean             = 0.25f;                                           // minimum grass lean angle
+            const float max_wind_lean             = 1.0f;                                            // maximum grass lean angle
             
             // global wind strength modulation (simulates gusts and lulls)
             float global_wind_strength = noise_perlin(float2(time * scaled_gust_scale, 0.0f));
@@ -140,7 +140,7 @@ struct vertex_processing
             // calculate wind lean angle with cubic easing for natural bending
             float wind_lean_angle = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
             wind_lean_angle       = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in
-            wind_lean_angle       = clamp(wind_lean_angle, 0.0f, PI); // cap at π to avoid bending below ground
+            wind_lean_angle       = clamp(wind_lean_angle, 0.0f, PI);                      // cap at π to avoid bending below ground
             
             // wind direction vector and rotation axis
             float3 wind_dir      = float3(cos(wind_direction), 0, sin(wind_direction));
@@ -206,8 +206,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float3 position_transform = extract_position(transform); // bottom of the grass blade
     float width_percent       = saturate((input.position.x + material.local_width * 0.5f) / material.local_width);
     float height_percent      = saturate(input.position.y / material.local_height);
-    vertex.uv_misc.z = height_percent;
-    vertex.width_percent = width_percent;
+    vertex.uv_misc.z          = height_percent;
+    vertex.width_percent      = width_percent;
     
     // process in local space
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);

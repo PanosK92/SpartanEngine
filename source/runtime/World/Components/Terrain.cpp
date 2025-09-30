@@ -149,8 +149,17 @@ namespace spartan
                     return;
             }
 
+            // Computes terrain tile usability to maintain consistent grass density. Flat tiles support all requested transforms,
+            // but steep or water-covered tiles have fewer valid triangles. Adjusts transform count based on usable area fraction
+            // to prevent instance packing and ensure uniform visual density across tiles.
+            float usability_fraction = static_cast<float>(acceptable_triangles.size()) / static_cast<float>(tile_triangle_data.size());
+            uint32_t adjusted_count  = static_cast<uint32_t>(static_cast<float>(transform_count) * usability_fraction + 0.5f);
+
             // step 2: pre-allocate output vector
-            transforms_out.resize(transform_count);
+            transforms_out.resize(adjusted_count);
+
+            if (adjusted_count == 0)
+                return;
 
             // step 3: parallel placement without mutex by direct assignment
             auto place_mesh = [
@@ -221,7 +230,7 @@ namespace spartan
                 }
             };
 
-            ThreadPool::ParallelLoop(place_mesh, transform_count);
+            ThreadPool::ParallelLoop(place_mesh, adjusted_count);
         }
     }
 
