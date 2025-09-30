@@ -312,10 +312,14 @@ namespace spartan
                     {
                         t = pow(t, 2.0f);
                     }
-                    float target_fraction = 1.0f - t;
-                    
+                    else if (m_lod_dropoff == MeshLodDropoff::Aggressive)
+                    {
+                        t = pow(t, 0.4f); // fast start, slow end - more aggressive early
+                    }
+                    float target_fraction = max(0.1f, 1.0f - t); // retain at least 10% to avoid over-reduction
+
                     // compute target index count based on the previous LOD's actual index count
-                    size_t target_index_count = max(static_cast<size_t>(3), static_cast<size_t>(prev_indices.size() * target_fraction));
+                    size_t target_index_count = max(static_cast<size_t>(64), static_cast<size_t>(prev_indices.size() * target_fraction));
             
                     // simplify geometry
                     bool preserve_uvs   = true;

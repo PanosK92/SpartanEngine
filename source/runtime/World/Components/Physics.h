@@ -47,7 +47,6 @@ namespace spartan
         Capsule,
         Mesh,
         Controller,
-        Water,
         Max
     };
 
@@ -152,7 +151,7 @@ namespace spartan
         void* m_controller             = nullptr;
         void* m_material               = nullptr;
         void* m_mesh                   = nullptr;
-        std::vector<void*> m_bodies    = { nullptr };
+        std::vector<void*> m_actors    = { nullptr };
         std::vector<PhysicsBodyMeshData> m_mesh_data;
     };
 }

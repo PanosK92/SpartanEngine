@@ -100,7 +100,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             {
                 L_shadow = compute_shadow(surface, light);
 
-                if (light.has_shadows_screen_space())
+                if (light.has_shadows_screen_space() && surface.is_opaque())
                 {
                     L_shadow = min(L_shadow, tex_uav_sss[int3(thread_id.xy, light.screen_space_shadows_slice_index)].x);
                 }

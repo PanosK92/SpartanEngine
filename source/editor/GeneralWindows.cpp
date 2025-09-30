@@ -53,8 +53,8 @@ namespace
             if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
                 ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
-                ImGui::Text("I cover the costs for Dropbox hosting and a GitHub Pro subscription for benefits like assets and package bandwidth.");
-                ImGui::Text("If you enjoy the simplicity of running a single script and have everything download and just work, please consider sponsoring to help keep everything running smoothly!");
+                ImGui::Text("I cover the costs for hosting and bandwidth of engine assets");
+                ImGui::Text("If you enjoy the simplicity of running a single script, build, run and have everything just work, please consider sponsoring to help keep everything running smoothly!");
                 ImGui::PopItemWidth();
 
                 ImGui::Separator();
@@ -220,7 +220,7 @@ namespace
         
                     // url button
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::PushID(&c); // unique ID per row
+                    ImGui::PushID(&c); // unique id per row
                     if (ImGui::Button(c.button_text.c_str()))
                     {
                         spartan::FileSystem::OpenUrl(c.button_url);
@@ -405,24 +405,24 @@ namespace
 
     namespace worlds
     {
-        struct World
+        struct WorldEntry
         {
             const char* name;
             const char* description;
             const char* performance; // light, moderate, demanding
-            const char* status;      // WIP, Prototype, Complete
+            const char* status;      // wip, prototype, complete
         };
 
-        static const World worlds[] =
+        const WorldEntry worlds[] =
         {
-            { "Car Showroom", "Showcase world for YouTubers/Press. Does not use experimental tech.", "Light", "Complete" },
-            { "Open World Forest", "Millions of Ghost of Tsushima grass blades. Extremely demanding.", "Very demanding", "Prototype" },
-            { "Liminal Space", "Shifts your frequency to a nearby reality.", "Light", "Prototype" },
-            { "Sponza 4K", "High-resolution textures & meshes.", "Demanding", "Complete" },
-            { "Subway", "GI test. No lights, only emissive textures.", "Moderate", "Complete" },
-            { "Minecraft", "Blocky aesthetic.", "Light", "Complete" },
-            { "Basic", "Light, camera, floor.", "Light", "Complete" },
-            { "Water", "Light, camera, ocean.", "?", "In Progress..."}
+            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech.", "Light",          "Complete"  },
+            { "Open World Forest", "Millions of Ghost of Tsushima grass blades.",                         "Very demanding", "Prototype" },
+            { "Liminal Space",     "Shifts your frequency to a nearby reality.",                          "Light",          "Prototype" },
+            { "Sponza 4K",         "High-resolution textures & meshes.",                                  "Demanding",      "Complete"  },
+            { "Subway",            "GI test. No lights, only emissive textures.",                         "Moderate",       "Complete"  },
+            { "Minecraft",         "Blocky aesthetic.",                                                   "Light",          "Complete"  },
+            { "Basic",             "Light, camera, floor.",                                               "Light",          "Complete"  },
+            { "Water",             "Light, camera, ocean.",                                               "?",              "In Progress..."}
         };
         int world_index = 0;
 
@@ -524,7 +524,7 @@ namespace
 
                     ImGui::BeginChild("right_panel", ImVec2(800, list_height), true);
                     {
-                        const World& w = worlds[world_index];
+                        const WorldEntry& w = worlds[world_index];
 
                         // push full window wrap
                         ImGui::PushTextWrapPos(0.0f);

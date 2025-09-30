@@ -309,7 +309,7 @@ namespace spartan::geometry_processing
         std::vector<math::Vector3>& tile_offsets
     )
     {
-        // find terrain bounds
+        // find surface bounds
         float min_x = std::numeric_limits<float>::max();
         float max_x = std::numeric_limits<float>::lowest();
         float min_z = std::numeric_limits<float>::max();
@@ -409,6 +409,7 @@ namespace spartan::geometry_processing
                                 local_idx = static_cast<uint32_t>(tiled_vertices[tile_index].size() - 1);
                                 map[global_idx] = local_idx;
                             }
+
                             tiled_indices[tile_index].push_back(local_idx);
                         }
                     }
@@ -416,19 +417,7 @@ namespace spartan::geometry_processing
             }
         };
     
-        // execute parallel loop over triangles
+        // execute in parallel
         ThreadPool::ParallelLoop(process_triangles, triangle_count);
-    
-        // clean up empty tiles
-        for (uint32_t i = 0; i < total_tiles; ++i)
-        {
-            if (tiled_vertices[i].empty())
-            {
-                tiled_vertices[i].clear();
-                tiled_indices[i].clear();
-                global_to_local_indices[i].clear();
-                tile_offsets[i] = math::Vector3::Zero;
-            }
-        }
     }
 }

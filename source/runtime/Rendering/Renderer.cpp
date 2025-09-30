@@ -158,7 +158,7 @@ namespace spartan
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
 
-            SetWind(Vector3(1.0f, 0.0f, 0.5f) * 2.5f);
+            SetWind(Vector3(1.0f, 0.0f, 1.0f) * 3.0f);
         }
 
         // resolution
@@ -1048,7 +1048,7 @@ namespace spartan
         {
             const Renderer_DrawCall& draw_call   = m_draw_calls[i];
             Renderable* renderable               = draw_call.renderable;
-            const BoundingBox& aabb              = renderable->HasInstancing() ? renderable->GetBoundingBoxInstanceGroup(draw_call.instance_group_index) : renderable->GetBoundingBox();
+            const BoundingBox& aabb              = renderable->GetBoundingBox();
             m_bindless_aabbs[count].min          = aabb.GetMin();
             m_bindless_aabbs[count].max          = aabb.GetMax();
             m_bindless_aabbs[count].is_occluder  = draw_call.is_occluder;
@@ -1086,33 +1086,14 @@ namespace spartan
                         m_transparents_present = true;
                     }
             
-                    if (renderable->HasInstancing())
-                    {
-                        for (uint32_t group_index = 0; group_index < renderable->GetInstanceGroupCount(); group_index++)
-                        {
-                            Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
-                            draw_call.renderable           = renderable;
-                            draw_call.distance_squared     = renderable->GetDistanceSquared(group_index);
-                            draw_call.lod_index            = renderable->GetLodIndex(group_index);
-                            draw_call.is_occluder          = false;
-                            draw_call.camera_visible       = renderable->IsVisible(group_index);
-                            draw_call.instance_group_index = group_index;
-                            draw_call.instance_index       = renderable->GetInstanceGroupStartIndex(group_index);
-                            draw_call.instance_count       = renderable->GetInstanceGroupCount(group_index);
-                        }
-                    }
-                    else
-                    {
-                        Renderer_DrawCall& draw_call   = m_draw_calls[m_draw_call_count++];
-                        draw_call.renderable           = renderable;
-                        draw_call.distance_squared     = renderable->GetDistanceSquared();
-                        draw_call.lod_index            = renderable->GetLodIndex();
-                        draw_call.is_occluder          = false;
-                        draw_call.camera_visible       = renderable->IsVisible();
-                        draw_call.instance_group_index = 0;
-                        draw_call.instance_index       = 0;
-                        draw_call.instance_count       = 1;
-                    }
+                    Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
+                    draw_call.renderable         = renderable;
+                    draw_call.distance_squared   = renderable->GetDistanceSquared();
+                    draw_call.lod_index          = renderable->GetLodIndex();
+                    draw_call.is_occluder        = false;
+                    draw_call.camera_visible     = renderable->IsVisible();
+                    draw_call.instance_index     = 0;
+                    draw_call.instance_count     = renderable->GetInstanceCount();
                 }
             }
         

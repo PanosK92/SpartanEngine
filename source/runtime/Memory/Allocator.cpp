@@ -43,6 +43,7 @@ namespace spartan
     {
         atomic<size_t> bytes_allocated      = 0;
         atomic<size_t> bytes_allocated_peak = 0;
+        atomic<size_t> allocation_count     = 0;
     }
 
     void* Allocator::Allocate(size_t size, size_t alignment)
@@ -62,9 +63,10 @@ namespace spartan
         // store size at the beginning
         *reinterpret_cast<size_t*>(raw) = size;
 
-        // update counter
+        // update counters
         bytes_allocated.fetch_add(size, memory_order_relaxed);
         bytes_allocated_peak = max(bytes_allocated_peak.load(memory_order_relaxed), bytes_allocated.load(memory_order_relaxed));
+        allocation_count++;
 
         // return pointer just after the header
         return static_cast<char*>(raw) + header_size;
@@ -83,8 +85,9 @@ namespace spartan
         // read stored size
         size_t size = *reinterpret_cast<size_t*>(raw);
 
-        // update counter
+        // update counters
         bytes_allocated.fetch_sub(size, memory_order_relaxed);
+        allocation_count--;
 
 #if defined(_MSC_VER)
         _aligned_free(raw);
@@ -168,7 +171,7 @@ namespace spartan
         return static_cast<float>(status.ullAvailPhys) / (1024.0f * 1024.0f);
     #elif defined(__linux__)
         long free_pages = sysconf(_SC_AVPHYS_PAGES); // available pages
-        long page_size = sysconf(_SC_PAGE_SIZE);
+        long page_size  = sysconf(_SC_PAGE_SIZE);
         return static_cast<float>(free_pages * page_size) / (1024.0f * 1024.0f);
     #else
         return 0.0f; // unsupported platform
@@ -183,7 +186,7 @@ namespace spartan
         GlobalMemoryStatusEx(&status);
         return static_cast<float>(status.ullTotalPhys) / (1024.0f * 1024.0f);
 #elif defined(__linux__)
-        long pages = sysconf(_SC_PHYS_PAGES);
+        long pages     = sysconf(_SC_PHYS_PAGES);
         long page_size = sysconf(_SC_PAGE_SIZE);
         return static_cast<float>(pages * page_size) / (1024.0f * 1024.0f);
 #else

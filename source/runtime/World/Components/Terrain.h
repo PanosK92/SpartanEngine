@@ -68,7 +68,7 @@ namespace spartan
 
         // generate
         void Generate();
-        void GenerateTransforms(std::vector<math::Matrix>* transforms, const uint32_t count, const TerrainProp terrain_prop, float offset_y = 0.0f);
+        void FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, Entity* entity, const float scale, std::vector<math::Matrix>& transforms_out);
 
         // io
         void SaveToFile(const char* file_path);
@@ -85,10 +85,10 @@ namespace spartan
 
         // properties
         float m_min_y = -64.0f;
-        float m_max_y = 800.0f;
+        float m_max_y = 256.0;
 
         // members
-        uint32_t m_width                  = 0; 
+        uint32_t m_width                  = 0;
         uint32_t m_height                 = 0;
         float m_area_km2                  = 0.0f;
         std::atomic<bool> m_is_generating = false;

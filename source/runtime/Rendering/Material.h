@@ -203,6 +203,7 @@ namespace spartan
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         std::array<float, static_cast<uint32_t>(OceanParameters::Max)> m_ocean_properties;
         uint32_t m_index = 0;
+        std::mutex m_mutex;
         bool m_should_compute_spectrum = true;
         bool m_show_displacement = false;
         bool m_show_slope = false;

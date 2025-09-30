@@ -124,6 +124,34 @@ namespace spartan::math
                 return *this;
         }
 
+        Vector4 operator+(const Vector4& rhs) const
+        {
+            return Vector4(
+                x + rhs.x,
+                y + rhs.y,
+                z + rhs.z,
+                w + rhs.w
+            );
+        }
+
+        void operator+=(const Vector4& rhs)
+        {
+            x += rhs.x;
+            y += rhs.y;
+            z += rhs.z;
+            w += rhs.w;
+        }
+
+        [[nodiscard]] Vector4 Lerp(const Vector4& rhs, float t) const
+        {
+            return (*this) * (1.0f - t) + rhs * t;
+        }
+
+        [[nodiscard]] static Vector4 Lerp(const Vector4& a, const Vector4& b, float t)
+        {
+            return a * (1.0f - t) + b * t;
+        }
+
         std::string ToString() const;
         const float* Data() const { return &x; }
 

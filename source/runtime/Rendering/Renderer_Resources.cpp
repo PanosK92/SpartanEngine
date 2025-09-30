@@ -707,7 +707,7 @@ namespace spartan
         FileSystem::CreateDirectory_(data_dir);
 
         standard_material = make_shared<Material>();
-        standard_material->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard" + EXTENSION_MATERIAL); // set resource file path so it can be used by the resource cache
+        standard_material->SetResourceName("standard" + string(EXTENSION_MATERIAL));
         standard_material->SetProperty(MaterialProperty::TextureTilingX, 1.0f);
         standard_material->SetProperty(MaterialProperty::TextureTilingY, 1.0f);
         standard_material->SetProperty(MaterialProperty::ColorR,         1.0f);

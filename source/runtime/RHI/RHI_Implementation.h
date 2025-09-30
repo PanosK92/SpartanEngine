@@ -404,7 +404,7 @@ namespace spartan
         #endif
 
         // api agnostic
-        static const char* api_version_str;
+        static const char* api_version_cstr;
         static const char* api_type_str;
         static RHI_Api_Type api_type;
     };

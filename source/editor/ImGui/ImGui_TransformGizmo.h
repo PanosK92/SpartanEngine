@@ -124,7 +124,7 @@ namespace ImGui::TransformGizmo
         ImGuizmo::BeginFrame();
 
         // map transform to ImGuizmo
-        bool use_world_space                   = Editor::GetWorldSpaceTransforms();
+        static bool use_world_space            = true;
         spartan::math::Vector3 position        = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
         spartan::math::Quaternion rotation     = use_world_space ? entity->GetRotation() : entity->GetRotationLocal();
         spartan::math::Vector3 scale           = use_world_space ? entity->GetScale() : entity->GetScaleLocal();

@@ -52,9 +52,6 @@ public:
     inline static ImFont* font_normal = nullptr;
     inline static ImFont* font_bold   = nullptr;
 
-    static bool GetWorldSpaceTransforms();
-    static void SetWorldSpaceTransforms(bool world_space);
-
 private:
     void BeginWindow();
 

@@ -602,8 +602,9 @@ namespace spartan
                 SetScissorRectangle(scissor_rect);
 
                 // vertex and index buffer state
-                m_buffer_id_index  = 0;
-                m_buffer_id_vertex = 0;
+                m_buffer_id_index    = 0;
+                m_buffer_id_vertex   = 0;
+                m_buffer_id_instance = 0;
             }
 
             if (Debugging::IsBreadcrumbsEnabled())
@@ -1255,7 +1256,7 @@ namespace spartan
         VkDeviceSize offsets[2] = { 0, 0 };
     
         // check if vertex buffer id has changed to trigger binding
-        if (m_buffer_id_vertex != vertex->GetObjectId())
+        if (m_buffer_id_vertex != vertex->GetObjectId() || m_buffer_id_instance != instance->GetObjectId())
         {
             vkCmdBindVertexBuffers(
                 static_cast<VkCommandBuffer>(m_rhi_resource), // commandbuffer
@@ -1265,8 +1266,9 @@ namespace spartan
                 offsets                                       // poffsets
             );
     
-            // update cached vertex buffer id
-            m_buffer_id_vertex = vertex->GetObjectId();
+            // track currently bound buffers
+            m_buffer_id_vertex   = vertex->GetObjectId();
+            m_buffer_id_instance = instance->GetObjectId();
             Profiler::m_rhi_bindings_buffer_vertex++;
         }
     }
