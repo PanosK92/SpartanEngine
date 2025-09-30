@@ -336,9 +336,9 @@ namespace spartan::geometry_generation
 
         // constants
         const float grass_width    = 0.15f; // base width
-        const float grass_height   = 1.2f; // blade height
-        const float thinning_start = 0.4f; // thinning start (0=base, 1=top)
-        const float thinning_power = 1.0f; // thinning sharpness
+        const float grass_height   = 1.2f;  // blade height
+        const float thinning_start = 0.4f;  // thinning start (0=base, 1=top)
+        const float thinning_power = 1.0f;  // thinning sharpness
 
         // clear output vectors
         vertices->clear();

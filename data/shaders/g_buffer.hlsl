@@ -278,7 +278,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         curve_angle                 = clamp(curve_angle, -PI * 0.5f, PI * 0.5f);
        
         // rotate around the blade up axis
-        float3 rotation_axis        = vertex.instance_up;
+        float3 instance_up          = normalize(cross(vertex.normal, vertex.tangent));
+        float3 rotation_axis = instance_up;
         float3x3 curvature_rotation = rotation_matrix(rotation_axis, curve_angle);
         normal                      = normalize(mul(curvature_rotation, normal));
         vertex.tangent              = normalize(mul(curvature_rotation, vertex.tangent));

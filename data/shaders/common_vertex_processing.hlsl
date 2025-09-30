@@ -44,7 +44,6 @@ struct gbuffer_vertex
     float3 normal            : NORMAL_WORLD;
     float3 tangent           : TANGENT_WORLD;
     float4 uv_misc           : TEXCOORD; // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
-    float3 instance_up       : TEXCOORD1; // temp, will remove
     float width_percent      : TEXCOORD2; // temp, will remove
 }; 
 
@@ -112,7 +111,6 @@ struct vertex_processing
         float scaled_gust_scale           = 0.01f * (1.0f + base_wind_magnitude);        // base slow, +mag for quicker gust cycles
         float scaled_direction_time_scale = 0.05f * (1.0f + base_wind_magnitude / 2.0f); // milder scale for direction to avoid chaos
         float3 instance_up                = normalize(transform[1].xyz);
-        vertex.instance_up                = instance_up;
         
         // wind simulation
         float distance_to_camera = fast_length(position_world - buffer_frame.camera_position);
