@@ -904,7 +904,24 @@ void Properties::ShowMaterial(Material* material) const
 
             int tile_count = material->GetOceanTileCount();
             ImGui::InputInt("Ocean Tiles", &tile_count);
-            material->SetOceanTileCount(tile_count);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                material->SetOceanTileCount(tile_count);
+            }
+
+            float tile_size = material->GetOceanTileSize();
+            ImGui::InputFloat("Ocean Tile Size", &tile_size);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                material->SetOceanTileSize(tile_size);
+            }
+
+            int vertices_count = material->GetOceanVerticesCount();
+            ImGui::InputInt("Ocean Vertices Count", &vertices_count);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                material->SetOceanVerticesCount(vertices_count);
+            }
 
             bool show_displacement = material->GetShowDisplacement();
             ImGui::Checkbox("Show Displacement Map", &show_displacement);

@@ -94,8 +94,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     float2 uv = (pixel_coord + 0.5f) / texture_size;
 
-    const float tex_freq = 1.0f;
-    const float tile_freq = 1.0f;
+    const float tex_freq = 10.0f;
+    const float tile_freq = 5.0f;
 
     float3 displacement = float3(0.0f, 0.0f, 0.0f);
     float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);

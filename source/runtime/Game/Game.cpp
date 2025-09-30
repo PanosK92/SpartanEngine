@@ -287,7 +287,7 @@ namespace spartan
                 return water;
             }
 
-            Entity* ocean(std::shared_ptr<Material> material, const Vector3& position, float dimension, uint32_t density, uint32_t grid_size)
+            Entity* ocean(std::shared_ptr<Material> material, const Vector3& position, float tile_size, uint32_t density, uint32_t grid_size)
             {
                 // entity
                 Entity* water = World::CreateEntity();
@@ -302,6 +302,9 @@ namespace spartan
 
                     material->LoadFromFile(material->GetResourceFilePath());
                     material->SetOceanTileCount(grid_size);
+
+                    material->SetOceanTileSize(tile_size);
+                    material->SetOceanVerticesCount(density);
 
                     // if material fails to load from file
                     if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)
@@ -344,7 +347,7 @@ namespace spartan
                     const uint32_t grid_points_per_dimension = density;
                     vector<RHI_Vertex_PosTexNorTan> vertices;
                     vector<uint32_t> indices;
-                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, dimension);
+                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, tile_size);
 
                     string name = "ocean mesh";
 
@@ -370,7 +373,7 @@ namespace spartan
                             entity_tile->SetObjectName(tile_name);
                             entity_tile->SetParent(water);
 
-                            Vector3 tile_position = { col * dimension, 0.0f, row * dimension };
+                            Vector3 tile_position = { col * tile_size, 0.0f, row * tile_size };
                             entity_tile->SetPosition(tile_position);
 
                             if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
@@ -1719,18 +1722,19 @@ namespace spartan
 
         namespace ocean
         {
-            uint32_t ocean_tile_count = 2;
-            const float tile_size = 20.0f;
+            uint32_t ocean_tile_count = 1;
+            float tile_size = 512.0f;
+            uint32_t vertices_count = 512;
             shared_ptr<Material> material = make_shared<Material>();
 
             void create()
             {
                 entities::camera();
-                //entities::sun(true);
+                entities::sun(true);
 
                 auto entity = World::CreateEntity();
 
-                default_ocean = entities::ocean(material, { 0.0f, 0.0f, 0.0f }, tile_size, 512, ocean_tile_count);
+                default_ocean = entities::ocean(material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
 
                 default_ocean->SetParent(entity);
 
@@ -1744,7 +1748,7 @@ namespace spartan
                 point->SetIntensity(8500.0f);
                 point->SetObjectName("Point Light");
 
-                //default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
             }
 
             void tick()
@@ -1753,7 +1757,7 @@ namespace spartan
                     return;
 
                 uint32_t current_tile_count = material->GetOceanTileCount();
-                if (current_tile_count != ocean_tile_count)
+                if (current_tile_count != ocean_tile_count || tile_size != material->GetOceanTileSize() || vertices_count != material->GetOceanVerticesCount())
                 {
                     ocean_tile_count = current_tile_count;
                     auto& children = default_ocean->GetChildren();
@@ -1774,6 +1778,41 @@ namespace spartan
 
                     if (ocean_mesh.get() == nullptr)
                         return;
+
+                    // regenerate mesh
+                    if (tile_size != material->GetOceanTileSize() || vertices_count != material->GetOceanVerticesCount())
+                    {
+                        tile_size = material->GetOceanTileSize();
+                        vertices_count = material->GetOceanVerticesCount();
+
+                        // generate grid
+                        const uint32_t grid_points_per_dimension = vertices_count;
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, tile_size);
+
+                        string name = "ocean mesh";
+
+                        // create mesh if it doesn't exist
+                        ocean_mesh->Clear();
+
+                        for (std::vector<std::shared_ptr<Mesh>>::iterator it = meshes.begin(); it != meshes.end();)
+                        {
+                            std::shared_ptr<Mesh> m = *it;
+                            if (m->GetObjectName() == "ocean mesh")
+                                it = meshes.erase(it);
+                            else;
+                                ++it;
+                        }
+                        
+                        ocean_mesh = meshes.emplace_back(make_shared<Mesh>());
+                        ocean_mesh->SetObjectName(name);
+                        ocean_mesh->SetRootEntity(default_ocean);
+                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+                        ocean_mesh->AddGeometry(vertices, indices, false);
+                        ocean_mesh->CreateGpuBuffers();
+                    }
 
                     for (uint32_t row = 0; row < current_tile_count; row++)
                     {

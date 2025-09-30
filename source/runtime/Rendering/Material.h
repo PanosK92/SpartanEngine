@@ -190,10 +190,16 @@ namespace spartan
         uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
+
+        // ocean
         bool ShouldComputeSpectrum() const { return m_should_compute_spectrum; }
         void MarkSpectrumAsComputed() { m_should_compute_spectrum = false; }
         void SetOceanTileCount(const uint32_t count) { m_ocean_tiles = count; }
         uint32_t GetOceanTileCount() const { return m_ocean_tiles; }
+        void SetOceanVerticesCount(const uint32_t count) { m_ocean_vertices_count = count; }
+        uint32_t GetOceanVerticesCount() const { return m_ocean_vertices_count; }
+        void SetOceanTileSize(const float size) { m_ocean_tile_size = size; }
+        float GetOceanTileSize() const { return m_ocean_tile_size; }
 
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
         const std::array<float, static_cast<uint32_t>(OceanParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
@@ -204,9 +210,12 @@ namespace spartan
         std::array<float, static_cast<uint32_t>(OceanParameters::Max)> m_ocean_properties;
         uint32_t m_index = 0;
         std::mutex m_mutex;
+
         bool m_should_compute_spectrum = true;
         bool m_show_displacement = false;
         bool m_show_slope = false;
         uint32_t m_ocean_tiles = 1;
+        uint32_t m_ocean_vertices_count = 0;
+        float m_ocean_tile_size = 0.0f;
     };
 }
