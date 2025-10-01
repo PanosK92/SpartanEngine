@@ -267,9 +267,9 @@ namespace spartan
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                            // bias the lod index to improve performance (for non-directional lights)
-                            const uint32_t lod_bias = light->GetLightType() == LightType::Directional ? 0 : 1;
-                            uint32_t lod_index      = clamp<uint32_t>(draw_call.lod_index + lod_bias, 0, renderable->GetLodCount() - 1);
+                            // use the lowest lod unless the camera is close to the shadow caster and can notice low quality shadows
+                            bool is_camera_close_to_shadow_caster = renderable->GetDistanceSquared() < 100.0f * 100.0f;
+                            uint32_t lod_index = is_camera_close_to_shadow_caster ? draw_call.lod_index : renderable->GetLodCount() - 1;
 
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(lod_index),
