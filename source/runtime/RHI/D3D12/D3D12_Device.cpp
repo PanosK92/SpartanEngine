@@ -313,7 +313,7 @@ namespace spartan
 
     RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
     {
-
+        return nullptr;
     }
 
     void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
