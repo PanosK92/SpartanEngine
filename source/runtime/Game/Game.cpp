@@ -309,7 +309,7 @@ namespace spartan
                     // if material fails to load from file
                     if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)
                     {
-                        material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); 
+                        material->SetColor(Color(0.0f, 142.0f / 255.0f, 229.0f / 255.0f, 254.0f / 255.0f)); 
                         material->SetProperty(MaterialProperty::IsOcean, 1.0f);
 
                         material->SetOceanProperty(OceanParameters::Angle, 0.0f); //handled internally
@@ -321,7 +321,7 @@ namespace spartan
                         material->SetOceanProperty(OceanParameters::Swell, 1.0f);
                         material->SetOceanProperty(OceanParameters::Fetch, 100000.0f);
                         material->SetOceanProperty(OceanParameters::WindDirection, 135.0f);
-                        material->SetOceanProperty(OceanParameters::WindSpeed, 3.0f);
+                        material->SetOceanProperty(OceanParameters::WindSpeed, 5.0f);
                         material->SetOceanProperty(OceanParameters::Gamma, 3.3f);
                         material->SetOceanProperty(OceanParameters::ShortWavesFade, 0.0f);
                         material->SetOceanProperty(OceanParameters::RepeatTime, 200.0f);
@@ -335,9 +335,9 @@ namespace spartan
                         material->SetOceanProperty(OceanParameters::FoamBias, 1.2f);
                         material->SetOceanProperty(OceanParameters::FoamAdd, 1.0f);
 
-                        material->SetOceanProperty(OceanParameters::DisplacementScale, 0.8f);
-                        material->SetOceanProperty(OceanParameters::SlopeScale, 0.8f);
-                        material->SetOceanProperty(OceanParameters::LengthScale, 32.0f);
+                        material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SlopeScale, 0.6f);
+                        material->SetOceanProperty(OceanParameters::LengthScale, 48.0f);
                     }
                 }
 
@@ -1722,15 +1722,15 @@ namespace spartan
 
         namespace ocean
         {
-            uint32_t ocean_tile_count = 1;
-            float tile_size = 512.0f;
+            uint32_t ocean_tile_count = 2;
+            float tile_size = 128.0f;
             uint32_t vertices_count = 512;
             shared_ptr<Material> material = make_shared<Material>();
 
             void create()
             {
                 entities::camera();
-                entities::sun(true);
+                //entities::sun(true);
 
                 auto entity = World::CreateEntity();
 
@@ -1739,16 +1739,16 @@ namespace spartan
                 default_ocean->SetParent(entity);
 
                 auto light_entity = World::CreateEntity();
-                light_entity->SetPosition({ 10.0f, 16.0f, 10.0f });
+                light_entity->SetPosition({ 64.0f, 180.0f, 64.0f });
 
                 Light* point = light_entity->AddComponent<Light>();
                 point->SetLightType(LightType::Point);
-                point->SetRange(50.0f);
-                point->SetTemperature(5500.0f);
+                point->SetRange(400.0f);
+                point->SetTemperature(100000.0f);
                 point->SetIntensity(8500.0f);
                 point->SetObjectName("Point Light");
 
-                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                //default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
             }
 
             void tick()
@@ -1791,25 +1791,25 @@ namespace spartan
                         vector<uint32_t> indices;
                         geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, tile_size);
 
-                        string name = "ocean mesh";
+                        //string name = "ocean mesh";
 
                         // create mesh if it doesn't exist
                         ocean_mesh->Clear();
 
-                        for (std::vector<std::shared_ptr<Mesh>>::iterator it = meshes.begin(); it != meshes.end();)
-                        {
-                            std::shared_ptr<Mesh> m = *it;
-                            if (m->GetObjectName() == "ocean mesh")
-                                it = meshes.erase(it);
-                            else;
-                                ++it;
-                        }
+                        //for (std::vector<std::shared_ptr<Mesh>>::iterator it = meshes.begin(); it != meshes.end();)
+                        //{
+                        //    std::shared_ptr<Mesh> m = *it;
+                        //    if (m->GetObjectName() == "ocean mesh")
+                        //        it = meshes.erase(it);
+                        //    else;
+                        //        ++it;
+                        //}
                         
-                        ocean_mesh = meshes.emplace_back(make_shared<Mesh>());
+                        /*ocean_mesh = meshes.emplace_back(make_shared<Mesh>());
                         ocean_mesh->SetObjectName(name);
                         ocean_mesh->SetRootEntity(default_ocean);
                         ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);*/
                         ocean_mesh->AddGeometry(vertices, indices, false);
                         ocean_mesh->CreateGpuBuffers();
                     }

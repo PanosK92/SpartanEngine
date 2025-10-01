@@ -648,8 +648,7 @@ namespace spartan
             pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
             cmd_list->SetPipelineState(pso);
 
-            // TEMPORARY
-            uint32_t tile_index = 0;
+            uint32_t tile_index = 0; // TEMPORARY
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -697,7 +696,9 @@ namespace spartan
                     cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_displacement, synthesised_displacement);
                     cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_slope, synthesised_slope);
 
-                    m_pcb_pass_cpu.set_f2_value(static_cast<float>(tile_index), 0.0f);
+                    Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+
+                    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     cmd_list->Dispatch(synthesised_displacement);

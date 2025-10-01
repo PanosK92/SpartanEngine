@@ -94,8 +94,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     float2 uv = (pixel_coord + 0.5f) / texture_size;
 
-    const float tex_freq = 10.0f;
-    const float tile_freq = 5.0f;
+    const float3 pass_values = pass_get_f3_value();
+    const float2 tile_xz_pos = pass_values.xy;
+    const float tile_size = pass_values.z;
+
+    const float2 tile_origin_uv_space = float2(tile_xz_pos.x / tile_size, tile_xz_pos.y / tile_size);
+
+    uv = tile_origin_uv_space + uv * tile_size;
+    
+    const float tex_freq = 2.0f;
+    const float tile_freq = 1.0f;
 
     float3 displacement = float3(0.0f, 0.0f, 0.0f);
     float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -115,4 +123,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     synthesised_displacement[thread_id.xy] = float4(PreserveVariance(displacement, mean_displacement, moment2), 1.0f);
     synthesised_slope[thread_id.xy] = PreserveVariance(slope, mean_slope, moment2);
+
+	//synthesised_displacement[thread_id.xy] = tex2[thread_id.xy];
+    synthesised_slope[thread_id.xy] = tex3[thread_id.xy];
 }
