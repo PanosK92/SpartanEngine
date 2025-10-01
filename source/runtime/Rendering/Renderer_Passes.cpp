@@ -47,6 +47,8 @@ namespace spartan
 {
     array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls;
     uint32_t Renderer::m_draw_call_count;
+    array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls_prepass;
+    uint32_t Renderer::m_draw_calls_prepass_count;
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
@@ -305,9 +307,9 @@ namespace spartan
         static unordered_map<uint64_t, VisibilityState> visibility_states;
     
         // check pending queries from previous frame and update visibility
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
-            Renderer_DrawCall& draw_call = m_draw_calls[i];
+            Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
             uint64_t entity_id           = draw_call.renderable->GetEntity()->GetObjectId();
             auto& state                  = visibility_states[entity_id]; // creates if missing
     
@@ -350,9 +352,9 @@ namespace spartan
     
             bool pipeline_set = false;
     
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
             {
-                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
     
                 if (!draw_call.is_occluder)
                     continue;
@@ -400,7 +402,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
     
             // set aabb count
-            m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_call_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
+            m_pcb_pass_cpu.set_f4_value(GetViewport().width, GetViewport().height, static_cast<float>(m_draw_calls_prepass_count), static_cast<float>(tex_occluders_hiz->GetMipCount()));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
             // set the visibility buffer (where the occlusion results will be written)
@@ -411,15 +413,15 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
     
             // dispatch: ceil(aabb_count / 256) thread groups
-            uint32_t thread_group_count = (m_draw_call_count + 255) / 256; // ceiling division
+            uint32_t thread_group_count = (m_draw_calls_prepass_count + 255) / 256; // ceiling division
             cmd_list->Dispatch(thread_group_count, 1, 1);
         }
     
         // update the draw calls with the previous frame's visibility results
         uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::VisibilityPrevious)->GetMappedData());
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
-            Renderer_DrawCall& draw_call = m_draw_calls[i];
+            Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
             uint64_t entity_id           = draw_call.renderable->GetEntity()->GetObjectId();
             auto& state                  = visibility_states[entity_id]; // creates if missing
     
@@ -512,9 +514,9 @@ namespace spartan
             pso.clear_depth                      = 0.0f;
             cmd_list->SetPipelineState(pso);
 
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
             {
-                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
                 Renderable* renderable             = draw_call.renderable;
                 Material* material                 = renderable->GetMaterial();
                 if (!material || material->IsTransparent() || !draw_call.camera_visible)
