@@ -289,7 +289,7 @@ namespace
 
             // all the other buttons
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  { 4.0f , 0.0f });
             {
                 num_buttons  = 8.0f;
                 size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
@@ -301,7 +301,7 @@ namespace
                     static auto screenshot_visible = [](Widget*) { return false; };
                     static auto screenshot_press   = [](Widget*)
                     {
-                        spartan::Renderer::Screenshot("screenshot.png");
+                        spartan::Renderer::Screenshot();
                     };
                     toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Screenshot), "Takes a screenshot and saves it to the executable's folder",
                         screenshot_visible,

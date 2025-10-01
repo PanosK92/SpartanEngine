@@ -90,7 +90,7 @@ namespace spartan
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNumber();
         static RHI_Api_Type GetRhiApiType();
-        static void Screenshot(const std::string& file_path);
+        static void Screenshot();
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // wind

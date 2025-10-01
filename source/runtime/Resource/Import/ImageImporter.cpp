@@ -536,102 +536,42 @@ namespace spartan
 
     void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
-        uint32_t bytes_per_pixel = (bits_per_channel / 8) * channel_count;
-        uint32_t depth           = bits_per_channel * channel_count;
+        // assume input is half float RGBA16F (from Vulkan)
+        const uint16_t* src_half = static_cast<const uint16_t*>(data);
+        uint32_t pixel_count     = width * height;
 
-        // determine freeimage type (assuming 16-bit, 4 channels)
-        FREE_IMAGE_TYPE image_type = FIT_RGBA16;
-        bool needs_swizzle         = false; // no swizzle for fit_rgba16 (expects rgba)
-        if (bits_per_channel != 16 || channel_count != 4)
+        // convert half -> float
+        std::vector<float> converted(pixel_count * 4);
+        for (uint32_t i = 0; i < pixel_count; i++)
         {
-            SP_LOG_ERROR("assumed 16-bit rgba float; got %u bits, %u channels", bits_per_channel, channel_count);
-            return;
+            converted[i * 4 + 0] = half_to_float(src_half[i * 4 + 0]);
+            converted[i * 4 + 1] = half_to_float(src_half[i * 4 + 1]);
+            converted[i * 4 + 2] = half_to_float(src_half[i * 4 + 2]);
+            converted[i * 4 + 3] = half_to_float(src_half[i * 4 + 3]);
         }
 
-        // convert fp16 to uint16 (scale [0,1] to 0-65535)
-        const uint16_t* src_half = static_cast<const uint16_t*>(data);
-        uint32_t pixel_count = width * height;
-        vector<uint16_t> converted_data(pixel_count * 4);
-
-        auto compute_pixel = [&](uint32_t start_index, uint32_t end_index)
-        {
-            for (uint32_t i = start_index; i < end_index; ++i)
-            {
-                float r = half_to_float(src_half[i * 4 + 0]);
-                float g = half_to_float(src_half[i * 4 + 1]);
-                float b = half_to_float(src_half[i * 4 + 2]);
-                float a = half_to_float(src_half[i * 4 + 3]);
-
-                // clamp and scale to uint16
-                converted_data[i * 4 + 0] = static_cast<uint16_t>(clamp(r, 0.0f, 1.0f) * 65535.0f);
-                converted_data[i * 4 + 1] = static_cast<uint16_t>(clamp(g, 0.0f, 1.0f) * 65535.0f);
-                converted_data[i * 4 + 2] = static_cast<uint16_t>(clamp(b, 0.0f, 1.0f) * 65535.0f);
-                converted_data[i * 4 + 3] = static_cast<uint16_t>(clamp(a, 0.0f, 1.0f) * 65535.0f);
-            }
-        };
-        ThreadPool::ParallelLoop(compute_pixel, pixel_count);
-
-        // update pointers/sizes to converted data
-        BYTE* src        = reinterpret_cast<BYTE*>(converted_data.data());
-        size_t data_size = static_cast<size_t>(pixel_count) * bytes_per_pixel;
-        size_t row_bytes = static_cast<size_t>(width) * bytes_per_pixel;
-
-        // create freeimage bitmap
-        FIBITMAP* bitmap = FreeImage_AllocateT(image_type, width, height, depth);
+        // allocate HDR bitmap (RGBAF = 128 bits per pixel float)
+        FIBITMAP* bitmap = FreeImage_AllocateT(FIT_RGBAF, width, height, 128);
         if (!bitmap)
         {
-            SP_LOG_ERROR("failed to allocate freeimage bitmap");
+            SP_LOG_ERROR("Failed to allocate FreeImage HDR bitmap");
             return;
         }
 
-        // get the bits
-        BYTE* bits = FreeImage_GetBits(bitmap);
-        if (!bits)
+        // copy data row by row (FreeImage stores bottom-up by default)
+        for (uint32_t y = 0; y < height; y++)
         {
-            SP_LOG_ERROR("failed to get freeimage bits");
-            FreeImage_Unload(bitmap);
-            return;
+            float* scanline = reinterpret_cast<float*>(FreeImage_GetScanLine(bitmap, height - 1 - y));
+            memcpy(scanline, &converted[y * width * 4], width * 4 * sizeof(float));
         }
 
-        // copy data with swizzle (skipped since needs_swizzle=false)
-        if (needs_swizzle)
-        {
-            uint32_t channel_bytes = bits_per_channel / 8; // 2 for uint16
-            BYTE temp[16]; // max channel_bytes=4, but here 2
-            for (size_t i = 0; i < data_size; i += row_bytes)
-            {
-                for (size_t j = 0; j < row_bytes; j += bytes_per_pixel)
-                {
-                    // swap r and b channels
-                    BYTE* r_start = src + i + j + 0;
-                    BYTE* b_start = src + i + j + 2 * channel_bytes;
-                    memcpy(temp, r_start, channel_bytes);
-                    memcpy(r_start, b_start, channel_bytes);
-                    memcpy(b_start, temp, channel_bytes);
-                }
-            }
-        }
-        memcpy(bits, src, data_size);
-
-        // flip rows vertically (vulkan top-left -> freeimage bottom-up)
-        BYTE* temp_row = new BYTE[row_bytes];
-        for (uint32_t y = 0; y < height / 2; y++)
-        {
-            BYTE* top_row = bits + y * row_bytes;
-            BYTE* bottom_row = bits + (height - 1 - y) * row_bytes;
-            memcpy(temp_row, top_row, row_bytes);
-            memcpy(top_row, bottom_row, row_bytes);
-            memcpy(bottom_row, temp_row, row_bytes);
-        }
-        delete[] temp_row;
-
-        // save as png
-        BOOL save_result = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_DEFAULT);
+        // save as OpenEXR
+        BOOL saved = FreeImage_Save(FIF_EXR, bitmap, file_path.c_str(), EXR_DEFAULT);
         FreeImage_Unload(bitmap);
-        if (!save_result)
+
+        if (!saved)
         {
-            SP_LOG_ERROR("failed to save png to %s", file_path.c_str());
-            return;
+            SP_LOG_ERROR("Failed to save HDR EXR to %s", file_path.c_str());
         }
     }
 }

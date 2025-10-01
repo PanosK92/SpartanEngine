@@ -60,7 +60,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // fog
     {
-        float max_mip = pass_get_f3_value().x;
+        uint sky_mip = 3;
     
         // compute view direction
         float3 camera_position = buffer_frame.camera_position;
@@ -68,23 +68,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
         // sample sky in the view direction using your function
         float2 view_uv        = direction_sphere_uv(view_dir);
-        float3 sky_color_view = tex2.SampleLevel(samplers[sampler_trilinear_clamp], view_uv, max_mip).rgb;
+        float3 sky_color_view = tex2.SampleLevel(samplers[sampler_trilinear_clamp], view_uv, sky_mip).rgb;
     
         // sample sky in the light direction
         Light light;
         light.Build(0, surface); // 0 index is the where the directional light always lives
         float3 light_dir       = normalize(-light.forward);
         float2 light_uv        = direction_sphere_uv(light_dir);
-        float3 sky_color_light = tex2.SampleLevel(samplers[sampler_trilinear_clamp], light_uv, max_mip).rgb;
+        float3 sky_color_light = tex2.SampleLevel(samplers[sampler_trilinear_clamp], light_uv, sky_mip).rgb;
     
         // simple henyey-greenstein phase function for forward scattering
-        float g         = 0.8f; // forward scattering strength (0.7–0.9 for fog)
+        float g         = 0.8f; // forward scattering strength
         float cos_theta = dot(view_dir, light_dir);
         float phase     = (1.0f - g * g) / (4.0f * PI * pow(1.0f + g * g - 2.0f * g * cos_theta, 1.5f));
     
         // blend view and light contributions
         float light_weight = 0.4f; // how much the light direction contributes
-        float3 sky_color  = lerp(sky_color_view, sky_color_light, light_weight * phase);
+        float3 sky_color   = lerp(sky_color_view, sky_color_light, light_weight * phase);
     
         float fog_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y);
         float3 fog_emissive   = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;

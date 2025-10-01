@@ -973,7 +973,7 @@ namespace spartan
 
             // push pass constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(tex_skysphere->GetMipCount()), GetOption<float>(Renderer_Option::Fog), 0.0f);
+            m_pcb_pass_cpu.set_f3_value(0.0f, GetOption<float>(Renderer_Option::Fog), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures

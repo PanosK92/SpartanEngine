@@ -1300,7 +1300,7 @@ namespace spartan
         }
     }
 
-    void Renderer::Screenshot(const string& file_path)
+    void Renderer::Screenshot()
     {
         RHI_Texture* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
         uint32_t width            = frame_output->GetWidth();
@@ -1323,6 +1323,12 @@ namespace spartan
         // read mapped data (coherent, so direct access post-submit)
         void* mapped_data = staging->GetMappedData();
         SP_ASSERT_MSG(mapped_data, "Staging buffer not mappable");
-        ImageImporter::Save(file_path, width, height, channel_count, bits_per_channel, mapped_data);
+
+        spartan::ThreadPool::AddTask([width, height, channel_count, bits_per_channel, mapped_data]()
+        {
+            SP_LOG_INFO("Saving screenshot...");
+            ImageImporter::Save("screenshot.exr", width, height, channel_count, bits_per_channel, mapped_data);
+            SP_LOG_INFO("Screenshot saved as 'screenshot.exr'");
+        });
     }
 }

@@ -1970,11 +1970,7 @@ namespace spartan
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount     = 1;
         region.imageOffset                     = { 0, 0, 0 };
-        region.imageExtent                     = {
-            static_cast<uint32_t>(source->GetWidth()),
-            static_cast<uint32_t>(source->GetHeight()),
-            1
-        };
+        region.imageExtent                     = { static_cast<uint32_t>(source->GetWidth()), static_cast<uint32_t>(source->GetHeight()), 1 };
 
         vkCmdCopyImageToBuffer(
             static_cast<VkCommandBuffer>(GetRhiResource()),
