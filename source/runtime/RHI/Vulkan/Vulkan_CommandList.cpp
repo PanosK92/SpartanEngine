@@ -763,8 +763,7 @@ namespace spartan
         {
             m_load_color_render_targets[i] = false;
         }
-        m_render_pass_active     = true;
-        m_render_pass_draw_calls = 0;
+        m_render_pass_active = true;
     }
 
     void RHI_CommandList::RenderPassEnd()
@@ -774,7 +773,6 @@ namespace spartan
     
         vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
         m_render_pass_active = false;
-        //SP_ASSERT_MSG(m_render_pass_draw_calls != 0, "No draw calls were made within the render pass, this wastes GPU resources");
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
@@ -900,7 +898,6 @@ namespace spartan
             0                                             // firstInstance
         );
         Profiler::m_rhi_draw++;
-        m_render_pass_draw_calls++;
     }
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_index, const uint32_t instance_count)
@@ -923,7 +920,7 @@ namespace spartan
             instance_index                                // firstInstance
         );
         Profiler::m_rhi_draw++;
-        m_render_pass_draw_calls++;
+        Profiler::m_rhi_instance_count += instance_count == 1 ? 0 : instance_count;
 
         if (Debugging::IsBreadcrumbsEnabled())
         {

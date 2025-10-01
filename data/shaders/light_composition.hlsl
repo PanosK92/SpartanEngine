@@ -84,14 +84,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
         // blend view and light contributions
         float light_weight = 0.4f; // how much the light direction contributes
-        float3 sky_color   = lerp(sky_color_view, sky_color_light, light_weight * phase);
+        float3 sky_color  = lerp(sky_color_view, sky_color_light, light_weight * phase);
     
         float fog_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y);
         float3 fog_emissive   = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
     
         // additive: ambient in-scatter + volumetric
         float3 fog_inscatter = fog_atmospheric * sky_color;
-        light_atmospheric    = fog_inscatter + fog_emissive;
+        light_atmospheric    = fog_inscatter + fog_emissive; 
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
