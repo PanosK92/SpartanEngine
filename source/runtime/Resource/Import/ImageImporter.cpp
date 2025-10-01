@@ -512,46 +512,130 @@ namespace spartan
     void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
         uint32_t bytes_per_pixel = (bits_per_channel / 8) * channel_count;
+        uint32_t depth = bits_per_channel * channel_count;
 
-        // determine the FreeImage type based on bits_per_channel
+        // determine freeimage type based on bits_per_channel and channel_count
         FREE_IMAGE_TYPE image_type;
-        switch (bits_per_channel)
+        bool needs_swizzle = false;
+        if (bits_per_channel == 8)
         {
-            case 8:  image_type = FIT_BITMAP; break;
-            case 16: image_type = FIT_RGB16;  break;
-            case 32: image_type = FIT_RGBAF;  break;
-            default:
+            image_type = FIT_BITMAP;  // supports 8/24/32 bpp (1/3/4 ch)
+            if (channel_count == 4) needs_swizzle = true;  // rgba -> bgra
+        }
+        else if (bits_per_channel == 16)
+        {
+            if (channel_count == 1)
             {
-                SP_LOG_ERROR("Unhandled bits per channel");
+                image_type = FIT_UINT16;
+            }
+            else if (channel_count == 3)
+            {
+                image_type = FIT_RGB16;
+            }
+            else if (channel_count == 4)
+            {
+                image_type = FIT_RGBA16;
+                needs_swizzle = true;  // rgba16 -> bgra16
+            }
+            else
+            {
+                SP_LOG_ERROR("unsupported 16-bit channel count: %u", channel_count);
                 return;
             }
         }
-
-        // create a FreeImage bitmap
-        FIBITMAP* bitmap = FreeImage_AllocateT(image_type, width, height, bits_per_channel * channel_count);
-        if (!bitmap)
+        else if (bits_per_channel == 32)
         {
-            SP_LOG_ERROR("Failed to allocate FreeImage bitmap");
+            if (channel_count == 1)
+            {
+                image_type = FIT_FLOAT;
+            }
+            else if (channel_count == 3)
+            {
+                image_type = FIT_RGBF;
+            }
+            else if (channel_count == 4)
+            {
+                image_type = FIT_RGBAF;
+                needs_swizzle = true;  // rgbaf -> bgraf?
+            }
+            else
+            {
+                SP_LOG_ERROR("unsupported 32-bit channel count: %u", channel_count);
+                return;
+            }
+        }
+        else
+        {
+            SP_LOG_ERROR("unhandled bits per channel: %u", bits_per_channel);
             return;
         }
 
-        // get the data
+        // create freeimage bitmap
+        FIBITMAP* bitmap = FreeImage_AllocateT(image_type, width, height, depth);
+        if (!bitmap)
+        {
+            SP_LOG_ERROR("failed to allocate freeimage bitmap");
+            return;
+        }
+
+        // get the bits
         BYTE* bits = FreeImage_GetBits(bitmap);
         if (!bits)
         {
-            SP_LOG_ERROR("Failed to get FreeImage bits");
+            SP_LOG_ERROR("failed to get freeimage bits");
             FreeImage_Unload(bitmap);
             return;
         }
 
-        // copy the data
+        // copy data (with optional swizzle for rgba/bgra)
         size_t data_size = width * height * bytes_per_pixel;
-        memcpy(bits, data, data_size);
+        size_t row_bytes = width * bytes_per_pixel;
+        BYTE* src = static_cast<BYTE*>(data);
+        BYTE* dst = bits;
+        if (needs_swizzle && (depth == 32 || depth == 64 || depth == 128))  // 8-bit 32bpp, 16-bit 64bpp, 32-bit 128bpp
+        {
+            uint32_t channel_bytes = bits_per_channel / 8;
+            BYTE temp[16];  // max channel_bytes=4 (32-bit)
+            for (size_t i = 0; i < data_size; i += row_bytes)
+            {
+                for (size_t j = 0; j < row_bytes; j += bytes_per_pixel)
+                {
+                    // swap r and b channels (each channel_bytes bytes)
+                    BYTE* r_start = src + i + j + 0;
+                    BYTE* b_start = src + i + j + 2 * channel_bytes;
+                    memcpy(temp, r_start, channel_bytes);
+                    memcpy(r_start, b_start, channel_bytes);
+                    memcpy(b_start, temp, channel_bytes);
+                    // for floats/16-bit, assumes little-endian and reinterpret ok
+                }
+            }
+            memcpy(dst, src, data_size);  // after in-place swap
+        }
+        else
+        {
+            memcpy(dst, src, data_size);
+        }
 
-        // save the bitmap as a PNG
-        FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), 0);
+        // flip rows vertically (vulkan top-left -> freeimage bottom-up)
+        BYTE* temp_row = new BYTE[row_bytes];
+        for (uint32_t y = 0; y < height / 2; y++)
+        {
+            BYTE* top_row = dst + y * row_bytes;
+            BYTE* bottom_row = dst + (height - 1 - y) * row_bytes;
+            memcpy(temp_row, top_row, row_bytes);
+            memcpy(top_row, bottom_row, row_bytes);
+            memcpy(bottom_row, temp_row, row_bytes);
+        }
+        delete[] temp_row;
 
-        // clean up
+        // save as png
+        BOOL save_result = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_DEFAULT);
         FreeImage_Unload(bitmap);
+
+        if (!save_result)
+        {
+            SP_LOG_ERROR("failed to save png to %s", file_path.c_str());
+            return;
+        }
     }
 }

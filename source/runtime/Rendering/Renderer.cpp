@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Renderer.h"
 #include "Material.h"
@@ -41,7 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
-//======================================
+#include "../Resource/Import/ImageImporter.h"
+//===========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -89,6 +90,7 @@ namespace spartan
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
+ 
 
         void dynamic_resolution()
         {
@@ -285,7 +287,7 @@ namespace spartan
             m_cmd_list_present = queue_graphics->NextCommandList();
             m_cmd_list_present->Begin();
         }
-    
+
         // update CPU and GPU resources
         {
             // fill draw call list and determine ideal occluders
@@ -1298,8 +1300,30 @@ namespace spartan
         }
     }
 
+    // updated Renderer::Screenshot (no vulkan here)
     void Renderer::Screenshot(const string& file_path)
     {
-        GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
+        RHI_Texture* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        uint32_t width            = frame_output->GetWidth();
+        uint32_t height           = frame_output->GetHeight();
+        RHI_Format format         = frame_output->GetFormat();
+        uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
+        uint32_t channel_count    = frame_output->GetChannelCount();
+        size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
+        
+        // create staging buffer (linear: element_count=1, stride=data_size; mappable=true for coherent host-visible)
+        auto staging = make_unique<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
+        
+        // copy image to buffer
+        if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
+        {
+            cmd_list->CopyTextureToBuffer(frame_output, staging.get());
+            RHI_Device::CmdImmediateSubmit(cmd_list);
+        }
+        
+        // read mapped data (coherent, so direct access post-submit)
+        void* mapped_data = staging->GetMappedData();
+        SP_ASSERT_MSG(mapped_data, "Staging buffer not mappable");
+        ImageImporter::Save(file_path, width, height, channel_count, bits_per_channel, mapped_data);
     }
 }

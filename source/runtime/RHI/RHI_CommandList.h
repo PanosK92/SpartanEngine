@@ -154,16 +154,17 @@ namespace spartan
         void InsertBarrierReadWrite(RHI_Buffer* buffer);
         void InsertPendingBarrierGroup();
 
+        // layouts
+        static void RemoveLayout(void* image);
+        static RHI_Image_Layout GetImageLayout(void* image, uint32_t mip_index);
+
         // misc
         void RenderPassEnd();
         RHI_SyncPrimitive* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
         void* GetRhiResource() const                       { return m_rhi_resource; }
         const RHI_CommandListState GetState() const        { return m_state; }
         RHI_Queue* GetQueue() const                        { return m_queue; }
-
-        // layouts
-        static void RemoveLayout(void* image);
-        static RHI_Image_Layout GetImageLayout(void* image, uint32_t mip_index);
+        void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
 
     private:
         void PreDraw();

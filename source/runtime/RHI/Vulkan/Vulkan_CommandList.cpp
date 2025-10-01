@@ -1945,6 +1945,56 @@ namespace spartan
         return image_barrier::get_layout(image, mip_index);
     }
 
+    void RHI_CommandList::CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination)
+    {
+        SP_ASSERT_MSG(source && destination, "Invalid source/destination");
+        SP_ASSERT_MSG(source->GetWidth() && source->GetHeight(), "Source must have valid dimensions");
+
+        // barrier to transfer src
+        InsertBarrier(
+            source->GetRhiResource(),
+            source->GetFormat(),
+            0,  // mip start
+            1,  // mip count
+            1,  // array length
+            RHI_Image_Layout::Transfer_Source
+        );
+
+        // copy region (single mip/full extent)
+        VkBufferImageCopy region{};
+        region.bufferOffset                    = 0;
+        region.bufferRowLength                 = 0;
+        region.bufferImageHeight               = 0;
+        region.imageSubresource.aspectMask     = get_aspect_mask(source->GetFormat());
+        region.imageSubresource.mipLevel       = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount     = 1;
+        region.imageOffset                     = { 0, 0, 0 };
+        region.imageExtent                     = {
+            static_cast<uint32_t>(source->GetWidth()),
+            static_cast<uint32_t>(source->GetHeight()),
+            1
+        };
+
+        vkCmdCopyImageToBuffer(
+            static_cast<VkCommandBuffer>(GetRhiResource()),
+            static_cast<VkImage>(source->GetRhiResource()),
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            static_cast<VkBuffer>(destination->GetRhiResource()),
+            1, &region
+        );
+
+        // barrier back to shader read (or your tracked layout)
+        InsertBarrier(
+            source->GetRhiResource(),
+            source->GetFormat(),
+            0,
+            1,
+            1,
+            RHI_Image_Layout::Shader_Read
+        );
+    }
+
     void RHI_CommandList::PreDraw()
     {
         InsertPendingBarrierGroup();

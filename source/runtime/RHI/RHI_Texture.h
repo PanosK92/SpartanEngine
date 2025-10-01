@@ -115,7 +115,6 @@ namespace spartan
         // misc
         void ClearData();
         void PrepareForGpu();
-        void SaveAsImage(const std::string& file_path);
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
 
         // data

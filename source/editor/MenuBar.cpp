@@ -275,8 +275,7 @@ namespace
             // play button
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPaddingY() - 5.0f });
-                // Inline static functions
-                static auto is_playing = [](Widget*) { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing); };
+                static auto is_playing     = [](Widget*) { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing); };
                 static auto toggle_playing = [](Widget*) { spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); };
                 toolbar_button(
                     spartan::ResourceCache::GetIcon(spartan::IconType::Play), "Play",
@@ -285,21 +284,36 @@ namespace
                     nullptr,
                     cursor_pos_x
                 );
-               
                 ImGui::PopStyleVar(1);
             }
+
             // all the other buttons
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
             {
-                num_buttons = 7.0f;
+                num_buttons  = 7.0f;
                 size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
                 cursor_pos_x = size_avail_x - (size_toolbar - 2.0f);
+
                 // buttons from custom functionality
                 {
+                    // screenshot button
+                    //static auto screenshot_visible = [](Widget*) { return false; };
+                    //static auto screenshot_press   = [](Widget*)
+                    //{
+                    //    spartan::Renderer::Screenshot("screenshot.png");
+                    //};
+                    //toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Screenshot), "Takes a screenshot and saves it to the executable's folder",
+                    //    screenshot_visible,
+                    //    screenshot_press,
+                    //    nullptr,
+                    //    cursor_pos_x
+                    //);
+                    //cursor_pos_x += button_size_final;
+
                     // renderdoc button
                     static auto renderdoc_visible = [](Widget*) { return false; };
-                    static auto renderdoc_press = [](Widget*)
+                    static auto renderdoc_press   = [](Widget*)
                     {
                         if (spartan::Debugging::IsRenderdocEnabled())
                         {
@@ -316,33 +330,28 @@ namespace
                         nullptr,
                         cursor_pos_x
                     );
+
                     // world selection
                     static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
-                    static auto world_press = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
+                    static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
                     toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Terrain), "World selection window",
                         world_visible,
                         world_press,
                         nullptr
                     );
                 }
+
                 // buttons from widgets
                 for (auto& widget_it : widgets)
                 {
                     Widget* widget = widget_it.second;
                     spartan::RHI_Texture* widget_icon = widget_it.first;
-                    static auto is_widget_visible = [](Widget* widget) { return widget->GetVisible(); };
+                    static auto is_widget_visible  = [](Widget* widget) { return widget->GetVisible(); };
                     static auto set_widget_visible = [](Widget* widget) { widget->SetVisible(true); };
                     toolbar_button(widget_icon, widget->GetTitle(), is_widget_visible, set_widget_visible, widget);
                 }
             }
             ImGui::PopStyleVar(2);
-
-            // screenshot
-            //toolbar_button(
-            //    IconType::Screenshot, "Screenshot",
-            //    []() { return false; },
-            //    []() { return spartan::Renderer::Screenshot("screenshot.png"); }
-            //);
         }
     }
 
