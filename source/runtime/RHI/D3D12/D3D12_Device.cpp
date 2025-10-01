@@ -302,12 +302,22 @@ namespace spartan
 
     }
 
-    class RHI_DescriptorSet
-    {
-    };
+    class RHI_DescriptorSet{};
     unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
     {
         static unordered_map<uint64_t, RHI_DescriptorSet> descriptors;
         return descriptors;
+    }
+
+    // immediate command list
+
+    RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
+    {
+
+    }
+
+    void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
+    {
+
     }
 }
