@@ -291,26 +291,25 @@ namespace
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 4.0f , 0.0f });
             {
-                num_buttons  = 7.0f;
+                num_buttons  = 8.0f;
                 size_toolbar = num_buttons * button_size_final + (num_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x;
                 cursor_pos_x = size_avail_x - (size_toolbar - 2.0f);
 
                 // buttons from custom functionality
                 {
                     // screenshot button
-                    //static auto screenshot_visible = [](Widget*) { return false; };
-                    //static auto screenshot_press   = [](Widget*)
-                    //{
-                    //    spartan::Renderer::Screenshot("screenshot.png");
-                    //};
-                    //toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Screenshot), "Takes a screenshot and saves it to the executable's folder",
-                    //    screenshot_visible,
-                    //    screenshot_press,
-                    //    nullptr,
-                    //    cursor_pos_x
-                    //);
-                    //cursor_pos_x += button_size_final;
-
+                    static auto screenshot_visible = [](Widget*) { return false; };
+                    static auto screenshot_press   = [](Widget*)
+                    {
+                        spartan::Renderer::Screenshot("screenshot.png");
+                    };
+                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Screenshot), "Takes a screenshot and saves it to the executable's folder",
+                        screenshot_visible,
+                        screenshot_press,
+                        nullptr,
+                        cursor_pos_x
+                    );
+  
                     // renderdoc button
                     static auto renderdoc_visible = [](Widget*) { return false; };
                     static auto renderdoc_press   = [](Widget*)
@@ -327,8 +326,7 @@ namespace
                     toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::RenderDoc), "Captures the next frame and then launches RenderDoc",
                         renderdoc_visible,
                         renderdoc_press,
-                        nullptr,
-                        cursor_pos_x
+                        nullptr
                     );
 
                     // world selection

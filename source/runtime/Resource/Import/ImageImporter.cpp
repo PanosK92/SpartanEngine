@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ImageImporter.h"
 #include "../../RHI/RHI_Texture.h"
+#include "../../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #define FREEIMAGE_LIB
 #include <FreeImage/FreeImage.h>
@@ -365,6 +366,30 @@ namespace spartan
         
             return false;
         }
+
+
+        float half_to_float(uint16_t half)
+        {
+            uint32_t mant = half & 0x3FFu;
+            uint32_t exp  = (half >> 10) & 0x1Fu;
+            uint32_t sign = (half >> 15) & 0x1u;
+
+            uint32_t f;
+            if (exp == 0)
+            {
+                f = (sign << 31) | (mant ? ((127 - 15) << 23) | (mant << 13) : 0); // Denormals as zero for simplicity
+            }
+            else if (exp == 0x1F)
+            {
+                f = (sign << 31) | (0x7F800000) | (mant << 13); // Inf/NaN
+            }
+            else
+            {
+                f = (sign << 31) | ((exp + (127 - 15)) << 23) | (mant << 13);
+            }
+
+            return *reinterpret_cast<float*>(&f); // Assumes IEEE 754 and little-endian
+        }
     }
 
     void ImageImporter::Initialize()
@@ -512,63 +537,44 @@ namespace spartan
     void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
         uint32_t bytes_per_pixel = (bits_per_channel / 8) * channel_count;
-        uint32_t depth = bits_per_channel * channel_count;
+        uint32_t depth           = bits_per_channel * channel_count;
 
-        // determine freeimage type based on bits_per_channel and channel_count
-        FREE_IMAGE_TYPE image_type;
-        bool needs_swizzle = false;
-        if (bits_per_channel == 8)
+        // determine freeimage type (assuming 16-bit, 4 channels)
+        FREE_IMAGE_TYPE image_type = FIT_RGBA16;
+        bool needs_swizzle         = false; // no swizzle for fit_rgba16 (expects rgba)
+        if (bits_per_channel != 16 || channel_count != 4)
         {
-            image_type = FIT_BITMAP;  // supports 8/24/32 bpp (1/3/4 ch)
-            if (channel_count == 4) needs_swizzle = true;  // rgba -> bgra
-        }
-        else if (bits_per_channel == 16)
-        {
-            if (channel_count == 1)
-            {
-                image_type = FIT_UINT16;
-            }
-            else if (channel_count == 3)
-            {
-                image_type = FIT_RGB16;
-            }
-            else if (channel_count == 4)
-            {
-                image_type = FIT_RGBA16;
-                needs_swizzle = true;  // rgba16 -> bgra16
-            }
-            else
-            {
-                SP_LOG_ERROR("unsupported 16-bit channel count: %u", channel_count);
-                return;
-            }
-        }
-        else if (bits_per_channel == 32)
-        {
-            if (channel_count == 1)
-            {
-                image_type = FIT_FLOAT;
-            }
-            else if (channel_count == 3)
-            {
-                image_type = FIT_RGBF;
-            }
-            else if (channel_count == 4)
-            {
-                image_type = FIT_RGBAF;
-                needs_swizzle = true;  // rgbaf -> bgraf?
-            }
-            else
-            {
-                SP_LOG_ERROR("unsupported 32-bit channel count: %u", channel_count);
-                return;
-            }
-        }
-        else
-        {
-            SP_LOG_ERROR("unhandled bits per channel: %u", bits_per_channel);
+            SP_LOG_ERROR("assumed 16-bit rgba float; got %u bits, %u channels", bits_per_channel, channel_count);
             return;
         }
+
+        // convert fp16 to uint16 (scale [0,1] to 0-65535)
+        const uint16_t* src_half = static_cast<const uint16_t*>(data);
+        uint32_t pixel_count = width * height;
+        vector<uint16_t> converted_data(pixel_count * 4);
+
+        auto compute_pixel = [&](uint32_t start_index, uint32_t end_index)
+        {
+            for (uint32_t i = start_index; i < end_index; ++i)
+            {
+                float r = half_to_float(src_half[i * 4 + 0]);
+                float g = half_to_float(src_half[i * 4 + 1]);
+                float b = half_to_float(src_half[i * 4 + 2]);
+                float a = half_to_float(src_half[i * 4 + 3]);
+
+                // clamp and scale to uint16
+                converted_data[i * 4 + 0] = static_cast<uint16_t>(clamp(r, 0.0f, 1.0f) * 65535.0f);
+                converted_data[i * 4 + 1] = static_cast<uint16_t>(clamp(g, 0.0f, 1.0f) * 65535.0f);
+                converted_data[i * 4 + 2] = static_cast<uint16_t>(clamp(b, 0.0f, 1.0f) * 65535.0f);
+                converted_data[i * 4 + 3] = static_cast<uint16_t>(clamp(a, 0.0f, 1.0f) * 65535.0f);
+            }
+        };
+        ThreadPool::ParallelLoop(compute_pixel, pixel_count);
+
+        // update pointers/sizes to converted data
+        BYTE* src        = reinterpret_cast<BYTE*>(converted_data.data());
+        size_t data_size = static_cast<size_t>(pixel_count) * bytes_per_pixel;
+        size_t row_bytes = static_cast<size_t>(width) * bytes_per_pixel;
 
         // create freeimage bitmap
         FIBITMAP* bitmap = FreeImage_AllocateT(image_type, width, height, depth);
@@ -587,41 +593,32 @@ namespace spartan
             return;
         }
 
-        // copy data (with optional swizzle for rgba/bgra)
-        size_t data_size = width * height * bytes_per_pixel;
-        size_t row_bytes = width * bytes_per_pixel;
-        BYTE* src = static_cast<BYTE*>(data);
-        BYTE* dst = bits;
-        if (needs_swizzle && (depth == 32 || depth == 64 || depth == 128))  // 8-bit 32bpp, 16-bit 64bpp, 32-bit 128bpp
+        // copy data with swizzle (skipped since needs_swizzle=false)
+        if (needs_swizzle)
         {
-            uint32_t channel_bytes = bits_per_channel / 8;
-            BYTE temp[16];  // max channel_bytes=4 (32-bit)
+            uint32_t channel_bytes = bits_per_channel / 8; // 2 for uint16
+            BYTE temp[16]; // max channel_bytes=4, but here 2
             for (size_t i = 0; i < data_size; i += row_bytes)
             {
                 for (size_t j = 0; j < row_bytes; j += bytes_per_pixel)
                 {
-                    // swap r and b channels (each channel_bytes bytes)
+                    // swap r and b channels
                     BYTE* r_start = src + i + j + 0;
                     BYTE* b_start = src + i + j + 2 * channel_bytes;
                     memcpy(temp, r_start, channel_bytes);
                     memcpy(r_start, b_start, channel_bytes);
                     memcpy(b_start, temp, channel_bytes);
-                    // for floats/16-bit, assumes little-endian and reinterpret ok
                 }
             }
-            memcpy(dst, src, data_size);  // after in-place swap
         }
-        else
-        {
-            memcpy(dst, src, data_size);
-        }
+        memcpy(bits, src, data_size);
 
         // flip rows vertically (vulkan top-left -> freeimage bottom-up)
         BYTE* temp_row = new BYTE[row_bytes];
         for (uint32_t y = 0; y < height / 2; y++)
         {
-            BYTE* top_row = dst + y * row_bytes;
-            BYTE* bottom_row = dst + (height - 1 - y) * row_bytes;
+            BYTE* top_row = bits + y * row_bytes;
+            BYTE* bottom_row = bits + (height - 1 - y) * row_bytes;
             memcpy(temp_row, top_row, row_bytes);
             memcpy(top_row, bottom_row, row_bytes);
             memcpy(bottom_row, temp_row, row_bytes);
@@ -631,7 +628,6 @@ namespace spartan
         // save as png
         BOOL save_result = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_DEFAULT);
         FreeImage_Unload(bitmap);
-
         if (!save_result)
         {
             SP_LOG_ERROR("failed to save png to %s", file_path.c_str());

@@ -1300,7 +1300,6 @@ namespace spartan
         }
     }
 
-    // updated Renderer::Screenshot (no vulkan here)
     void Renderer::Screenshot(const string& file_path)
     {
         RHI_Texture* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
