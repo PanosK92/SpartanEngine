@@ -267,9 +267,11 @@ namespace spartan
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                             cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
-                            // use the lowest lod unless the camera is close to the shadow caster and can notice low quality shadows
-                            bool is_camera_close_to_shadow_caster = renderable->GetDistanceSquared() < 100.0f * 100.0f;
-                            uint32_t lod_index = is_camera_close_to_shadow_caster ? draw_call.lod_index : renderable->GetLodCount() - 1;
+                            // compute lod index
+                            bool close_to_shadow      = renderable->GetDistanceSquared() < 100.0f * 100.0f;                                   // anything within 100 meters of the shadow caster
+                            uint32_t lod_index_bias   = light->GetLightType() == LightType::Directional ? 1 : 0;                              // bias for directional lights
+                            uint32_t lod_index_shadow = clamp(renderable->GetLodIndex() + lod_index_bias, 0u, renderable->GetLodCount() - 1); // lod index biased towards lower quality lod
+                            uint32_t lod_index        = close_to_shadow ? draw_call.lod_index : lod_index_shadow;                             // use normal lod if close to shadow caster, otherwise use light specific lod
 
                             cmd_list->DrawIndexed(
                                 renderable->GetIndexCount(lod_index),
@@ -288,7 +290,7 @@ namespace spartan
 
     void Renderer::Pass_Occlusion(RHI_CommandList* cmd_list)
     {
-        // determines visibility without GPU stalls, full GPU-driven rendering, or pop-in
+        // determines visibility without GPU stalls
         // major occluders are rendered to a depth buffer, then a Hi-Z mip chain enables fast coarse AABB tests
         // objects failing Hi-Z but recently visible get precise occlusion queries, with results read next frame
         // recently visible objects are drawn until confirmed occluded, avoiding sudden disappearances
