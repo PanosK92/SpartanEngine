@@ -155,7 +155,7 @@ namespace spartan
             Pass_Light_ImageBased(cmd_list_graphics_present);
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
             
-            //Pass_ApplyFoam(cmd_list_graphics_present);
+            Pass_ApplyFoam(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
@@ -1102,7 +1102,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::light_shadow));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
-            cmd_list->SetTexture(/*Renderer_BindingsUav::ocean_slope_map*/7, slope_map);
 
             // set pass constants
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));

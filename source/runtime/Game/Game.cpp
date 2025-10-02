@@ -1739,12 +1739,12 @@ namespace spartan
                 default_ocean->SetParent(entity);
 
                 auto light_entity = World::CreateEntity();
-                light_entity->SetPosition({ 64.0f, 180.0f, 64.0f });
+                light_entity->SetPosition({ 196.0f, 280.0f, 196.0f });
 
                 Light* point = light_entity->AddComponent<Light>();
                 point->SetLightType(LightType::Point);
-                point->SetRange(400.0f);
-                point->SetTemperature(100000.0f);
+                point->SetRange(800.0f);
+                point->SetTemperature(10000.0f);
                 point->SetIntensity(8500.0f);
                 point->SetObjectName("Point Light");
 

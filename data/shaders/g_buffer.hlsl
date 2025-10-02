@@ -102,8 +102,9 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     MaterialParameters material = GetMaterial();
-    
-    input.position.xyz += tex2.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
+
+    if (material.ocean_parameters.displacementScale > -1.0f)
+        input.position.xyz += tex2.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
     
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
@@ -278,7 +279,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float4 slope = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy) * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
 
-        //albedo = tex2.SampleLevel(samplers[sampler_point_clamp], vertex.uv_misc.xy, 0).rgba * material.ocean_parameters.displacementScale;
+        // display displacement map for debug purposes
+        if (material.ocean_parameters.displacementScale <= -1.0f)
+            albedo = tex2.SampleLevel(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy, 0).rgba;
+        else if (material.ocean_parameters.slopeScale <= -1.0f) // or display slope map
+            albedo = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy);
     }
     
 

@@ -100,10 +100,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     const float2 tile_origin_uv_space = float2(tile_xz_pos.x / tile_size, tile_xz_pos.y / tile_size);
 
-    uv = tile_origin_uv_space + uv * tile_size;
+    uv = tile_origin_uv_space + uv;
     
-    const float tex_freq = 2.0f;
-    const float tile_freq = 1.0f;
+    const float tex_freq = 3.0f;
+    const float tile_freq = 3.0f;
 
     float3 displacement = float3(0.0f, 0.0f, 0.0f);
     float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
