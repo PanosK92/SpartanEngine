@@ -865,7 +865,7 @@ namespace spartan
                 // props: trees, rocks, grass
                 {
                     // load meshes
-                    uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes); // combine gazillion entities tree entites into one
+                    uint32_t flags             = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes); // combine gazillion entities tree entites into one
                     shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
                     shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
 
@@ -901,7 +901,7 @@ namespace spartan
                             mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 2
                         }
 
-                        mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
+                        mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // need to remove that
                         mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc.
                     }
 
