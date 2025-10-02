@@ -175,7 +175,7 @@ float compute_shadow(Surface surface, Light light)
             float  shadow_far         = vogel_depth(light, surface, float3(uv_far, far_cascade), ndc_far.z, 4.0f);
 
             float edge_dist    = max(abs(ndc_near.x), abs(ndc_near.y));
-            float blend_factor = smoothstep(0.9f, 1.0f, edge_dist);
+            float blend_factor = smoothstep(0.7f, 1.0f, edge_dist);
             shadow             = lerp(shadow_near, shadow_far, blend_factor);
         }
 

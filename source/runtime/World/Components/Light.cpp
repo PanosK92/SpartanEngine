@@ -41,7 +41,7 @@ namespace spartan
     namespace
     {
         // directional matrix parameters
-        const float cascade_near_extent    = 50.0f;
+        const float cascade_near_extent    = 100.0f;
         const float cascade_depth          = 1000.0f;
         const float cascade_far_max_extent = FLT_MAX;
 
