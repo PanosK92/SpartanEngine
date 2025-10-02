@@ -60,7 +60,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // fog
     {
-        uint sky_mip = 3;
+        uint sky_mip = 4; // it just looks good
     
         // compute view direction
         float3 camera_position = buffer_frame.camera_position;
