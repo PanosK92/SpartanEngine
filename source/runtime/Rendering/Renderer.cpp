@@ -996,11 +996,11 @@ namespace spartan
                         continue;
                 }
 
-                // skip point/spot lights beyond 100 meters
                 if (light_component->GetLightType() != LightType::Directional)
                 {
-                    const float dist2 = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
-                    if (dist2 > 10000.0f) // 100 meters squared
+                    const float distance_squared      = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
+                    const float draw_distance_squared = light_component->GetDrawDistance() * light_component->GetDrawDistance();
+                    if (distance_squared > draw_distance_squared)
                         continue;
                 }
 
