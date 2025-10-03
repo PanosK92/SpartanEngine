@@ -54,7 +54,7 @@ function solution_configuration()
             debugformat "c7"
 
         filter { "configurations:release" }
-            flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+            flags { "MultiProcessorCompile", "linktimeoptimization" }
             optimize "Speed"
             symbols "Off"
 
@@ -107,9 +107,9 @@ function spartan_project_configuration()
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
                 "../third_party/pugixml", "../third_party/meshoptimizer", "../third_party/dxc"
             }
-
-            -- Ignore any default/system PhysX dynamic libs (prevents auto-linking mess)
+             -- Ensure linker prioritizes project libraries over system paths
             linkoptions {
+                "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
                 "/NODEFAULTLIB:PhysX_64.lib",
                 "/NODEFAULTLIB:PhysX_64_debug.lib",
                 "/NODEFAULTLIB:PhysXCommon_64.lib",
@@ -126,8 +126,8 @@ function spartan_project_configuration()
                 "/NODEFAULTLIB:PhysXVehicle2_64_debug.lib",
                 "/NODEFAULTLIB:PhysXCharacterKinematic_64.lib",
                 "/NODEFAULTLIB:PhysXCharacterKinematic_64_debug.lib",
-                "/NODEFAULTLIB:MSVCRT.lib",  -- Prevents dynamic CRT conflicts
-                "/NODEFAULTLIB:MSVCPRT.lib"  -- Prevents dynamic CRT conflicts
+                "/NODEFAULTLIB:MSVCRT.lib",   -- Block dynamic CRT
+                "/NODEFAULTLIB:MSVCPRT.lib",  -- Block dynamic CRT
             }
 
         -- Linux includes
@@ -155,11 +155,10 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME)
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            runtime "Release"  -- Ensures /MT for release (matches staticruntime "On")
             links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
-                "PhysXCooking_static_64", "PhysXVehicle2_static_64", "PhysXCharacterKinematic_static_64"
+                "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle2_static_64", "PhysXCharacterKinematic_static_64"
             }
 
             filter { "system:windows", "configurations:release" }
@@ -176,14 +175,13 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME .. "_debug")
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            runtime "Debug"  -- Ensures /MTd for debug (matches staticruntime "On")
             links { "dxcompiler" }
 
         filter { "configurations:debug", "system:windows" }
             links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
-                "PhysXCooking_static_64_debug", "PhysXVehicle2_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
+                "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle2_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
             }
             if ARG_API_GRAPHICS == "vulkan" then
                 links {
