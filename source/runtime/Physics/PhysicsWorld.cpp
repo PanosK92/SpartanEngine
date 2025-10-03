@@ -219,7 +219,7 @@ namespace spartan
         scene_desc.cpuDispatcher  = PxDefaultCpuDispatcherCreate(2);
         scene_desc.filterShader   = PxDefaultSimulationFilterShader;
         scene_desc.flags         |= PxSceneFlag::eENABLE_CCD; // enable continuous collision detection to reduce tunneling
-        scene = physics->createScene(scene_desc);
+        scene                     = physics->createScene(scene_desc);
         SP_ASSERT(scene);
 
         // store dispatcher

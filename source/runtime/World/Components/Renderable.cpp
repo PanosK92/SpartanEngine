@@ -423,7 +423,7 @@ namespace spartan
         }
 
         Camera* camera = World::GetCamera();
-        if (!camera || !IsVisible())
+        if (!camera)
         {
             m_lod_index = lod_count - 1; // fallback: lowest LOD
             return;

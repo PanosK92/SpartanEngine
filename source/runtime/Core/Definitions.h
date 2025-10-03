@@ -84,7 +84,6 @@ namespace spartan::version
     }
 }
 
-
 //= OPTIMISATION ON/OFF ================================================
 #if defined(_MSC_VER)
     #define SP_OPTIMISE_OFF __pragma(optimize("", off))
