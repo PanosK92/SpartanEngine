@@ -111,13 +111,21 @@ function spartan_project_configuration()
             -- Ignore any default/system PhysX dynamic libs (prevents auto-linking mess)
             linkoptions {
                 "/NODEFAULTLIB:PhysX_64.lib",
+                "/NODEFAULTLIB:PhysX_64_debug.lib",
                 "/NODEFAULTLIB:PhysXCommon_64.lib",
+                "/NODEFAULTLIB:PhysXCommon_64_debug.lib",
                 "/NODEFAULTLIB:PhysXFoundation_64.lib",
+                "/NODEFAULTLIB:PhysXFoundation_64_debug.lib",
                 "/NODEFAULTLIB:PhysXExtensions_64.lib",
+                "/NODEFAULTLIB:PhysXExtensions_64_debug.lib",
                 "/NODEFAULTLIB:PhysXPvdSDK_64.lib",
+                "/NODEFAULTLIB:PhysXPvdSDK_64_debug.lib",
                 "/NODEFAULTLIB:PhysXCooking_64.lib",
+                "/NODEFAULTLIB:PhysXCooking_64_debug.lib",
                 "/NODEFAULTLIB:PhysXVehicle2_64.lib",
+                "/NODEFAULTLIB:PhysXVehicle2_64_debug.lib",
                 "/NODEFAULTLIB:PhysXCharacterKinematic_64.lib",
+                "/NODEFAULTLIB:PhysXCharacterKinematic_64_debug.lib",
                 "/NODEFAULTLIB:MSVCRT.lib",  -- Prevents dynamic CRT conflicts
                 "/NODEFAULTLIB:MSVCPRT.lib"  -- Prevents dynamic CRT conflicts
             }
