@@ -56,6 +56,7 @@ namespace spartan
         
         // metrics - rhi
         static uint32_t m_rhi_draw;
+        static uint32_t m_rhi_instance_count;
         static uint32_t m_rhi_timeblock_count;
         static uint32_t m_rhi_pipeline_barriers;
         static uint32_t m_rhi_bindings_buffer_index;
@@ -78,6 +79,7 @@ namespace spartan
         static void ClearRhiMetrics()
         {
             m_rhi_draw                       = 0;
+            m_rhi_instance_count             = 0;
             m_rhi_timeblock_count            = 0;
             m_rhi_pipeline_barriers          = 0;
             m_rhi_bindings_buffer_index      = 0;

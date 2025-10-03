@@ -552,13 +552,15 @@ namespace spartan
     {
         try
         {
-            namespace fs         = filesystem;
+            namespace fs = filesystem;
             auto last_write_time = fs::last_write_time(path);
-            auto time_point      = chrono::time_point_cast<chrono::system_clock::duration>(last_write_time - fs::file_time_type::clock::now() + chrono::system_clock::now());
-            time_t time          = chrono::system_clock::to_time_t(time_point);
+            auto time_point = chrono::time_point_cast<chrono::system_clock::duration>(last_write_time - fs::file_time_type::clock::now() + chrono::system_clock::now());
+            time_t time = chrono::system_clock::to_time_t(time_point);
+            std::tm tm_local{};
+            localtime_s(&tm_local, &time);
 
             stringstream ss;
-            ss << put_time(localtime(&time), "%Y-%m-%d %H:%M:%S");
+            ss << put_time(&tm_local, "%Y-%m-%d %H:%M:%S");
             return ss.str();
         }
         catch (const filesystem::filesystem_error& e)

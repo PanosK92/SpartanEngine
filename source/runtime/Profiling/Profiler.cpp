@@ -40,6 +40,7 @@ namespace spartan
 {
     // metrics - rhi
     uint32_t Profiler::m_rhi_draw                       = 0;
+    uint32_t Profiler::m_rhi_instance_count             = 0;
     uint32_t Profiler::m_rhi_timeblock_count            = 0;
     uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
     uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
@@ -202,21 +203,7 @@ namespace spartan
             DrawPerformanceMetrics();
         }
 
-        m_rhi_draw                       = 0;
-        m_rhi_timeblock_count            = 0;
-        m_rhi_pipeline_barriers          = 0;
-        m_rhi_bindings_buffer_index      = 0;
-        m_rhi_bindings_buffer_vertex     = 0;
-        m_rhi_bindings_buffer_constant   = 0;
-        m_rhi_bindings_buffer_structured = 0;
-        m_rhi_bindings_sampler           = 0;
-        m_rhi_bindings_texture_sampled   = 0;
-        m_rhi_bindings_shader_vertex     = 0;
-        m_rhi_bindings_shader_pixel      = 0;
-        m_rhi_bindings_shader_compute    = 0;
-        m_rhi_bindings_render_target     = 0;
-        m_rhi_bindings_texture_storage   = 0;
-        m_rhi_bindings_pipeline          = 0;
+        ClearRhiMetrics();
     }
 
     void Profiler::ReadTimeBlocks()
@@ -253,6 +240,7 @@ namespace spartan
         m_time_blocks_write.resize(max_timeblocks);
         m_time_block_index = -1;
     }
+
     void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/)
     {
         if (!poll)
@@ -287,34 +275,20 @@ namespace spartan
 
     void Profiler::ClearMetrics()
     {
-        time_frame_avg                   = 0.0f;
-        time_frame_min                   = numeric_limits<float>::max();
-        time_frame_max                   = numeric_limits<float>::lowest();
-        time_frame_last                  = 0.0f;
-        time_cpu_avg                     = 0.0f;
-        time_cpu_min                     = numeric_limits<float>::max();
-        time_cpu_max                     = numeric_limits<float>::lowest();
-        time_cpu_last                    = 0.0f;
-        time_gpu_avg                     = 0.0f;
-        time_gpu_min                     = numeric_limits<float>::max();
-        time_gpu_max                     = numeric_limits<float>::lowest();
-        time_gpu_last                    = 0.0f;
-        m_rhi_draw                       = 0;
-        m_rhi_timeblock_count            = 0;
-        m_rhi_pipeline_barriers          = 0;
-        m_rhi_bindings_buffer_index      = 0;
-        m_rhi_bindings_buffer_vertex     = 0;
-        m_rhi_bindings_buffer_constant   = 0;
-        m_rhi_bindings_buffer_structured = 0;
-        m_rhi_bindings_sampler           = 0;
-        m_rhi_bindings_texture_sampled   = 0;
-        m_rhi_bindings_shader_vertex     = 0;
-        m_rhi_bindings_shader_pixel      = 0;
-        m_rhi_bindings_shader_compute    = 0;
-        m_rhi_bindings_render_target     = 0;
-        m_rhi_bindings_texture_storage   = 0;
-        m_rhi_bindings_pipeline          = 0;
-        m_rhi_descriptor_set_count       = 0;
+        ClearRhiMetrics();
+
+        time_frame_avg  = 0.0f;
+        time_frame_min  = numeric_limits<float>::max();
+        time_frame_max  = numeric_limits<float>::lowest();
+        time_frame_last = 0.0f;
+        time_cpu_avg    = 0.0f;
+        time_cpu_min    = numeric_limits<float>::max();
+        time_cpu_max    = numeric_limits<float>::lowest();
+        time_cpu_last   = 0.0f;
+        time_gpu_avg    = 0.0f;
+        time_gpu_min    = numeric_limits<float>::max();
+        time_gpu_max    = numeric_limits<float>::lowest();
+        time_gpu_last   = 0.0f;
     }
 
     const vector<TimeBlock>& Profiler::GetTimeBlocks()
@@ -371,7 +345,7 @@ namespace spartan
         {
             TimeBlock& time_block = m_time_blocks_write[i];
 
-            // if type is Max, match any type; otherwise, match the requested type
+            // if type is max, match any type; otherwise, match the requested type
             if (type == TimeBlockType::Max || time_block.GetType() == type)
             {
                 if (!time_block.IsComplete())
@@ -472,29 +446,30 @@ namespace spartan
                 Display::GetName(),
                 static_cast<int>(Display::GetRefreshRate()),
                 Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
-                static_cast<unsigned int>(Display::GetLuminanceMax()),
-                static_cast<unsigned int>(res_render.x),
-                static_cast<unsigned int>(res_render.y),
+                static_cast<uint32_t>(Display::GetLuminanceMax()),
+                static_cast<uint32_t>(res_render.x),
+                static_cast<uint32_t>(res_render.y),
                 Renderer::GetOption<float>(Renderer_Option::ResolutionScale) * 100.0f,
-                static_cast<unsigned int>(res_output.x),
-                static_cast<unsigned int>(res_output.y),
-                static_cast<unsigned int>(vp.width),
-                static_cast<unsigned int>(vp.height));
+                static_cast<uint32_t>(res_output.x),
+                static_cast<uint32_t>(res_output.y),
+                static_cast<uint32_t>(vp.width),
+                static_cast<uint32_t>(vp.height));
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // graphics api
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Graphics API\nDraw:\t\t\t\t\t\t\t\t\t\t%u\nIndex buffer bindings:\t\t%u\n"
+                "Graphics API\nDraw:\t\t\t\t\t\t\t\t\t\t%u\nInstances:\t\t\t\t\t\t\t\t%u\nIndex buffer bindings:\t\t%u\n"
                 "Vertex buffer bindings:\t\t%u\nBarriers:\t\t\t\t\t\t\t\t\t%u\nBindings from pipelines:\t%u/%u\n"
                 "Descriptor set capacity:\t%u/%u",
-                static_cast<unsigned int>(m_rhi_draw),
-                static_cast<unsigned int>(m_rhi_bindings_buffer_index),
-                static_cast<unsigned int>(m_rhi_bindings_buffer_vertex),
-                static_cast<unsigned int>(m_rhi_pipeline_barriers),
-                static_cast<unsigned int>(m_rhi_bindings_pipeline),
-                static_cast<unsigned int>(RHI_Device::GetPipelineCount()),
-                static_cast<unsigned int>(m_rhi_descriptor_set_count),
-                static_cast<unsigned int>(rhi_max_descriptor_set_count));
+                static_cast<uint32_t>(m_rhi_draw),
+                static_cast<uint32_t>(m_rhi_instance_count),
+                static_cast<uint32_t>(m_rhi_bindings_buffer_index),
+                static_cast<uint32_t>(m_rhi_bindings_buffer_vertex),
+                static_cast<uint32_t>(m_rhi_pipeline_barriers),
+                static_cast<uint32_t>(m_rhi_bindings_pipeline),
+                static_cast<uint32_t>(RHI_Device::GetPipelineCount()),
+                static_cast<uint32_t>(m_rhi_descriptor_set_count),
+                static_cast<uint32_t>(rhi_max_descriptor_set_count));
             SP_ASSERT(offset < sizeof(metrics_buffer));
         }
 

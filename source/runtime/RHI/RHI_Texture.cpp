@@ -614,13 +614,6 @@ namespace spartan
         }
     }
 
-    void RHI_Texture::SaveAsImage(const string& file_path)
-    {
-        SP_ASSERT_MSG(m_mapped_data != nullptr, "The texture needs to be mappable");
-        ImageImporter::Save(file_path, m_width, m_height, m_channel_count, m_bits_per_channel, m_mapped_data);
-        SP_LOG_INFO("Screenshot has been saved");
-    }
-
     bool RHI_Texture::IsCompressedFormat(const RHI_Format format)
     {
         return

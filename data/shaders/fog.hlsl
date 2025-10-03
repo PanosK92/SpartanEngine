@@ -28,26 +28,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ------------------------------------------------------------------------------*/
 float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
 {
-    // parameters
-    const float g_fog_radius        = 100.0f; // how far away from the camera the fog starts
-    const float g_fog_fade_rate     = 0.05f;  // higher values make the fog fade in more abruptly
-    const float g_fog_max_height    = 250.0f; // maximum height where fog is visible
-    const float g_fog_min_height    = 0.0f;   // height where fog starts to appear
-    const float g_height_falloff    = 1.5f;   // how quickly fog fades with height (higher = sharper transition)
-    const float g_min_height_factor = 0.3f;   // minimum fog influence at high altitudes (prevents full fade out)
+    float camera_height = buffer_frame.camera_position.y;
+    float density      = pass_get_f3_value().y * 0.0002f;
+    float scale_height = 50.0f; 
+    float b            = 1.0f / scale_height;
+    float delta_height = pixel_height_world - camera_height;
+    float dist         = camera_to_pixel_length;
+    float rd_y         = (abs(dist) > 1e-6f) ? delta_height / dist : 0.0f;
 
-    // calculate basic distance-based fog
-    float distance_from_camera = camera_to_pixel_length - g_fog_radius;
-    float distance_factor      = max(0.0f, distance_from_camera) / g_fog_radius;
-    float fog_factor           = 1.0f - exp(-g_fog_fade_rate * distance_factor);
+    float tau = 0.0f;
+    if (abs(rd_y) < 1e-5f)
+    {
+        // horizontal ray approximation
+        tau = density * exp(-camera_height * b) * dist;
+    }
+    else
+    {
+        // analytical integral for optical depth in exponential atmosphere
+        tau = density * exp(-camera_height * b) * (1.0f - exp(-dist * rd_y * b)) / (b * rd_y);
+    }
 
-    // calculate height factor
-    float height_factor = saturate((g_fog_max_height - pixel_height_world) / (g_fog_max_height - g_fog_min_height));
-    
-    // apply height-based falloff and clamp to min value
-    height_factor = lerp(g_min_height_factor, 1.0f, pow(height_factor, g_height_falloff));
-
-    return fog_factor * height_factor;
+    // beer's law for transmittance; fog factor is the in-scatter amount (1 - transmittance)
+    return 1.0f - exp(-tau);
 }
 
 /*------------------------------------------------------------------------------

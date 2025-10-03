@@ -41,8 +41,9 @@ namespace spartan
     namespace
     {
         // directional matrix parameters
-        const float cascade_near_half_extent = 50.0f;
-        const float cascade_depth            = 1000.0f;
+        const float cascade_near_extent    = 100.0f;
+        const float cascade_depth          = 1000.0f;
+        const float cascade_far_max_extent = FLT_MAX;
 
         float get_sensible_range(const LightType type)
         {
@@ -444,6 +445,9 @@ namespace spartan
                 for (const Vector3& corner : corners_world)
                 {
                     Vector3 corner_ls = corner * m_matrix_view[1];
+                    corner_ls.x       = clamp(corner_ls.x, -cascade_far_max_extent, cascade_far_max_extent);
+                    corner_ls.y       = clamp(corner_ls.y, -cascade_far_max_extent, cascade_far_max_extent);
+                    corner_ls.z       = clamp(corner_ls.z, -cascade_far_max_extent, cascade_far_max_extent);
                     m_far_cascade_min = Vector3::Min(m_far_cascade_min, corner_ls);
                     m_far_cascade_max = Vector3::Max(m_far_cascade_max, corner_ls);
                 }
@@ -455,18 +459,21 @@ namespace spartan
                 float extents[2];
 
                 // near cascade: fixed
-                extents[0] = cascade_near_half_extent;
+                extents[0] = cascade_near_extent;
 
                 // far cascade: compute from world bounds in light space
                 Vector3 far_extent = (m_far_cascade_max - m_far_cascade_min) * 0.5f;
                 extents[1]         = max(far_extent.x, far_extent.y); // use largest xy extent for square shadow map
                 
-                for (int i = 0; i < 2; i++)
+                float atlas_width = static_cast<float>(Renderer::GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth());
+                for (uint32_t i  = 0; i < 2; i++)
                 {
-                    float rect_width       = m_atlas_rectangles[i].width;
-                    float texel_size_world = (2.0f * extents[i]) / rect_width; // world units per texel
-                    m_matrix_view[i].m30   = round(m_matrix_view[i].m30 / texel_size_world) * texel_size_world; // snap x
-                    m_matrix_view[i].m31   = round(m_matrix_view[i].m31 / texel_size_world) * texel_size_world; // snap y
+                    float rect_width           = m_atlas_rectangles[i].width; // cascade rectangle width in atlas
+                    float atlas_scale          = rect_width / atlas_width;    // proportion of atlas used by cascade
+                    float effective_resolution = atlas_width * atlas_scale;   // effective resolution for cascade
+                    float texel_size_world     = (2.0f * extents[i]) / effective_resolution; // World units per texel
+                    m_matrix_view[i].m30       = round(m_matrix_view[i].m30 / texel_size_world) * texel_size_world; // snap x
+                    m_matrix_view[i].m31       = round(m_matrix_view[i].m31 / texel_size_world) * texel_size_world; // snap y
                     // z-translation (m32) remains unchanged for orthographic projection
                 }
             }
@@ -498,8 +505,8 @@ namespace spartan
         {
             // near cascade (tight, camera following)
             m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
-                -cascade_near_half_extent, cascade_near_half_extent,
-                -cascade_near_half_extent, cascade_near_half_extent,
+                -cascade_near_extent, cascade_near_extent,
+                -cascade_near_extent, cascade_near_extent,
                 cascade_depth, 0.0f
             );
 

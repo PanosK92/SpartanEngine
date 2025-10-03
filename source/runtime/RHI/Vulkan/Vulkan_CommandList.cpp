@@ -763,8 +763,7 @@ namespace spartan
         {
             m_load_color_render_targets[i] = false;
         }
-        m_render_pass_active     = true;
-        m_render_pass_draw_calls = 0;
+        m_render_pass_active = true;
     }
 
     void RHI_CommandList::RenderPassEnd()
@@ -774,7 +773,6 @@ namespace spartan
     
         vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
         m_render_pass_active = false;
-        //SP_ASSERT_MSG(m_render_pass_draw_calls != 0, "No draw calls were made within the render pass, this wastes GPU resources");
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
@@ -900,7 +898,6 @@ namespace spartan
             0                                             // firstInstance
         );
         Profiler::m_rhi_draw++;
-        m_render_pass_draw_calls++;
     }
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_index, const uint32_t instance_count)
@@ -923,7 +920,7 @@ namespace spartan
             instance_index                                // firstInstance
         );
         Profiler::m_rhi_draw++;
-        m_render_pass_draw_calls++;
+        Profiler::m_rhi_instance_count += instance_count == 1 ? 0 : instance_count;
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
@@ -1946,6 +1943,52 @@ namespace spartan
     RHI_Image_Layout RHI_CommandList::GetImageLayout(void* image, const uint32_t mip_index)
     {
         return image_barrier::get_layout(image, mip_index);
+    }
+
+    void RHI_CommandList::CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination)
+    {
+        SP_ASSERT_MSG(source && destination, "Invalid source/destination");
+        SP_ASSERT_MSG(source->GetWidth() && source->GetHeight(), "Source must have valid dimensions");
+
+        // barrier to transfer src
+        InsertBarrier(
+            source->GetRhiResource(),
+            source->GetFormat(),
+            0,  // mip start
+            1,  // mip count
+            1,  // array length
+            RHI_Image_Layout::Transfer_Source
+        );
+
+        // copy region (single mip/full extent)
+        VkBufferImageCopy region{};
+        region.bufferOffset                    = 0;
+        region.bufferRowLength                 = 0;
+        region.bufferImageHeight               = 0;
+        region.imageSubresource.aspectMask     = get_aspect_mask(source->GetFormat());
+        region.imageSubresource.mipLevel       = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount     = 1;
+        region.imageOffset                     = { 0, 0, 0 };
+        region.imageExtent                     = { static_cast<uint32_t>(source->GetWidth()), static_cast<uint32_t>(source->GetHeight()), 1 };
+
+        vkCmdCopyImageToBuffer(
+            static_cast<VkCommandBuffer>(GetRhiResource()),
+            static_cast<VkImage>(source->GetRhiResource()),
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            static_cast<VkBuffer>(destination->GetRhiResource()),
+            1, &region
+        );
+
+        // barrier back to shader read (or your tracked layout)
+        InsertBarrier(
+            source->GetRhiResource(),
+            source->GetFormat(),
+            0,
+            1,
+            1,
+            RHI_Image_Layout::Shader_Read
+        );
     }
 
     void RHI_CommandList::PreDraw()

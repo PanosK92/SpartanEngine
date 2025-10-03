@@ -175,23 +175,25 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             uint instance_id                          = vertex.uv_misc.w;
             float variation                           = hash(instance_id);
 
-            //  grass-specific tint based on local blade height and instance variation
             if (surface.is_grass_blade())
             {
-                const float3 grass_base = float3(0.0f, 0.05f, 0.005f);
-                const float3 grass_tip  = float3(0.02f, 0.15f, 0.015f);
-                float height_percent    = vertex.uv_misc.z;
-                float t                 = smoothstep(0, 1, height_percent);
-                float3 grass_tint       = lerp(grass_tip, grass_tip, t);
-        
-                // blend between greener, yellower, browner based on variation
-                float3 variation_color = vegetation_greener;
-                variation_color        = lerp(variation_color, vegetation_yellower, step(0.33f, variation));
-                variation_color        = lerp(variation_color, vegetation_browner, step(0.66f, variation));
-        
-                // blend base tint with variation color, weighted by global variation strength
-                grass_tint = lerp(grass_tint, variation_color, vegetation_variation_strength);
-        
+                // natural, darkish grass base and tip
+                const float3 grass_base = float3(0.05f, 0.07f, 0.03f); // muted earthy green
+                const float3 grass_tip  = float3(0.08f, 0.12f, 0.04f); // slightly brighter at tip
+
+                float height_percent = vertex.uv_misc.z;
+                float t              = smoothstep(0.2f, 1.0f, height_percent);
+                float3 grass_tint    = lerp(grass_base, grass_tip, t);
+
+                // subtle variation along blades
+                float3 variation_color = grass_tint;
+                variation_color        = lerp(variation_color, float3(0.07f, 0.08f, 0.03f), step(0.33f, variation));
+                variation_color        = lerp(variation_color, float3(0.06f, 0.05f, 0.02f), step(0.66f, variation));
+
+                // blend with low weight to prevent whitening
+                grass_tint = lerp(grass_tint, variation_color, 0.3f * vegetation_variation_strength);
+
+                // final blend onto albedo with moderate weight
                 albedo.rgb = lerp(albedo.rgb, grass_tint, 1.0f);
             }
             else // trees and other vegetation variation
