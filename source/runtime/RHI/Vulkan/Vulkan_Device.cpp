@@ -52,11 +52,11 @@ namespace spartan
         uint32_t used      = 0;
         string version_str = "N/A";
 
-        const char* to_string(uint32_t version)
+        const char* to_c_str(uint32_t version)
         {
-            version_str = std::to_string(VK_VERSION_MAJOR(version)) + "." +
-                          std::to_string(VK_VERSION_MINOR(version)) + "." +
-                          std::to_string(VK_VERSION_PATCH(version));
+            version_str = to_string(VK_VERSION_MAJOR(version)) + "." +
+                          to_string(VK_VERSION_MINOR(version)) + "." +
+                          to_string(VK_VERSION_PATCH(version));
 
             return version_str.c_str();
         }
@@ -158,16 +158,16 @@ namespace spartan
 
                 // save the api version we ended up using
                 vulkan_version::used          = app_info.apiVersion;
-                RHI_Context::api_version_cstr = vulkan_version::to_string(vulkan_version::used);
+                RHI_Context::api_version_cstr = vulkan_version::to_c_str(vulkan_version::used);
 
                 // some checks
                 {
                     // if the driver hasn't been updated to the latest sdk, log a warning
                     if (sdk_version > driver_version)
                     {
-                        string version_driver = vulkan_version::to_string(driver_version);
-                        string version_sdk    = vulkan_version::to_string(sdk_version);
-                        SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", version_driver.c_str(), version_sdk.c_str());
+                        const char* version_driver = vulkan_version::to_c_str(driver_version);
+                        const char* version_sdk    = vulkan_version::to_c_str(sdk_version);
+                        SP_LOG_WARNING("Using Vulkan %s, update drivers or wait for GPU vendor to support Vulkan %s, engine may still work", version_driver, version_sdk);
                     }
 
                     // ensure that the machine supports Vulkan 1.4 (as we are using extensions from it)
@@ -552,10 +552,10 @@ namespace spartan
             uint32_t queue_family_count = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
 
-            std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+            vector<VkQueueFamilyProperties> queue_families(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.data());
 
-            auto get_family_index = [&](VkQueueFlagBits flags, uint32_t* out_index, const std::set<uint32_t>& exclude_indices = {}) -> bool 
+            auto get_family_index = [&](VkQueueFlagBits flags, uint32_t* out_index, const set<uint32_t>& exclude_indices = {}) -> bool 
             {
                 // dedicated first
                 for (uint32_t i = 0; i < queue_family_count; ++i) 
@@ -598,7 +598,7 @@ namespace spartan
             }
 
             // compute (exclude graphics if possible)
-            std::set<uint32_t> exclude = {index_graphics};
+            set<uint32_t> exclude = {index_graphics};
             if (!get_family_index(VK_QUEUE_COMPUTE_BIT, &index_compute, exclude)) 
             {
                 if (!get_family_index(VK_QUEUE_COMPUTE_BIT, &index_compute)) 
@@ -716,84 +716,46 @@ namespace spartan
     {
         mutex mutex_allocator;
         VmaAllocator allocator;
-
-        struct AllocationData
-        {
-            VmaAllocation allocation;
-            void* resource;
-        };
-        vector<AllocationData> allocations;
+        unordered_map<void*, VmaAllocation> allocations;
 
         void initialize()
         {
-            // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
-            // It is recommended to use VK_EXT_memory_budget device extension to obtain information about the budget from Vulkan device.
-            // VMA is able to use this extension automatically. When not enabled, the allocator behaves the same way, but then it estimates
-            // current usage and available budget based on its internal information and Vulkan memory heap sizes, which may be less precise.
-
-            // allocator
             VmaAllocatorCreateInfo allocator_info = {};
-            allocator_info.physicalDevice   = RHI_Context::device_physical;
-            allocator_info.device           = RHI_Context::device;
-            allocator_info.instance         = RHI_Context::instance;
-            allocator_info.vulkanApiVersion = vulkan_version::used;
-            allocator_info.flags            = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-            SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator));
-
-            // register version (I don't think VMA provides version defines)
+            allocator_info.physicalDevice         = RHI_Context::device_physical;
+            allocator_info.device                 = RHI_Context::device;
+            allocator_info.instance               = RHI_Context::instance;
+            allocator_info.vulkanApiVersion       = vulkan_version::used;
+            allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+            SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &allocator));
             Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.3.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
         }
 
         void destroy()
         {
-            SP_ASSERT(vulkan_memory_allocator::allocator != nullptr);
-            SP_ASSERT_MSG(vulkan_memory_allocator::allocations.empty(),  "There are still allocations");
-
-            vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator));
-            vulkan_memory_allocator::allocator = nullptr;
+            SP_ASSERT(allocator != nullptr);
+            SP_ASSERT_MSG(allocations.empty(), "There are still allocations");
+            vmaDestroyAllocator(allocator);
+            allocator = nullptr;
         }
 
-        void save_allocation(void*& resource, VmaAllocation allocation)
+        void save_allocation(void* resource, VmaAllocation allocation)
         {
             SP_ASSERT(resource != nullptr);
-
-            lock_guard<mutex> lock(mutex_allocation);
-
-            AllocationData allocation_data = {};
-            allocation_data.allocation     = allocation;
-            allocation_data.resource       = resource;
-            allocations.emplace_back(allocation_data);
+            lock_guard<mutex> lock(mutex_allocator);
+            allocations.emplace(resource, allocation);
         }
 
-        void destroy_allocation(void*& resource)
+        void destroy_allocation(void* resource)
         {
-            lock_guard<mutex> lock(mutex_allocation);
-
-            auto it = std::find_if(allocations.begin(), allocations.end(), [&](const AllocationData& data)
-            {
-                return data.resource == resource;
-            });
-
-            if (it != allocations.end())
-            {
-                allocations.erase(it);
-                resource = nullptr;
-            }
+            lock_guard<mutex> lock(mutex_allocator);
+            allocations.erase(resource);
         }
 
-        AllocationData* get_allocation_from_resource(void* resource)
+        VmaAllocation get_allocation_from_resource(void* resource)
         {
-            lock_guard<mutex> lock(mutex_allocation);
-
-            auto it = find_if(allocations.begin(), allocations.end(), [&](const AllocationData& data)
-            {
-                return data.resource == resource;
-            });
-
-            if (it != allocations.end())
-                return &(*it);
-
-            return nullptr;
+            lock_guard<mutex> lock(mutex_allocator);
+            auto it = allocations.find(resource);
+            return it != allocations.end() ? it->second : nullptr;
         }
     }
 
@@ -836,7 +798,7 @@ namespace spartan
             Profiler::m_rhi_descriptor_set_count = 0;
         }
 
-        void merge_descriptors(vector<RHI_Descriptor>& base_descriptors, const std::vector<RHI_Descriptor>& additional_descriptors)
+        void merge_descriptors(vector<RHI_Descriptor>& base_descriptors, const vector<RHI_Descriptor>& additional_descriptors)
         {
             for (const RHI_Descriptor& descriptor_additional : additional_descriptors)
             {
@@ -940,7 +902,7 @@ namespace spartan
                     {
                         if (static_buffer[j].slot < static_buffer[i].slot)
                         {
-                            std::swap(static_buffer[i], static_buffer[j]);
+                            swap(static_buffer[i], static_buffer[j]);
                         }
                     }
                 }
@@ -1575,7 +1537,7 @@ namespace spartan
                 create_info.ppEnabledExtensionNames      = extensions_supported.data();
 
                 SP_ASSERT_VK(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device));
-                SP_LOG_INFO("Vulkan %s", vulkan_version::to_string(vulkan_version::used));
+                SP_LOG_INFO("Vulkan %s", vulkan_version::to_c_str(vulkan_version::used));
             }
         }
 
@@ -1949,10 +1911,13 @@ namespace spartan
 
     void* RHI_Device::MemoryGetMappedDataFromBuffer(void* resource)
     {
-        vulkan_memory_allocator::AllocationData* allocation_data = vulkan_memory_allocator::get_allocation_from_resource(resource);
-        if (allocation_data->allocation)
-            return allocation_data->allocation->GetMappedData();
-
+        VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
+        if (allocation)
+        {
+            VmaAllocationInfo alloc_info;
+            vmaGetAllocationInfo(vulkan_memory_allocator::allocator, allocation, &alloc_info);
+            return alloc_info.pMappedData;
+        }
         return nullptr;
     }
 
@@ -2014,13 +1979,12 @@ namespace spartan
 
     void RHI_Device::MemoryBufferDestroy(void*& resource)
     {
-        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
-
-        vulkan_memory_allocator::AllocationData* allocation_data = vulkan_memory_allocator::get_allocation_from_resource(resource);
-        if (allocation_data->allocation)
+        VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
+        if (allocation)
         {
-            vmaDestroyBuffer(vulkan_memory_allocator::allocator, static_cast<VkBuffer>(resource), allocation_data->allocation);
+            vmaDestroyBuffer(vulkan_memory_allocator::allocator, static_cast<VkBuffer>(resource), allocation);
             vulkan_memory_allocator::destroy_allocation(resource);
+            resource = nullptr;
         }
     }
 
@@ -2117,35 +2081,30 @@ namespace spartan
 
     void RHI_Device::MemoryTextureDestroy(void*& resource)
     {
-        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
-
-        vulkan_memory_allocator::AllocationData* allocation_data = vulkan_memory_allocator::get_allocation_from_resource(resource);
-        if (allocation_data->allocation)
+        VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
+        if (allocation)
         {
-            vmaDestroyImage(vulkan_memory_allocator::allocator, static_cast<VkImage>(resource), allocation_data->allocation);
+            vmaDestroyImage(vulkan_memory_allocator::allocator, static_cast<VkImage>(resource), allocation);
             vulkan_memory_allocator::destroy_allocation(resource);
+            resource = nullptr;
         }
     }
 
     void RHI_Device::MemoryMap(void* resource, void*& mapped_data)
     {
-        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
-
-        vulkan_memory_allocator::AllocationData* allocation_data = vulkan_memory_allocator::get_allocation_from_resource(resource);
-        if (allocation_data->allocation)
+        VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
+        if (allocation)
         {
-            SP_ASSERT_VK(vmaMapMemory(vulkan_memory_allocator::allocator, allocation_data->allocation, reinterpret_cast<void**>(&mapped_data)));
+            SP_ASSERT_VK(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data));
         }
     }
 
     void RHI_Device::MemoryUnmap(void* resource)
     {
-        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
-
-        vulkan_memory_allocator::AllocationData* allocation_data = vulkan_memory_allocator::get_allocation_from_resource(resource);
-        if (allocation_data->allocation)
+        VmaAllocation allocation = vulkan_memory_allocator::get_allocation_from_resource(resource);
+        if (allocation)
         {
-            vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation_data->allocation);
+            vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation);
         }
     }
 

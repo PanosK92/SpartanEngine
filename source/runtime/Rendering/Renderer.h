@@ -90,7 +90,7 @@ namespace spartan
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNumber();
         static RHI_Api_Type GetRhiApiType();
-        static void Screenshot(const std::string& file_path);
+        static void Screenshot();
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // wind
@@ -209,6 +209,12 @@ namespace spartan
         static void UpdateShadowAtlas();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
 
+        // draw calls
+        static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;
+        static uint32_t m_draw_call_count;
+        static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls_prepass;
+        static uint32_t m_draw_calls_prepass_count;
+
         // misc
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
@@ -218,8 +224,6 @@ namespace spartan
         static uint32_t m_resource_index;
         static std::atomic<bool> m_initialized_resources;
         static std::mutex m_mutex_renderables;
-        static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;
-        static uint32_t m_draw_call_count;
         static bool m_transparents_present;
         static RHI_CommandList* m_cmd_list_present;
         static std::vector<ShadowSlice> m_shadow_slices;

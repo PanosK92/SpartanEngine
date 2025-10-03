@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Renderer.h"
 #include "Material.h"
@@ -41,7 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
-//======================================
+#include "../Resource/Import/ImageImporter.h"
+//===========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -89,6 +90,7 @@ namespace spartan
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
+ 
 
         void dynamic_resolution()
         {
@@ -285,7 +287,7 @@ namespace spartan
             m_cmd_list_present = queue_graphics->NextCommandList();
             m_cmd_list_present->Begin();
         }
-    
+
         // update CPU and GPU resources
         {
             // fill draw call list and determine ideal occluders
@@ -1063,29 +1065,30 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
     {
-        m_draw_call_count = 0;
-
+        m_draw_call_count          = 0;
+        m_draw_calls_prepass_count = 0;
+        m_transparents_present     = false;
         if (ProgressTracker::IsLoading())
             return;
 
-        // build draw calls and sort them
-        {  
+        // build draw calls and sort them for g-buffer (transparency -> material -> depth)
+        {
             for (Entity* entity : World::GetEntities())
             {
                 if (!entity->GetActive())
                     continue;
-        
+
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
                     // skip renderables with no material, can happen when loading a world and the material is not yet loaded
                     if (!renderable->GetMaterial())
                         continue;
-        
+
                     if (renderable->GetMaterial()->IsTransparent())
                     {
                         m_transparents_present = true;
                     }
-            
+
                     Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
                     draw_call.renderable         = renderable;
                     draw_call.distance_squared   = renderable->GetDistanceSquared();
@@ -1096,7 +1099,7 @@ namespace spartan
                     draw_call.instance_count     = renderable->GetInstanceCount();
                 }
             }
-        
+
             // sort by transparency, material id, and distance (front-to-back for opaque, back-to-front for transparent)
             sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
             {
@@ -1107,7 +1110,7 @@ namespace spartan
                 {
                     return !a_transparent; // false (opaque) before true (transparent)
                 }
-                
+
                 // step 2: sort by material id within each transparency group
                 uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
                 uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
@@ -1115,7 +1118,7 @@ namespace spartan
                 {
                     return a_material_id < b_material_id; // lower material ids first
                 }
-                
+
                 // step 3: sort by distance within each material group
                 if (!a_transparent) // both are opaque
                 {
@@ -1127,7 +1130,25 @@ namespace spartan
                 }
             });
         }
-        
+
+        // build prepass calls: opaques only, sorted by depth front-to-back
+        {
+            for (uint32_t i = 0; i < m_draw_call_count; ++i)
+            {
+                const Renderer_DrawCall& dc = m_draw_calls[i];
+                if (!dc.renderable->GetMaterial()->IsTransparent() && dc.camera_visible)
+                {
+                    m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
+                }
+            }
+
+            // sort prepass by distance_squared only (front-to-back)
+            sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
+            {
+                return a.distance_squared < b.distance_squared;
+            });
+        }
+
         // select occluders by finding the top n largest screen-space bounding boxes
         {
             // lambda to compute screen-space area of a bounding box
@@ -1136,57 +1157,57 @@ namespace spartan
                 // project aabb to screen space using camera function
                 float area = 0.0f;
                 if (Camera* camera = World::GetCamera())
-                { 
+                {
                     math::Rectangle rect_screen = World::GetCamera()->WorldToScreenCoordinates(aabb_world);
-            
+
                     // compute screen-space dimensions
                     area = clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
                 }
-        
+
                 return area;
             };
-        
+
             // temporary storage for draw call areas
             struct DrawCallArea
             {
                 uint32_t index;
                 float area;
             };
-            static std::vector<DrawCallArea> areas;
-            areas.clear();                    // clear old data
-            areas.reserve(m_draw_call_count); // ensure enough capacity
-        
-            // collect screen-space areas for eligible draw calls
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            static vector<DrawCallArea> areas;
+            areas.clear(); // clear old data
+            areas.reserve(m_draw_calls_prepass_count); // ensure enough capacity
+
+            // collect screen-space areas for eligible draw calls from prepass
+            for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
             {
-                Renderer_DrawCall& draw_call = m_draw_calls[i];
-                Renderable* renderable       = draw_call.renderable;
-                Material* material           = renderable->GetMaterial();
-        
+                Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
+                Renderable* renderable = draw_call.renderable;
+                Material* material = renderable->GetMaterial();
+
                 // skip any draw calls that have a mesh that you can see through (transparent, instanced, non-solid)
                 if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
                     continue;
-        
+
                 // get bounding box
                 const BoundingBox& aabb_world = renderable->GetBoundingBox();
-                
+
                 // compute screen-space area and store it
                 float screen_area = compute_screen_space_area(aabb_world);
-                areas.push_back({i, screen_area});
+                areas.push_back({ i, screen_area });
             }
-        
+
             // sort draw calls by screen-space area (descending)
             sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
             {
                 return a.area > b.area;
             });
-        
+
             // select the top n occluders
             const uint32_t max_occluders = 64;
-            uint32_t occluder_count      = min(max_occluders, static_cast<uint32_t>(areas.size()));
+            uint32_t occluder_count = min(max_occluders, static_cast<uint32_t>(areas.size()));
             for (uint32_t i = 0; i < occluder_count; i++)
             {
-                m_draw_calls[areas[i].index].is_occluder = true;
+                m_draw_calls_prepass[areas[i].index].is_occluder = true;
             }
         }
     }
@@ -1323,8 +1344,35 @@ namespace spartan
         }
     }
 
-    void Renderer::Screenshot(const string& file_path)
+    void Renderer::Screenshot()
     {
-        GetRenderTarget(Renderer_RenderTarget::frame_output)->SaveAsImage(file_path);
+        RHI_Texture* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        uint32_t width            = frame_output->GetWidth();
+        uint32_t height           = frame_output->GetHeight();
+        RHI_Format format         = frame_output->GetFormat();
+        uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
+        uint32_t channel_count    = frame_output->GetChannelCount();
+        size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
+        
+        // create staging buffer (linear: element_count=1, stride=data_size; mappable=true for coherent host-visible)
+        auto staging = make_unique<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
+        
+        // copy image to buffer
+        if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
+        {
+            cmd_list->CopyTextureToBuffer(frame_output, staging.get());
+            RHI_Device::CmdImmediateSubmit(cmd_list);
+        }
+        
+        // read mapped data (coherent, so direct access post-submit)
+        void* mapped_data = staging->GetMappedData();
+        SP_ASSERT_MSG(mapped_data, "Staging buffer not mappable");
+
+        spartan::ThreadPool::AddTask([width, height, channel_count, bits_per_channel, mapped_data]()
+        {
+            SP_LOG_INFO("Saving screenshot...");
+            ImageImporter::Save("screenshot.exr", width, height, channel_count, bits_per_channel, mapped_data);
+            SP_LOG_INFO("Screenshot saved as 'screenshot.exr'");
+        });
     }
 }

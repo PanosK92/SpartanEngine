@@ -54,7 +54,7 @@ function solution_configuration()
             debugformat "c7"
 
         filter { "configurations:release" }
-            flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+            flags { "MultiProcessorCompile", "linktimeoptimization" }
             optimize "Speed"
             symbols "Off"
 
@@ -106,6 +106,28 @@ function spartan_project_configuration()
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
                 "../third_party/pugixml", "../third_party/meshoptimizer", "../third_party/dxc"
+            }
+             -- Ensure linker prioritizes project libraries over system paths
+            linkoptions {
+                "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
+                "/NODEFAULTLIB:PhysX_64.lib",
+                "/NODEFAULTLIB:PhysX_64_debug.lib",
+                "/NODEFAULTLIB:PhysXCommon_64.lib",
+                "/NODEFAULTLIB:PhysXCommon_64_debug.lib",
+                "/NODEFAULTLIB:PhysXFoundation_64.lib",
+                "/NODEFAULTLIB:PhysXFoundation_64_debug.lib",
+                "/NODEFAULTLIB:PhysXExtensions_64.lib",
+                "/NODEFAULTLIB:PhysXExtensions_64_debug.lib",
+                "/NODEFAULTLIB:PhysXPvdSDK_64.lib",
+                "/NODEFAULTLIB:PhysXPvdSDK_64_debug.lib",
+                "/NODEFAULTLIB:PhysXCooking_64.lib",
+                "/NODEFAULTLIB:PhysXCooking_64_debug.lib",
+                "/NODEFAULTLIB:PhysXVehicle2_64.lib",
+                "/NODEFAULTLIB:PhysXVehicle2_64_debug.lib",
+                "/NODEFAULTLIB:PhysXCharacterKinematic_64.lib",
+                "/NODEFAULTLIB:PhysXCharacterKinematic_64_debug.lib",
+                "/NODEFAULTLIB:MSVCRT.lib",   -- Block dynamic CRT
+                "/NODEFAULTLIB:MSVCPRT.lib",  -- Block dynamic CRT
             }
 
         -- Linux includes

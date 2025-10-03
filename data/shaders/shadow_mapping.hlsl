@@ -104,14 +104,11 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
 {
     // base bias per cascade: near/far
     float base_bias = (cascade_index == 0) ? 60.0f : 600.0f;
-    // slope factor
-    float slope_scale = saturate(1.0f - light.n_dot_l);
-    slope_scale = slope_scale * slope_scale; // stronger at grazing angles
 
     // texel scale in world units
     float texel_size = light.atlas_texel_size[cascade_index].x; // assuming square texels
 
-    float3 normal_offset = surface.normal * base_bias * slope_scale * texel_size;
+    float3 normal_offset = surface.normal * base_bias * texel_size;
 
     // clamp to avoid over-biasing
     normal_offset = clamp(normal_offset, -0.5f * base_bias, 0.5f * base_bias);
@@ -175,7 +172,7 @@ float compute_shadow(Surface surface, Light light)
             float  shadow_far         = vogel_depth(light, surface, float3(uv_far, far_cascade), ndc_far.z, 4.0f);
 
             float edge_dist    = max(abs(ndc_near.x), abs(ndc_near.y));
-            float blend_factor = smoothstep(0.9f, 1.0f, edge_dist);
+            float blend_factor = smoothstep(0.7f, 1.0f, edge_dist);
             shadow             = lerp(shadow_near, shadow_far, blend_factor);
         }
 

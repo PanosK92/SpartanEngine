@@ -595,7 +595,7 @@ extern "C" {
  * A variable that limits what CPU features are available.
  *
  * By default, SDL marks all features the current CPU supports as available.
- * This hint allows to limit these to a subset.
+ * This hint allows the enabled features to be limited to a subset.
  *
  * When the hint is unset, or empty, SDL will enable all detected CPU
  * features.
@@ -1074,8 +1074,8 @@ extern "C" {
  *
  * By default, SDL will try all available GPU backends in a reasonable order
  * until it finds one that can work, but this hint allows the app or user to
- * force a specific target, such as "direct3d11" if, say, your hardware
- * supports D3D12 but want to try using D3D11 instead.
+ * force a specific target, such as "direct3d12" if, say, your hardware
+ * supports Vulkan but you want to try using D3D12 instead.
  *
  * This hint should be set before any GPU functions are called.
  *
@@ -2026,8 +2026,8 @@ extern "C" {
  *
  * The variable can be set to the following values:
  *
- * - "0": RAWINPUT drivers are not used.
- * - "1": RAWINPUT drivers are used. (default)
+ * - "0": RAWINPUT drivers are not used. (default)
+ * - "1": RAWINPUT drivers are used.
  *
  * This hint should be set before SDL is initialized.
  *
@@ -2126,8 +2126,8 @@ extern "C" {
  *
  * The variable can be set to the following values:
  *
- * - "0": WGI is not used.
- * - "1": WGI is used. (default)
+ * - "0": WGI is not used. (default)
+ * - "1": WGI is used.
  *
  * This hint should be set before SDL is initialized.
  *
@@ -2190,6 +2190,28 @@ extern "C" {
  * \since This hint is available since SDL 3.2.0.
  */
 #define SDL_HINT_JOYSTICK_ZERO_CENTERED_DEVICES "SDL_JOYSTICK_ZERO_CENTERED_DEVICES"
+
+/**
+ * A variable containing a list of devices and their desired number of haptic
+ * (force feedback) enabled axis.
+ *
+ * The format of the string is a comma separated list of USB VID/PID pairs in
+ * hexadecimal form plus the number of desired axes, e.g.
+ *
+ * `0xAAAA/0xBBBB/1,0xCCCC/0xDDDD/3`
+ *
+ * This hint supports a "wildcard" device that will set the number of haptic
+ * axes on all initialized haptic devices which were not defined explicitly in
+ * this hint.
+ *
+ * `0xFFFF/0xFFFF/1`
+ *
+ * This hint should be set before a controller is opened. The number of haptic
+ * axes won't exceed the number of real axes found on the device.
+ *
+ * \since This hint is available since SDL 3.2.5.
+ */
+#define SDL_HINT_JOYSTICK_HAPTIC_AXES "SDL_JOYSTICK_HAPTIC_AXES"
 
 /**
  * A variable that controls keycode representation in keyboard events.
@@ -3584,6 +3606,22 @@ extern "C" {
  * \since This hint is available since SDL 3.2.0.
  */
 #define SDL_HINT_VIDEO_WIN_D3DCOMPILER "SDL_VIDEO_WIN_D3DCOMPILER"
+
+/**
+ * A variable controlling whether SDL should call XSelectInput() to enable
+ * input events on X11 windows wrapped by SDL windows.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": Don't call XSelectInput(), assuming the native window code has done
+ *   it already.
+ * - "1": Call XSelectInput() to enable input events. (default)
+ *
+ * This hint should be set before creating a window.
+ *
+ * \since This hint is available since SDL 3.2.10.
+ */
+#define SDL_HINT_VIDEO_X11_EXTERNAL_WINDOW_INPUT "SDL_VIDEO_X11_EXTERNAL_WINDOW_INPUT"
 
 /**
  * A variable controlling whether the X11 _NET_WM_BYPASS_COMPOSITOR hint

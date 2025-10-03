@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_Queue.h"
 #include "../Display/Display.h"
+#include "../Rendering/Renderer.h"
 #ifdef _WIN32
 #include <tlhelp32.h>
 #endif
@@ -335,9 +336,18 @@ namespace spartan
             return;
         }
     
-        // ensure that the surface supports the requested format and color space
+        // check surface supports the requested format and color space, fall back to SDR if not supported
         VkColorSpaceKHR color_space = get_color_space(m_format);
-        SP_ASSERT_MSG(is_format_and_color_space_supported(static_cast<VkSurfaceKHR>(m_rhi_surface), &m_format, color_space), "The surface doesn't support the requested format");
+        if (!is_format_and_color_space_supported(static_cast<VkSurfaceKHR>(m_rhi_surface), &m_format, color_space))
+        {
+            SP_LOG_WARNING("HDR format (%s, %d) not supported by surface. Falling back to SDR."
+                           "On NVIDIA Optimus laptops, switch to 'High-performance NVIDIA processor' in NVIDIA Control Panel or Windows Graphics Settings,"
+                           "or update to NVIDIA driver 551.xx+ for Vulkan HDR support.", rhi_format_to_string(m_format), color_space);
+
+            Renderer::SetOption(Renderer_Option::Hdr, 0.0f);
+            m_format    = format_sdr; 
+            color_space = get_color_space(m_format); 
+        }
 
         RHI_Device::QueueWaitAll();
 

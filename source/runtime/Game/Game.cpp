@@ -848,7 +848,7 @@ namespace spartan
             {
                 // tweak without exceeding a vram usage of 8 GB (that is until streaming is implemented)
                 const float render_distance_trees          = 2'000.0f;
-                const float render_distance_grass          = 400.0f;  // grass is expensive
+                const float render_distance_grass          = 500.0f;  // grass is expensive
                 const uint32_t per_tile_count_grass_blades = 420'000; // approximate, only open flat terrain tiles can fit them all
                 const uint32_t per_tile_count_tree         = 16;
                 const uint32_t per_tile_count_rock         = 32;
@@ -971,7 +971,7 @@ namespace spartan
                 // props: trees, rocks, grass
                 {
                     // load meshes
-                    uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes); // combine gazillion entities tree entites into one
+                    uint32_t flags             = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes); // combine gazillion entities tree entites into one
                     shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
                     shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
 
@@ -1007,7 +1007,7 @@ namespace spartan
                             mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 2
                         }
 
-                        mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // silly, need to remove that
+                        mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // need to remove that
                         mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc.
                     }
 

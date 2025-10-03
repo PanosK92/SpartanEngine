@@ -154,16 +154,17 @@ namespace spartan
         void InsertBarrierReadWrite(RHI_Buffer* buffer);
         void InsertPendingBarrierGroup();
 
+        // layouts
+        static void RemoveLayout(void* image);
+        static RHI_Image_Layout GetImageLayout(void* image, uint32_t mip_index);
+
         // misc
         void RenderPassEnd();
         RHI_SyncPrimitive* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
         void* GetRhiResource() const                       { return m_rhi_resource; }
         const RHI_CommandListState GetState() const        { return m_state; }
         RHI_Queue* GetQueue() const                        { return m_queue; }
-
-        // layouts
-        static void RemoveLayout(void* image);
-        static RHI_Image_Layout GetImageLayout(void* image, uint32_t mip_index);
+        void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
 
     private:
         void PreDraw();
@@ -183,7 +184,6 @@ namespace spartan
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
         RHI_CullMode m_cull_mode                             = RHI_CullMode::Back;
         bool m_render_pass_active                            = false;
-        uint32_t m_render_pass_draw_calls                    = 0;
         std::stack<const char*> m_active_timeblocks;
         std::stack<const char*> m_debug_label_stack;
         std::mutex m_mutex_reset;

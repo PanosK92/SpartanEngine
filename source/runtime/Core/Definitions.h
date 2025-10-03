@@ -53,7 +53,9 @@ namespace spartan::version
 
     consteval int day()
     {
-        return (digit(__DATE__[4]) == 0 ? 0 : digit(__DATE__[4])) * 10 + digit(__DATE__[5]);
+        // __DATE__[4] can be ' ' for single-digit days
+        int tens = (__DATE__[4] == ' ' ? 0 : digit(__DATE__[4]));
+        return tens * 10 + digit(__DATE__[5]);
     }
 
     consteval int hour()
@@ -81,7 +83,6 @@ namespace spartan::version
         return buf;
     }
 }
-
 
 //= OPTIMISATION ON/OFF ================================================
 #if defined(_MSC_VER)

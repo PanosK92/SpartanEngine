@@ -94,7 +94,7 @@ namespace spartan
         m_default_icons[IconType::Play]          = Load<RHI_Texture>(data_dir + "Icons\\play.png");
         m_default_icons[IconType::Profiler]      = Load<RHI_Texture>(data_dir + "Icons\\timer.png");
         m_default_icons[IconType::ResourceCache] = Load<RHI_Texture>(data_dir + "Icons\\resource_viewer.png");
-        m_default_icons[IconType::RenderDoc]     = Load<RHI_Texture>(data_dir + "Icons\\capture.png");
+        m_default_icons[IconType::RenderDoc]     = Load<RHI_Texture>(data_dir + "Icons\\renderdoc.png");
         m_default_icons[IconType::Shader]        = Load<RHI_Texture>(data_dir + "Icons\\code.png");
         m_default_icons[IconType::Texture]       = Load<RHI_Texture>(data_dir + "Icons\\texture.png");
         m_default_icons[IconType::Minimize]      = Load<RHI_Texture>(data_dir + "Icons\\window_minimise.png");

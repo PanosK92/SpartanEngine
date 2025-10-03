@@ -398,4 +398,9 @@ namespace spartan
     {
         return RHI_Image_Layout::Max;
     }
+
+    void RHI_CommandList::CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination)
+    {
+
+    }
 }

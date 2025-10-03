@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ImageImporter.h"
 #include "../../RHI/RHI_Texture.h"
+#include "../../Core/ThreadPool.h"
 SP_WARNINGS_OFF
 #define FREEIMAGE_LIB
 #include <FreeImage/FreeImage.h>
@@ -365,6 +366,30 @@ namespace spartan
         
             return false;
         }
+
+
+        float half_to_float(uint16_t half)
+        {
+            uint32_t mant = half & 0x3FFu;
+            uint32_t exp  = (half >> 10) & 0x1Fu;
+            uint32_t sign = (half >> 15) & 0x1u;
+
+            uint32_t f;
+            if (exp == 0)
+            {
+                f = (sign << 31) | (mant ? ((127 - 15) << 23) | (mant << 13) : 0); // Denormals as zero for simplicity
+            }
+            else if (exp == 0x1F)
+            {
+                f = (sign << 31) | (0x7F800000) | (mant << 13); // Inf/NaN
+            }
+            else
+            {
+                f = (sign << 31) | ((exp + (127 - 15)) << 23) | (mant << 13);
+            }
+
+            return *reinterpret_cast<float*>(&f); // Assumes IEEE 754 and little-endian
+        }
     }
 
     void ImageImporter::Initialize()
@@ -511,47 +536,42 @@ namespace spartan
 
     void ImageImporter::Save(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data)
     {
-        uint32_t bytes_per_pixel = (bits_per_channel / 8) * channel_count;
+        // assume input is half float RGBA16F (from Vulkan)
+        const uint16_t* src_half = static_cast<const uint16_t*>(data);
+        uint32_t pixel_count     = width * height;
 
-        // determine the FreeImage type based on bits_per_channel
-        FREE_IMAGE_TYPE image_type;
-        switch (bits_per_channel)
+        // convert half -> float
+        std::vector<float> converted(pixel_count * 4);
+        for (uint32_t i = 0; i < pixel_count; i++)
         {
-            case 8:  image_type = FIT_BITMAP; break;
-            case 16: image_type = FIT_RGB16;  break;
-            case 32: image_type = FIT_RGBAF;  break;
-            default:
-            {
-                SP_LOG_ERROR("Unhandled bits per channel");
-                return;
-            }
+            converted[i * 4 + 0] = half_to_float(src_half[i * 4 + 0]);
+            converted[i * 4 + 1] = half_to_float(src_half[i * 4 + 1]);
+            converted[i * 4 + 2] = half_to_float(src_half[i * 4 + 2]);
+            converted[i * 4 + 3] = half_to_float(src_half[i * 4 + 3]);
         }
 
-        // create a FreeImage bitmap
-        FIBITMAP* bitmap = FreeImage_AllocateT(image_type, width, height, bits_per_channel * channel_count);
+        // allocate HDR bitmap (RGBAF = 128 bits per pixel float)
+        FIBITMAP* bitmap = FreeImage_AllocateT(FIT_RGBAF, width, height, 128);
         if (!bitmap)
         {
-            SP_LOG_ERROR("Failed to allocate FreeImage bitmap");
+            SP_LOG_ERROR("Failed to allocate FreeImage HDR bitmap");
             return;
         }
 
-        // get the data
-        BYTE* bits = FreeImage_GetBits(bitmap);
-        if (!bits)
+        // copy data row by row (FreeImage stores bottom-up by default)
+        for (uint32_t y = 0; y < height; y++)
         {
-            SP_LOG_ERROR("Failed to get FreeImage bits");
-            FreeImage_Unload(bitmap);
-            return;
+            float* scanline = reinterpret_cast<float*>(FreeImage_GetScanLine(bitmap, height - 1 - y));
+            memcpy(scanline, &converted[y * width * 4], width * 4 * sizeof(float));
         }
 
-        // copy the data
-        size_t data_size = width * height * bytes_per_pixel;
-        memcpy(bits, data, data_size);
-
-        // save the bitmap as a PNG
-        FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), 0);
-
-        // clean up
+        // save as OpenEXR
+        BOOL saved = FreeImage_Save(FIF_EXR, bitmap, file_path.c_str(), EXR_DEFAULT);
         FreeImage_Unload(bitmap);
+
+        if (!saved)
+        {
+            SP_LOG_ERROR("Failed to save HDR EXR to %s", file_path.c_str());
+        }
     }
 }
