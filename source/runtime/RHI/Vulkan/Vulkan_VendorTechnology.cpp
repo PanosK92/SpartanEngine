@@ -988,7 +988,15 @@ namespace spartan
     )
     {
     #ifdef _WIN32
-        SP_ASSERT(amd::ssr::context_created);
+        // comply with sssr expectations
+        SP_ASSERT(tex_reflection_source->GetBitsPerChannel() > 8);  // hdr color, expect float16+
+        SP_ASSERT(tex_depth->GetFormat() == RHI_Format::D32_Float); // single float depth
+        SP_ASSERT(tex_velocity->GetBitsPerChannel() >= 16);         // 2x float
+        SP_ASSERT(tex_normal->GetBitsPerChannel() >= 16);           // 3x float
+        SP_ASSERT(tex_material->GetBitsPerChannel() >= 16);         // 1x float roughness (upgrade from unorm8 if artifacts persist)
+        SP_ASSERT(tex_brdf->GetBitsPerChannel() >= 16);             // 2x float
+        SP_ASSERT(tex_output->GetBitsPerChannel() >= 16);           // 3x float output
+        cmd_list->ClearTexture(tex_output, Color::standard_black);
 
         // set resources
         amd::ssr::description_dispatch.commandList        = amd::to_cmd_list(cmd_list);
