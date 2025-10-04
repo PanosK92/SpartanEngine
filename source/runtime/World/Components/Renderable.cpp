@@ -42,13 +42,23 @@ namespace spartan
 {
     Renderable::Renderable(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,  bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,          Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,             uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,              Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,      BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh, Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, BoundingBox);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh, BoundingBox);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index,    uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_dirty, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instances, vector<math::Matrix>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_buffer, shared_ptr<RHI_Buffer>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, math::Matrix);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_render, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_shadow, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_distance_squared, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_visible, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lod_index, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_previous_lights, uint64_t);
     }
 
     Renderable::~Renderable()

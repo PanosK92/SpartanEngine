@@ -80,9 +80,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 refracted_dir = compute_refracted_dir(view_dir, surface.normal);
         float inv_dist       = saturate(1.0f / (surface.camera_to_pixel_length + FLT_MIN));
         float2 uv_offset     = world_to_view(refracted_dir, false).xy * refraction_strength * inv_dist;
-        
-  
-         // clamp UVs and compute edge fade factor
+
+        // clamp UVs and compute edge fade factor
         float2 refracted_uv = clamp(uv + uv_offset, 0.0f, 1.0f);
         float3 refracted    = tex2.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).rgb;
         float depth_opaque  = linearize_depth(tex4.SampleLevel(samplers[sampler_bilinear_clamp], refracted_uv, 0.0f).r);
