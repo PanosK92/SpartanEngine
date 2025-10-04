@@ -167,7 +167,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         // dynamic vegetation coloring (grass blades, trees, etc.)
         {
-            // color vaiation based on instance id
+            // color variation based on instance id
             static const float3 vegetation_greener    = float3(0.05f, 0.4f, 0.03f);
             static const float3 vegetation_yellower   = float3(0.45f, 0.4f, 0.15f);
             static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);

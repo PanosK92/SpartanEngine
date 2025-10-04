@@ -1514,12 +1514,10 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value(adaptation_speed);
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
-            // input: smallest mip (downsampled frame)
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, tex_in->GetMipCount() - 1, 1);
-            // input: previous exposure
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);
-            // output: current exposure
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure); 
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous); // input: previous exposure value
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);           // output: current exposure value
+
             // single dispatch: just writes 1 value
             cmd_list->Dispatch(1, 1, 1);
     
