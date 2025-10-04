@@ -136,6 +136,6 @@ namespace spartan
         std::mutex m_mutex;
         Entity* m_root_entity        = nullptr;
         MeshType m_type              = MeshType::Max;
-        MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Aggressive;
+        MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Linear;
     };
 }
