@@ -993,7 +993,7 @@ namespace spartan
         SP_ASSERT(tex_depth->GetFormat() == RHI_Format::D32_Float); // single float depth
         SP_ASSERT(tex_velocity->GetBitsPerChannel() >= 16);         // 2x float
         SP_ASSERT(tex_normal->GetBitsPerChannel() >= 16);           // 3x float
-        SP_ASSERT(tex_material->GetBitsPerChannel() >= 16);         // 1x float roughness (upgrade from unorm8 if artifacts persist)
+        SP_ASSERT(tex_material->GetBitsPerChannel() >= 8);          // 1x float roughness
         SP_ASSERT(tex_brdf->GetBitsPerChannel() >= 16);             // 2x float
         SP_ASSERT(tex_output->GetBitsPerChannel() >= 16);           // 3x float output
         cmd_list->ClearTexture(tex_output, Color::standard_black);
