@@ -294,22 +294,30 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // occlusion, roughness, metalness, height sample
     {
         float4 packed_sample  = sample_texture(vertex, material_texture_index_packed, surface, position_world);
-        occlusion             = lerp(occlusion, packed_sample.r, material.has_texture_occlusion() ? 1.0f : 0.0f);
-        roughness            *= lerp(1.0f,      packed_sample.g, material.has_texture_roughness() ? 1.0f : 0.0f);
-        metalness            *= lerp(1.0f,      packed_sample.b, material.has_texture_metalness() ? 1.0f : 0.0f);
+        occlusion             = lerp(occlusion, packed_sample.r, (float)material.has_texture_occlusion());
+        roughness            *= lerp(1.0f,      packed_sample.g, (float)material.has_texture_roughness());
+        metalness            *= lerp(1.0f,      packed_sample.b, (float)material.has_texture_metalness());
     }
     
-    // specular anti-aliasing - also increases cache hits for certain subsqeuent passes
+    // specular anti-aliasing (toksvig-inspired with distance adaptation)
     {
         static const float strength           = 1.0f;
         static const float max_roughness_gain = 0.02f;
-
-        float roughness2         = roughness * roughness;
-        float3 dndu              = ddx(normal), dndv = ddy(normal);
-        float variance           = (dot(dndu, dndu) + dot(dndv, dndv));
-        float kernelRoughness2   = min(variance * strength, max_roughness_gain);
-        float filteredRoughness2 = saturate(roughness2 + kernelRoughness2);
-        roughness                = fast_sqrt(filteredRoughness2);
+        float roughness2                      = roughness * roughness;
+        float3 dndu                           = ddx(normal);
+        float3 dndv                           = ddy(normal);
+        
+        // compute variance and normalize by normal length
+        float variance                        = length(dndu) * length(dndu) + length(dndv) * length(dndv);
+        float normal_length                   = length(normal);
+        variance                             /= max(0.001f, normal_length * normal_length);
+        
+        // adapt strength based on camera distance
+        float distance                        = length(position_world - buffer_frame.camera_position);
+        float adaptive_strength               = lerp(1.0f, 0.3f, saturate(distance / 10.0f));
+        float kernel_roughness2               = min(variance * strength * adaptive_strength, max_roughness_gain);
+        float filtered_roughness2             = saturate(roughness2 + kernel_roughness2);
+        roughness                             = fast_sqrt(filtered_roughness2);
     }
 
     // write to g-buffer
