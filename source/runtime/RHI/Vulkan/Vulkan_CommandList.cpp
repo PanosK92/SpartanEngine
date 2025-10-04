@@ -949,12 +949,15 @@ namespace spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling)
     {
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0,      "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
-        SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearBlit) != 0, "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG(source && destination,                                                                                                        "Source and destination textures cannot be null");
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0,                                                                            "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearBlit) != 0,                                                                       "Blit requires the texture to be created with the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG(source->GetChannelCount() == destination->GetChannelCount(),                                                                  "Source and destination must have matching channel counts for blit compatibility");
+        SP_ASSERT_MSG(source->GetBitsPerChannel() == destination->GetBitsPerChannel() || (source->IsColorFormat() && destination->IsColorFormat()), "Source and destination bit depths must match or be convertible color formats");
+        SP_ASSERT_MSG(!source->IsDepthFormat() || !destination->IsDepthFormat() || source->GetFormat() == destination->GetFormat(),                 "Depth formats must be identical for blit");
         if (blit_mips)
         {
-            SP_ASSERT_MSG(source->GetMipCount() == destination->GetMipCount(),
-                "If the mips are blitted, then the mip count between the source and the destination textures must match");
+            SP_ASSERT_MSG(source->GetMipCount() == destination->GetMipCount(), "If the mips are blitted, then the mip count between the source and the destination textures must match");
         }
 
         // compute a blit region for each mip
