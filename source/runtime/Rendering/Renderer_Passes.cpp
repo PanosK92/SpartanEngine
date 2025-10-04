@@ -117,6 +117,38 @@ namespace spartan
             if (m_transparents_present)
             {
                 bool is_transparent = true;
+
+                // Ocean Passes
+                Material* prev_material = nullptr;
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    Renderable* renderable = draw_call.renderable;
+                    Material* material = renderable->GetMaterial();
+
+                    // get ocean material
+                    if (!material->IsOcean() || material == prev_material)
+                        continue;
+
+                    prev_material = material;
+
+                    if (material->ShouldComputeSpectrum())
+                    {
+                        SP_LOG_INFO("Computing Ocean Spectrum...");
+                        Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
+                        // calculates conjugate and stores it in BA channels of the initial spectrum
+                        Pass_PackSpectrum(cmd_list_graphics_present);
+
+                        material->MarkSpectrumAsComputed();
+                    }
+
+                    // computes displacement and slope maps
+                    Pass_AdvanceSpectrum(cmd_list_graphics_present);
+                    Pass_ApplyHorizontalFFT(cmd_list_graphics_present);
+                    Pass_ApplyVerticalFFT(cmd_list_graphics_present);
+                    Pass_GenerateMaps(cmd_list_graphics_present);
+                }
+
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_Light(cmd_list_graphics_present, is_transparent);
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
@@ -124,6 +156,9 @@ namespace spartan
 
             Pass_Light_ImageBased(cmd_list_graphics_present);
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
+            
+            Pass_ApplyFoam(cmd_list_graphics_present);
+
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
         }
@@ -617,6 +652,7 @@ namespace spartan
             pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
             cmd_list->SetPipelineState(pso);
 
+            uint32_t tile_index = 0; // TEMPORARY
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -639,6 +675,45 @@ namespace spartan
                     }
                 }
 
+                // ocean synthesis
+                if (material->IsOcean())
+                {
+                    tile_index++;
+
+                    cmd_list->BeginTimeblock("Ocean Displacement Map Synthesis");
+
+                    RHI_Texture* displacement_map         = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                    RHI_Texture* slope_map                = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+
+                    RHI_Texture* synthesised_displacement = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
+                    RHI_Texture* synthesised_slope        = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
+
+                    displacement_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, rhi_all_mips, 10);
+
+                    RHI_PipelineState pso2;
+                    pso2.name = "ocean_displacement_map_synthesis";
+                    pso2.shaders[Compute] = GetShader(Renderer_Shader::ocean_synthesise_maps_c);
+                    cmd_list->SetPipelineState(pso2);
+
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
+                    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_displacement, synthesised_displacement);
+                    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_slope, synthesised_slope);
+
+                    Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+
+                    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    cmd_list->Dispatch(synthesised_displacement);
+
+                    synthesised_slope->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+
+                    cmd_list->EndTimeblock();
+                }
+
+                cmd_list->SetPipelineState(pso);
+
                 // pass constants
                 {
                     Entity* entity           = renderable->GetEntity();
@@ -655,7 +730,19 @@ namespace spartan
                     cmd_list->SetCullMode(GetOption<bool>(Renderer_Option::Wireframe) ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-    
+
+                    if (material->IsOcean())
+                    {
+                        if (!material->GetShowDisplacement() && !material->GetShowSlope())
+                        {
+                            RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+
+                            RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
+                        }
+                    }
+
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),
                         renderable->GetIndexOffset(draw_call.lod_index),
@@ -964,6 +1051,7 @@ namespace spartan
         RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        //RHI_Texture* slope_map            = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
         cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 
@@ -988,6 +1076,8 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
 
+            //cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
+
             // render
             cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
         }
@@ -999,6 +1089,7 @@ namespace spartan
         // acquire resources
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
         cmd_list->BeginTimeblock("light_image_based");
         {
@@ -1064,6 +1155,206 @@ namespace spartan
         
             // for the lifetime of the engine, this will be read as an srv, so transition here
             tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ComputeInitialSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+        
+        cmd_list->BeginTimeblock("ocean_intial_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_initial_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_initial_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+            cmd_list->Dispatch(initial_spectrum);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_PackSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_pack_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_pack_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_pack_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+            cmd_list->Dispatch(initial_spectrum);
+
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_AdvanceSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum      = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum        = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_advance_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_advance_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_advance_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum,      initial_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum,        slope_spectrum);
+            cmd_list->Dispatch(initial_spectrum);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyHorizontalFFT(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_horizontal_fft");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_horizontal_fft";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_horizontal_fft_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->Dispatch(1, displacement_spectrum->GetHeight(), 1);
+
+            displacement_spectrum->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
+            slope_spectrum->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyVerticalFFT(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_vertical_fft");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_vertical_fft";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_vertical_fft_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->Dispatch(1, displacement_spectrum->GetHeight(), 1);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_GenerateMaps(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+
+        cmd_list->BeginTimeblock("ocean_map_generation");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_map_generation";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_generate_maps_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_map, displacement_map);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
+            cmd_list->Dispatch(displacement_map);
+
+            Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Average);
+            Pass_Downscale(cmd_list, slope_map, Renderer_DownsampleFilter::Average);
+
+            slope_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyFoam(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        RHI_Texture* tex_out   = GetRenderTarget(Renderer_RenderTarget::frame_render);
+
+        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
+
+        tex_out->SetLayout(RHI_Image_Layout::General, cmd_list);
+
+        cmd_list->BeginTimeblock("ocean_foam");
+        {
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name                             = "ocean_foam";
+            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::ocean_foam_v);
+            pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::ocean_foam_p);
+            pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
+            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+            pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+            pso.resolution_scale                 = true;
+            pso.render_target_color_textures[0]  = tex_out;
+            pso.render_target_depth_texture      = tex_depth;
+            pso.clear_color[0]                   = rhi_color_load;
+            cmd_list->SetPipelineState(pso);
+
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                Renderable* renderable = draw_call.renderable;
+                Material* material = renderable->GetMaterial();
+                if (!material || !material->IsOcean() || !draw_call.camera_visible)
+                    continue;
+
+                // pass constants
+                {
+                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                    m_pcb_pass_cpu.set_is_transparent_and_material_index(true, material->GetIndex());
+
+                    float a = material->GetShowDisplacement() ? 1.0f : 0.0f;
+                    float b = material->GetShowSlope() ? 1.0f : 0.0f;
+                    m_pcb_pass_cpu.set_f2_value(a, b);
+
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                }
+
+                // draw
+                {
+                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
+                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, displacement_map);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, slope_map);
+
+                    cmd_list->DrawIndexed(
+                        renderable->GetIndexCount(draw_call.lod_index),
+                        renderable->GetIndexOffset(draw_call.lod_index),
+                        renderable->GetVertexOffset(draw_call.lod_index),
+                        renderable->HasInstancing() ? draw_call.instance_index : 0,
+                        renderable->HasInstancing() ? draw_call.instance_count : 1
+                    );
+
+                    // at this point, we don't want clear in case another render pass is implicitly started
+                    pso.clear_depth = rhi_depth_load;
+                }
+            }
         }
         cmd_list->EndTimeblock();
     }

@@ -421,7 +421,8 @@ namespace
             { "Sponza 4K",         "High-resolution textures & meshes.",                                  "Demanding",      "Complete"  },
             { "Subway",            "GI test. No lights, only emissive textures.",                         "Moderate",       "Complete"  },
             { "Minecraft",         "Blocky aesthetic.",                                                   "Light",          "Complete"  },
-            { "Basic",             "Light, camera, floor.",                                               "Light",          "Complete"  }
+            { "Basic",             "Light, camera, floor.",                                               "Light",          "Complete"  },
+            { "Water",             "Light, camera, ocean.",                                               "?",              "In Progress..."}
         };
         int world_index = 0;
 

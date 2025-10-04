@@ -843,6 +843,98 @@ void Properties::ShowMaterial(Material* material) const
             show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
             show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
         }
+
+        // ocean properties
+        if (material->GetProperty(MaterialProperty::IsOcean))
+        {
+            const auto show_jonswap_params = [this, &material](const char* name, const char* tooltip, const OceanParameters params)
+            {
+                bool show_modifier = params != OceanParameters::Max;
+
+                // name
+                if (name)
+                {
+                    ImGui::Text(name);
+
+                    if (tooltip)
+                    {
+                        ImGuiSp::tooltip(tooltip);
+                    }
+
+                    if (show_modifier)
+                    {
+                        ImGui::SameLine(column_pos_x);
+                    }
+                }
+
+                if (show_modifier)
+                {
+                    float value = material->GetOceanProperty(params);
+
+                    float min = 0.0f;
+
+                    // this custom slider already has a unique id
+                    if (ImGuiSp::draw_float_wrap("", &value, 0.004f, min))
+                        material->SetOceanProperty(params, value);
+                }
+            };
+
+            show_jonswap_params("Alpha", "", OceanParameters::Alpha);
+            show_jonswap_params("Angle", "", OceanParameters::Angle);
+            show_jonswap_params("Fetch", "", OceanParameters::Fetch);
+            show_jonswap_params("Gamma", "", OceanParameters::Gamma);
+            show_jonswap_params("Peak Omega", "", OceanParameters::PeakOmega);
+            show_jonswap_params("Repeat Time", "", OceanParameters::RepeatTime);
+            show_jonswap_params("Scale", "", OceanParameters::Scale);
+            show_jonswap_params("Short Waves Fade", "", OceanParameters::ShortWavesFade);
+            show_jonswap_params("Spread Blend", "", OceanParameters::SpreadBlend);
+            show_jonswap_params("Swell", "", OceanParameters::Swell);
+            show_jonswap_params("Wind Direction", "", OceanParameters::WindDirection);
+            show_jonswap_params("Wind Speed", "", OceanParameters::WindSpeed);
+            show_jonswap_params("Depth", "", OceanParameters::Depth);
+            show_jonswap_params("Low Cutoff", "", OceanParameters::LowCutoff);
+            show_jonswap_params("High Cutoff", "", OceanParameters::HighCutoff);
+            show_jonswap_params("Foam Decay Rate", "", OceanParameters::FoamDecayRate);
+            show_jonswap_params("Foam Bias", "", OceanParameters::FoamBias);
+            show_jonswap_params("Foam Threshold", "", OceanParameters::FoamThreshold);
+            show_jonswap_params("Foam Add", "", OceanParameters::FoamAdd);
+            show_jonswap_params("Displacement Scale", "", OceanParameters::DisplacementScale);
+            show_jonswap_params("Slope Scale", "", OceanParameters::SlopeScale);
+            show_jonswap_params("Length Scale", "", OceanParameters::LengthScale);
+
+            int tile_count = material->GetOceanTileCount();
+            ImGui::InputInt("Ocean Tiles", &tile_count);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                material->SetOceanTileCount(tile_count);
+            }
+
+            float tile_size = material->GetOceanTileSize();
+            ImGui::InputFloat("Ocean Tile Size", &tile_size);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                material->SetOceanTileSize(tile_size);
+            }
+
+            int vertices_count = material->GetOceanVerticesCount();
+            ImGui::InputInt("Ocean Vertices Count", &vertices_count);
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                material->SetOceanVerticesCount(vertices_count);
+            }
+
+            bool show_displacement = material->GetShowDisplacement();
+            ImGui::Checkbox("Show Displacement Map", &show_displacement);
+            material->SetShowDiplacement(show_displacement);
+            if (show_displacement)
+                material->SetOceanProperty(OceanParameters::DisplacementScale, -1.0f);
+
+            bool show_slope = material->GetShowSlope();
+            ImGui::Checkbox("Show Slope Map", &show_slope);
+            material->SetShowSlope(show_slope);
+            if (show_slope)
+                material->SetOceanProperty(OceanParameters::SlopeScale, -1.0f);
+        }
         
         // uv
         {

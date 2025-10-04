@@ -29,6 +29,9 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
+//Texture2D<float4> displacement_map : register(t17);
+Texture2D<float4> slope_map : register(t18);
+
 // rotate UV around center (0.5, 0.5) by angle
 float2 rotate_uv(float2 uv, float angle)
 {
@@ -98,13 +101,18 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
+    MaterialParameters material = GetMaterial();
+
+    if (material.ocean_parameters.displacementScale > -1.0f)
+        input.position.xyz += tex2.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
+    
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
 
     // transform world space position to clip space
     Surface surface;
-    surface.flags = GetMaterial().flags;
+    surface.flags = material.flags;
     if (!surface.is_tessellated())
     {
         vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
@@ -268,6 +276,18 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
     }
+    else if (surface.is_ocean())
+    {
+        float4 slope = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy) * material.ocean_parameters.slopeScale;
+        normal = normalize(float3(-slope.x, 1.0f, -slope.y));
+
+        // display displacement map for debug purposes
+        if (material.ocean_parameters.displacementScale <= -1.0f)
+            albedo = tex2.SampleLevel(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy, 0).rgba;
+        else if (material.ocean_parameters.slopeScale <= -1.0f) // or display slope map
+            albedo = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy);
+    }
+    
 
     // apply curved normals for grass blades
     if (surface.is_grass_blade())
