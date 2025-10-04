@@ -730,7 +730,6 @@ namespace spartan
 
                     RHI_VendorTechnology::SSSR_Dispatch(
                         cmd_list,
-                        GetOption<float>(Renderer_Option::ResolutionScale),
                         tex_frame, // source of reflection
                         GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                         GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
@@ -1441,7 +1440,6 @@ namespace spartan
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
                     cmd_list,
-                    resolution_scale,
                     tex_in,
                     tex_depth,
                     tex_velocity,
@@ -1455,7 +1453,6 @@ namespace spartan
                     World::GetCamera(),
                     m_cb_frame_cpu.delta_time,
                     GetOption<float>(Renderer_Option::Sharpness),
-                    resolution_scale,
                     tex_in,
                     tex_depth,
                     tex_velocity,

@@ -43,15 +43,13 @@ namespace spartan
     public:
         static void Initialize();
         static void Shutdown();
-        static void Tick(Cb_Frame* cb_frame);
-        static void Resize(const math::Vector2& resolution_render, const math::Vector2& resolution_output);
+        static void Tick(Cb_Frame* cb_frame, const math::Vector2& resolution_render, const math::Vector2& resolution_output, const float reslution_scale);
         static void ResetHistory();
 
         // xess
         static void XeSS_GenerateJitterSample(float* x, float* y);
         static void XeSS_Dispatch(
             RHI_CommandList* cmd_list,
-            const float resolution_scale,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
@@ -65,7 +63,6 @@ namespace spartan
             Camera* camera,
             const float delta_time,
             const float sharpness,
-            const float resolution_scale,
             RHI_Texture* tex_color,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
@@ -75,7 +72,6 @@ namespace spartan
         // sssr
         static void SSSR_Dispatch(
             RHI_CommandList* cmd_list,
-            const float resolution_scale,
             RHI_Texture* tex_reflection_source,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_motion_vectors,

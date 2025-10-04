@@ -277,7 +277,7 @@ namespace spartan
         {
             swapchain->AcquireNextImage();
             RHI_Device::Tick(frame_num);
-            RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
+            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetOption<float>(Renderer_Option::ResolutionScale));
             dynamic_resolution();
         }
     
