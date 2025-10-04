@@ -172,7 +172,7 @@ namespace spartan
                 continue;
 
             const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox();
-            float distance = ray.HitDistance(aabb);
+            float distance          = ray.HitDistance(aabb);
             if (distance == numeric_limits<float>::infinity())
                 continue;
 
