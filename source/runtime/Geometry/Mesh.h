@@ -49,6 +49,7 @@ namespace spartan
         Exponential, // slow early, fast late poly reduction (t^2), detail-heavy mid-range.
         Linear,      // een poly reduction across LODs (t), balanced for general use.
         Aggressive,  // fast early, slow late reduction (sqrt(t)), optimizes distant objects.
+        Grass,
         Max
     };
 
