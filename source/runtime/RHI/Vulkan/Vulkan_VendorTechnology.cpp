@@ -954,8 +954,8 @@ namespace spartan
         amd::upscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                        L"fsr3_output");
         
         // configure
-        amd::upscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()  * common::resolution_scale) * 0.5f;
-        amd::upscaler::description_dispatch.motionVectorScale.y    =  static_cast<float>(tex_velocity->GetHeight() * common::resolution_scale) * 0.5f;
+        amd::upscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth())  * 0.5f;
+        amd::upscaler::description_dispatch.motionVectorScale.y    =  static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
         amd::upscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;        // sdk issue: redundant parameter
         amd::upscaler::description_dispatch.sharpness              = sharpness;
         amd::upscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds

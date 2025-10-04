@@ -134,7 +134,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // velocity
     {
         // current and previous ndc position
-        float2 position_ndc_current  = uv_to_ndc(vertex.position.xy / buffer_frame.resolution_render);
+        float2 position_ndc_current  = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
         float2 position_ndc_previous = (vertex.position_previous.xy / vertex.position_previous.w);
 
         // remove jitter
