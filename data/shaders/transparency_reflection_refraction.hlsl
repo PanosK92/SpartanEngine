@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const float refraction_strength = 0.3f;
+static const float refraction_strength = 0.8f;
 static const float ior_water           = 1.333f; // index of refraction for water
 static const float ior_air             = 1.0f;   // air
 
@@ -35,7 +35,7 @@ float3 apply_water_absorption(float3 color, float depth)
     return color * exp(-absorption * depth);
 }
 
-// compute refracted direction using snell's law (simplified)
+// compute refracted direction using snell's law
 float3 compute_refracted_dir(float3 incident_dir, float3 normal)
 {
     float ior_ratio   = ior_air / ior_water; // from air to water
@@ -43,7 +43,7 @@ float3 compute_refracted_dir(float3 incident_dir, float3 normal)
     float sin_theta_i = sqrt(max(0.0f, 1.0f - cos_theta_i * cos_theta_i));
     float sin_theta_t = ior_ratio * sin_theta_i;
     
-    // skip if total internal reflection (optional for now, add if needed)
+    // skip if total internal reflection
     if (sin_theta_t >= 1.0f)
         return float3(0.0f, 0.0f, 0.0f);
     
@@ -74,7 +74,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // compute common values
         float2 uv               = (thread_id.xy + 0.5f) / resolution_out;
         float depth_transparent = linearize_depth(surface.depth);
-        float3 view_dir         = normalize(surface.camera_to_pixel); // normalize for correct direction
+        float3 view_dir         = normalize(surface.camera_to_pixel);
         
         // refraction with snell's law
         float3 refracted_dir = compute_refracted_dir(view_dir, surface.normal);
