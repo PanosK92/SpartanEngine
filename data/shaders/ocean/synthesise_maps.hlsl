@@ -23,38 +23,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Inspired by https://www.shadertoy.com/view/tsVGRd
 
-static const float2 hexRatio = float2(1.0f, sqrt(3.0f));
+static const float2 hex_ratio = float2(1.0f, sqrt(3.0f));
 
-float4 GetHexGridInfo(float2 uv)
+float4 get_hex_grid_info(float2 uv)
 {
-    float4 hexIndex = round(float4(uv, uv - float2(0.5f, 1.0f)) / hexRatio.xyxy);
-    float4 hexCenter = float4(hexIndex.xy * hexRatio, (hexIndex.zw + 0.5f) * hexRatio);
-    float4 offset = uv.xyxy - hexCenter;
-    return dot(offset.xy, offset.xy) < dot(offset.zw, offset.zw) ?
-    float4(hexCenter.xy, hexIndex.xy) :
-    float4(hexCenter.zw, hexIndex.zw);
+    const float4 hex_index = round(float4(uv, uv - float2(0.5f, 1.0f)) / hex_ratio.xyxy);
+    const float4 hex_center = float4(hex_index.xy * hex_ratio, (hex_index.zw + 0.5f) * hex_ratio);
+    const float4 offset = uv.xyxy - hex_center;
+    return dot(offset.xy, offset.xy) < dot(offset.zw, offset.zw) ? float4(hex_center.xy, hex_index.xy) : float4(hex_center.zw, hex_index.zw);
 }
 
-float GetHexSDF(in float2 p)
+float get_hex_sdf(in float2 p)
 {
     p = abs(p);
-    return 0.5f - max(dot(p, hexRatio * 0.5f), p.x);
+    return 0.5f - max(dot(p, hex_ratio * 0.5f), p.x);
 }
 
 //xy: node pos, z: weight
-float3 GetTriangleInterpNode(in float2 pos, in float freq, in int nodeIndex)
+float3 get_triangle_interp_node(in float2 pos, in float freq, in int node_index)
 {
-    float2 nodeOffsets[3] =
+    const float2 node_offsets[3] =
     {
         float2(0.0f, 0.0f),
         float2(1.0f, 1.0f),
         float2(1.0f, -1.0f)
     };
 
-    float2 uv = pos * freq + nodeOffsets[nodeIndex] / hexRatio.xy * 0.5f;
-    float4 hexInfo = GetHexGridInfo(uv);
-    float dist = GetHexSDF(uv - hexInfo.xy) * 2.0f;
-    return float3(hexInfo.xy / freq, dist);
+    const float2 uv = pos * freq + node_offsets[node_index] / hex_ratio.xy * 0.5f;
+    const float4 hex_info = get_hex_grid_info(uv);
+    const float dist = get_hex_sdf(uv - hex_info.xy) * 2.0f;
+    return float3(hex_info.xy / freq, dist);
 }
 
 float3 hash33(float3 p)
@@ -66,23 +64,34 @@ float3 hash33(float3 p)
     return frac(sin(p) * 43758.5453123f);
 }
 
-float4 GetTextureSample(Texture2D texture, float2 pos, float freq, float2 nodePoint, float z)
+float4 get_texture_sample(Texture2D texture, float2 pos, float freq, float2 node_point)
 {
-    const float3 hash = hash33(float3(nodePoint.xy, z));
+    const float3 hash = hash33(float3(node_point.xy, 0.0f));
 
-    float2 uv = pos * freq + hash.yz;
-    uv = pos * freq + hash.yz;
+    const float2 uv = pos * freq + hash.yz;
     return texture.SampleLevel(samplers[sampler_point_wrap], uv, 0);
 }
 
-float3 PreserveVariance(float3 linearColor, float3 meanColor, float moment2)
+void preserve_variance(out float4 linear_color, float4 mean_color, float moment2)
 {
-    return (linearColor - meanColor) / sqrt(moment2) + meanColor;
+    linear_color = (linear_color - mean_color) / sqrt(moment2) + mean_color;
 }
 
-float4 PreserveVariance(float4 linearColor, float4 meanColor, float moment2)
+void synthesize(Texture2D example, out float4 output, float2 uv, float tex_freq, float tile_freq)
 {
-    return (linearColor - meanColor) / sqrt(moment2) + meanColor;
+    float moment2 = 0.0f;
+
+    for (int i = 0; i < 3; i++)
+    {
+        const float3 interp_node = get_triangle_interp_node(uv, tile_freq, i);
+        output += get_texture_sample(example, uv, tex_freq, interp_node.xy) * interp_node.z;
+        
+        moment2 += interp_node.z * interp_node.z;
+    }
+    // assumes example is a mip mapped 512x512 texture and samples lowest mip (1x1)
+    const float4 mean_example = example.SampleLevel(samplers[sampler_point_clamp], uv, 9);
+    
+    preserve_variance(output, mean_example, moment2);
 }
 
 [numthreads(8, 8, 1)]
@@ -105,25 +114,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float tex_freq = 1.0f;
     const float tile_freq = 2.0f;
 
-    float3 displacement = float3(0.0f, 0.0f, 0.0f);
-    float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    float moment2 = 0.0f;
-    for (int i = 0; i < 3; i++)
-    {
-        float3 interp_node = GetTriangleInterpNode(uv, tile_freq, i);
-        // tex2 = displacement_map as SRV
-        const float ocean_tile_index = pass_get_f2_value().x;
-        displacement.xyz += GetTextureSample(tex2, uv, tex_freq, interp_node.xy, ocean_tile_index).rgb * interp_node.z;
-        slope += GetTextureSample(tex3, uv, tex_freq, interp_node.xy, ocean_tile_index) * interp_node.z;
-
-        moment2 += interp_node.z * interp_node.z;
-    }
-    const float3 mean_displacement = tex2.SampleLevel(samplers[sampler_point_clamp], uv, 9).rgb;
-    const float4 mean_slope = tex3.SampleLevel(samplers[sampler_point_clamp], uv, 9);
+    float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    synthesize(tex2, displacement, uv, tex_freq, tile_freq);
     
-    synthesised_displacement[thread_id.xy] = float4(PreserveVariance(displacement, mean_displacement, moment2), 1.0f);
-    synthesised_slope[thread_id.xy] = PreserveVariance(slope, mean_slope, moment2);
+    float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    synthesize(tex3, slope, uv, tex_freq, tile_freq);
 
+    synthesised_displacement[thread_id.xy] = displacement;
+    synthesised_slope[thread_id.xy] = slope;
+    
 	//synthesised_displacement[thread_id.xy] = tex2[thread_id.xy];
     //synthesised_slope[thread_id.xy] = tex3[thread_id.xy];
 }
