@@ -102,8 +102,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     uv = tile_origin_uv_space + uv;
     
-    const float tex_freq = 3.0f;
-    const float tile_freq = 3.0f;
+    const float tex_freq = 1.0f;
+    const float tile_freq = 2.0f;
 
     float3 displacement = float3(0.0f, 0.0f, 0.0f);
     float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -125,5 +125,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     synthesised_slope[thread_id.xy] = PreserveVariance(slope, mean_slope, moment2);
 
 	//synthesised_displacement[thread_id.xy] = tex2[thread_id.xy];
-    synthesised_slope[thread_id.xy] = tex3[thread_id.xy];
+    //synthesised_slope[thread_id.xy] = tex3[thread_id.xy];
 }

@@ -198,8 +198,6 @@ namespace spartan
         ocean_vertical_fft_c,
         ocean_generate_maps_c,
         ocean_synthesise_maps_c,
-        ocean_foam_v,
-        ocean_foam_p,
         max
     };
     

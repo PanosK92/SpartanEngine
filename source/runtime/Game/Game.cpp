@@ -319,9 +319,9 @@ namespace spartan
                         material->SetOceanProperty(OceanParameters::Scale, 1.0f);
                         material->SetOceanProperty(OceanParameters::SpreadBlend, 0.9f);
                         material->SetOceanProperty(OceanParameters::Swell, 1.0f);
-                        material->SetOceanProperty(OceanParameters::Fetch, 100000.0f);
+                        material->SetOceanProperty(OceanParameters::Fetch, 1280000.0f);
                         material->SetOceanProperty(OceanParameters::WindDirection, 135.0f);
-                        material->SetOceanProperty(OceanParameters::WindSpeed, 5.0f);
+                        material->SetOceanProperty(OceanParameters::WindSpeed, 2.8f);
                         material->SetOceanProperty(OceanParameters::Gamma, 3.3f);
                         material->SetOceanProperty(OceanParameters::ShortWavesFade, 0.0f);
                         material->SetOceanProperty(OceanParameters::RepeatTime, 200.0f);
@@ -331,13 +331,13 @@ namespace spartan
                         material->SetOceanProperty(OceanParameters::HighCutoff, 1000.0f);
 
                         material->SetOceanProperty(OceanParameters::FoamDecayRate, 3.0f);
-                        material->SetOceanProperty(OceanParameters::FoamThreshold, 0.0f);
+                        material->SetOceanProperty(OceanParameters::FoamThreshold, 0.5f);
                         material->SetOceanProperty(OceanParameters::FoamBias, 1.2f);
                         material->SetOceanProperty(OceanParameters::FoamAdd, 1.0f);
 
                         material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
-                        material->SetOceanProperty(OceanParameters::SlopeScale, 0.6f);
-                        material->SetOceanProperty(OceanParameters::LengthScale, 48.0f);
+                        material->SetOceanProperty(OceanParameters::SlopeScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::LengthScale, 128.0f);
                     }
                 }
 
@@ -1730,7 +1730,7 @@ namespace spartan
             void create()
             {
                 entities::camera();
-                //entities::sun(true);
+                entities::sun(true);
 
                 auto entity = World::CreateEntity();
 
@@ -1748,7 +1748,7 @@ namespace spartan
                 point->SetIntensity(8500.0f);
                 point->SetObjectName("Point Light");
 
-                //default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
             }
 
             void tick()
