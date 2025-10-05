@@ -36,39 +36,22 @@ namespace spartan
 
     struct Instance
     {
-        math::Vector3 position; // 12 bytes
-        math::Vector3 rotation; // 12 bytes, terrain normal
-        float scale;            // 4 bytes
+        math::Vector3 position;    // 12 bytes
+        math::Quaternion rotation; // 16 bytes
+        float scale;               // 4 bytes
 
         // convert to matrix
         math::Matrix GetMatrix() const
         {
-            math::Matrix rotation_matrix;
-            math::Vector3 up = math::Vector3::Up;
-            float dot = std::clamp<float>(up.Dot(rotation), -1.0f, 1.0f); // clamp to avoid acos NaN
-            if (abs(dot - 1.0f) < 1e-6f) // rotation is nearly up
-            {
-                rotation_matrix = math::Matrix::Identity; // no rotation needed
-            }
-            else if (abs(dot + 1.0f) < 1e-6f) // rotation is nearly -up
-            {
-                rotation_matrix = math::Matrix::CreateRotation(math::Quaternion(0, 0, 1, 0)); // 180-degree rotation around Z
-            }
-            else
-            {
-                math::Vector3 axis = up.Cross(rotation).Normalized();
-                float angle = acos(dot);
-                rotation_matrix = math::Matrix::CreateRotation(math::Quaternion::FromAxisAngle(axis, angle));
-            }
-            return math::Matrix::CreateScale(scale) * rotation_matrix * math::Matrix::CreateTranslation(position);
+            return math::Matrix::CreateScale(scale) * math::Matrix::CreateRotation(rotation) * math::Matrix::CreateTranslation(position);
         }
 
         // set from matrix
         void SetMatrix(const math::Matrix& matrix)
         {
             position = matrix.GetTranslation();
-            rotation = math::Vector3(matrix.m10, matrix.m11, matrix.m12).Normalized();
-            scale = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
+            rotation = matrix.GetRotation();
+            scale    = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
         }
     };
 

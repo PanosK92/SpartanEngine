@@ -269,8 +269,8 @@ namespace spartan
                     // instance buffer (binding 1) - for instance transform (position, rotation, scale)
                     vertex_input_binding_descs.push_back(
                     {
-                        1, // binding
-                        sizeof(Instance), // stride
+                        1,                            // binding
+                        sizeof(Instance),             // stride (12 + 16 + 4 = 32 bytes)
                         VK_VERTEX_INPUT_RATE_INSTANCE // input rate
                     });
 
@@ -287,9 +287,9 @@ namespace spartan
                     vertex_attribute_descs.push_back(
                     {
                         base_location + 1,
-                        1, // binding
-                        VK_FORMAT_R32G32B32_SFLOAT,  // format (vec3 for rotation/normal)
-                        offsetof(Instance, rotation) // offset (12 bytes)
+                        1,                             // binding
+                        VK_FORMAT_R32G32B32A32_SFLOAT, // format (quat for rotation)
+                        offsetof(Instance, rotation)   // offset (12 bytes)
                     });
 
                     vertex_attribute_descs.push_back(
@@ -297,7 +297,7 @@ namespace spartan
                         base_location + 2,
                         1,                        // binding
                         VK_FORMAT_R32_SFLOAT,     // format (float for scale)
-                        offsetof(Instance, scale) // offset (24 bytes)
+                        offsetof(Instance, scale) // offset (28 bytes)
                     });
                 }
             }
