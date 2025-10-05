@@ -80,6 +80,12 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_velocity, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_controller, void*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, void*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh, void*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_actors, vector<void*>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh_data, vector<PhysicsBodyMeshData>);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_body_type, SetBodyType, BodyType);
     }
 

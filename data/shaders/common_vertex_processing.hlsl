@@ -43,7 +43,7 @@ struct gbuffer_vertex
     float4 position_previous : POS_CLIP_PREVIOUS;
     float3 normal            : NORMAL_WORLD;
     float3 tangent           : TANGENT_WORLD;
-    float4 uv_misc           : TEXCOORD; // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
+    float4 uv_misc           : TEXCOORD;  // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
     float width_percent      : TEXCOORD2; // temp, will remove
 }; 
 
@@ -63,9 +63,9 @@ static float3x3 rotation_matrix(float3 axis, float angle)
     float c = cos(angle);
     float s = sin(angle);
     float t = 1.0f - c;
-    
+
     axis = normalize(axis);
-    
+
     return float3x3(
         t * axis.x * axis.x + c,
         t * axis.x * axis.y - s * axis.z,
@@ -113,8 +113,7 @@ struct vertex_processing
         float3 instance_up                = normalize(transform[1].xyz);
         
         // wind simulation
-        float distance_to_camera = fast_length(position_world - buffer_frame.camera_position);
-        if (surface.is_grass_blade() && distance_to_camera <= 300.0f)
+        if (surface.is_grass_blade())
         {
             const float wind_direction_scale      = 0.05f;                                           // scale for wind direction noise (larger scale = broader patterns)
             const float wind_direction_variation  = PI / 4.0f * (0.5f + base_wind_magnitude / 2.0f); // scale variation width (e.g., wider swings at high mag)
@@ -159,32 +158,55 @@ struct vertex_processing
             vertex.normal        = mul(rotation, vertex.normal);
             vertex.tangent       = mul(rotation, vertex.tangent);
         }
-        else if (surface.has_wind_animation()) // anything non-grass gets generic wind sway
+        else if (surface.has_wind_animation()) // realistic tree branch/leaf wind sway
         {
-            const float sway_extent       = 0.2f; // maximum sway amplitude
-            const float noise_scale       = 0.1f; // scale of low-frequency noise
-            const float flutter_intensity = 0.1f; // intensity of fluttering
-        
-            // base sinusoidal sway
-            float phase_offset = float(instance_id) * 0.25f * PI; // unique phase per instance
-            float base_wave    = sin(time * base_wind_magnitude + phase_offset);
-        
-            // add low-frequency perlin noise for smooth directional variation
-            float low_freq_noise        = noise_perlin(time * noise_scale * (1.0f + base_wind_magnitude / 2.0f) + instance_id * 0.1f);
-            float directional_variation = lerp(-0.5f, 0.5f, low_freq_noise); // smooth variation
-        
-            float3 perp_dir                = normalize(cross(base_wind_dir, instance_up));
-            float3 adjusted_wind_direction = normalize(base_wind_dir + directional_variation * perp_dir);
-        
-            // add high-frequency flutter (localized and rapid movement)
-            float flutter = sin(position_world.x * 10.0f + time * (5.0f * (1.0f + base_wind_magnitude))) * flutter_intensity;
-        
-            // combine all factors for sway
-            float combined_wave = base_wave + flutter;
-            float3 sway_offset  = adjusted_wind_direction * combined_wave * sway_extent * vertex.uv_misc.z * base_wind_magnitude;
-        
-            // apply the calculated sway to the vertex
-            position_world += sway_offset;
+            const float horizontal_amplitude = 0.15f; // max horizontal sway
+            const float vertical_amplitude   = 0.1f;  // max vertical bob
+            const float sway_frequency       = 1.5f;  // base frequency for slow branch sway
+            const float bob_frequency        = 3.0f;  // faster frequency for leaf-like up-down flutter
+            const float noise_scale          = 0.08f; // low-frequency noise for gusts/lulls
+            const float flutter_variation    = 0.5f;  // subtle per-vertex flutter intensity
+
+            float time          = (float)buffer_frame.time + time_offset;
+            float height_factor = vertex.uv_misc.z; // 0 at base (trunk-attached), 1 at tip (more sway)
+
+            // unique phase per instance/vertex for natural variation
+            float instance_phase = float(instance_id) * 0.3f;
+            float vertex_phase   = position_world.x * 0.05f + position_world.z * 0.05f; // spatial offset
+
+            // horizontal sway: Wind-driven, sine-based bending in XZ plane
+            float wind_phase      = time * sway_frequency + instance_phase;
+            float horizontal_wave = sin(wind_phase + vertex_phase) * 0.5f; // base sine (range -0.5 to 0.5)
+    
+            // modulate with low-freq Perlin for gusts (tied to wind magnitude)
+            float gust_noise = noise_perlin(float2(time * noise_scale, float(instance_id) * 0.1f));
+            horizontal_wave *= (0.7f + 0.3f * gust_noise) * base_wind_magnitude; // varies 0.7x-1.0x base, scaled by wind
+
+            // apply horizontal displacement (projected onto world XZ, scaled by height for attachment)
+            float3 horizontal_dir     = float3(base_wind_dir.x, 0.0f, base_wind_dir.z); // ignore Y for pure horizontal
+            float3 horizontal_offset  = horizontal_dir * horizontal_wave * horizontal_amplitude * height_factor;
+            position_world           += horizontal_offset;
+
+            // vertical oscillation: independent bob, with subtle wind influence for realism
+            float bob_phase     = time * bob_frequency + instance_phase * 1.2f + vertex_phase * 2.0f; // slightly offset phase
+            float vertical_wave = sin(bob_phase) * 0.6f; // asymmetric sine for more "drop" than "rise"
+
+            // add high-freq flutter noise (localized, rapid leaf movement)
+            float flutter_noise = noise_perlin(float2(position_world.xz * 5.0f + time * 2.0f));
+            vertical_wave += flutter_noise * flutter_variation;
+
+            // tie subtle wind influence to vertical (e.g., stronger wind = more pronounced bob)
+            vertical_wave *= (1.0f + 0.2f * base_wind_magnitude * abs(horizontal_wave)); // amplify based on horizontal intensity
+
+            // apply vertical displacement (pure Y, scaled by height but less aggressively for grounded feel)
+            float3 vertical_offset  = float3(0.0f, vertical_wave * vertical_amplitude * height_factor * 0.8f, 0.0f);
+            position_world         += vertical_offset;
+            float bend_amount       = length(horizontal_offset + vertical_offset) * 0.5f * height_factor;
+            float3 bend_dir         = normalize(horizontal_offset + vertical_offset * 0.5f); // bias toward horizontal
+            vertex.normal          += bend_dir * bend_amount;
+            vertex.normal          = normalize(vertex.normal);
+            vertex.tangent         += bend_dir * bend_amount * 0.5f;
+            vertex.tangent          = normalize(vertex.tangent);
         }
     }
 };

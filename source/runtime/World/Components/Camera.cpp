@@ -1,4 +1,4 @@
-/*
+﻿/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Input/Input.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
-#include "../Entity.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -155,110 +154,94 @@ namespace spartan
     
     void Camera::Pick()
     {
-        // ensure the mouse is inside the viewport
         if (!Input::GetMouseIsInViewport())
         {
             m_selected_entity = nullptr;
             return;
         }
 
-        // traces ray against all AABBs in the world
         const Ray& ray = ComputePickingRay();
+
         static vector<RayHit> hits;
         hits.clear();
+
+        const vector<Entity*>& entities = World::GetEntities();
+        for (Entity* entity : entities)
         {
-            const vector<Entity*>& entities = World::GetEntities();
-            for (Entity* entity : entities)
-            {
-                // make sure there entity has a renderable
-                if (!entity->GetComponent<Renderable>())
-                    continue;
+            if (!entity->GetComponent<Renderable>())
+                continue;
 
-                // get object oriented bounding box
-                const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox();
+            const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox();
+            float distance          = ray.HitDistance(aabb);
+            if (distance == numeric_limits<float>::infinity())
+                continue;
 
-                // compute hit distance
-                float distance = ray.HitDistance(aabb);
-
-                // don't store hit data if there was no hit
-                if (distance == std::numeric_limits<float>::infinity())
-                    continue;
-
-                hits.emplace_back(
-                    entity,                                         // entity
-                    ray.GetStart() + ray.GetDirection() * distance, // position
-                    distance,                                       // distance
-                    distance == 0.0f                                // inside
-                );
-            }
-
-            // sort by distance (ascending)
-            sort(hits.begin(), hits.end(), [](const RayHit& a, const RayHit& b) { return a.m_distance < b.m_distance; });
+            hits.emplace_back(entity, Vector3::Zero, distance, distance == 0.0f);
         }
 
-        // check if there are any hits
         if (hits.empty())
         {
             m_selected_entity = nullptr;
             return;
         }
 
-        // if there is a single hit, return that
-        if (hits.size() == 1)
+        Vector2 cursor         = Input::GetMousePosition();
+        float best_screen_dist = numeric_limits<float>::max();
+        float best_depth       = numeric_limits<float>::max();
+        Entity* best_entity    = nullptr;
+        for (RayHit& broad_hit : hits)
         {
-            m_selected_entity = hits.front().m_entity;
-            return;
-        }
-
-        // if there are more hits, perform triangle intersection
-        float distance_min = numeric_limits<float>::max();
-        for (RayHit& hit : hits)
-        {
-            // get entity geometry
-            Renderable* renderable = hit.m_entity->GetComponent<Renderable>();
+            Renderable* renderable = broad_hit.m_entity->GetComponent<Renderable>();
             static vector<uint32_t> indices;
             indices.clear();
             static vector<RHI_Vertex_PosTexNorTan> vertices;
             vertices.clear();
             renderable->GetGeometry(&indices, &vertices);
-            if (indices.empty()|| vertices.empty())
-            {
-                SP_LOG_ERROR("Failed to get geometry of entity %s, skipping intersection test.");
+            if (indices.empty() || vertices.empty())
                 continue;
-            }
 
-            // compute matrix which can transform vertices to view space
-            const Matrix& vertex_transform = hit.m_entity->GetMatrix();
-            
-            // go through each face
-            static Vector3 p1_world;
-            static Vector3 p2_world;
-            static Vector3 p3_world;
-            
+            const Matrix& transform = broad_hit.m_entity->GetMatrix();
+
             for (uint32_t i = 0; i < indices.size(); i += 3)
             {
-                const float* v1 = vertices[indices[i]].pos;
-                const float* v2 = vertices[indices[i + 1]].pos;
-                const float* v3 = vertices[indices[i + 2]].pos;
-            
-                // assign components explicitly
-                p1_world.x = v1[0]; p1_world.y = v1[1]; p1_world.z = v1[2];
-                p2_world.x = v2[0]; p2_world.y = v2[1]; p2_world.z = v2[2];
-                p3_world.x = v3[0]; p3_world.y = v3[1]; p3_world.z = v3[2];
-            
-                // apply transform (must reassign, since *= with Matrix is not defined)
-                p1_world = p1_world * vertex_transform;
-                p2_world = p2_world * vertex_transform;
-                p3_world = p3_world * vertex_transform;
-            
-                float distance = ray.HitDistance(p1_world, p2_world, p3_world);
-                if (distance < distance_min)
+                Vector3 p1(vertices[indices[i]].pos);
+                Vector3 p2(vertices[indices[i + 1]].pos);
+                Vector3 p3(vertices[indices[i + 2]].pos);
+
+                p1 = p1 * transform;
+                p2 = p2 * transform;
+                p3 = p3 * transform;
+
+                float distance = ray.HitDistance(p1, p2, p3);
+                if (distance == numeric_limits<float>::infinity())
+                    continue;
+
+                Vector3 world_hit = ray.GetStart() + ray.GetDirection() * distance;
+
+                // project to clip space
+                Vector4 clip = Vector4(world_hit, 1.0f) * GetViewProjectionMatrix();
+                if (clip.w == 0.0f)
+                    continue;
+
+                // ndc → screen
+                Vector2 screen_pos(
+                    (clip.x / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().width,
+                    (clip.y / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().height
+                );
+
+                float screen_dist = (screen_pos - cursor).Length();
+
+                // prefer smallest screen distance, then depth
+                if (screen_dist < best_screen_dist || (screen_dist == best_screen_dist && distance < best_depth))
                 {
-                    m_selected_entity = hit.m_entity;
-                    distance_min      = distance;
+                    best_screen_dist = screen_dist;
+                    best_depth       = distance;
+                    best_entity      = broad_hit.m_entity;
                 }
-           }
+            }
         }
+
+        m_selected_entity = best_entity;
     }
 
     void Camera::WorldToScreenCoordinates(const Vector3& position_world, Vector2& position_screen) const

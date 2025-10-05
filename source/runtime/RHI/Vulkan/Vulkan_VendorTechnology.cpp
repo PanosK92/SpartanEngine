@@ -57,6 +57,7 @@ namespace spartan
         uint32_t resolution_output_width  = 0;
         uint32_t resolution_output_height = 0;
         bool reset_history                = false;
+        float resolution_scale            = 1.0f; // baked into resolution_render_width and resolution_render_height
     }
 
     namespace intel
@@ -149,28 +150,29 @@ namespace spartan
 
         uint32_t get_sample_count()
         {
-            uint32_t count = 32;
+            uint32_t count = 0;
+
             switch (quality)
             {
-                case XESS_QUALITY_SETTING_ULTRA_QUALITY_PLUS: // 1.3x scaling
-                case XESS_QUALITY_SETTING_ULTRA_QUALITY:      // 1.3x
-                    count = 32;                               // 8 * (1/1.3)^2 ≈ 8 * 0.5917 ≈ 4.73, use 32 for stability
-                    break;
-                case XESS_QUALITY_SETTING_QUALITY:            // 1.5x
-                    count = 32;                               // 8 * (1/1.5)^2 ≈ 8 * 0.4444 ≈ 3.56, use 32
-                    break;
-                case XESS_QUALITY_SETTING_BALANCED:           // 1.7x
-                    count = 48;                               // 8 * (1/1.7)^2 ≈ 8 * 0.3460 ≈ 2.77, use 48
-                    break;
-                case XESS_QUALITY_SETTING_PERFORMANCE:        // 2.0x
-                    count = 64;                               // 8 * (1/2.0)^2 ≈ 8 * 0.25 = 2, use 64 (guide suggests up to 72)
-                    break;
-                case XESS_QUALITY_SETTING_ULTRA_PERFORMANCE:  // 3.0x
-                    count = 72;                               // 8 * (1/3.0)^2 ≈ 8 * 0.1111 ≈ 0.89, use 72 for max stability
-                    break;
-                case XESS_QUALITY_SETTING_AA:                 // 1.0x
-                    count = 16;                               // No upscaling, minimal samples needed
-                    break;
+            case XESS_QUALITY_SETTING_ULTRA_QUALITY_PLUS:
+            case XESS_QUALITY_SETTING_ULTRA_QUALITY:
+                count = 48;
+                break;
+            case XESS_QUALITY_SETTING_QUALITY:
+                count = 48;
+                break;
+            case XESS_QUALITY_SETTING_BALANCED:
+                count = 64;
+                break;
+            case XESS_QUALITY_SETTING_PERFORMANCE:
+                count = 80;
+                break;
+            case XESS_QUALITY_SETTING_ULTRA_PERFORMANCE:
+                count = 96;
+                break;
+            case XESS_QUALITY_SETTING_AA:
+                count = 32;
+                break;
             }
 
             return count;
@@ -741,7 +743,7 @@ namespace spartan
     #endif
     }
 
-    void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame)
+    void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame, const Vector2& resolution_render, const Vector2& resolution_output, const float resolution_scale)
     {
     #ifdef _WIN32
         // matrices - ffx is right-handed
@@ -759,39 +761,46 @@ namespace spartan
             amd::view_projection_inverted = Matrix::Invert(amd::view_projection);
         }
 
+        // resize
+        {
+            common::resolution_scale = resolution_scale;
+
+            // calculate actual render resolution from target render res and scale
+            uint32_t render_width =  static_cast<uint32_t>(resolution_render.x * resolution_scale);
+            uint32_t render_height = static_cast<uint32_t>(resolution_render.y * resolution_scale);
+
+            // check for changes
+            bool resolution_render_changed = render_width != common::resolution_render_width || render_height != common::resolution_render_height;
+            bool resolution_output_changed = static_cast<uint32_t>(resolution_output.x) != common::resolution_output_width ||
+                static_cast<uint32_t>(resolution_output.y) != common::resolution_output_height;
+
+            // update common resolutions
+            common::resolution_render_width  = render_width;
+            common::resolution_render_height = render_height;
+            common::resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
+            common::resolution_output_height = static_cast<uint32_t>(resolution_output.y);
+
+            // re-create resolution dependent contexts
+            {
+                if (resolution_render_changed)
+                {
+                    amd::ssr::context_create();
+                }
+
+                // todo: make these mutually exlusive
+                if ((resolution_render_changed || resolution_output_changed))
+                {
+                    amd::upscaler::context_create();
+                    intel::context_create();
+                }
+            }
+        }
+
         // breadcrumbs
         if (amd::breadcrumbs::context_created)
         {
             amd::breadcrumbs::registered_cmd_lists.clear();
             SP_ASSERT(ffxBreadcrumbsStartFrame(&amd::breadcrumbs::context) == FFX_OK);
-        }
-    #endif
-    }
-
-    void RHI_VendorTechnology::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
-    {
-    #ifdef _WIN32
-        bool resolution_render_changed = resolution_render.x != common::resolution_render_width  || resolution_render.y != common::resolution_render_height;
-        bool resolution_output_changed = resolution_output.x != common::resolution_output_width  || resolution_output.y != common::resolution_output_height;
-
-        common::resolution_render_width  = static_cast<uint32_t>(resolution_render.x);
-        common::resolution_render_height = static_cast<uint32_t>(resolution_render.y);
-        common::resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
-        common::resolution_output_height = static_cast<uint32_t>(resolution_output.y);
-
-        // re-create resolution dependent contexts
-        {
-            if (resolution_render_changed)
-            {
-                amd::ssr::context_create();
-            }
-
-            // todo: make these mutually exlusive
-            if ((resolution_render_changed || resolution_output_changed)) 
-            {
-                amd::upscaler::context_create();
-                intel::context_create();
-            }
         }
     #endif
     }
@@ -804,34 +813,35 @@ namespace spartan
     void RHI_VendorTechnology::XeSS_GenerateJitterSample(float* x, float* y)
     {
         // generate a single halton value for a given base and index
-        auto get_corput = [](std::uint32_t index, std::uint32_t base) -> float
+        auto get_corput = [](uint32_t index, uint32_t base) -> float
         {
             float result = 0.0f;
-            float bk = 1.0f;
+            float bk     = 1.0f;
             while (index > 0)
             {
-                bk /= static_cast<float>(base);
+                bk     /= static_cast<float>(base);
                 result += static_cast<float>(index % base) * bk;
-                index /= base;
+                index  /= base;
             }
             return result;
         };
     
         // static storage for halton points and index
-        static std::vector<std::pair<float, float>> halton_points;
+        static vector<pair<float, float>> halton_points;
         static size_t halton_index = 0;
     
-        // generate 32 halton points (bases 2 and 3, start index 1) if not already done
+        // generate halton points (bases 2 and 3, start index 1) if not already done
         if (halton_points.empty())
         {
-            std::uint32_t base_x      = 2;
-            std::uint32_t base_y      = 3;
-            std::uint32_t start_index = 1;
-            std::uint32_t count       = intel::get_sample_count();
-            float offset_x            = 0.0f;
-            float offset_y            = 0.0f;
-            halton_points.reserve(count);
-            for (std::uint32_t i = start_index; i < start_index + count; ++i)
+            const uint32_t xess_sample_limit = 96;
+
+            uint32_t base_x      = 2;
+            uint32_t base_y      = 3;
+            uint32_t start_index = 1;
+            float offset_x       = 0.0f;
+            float offset_y       = 0.0f;
+            halton_points.reserve(xess_sample_limit);
+            for (uint32_t i = start_index; i < start_index + xess_sample_limit; ++i)
             {
                 // generate x and y in [0, 1], shift to [-0.5, 0.5] for pixel space
                 float jitter_x = get_corput(i, base_x) - 0.5f;
@@ -841,7 +851,7 @@ namespace spartan
         }
     
         // get the current jitter sample (pixel space, [-0.5, 0.5])
-        auto jitter = halton_points[halton_index];
+        auto jitter  = halton_points[halton_index];
 
         // this is for xessVKExecute which expects [-0.5, 0.5] jitter
         intel::jitter.x = jitter.first;
@@ -852,12 +862,12 @@ namespace spartan
         *y = -2.0f * jitter.second / static_cast<float>(common::resolution_render_height);
 
         // advance to the next sample, cycling back to 0
-        halton_index = (halton_index + 1) % halton_points.size();
+        uint32_t sample_count_at_current_quality_level = intel::get_sample_count();
+        halton_index = (halton_index + 1) % sample_count_at_current_quality_level;
     }
 
     void RHI_VendorTechnology::XeSS_Dispatch(
         RHI_CommandList* cmd_list,
-        const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
@@ -880,8 +890,8 @@ namespace spartan
         intel::params_execute.jitterOffsetX              = intel::jitter.x;
         intel::params_execute.jitterOffsetY              = intel::jitter.y;
         intel::params_execute.exposureScale              = intel::exposure_scale;
-        intel::params_execute.inputWidth                 = static_cast<uint32_t>(tex_color->GetWidth() * resolution_scale);
-        intel::params_execute.inputHeight                = static_cast<uint32_t>(tex_color->GetHeight() * resolution_scale);
+        intel::params_execute.inputWidth                 = common::resolution_render_width;
+        intel::params_execute.inputHeight                = common::resolution_render_height;
         intel::params_execute.inputColorBase             = { 0, 0 };
         intel::params_execute.inputMotionVectorBase      = { 0, 0 };
         intel::params_execute.inputDepthBase             = { 0, 0 };
@@ -923,7 +933,6 @@ namespace spartan
         Camera* camera,
         const float delta_time_sec,
         const float sharpness,
-        const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
@@ -933,26 +942,26 @@ namespace spartan
     #ifdef _WIN32
         // set resources (no need for the transparency or reactive masks as we do them later, full res)
         amd::upscaler::description_dispatch.commandList                   = amd::to_cmd_list(cmd_list);
-        amd::upscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                        L"fsr3_color");
-        amd::upscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                        L"fsr3_depth");
-        amd::upscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                     L"fsr3_velocity");
-        amd::upscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                          L"fsr3_exposure");
-        amd::upscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                          L"fsr3_reactive");
-        amd::upscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                          L"fsr3_transaprency_and_composition");
+        amd::upscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                         L"fsr3_color");
+        amd::upscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                         L"fsr3_depth");
+        amd::upscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                      L"fsr3_velocity");
+        amd::upscaler::description_dispatch.exposure                      = amd::to_resource(nullptr,                                                           L"fsr3_exposure");
+        amd::upscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                           L"fsr3_reactive");
+        amd::upscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                           L"fsr3_transaprency_and_composition");
         amd::upscaler::description_dispatch.dilatedDepth                  = amd::to_resource(amd::upscaler::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
         amd::upscaler::description_dispatch.dilatedMotionVectors          = amd::to_resource(amd::upscaler::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
         amd::upscaler::description_dispatch.reconstructedPrevNearestDepth = amd::to_resource(amd::upscaler::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
-        amd::upscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                       L"fsr3_output");
+        amd::upscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                        L"fsr3_output");
         
         // configure
-        amd::upscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth()) * 0.5f;
-        amd::upscaler::description_dispatch.motionVectorScale.y    = static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
+        amd::upscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth())  * 0.5f;
+        amd::upscaler::description_dispatch.motionVectorScale.y    =  static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
         amd::upscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;        // sdk issue: redundant parameter
         amd::upscaler::description_dispatch.sharpness              = sharpness;
         amd::upscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
         amd::upscaler::description_dispatch.preExposure            = 1.0f;                     // the exposure value if not using FFX_FSR3_ENABLE_AUTO_EXPOSURE
-        amd::upscaler::description_dispatch.renderSize.width       = static_cast<uint32_t>(tex_velocity->GetWidth() * resolution_scale);
-        amd::upscaler::description_dispatch.renderSize.height      = static_cast<uint32_t>(tex_velocity->GetHeight() * resolution_scale);
+        amd::upscaler::description_dispatch.renderSize.width       = common::resolution_render_width;
+        amd::upscaler::description_dispatch.renderSize.height      = common::resolution_render_height;
         amd::upscaler::description_dispatch.cameraNear             = camera->GetFarPlane();    // far as near because we are using reverse-z
         amd::upscaler::description_dispatch.cameraFar              = camera->GetNearPlane();   // near as far because we are using reverse-z
         amd::upscaler::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
@@ -969,7 +978,6 @@ namespace spartan
 
     void RHI_VendorTechnology::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
-        const float resolution_scale,
         RHI_Texture* tex_reflection_source,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
@@ -980,7 +988,15 @@ namespace spartan
     )
     {
     #ifdef _WIN32
-        SP_ASSERT(amd::ssr::context_created);
+        // comply with sssr expectations
+        SP_ASSERT(tex_reflection_source->GetBitsPerChannel() > 8);  // hdr color, expect float16+
+        SP_ASSERT(tex_depth->GetFormat() == RHI_Format::D32_Float); // single float depth
+        SP_ASSERT(tex_velocity->GetBitsPerChannel() >= 16);         // 2x float
+        SP_ASSERT(tex_normal->GetBitsPerChannel() >= 16);           // 3x float
+        SP_ASSERT(tex_material->GetBitsPerChannel() >= 8);          // 1x float roughness
+        SP_ASSERT(tex_brdf->GetBitsPerChannel() >= 16);             // 2x float
+        SP_ASSERT(tex_output->GetBitsPerChannel() >= 16);           // 3x float output
+        cmd_list->ClearTexture(tex_output, Color::standard_black);
 
         // set resources
         amd::ssr::description_dispatch.commandList        = amd::to_cmd_list(cmd_list);
@@ -994,8 +1010,8 @@ namespace spartan
         amd::ssr::description_dispatch.output             = amd::to_resource(tex_output,                L"sssr_output");
  
         // set render size
-        amd::ssr::description_dispatch.renderSize.width  = static_cast<uint32_t>(tex_reflection_source->GetWidth()  * resolution_scale);
-        amd::ssr::description_dispatch.renderSize.height = static_cast<uint32_t>(tex_reflection_source->GetHeight() * resolution_scale);
+        amd::ssr::description_dispatch.renderSize.width  = common::resolution_render_width;
+        amd::ssr::description_dispatch.renderSize.height = common::resolution_render_height;
 
         // set sssr specific parameters
         amd::ssr::description_dispatch.motionVectorScale.x                  = 0.5f;   // maps [-1,1] NDC delta to [-0.5, 0.5]
