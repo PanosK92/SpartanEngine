@@ -58,7 +58,7 @@ namespace spartan
         Entity* default_environment       = nullptr;
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
-        Entity* default_water             = nullptr;
+        Entity* default_ocean             = nullptr;
         vector<shared_ptr<Mesh>> meshes;
 
         namespace entities
@@ -280,6 +280,112 @@ namespace spartan
                                 renderable->SetMaterial(material);
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                             }
+                        }
+                    }
+                }
+
+                return water;
+            }
+
+            Entity* ocean(std::shared_ptr<Material> material, const Vector3& position, float tile_size, uint32_t density, uint32_t grid_size)
+            {
+                // entity
+                Entity* water = World::CreateEntity();
+                water->SetObjectName("ocean");
+                water->SetPosition(position);
+                water->SetScale({ 1.0f, 1.0f, 1.0f });
+
+                // material
+                {
+                    material->SetObjectName("material_ocean");
+                    material->SetResourceFilePath("ocean" + string(EXTENSION_MATERIAL));
+
+                    material->LoadFromFile(material->GetResourceFilePath());
+                    material->SetOceanTileCount(grid_size);
+
+                    material->SetOceanTileSize(tile_size);
+                    material->SetOceanVerticesCount(density);
+
+                    // if material fails to load from file
+                    if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)
+                    {
+                        material->SetColor(Color(0.0f, 142.0f / 255.0f, 229.0f / 255.0f, 254.0f / 255.0f)); 
+                        material->SetProperty(MaterialProperty::IsOcean, 1.0f);
+
+                        material->SetOceanProperty(OceanParameters::Angle, 0.0f); //handled internally
+                        material->SetOceanProperty(OceanParameters::Alpha, 0.0f); // handled internally
+                        material->SetOceanProperty(OceanParameters::PeakOmega, 0.0f); // handled internally
+
+                        material->SetOceanProperty(OceanParameters::Scale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SpreadBlend, 0.9f);
+                        material->SetOceanProperty(OceanParameters::Swell, 1.0f);
+                        material->SetOceanProperty(OceanParameters::Fetch, 1280000.0f);
+                        material->SetOceanProperty(OceanParameters::WindDirection, 135.0f);
+                        material->SetOceanProperty(OceanParameters::WindSpeed, 2.8f);
+                        material->SetOceanProperty(OceanParameters::Gamma, 3.3f);
+                        material->SetOceanProperty(OceanParameters::ShortWavesFade, 0.0f);
+                        material->SetOceanProperty(OceanParameters::RepeatTime, 200.0f);
+
+                        material->SetOceanProperty(OceanParameters::Depth, 20.0f);
+                        material->SetOceanProperty(OceanParameters::LowCutoff, 0.001f);
+                        material->SetOceanProperty(OceanParameters::HighCutoff, 1000.0f);
+
+                        material->SetOceanProperty(OceanParameters::FoamDecayRate, 3.0f);
+                        material->SetOceanProperty(OceanParameters::FoamThreshold, 0.5f);
+                        material->SetOceanProperty(OceanParameters::FoamBias, 1.2f);
+                        material->SetOceanProperty(OceanParameters::FoamAdd, 1.0f);
+
+                        material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SlopeScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::LengthScale, 128.0f);
+                    }
+                }
+
+                // geometry
+                {
+                    // generate grid
+                    const uint32_t grid_points_per_dimension = density;
+                    vector<RHI_Vertex_PosTexNorTan> vertices;
+                    vector<uint32_t> indices;
+                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, tile_size);
+
+                    string name = "ocean mesh";
+
+                    // create mesh if it doesn't exist
+                    shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                    mesh->SetObjectName(name);
+                    mesh->SetRootEntity(water);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+                    mesh->AddGeometry(vertices, indices, false);
+                    mesh->CreateGpuBuffers();
+
+                    // create a child entity, add a renderable, and this mesh tile to it
+                    for (uint32_t row = 0; row < grid_size; row++)
+                    {
+                        for (uint32_t col = 0; col < grid_size; col++)
+                        {
+                            int tile_index = col + row * grid_size;
+
+                            string tile_name = "ocean tile_" + to_string(tile_index);
+
+                            Entity* entity_tile = World::CreateEntity();
+                            entity_tile->SetObjectName(tile_name);
+                            entity_tile->SetParent(water);
+
+                            Vector3 tile_position = { col * tile_size, 0.0f, row * tile_size };
+                            entity_tile->SetPosition(tile_position);
+
+                            if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
+                            {
+                                renderable->SetMesh(mesh.get());
+                                renderable->SetMaterial(material);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                            }
+
+                            // enable buoyancy
+                            //Physics* physics = entity_tile->AddComponent<Physics>();
+                            //physics->SetBodyType(BodyType::Water);
                         }
                     }
                 }
@@ -1613,10 +1719,150 @@ namespace spartan
                 entities::material_ball(Vector3::Zero);
             }
         }
+
+        namespace ocean
+        {
+            uint32_t ocean_tile_count = 2;
+            float tile_size = 128.0f;
+            uint32_t vertices_count = 512;
+            shared_ptr<Material> material = make_shared<Material>();
+
+            void create()
+            {
+                entities::camera();
+                entities::sun(true);
+
+                auto entity = World::CreateEntity();
+
+                default_ocean = entities::ocean(material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
+
+                default_ocean->SetParent(entity);
+
+                /*auto light_entity = World::CreateEntity();
+                light_entity->SetPosition({ 196.0f, 280.0f, 196.0f });
+
+                Light* point = light_entity->AddComponent<Light>();
+                point->SetLightType(LightType::Point);
+                point->SetRange(800.0f);
+                point->SetTemperature(10000.0f);
+                point->SetIntensity(8500.0f);
+                point->SetObjectName("Point Light");
+                */
+
+                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+            }
+
+            void tick()
+            {
+                if (!material)
+                    return;
+
+                uint32_t current_tile_count = material->GetOceanTileCount();
+                if (current_tile_count != ocean_tile_count || tile_size != material->GetOceanTileSize() || vertices_count != material->GetOceanVerticesCount())
+                {
+                    ocean_tile_count = current_tile_count;
+                    auto& children = default_ocean->GetChildren();
+
+                    for (uint32_t i = 0; i < children.size(); i++)
+                    {
+                        World::RemoveEntity(children[i]);
+                    }
+                    children.clear();
+
+                    std::shared_ptr<Mesh> ocean_mesh;
+
+                    for (size_t i = 0; i < meshes.size(); i++)
+                    {
+                        if (meshes[i]->GetObjectName() == "ocean mesh")
+                            ocean_mesh = meshes[i];
+                    }
+
+                    if (ocean_mesh.get() == nullptr)
+                        return;
+
+                    // regenerate mesh
+                    if (tile_size != material->GetOceanTileSize() || vertices_count != material->GetOceanVerticesCount())
+                    {
+                        tile_size = material->GetOceanTileSize();
+                        vertices_count = material->GetOceanVerticesCount();
+
+                        // generate grid
+                        const uint32_t grid_points_per_dimension = vertices_count;
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, tile_size);
+
+                        //string name = "ocean mesh";
+
+                        // create mesh if it doesn't exist
+                        ocean_mesh->Clear();
+
+                        //for (std::vector<std::shared_ptr<Mesh>>::iterator it = meshes.begin(); it != meshes.end();)
+                        //{
+                        //    std::shared_ptr<Mesh> m = *it;
+                        //    if (m->GetObjectName() == "ocean mesh")
+                        //        it = meshes.erase(it);
+                        //    else;
+                        //        ++it;
+                        //}
+                        
+                        /*ocean_mesh = meshes.emplace_back(make_shared<Mesh>());
+                        ocean_mesh->SetObjectName(name);
+                        ocean_mesh->SetRootEntity(default_ocean);
+                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);*/
+                        ocean_mesh->AddGeometry(vertices, indices, false);
+                        ocean_mesh->CreateGpuBuffers();
+                    }
+
+                    for (uint32_t row = 0; row < current_tile_count; row++)
+                    {
+                        for (uint32_t col = 0; col < current_tile_count; col++)
+                        {
+                            int tile_index = col + row * current_tile_count;
+
+                            string tile_name = "ocean tile_" + to_string(tile_index);
+
+                            Entity* entity_tile = World::CreateEntity();
+                            entity_tile->SetObjectName(tile_name);
+                            entity_tile->SetParent(default_ocean);
+
+                            Vector3 tile_position = { col * tile_size, 0.0f, row * tile_size };
+                            entity_tile->SetPosition(tile_position);
+
+                            if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
+                            {
+                                renderable->SetMesh(ocean_mesh.get());
+                                renderable->SetMaterial(material);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                            }
+
+                            // enable buoyancy
+                            //Physics* physics = entity_tile->AddComponent<Physics>();
+                            //physics->SetBodyType(BodyType::Water);
+                        }
+                    }
+                }
+            }
+
+            void on_shutdown()
+            {
+                if (!default_ocean)
+                    return;
+
+                if (!material)
+                    SP_ASSERT_MSG(false, "Failed to get ocean material");
+
+                material->SaveToFile(material->GetResourceFilePath());
+
+                default_ocean = nullptr;
+            }
+        }
     }
 
     void Game::Shutdown()
     {
+        worlds::ocean::on_shutdown();
         default_floor                          = nullptr;
         default_camera                         = nullptr;
         default_environment                    = nullptr;
@@ -1631,6 +1877,9 @@ namespace spartan
 
     void Game::Tick()
     {
+        if (!Engine::IsFlagSet(EngineMode::Playing))
+            return;
+
         car::tick();
 
         if (loaded_world == DefaultWorld::LiminalSpace)
@@ -1649,7 +1898,10 @@ namespace spartan
 
     void Game::EditorTick()
     {
-
+        if (loaded_world == DefaultWorld::Ocean)
+        {
+            worlds::ocean::tick();
+        }
     }
 
     void Game::Load(DefaultWorld default_world)
@@ -1673,6 +1925,7 @@ namespace spartan
                 case DefaultWorld::Showroom:     worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 case DefaultWorld::Basic:        worlds::basic::create();         break;
+                case DefaultWorld::Ocean:        worlds::ocean::create();         break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
             }
 

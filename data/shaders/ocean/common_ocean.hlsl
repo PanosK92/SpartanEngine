@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2025 George Bolba
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,36 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+#include "../common.hlsl"
 
-namespace spartan
+#ifndef SPARTAN_COMMON_OCEAN
+#define SPARTAN_COMMON_OCEAN
+
+static const uint SPECTRUM_TEX_SIZE = 512;
+
+RWTexture2D<float4> initial_spectrum         : register(u9);
+RWTexture2D<float4> displacement_spectrum    : register(u10);
+RWTexture2D<float4> slope_spectrum           : register(u11);
+RWTexture2D<float4> displacement_map         : register(u12);
+RWTexture2D<float4> slope_map                : register(u13);
+RWTexture2D<float4> synthesised_displacement : register(u14);
+RWTexture2D<float4> synthesised_slope        : register(u15);
+
+float Dispersion(float kMag, float depth)
 {
-    enum class DefaultWorld
-    {
-        Showroom,
-        Forest,
-        LiminalSpace,
-        Sponza,
-        Subway,
-        Minecraft,
-        Basic,
-        Ocean,
-        Max
-    };
-
-    class Game
-    {
-    public:
-        // called once on world shutdown
-        static void Shutdown();
-
-        // called every frame in play mode
-        static void Tick();
-
-        // called every frame when in editor mode
-        static void EditorTick();
-
-        // load a default world
-        static void Load(DefaultWorld default_world);
-    };
+    return sqrt(G * kMag * tanh(min(kMag * depth, 20)));
 }
+
+#endif // SPARTAN_COMMON_OCEAN
