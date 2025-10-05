@@ -33,14 +33,14 @@ float4 get_hex_grid_info(float2 uv)
     return dot(offset.xy, offset.xy) < dot(offset.zw, offset.zw) ? float4(hex_center.xy, hex_index.xy) : float4(hex_center.zw, hex_index.zw);
 }
 
-float get_hex_sdf(in float2 p)
+float get_hex_sdf(float2 p)
 {
     p = abs(p);
     return 0.5f - max(dot(p, hex_ratio * 0.5f), p.x);
 }
 
 //xy: node pos, z: weight
-float3 get_triangle_interp_node(in float2 pos, in float freq, in int node_index)
+float3 get_triangle_interp_node(float2 pos, float freq, int node_index)
 {
     const float2 node_offsets[3] =
     {
