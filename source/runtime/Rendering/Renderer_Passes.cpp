@@ -99,6 +99,37 @@ namespace spartan
         {
             Pass_VariableRateShading(cmd_list_graphics_present);
 
+            // Ocean Passes
+            Material* prev_material = nullptr;
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                Renderable* renderable = draw_call.renderable;
+                Material* material = renderable->GetMaterial();
+
+                // get ocean material
+                if (!material->IsOcean() || material == prev_material)
+                    continue;
+
+                prev_material = material;
+
+                if (material->ShouldComputeSpectrum())
+                {
+                    SP_LOG_INFO("Computing Ocean Spectrum...");
+                    Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
+                    // calculates conjugate and stores it in BA channels of the initial spectrum
+                    Pass_PackSpectrum(cmd_list_graphics_present);
+
+                    material->MarkSpectrumAsComputed();
+                }
+
+                // computes displacement and slope maps
+                Pass_AdvanceSpectrum(cmd_list_graphics_present);
+                Pass_ApplyHorizontalFFT(cmd_list_graphics_present);
+                Pass_ApplyVerticalFFT(cmd_list_graphics_present);
+                Pass_GenerateMaps(cmd_list_graphics_present);
+            }
+
             // opaques
             {
                 bool is_transparent = false;
@@ -118,46 +149,15 @@ namespace spartan
             {
                 bool is_transparent = true;
 
-                // Ocean Passes
-                Material* prev_material = nullptr;
-                for (uint32_t i = 0; i < m_draw_call_count; i++)
-                {
-                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                    Renderable* renderable = draw_call.renderable;
-                    Material* material = renderable->GetMaterial();
-
-                    // get ocean material
-                    if (!material->IsOcean() || material == prev_material)
-                        continue;
-
-                    prev_material = material;
-
-                    if (material->ShouldComputeSpectrum())
-                    {
-                        SP_LOG_INFO("Computing Ocean Spectrum...");
-                        Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
-                        // calculates conjugate and stores it in BA channels of the initial spectrum
-                        Pass_PackSpectrum(cmd_list_graphics_present);
-
-                        material->MarkSpectrumAsComputed();
-                    }
-
-                    // computes displacement and slope maps
-                    Pass_AdvanceSpectrum(cmd_list_graphics_present);
-                    Pass_ApplyHorizontalFFT(cmd_list_graphics_present);
-                    Pass_ApplyVerticalFFT(cmd_list_graphics_present);
-                    Pass_GenerateMaps(cmd_list_graphics_present);
-                }
-
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_Light(cmd_list_graphics_present, is_transparent);
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
             }
 
             Pass_Light_ImageBased(cmd_list_graphics_present);
-            Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
+            //Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
             
-            //Pass_ApplyFoam(cmd_list_graphics_present);
+            Pass_ApplyFoam(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
@@ -1279,78 +1279,6 @@ namespace spartan
             Pass_Downscale(cmd_list, slope_map, Renderer_DownsampleFilter::Average);
 
             slope_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        }
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_ApplyFoam(RHI_CommandList* cmd_list)
-    {
-        RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        RHI_Texture* tex_out   = GetRenderTarget(Renderer_RenderTarget::frame_render);
-
-        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
-        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
-
-        tex_out->SetLayout(RHI_Image_Layout::General, cmd_list);
-
-        cmd_list->BeginTimeblock("ocean_foam");
-        {
-            // set pipeline state
-            RHI_PipelineState pso;
-            pso.name                             = "ocean_foam";
-            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::ocean_foam_v);
-            pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::ocean_foam_p);
-            pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
-            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-            pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
-            pso.resolution_scale                 = true;
-            pso.render_target_color_textures[0]  = tex_out;
-            pso.render_target_depth_texture      = tex_depth;
-            pso.clear_color[0]                   = rhi_color_load;
-            cmd_list->SetPipelineState(pso);
-
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
-            {
-                const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                Renderable* renderable = draw_call.renderable;
-                Material* material = renderable->GetMaterial();
-                if (!material || !material->IsOcean() || !draw_call.camera_visible)
-                    continue;
-
-                // pass constants
-                {
-                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
-                    m_pcb_pass_cpu.set_is_transparent_and_material_index(true, material->GetIndex());
-
-                    float a = material->GetShowDisplacement() ? 1.0f : 0.0f;
-                    float b = material->GetShowSlope() ? 1.0f : 0.0f;
-                    m_pcb_pass_cpu.set_f2_value(a, b);
-
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
-                }
-
-                // draw
-                {
-                    cmd_list->SetCullMode(static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, displacement_map);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, slope_map);
-
-                    cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(draw_call.lod_index),
-                        renderable->GetIndexOffset(draw_call.lod_index),
-                        renderable->GetVertexOffset(draw_call.lod_index),
-                        renderable->HasInstancing() ? draw_call.instance_index : 0,
-                        renderable->HasInstancing() ? draw_call.instance_count : 1
-                    );
-
-                    // at this point, we don't want clear in case another render pass is implicitly started
-                    pso.clear_depth = rhi_depth_load;
-                }
-            }
         }
         cmd_list->EndTimeblock();
     }

@@ -273,6 +273,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float4 slope = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy) * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
 
+        // apply foam (foam mask is stored in the alpha channel of slope map)
+        albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
+
         // display displacement map for debug purposes
         if (material.ocean_parameters.displacementScale <= -1.0f)
             albedo = tex2.SampleLevel(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy, 0).rgba;
