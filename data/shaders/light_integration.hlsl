@@ -176,7 +176,8 @@ float3 prefilter_environment(float2 uv)
             float alpha2     = alpha_ggx * alpha_ggx;
             float D          = D_GGX(n_dot_h, alpha2);
             float pdf        = (D * n_dot_h / (4.0 * h_dot_v)) + 0.0001;
-            float sa_texel   = 4.0 * PI / (6.0 * base_resolution * base_resolution);
+            
+            float sa_texel   = 4.0 * PI / (base_resolution * base_resolution);
             float sa_sample  = 1.0 / (float(sample_count) * pdf + 0.0001);
             float mip_sample = roughness == 0.0 ? 0.0 : 0.5 * log2(sa_sample / sa_texel);
             
