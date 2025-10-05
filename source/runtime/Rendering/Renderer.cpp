@@ -145,7 +145,7 @@ namespace spartan
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
             SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::AntiAliasing_Upsampling,      static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
+            SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);
             SetOption(Renderer_Option::Vsync,                       0.0f);
@@ -160,7 +160,12 @@ namespace spartan
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
 
-            SetWind(Vector3(1.0f, 0.0f, 1.0f) * 3.0f);
+            // set wind direction and strength
+            {
+                float rotation_y      = 0.0f * math::deg_to_rad;
+                const float intensity = 3.0f; // meters per second
+                SetWind(Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity);
+            }
         }
 
         // resolution

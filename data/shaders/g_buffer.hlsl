@@ -127,25 +127,17 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float occlusion                = 1.0f;
     Surface surface; surface.flags = material.flags;
 
-    // reconstruct world position
-    float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;
-    float3 position_world = get_position(vertex.position.z, screen_uv);
-
     // velocity
-    {
-        // current and previous ndc position
-        float2 position_ndc_current  = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
-        float2 position_ndc_previous = (vertex.position_previous.xy / vertex.position_previous.w);
+    float2 position_ndc           = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
+    float2 position_ndc_previous  = (vertex.position_previous.xy / vertex.position_previous.w);
+    position_ndc                 -= buffer_frame.taa_jitter_current;
+    position_ndc_previous        -= buffer_frame.taa_jitter_previous;
+    velocity                      = position_ndc - position_ndc_previous;
+    
+    // world position
+    float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc));
 
-        // remove jitter
-        position_ndc_current  -= buffer_frame.taa_jitter_current;
-        position_ndc_previous -= buffer_frame.taa_jitter_previous;
-
-        // celocity
-        velocity = position_ndc_current - position_ndc_previous;
-    }
-
-    // world space uv (if requested)
+    // world space uv
     if (any(material.world_space_uv))
     {
         float3 abs_normal = abs(normal);
