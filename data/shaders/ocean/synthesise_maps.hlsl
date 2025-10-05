@@ -79,6 +79,7 @@ void preserve_variance(out float4 linear_color, float4 mean_color, float moment2
 
 void synthesize(Texture2D example, out float4 output, float2 uv, float tex_freq, float tile_freq)
 {
+    output = float4(0.0f, 0.0f, 0.0f, 0.0f); // init to 0.0f for safety reasons
     float moment2 = 0.0f;
 
     for (int i = 0; i < 3; i++)
