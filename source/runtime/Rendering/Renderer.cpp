@@ -145,7 +145,7 @@ namespace spartan
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
             SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::AntiAliasing_Upsampling,      static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
+            SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);
             SetOption(Renderer_Option::Vsync,                       0.0f);
@@ -160,7 +160,12 @@ namespace spartan
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
 
-            SetWind(Vector3(1.0f, 0.0f, 1.0f) * 3.0f);
+            // set wind direction and strength
+            {
+                float rotation_y      = 0.0f * math::deg_to_rad;
+                const float intensity = 3.0f; // meters per second
+                SetWind(Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity);
+            }
         }
 
         // resolution
@@ -277,7 +282,7 @@ namespace spartan
         {
             swapchain->AcquireNextImage();
             RHI_Device::Tick(frame_num);
-            RHI_VendorTechnology::Tick(&m_cb_frame_cpu);
+            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetOption<float>(Renderer_Option::ResolutionScale));
             dynamic_resolution();
         }
     
@@ -996,11 +1001,11 @@ namespace spartan
                         continue;
                 }
 
-                // skip point/spot lights beyond 100 meters
                 if (light_component->GetLightType() != LightType::Directional)
                 {
-                    const float dist2 = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
-                    if (dist2 > 10000.0f) // 100 meters squared
+                    const float distance_squared      = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
+                    const float draw_distance_squared = light_component->GetDrawDistance() * light_component->GetDrawDistance();
+                    if (distance_squared > draw_distance_squared)
                         continue;
                 }
 

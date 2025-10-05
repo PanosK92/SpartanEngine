@@ -91,7 +91,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
         // additive: ambient in-scatter + volumetric
         float3 fog_inscatter = fog_atmospheric * sky_color;
-        light_atmospheric    = fog_inscatter + fog_emissive; 
+        light_atmospheric    = fog_inscatter + fog_emissive;
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend

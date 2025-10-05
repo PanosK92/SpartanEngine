@@ -127,25 +127,17 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float occlusion                = 1.0f;
     Surface surface; surface.flags = material.flags;
 
-    // reconstruct world position
-    float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;
-    float3 position_world = get_position(vertex.position.z, screen_uv);
-
     // velocity
-    {
-        // current and previous ndc position
-        float2 position_ndc_current  = uv_to_ndc(vertex.position.xy / buffer_frame.resolution_render);
-        float2 position_ndc_previous = (vertex.position_previous.xy / vertex.position_previous.w);
+    float2 position_ndc           = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
+    float2 position_ndc_previous  = (vertex.position_previous.xy / vertex.position_previous.w);
+    position_ndc                 -= buffer_frame.taa_jitter_current;
+    position_ndc_previous        -= buffer_frame.taa_jitter_previous;
+    velocity                      = position_ndc - position_ndc_previous;
+    
+    // world position
+    float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc));
 
-        // remove jitter
-        position_ndc_current  -= buffer_frame.taa_jitter_current;
-        position_ndc_previous -= buffer_frame.taa_jitter_previous;
-
-        // celocity
-        velocity = position_ndc_current - position_ndc_previous;
-    }
-
-    // world space uv (if requested)
+    // world space uv
     if (any(material.world_space_uv))
     {
         float3 abs_normal = abs(normal);
@@ -167,7 +159,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         // dynamic vegetation coloring (grass blades, trees, etc.)
         {
-            // color vaiation based on instance id
+            // color variation based on instance id
             static const float3 vegetation_greener    = float3(0.05f, 0.4f, 0.03f);
             static const float3 vegetation_yellower   = float3(0.45f, 0.4f, 0.15f);
             static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);
@@ -294,22 +286,30 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // occlusion, roughness, metalness, height sample
     {
         float4 packed_sample  = sample_texture(vertex, material_texture_index_packed, surface, position_world);
-        occlusion             = lerp(occlusion, packed_sample.r, material.has_texture_occlusion() ? 1.0f : 0.0f);
-        roughness            *= lerp(1.0f,      packed_sample.g, material.has_texture_roughness() ? 1.0f : 0.0f);
-        metalness            *= lerp(1.0f,      packed_sample.b, material.has_texture_metalness() ? 1.0f : 0.0f);
+        occlusion             = lerp(occlusion, packed_sample.r, (float)material.has_texture_occlusion());
+        roughness            *= lerp(1.0f,      packed_sample.g, (float)material.has_texture_roughness());
+        metalness            *= lerp(1.0f,      packed_sample.b, (float)material.has_texture_metalness());
     }
     
-    // specular anti-aliasing - also increases cache hits for certain subsqeuent passes
+    // specular anti-aliasing (toksvig-inspired with distance adaptation)
     {
         static const float strength           = 1.0f;
         static const float max_roughness_gain = 0.02f;
-
-        float roughness2         = roughness * roughness;
-        float3 dndu              = ddx(normal), dndv = ddy(normal);
-        float variance           = (dot(dndu, dndu) + dot(dndv, dndv));
-        float kernelRoughness2   = min(variance * strength, max_roughness_gain);
-        float filteredRoughness2 = saturate(roughness2 + kernelRoughness2);
-        roughness                = fast_sqrt(filteredRoughness2);
+        float roughness2                      = roughness * roughness;
+        float3 dndu                           = ddx(normal);
+        float3 dndv                           = ddy(normal);
+        
+        // compute variance and normalize by normal length
+        float variance                        = length(dndu) * length(dndu) + length(dndv) * length(dndv);
+        float normal_length                   = length(normal);
+        variance                             /= max(0.001f, normal_length * normal_length);
+        
+        // adapt strength based on camera distance
+        float distance                        = length(position_world - buffer_frame.camera_position);
+        float adaptive_strength               = lerp(1.0f, 0.3f, saturate(distance / 10.0f));
+        float kernel_roughness2               = min(variance * strength * adaptive_strength, max_roughness_gain);
+        float filtered_roughness2             = saturate(roughness2 + kernel_roughness2);
+        roughness                             = fast_sqrt(filtered_roughness2);
     }
 
     // write to g-buffer

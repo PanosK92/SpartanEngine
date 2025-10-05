@@ -126,6 +126,10 @@ namespace spartan
         void SetScreenSpaceShadowsSliceIndex(const uint32_t index) { m_index = index; }
         uint32_t GetScreenSpaceShadowsSliceIndex() const           { return m_index; }
 
+        // draw distance
+        void SetDrawDistance(const float distance) { m_draw_distance = distance; }
+        float GetDrawDistance() const              { return m_draw_distance; }
+
         // misc
         bool NeedsSkysphereUpdate() const;
         bool HasChangedThisFrame() const { return m_changed_this_frame; }
@@ -160,6 +164,7 @@ namespace spartan
         math::Vector3 m_far_cascade_max  = math::Vector3::Zero;
         bool m_is_active_previous_frame  = false;
         bool m_changed_this_frame        = false;
+        float m_draw_distance            = 512.0f; // max distance at which light will affect objects (meters)
 
         // matrices/frustums per slice/face/cascade
         std::array<math::Frustum, 6> m_frustums;

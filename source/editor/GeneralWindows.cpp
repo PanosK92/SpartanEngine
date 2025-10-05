@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "Game/Game.h"
 #include "Core/ProgressTracker.h"
+#include "RHI/RHI_Device.h"
 //================================
 
 //= NAMESPACES =====
@@ -409,19 +410,20 @@ namespace
         {
             const char* name;
             const char* description;
-            const char* performance; // light, moderate, demanding
             const char* status;      // wip, prototype, complete
+            const char* performance; // light, moderate, demanding
+            uint32_t vram;           // min vram requirement in megabytes
         };
 
         const WorldEntry worlds[] =
         {
-            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech.", "Light",          "Complete"  },
-            { "Open World Forest", "Millions of Ghost of Tsushima grass blades.",                         "Very demanding", "Prototype" },
-            { "Liminal Space",     "Shifts your frequency to a nearby reality.",                          "Light",          "Prototype" },
-            { "Sponza 4K",         "High-resolution textures & meshes.",                                  "Demanding",      "Complete"  },
-            { "Subway",            "GI test. No lights, only emissive textures.",                         "Moderate",       "Complete"  },
-            { "Minecraft",         "Blocky aesthetic.",                                                   "Light",          "Complete"  },
-            { "Basic",             "Light, camera, floor.",                                               "Light",          "Complete"  }
+            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech.", "Complete" , "Light",          4000 },
+            { "Open World Forest", "Millions of Ghost of Tsushima grass blades.",                         "Prototype", "Very demanding", 8000 },
+            { "Liminal Space",     "Shifts your frequency to a nearby reality.",                          "Prototype", "Light",          2048 },
+            { "Sponza 4K",         "High-resolution textures & meshes.",                                  "Complete" , "Demanding",      5000 },
+            { "Subway",            "GI test. No lights, only emissive textures.",                         "Complete" , "Moderate",       5000 },
+            { "Minecraft",         "Blocky aesthetic.",                                                   "Complete" , "Light",          4000 },
+            { "Basic",             "Light, camera, floor.",                                               "Complete" , "Light",          4000 }
         };
         int world_index = 0;
 
@@ -529,9 +531,22 @@ namespace
                         ImGui::PushTextWrapPos(0.0f);
                         ImGui::TextWrapped("Description: %s", w.description);
                         ImGui::Separator();
+                        ImGui::TextWrapped("Status: %s", w.status);
+                        ImGui::Separator();
                         ImGui::TextWrapped("Performance: %s", w.performance);
                         ImGui::Separator();
-                        ImGui::TextWrapped("Status: %s", w.status);
+                        uint64_t system_vram_mb = spartan::RHI_Device::MemoryGetTotalMb();
+                        bool vram_sufficient    = system_vram_mb >= w.vram;
+                        ImGui::TextWrapped("Minimum VRAM:");
+                        ImGui::SameLine();
+                        if (!vram_sufficient)
+                        {
+                            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%u MB (System: %u MB)", w.vram, system_vram_mb);
+                        }
+                        else
+                        {
+                            ImGui::TextWrapped("%u MB (System: %u MB)", w.vram, system_vram_mb);
+                        }
                         ImGui::PopTextWrapPos();
                     }
                     ImGui::EndChild();

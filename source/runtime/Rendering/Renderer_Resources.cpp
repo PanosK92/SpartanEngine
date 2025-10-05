@@ -261,7 +261,7 @@ namespace spartan
         if (!render_target(Renderer_RenderTarget::lut_brdf_specular))
         {
             // lookup tables
-            render_target(Renderer_RenderTarget::lut_brdf_specular)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1,  1, RHI_Format::R8G8_Unorm,         RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
+            render_target(Renderer_RenderTarget::lut_brdf_specular)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1,  1, RHI_Format::R32G32B32A32_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
             render_target(Renderer_RenderTarget::lut_atmosphere_scatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
 
             // misc
@@ -273,8 +273,6 @@ namespace spartan
             render_target(Renderer_RenderTarget::auto_exposure)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_1");
             render_target(Renderer_RenderTarget::auto_exposure_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_2");
         }
-
-        RHI_VendorTechnology::Resize(GetResolutionRender(), GetResolutionOutput());
     }
 
     void Renderer::CreateShaders()

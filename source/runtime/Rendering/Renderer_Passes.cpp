@@ -1,4 +1,4 @@
-#/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -730,7 +730,6 @@ namespace spartan
 
                     RHI_VendorTechnology::SSSR_Dispatch(
                         cmd_list,
-                        GetOption<float>(Renderer_Option::ResolutionScale),
                         tex_frame, // source of reflection
                         GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
                         GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
@@ -1441,7 +1440,6 @@ namespace spartan
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
                     cmd_list,
-                    resolution_scale,
                     tex_in,
                     tex_depth,
                     tex_velocity,
@@ -1455,7 +1453,6 @@ namespace spartan
                     World::GetCamera(),
                     m_cb_frame_cpu.delta_time,
                     GetOption<float>(Renderer_Option::Sharpness),
-                    resolution_scale,
                     tex_in,
                     tex_depth,
                     tex_velocity,
@@ -1517,12 +1514,10 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value(adaptation_speed);
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
-            // input: smallest mip (downsampled frame)
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, tex_in->GetMipCount() - 1, 1);
-            // input: previous exposure
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);
-            // output: current exposure
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure); 
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous); // input: previous exposure value
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);           // output: current exposure value
+
             // single dispatch: just writes 1 value
             cmd_list->Dispatch(1, 1, 1);
     

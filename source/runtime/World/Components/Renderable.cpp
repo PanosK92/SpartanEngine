@@ -42,13 +42,23 @@ namespace spartan
 {
     Renderable::Renderable(Entity* entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,  bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,          Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags,             uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,              Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,      BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh, Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, BoundingBox);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh, BoundingBox);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index,    uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_dirty, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instances, vector<math::Matrix>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_buffer, shared_ptr<RHI_Buffer>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, math::Matrix);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_render, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_shadow, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_distance_squared, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_visible, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lod_index, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_previous_lights, uint64_t);
     }
 
     Renderable::~Renderable()
@@ -425,48 +435,95 @@ namespace spartan
         Camera* camera = World::GetCamera();
         if (!camera)
         {
-            m_lod_index = lod_count - 1; // fallback: lowest LOD
+            m_lod_index = lod_count - 1; // lowest lod
             return;
         }
 
         const BoundingBox& box        = GetBoundingBox();
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
         Vector3 closest_point         = box.GetClosestPoint(camera_position);
-        Vector3 to_closest            = closest_point - camera_position;
-        float distance                = to_closest.Length();
+        float distance                = (closest_point - camera_position).Length();
         if (box.Contains(camera_position))
         {
-            m_lod_index = 0; // inside object: max detail
+            m_lod_index = 0; // inside: max detail
             return;
         }
 
-        // lod thresholds in degrees (decreasing for lower detail)
-        static const array<float, 5> lod_angle_thresholds =
-        {
-            4.0f  * math::deg_to_rad,
-            3.0f  * math::deg_to_rad,
-            2.5f  * math::deg_to_rad,
-            1.7f  * math::deg_to_rad,
-            0.86f * math::deg_to_rad
-        };
-
-        // compute projected angle from bounding sphere
-        float radius          = box.GetExtents().Length();
-        float projected_angle = 2.0f * atan(radius / distance);
-
         // hysteresis: relax threshold for downgrade to prevent popping
-        const float hysteresis_factor     = (m_lod_index < lod_count - 1) ? 1.1f : 1.0f; // 10% buffer when at higher LOD
-        uint32_t lod_index                = lod_count - 1;
-        const uint32_t effective_lod_count = min(lod_count, static_cast<uint32_t>(lod_angle_thresholds.size()));
-        for (uint32_t i = 0; i < effective_lod_count; i++)
+        const float hysteresis_factor = (m_lod_index < lod_count - 1) ? 1.1f : 1.0f;
+
+        uint32_t lod_index = lod_count - 1; // default: lowest lod
+        bool is_grass      = m_material && m_material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f;
+        if (is_grass)
         {
-            float threshold = lod_angle_thresholds[i] * hysteresis_factor;
-            if (projected_angle > threshold)
+            // unchanged grass logic
+            static const array<float, 3> grass_distance_thresholds =
             {
-                lod_index = i;
-                break;
+                30.0f,  // lod0: <30m  (high detail, 5 segments)
+                100.0f, // lod1: <100m (medium, 3 segments)
+                300.0f  // lod2: <300m (low, 1 segment)
+            };
+            for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(grass_distance_thresholds.size())); i++)
+            {
+                if (distance < grass_distance_thresholds[i] * hysteresis_factor)
+                {
+                    lod_index = i;
+                    break;
+                }
             }
         }
-        m_lod_index = lod_index;
+        else
+        {
+            // hybrid: compute lod from angle and distance, take max index (lower detail)
+
+            // 1. angle-based lod (unchanged)
+            uint32_t lod_angle = lod_count - 1;
+            static const array<float, 5> lod_angle_thresholds =
+            {
+                4.0f * math::deg_to_rad,
+                3.0f * math::deg_to_rad,
+                2.5f * math::deg_to_rad,
+                1.7f * math::deg_to_rad,
+                0.86f * math::deg_to_rad
+            };
+            float radius          = box.GetExtents().Length();
+            float projected_angle = 2.0f * atan(radius / distance);
+            for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(lod_angle_thresholds.size())); i++)
+            {
+                float threshold = lod_angle_thresholds[i] * hysteresis_factor;
+                if (projected_angle > threshold)
+                {
+                    lod_angle = i;
+                    break;
+                }
+            }
+
+            // 2. distance-based lod
+            uint32_t lod_dist = lod_count - 1;
+            static const array<float, 5> lod_distance_thresholds =
+            {
+                100.0f,  // lod0: <100m (high detail)
+                250.0f,  // lod1: <250m (trees/tiles decent)
+                500.0f,  // lod2: <500m
+                750.0f,  // lod3: <750m
+                1000.0f  // lod4: <1000m (lowest beyond this)
+            };
+
+            // scale thresholds by object size (large objects keep detail longer)
+            float radius_scale = clamp(radius / 50.0f, 1.0f, 2.0f); // 50m radius = 1x, 100m = 2x
+            for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(lod_distance_thresholds.size())); i++)
+            {
+                float threshold = lod_distance_thresholds[i] * radius_scale * hysteresis_factor;
+                if (distance < threshold)
+                {
+                    lod_dist = i;
+                    break;
+                }
+            }
+
+            // 3. hybrid: take max index (lower detail wins)
+            lod_index = max(lod_angle, lod_dist);
+        }
+        m_lod_index = clamp(lod_index, 0u, lod_count - 1);
     }
 }

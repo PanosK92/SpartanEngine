@@ -89,6 +89,14 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_lumens_lux, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Color);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_temperature_kelvin, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_draw_distance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box, math::BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_cascade_min, math::Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_cascade_max, math::Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_active_previous_frame, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_changed_this_frame, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index, uint32_t);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
         m_matrix_view.fill(Matrix::Identity);

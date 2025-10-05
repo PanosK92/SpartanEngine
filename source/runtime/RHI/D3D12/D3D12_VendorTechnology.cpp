@@ -49,12 +49,7 @@ namespace spartan
 
     }
 
-    void RHI_VendorTechnology::Resize(const Vector2& resolution_render, const Vector2& resolution_output)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame)
+    void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame, const Vector2& resolution_render, const Vector2& resolution_output, const float resolution_scale)
     {
 
     }
@@ -71,7 +66,6 @@ namespace spartan
 
     void RHI_VendorTechnology::XeSS_Dispatch(
         RHI_CommandList* cmd_list,
-        const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
@@ -87,7 +81,6 @@ namespace spartan
         Camera* camera,
         const float delta_time_sec,
         const float sharpness,
-        const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
@@ -99,7 +92,6 @@ namespace spartan
 
     void RHI_VendorTechnology::SSSR_Dispatch(
         RHI_CommandList* cmd_list,
-        const float resolution_scale,
         RHI_Texture* tex_color,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
