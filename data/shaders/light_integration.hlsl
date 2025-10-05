@@ -126,15 +126,6 @@ float2 integrate_brdf(float n_dot_v, float roughness)
     return float2(A, B);
 }
 
-float2 fibonacci_spiral(uint i, uint N)
-{
-    const float PHI   = 1.61803398874989484820459;
-    float t           = float(i) + 0.5;
-    float r           = sqrt(t / float(N));
-    float theta       = 2.0 * PI * frac(t * PHI);
-    return float2(r * cos(theta), r * sin(theta));
-}
-
 float3 prefilter_environment(float2 uv)
 {
     float resolution        = 4096.0; // match skysphere width

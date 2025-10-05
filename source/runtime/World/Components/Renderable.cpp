@@ -50,9 +50,9 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_mesh, BoundingBox);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_dirty, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instances, vector<math::Matrix>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instances, vector<Instance>);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_buffer, shared_ptr<RHI_Buffer>);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, math::Matrix);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, Matrix);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_render, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_shadow, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_distance_squared, float);
@@ -85,15 +85,17 @@ namespace spartan
     
         // instances
         pugi::xml_node instances_node = node.append_child("Instances");
-        for (const auto& transform : m_instances)
+        for (const auto& instance : m_instances)
         {
             pugi::xml_node t_node = instances_node.append_child("Transform");
-            const float* data = transform.Data();
             stringstream ss;
-            for (int i = 0; i < 16; i++)
-            {
-                ss << data[i] << (i < 15 ? " " : "");
-            }
+            ss << instance.position.x << " "
+                << instance.position.y << " "
+                << instance.position.z << " "
+                << instance.rotation.x << " "
+                << instance.rotation.y << " "
+                << instance.rotation.z << " "
+                << instance.scale;
             t_node.append_attribute("matrix") = ss.str().c_str();
         }
     }
@@ -135,12 +137,14 @@ namespace spartan
             for (pugi::xml_node t_node : instances_node.children("Transform"))
             {
                 stringstream ss(t_node.attribute("matrix").as_string());
-                float m[16];
-                for (int i = 0; i < 16; i++)
+                Instance instance;
+                ss >> instance.position.x >> instance.position.y >> instance.position.z
+                    >> instance.rotation.x >> instance.rotation.y >> instance.rotation.z
+                    >> instance.scale;
+                if (!ss.fail())
                 {
-                    ss >> m[i];
+                    m_instances.emplace_back(instance);
                 }
-                m_instances.emplace_back(math::Matrix(m));
             }
         }
     
@@ -300,14 +304,14 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
-    math::Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)
+    Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)
     {
-        return to_world ? m_instances[index] * GetEntity()->GetMatrix() : m_instances[index];
+        return to_world ? m_instances[index].GetMatrix() * GetEntity()->GetMatrix() : m_instances[index].GetMatrix();
     }
 
-    void Renderable::SetInstances(const vector<Matrix>& transforms)
+    void Renderable::SetInstances(const vector<Instance>& instances)
     {
-        if (transforms.empty())
+        if (instances.empty())
         {
             m_instances.clear();
             m_instance_buffer    = nullptr;
@@ -315,31 +319,41 @@ namespace spartan
             return;
         }
 
-        // keep non-transposed matrices for editor/logic (local space)
-        m_instances = transforms;
-
-        // transpose the matrices because the vulkan pipeline binding is defined in a row-major way (4 vector4s)
-        vector<Matrix> instances_transposed;
-        instances_transposed.reserve(transforms.size());
-
-        for (const auto& instance : transforms)
-        {
-            instances_transposed.push_back(instance.Transposed());
-        }
-
-        // create buffer using transposed data
+        // store instance data
+        m_instances = instances;
         m_instance_buffer = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Instance,
-            sizeof(Matrix),
-            static_cast<uint32_t>(instances_transposed.size()),
-            static_cast<void*>(instances_transposed.data()),
+            sizeof(Instance),
+            static_cast<uint32_t>(instances.size()),
+            static_cast<const void*>(instances.data()),
             false,
             ("instance_buffer_" + GetObjectName()).c_str()
         );
 
         m_bounding_box_dirty = true;
-
         Tick(); // update bounding boxes, frustum and distance culling
+    }
+
+    void Renderable::SetInstances(const vector<Matrix>& transforms)
+    {
+        if (transforms.empty())
+        {
+            SetInstances(vector<Instance>{});
+            return;
+        }
+
+        // convert matrices to instances
+        vector<Instance> instances;
+        instances.reserve(transforms.size());
+        for (const auto& transform : transforms)
+        {
+            Instance instance;
+            instance.SetMatrix(transform);
+            instances.emplace_back(instance);
+        }
+
+        // call instance overload
+        SetInstances(instances);
     }
 
     uint32_t Renderable::GetLodCount() const
@@ -372,7 +386,6 @@ namespace spartan
     void Renderable::UpdateAabb()
     {
         const Matrix transform = (GetEntity() && GetEntity()->GetActive()) ? GetEntity()->GetMatrix() : Matrix::Identity;
-
         if (m_bounding_box_dirty || m_transform_previous != transform)
         {
             if (m_instances.empty()) // non-instanced
@@ -382,14 +395,12 @@ namespace spartan
             else // instanced
             {
                 m_bounding_box = BoundingBox(Vector3::Infinity, Vector3::InfinityNeg);
-
-                for (const Matrix& local_instance : m_instances)
+                for (const Instance& instance : m_instances)
                 {
-                    Matrix world_instance = local_instance * transform;
+                    Matrix world_instance = instance.GetMatrix() * transform;
                     m_bounding_box.Merge(m_bounding_box_mesh * world_instance);
                 }
             }
-
             m_transform_previous = transform;
             m_bounding_box_dirty = false;
         }
@@ -480,11 +491,11 @@ namespace spartan
             uint32_t lod_angle = lod_count - 1;
             static const array<float, 5> lod_angle_thresholds =
             {
-                4.0f * math::deg_to_rad,
-                3.0f * math::deg_to_rad,
-                2.5f * math::deg_to_rad,
-                1.7f * math::deg_to_rad,
-                0.86f * math::deg_to_rad
+                4.0f * deg_to_rad,
+                3.0f * deg_to_rad,
+                2.5f * deg_to_rad,
+                1.7f * deg_to_rad,
+                0.86f * deg_to_rad
             };
             float radius          = box.GetExtents().Length();
             float projected_angle = 2.0f * atan(radius / distance);

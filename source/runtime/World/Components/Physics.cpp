@@ -1055,10 +1055,13 @@ namespace spartan
                 shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                 actor->attachShape(*shape);
             }
-            actor->userData = reinterpret_cast<void*>(GetEntity());
 
-            PhysicsWorld::AddActor(actor);
-        
+            if (actor)
+            {
+                actor->userData = reinterpret_cast<void*>(GetEntity());
+                PhysicsWorld::AddActor(actor);
+            }
+
             m_actors[i] = actor;
         }
     }
