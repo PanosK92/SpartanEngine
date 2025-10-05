@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ==============================
 #include "pch.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Implementation.h"
@@ -34,7 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../RHI_VendorTechnology.h"
 #include "../Core/Debugging.h"
-//=====================================
+#include "../World/Components/Renderable.h"
+//=========================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -265,23 +266,39 @@ namespace spartan
                 // instance buffer (binding 1) - for instance transform (matrix) in geometry vertices
                 if (is_geometry_pass_vertex)
                 {
-                    vertex_input_binding_descs.push_back({
+                    // instance buffer (binding 1) - for instance transform (position, rotation, scale)
+                    vertex_input_binding_descs.push_back(
+                    {
                         1,                            // binding
-                        sizeof(math::Matrix),         // stride
+                        sizeof(Instance),             // stride (12 + 16 + 4 = 32 bytes)
                         VK_VERTEX_INPUT_RATE_INSTANCE // input rate
                     });
-            
-                    // add attribute descriptions for instance transform (4 rows of the matrix)
-                    uint32_t base_location = static_cast<uint32_t>(vertex_attribute_descs.size()); // next available location (e.g., 4)
-                    for (uint32_t i = 0; i < 4; i++)
+
+                    // add attribute descriptions for instance data
+                    uint32_t base_location = static_cast<uint32_t>(vertex_attribute_descs.size()); // next available location
+                    vertex_attribute_descs.push_back(
                     {
-                        vertex_attribute_descs.push_back({
-                            base_location + i,                               // location (e.g., 4, 5, 6, 7)
-                            1,                                               // binding (instance buffer)
-                            VK_FORMAT_R32G32B32A32_SFLOAT,                   // format (vec4 per row)
-                            static_cast<uint32_t>(i * sizeof(math::Vector4)) // offset
-                        });
-                    }
+                        base_location + 0,
+                        1,                          // binding
+                        VK_FORMAT_R32G32B32_SFLOAT, // format (vec3 for position)
+                        0                           // offset
+                    });
+
+                    vertex_attribute_descs.push_back(
+                    {
+                        base_location + 1,
+                        1,                             // binding
+                        VK_FORMAT_R32G32B32A32_SFLOAT, // format (quat for rotation)
+                        offsetof(Instance, rotation)   // offset (12 bytes)
+                    });
+
+                    vertex_attribute_descs.push_back(
+                    {
+                        base_location + 2,
+                        1,                        // binding
+                        VK_FORMAT_R32_SFLOAT,     // format (float for scale)
+                        offsetof(Instance, scale) // offset (28 bytes)
+                    });
                 }
             }
             // vertex input state
