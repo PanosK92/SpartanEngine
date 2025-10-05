@@ -265,5 +265,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // project bent normal to world space and normalize
     bent_normal = normalize(view_to_world(normalize(bent_normal), false));
 
+    // when input textures are black/empty, NaNs can appear, in that case, zero out the result
+    bent_normal *= 1.0f - (float) any(isnan(bent_normal));
+    visibility  *= 1.0f - (float) isnan(visibility);
+
     tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }
