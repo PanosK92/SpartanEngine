@@ -64,31 +64,90 @@ struct sun
     }
 };
 
+
 struct stars
 {
-    static float2 hash22(float2 p)
+    static float3 blackbody(float temp)
     {
-        float3 p3  = frac(float3(p.xyx) * float3(0.1031, 0.1030, 0.0973));
-        p3        += dot(p3, p3.yzx + 33.33);
-        return frac((p3.xx + p3.yz) * p3.zy);
+        float3 color = float3(1.0f, 0.0f, 0.0f); // base red to avoid zero
+        temp = clamp(temp, 3000.0f, 15000.0f);   // clamp temp to safe range
+    
+        // green component
+        if (temp < 6600.0f)
+        {
+            color.g = 0.39008157876901960784f * log(temp) - 0.63184144378862745098f;
+        }
+        else
+        {
+            color.g = 1.29293618606274509804f * pow(temp / 1000.0f - 6.0f, -0.1332047592f);
+        }
+    
+        // blue component
+        if (temp < 6600.0f)
+        {
+            color.b = 0.54320678911019607843f * log(temp / 1000.0f - 0.6f) - 1.19625408914f;
+        }
+        else
+        {
+            color.b = 1.12989086089529411765f * pow(temp / 1000.0f - 6.0f, -0.0755148492f);
+        }
+    
+        return max(saturate(color), float3(0.1f, 0.1f, 0.1f));
     }
 
+    static float2 hash22(float2 p)
+    {
+        float3 p3 = frac(float3(p.xyx) * float3(0.1031, 0.1030, 0.0973));
+        p3 += dot(p3, p3.yzx + 33.33);
+        return frac((p3.xx + p3.yz) * p3.zy);
+    }
+    
+    static float gaussian(float2 uv, float2 center, float sigma)
+    {
+        float2 d = uv - center;
+        return exp(-dot(d, d) / (2.0 * sigma * sigma));
+    }
+    
     static float3 compute_color(const float2 uv, const float3 sun_direction)
     {
         float sun_elevation = dot(sun_direction, up_direction);
         bool is_night       = sun_elevation < 0.0;
     
-        float brightness = 0.0;
+        float3 color = 0.0;
         if (is_night)
         {
-            float2 star_uv     = uv * 100.0f;
-            float2 hash        = hash22(star_uv);
-            brightness         = step(0.999f, hash.x);
-            float star_factor  = saturate(-sun_elevation * 10.0f);
-            brightness        *= star_factor;
-        }
+            float2 star_uv    = uv * 100.0f; // controls density
+            float2 cell       = floor(star_uv);
+            float star_factor = saturate(-sun_elevation * 10.0f);
         
-        return float3(brightness, brightness, brightness);
+            // sample 3x3 grid for smoother stars
+            for (int y = -1; y <= 1; y++)
+            {
+                for (int x = -1; x <= 1; x++)
+                {
+                    float2 offset      = float2(x, y);
+                    float2 cell_center = cell + offset + 0.5;
+                    float2 hash        = hash22(cell_center);
+                
+                     // lower threshold for more stars
+                    if (hash.x > 0.97f)
+                    {
+                        float sigma      = 0.02f; // star size
+                        float brightness = gaussian(star_uv, cell_center, sigma);
+                        
+                        // scale brightness to avoid over-brightness
+                        brightness *= (hash.x - 0.98f) * 80.0f; // normalize and boost
+                        
+                        // random temperature for color (4000K to 12000K)
+                        float temp         = lerp(4000.0, 12000.0, hash.y);
+                        float3 star_color  = blackbody(temp) * brightness * star_factor;
+                        color             += star_color;
+                    }
+                }
+            }
+        }
+    
+        return color;
     }
 };
 

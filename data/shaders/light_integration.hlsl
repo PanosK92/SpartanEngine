@@ -126,34 +126,28 @@ float2 integrate_brdf(float n_dot_v, float roughness)
     return float2(A, B);
 }
 
-float2 fibonacci_spiral(uint i, uint N)
-{
-    const float PHI   = 1.61803398874989484820459;
-    float t           = float(i) + 0.5;
-    float r           = sqrt(t / float(N));
-    float theta       = 2.0 * PI * frac(t * PHI);
-    return float2(r * cos(theta), r * sin(theta));
-}
-
 float3 prefilter_environment(float2 uv)
 {
-    float resolution      = 2048.0;
-    float base_resolution = 512.0;
-    float intensity_gain  = 2.5f;
-    uint mip_level        = pass_get_f3_value().x;
-    uint mip_count        = pass_get_f3_value().y;
-    const uint sample_count = 256 / max(mip_level, 1);
-    float roughness       = (float)mip_level / (float)(mip_count - 1);
+    float resolution        = 4096.0; // match skysphere width
+    float base_resolution   = 2048.0; // match skysphere height
+    float intensity_gain    = 2.5f;
+    uint mip_level          = pass_get_f3_value().x;
+    uint mip_count          = pass_get_f3_value().y;
+    const uint sample_count = 512 / max(mip_level, 1);
+    float roughness         = (float)mip_level / (float)(mip_count - 1);
+    
     // convert spherical uv to direction
-    float phi             = uv.x * 2.0 * PI;
-    float theta           = (1.0f - uv.y) * PI;
-    float3 V              = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
-    float3 N              = V;
-    float3 color          = 0.0f;
-    float total_weight    = 0.0;
+    float phi              = uv.x * 2.0 * PI;
+    float theta            = (1.0f - uv.y) * PI;
+    float3 V               = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
+    float3 N               = V;
+
+    // filter
+    float3 color           = 0.0f;
+    float total_weight     = 0.0;
     for (uint i = 0; i < sample_count; i++)
     {
-        float2 Xi      = fibonacci_spiral(i, sample_count);
+        float2 Xi      = hammersley(i, sample_count);
         float3 H       = importance_sample_ggx(Xi, N, roughness);
         float3 L       = normalize(2.0 * dot(V, H) * H - V);
         float n_dot_l  = saturate(dot(N, L));
@@ -167,29 +161,37 @@ float3 prefilter_environment(float2 uv)
             float u        = (phi / (2.0 * PI)) + 0.5;
             u              = fmod(u, 1.0);
             float v        = 1.0 - (theta / PI);
+            
             // PDF-based mip level selection
-            float alpha_ggx= D_GGX_Alpha(roughness);
-            float alpha2   = alpha_ggx * alpha_ggx;
-            float D        = D_GGX(n_dot_h, alpha2);
-            float pdf      = (D * n_dot_h / (4.0 * h_dot_v)) + 0.0001;
-            float sa_texel = 4.0 * PI / (6.0 * base_resolution * base_resolution);
-            float sa_sample= 1.0 / (float(sample_count) * pdf + 0.0001);
+            float alpha_ggx  = D_GGX_Alpha(roughness);
+            float alpha2     = alpha_ggx * alpha_ggx;
+            float D          = D_GGX(n_dot_h, alpha2);
+            float pdf        = (D * n_dot_h / (4.0 * h_dot_v)) + 0.0001;
+            
+            float sa_texel   = 4.0 * PI / (base_resolution * base_resolution);
+            float sa_sample  = 1.0 / (float(sample_count) * pdf + 0.0001);
             float mip_sample = roughness == 0.0 ? 0.0 : 0.5 * log2(sa_sample / sa_texel);
+            
             // adjust mip_sample based on the resolution difference
             float resolution_factor = log2(resolution / base_resolution);
-            mip_sample     = max(0.0, mip_sample - resolution_factor);
+            mip_sample              = max(0.0, mip_sample - resolution_factor);
+            
             // clamp mip_sample to valid range
-            mip_sample     = clamp(mip_sample, 0.0, float(mip_count - 1));
+            mip_sample = clamp(mip_sample, 0.0, float(mip_count - 1));
+            
             // sample from the calculated mip level
             float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_sample).rgb;
+            
             // apply tone mapping to reduce the impact of very bright spots (e.g. sun)
-            sample_color   = sample_color / (1.0 + luminance(sample_color));
+            sample_color = sample_color / (1.0 + luminance(sample_color));
+            
             // clamp the sample color to reduce outliers
-            sample_color   = min(sample_color, 10.0);
+            sample_color = min(sample_color, 10.0);
+            
             // apply intensity gain to counteract the attenuation from the tone mapping
-            sample_color  *= intensity_gain;
-            color         += sample_color * n_dot_l;
-            total_weight  += n_dot_l;
+            sample_color *= intensity_gain;
+            color        += sample_color * n_dot_l;
+            total_weight += n_dot_l;
         }
     }
     return total_weight > 0.0 ? color / total_weight : float3(1.0, 0.0, 1.0);

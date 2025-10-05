@@ -34,6 +34,27 @@ namespace spartan
 {
     class Material;
 
+    struct Instance
+    {
+        math::Vector3 position;    // 12 bytes
+        math::Quaternion rotation; // 16 bytes
+        float scale;               // 4 bytes
+
+        // convert to matrix
+        math::Matrix GetMatrix() const
+        {
+            return math::Matrix::CreateScale(scale) * math::Matrix::CreateRotation(rotation) * math::Matrix::CreateTranslation(position);
+        }
+
+        // set from matrix
+        void SetMatrix(const math::Matrix& matrix)
+        {
+            position = matrix.GetTranslation();
+            rotation = matrix.GetRotation();
+            scale    = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
+        }
+    };
+
     enum RenderableFlags : uint32_t
     {
         CastsShadows = 1U << 0
@@ -79,6 +100,7 @@ namespace spartan
         RHI_Buffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
         uint32_t GetInstanceCount()  const    { return m_instances.empty() ? 1 : static_cast<uint32_t>(m_instances.size()); }
         math::Matrix GetInstance(const uint32_t index, const bool to_world);
+        void SetInstances(const std::vector<Instance>& instances);
         void SetInstances(const std::vector<math::Matrix>& transforms);
 
         // render distance
@@ -119,7 +141,7 @@ namespace spartan
         Material* m_material    = nullptr;
 
         // instancing
-        std::vector<math::Matrix> m_instances;
+        std::vector<Instance> m_instances;
         std::shared_ptr<RHI_Buffer> m_instance_buffer;
 
         // misc

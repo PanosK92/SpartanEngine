@@ -29,11 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // vertex buffer input
 struct Vertex_PosUvNorTan
 {
-    float4 position           : POSITION;
-    float2 uv                 : TEXCOORD;
-    float3 normal             : NORMAL;
-    float3 tangent            : TANGENT;
-    matrix instance_transform : INSTANCE_TRANSFORM;
+    float4 position          : POSITION;
+    float2 uv                : TEXCOORD;
+    float3 normal            : NORMAL;
+    float3 tangent           : TANGENT;
+    float3 instance_position : INSTANCE_POSITION;
+    float4 instance_rotation : INSTANCE_ROTATION;
+    float instance_scale     : INSTANCE_SCALE;
 };
 
 // vertex buffer output
@@ -53,12 +55,12 @@ float remap(float value, float inMin, float inMax, float outMin, float outMax)
     return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
 }
 
-static float3 extract_position(matrix transform)
+float3 extract_position(matrix transform)
 {
     return float3(transform._31, transform._32, transform._33);
 }
 
-static float3x3 rotation_matrix(float3 axis, float angle)
+float3x3 rotation_matrix(float3 axis, float angle)
 {
     float c = cos(angle);
     float s = sin(angle);
@@ -79,6 +81,35 @@ static float3x3 rotation_matrix(float3 axis, float angle)
         t * axis.y * axis.z + s * axis.x,
         t * axis.z * axis.z + c
     );
+}
+
+float4x4 instance_to_matrix(float3 instance_position, float4 instance_rotation, float instance_scale, matrix entity_transform)
+{
+    // quaternion to rotation matrix
+    float xx = instance_rotation.x * instance_rotation.x;
+    float xy = instance_rotation.x * instance_rotation.y;
+    float xz = instance_rotation.x * instance_rotation.z;
+    float xw = instance_rotation.x * instance_rotation.w;
+    float yy = instance_rotation.y * instance_rotation.y;
+    float yz = instance_rotation.y * instance_rotation.z;
+    float yw = instance_rotation.y * instance_rotation.w;
+    float zz = instance_rotation.z * instance_rotation.z;
+    float zw = instance_rotation.z * instance_rotation.w;
+
+    float3x3 rotation = float3x3(
+        1 - 2 * (yy + zz), 2 * (xy - zw), 2 * (xz + yw),
+        2 * (xy + zw), 1 - 2 * (xx + zz), 2 * (yz - xw),
+        2 * (xz - yw), 2 * (yz + xw), 1 - 2 * (xx + yy)
+    );
+
+    // scale, rotation, translation
+    float4x4 transform = float4x4(
+        float4(rotation._11 * instance_scale, rotation._12 * instance_scale, rotation._13 * instance_scale, 0),
+        float4(rotation._21 * instance_scale, rotation._22 * instance_scale, rotation._23 * instance_scale, 0),
+        float4(rotation._31 * instance_scale, rotation._32 * instance_scale, rotation._33 * instance_scale, 0),
+        float4(instance_position, 1)
+    );
+    return mul(transform, entity_transform);
 }
 
 struct vertex_processing
@@ -204,7 +235,7 @@ struct vertex_processing
             float bend_amount       = length(horizontal_offset + vertical_offset) * 0.5f * height_factor;
             float3 bend_dir         = normalize(horizontal_offset + vertical_offset * 0.5f); // bias toward horizontal
             vertex.normal          += bend_dir * bend_amount;
-            vertex.normal          = normalize(vertex.normal);
+            vertex.normal           = normalize(vertex.normal);
             vertex.tangent         += bend_dir * bend_amount * 0.5f;
             vertex.tangent          = normalize(vertex.tangent);
         }
@@ -235,8 +266,8 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
   
     // transform to world space
-    transform                 = mul(input.instance_transform, transform); // identity for non-instanced
-    matrix transform_previous = mul(input.instance_transform, pass_get_transform_previous());
+    transform                 = instance_to_matrix(input.instance_position, input.instance_rotation, input.instance_scale, transform);
+    matrix transform_previous = instance_to_matrix(input.instance_position, input.instance_rotation, input.instance_scale, pass_get_transform_previous());
     float3 position           = mul(input.position, transform).xyz;
     float3 position_previous  = mul(input.position, transform_previous).xyz;
     vertex.normal             = normalize(mul(input.normal, (float3x3)transform));
