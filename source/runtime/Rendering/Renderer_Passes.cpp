@@ -157,7 +157,7 @@ namespace spartan
             Pass_Light_ImageBased(cmd_list_graphics_present);
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
             
-            Pass_ApplyFoam(cmd_list_graphics_present);
+            //Pass_ApplyFoam(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
@@ -1051,7 +1051,6 @@ namespace spartan
         RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
-        //RHI_Texture* slope_map            = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
         cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 
@@ -1075,8 +1074,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
-
-            //cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
 
             // render
             cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
