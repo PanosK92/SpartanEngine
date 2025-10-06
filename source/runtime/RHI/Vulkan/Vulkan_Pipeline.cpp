@@ -271,7 +271,6 @@ namespace spartan
                     vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R32G32B32_SFLOAT, 0 );
                     vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R32_UINT,         offsetof(Instance, rotation));
                     vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT,       offsetof(Instance, scale) );
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,          offsetof(Instance, is_identity) );
                 }
             }
             // vertex input state

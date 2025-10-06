@@ -36,12 +36,11 @@ struct Vertex_PosUvNorTan
     float3 instance_position : INSTANCE_POSITION;
     uint instance_rotation   : INSTANCE_ROTATION;
     half instance_scale      : INSTANCE_SCALE;
-    uint is_identity         : INSTANCE_IS_IDENTITY;
 };
 
-float4x4 compose_instance_transform(float3 instance_position, uint instance_rotation, half instance_scale, uint is_identity)
+float4x4 compose_instance_transform(float3 instance_position, uint instance_rotation, half instance_scale)
 {
-    if (is_identity)
+    if (!any(instance_position) && instance_rotation == 0.0f && instance_scale == 0.0f)
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
     
     // compose quaternion
@@ -289,7 +288,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
   
     // transform to world space
-    matrix instance           = compose_instance_transform(input.instance_position, input.instance_rotation, input.instance_scale, input.is_identity);
+    matrix instance           = compose_instance_transform(input.instance_position, input.instance_rotation, input.instance_scale);
     transform                 = mul(instance, transform);
     matrix transform_previous = mul(instance, pass_get_transform_previous());
     float3 position           = mul(input.position, transform).xyz;

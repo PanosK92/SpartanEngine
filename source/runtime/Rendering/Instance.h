@@ -28,21 +28,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    #pragma pack(push, 1)
     struct Instance
     {
         math::Vector3 position; // 12 bytes
         uint32_t rotation;      // 4 bytes
         uint16_t scale;         // 2 bytes
-        uint8_t is_identity;    // 1 byte
 
         math::Matrix GetMatrix() const
         {
-            if (is_identity)
-                return math::Matrix::Identity;
-
             float scale_float     = half_to_float(scale);
             math::Quaternion quat = decode_quaternion(rotation);
-
             return math::Matrix::CreateScale(scale_float) *
                    math::Matrix::CreateRotation(quat) *
                    math::Matrix::CreateTranslation(position);
@@ -55,16 +51,14 @@ namespace spartan
             rotation              = encode_quaternion(quat);
             float scale_avg       = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
             scale                 = float_to_half(scale_avg);
-            is_identity           = 0;
         }
 
         static Instance GetIdentity()
         {
             Instance instance;
-            instance.position    = math::Vector3::Zero;
-            instance.rotation    = encode_quaternion(math::Quaternion::Identity);
-            instance.scale       = float_to_half(1.0f);
-            instance.is_identity = true;
+            instance.position = math::Vector3::Zero;
+            instance.rotation = 0;
+            instance.scale    = 0;
 
             return instance;
         }
@@ -178,4 +172,5 @@ namespace spartan
             return math::Quaternion(a, b, largest, c);
         }
     };
+    #pragma pack(pop)
 }
