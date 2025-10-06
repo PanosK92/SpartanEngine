@@ -35,7 +35,7 @@ struct Vertex_PosUvNorTan
     float3 tangent           : TANGENT;
     float3 instance_position : INSTANCE_POSITION;
     float4 instance_rotation : INSTANCE_ROTATION;
-    float instance_scale     : INSTANCE_SCALE;
+    half instance_scale      : INSTANCE_SCALE;
 };
 
 // vertex buffer output
@@ -83,7 +83,7 @@ float3x3 rotation_matrix(float3 axis, float angle)
     );
 }
 
-float4x4 instance_to_matrix(float3 instance_position, float4 instance_rotation, float instance_scale, matrix entity_transform)
+float4x4 instance_to_matrix(float3 instance_position, float4 instance_rotation, half instance_scale, matrix entity_transform)
 {
     // quaternion to rotation matrix
     float xx = instance_rotation.x * instance_rotation.x;
@@ -95,18 +95,17 @@ float4x4 instance_to_matrix(float3 instance_position, float4 instance_rotation, 
     float yw = instance_rotation.y * instance_rotation.w;
     float zz = instance_rotation.z * instance_rotation.z;
     float zw = instance_rotation.z * instance_rotation.w;
-
     float3x3 rotation = float3x3(
         1 - 2 * (yy + zz), 2 * (xy - zw), 2 * (xz + yw),
         2 * (xy + zw), 1 - 2 * (xx + zz), 2 * (yz - xw),
         2 * (xz - yw), 2 * (yz + xw), 1 - 2 * (xx + yy)
     );
-
     // scale, rotation, translation
+    float scale = float(instance_scale); // explicit cast for clarity
     float4x4 transform = float4x4(
-        float4(rotation._11 * instance_scale, rotation._12 * instance_scale, rotation._13 * instance_scale, 0),
-        float4(rotation._21 * instance_scale, rotation._22 * instance_scale, rotation._23 * instance_scale, 0),
-        float4(rotation._31 * instance_scale, rotation._32 * instance_scale, rotation._33 * instance_scale, 0),
+        float4(rotation._11 * scale, rotation._12 * scale, rotation._13 * scale, 0),
+        float4(rotation._21 * scale, rotation._22 * scale, rotation._23 * scale, 0),
+        float4(rotation._31 * scale, rotation._32 * scale, rotation._33 * scale, 0),
         float4(instance_position, 1)
     );
     return mul(transform, entity_transform);

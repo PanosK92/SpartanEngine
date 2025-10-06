@@ -263,14 +263,13 @@ namespace spartan
                     }
                 }
             
-                // instance buffer (binding 1) - for instance transform (matrix) in geometry vertices
+                // instance buffer (binding 1) - for instance transform (position, rotation, scale)
                 if (is_geometry_pass_vertex)
                 {
-                    // instance buffer (binding 1) - for instance transform (position, rotation, scale)
                     vertex_input_binding_descs.push_back(
                     {
                         1,                            // binding
-                        sizeof(Instance),             // stride (12 + 16 + 4 = 32 bytes)
+                        sizeof(Instance),             // stride (12 + 16 + 2 = 30 bytes)
                         VK_VERTEX_INPUT_RATE_INSTANCE // input rate
                     });
 
@@ -296,7 +295,7 @@ namespace spartan
                     {
                         base_location + 2,
                         1,                        // binding
-                        VK_FORMAT_R32_SFLOAT,     // format (float for scale)
+                        VK_FORMAT_R16_SFLOAT,     // format (half for scale)
                         offsetof(Instance, scale) // offset (28 bytes)
                     });
                 }

@@ -28,32 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/BoundingBox.h"
 #include "../Geometry/Mesh.h"
 #include "../Rendering/Renderer_Definitions.h"
+#include "../../Rendering/Instance.h"
 //============================================
 
 namespace spartan
 {
     class Material;
-
-    struct Instance
-    {
-        math::Vector3 position;    // 12 bytes
-        math::Quaternion rotation; // 16 bytes
-        float scale;               // 4 bytes
-
-        // convert to matrix
-        math::Matrix GetMatrix() const
-        {
-            return math::Matrix::CreateScale(scale) * math::Matrix::CreateRotation(rotation) * math::Matrix::CreateTranslation(position);
-        }
-
-        // set from matrix
-        void SetMatrix(const math::Matrix& matrix)
-        {
-            position = matrix.GetTranslation();
-            rotation = matrix.GetRotation();
-            scale    = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
-        }
-    };
 
     enum RenderableFlags : uint32_t
     {
