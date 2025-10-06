@@ -298,11 +298,29 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         //const float foam_noise = compute_foam_noise(vertex.uv_misc.xy, buffer_frame.time);
         albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
 
-        // display displacement map for debug purposes
-        if (material.ocean_parameters.displacementScale <= -1.0f)
-            albedo = tex2.SampleLevel(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy, 0).rgba;
-        else if (material.ocean_parameters.slopeScale <= -1.0f) // or display slope map
-            albedo = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy);
+        const float2 debug_values = pass_get_f2_value();
+
+        if (debug_values.x == 1.0f) // displacement
+        {
+            if (debug_values.y == 1.0f) // show synthesised version
+            {
+                // first we must synthesise again since we dont have access
+                // to the synthesised displacement (it's calculated in the vertex stage)
+                float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                synthesize(tex2, displacement, world_space_tile_uv, tex_freq, tile_freq);
+
+                albedo = displacement;
+            }
+            else // show original displacement
+                albedo = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgba;
+        }
+        else if (debug_values.x == 2.0f) // slope
+        {
+            if (debug_values.y == 1.0f) // show synthesised version
+                albedo = float4(slope.rgb, 1.0f);
+            else // show original slope
+                albedo = float4(tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgb, 1.0f);
+        }
     }
 
     // apply curved normals for grass blades

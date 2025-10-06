@@ -926,14 +926,14 @@ void Properties::ShowMaterial(Material* material) const
             bool show_displacement = material->GetShowDisplacement();
             ImGui::Checkbox("Show Displacement Map", &show_displacement);
             material->SetShowDiplacement(show_displacement);
-            if (show_displacement)
-                material->SetOceanProperty(OceanParameters::DisplacementScale, -1.0f);
 
             bool show_slope = material->GetShowSlope();
             ImGui::Checkbox("Show Slope Map", &show_slope);
             material->SetShowSlope(show_slope);
-            if (show_slope)
-                material->SetOceanProperty(OceanParameters::SlopeScale, -1.0f);
+
+            bool show_synthesised = material->GetShowSynthesised();
+            ImGui::Checkbox("Show Synthesised Version", &show_synthesised);
+            material->SetShowSynthesised(show_synthesised);
         }
         
         // uv

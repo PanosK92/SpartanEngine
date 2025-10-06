@@ -179,11 +179,6 @@ namespace spartan
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
-        bool IsOcean() const { return GetProperty(MaterialProperty::IsOcean) == 1.0f; }
-        void SetShowDiplacement(bool show) { m_show_displacement = show; }
-        bool GetShowDisplacement() const { return m_show_displacement; }
-        void SetShowSlope(bool show) { m_show_slope = show; }
-        bool GetShowSlope() const { return m_show_slope; }
 
         // misc
         void PrepareForGpu();
@@ -200,6 +195,13 @@ namespace spartan
         uint32_t GetOceanVerticesCount() const { return m_ocean_vertices_count; }
         void SetOceanTileSize(const float size) { m_ocean_tile_size = size; }
         float GetOceanTileSize() const { return m_ocean_tile_size; }
+        bool IsOcean() const { return GetProperty(MaterialProperty::IsOcean) == 1.0f; }
+        void SetShowDiplacement(bool show) { m_show_displacement = show; }
+        bool GetShowDisplacement() const { return m_show_displacement; }
+        void SetShowSlope(bool show) { m_show_slope = show; }
+        bool GetShowSlope() const { return m_show_slope; }
+        void SetShowSynthesised(bool show) { m_show_synthesised = show; }
+        bool GetShowSynthesised() const { return m_show_synthesised; }
 
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
         const std::array<float, static_cast<uint32_t>(OceanParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
@@ -214,6 +216,7 @@ namespace spartan
         bool m_should_compute_spectrum = true;
         bool m_show_displacement = false;
         bool m_show_slope = false;
+        bool m_show_synthesised = false;
         uint32_t m_ocean_tiles = 1;
         uint32_t m_ocean_vertices_count = 0;
         float m_ocean_tile_size = 0.0f;

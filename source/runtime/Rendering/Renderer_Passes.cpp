@@ -673,43 +673,6 @@ namespace spartan
                     }
                 }
 
-                //// ocean synthesis
-                //if (material->IsOcean())
-                //{
-                //    tile_index++;
-
-                //    cmd_list->BeginTimeblock("Ocean Displacement Map Synthesis");
-
-                //    RHI_Texture* displacement_map         = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
-                //    RHI_Texture* slope_map                = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
-
-                //    RHI_Texture* synthesised_displacement = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
-                //    RHI_Texture* synthesised_slope        = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
-
-                //    displacement_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, rhi_all_mips, 10);
-
-                //    RHI_PipelineState pso2;
-                //    pso2.name = "ocean_displacement_map_synthesis";
-                //    pso2.shaders[Compute] = GetShader(Renderer_Shader::ocean_synthesise_maps_c);
-                //    cmd_list->SetPipelineState(pso2);
-
-                //    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
-                //    cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
-                //    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_displacement, synthesised_displacement);
-                //    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_slope, synthesised_slope);
-
-                //    Vector3 tile_pos = renderable->GetEntity()->GetPosition();
-
-                //    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
-                //    cmd_list->PushConstants(m_pcb_pass_cpu);
-
-                //    cmd_list->Dispatch(synthesised_displacement);
-
-                //    synthesised_slope->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-
-                //    cmd_list->EndTimeblock();
-                //}
-
                 cmd_list->SetPipelineState(pso);
 
                 // pass constants
@@ -723,6 +686,20 @@ namespace spartan
                     {
                         const Vector3 tile_pos = entity->GetPosition();
                         m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+
+                        float debug_maps = 0.0f; // 0.0f = none, 1.0f = displacement, 2.0f = slope
+                        if (material->GetShowDisplacement())
+                            debug_maps = 1.0f;
+                        else if (material->GetShowSlope())
+                            debug_maps = 2.0f;
+
+                        // 0.0f for original displacement/slope
+                        // 1.0f for synthesised displacement/slope
+                        float synthesised_flag = 0.0f;
+                        if (material->GetShowSynthesised())
+                            synthesised_flag = 1.0f;
+
+                        m_pcb_pass_cpu.set_f2_value(debug_maps, synthesised_flag);
                     }
 
                     cmd_list->PushConstants(m_pcb_pass_cpu);
