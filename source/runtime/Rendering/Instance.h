@@ -42,7 +42,7 @@ namespace spartan
             math::Vector3 normal        = decode_octahedral(normal_oct);
             float yaw                   = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
             math::Quaternion quat_yaw(0.0f, std::sin(yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
-            math::Quaternion quat_align = quaternion_from_to(math::Vector3::Up, normal);
+            math::Quaternion quat_align = math::Quaternion::FromLookRotation(normal);
             math::Quaternion quat       = quat_align * quat_yaw;
             float t                     = static_cast<float>(scale_packed) / 255.0f;
             float scale_float           = std::exp(std::lerp(std::log(0.01f), std::log(100.0f), t));
@@ -57,7 +57,7 @@ namespace spartan
             math::Quaternion quat        = matrix.GetRotation();
             math::Vector3 normal         = quat * math::Vector3::Up;
             normal_oct                   = encode_octahedral(normal);
-            math::Quaternion quat_align  = quaternion_from_to(math::Vector3::Up, normal);
+            math::Quaternion quat_align  = math::Quaternion::FromLookRotation(normal);
             math::Quaternion quat_yaw    = quat_align.Conjugate() * quat;
             float half_angle             = std::atan2(quat_yaw.y, quat_yaw.w);
             float yaw                    = half_angle * 2.0f;
@@ -110,22 +110,6 @@ namespace spartan
             math::Vector3 dir(x, y, z);
             dir.Normalize();
             return dir;
-        }
-
-        static math::Quaternion quaternion_from_to(const math::Vector3& from, const math::Vector3& to)
-        {
-            float dot = from.Dot(to);
-            if (dot >= 1.0f - math::epsilon) return math::Quaternion::Identity;
-            if (dot <= -1.0f + math::epsilon)
-            {
-                math::Vector3 axis = from.Cross(math::Vector3::Right);
-                if (axis.LengthSquared() < math::epsilon) axis = from.Cross(math::Vector3::Forward);
-                axis.Normalize();
-                return math::Quaternion(axis.x, axis.y, axis.z, 0.0f);
-            }
-            float s = std::sqrt((1.0f + dot) * 2.0f);
-            math::Vector3 axis = from.Cross(to) / s;
-            return math::Quaternion(axis.x, axis.y, axis.z, s * 0.5f);
         }
 
         // convert float to IEEE 754 half-precision
