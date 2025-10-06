@@ -57,8 +57,8 @@ ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
 }
 
 void ResourceViewer::OnTickVisible()
-{ 
-    auto resources           = ResourceCache::GetByType();
+{
+    auto resources = ResourceCache::GetResources();
     const float memory_usage = ResourceCache::GetMemoryUsage() / 1000.0f / 1000.0f;
 
     ImGui::Text("Resource count: %d, Memory usage: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage));
@@ -68,6 +68,8 @@ void ResourceViewer::OnTickVisible()
         ImGuiTableFlags_Borders           | // Draw all borders.
         ImGuiTableFlags_RowBg             | // Set each RowBg color with ImGuiCol_TableRowBg or ImGuiCol_TableRowBgAlt (equivalent of calling TableSetBgColor with ImGuiTableBgFlags_RowBg0 on each row manually)
         ImGuiTableFlags_Resizable         | // Allow resizing columns.
+        ImGuiTableFlags_Reorderable       | // Allow reordering columns.
+        ImGuiTableFlags_Sortable          | // Allow sorting rows.
         ImGuiTableFlags_ContextMenuInBody | // Right-click on columns body/contents will display table context menu. By default it is available in TableHeadersRow().
         ImGuiTableFlags_ScrollX           | // Enable horizontal scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size. Changes default sizing policy. Because this create a child window, ScrollY is currently generally recommended when using ScrollX.
         ImGuiTableFlags_ScrollY;            // Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
@@ -83,9 +85,52 @@ void ResourceViewer::OnTickVisible()
         ImGui::TableSetupColumn("Size");
         ImGui::TableHeadersRow();
 
+        // --- Sorting logic on column header click ---
+        static int sorted_column = 1; // default sorting by ID
+        static ImGuiSortDirection sort_direction = ImGuiSortDirection_Ascending;
+
+        if (ImGuiTableSortSpecs* table_sort_specs = ImGui::TableGetSortSpecs())
+        {
+            if (table_sort_specs->SpecsDirty)
+            {
+                const ImGuiTableColumnSortSpecs* spec = &table_sort_specs->Specs[0];
+                sorted_column = spec->ColumnIndex;
+                sort_direction = spec->SortDirection;
+                table_sort_specs->SpecsDirty = false;
+            }
+        }
+
+        ranges::sort(resources, [](const shared_ptr<IResource>& a, const shared_ptr<IResource>& b)
+        {
+            const SpartanObject* object_A = dynamic_cast<SpartanObject*>(a.get());
+            const SpartanObject* object_B = dynamic_cast<SpartanObject*>(b.get());
+            if (!object_A || !object_B) return false;
+
+            switch (sorted_column)
+            {
+                case 0: return sort_direction == ImGuiSortDirection_Ascending
+                           ? a->GetResourceType() < b->GetResourceType()
+                           : a->GetResourceType() > b->GetResourceType();
+                case 1: return sort_direction == ImGuiSortDirection_Ascending
+                           ? object_A->GetObjectId() < object_B->GetObjectId()
+                           : object_A->GetObjectId() > object_B->GetObjectId();
+                case 2: return sort_direction == ImGuiSortDirection_Ascending
+                           ? a->GetObjectName() < b->GetObjectName()
+                           : a->GetObjectName() > b->GetObjectName();
+                case 3: return sort_direction == ImGuiSortDirection_Ascending
+                           ? a->GetResourceFilePath() < b->GetResourceFilePath()
+                           : a->GetResourceFilePath() > b->GetResourceFilePath();
+                case 4: return sort_direction == ImGuiSortDirection_Ascending
+                           ? object_A->GetObjectSize() < object_B->GetObjectSize()
+                           : object_A->GetObjectSize() > object_B->GetObjectSize();
+                default: return true;
+            }
+        });
+
+        // --- Draw Row Data ---
         for (const shared_ptr<IResource>& resource : resources)
         {
-            if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
+            if (const SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
             {
                 // Switch row
                 ImGui::TableNextRow();
