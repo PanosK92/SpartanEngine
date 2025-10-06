@@ -295,6 +295,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
 
         // apply foam (foam mask is stored in the alpha channel of slope map)
+        //const float foam_noise = compute_foam_noise(vertex.uv_misc.xy, buffer_frame.time);
         albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
 
         // display displacement map for debug purposes
@@ -303,7 +304,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         else if (material.ocean_parameters.slopeScale <= -1.0f) // or display slope map
             albedo = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy);
     }
-    
 
     // apply curved normals for grass blades
     if (surface.is_grass_blade())

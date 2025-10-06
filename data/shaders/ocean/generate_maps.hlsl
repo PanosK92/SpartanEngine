@@ -56,7 +56,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     OceanParameters params = surface.ocean_parameters;
     
-    float foam = htildeDisplacement.a;
+    float foam = slope_map[thread_id.xy].a;
     foam *= exp(-params.foamDecayRate);
     foam = saturate(foam);
     

@@ -39,4 +39,66 @@ float Dispersion(float kMag, float depth)
     return sqrt(G * kMag * tanh(min(kMag * depth, 20)));
 }
 
+float hash21(float2 p)
+{
+    p = frac(p * float2(123.34f, 456.21f));
+    p += dot(p, p + 78.233f);
+    return frac(p.x * p.y);
+}
+
+float noise_2d(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float a = hash21(i);
+    float b = hash21(i + float2(1.0f, 0.0f));
+    float c = hash21(i + float2(0.0f, 1.0f));
+    float d = hash21(i + float2(1.0f, 1.0f));
+    float2 u = f * f * (3.0f - 2.0f * f);
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+}
+
+float fbm_noise(float2 uv)
+{
+    float val = 0.0f;
+    float amp = 0.5f;
+    float freq = 1.0f;
+    for (int i = 0; i < 5; i++)
+    {
+        val += amp * noise_2d(uv * freq);
+        freq *= 2.0f;
+        amp *= 0.5f;
+    }
+    return val;
+}
+
+float worley(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = frac(p);
+    float min_dist = 1.0f;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            float2 neighbor = float2(x, y);
+            float2 p = hash21(i + neighbor) * float2(1.0f, 1.0f);
+            float2 diff = neighbor + p - f;
+            float d = dot(diff, diff);
+            min_dist = min(min_dist, d);
+        }
+    }
+    return min_dist;
+}
+
+float compute_foam_noise(float2 uv, float time)
+{
+    float2 noise_uv = uv * 32.0f + time * float2(0.1f, 0.05f);
+
+    float fbm = fbm_noise(noise_uv);
+    float bubbles = 1.0f - saturate(sqrt(worley(noise_uv * 2.0f)));
+    
+    return saturate(fbm * bubbles);
+}
+
 #endif // SPARTAN_COMMON_OCEAN
