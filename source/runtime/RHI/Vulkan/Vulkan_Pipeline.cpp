@@ -266,38 +266,11 @@ namespace spartan
                 // instance buffer (binding 1) - for instance transform (position, rotation, scale)
                 if (is_geometry_pass_vertex)
                 {
-                    vertex_input_binding_descs.push_back(
-                    {
-                        1,                            // binding
-                        sizeof(Instance),             // stride (12 + 16 + 2 = 30 bytes)
-                        VK_VERTEX_INPUT_RATE_INSTANCE // input rate
-                    });
-
-                    // add attribute descriptions for instance data
+                    vertex_input_binding_descs.push_back({ 1, sizeof(Instance), VK_VERTEX_INPUT_RATE_INSTANCE });
                     uint32_t base_location = static_cast<uint32_t>(vertex_attribute_descs.size()); // next available location
-                    vertex_attribute_descs.push_back(
-                    {
-                        base_location + 0,
-                        1,                          // binding
-                        VK_FORMAT_R32G32B32_SFLOAT, // format (vec3 for position)
-                        0                           // offset
-                    });
-
-                    vertex_attribute_descs.push_back(
-                    {
-                        base_location + 1,
-                        1,                             // binding
-                        VK_FORMAT_R32G32B32A32_SFLOAT, // format (quat for rotation)
-                        offsetof(Instance, rotation)   // offset (12 bytes)
-                    });
-
-                    vertex_attribute_descs.push_back(
-                    {
-                        base_location + 2,
-                        1,                        // binding
-                        VK_FORMAT_R16_SFLOAT,     // format (half for scale)
-                        offsetof(Instance, scale) // offset (28 bytes)
-                    });
+                    vertex_attribute_descs.push_back({ base_location + 0, 1, VK_FORMAT_R32G32B32_SFLOAT, 0 });
+                    vertex_attribute_descs.push_back({ base_location + 1, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Instance, rotation) });
+                    vertex_attribute_descs.push_back({ base_location + 2, 1, VK_FORMAT_R16_SFLOAT,       offsetof(Instance, scale) });
                 }
             }
             // vertex input state

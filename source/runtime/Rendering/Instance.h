@@ -30,24 +30,28 @@ namespace spartan
 {
     struct Instance
     {
-        math::Vector3 position;    // 12 bytes
-        math::Quaternion rotation; // 16 bytes
-        uint16_t scale;            // 2 bytes (half)
+        math::Vector3 position; // 12 bytes
+        math::Vector3 rotation; // 12 bytes
+        uint16_t scale;         // 2 bytes
 
         math::Matrix GetMatrix() const
         {
             float scale_float = half_to_float(scale);
+            float w           = sqrtf(std::max(0.0f, 1.0f - rotation.LengthSquared()));
+            math::Quaternion quat(rotation.x, rotation.y, rotation.z, w);
+
             return math::Matrix::CreateScale(scale_float) *
-                   math::Matrix::CreateRotation(rotation) *
+                   math::Matrix::CreateRotation(quat) *
                    math::Matrix::CreateTranslation(position);
         }
 
         void SetMatrix(const math::Matrix& matrix)
         {
-            position        = matrix.GetTranslation();
-            rotation        = matrix.GetRotation();
-            float scale_avg = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
-            scale           = float_to_half(scale_avg);
+            position              = matrix.GetTranslation();
+            math::Quaternion quat = matrix.GetRotation();
+            rotation              = math::Vector3(quat.x, quat.y, quat.z);
+            float scale_avg       = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
+            scale                 = float_to_half(scale_avg);
         }
 
         // convert float to IEEE 754 half-precision
