@@ -239,10 +239,6 @@ namespace spartan
                 render_target(Renderer_RenderTarget::ocean_displacement_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 10, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_PerMipViews, "ocean_displacement_map");
 
                 render_target(Renderer_RenderTarget::ocean_slope_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 10, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_PerMipViews, "ocean_slope_map");
-
-                render_target(Renderer_RenderTarget::ocean_synthesised_displacement) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_synthesised_displacement_map");
-
-                render_target(Renderer_RenderTarget::ocean_synthesised_slope) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ocean_synthesised_slope_map");
             }
 
             // occlusion
@@ -412,9 +408,6 @@ namespace spartan
 
             shader(Renderer_Shader::ocean_generate_maps_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::ocean_generate_maps_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\generate_maps.hlsl", false);
-
-            shader(Renderer_Shader::ocean_synthesise_maps_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::ocean_synthesise_maps_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\synthesise_maps.hlsl", false);
         }
 
         // blur

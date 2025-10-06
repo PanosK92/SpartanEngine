@@ -197,7 +197,6 @@ namespace spartan
         ocean_horizontal_fft_c,
         ocean_vertical_fft_c,
         ocean_generate_maps_c,
-        ocean_synthesise_maps_c,
         max
     };
     
@@ -237,8 +236,6 @@ namespace spartan
         ocean_slope_spectrum,
         ocean_displacement_map,
         ocean_slope_map,
-        ocean_synthesised_displacement,
-        ocean_synthesised_slope,
         max
     };
 

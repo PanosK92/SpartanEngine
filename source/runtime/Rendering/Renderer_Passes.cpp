@@ -673,42 +673,42 @@ namespace spartan
                     }
                 }
 
-                // ocean synthesis
-                if (material->IsOcean())
-                {
-                    tile_index++;
+                //// ocean synthesis
+                //if (material->IsOcean())
+                //{
+                //    tile_index++;
 
-                    cmd_list->BeginTimeblock("Ocean Displacement Map Synthesis");
+                //    cmd_list->BeginTimeblock("Ocean Displacement Map Synthesis");
 
-                    RHI_Texture* displacement_map         = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
-                    RHI_Texture* slope_map                = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+                //    RHI_Texture* displacement_map         = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                //    RHI_Texture* slope_map                = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
-                    RHI_Texture* synthesised_displacement = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
-                    RHI_Texture* synthesised_slope        = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
+                //    RHI_Texture* synthesised_displacement = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
+                //    RHI_Texture* synthesised_slope        = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
 
-                    displacement_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, rhi_all_mips, 10);
+                //    displacement_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list, rhi_all_mips, 10);
 
-                    RHI_PipelineState pso2;
-                    pso2.name = "ocean_displacement_map_synthesis";
-                    pso2.shaders[Compute] = GetShader(Renderer_Shader::ocean_synthesise_maps_c);
-                    cmd_list->SetPipelineState(pso2);
+                //    RHI_PipelineState pso2;
+                //    pso2.name = "ocean_displacement_map_synthesis";
+                //    pso2.shaders[Compute] = GetShader(Renderer_Shader::ocean_synthesise_maps_c);
+                //    cmd_list->SetPipelineState(pso2);
 
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
-                    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_displacement, synthesised_displacement);
-                    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_slope, synthesised_slope);
+                //    cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                //    cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
+                //    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_displacement, synthesised_displacement);
+                //    cmd_list->SetTexture(Renderer_BindingsUav::ocean_synthesised_slope, synthesised_slope);
 
-                    Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+                //    Vector3 tile_pos = renderable->GetEntity()->GetPosition();
 
-                    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                //    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                //    cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                    cmd_list->Dispatch(synthesised_displacement);
+                //    cmd_list->Dispatch(synthesised_displacement);
 
-                    synthesised_slope->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+                //    synthesised_slope->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
 
-                    cmd_list->EndTimeblock();
-                }
+                //    cmd_list->EndTimeblock();
+                //}
 
                 cmd_list->SetPipelineState(pso);
 
@@ -718,6 +718,13 @@ namespace spartan
                     m_pcb_pass_cpu.transform = entity->GetMatrix();
                     m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+
+                    if (material->IsOcean())
+                    {
+                        const Vector3 tile_pos = entity->GetPosition();
+                        m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                    }
+
                     cmd_list->PushConstants(m_pcb_pass_cpu);
     
                     entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
@@ -731,14 +738,11 @@ namespace spartan
 
                     if (material->IsOcean())
                     {
-                        if (!material->GetShowDisplacement() && !material->GetShowSlope())
-                        {
-                            RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_displacement);
-                            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
 
-                            RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_synthesised_slope);
-                            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
-                        }
+                        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
                     }
 
                     cmd_list->DrawIndexed(

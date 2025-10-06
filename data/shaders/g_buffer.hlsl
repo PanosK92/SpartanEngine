@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "common.hlsl"
+#include "ocean/synthesise_maps.hlsl"
 //====================
 
 struct gbuffer
@@ -28,9 +29,6 @@ struct gbuffer
     float4 material : SV_Target2;
     float2 velocity : SV_Target3;
 };
-
-//Texture2D<float4> displacement_map : register(t17);
-Texture2D<float4> slope_map : register(t18);
 
 // rotate UV around center (0.5, 0.5) by angle
 float2 rotate_uv(float2 uv, float angle)
@@ -104,7 +102,19 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     MaterialParameters material = GetMaterial();
 
     if (material.ocean_parameters.displacementScale > -1.0f)
-        input.position.xyz += tex2.SampleLevel(samplers[sampler_point_clamp], input.uv, 0).rgb * material.ocean_parameters.displacementScale;
+    {
+        const float3 pass_values = pass_get_f3_value();
+        const float2 tile_xz_pos = pass_values.xy;
+        const float tile_size = pass_values.z;
+        const float2 world_space_tile_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
+
+        const float tex_freq = 1.0f;
+        const float tile_freq = 2.0f;
+        
+        float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        synthesize(tex2, displacement, world_space_tile_uv, tex_freq, tile_freq);
+        input.position.xyz += displacement * material.ocean_parameters.displacementScale;
+    }
     
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
@@ -270,7 +280,18 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
     else if (surface.is_ocean())
     {
-        float4 slope = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy) * material.ocean_parameters.slopeScale;
+        const float3 pass_values = pass_get_f3_value();
+        const float2 tile_xz_pos = pass_values.xy;
+        const float tile_size = pass_values.z;
+        const float2 world_space_tile_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, tile_xz_pos, tile_size);
+
+        const float tex_freq = 1.0f;
+        const float tile_freq = 2.0f;
+        
+        float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        synthesize(tex3, slope, world_space_tile_uv, tex_freq, tile_freq);
+        
+        slope = slope * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
 
         // apply foam (foam mask is stored in the alpha channel of slope map)

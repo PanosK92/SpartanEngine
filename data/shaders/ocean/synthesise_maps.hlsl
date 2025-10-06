@@ -69,7 +69,7 @@ float4 get_texture_sample(Texture2D texture, float2 pos, float freq, float2 node
     const float3 hash = hash33(float3(node_point.xy, 0.0f));
 
     const float2 uv = pos * freq + hash.yz;
-    return texture.SampleLevel(samplers[sampler_point_wrap], uv, 0);
+    return texture.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
 }
 
 void preserve_variance(out float4 linear_color, float4 mean_color, float moment2)
@@ -95,35 +95,42 @@ void synthesize(Texture2D example, out float4 output, float2 uv, float tex_freq,
     preserve_variance(output, mean_example, moment2);
 }
 
-[numthreads(8, 8, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+float2 ocean_get_world_space_uvs(float2 uv, float2 tile_xz_pos, float tile_size)
 {
-    const uint2 pixel_coord = thread_id.xy;
-    uint2 texture_size;
-    synthesised_displacement.GetDimensions(texture_size.x, texture_size.y);
-    
-    float2 uv = (pixel_coord + 0.5f) / texture_size;
-
-    const float3 pass_values = pass_get_f3_value();
-    const float2 tile_xz_pos = pass_values.xy;
-    const float tile_size = pass_values.z;
-
     const float2 tile_origin_uv_space = float2(tile_xz_pos.x / tile_size, tile_xz_pos.y / tile_size);
 
-    uv = tile_origin_uv_space + uv;
-    
-    const float tex_freq = 1.0f;
-    const float tile_freq = 2.0f;
-
-    float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    synthesize(tex2, displacement, uv, tex_freq, tile_freq);
-    
-    float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    synthesize(tex3, slope, uv, tex_freq, tile_freq);
-
-    synthesised_displacement[thread_id.xy] = displacement;
-    synthesised_slope[thread_id.xy] = slope;
-    
-	//synthesised_displacement[thread_id.xy] = tex2[thread_id.xy];
-    //synthesised_slope[thread_id.xy] = tex3[thread_id.xy];
+    return tile_origin_uv_space + uv;
 }
+
+//[numthreads(8, 8, 1)]
+//void main_cs(uint3 thread_id : SV_DispatchThreadID)
+//{
+//    const uint2 pixel_coord = thread_id.xy;
+//    uint2 texture_size;
+//    synthesised_displacement.GetDimensions(texture_size.x, texture_size.y);
+    
+//    float2 uv = (pixel_coord + 0.5f) / texture_size;
+
+//    const float3 pass_values = pass_get_f3_value();
+//    const float2 tile_xz_pos = pass_values.xy;
+//    const float tile_size = pass_values.z;
+
+//    const float2 tile_origin_uv_space = float2(tile_xz_pos.x / tile_size, tile_xz_pos.y / tile_size);
+
+//    uv = tile_origin_uv_space + uv;
+    
+//    const float tex_freq = 1.0f;
+//    const float tile_freq = 2.0f;
+
+//    float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
+//    synthesize(tex2, displacement, uv, tex_freq, tile_freq);
+    
+//    float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
+//    synthesize(tex3, slope, uv, tex_freq, tile_freq);
+
+//    synthesised_displacement[thread_id.xy] = displacement;
+//    synthesised_slope[thread_id.xy] = slope;
+    
+//	//synthesised_displacement[thread_id.xy] = tex2[thread_id.xy];
+//    //synthesised_slope[thread_id.xy] = tex3[thread_id.xy];
+//}
