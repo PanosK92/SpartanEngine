@@ -86,7 +86,7 @@ void ResourceViewer::OnTickVisible()
         ImGui::TableHeadersRow();
 
         // --- Sorting logic on column header click ---
-        static int sorted_column                 = 1; // first sorting method by ID
+        static int sorted_column                 = 1; // default sorting method by ID
         static ImGuiSortDirection sort_direction = ImGuiSortDirection_None;
 
         if (ImGuiTableSortSpecs* table_sort_specs = ImGui::TableGetSortSpecs())
@@ -109,20 +109,20 @@ void ResourceViewer::OnTickVisible()
             switch (sorted_column)
             {
                 case 0: return sort_direction == ImGuiSortDirection_Ascending
-                           ? a->GetResourceType() < b->GetResourceType()
-                           : a->GetResourceType() > b->GetResourceType();
+                                ? a->GetResourceType() < b->GetResourceType()
+                                : a->GetResourceType() > b->GetResourceType();
                 case 1: return sort_direction == ImGuiSortDirection_Ascending
-                           ? object_A->GetObjectId() < object_B->GetObjectId()
-                           : object_A->GetObjectId() > object_B->GetObjectId();
+                                ? object_A->GetObjectId() < object_B->GetObjectId()
+                                : object_A->GetObjectId() > object_B->GetObjectId();
                 case 2: return sort_direction == ImGuiSortDirection_Ascending
-                           ? a->GetObjectName() < b->GetObjectName()
-                           : a->GetObjectName() > b->GetObjectName();
+                                ? a->GetObjectName() < b->GetObjectName()
+                                : a->GetObjectName() > b->GetObjectName();
                 case 3: return sort_direction == ImGuiSortDirection_Ascending
-                           ? a->GetResourceFilePath() < b->GetResourceFilePath()
-                           : a->GetResourceFilePath() > b->GetResourceFilePath();
+                                ? a->GetResourceFilePath() < b->GetResourceFilePath()
+                                : a->GetResourceFilePath() > b->GetResourceFilePath();
                 case 4: return sort_direction == ImGuiSortDirection_Ascending
-                           ? object_A->GetObjectSize() < object_B->GetObjectSize()
-                           : object_A->GetObjectSize() > object_B->GetObjectSize();
+                                ? object_A->GetObjectSize() < object_B->GetObjectSize()
+                                : object_A->GetObjectSize() > object_B->GetObjectSize();
                 default: return true;
             }
         });
