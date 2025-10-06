@@ -44,6 +44,7 @@ namespace spartan::math
     constexpr float pi_inv     = 0.31830988618f;
     constexpr float deg_to_rad = pi / 180.0f;
     constexpr float rad_to_deg = 180.0f / pi;
+    constexpr float epsilon    = 1e-5f;
 
     template <typename T>
     constexpr T saturate(T x) { return std::clamp<T>(x, static_cast<T>(0), static_cast<T>(1)); }

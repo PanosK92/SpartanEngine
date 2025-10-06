@@ -418,7 +418,7 @@ namespace
         const WorldEntry worlds[] =
         {
             { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech.", "Complete" , "Light",          4000 },
-            { "Open World Forest", "Millions of Ghost of Tsushima grass blades.",                         "Prototype", "Very demanding", 6900 },
+            { "Open World Forest", "Millions of Ghost of Tsushima grass blades.",                         "Prototype", "Very demanding", 6800 },
             { "Liminal Space",     "Shifts your frequency to a nearby reality.",                          "Prototype", "Light",          2048 },
             { "Sponza 4K",         "High-resolution textures & meshes.",                                  "Complete" , "Demanding",      5000 },
             { "Subway",            "GI test. No lights, only emissive textures.",                         "Complete" , "Moderate",       5000 },
