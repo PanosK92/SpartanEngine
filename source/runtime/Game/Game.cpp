@@ -1722,7 +1722,7 @@ namespace spartan
 
         namespace ocean
         {
-            uint32_t ocean_tile_count = 2;
+            uint32_t ocean_tile_count = 6;
             float tile_size = 128.0f;
             uint32_t vertices_count = 512;
             shared_ptr<Material> material = make_shared<Material>();
@@ -1843,6 +1843,14 @@ namespace spartan
                         }
                     }
                 }
+
+                Vector3 camera_pos = default_camera->GetPosition();
+
+                //Vector3 ocean_pos = default_ocean->GetPosition();
+                //Vector3 new_ocean_pos = ocean_pos;
+                //new_ocean_pos.x = camera_pos.x;
+                //new_ocean_pos.z = camera_pos.z;
+                //default_ocean->SetPosition(new_ocean_pos);
             }
 
             void on_shutdown()
