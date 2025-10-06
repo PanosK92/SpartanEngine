@@ -309,7 +309,9 @@ void RenderOptions::OnTickVisible()
                 if (option("Display"))
                 {
                     option_check_box("HDR", Renderer_Option::Hdr, "Enable high dynamic range output");
+                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr));
                     option_value("Gamma", Renderer_Option::Gamma);
+                    ImGui::EndDisabled();
                     option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
 
                     bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);

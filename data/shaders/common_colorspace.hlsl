@@ -21,10 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // for details, read my blog post: https://panoskarabelas.com/blog/posts/hdr_in_under_10_minutes/
 
+float get_gamma()
+{
+    float gamma = 2.2f; // around 2.2 for SDR
+    return buffer_frame.hdr_enabled ? 2.4f : gamma;
+}
+
 float3 srgb_to_linear(float3 color)
 {
     float3 linear_low  = color / 12.92;
-    float3 linear_high = pow((color + 0.055) / 1.055, 2.4f);
+    float3 linear_high = pow((color + 0.055) / 1.055, get_gamma());
     float3 is_high     = step(0.0404482362771082, color);
     return lerp(linear_low, linear_high, is_high);
 }
@@ -32,7 +38,7 @@ float3 srgb_to_linear(float3 color)
 float3 linear_to_srgb(float3 color)
 {
     float3 srgb_low  = color * 12.92;
-    float3 srgb_high = 1.055 * pow(color, 1.0 / 2.4f) - 0.055;
+    float3 srgb_high = 1.055 * pow(color, 1.0 / get_gamma()) - 0.055;
     float3 is_high   = step(0.00313066844250063, color);
     return lerp(srgb_low, srgb_high, is_high);
 }
@@ -67,4 +73,18 @@ float3 linear_to_hdr10(float3 color, float white_point)
     }
 
     return color;
+}
+
+float3 tone_map_to_display(float3 color_linear, float white_point, float display_max_nits)
+{
+    // Convert linear scene (0-∞) to real nits
+    float3 nits = color_linear * white_point;
+
+    // If the scene's reference white exceeds the display's peak, compress highlights
+    const float shoulder_strength = 0.85; // 0 = hard clip, 1 = very soft
+    nits = nits / (nits + display_max_nits * shoulder_strength);
+    nits *= display_max_nits;
+
+    // Back to normalized linear [0-1] for PQ encoding
+    return nits / white_point;
 }
