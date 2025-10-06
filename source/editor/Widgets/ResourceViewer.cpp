@@ -87,7 +87,7 @@ void ResourceViewer::OnTickVisible()
 
         // --- Sorting logic on column header click ---
         static int sorted_column                 = 1; // default sorting method by ID
-        static ImGuiSortDirection sort_direction = ImGuiSortDirection_None;
+        static ImGuiSortDirection sort_direction = ImGuiSortDirection_Ascending;
 
         if (ImGuiTableSortSpecs* table_sort_specs = ImGui::TableGetSortSpecs())
         {
