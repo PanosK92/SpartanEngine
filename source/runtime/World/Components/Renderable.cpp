@@ -90,12 +90,10 @@ namespace spartan
             pugi::xml_node t_node = instances_node.append_child("Transform");
             stringstream ss;
             ss << instance.position.x << " "
-                << instance.position.y << " "
-                << instance.position.z << " "
-                << instance.rotation.x << " "
-                << instance.rotation.y << " "
-                << instance.rotation.z << " "
-                << instance.scale;
+               << instance.position.y << " "
+               << instance.position.z << " "
+               << instance.rotation   << " "
+               << instance.scale;
             t_node.append_attribute("matrix") = ss.str().c_str();
         }
     }
@@ -139,8 +137,8 @@ namespace spartan
                 stringstream ss(t_node.attribute("matrix").as_string());
                 Instance instance;
                 ss >> instance.position.x >> instance.position.y >> instance.position.z
-                    >> instance.rotation.x >> instance.rotation.y >> instance.rotation.z
-                    >> instance.scale;
+                   >> instance.rotation
+                   >> instance.scale;
                 if (!ss.fail())
                 {
                     m_instances.emplace_back(instance);

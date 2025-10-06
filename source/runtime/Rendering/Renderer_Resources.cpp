@@ -75,10 +75,8 @@ namespace spartan
 
         // initialization values
         uint32_t spd_counter_value = 0;
-        array<Instance, renderer_max_instance_count> identity;
-        Instance instance;
-        instance.SetMatrix(Matrix::Identity);
-        identity.fill(instance);
+        array<Instance, renderer_max_instance_count> identity;;
+        identity.fill(Instance::GetIdentity());
 
         buffer(Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame),                           element_count,                          nullptr,            true, "frame");
         buffer(Renderer_Buffer::SpdCounter)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    1,                                      &spd_counter_value, true, "spd_counter");

@@ -34,15 +34,35 @@ struct Vertex_PosUvNorTan
     float3 normal            : NORMAL;
     float3 tangent           : TANGENT;
     float3 instance_position : INSTANCE_POSITION;
-    float3 instance_rotation : INSTANCE_ROTATION;
+    uint instance_rotation   : INSTANCE_ROTATION;
     half instance_scale      : INSTANCE_SCALE;
+    uint is_identity         : INSTANCE_IS_IDENTITY;
 };
 
-float4x4 compose_instance_transform(float3 instance_position, float3 instance_rotation, half instance_scale)
+float4x4 compose_instance_transform(float3 instance_position, uint instance_rotation, half instance_scale, uint is_identity)
 {
+    if (is_identity)
+        return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+    
     // compose quaternion
-    float w           = sqrt(max(0.0f, 1.0f - dot(instance_rotation, instance_rotation)));
-    float4 quaternion = float4(instance_rotation, w);
+    uint largest_index = (instance_rotation >> 30) & 0x3;
+    float a = float((instance_rotation >> 20) & 0x3FF) / 1023.0 * 2.0 - 1.0;
+    float b = float((instance_rotation >> 10) & 0x3FF) / 1023.0 * 2.0 - 1.0;
+    float c = float(instance_rotation & 0x3FF) / 1023.0 * 2.0 - 1.0;
+    const float scale = 1.41421356237; // sqrt(2)
+    a *= scale;
+    b *= scale;
+    c *= scale;
+    float largest = sqrt(max(0.0, 1.0 - (a * a + b * b + c * c)));
+    float4 quaternion;
+    if (largest_index == 0)
+        quaternion = float4(a, b, c, largest);
+    else if (largest_index == 1)
+        quaternion = float4(largest, a, b, c);
+    else if (largest_index == 2)
+        quaternion = float4(a, largest, b, c);
+    else
+        quaternion = float4(a, b, largest, c);
 
     // compose rotation matrix
     float xx = quaternion.x * quaternion.x;
@@ -61,13 +81,13 @@ float4x4 compose_instance_transform(float3 instance_position, float3 instance_ro
     );
 
     // compose scale
-    float scale = float(instance_scale);
+    float scale_float = float(instance_scale);
 
     // compose matrix
     return float4x4(
-        float4(rotation._11 * scale, rotation._12 * scale, rotation._13 * scale, 0),
-        float4(rotation._21 * scale, rotation._22 * scale, rotation._23 * scale, 0),
-        float4(rotation._31 * scale, rotation._32 * scale, rotation._33 * scale, 0),
+        float4(rotation._11 * scale_float, rotation._12 * scale_float, rotation._13 * scale_float, 0),
+        float4(rotation._21 * scale_float, rotation._22 * scale_float, rotation._23 * scale_float, 0),
+        float4(rotation._31 * scale_float, rotation._32 * scale_float, rotation._33 * scale_float, 0),
         float4(instance_position, 1)
     );
 }
@@ -83,7 +103,6 @@ struct gbuffer_vertex
     float width_percent      : TEXCOORD2; // temp, will remove
 }; 
 
-// remap a value from one range to another
 float remap(float value, float inMin, float inMax, float outMin, float outMax)
 {
     return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
@@ -119,7 +138,6 @@ float3x3 rotation_matrix(float3 axis, float angle)
 
 struct vertex_processing
 {
-   
     static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, const float width_percent, uint instance_id)
     {
         if (!surface.is_grass_blade())
@@ -271,8 +289,9 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
   
     // transform to world space
-    transform                 = mul(compose_instance_transform(input.instance_position, input.instance_rotation, input.instance_scale), transform);
-    matrix transform_previous = mul(compose_instance_transform(input.instance_position, input.instance_rotation, input.instance_scale), pass_get_transform_previous());
+    matrix instance           = compose_instance_transform(input.instance_position, input.instance_rotation, input.instance_scale, input.is_identity);
+    transform                 = mul(instance, transform);
+    matrix transform_previous = mul(instance, pass_get_transform_previous());
     float3 position           = mul(input.position, transform).xyz;
     float3 position_previous  = mul(input.position, transform_previous).xyz;
     vertex.normal             = normalize(mul(input.normal, (float3x3)transform));

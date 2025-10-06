@@ -31,14 +31,17 @@ namespace spartan
     struct Instance
     {
         math::Vector3 position; // 12 bytes
-        math::Vector3 rotation; // 12 bytes
+        uint32_t rotation;      // 4 bytes
         uint16_t scale;         // 2 bytes
+        uint8_t is_identity;    // 1 byte
 
         math::Matrix GetMatrix() const
         {
-            float scale_float = half_to_float(scale);
-            float w           = sqrtf(std::max(0.0f, 1.0f - rotation.LengthSquared()));
-            math::Quaternion quat(rotation.x, rotation.y, rotation.z, w);
+            if (is_identity)
+                return math::Matrix::Identity;
+
+            float scale_float     = half_to_float(scale);
+            math::Quaternion quat = decode_quaternion(rotation);
 
             return math::Matrix::CreateScale(scale_float) *
                    math::Matrix::CreateRotation(quat) *
@@ -49,9 +52,21 @@ namespace spartan
         {
             position              = matrix.GetTranslation();
             math::Quaternion quat = matrix.GetRotation();
-            rotation              = math::Vector3(quat.x, quat.y, quat.z);
+            rotation              = encode_quaternion(quat);
             float scale_avg       = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
             scale                 = float_to_half(scale_avg);
+            is_identity           = 0;
+        }
+
+        static Instance GetIdentity()
+        {
+            Instance instance;
+            instance.position    = math::Vector3::Zero;
+            instance.rotation    = encode_quaternion(math::Quaternion::Identity);
+            instance.scale       = float_to_half(1.0f);
+            instance.is_identity = true;
+
+            return instance;
         }
 
         // convert float to IEEE 754 half-precision
@@ -102,6 +117,65 @@ namespace spartan
                 return std::bit_cast<float>(sign | 0x7F800000);
 
             return std::bit_cast<float>(sign | ((exponent + 127) << 23) | (mantissa << 13));
+        }
+
+        // encode quaternion to 32 bits (smallest-three)
+        static uint32_t encode_quaternion(const math::Quaternion& quat)
+        {
+            // find largest component
+            float abs_x = std::abs(quat.x);
+            float abs_y = std::abs(quat.y);
+            float abs_z = std::abs(quat.z);
+            float abs_w = std::abs(quat.w);
+            float max_value = std::max(std::max(std::max(abs_x, abs_y), abs_z), abs_w);
+            uint32_t largest_index = 0;
+            float largest_value = abs_w;
+            float a, b, c; // the three smallest components
+            if (abs_x > largest_value) { largest_index = 1; largest_value = abs_x; }
+            if (abs_y > largest_value) { largest_index = 2; largest_value = abs_y; }
+            if (abs_z > largest_value) { largest_index = 3; largest_value = abs_z; }
+
+            // assign smallest components
+            if (largest_index == 0) { a = quat.x; b = quat.y; c = quat.z; }
+            else if (largest_index == 1) { a = quat.y; b = quat.z; c = quat.w; }
+            else if (largest_index == 2) { a = quat.x; b = quat.z; c = quat.w; }
+            else { a = quat.x; b = quat.y; c = quat.w; }
+
+            // normalize to [-0.707, 0.707] and scale to 10-bit
+            const float scale = 1.41421356237f; // sqrt(2)
+            a = (a / scale + 1.0f) * 0.5f * 1023.0f;
+            b = (b / scale + 1.0f) * 0.5f * 1023.0f;
+            c = (c / scale + 1.0f) * 0.5f * 1023.0f;
+
+            // pack into 32 bits: 2 bits for index, 10 bits per component
+            uint32_t result = (largest_index << 30);
+            result |= (static_cast<uint32_t>(a) & 0x3FF) << 20;
+            result |= (static_cast<uint32_t>(b) & 0x3FF) << 10;
+            result |= (static_cast<uint32_t>(c) & 0x3FF);
+
+            return result;
+        }
+
+        // decode quaternion from 32 bits
+        static math::Quaternion decode_quaternion(uint32_t packed)
+        {
+            // extract components
+            uint32_t largest_index = (packed >> 30) & 0x3;
+            float a = static_cast<float>((packed >> 20) & 0x3FF) / 1023.0f * 2.0f - 1.0f;
+            float b = static_cast<float>((packed >> 10) & 0x3FF) / 1023.0f * 2.0f - 1.0f;
+            float c = static_cast<float>(packed & 0x3FF) / 1023.0f * 2.0f - 1.0f;
+            const float scale = 1.41421356237f; // sqrt(2)
+            a *= scale; b *= scale; c *= scale;
+
+            // compute largest component
+            float largest = sqrtf(std::max(0.0f, 1.0f - (a * a + b * b + c * c)));
+
+            // reconstruct quaternion
+            if (largest_index == 0) return math::Quaternion(a, b, c, largest);
+            if (largest_index == 1) return math::Quaternion(largest, a, b, c);
+            if (largest_index == 2) return math::Quaternion(a, largest, b, c);
+
+            return math::Quaternion(a, b, largest, c);
         }
     };
 }
