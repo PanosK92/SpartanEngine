@@ -19,8 +19,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-
 #pragma once
+
 //= includes ==============
 #include "../Math/Matrix.h"
 #include <bit>
@@ -41,14 +41,21 @@ namespace spartan
 
         math::Matrix GetMatrix() const
         {
+            // compose position
             math::Vector3 position(half_to_float(position_x), half_to_float(position_y), half_to_float(position_z));
-            math::Vector3 normal        = decode_octahedral(normal_oct);
-            float yaw                   = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
+
+            // compose rotation
+            math::Vector3 normal = decode_octahedral(normal_oct);
+            float yaw            = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
             math::Quaternion quat_yaw(0.0f, std::sin(yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
             math::Quaternion quat_align = math::Quaternion::FromLookRotation(normal);
             math::Quaternion quat       = quat_align * quat_yaw;
-            float t                     = static_cast<float>(scale_packed) / 255.0f;
-            float scale_float           = std::exp(std::lerp(std::log(0.01f), std::log(100.0f), t));
+
+            // compose scale
+            float t           = static_cast<float>(scale_packed) / 255.0f;
+            float scale_float = std::exp(std::lerp(std::log(0.01f), std::log(100.0f), t));
+
+            // compose matrix
             return math::Matrix::CreateScale(scale_float) *
                    math::Matrix::CreateRotation(quat) *
                    math::Matrix::CreateTranslation(position);
@@ -56,23 +63,30 @@ namespace spartan
 
         void SetMatrix(const math::Matrix& matrix)
         {
-            math::Vector3 position       = matrix.GetTranslation();
-            position_x                   = float_to_half(position.x);
-            position_y                   = float_to_half(position.y);
-            position_z                   = float_to_half(position.z);
-            math::Quaternion quat        = matrix.GetRotation();
-            math::Vector3 normal         = quat * math::Vector3::Up;
-            normal_oct                   = encode_octahedral(normal);
+            // pack position
+            math::Vector3 position = matrix.GetTranslation();
+            position_x             = float_to_half(position.x);
+            position_y             = float_to_half(position.y);
+            position_z             = float_to_half(position.z);
+
+            // pack normal
+            math::Quaternion quat = matrix.GetRotation();
+            math::Vector3 normal  = quat * math::Vector3::Up;
+            normal_oct            = encode_octahedral(normal);
+
+            // pack yaw
             math::Quaternion quat_align  = math::Quaternion::FromLookRotation(normal);
             math::Quaternion quat_yaw    = quat_align.Conjugate() * quat;
             float half_angle             = std::atan2(quat_yaw.y, quat_yaw.w);
             float yaw                    = half_angle * 2.0f;
             if (yaw < 0.0f) yaw         += math::pi_2;
             yaw_packed                   = static_cast<uint8_t>((yaw / math::pi_2) * 255.0f);
-            float scale_avg              = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
-            scale_avg                    = std::max(0.01f, std::min(100.0f, scale_avg));
-            float t                      = (std::log(scale_avg) - std::log(0.01f)) / (std::log(100.0f) - std::log(0.01f));
-            scale_packed                 = static_cast<uint8_t>(t * 255.0f);
+
+            // pack scale
+            float scale_avg = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
+            scale_avg       = std::max(0.01f, std::min(100.0f, scale_avg));
+            float t         = (std::log(scale_avg) - std::log(0.01f)) / (std::log(100.0f) - std::log(0.01f));
+            scale_packed    = static_cast<uint8_t>(t * 255.0f);
         }
 
         static Instance GetIdentity()
@@ -144,7 +158,7 @@ namespace spartan
         {
             // extract components
             uint32_t sign = (value & 0x8000) << 16;
-            uint32_t exp = (value >> 10) & 0x1F;
+            uint32_t exp  = (value >> 10) & 0x1F;
             uint32_t mant = value & 0x3FF;
         
             // handle inf/nan as 0
