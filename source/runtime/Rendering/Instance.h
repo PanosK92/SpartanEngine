@@ -31,14 +31,21 @@ namespace spartan
     #pragma pack(push, 1)
     struct Instance
     {
-        math::Vector3 position; // 12 bytes
-        uint16_t normal_oct;    // 2 bytes
-        uint8_t yaw_packed;     // 1 byte
-        uint8_t scale_packed;   // 1 byte
-                                // total: 16 bytes
+        uint16_t position_x;  // 2 bytes
+        uint16_t position_y;  // 2 bytes
+        uint16_t position_z;  // 2 bytes
+        uint16_t normal_oct;  // 2 bytes
+        uint8_t yaw_packed;   // 1 byte
+        uint8_t scale_packed; // 1 byte
+                              // total: 10 bytes
 
         math::Matrix GetMatrix() const
         {
+            math::Vector3 position(
+                std::isfinite(half_to_float(position_x)) ? half_to_float(position_x) : 0.0f,
+                std::isfinite(half_to_float(position_y)) ? half_to_float(position_y) : 0.0f,
+                std::isfinite(half_to_float(position_z)) ? half_to_float(position_z) : 0.0f
+            );
             math::Vector3 normal        = decode_octahedral(normal_oct);
             float yaw                   = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
             math::Quaternion quat_yaw(0.0f, std::sin(yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
@@ -47,13 +54,16 @@ namespace spartan
             float t                     = static_cast<float>(scale_packed) / 255.0f;
             float scale_float           = std::exp(std::lerp(std::log(0.01f), std::log(100.0f), t));
             return math::Matrix::CreateScale(scale_float) *
-                  math::Matrix::CreateRotation(quat) *
-                  math::Matrix::CreateTranslation(position);
+                   math::Matrix::CreateRotation(quat) *
+                   math::Matrix::CreateTranslation(position);
         }
 
         void SetMatrix(const math::Matrix& matrix)
         {
-            position                     = matrix.GetTranslation();
+            math::Vector3 position       = matrix.GetTranslation();
+            position_x                        = float_to_half(position.x);
+            position_y                        = float_to_half(position.y);
+            position_z                        = float_to_half(position.z);
             math::Quaternion quat        = matrix.GetRotation();
             math::Vector3 normal         = quat * math::Vector3::Up;
             normal_oct                   = encode_octahedral(normal);
@@ -72,7 +82,9 @@ namespace spartan
         static Instance GetIdentity()
         {
             Instance instance;
-            instance.position     = math::Vector3::Zero;
+            instance.position_x   = 0;
+            instance.position_y   = 0;
+            instance.position_z   = 0;
             instance.normal_oct   = 0;
             instance.yaw_packed   = 0;
             instance.scale_packed = 0;

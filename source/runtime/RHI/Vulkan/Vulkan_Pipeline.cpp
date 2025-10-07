@@ -268,10 +268,12 @@ namespace spartan
                 {
                     vertex_input_binding_descs.emplace_back(1, sizeof(Instance), VK_VERTEX_INPUT_RATE_INSTANCE);
                     uint32_t start_index = static_cast<uint32_t>(vertex_attribute_descs.size());
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R32G32B32_SFLOAT, 0);
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_UINT, offsetof(Instance, normal_oct));
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,  offsetof(Instance, yaw_packed));
-                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,  offsetof(Instance, scale_packed));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, offsetof(Instance, position_x));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, offsetof(Instance, position_y));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, offsetof(Instance, position_z));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_UINT,   offsetof(Instance, normal_oct));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,    offsetof(Instance, yaw_packed));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,    offsetof(Instance, scale_packed));
                 }
             }
             // vertex input state

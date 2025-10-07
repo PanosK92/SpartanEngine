@@ -29,18 +29,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // vertex buffer input
 struct Vertex_PosUvNorTan
 {
-    float4 position          : POSITION;
-    float2 uv                : TEXCOORD;
-    float3 normal            : NORMAL;
-    float3 tangent           : TANGENT;
-    float3 instance_position : INSTANCE_POSITION;
-    uint instance_normal_oct : INSTANCE_NORMAL_OCT;
-    uint instance_yaw        : INSTANCE_YAW;
-    uint instance_scale      : INSTANCE_SCALE;
+    float4 position                : POSITION;
+    float2 uv                      : TEXCOORD;
+    float3 normal                  : NORMAL;
+    float3 tangent                 : TANGENT;
+    min16float instance_position_x : INSTANCE_POSITION_X;
+    min16float instance_position_y : INSTANCE_POSITION_Y;
+    min16float instance_position_z : INSTANCE_POSITION_Z;
+    uint instance_normal_oct       : INSTANCE_NORMAL_OCT;
+    uint instance_yaw              : INSTANCE_YAW;
+    uint instance_scale            : INSTANCE_SCALE;
 };
 
-float4x4 compose_instance_transform(float3 instance_position, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
+float4x4 compose_instance_transform(min16float instance_position_x, min16float instance_position_y, min16float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
 {
+    // compose position
+    float3 instance_position = float3(instance_position_x, instance_position_y, instance_position_z);
+
+    // check for identity
     if (!any(instance_position) && instance_normal_oct == 0 && instance_yaw == 0 && instance_scale == 0)
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
@@ -301,7 +307,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
   
     // transform to world space
-    matrix instance           = compose_instance_transform(input.instance_position, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
+    matrix instance         = compose_instance_transform(input.instance_position_x, input.instance_position_y, input.instance_position_z, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
     transform                 = mul(instance, transform);
     matrix transform_previous = mul(instance, pass_get_transform_previous());
     float3 position           = mul(input.position, transform).xyz;
