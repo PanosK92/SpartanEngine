@@ -751,10 +751,10 @@ namespace spartan
                 // sun/lighting/mood
                 entities::sun(true);
                 Light* sun = default_light_directional->GetComponent<Light>();
-                sun->SetIntensity(20'000.0f);
+                sun->SetIntensity(5'000.0f);   // low light too match the sunrise direction
                 sun->SetTemperature(3'800.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, false);
-                sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(10.0f, -100.0f, -0.5f));
+                sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(7.0f, -100.0f, -0.5f)); // sunrise height
 
                 entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
