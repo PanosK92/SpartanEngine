@@ -41,11 +41,7 @@ namespace spartan
 
         math::Matrix GetMatrix() const
         {
-            math::Vector3 position(
-                std::isfinite(half_to_float(position_x)) ? half_to_float(position_x) : 0.0f,
-                std::isfinite(half_to_float(position_y)) ? half_to_float(position_y) : 0.0f,
-                std::isfinite(half_to_float(position_z)) ? half_to_float(position_z) : 0.0f
-            );
+            math::Vector3 position(half_to_float(position_x), half_to_float(position_y), half_to_float(position_z));
             math::Vector3 normal        = decode_octahedral(normal_oct);
             float yaw                   = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
             math::Quaternion quat_yaw(0.0f, std::sin(yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
@@ -61,9 +57,9 @@ namespace spartan
         void SetMatrix(const math::Matrix& matrix)
         {
             math::Vector3 position       = matrix.GetTranslation();
-            position_x                        = float_to_half(position.x);
-            position_y                        = float_to_half(position.y);
-            position_z                        = float_to_half(position.z);
+            position_x                   = float_to_half(position.x);
+            position_y                   = float_to_half(position.y);
+            position_z                   = float_to_half(position.z);
             math::Quaternion quat        = matrix.GetRotation();
             math::Vector3 normal         = quat * math::Vector3::Up;
             normal_oct                   = encode_octahedral(normal);
@@ -148,17 +144,37 @@ namespace spartan
         // convert IEEE 754 half-precision to float
         static float half_to_float(uint16_t value)
         {
+            // extract components
             uint32_t sign = (value & 0x8000) << 16;
-            int32_t exponent = ((value >> 10) & 0x1F) - 15;
-            uint32_t mantissa = value & 0x3FF;
-            if (exponent == -15)
+            uint32_t exp = (value >> 10) & 0x1F;
+            uint32_t mant = value & 0x3FF;
+        
+            // handle inf/nan as 0 to avoid isfinite checks
+            if (exp == 0x1F)
             {
-                if (mantissa == 0) return std::bit_cast<float>(sign);
-                float m = mantissa / 1024.0f;
-                return std::bit_cast<float>(sign | ((exponent + 127) << 23) | (mantissa << 13)) * 0.00006103515625f;
+                return 0.0f;
             }
-            if (exponent == 16) return std::bit_cast<float>(sign | 0x7F800000);
-            return std::bit_cast<float>(sign | ((exponent + 127) << 23) | (mantissa << 13));
+        
+            // zero
+            if (exp == 0 && mant == 0)
+            {
+                return std::bit_cast<float>(sign);
+            }
+        
+            // denormalized
+            if (exp == 0)
+            {
+                // normalize mantissa
+                int shifts = std::countl_zero(mant) - 21; // 32 - 11 effective bits
+                mant <<= shifts;
+                exp = 1 - shifts;
+            }
+        
+            // adjust exponent bias (half 15 to float 127)
+            exp += 112; // 127 - 15 = 112
+        
+            // assemble float bits
+            return std::bit_cast<float>(sign | (exp << 23) | (mant << 13));
         }
     };
     #pragma pack(pop)
