@@ -88,7 +88,6 @@ namespace spartan
             return instance;
         }
 
-        // octahedral encoding for unit vector (16-bit)
         static uint16_t encode_octahedral(const math::Vector3& dir)
         {
             math::Vector3 oct = dir / (std::abs(dir.x) + std::abs(dir.y) + std::abs(dir.z));
@@ -103,7 +102,6 @@ namespace spartan
             return (static_cast<uint16_t>(ox) << 8) | oy;
         }
 
-        // octahedral decoding
         static math::Vector3 decode_octahedral(uint16_t packed)
         {
             float x = (static_cast<float>(packed >> 8) / 255.0f) * 2.0f - 1.0f;
@@ -149,7 +147,7 @@ namespace spartan
             uint32_t exp = (value >> 10) & 0x1F;
             uint32_t mant = value & 0x3FF;
         
-            // handle inf/nan as 0 to avoid isfinite checks
+            // handle inf/nan as 0
             if (exp == 0x1F)
             {
                 return 0.0f;
