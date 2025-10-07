@@ -32,15 +32,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     uint mip_index = mip_count - 1;
     tex.GetDimensions(mip_index, w, h, mip_count);
     float lum_sum = 0.0;
-    for (uint y = 0; y < h; y++)
+    for (uint y = 0; y < 16; y++)
     {
-        for (uint x = 0; x < w; x++)
+        for (uint x = 0; x < 16; x++)
         {
             float3 col = tex.Load(int3(x, y, mip_index)).rgb;
             lum_sum += dot(col, float3(0.2126, 0.7152, 0.0722));
         }
     }
-    float lum = lum_sum / float(w * h);
+    float lum = lum_sum / (16.0 * 16.0);
 
     // read previous exposure
     float prev = tex2.Load(int3(0, 0, 0)).r;

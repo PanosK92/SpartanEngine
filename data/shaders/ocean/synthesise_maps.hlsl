@@ -95,6 +95,46 @@ void synthesize(Texture2D example, out float4 output, float2 uv, float tex_freq,
     preserve_variance(output, mean_example, moment2);
 }
 
+void synthesize_with_flow(Texture2D example, out float4 output, float2 flow_dir, float wind_dir_deg, float2 uv, float tex_freq, float tile_freq)
+{
+    // convert wind dir from degrees to a 2d vector
+    const float wind_dir_rad = radians(wind_dir_deg);
+    const float2 wind_dir = float2(cos(wind_dir_rad), sin(wind_dir_rad));
+    
+    const float theta = atan2(flow_dir.y, flow_dir.x) - atan2(wind_dir.y, wind_dir.x);
+    const float cosT = cos(theta);
+    const float sinT = sin(theta);
+
+    // Rotation matrices
+    const float2x2 R2 = float2x2(cosT, -sinT, sinT, cosT);
+    const float4x4 R4 = float4x4(
+        cosT, 0, sinT, 0,
+        0, 1, 0, 0,
+       -sinT, 0, cosT, 0,
+        0, 0, 0, 1);
+
+    output = float4(0.0f, 0.0f, 0.0f, 0.0f); // init to 0.0f for safety reasons
+    float moment2 = 0.0f;
+
+    for (int i = 0; i < 3; i++)
+    {
+        const float3 interp_node = get_triangle_interp_node(uv, tile_freq, i);
+
+        const float2 rotated_pos = mul(R2, (interp_node.xy - uv)) + uv;
+        
+        const float4 sample = get_texture_sample(example, rotated_pos, tex_freq, interp_node.xy);
+
+        const float4 rotated_sample = mul(R4, sample);
+
+        output += rotated_sample * interp_node.z;
+        moment2 += interp_node.z * interp_node.z;
+    }
+    // assumes example is a mip mapped 512x512 texture and samples lowest mip (1x1)
+    const float4 mean_example = example.SampleLevel(samplers[sampler_point_clamp], uv, 9);
+    
+    preserve_variance(output, mean_example, moment2);
+}
+
 float2 ocean_get_world_space_uvs(float2 uv, float2 tile_xz_pos, float tile_size)
 {
     const float2 tile_origin_uv_space = float2(tile_xz_pos.x / tile_size, tile_xz_pos.y / tile_size);

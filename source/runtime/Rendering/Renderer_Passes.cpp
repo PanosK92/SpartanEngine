@@ -650,7 +650,6 @@ namespace spartan
             pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
             cmd_list->SetPipelineState(pso);
 
-            uint32_t tile_index = 0; // TEMPORARY
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& draw_call = m_draw_calls[i];
@@ -720,6 +719,9 @@ namespace spartan
 
                         RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
                         cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
+
+                        RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex4, flowmap);
                     }
 
                     cmd_list->DrawIndexed(

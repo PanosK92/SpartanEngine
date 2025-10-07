@@ -112,7 +112,13 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         const float tile_freq = 2.0f;
         
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        synthesize(tex2, displacement, world_space_tile_uv, tex_freq, tile_freq);
+        float2 flow_dir = normalize(tex4.SampleLevel(samplers[sampler_point_clamp], world_space_tile_uv / float2(6.0f, 6.0f), 0).xy * 2 - 1);
+        //flow_dir = (1.0f, 1.0f);
+        float2 flow_uv = world_space_tile_uv / float2(6.0f, 6.0f);
+
+        flow_dir = float2(1.0f, 1.0f);
+        flow_dir = normalize(flow_dir);
+        synthesize_with_flow(tex2, displacement, flow_dir, material.ocean_parameters.windDirection, world_space_tile_uv, tex_freq, tile_freq);
         input.position.xyz += displacement * material.ocean_parameters.displacementScale;
     }
     
@@ -289,7 +295,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         const float tile_freq = 2.0f;
         
         float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        synthesize(tex3, slope, world_space_tile_uv, tex_freq, tile_freq);
+        float2 flow_dir = (1.0f, 1.0f);
+        float2 flow_uv = world_space_tile_uv / float2(6.0f, 6.0f);
+
+        flow_dir = float2(1.0f, 1.0f);
+        flow_dir = normalize(flow_dir);
+        //synthesize(tex3, slope, world_space_tile_uv, tex_freq, tile_freq);
+        synthesize_with_flow(tex3, slope, flow_dir, material.ocean_parameters.windDirection, world_space_tile_uv, tex_freq, tile_freq);
         
         slope = slope * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
@@ -307,7 +319,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
                 // first we must synthesise again since we dont have access
                 // to the synthesised displacement (it's calculated in the vertex stage)
                 float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-                synthesize(tex2, displacement, world_space_tile_uv, tex_freq, tile_freq);
+                float2 flow_dir = normalize(tex4.SampleLevel(samplers[sampler_point_clamp], world_space_tile_uv / float2(6.0f, 6.0f), 0).xy * 2 - 1);
+                flow_dir = float2(1.0f, 1.0f);
+                flow_dir = normalize(flow_dir);
+                synthesize_with_flow(tex2, displacement, flow_dir, material.ocean_parameters.windDirection, world_space_tile_uv, tex_freq, tile_freq);
 
                 albedo = displacement;
             }
@@ -321,6 +336,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             else // show original slope
                 albedo = float4(tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgb, 1.0f);
         }
+
+        //albedo = tex4.Sample(samplers[sampler_anisotropic_wrap], world_space_tile_uv / float2(6.0f, 6.0f)).rgba;
+        //albedo = float4(flow_dir, 0.0f, 1.0f);
     }
 
     // apply curved normals for grass blades

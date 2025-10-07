@@ -305,6 +305,7 @@ namespace spartan
 
                     material->SetOceanTileSize(tile_size);
                     material->SetOceanVerticesCount(density);
+                    material->SetTexture(MaterialTextureType::Flowmap, "project\\materials\\water\\flowmap.png");
 
                     // if material fails to load from file
                     if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)

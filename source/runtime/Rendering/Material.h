@@ -43,6 +43,7 @@ namespace spartan
         Height,    // packed a
         AlphaMask, // packed into color a
         Packed,    // occlusion, roughness, metalness, height
+        Flowmap,
         Max
     };
 
