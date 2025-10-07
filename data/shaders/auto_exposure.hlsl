@@ -26,17 +26,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(1, 1, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // compute luminance using the lowest mip - expected to be 16x16
+    // compute luminance using the lowest mip
     uint w, h, mip_count;
     tex.GetDimensions(0, w, h, mip_count);
-    uint mip_index = mip_count - 1;
-    tex.GetDimensions(mip_index, w, h, mip_count);
     float lum_sum = 0.0;
     for (uint y = 0; y < h; y++)
     {
         for (uint x = 0; x < w; x++)
         {
-            float3 col = tex.Load(int3(x, y, mip_index)).rgb;
+            float3 col = tex.Load(int3(x, y, mip_count - 1)).rgb;
             lum_sum += dot(col, float3(0.2126, 0.7152, 0.0722));
         }
     }

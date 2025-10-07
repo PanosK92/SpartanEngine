@@ -1073,12 +1073,15 @@ namespace spartan
         RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTarget::frame_output_2);
 
-        cmd_list->BeginMarker("post_proccess");
+        cmd_list->BeginMarker("post_process");
 
         // macros which allows us to keep track of which texture is an input/output for each pass
         bool swap_output = true;
         #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
         #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
+
+        // do auto-exposure first as it relies on frame_output, which has mips
+        Pass_AutoExposure(cmd_list, get_output_in);
 
         // depth of field
         if (GetOption<bool>(Renderer_Option::DepthOfField))
@@ -1100,9 +1103,6 @@ namespace spartan
             swap_output = !swap_output;
             Pass_Bloom(cmd_list, get_output_in, get_output_out);
         }
-
-        // auto exposure
-        Pass_AutoExposure(cmd_list, get_output_in);
 
         // tone-mapping & gamma correction
         {
@@ -1514,9 +1514,9 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value(adaptation_speed);
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous); // input: previous exposure value
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);           // output: current exposure value
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, tex_in->GetMipCount() - 1, 1); // input: current frame
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);               // input: previous exposure value
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);                         // output: current exposure value
 
             // single dispatch: just writes 1 value
             cmd_list->Dispatch(1, 1, 1);

@@ -75,7 +75,7 @@ namespace spartan
 
         // initialization values
         uint32_t spd_counter_value = 0;
-        array<Instance, renderer_max_instance_count> identity;;
+        array<Instance, renderer_max_instance_count> identity;
         identity.fill(Instance::GetIdentity());
 
         buffer(Renderer_Buffer::ConstantFrame)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, sizeof(Cb_Frame),                           element_count,                          nullptr,            true, "frame");
@@ -179,15 +179,17 @@ namespace spartan
 
         auto compute_mip_count = [](const uint32_t width, const uint32_t height, const uint32_t smallest_dimension)
         {
+            // use max dimension to ensure both width and height reach smallest_dimension
             uint32_t max_dimension = max(width, height);
             uint32_t mip_count     = 1;
-        
-            while (max_dimension > smallest_dimension)
+
+            // halve max_dimension until it’s at or below smallest_dimension
+            while (max_dimension >= smallest_dimension)
             {
                 max_dimension /= 2;
                 mip_count++;
             }
-        
+            // return total mip levels, including base level
             return mip_count;
         };
 
@@ -248,11 +250,10 @@ namespace spartan
         // resolution - output
         if (create_output)
         {
+            // frame
             uint32_t mip_count = compute_mip_count(width_output, height_output, 16);
-
-            // frame - these two textures must be exactly identical as they are used interchangeably in post-processing passes
             render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
-            render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output_2");
+            render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
 
             // misc
             render_target(Renderer_RenderTarget::bloom)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
