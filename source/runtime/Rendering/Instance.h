@@ -59,12 +59,12 @@ namespace spartan
                 math::Vector3 cross_prod = up.Cross(normal) / s;
                 quat_align               = math::Quaternion(cross_prod.x, cross_prod.y, cross_prod.z, s * 0.5f);
             }
-            float yaw = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
+            float yaw = (static_cast<float>(yaw_packed) * 0.003906250f) * math::pi_2;
             math::Quaternion quat_yaw(0.0f, std::sin(-yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
             math::Quaternion quat = quat_align * quat_yaw;
 
             // compose scale
-            float t = static_cast<float>(scale_packed) / 255.0f;
+            float t = static_cast<float>(scale_packed) * 0.003906250f;
             float scale_float = std::exp(std::lerp(std::log(0.01f), std::log(100.0f), t));
 
             // compose matrix
@@ -142,8 +142,8 @@ namespace spartan
 
         static math::Vector3 decode_octahedral(uint16_t packed)
         {
-            float x = (static_cast<float>(packed >> 8) / 255.0f) * 2.0f - 1.0f;
-            float y = (static_cast<float>(packed & 0xFF) / 255.0f) * 2.0f - 1.0f;
+            float x = (static_cast<float>(packed >> 8) * 0.003906250f) * 2.0f - 1.0f;
+            float y = (static_cast<float>(packed & 0xFF) * 0.003906250f) * 2.0f - 1.0f;
             float z = 1.0f - std::abs(x) - std::abs(y);
             if (z < 0.0f)
             {
