@@ -109,7 +109,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         const float2 world_space_tile_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
         
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        synthesize(tex2, displacement, world_space_tile_uv);
+        //synthesize(tex2, displacement, world_space_tile_uv);
+        synthesize_with_flow(tex2, displacement, material.ocean_parameters.windDirection, world_space_tile_uv);
         
         input.position.xyz += displacement * material.ocean_parameters.displacementScale;
     }
@@ -284,7 +285,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         const float2 world_space_tile_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, tile_xz_pos, tile_size);
         
         float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        synthesize(tex3, slope, world_space_tile_uv);
+        //synthesize(tex3, slope, world_space_tile_uv);
+        synthesize_with_flow(tex3, slope, material.ocean_parameters.windDirection, world_space_tile_uv);
         
         slope = slope * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
@@ -300,8 +302,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
                 // first we must synthesise again since we dont have access
                 // to the synthesised displacement (it's calculated in the vertex stage)
                 float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-                synthesize(tex2, displacement, world_space_tile_uv);
-
+                //synthesize(tex2, displacement, world_space_tile_uv);
+                synthesize_with_flow(tex2, displacement, material.ocean_parameters.windDirection, world_space_tile_uv);
+                
                 albedo = displacement;
             }
             else // show original displacement
