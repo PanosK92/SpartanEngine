@@ -51,12 +51,16 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
     // compose octahedral normal
-    float2 oct = float2(
-        float(instance_normal_oct >> 8),
-        float(instance_normal_oct & 0xFF)
-    ) / 255.0 * 2.0 - 1.0;
-    float z = 1.0 - abs(oct.x) - abs(oct.y);
-    float3 normal = normalize(float3(oct.x, oct.y, max(z, 0.0))); 
+    float x = float(instance_normal_oct >> 8) / 255.0 * 2.0 - 1.0;
+    float y = float(instance_normal_oct & 0xFF) / 255.0 * 2.0 - 1.0;
+    float z = 1.0 - abs(x) - abs(y);
+    if (z < 0.0)
+    {
+        float temp_x = x;
+        x = (1.0 - abs(y)) * (temp_x >= 0.0 ? 1.0 : -1.0);
+        y = (1.0 - abs(temp_x)) * (y >= 0.0 ? 1.0 : -1.0);
+    }
+    float3 normal = normalize(float3(x, y, z));
 
     // compose yaw and scale
     float yaw   = float(instance_yaw) / 255.0 * 6.28318530718; // pi_2

@@ -46,18 +46,30 @@ namespace spartan
 
             // compose rotation
             math::Vector3 normal = decode_octahedral(normal_oct);
-            float yaw            = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
-            math::Quaternion quat_yaw(0.0f, std::sin(yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
-            math::Quaternion quat_align = math::Quaternion::FromLookRotation(normal);
-            math::Quaternion quat       = quat_align * quat_yaw;
+            math::Vector3 up     = math::Vector3::Up;
+            float up_dot_normal  = up.Dot(normal);
+            math::Quaternion quat_align;
+            if (std::abs(up_dot_normal) >= 0.999999f)
+            {
+                quat_align = up_dot_normal > 0.0f ? math::Quaternion::Identity : math::Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
+            }
+            else
+            {
+                float s                  = std::sqrt(2.0f + 2.0f * up_dot_normal);
+                math::Vector3 cross_prod = up.Cross(normal) / s;
+                quat_align               = math::Quaternion(cross_prod.x, cross_prod.y, cross_prod.z, s * 0.5f);
+            }
+            float yaw = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
+            math::Quaternion quat_yaw(0.0f, std::sin(-yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
+            math::Quaternion quat = quat_align * quat_yaw;
 
             // compose scale
-            float t           = static_cast<float>(scale_packed) / 255.0f;
+            float t = static_cast<float>(scale_packed) / 255.0f;
             float scale_float = std::exp(std::lerp(std::log(0.01f), std::log(100.0f), t));
 
             // compose matrix
             return math::Matrix::CreateScale(scale_float) *
-                   math::Matrix::CreateRotation(quat) *
+                   math::Matrix::CreateRotation(quat)     *
                    math::Matrix::CreateTranslation(position);
         }
 
@@ -75,12 +87,24 @@ namespace spartan
             normal_oct            = encode_octahedral(normal);
 
             // pack yaw
-            math::Quaternion quat_align  = math::Quaternion::FromLookRotation(normal);
-            math::Quaternion quat_yaw    = quat_align.Conjugate() * quat;
-            float half_angle             = std::atan2(quat_yaw.y, quat_yaw.w);
-            float yaw                    = half_angle * 2.0f;
-            if (yaw < 0.0f) yaw         += math::pi_2;
-            yaw_packed                   = static_cast<uint8_t>((yaw / math::pi_2) * 255.0f);
+            math::Vector3 up    = math::Vector3::Up;
+            float up_dot_normal = up.Dot(normal);
+            math::Quaternion quat_align;
+            if (std::abs(up_dot_normal) >= 0.999999f)
+            {
+                quat_align = up_dot_normal > 0.0f ? math::Quaternion::Identity : math::Quaternion(1.0f, 0.0f, 0.0f, 0.0f);
+            }
+            else
+            {
+                float s                  = std::sqrt(2.0f + 2.0f * up_dot_normal);
+                math::Vector3 cross_prod = up.Cross(normal) / s;
+                quat_align               = math::Quaternion(cross_prod.x, cross_prod.y, cross_prod.z, s * 0.5f);
+            }
+            math::Quaternion quat_yaw  = quat_align.Conjugate() * quat;
+            float half_angle           = std::atan2(-quat_yaw.y, quat_yaw.w);
+            float yaw                  = half_angle * 2.0f;
+            if (yaw < 0.0f) yaw       += math::pi_2;
+            yaw_packed                 = static_cast<uint8_t>((yaw / math::pi_2) * 255.0f);
 
             // pack scale
             float scale_avg = (matrix.GetScale().x + matrix.GetScale().y + matrix.GetScale().z) / 3.0f;
@@ -182,7 +206,7 @@ namespace spartan
                 exp = 1 - shifts;
             }
         
-            // adjust exponent bias (half 15 to float 127)
+            // half 15 to float 127
             exp += 112; // 127 - 15 = 112
         
             // assemble float bits
