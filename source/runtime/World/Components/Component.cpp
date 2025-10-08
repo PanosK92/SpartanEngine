@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "AudioSource.h"
 #include "Terrain.h"
+#include "Volume.h"
 //======================
 
 //= NAMESPACES =====
@@ -56,4 +57,5 @@ namespace spartan
     REGISTER_COMPONENT(Renderable,  ComponentType::Renderable)
     REGISTER_COMPONENT(Physics,     ComponentType::Physics)
     REGISTER_COMPONENT(Terrain,     ComponentType::Terrain)
+    REGISTER_COMPONENT(Volume,      ComponentType::Volume)
 }

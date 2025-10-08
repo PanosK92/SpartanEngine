@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
+#include "World/Components/Volume.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -212,6 +213,7 @@ void Properties::OnTickVisible()
                 ShowRenderable(renderable);
                 ShowMaterial(material);
                 ShowPhysics(entity->GetComponent<Physics>());
+                ShowVolume(entity->GetComponent<Volume>());
 
                 ShowAddComponentButton();
             }
@@ -1169,6 +1171,71 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     component_end();
 }
 
+void Properties::ShowVolume(spartan::Volume* volume) const
+{
+    if (!volume)
+        return;
+
+    const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+    const float step            = 0.1f;
+    const float step_fast       = 0.1f;
+    const auto precision        = "%.3f";
+
+    if (component_begin("Volume", volume))
+    {
+        // reflect
+        unordered_map<Renderer_Option, float> options = volume->GetRenderOptions();
+        float shape_size                       = volume->GetShapeSize();
+        float transition_size                  = volume->GetTransitionSize();
+
+        // Render Options
+        ImGui::Text("Render Options");
+        //ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_mass", &mass, step, step_fast, precision, input_text_flags);
+
+        // Mesh Type
+        {
+            static vector<string> body_types =
+            {
+                "Box",
+                "Sphere"
+            };
+
+            ImGui::Text("Volume Type");
+            ImGui::SameLine(column_pos_x);
+            uint32_t selection_index = static_cast<uint32_t>(volume->GetVolumeShapeType());
+            if (ImGuiSp::combo_box("##volume_body_shape", body_types, &selection_index))
+            {
+                volume->SetMeshType(static_cast<VolumeType>(selection_index));
+            }
+        }
+
+        // shape size
+        // mass
+        ImGui::Text("Volume Size");
+        ImGui::SameLine(column_pos_x);
+        if (ImGui::InputFloat("##collisionShapeSize", &shape_size, step, step_fast, precision, input_text_flags))
+        {
+            // clamp to positive
+            shape_size = std::max(shape_size, 1.0f);
+        }
+
+        // transition size
+        ImGui::Text("Transition Size");
+        ImGui::SameLine(column_pos_x);
+        if (ImGui::InputFloat("##collisionTransitionSize", &transition_size, step, step_fast, precision, input_text_flags))
+        {
+            // clamp to positive
+            transition_size = std::max(transition_size, 0.2f);
+        }
+
+        //= MAP =========================================================================================
+        if (shape_size != volume->GetShapeSize())      volume->SetShapeSize(shape_size);
+        if (transition_size != volume->GetShapeSize()) volume->SetTransitionSize(transition_size);
+        //===============================================================================================
+    }
+    component_end();
+}
+
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1232,6 +1299,11 @@ void Properties::ComponentContextMenu_Add() const
                 }
 
                 ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Volume"))
+            {
+                entity->AddComponent<Volume>();
             }
         }
 
