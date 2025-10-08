@@ -291,7 +291,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         // apply foam (foam mask is stored in the alpha channel of slope map)
         //const float foam_noise = compute_foam_noise(vertex.uv_misc.xy, buffer_frame.time);
-        //albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
+        albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
 
         if (material.ocean_parameters.debugDisplacement == 1.0f) // displacement
         {
