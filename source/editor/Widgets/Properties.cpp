@@ -924,17 +924,17 @@ void Properties::ShowMaterial(Material* material) const
                 material->SetOceanVerticesCount(vertices_count);
             }
 
-            bool show_displacement = material->GetShowDisplacement();
+            bool show_displacement = material->GetOceanProperty(OceanParameters::DebugDisplacement) == 1.0f ? true : false;
             ImGui::Checkbox("Show Displacement Map", &show_displacement);
-            material->SetShowDiplacement(show_displacement);
+            material->SetOceanProperty(OceanParameters::DebugDisplacement, show_displacement ? 1.0f : 0.0f);
 
-            bool show_slope = material->GetShowSlope();
+            bool show_slope = material->GetOceanProperty(OceanParameters::DebugSlope) == 1.0f ? true : false;
             ImGui::Checkbox("Show Slope Map", &show_slope);
-            material->SetShowSlope(show_slope);
+            material->SetOceanProperty(OceanParameters::DebugSlope, show_slope ? 1.0f : 0.0f);
 
-            bool show_synthesised = material->GetShowSynthesised();
+            bool show_synthesised = material->GetOceanProperty(OceanParameters::DebugSynthesised) == 1.0f ? true : false;
             ImGui::Checkbox("Show Synthesised Version", &show_synthesised);
-            material->SetShowSynthesised(show_synthesised);
+            material->SetOceanProperty(OceanParameters::DebugSynthesised, show_synthesised ? 1.0f : 0.0f);
         }
         
         // uv

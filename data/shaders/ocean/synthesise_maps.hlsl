@@ -77,8 +77,11 @@ void preserve_variance(out float4 linear_color, float4 mean_color, float moment2
     linear_color = (linear_color - mean_color) / sqrt(moment2) + mean_color;
 }
 
-void synthesize(Texture2D example, out float4 output, float2 uv, float tex_freq, float tile_freq)
+void synthesize(Texture2D example, out float4 output, float2 uv)
 {
+    const float tex_freq = 1.0f;
+    const float tile_freq = 2.0f;
+    
     output = float4(0.0f, 0.0f, 0.0f, 0.0f); // init to 0.0f for safety reasons
     float moment2 = 0.0f;
 
@@ -95,8 +98,11 @@ void synthesize(Texture2D example, out float4 output, float2 uv, float tex_freq,
     preserve_variance(output, mean_example, moment2);
 }
 
-void synthesize_with_flow(Texture2D example, out float4 output, float2 flow_dir, float wind_dir_deg, float2 uv, float tex_freq, float tile_freq)
+void synthesize_with_flow(Texture2D example, out float4 output, float2 flow_dir, float wind_dir_deg, float2 uv)
 {
+    const float tex_freq = 1.0f;
+    const float tile_freq = 2.0f;
+    
     // convert wind dir from degrees to a 2d vector
     const float wind_dir_rad = radians(wind_dir_deg);
     const float2 wind_dir = float2(cos(wind_dir_rad), sin(wind_dir_rad));

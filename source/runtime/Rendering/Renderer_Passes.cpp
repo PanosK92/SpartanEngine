@@ -685,20 +685,6 @@ namespace spartan
                     {
                         const Vector3 tile_pos = entity->GetPosition();
                         m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
-
-                        float debug_maps = 0.0f; // 0.0f = none, 1.0f = displacement, 2.0f = slope
-                        if (material->GetShowDisplacement())
-                            debug_maps = 1.0f;
-                        else if (material->GetShowSlope())
-                            debug_maps = 2.0f;
-
-                        // 0.0f for original displacement/slope
-                        // 1.0f for synthesised displacement/slope
-                        float synthesised_flag = 0.0f;
-                        if (material->GetShowSynthesised())
-                            synthesised_flag = 1.0f;
-
-                        m_pcb_pass_cpu.set_f2_value(debug_maps, synthesised_flag);
                     }
 
                     cmd_list->PushConstants(m_pcb_pass_cpu);

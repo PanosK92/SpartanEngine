@@ -129,6 +129,9 @@ namespace spartan
             case spartan::OceanParameters::DisplacementScale:     return "displacement_scale";
             case spartan::OceanParameters::SlopeScale:            return "slope_scale";
             case spartan::OceanParameters::LengthScale:           return "length_scale";
+            case spartan::OceanParameters::DebugDisplacement:     return "debug_displacement";
+            case spartan::OceanParameters::DebugSlope:            return "debug_slope";
+            case spartan::OceanParameters::DebugSynthesised:      return "debug_synthesised";
             case spartan::OceanParameters::Max:                   return "max";
             default:
             {

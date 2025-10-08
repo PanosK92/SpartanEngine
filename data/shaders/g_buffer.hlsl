@@ -107,18 +107,10 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         const float2 tile_xz_pos = pass_values.xy;
         const float tile_size = pass_values.z;
         const float2 world_space_tile_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
-
-        const float tex_freq = 1.0f;
-        const float tile_freq = 2.0f;
         
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        float2 flow_dir = normalize(tex4.SampleLevel(samplers[sampler_point_clamp], world_space_tile_uv / float2(6.0f, 6.0f), 0).xy * 2 - 1);
-        //flow_dir = (1.0f, 1.0f);
-        float2 flow_uv = world_space_tile_uv / float2(6.0f, 6.0f);
-
-        flow_dir = float2(1.0f, 1.0f);
-        flow_dir = normalize(flow_dir);
-        synthesize_with_flow(tex2, displacement, flow_dir, material.ocean_parameters.windDirection, world_space_tile_uv, tex_freq, tile_freq);
+        synthesize(tex2, displacement, world_space_tile_uv);
+        
         input.position.xyz += displacement * material.ocean_parameters.displacementScale;
     }
     
@@ -290,55 +282,41 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         const float2 tile_xz_pos = pass_values.xy;
         const float tile_size = pass_values.z;
         const float2 world_space_tile_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, tile_xz_pos, tile_size);
-
-        const float tex_freq = 1.0f;
-        const float tile_freq = 2.0f;
         
         float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        float2 flow_dir = (1.0f, 1.0f);
-        float2 flow_uv = world_space_tile_uv / float2(6.0f, 6.0f);
-
-        flow_dir = float2(1.0f, 1.0f);
-        flow_dir = normalize(flow_dir);
-        //synthesize(tex3, slope, world_space_tile_uv, tex_freq, tile_freq);
-        synthesize_with_flow(tex3, slope, flow_dir, material.ocean_parameters.windDirection, world_space_tile_uv, tex_freq, tile_freq);
+        synthesize(tex3, slope, world_space_tile_uv);
         
         slope = slope * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
 
         // apply foam (foam mask is stored in the alpha channel of slope map)
         //const float foam_noise = compute_foam_noise(vertex.uv_misc.xy, buffer_frame.time);
-        albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
+        //albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
 
-        const float2 debug_values = pass_get_f2_value();
-
-        if (debug_values.x == 1.0f) // displacement
+        if (material.ocean_parameters.debugDisplacement == 1.0f) // displacement
         {
-            if (debug_values.y == 1.0f) // show synthesised version
+            if (material.ocean_parameters.debugSynthesised == 1.0f) // show synthesised version
             {
                 // first we must synthesise again since we dont have access
                 // to the synthesised displacement (it's calculated in the vertex stage)
                 float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-                float2 flow_dir = normalize(tex4.SampleLevel(samplers[sampler_point_clamp], world_space_tile_uv / float2(6.0f, 6.0f), 0).xy * 2 - 1);
-                flow_dir = float2(1.0f, 1.0f);
-                flow_dir = normalize(flow_dir);
-                synthesize_with_flow(tex2, displacement, flow_dir, material.ocean_parameters.windDirection, world_space_tile_uv, tex_freq, tile_freq);
+                synthesize(tex2, displacement, world_space_tile_uv);
 
                 albedo = displacement;
             }
             else // show original displacement
                 albedo = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgba;
         }
-        else if (debug_values.x == 2.0f) // slope
+        else if (material.ocean_parameters.debugSlope == 1.0f) // slope
         {
-            if (debug_values.y == 1.0f) // show synthesised version
-                albedo = float4(slope.rgb, 1.0f);
+            if (material.ocean_parameters.debugSynthesised == 1.0f) // show synthesised version
+                albedo = slope;
             else // show original slope
-                albedo = float4(tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgb, 1.0f);
+                albedo = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy);
         }
 
         //albedo = tex4.Sample(samplers[sampler_anisotropic_wrap], world_space_tile_uv / float2(6.0f, 6.0f)).rgba;
-        //albedo = float4(flow_dir, 0.0f, 1.0f);
+        //albedo = float4(flow_dir * 0.5f + 0.5f, 0.0f, 1.0f);
     }
 
     // apply curved normals for grass blades

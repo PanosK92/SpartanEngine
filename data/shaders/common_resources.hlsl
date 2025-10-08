@@ -137,6 +137,10 @@ struct MaterialParameters
         float displacementScale;
         float slopeScale;
         float lengthScale;
+
+        float debugDisplacement;
+        float debugSlope;
+        float debugSynthesised;
     } ocean_parameters;
     
     bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }

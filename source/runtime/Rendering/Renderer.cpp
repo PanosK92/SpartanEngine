@@ -854,6 +854,9 @@ namespace spartan
                 properties[count].jonswap_parameters.displacementScale  = material->GetOceanProperty(OceanParameters::DisplacementScale);
                 properties[count].jonswap_parameters.slopeScale         = material->GetOceanProperty(OceanParameters::SlopeScale);
                 properties[count].jonswap_parameters.lengthScale        = material->GetOceanProperty(OceanParameters::LengthScale);
+                properties[count].jonswap_parameters.debugDisplacement  = material->GetOceanProperty(OceanParameters::DebugDisplacement);
+                properties[count].jonswap_parameters.debugSlope         = material->GetOceanProperty(OceanParameters::DebugSlope);
+                properties[count].jonswap_parameters.debugSynthesised   = material->GetOceanProperty(OceanParameters::DebugSynthesised);
 
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;
