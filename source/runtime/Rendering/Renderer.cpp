@@ -66,10 +66,10 @@ namespace spartan
     bool Renderer::m_transparents_present          = false;
     bool Renderer::m_bindless_samplers_dirty       = true;
     RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
+        vector<ShadowSlice> Renderer::m_shadow_slices;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    vector<ShadowSlice> Renderer::m_shadow_slices;
 
     namespace
     {

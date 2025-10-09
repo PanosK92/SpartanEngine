@@ -37,7 +37,7 @@ static const float INV_PI               = 0.31830988f;
 static const float PI_HALF              = PI * 0.5f;
 static const float FLT_MIN              = 0.00000001f;
 static const float FLT_MAX_16           = 32767.0f;
-static const float FLT_MAX_16U          = 65535.0f;
+static const float FLT_MAX_16U          = 65504.0f;
 static const float RPC_9                = 0.11111111111f;
 static const float RPC_16               = 0.0625f;
 static const float RPC_32               = 0.03125f;
@@ -53,6 +53,46 @@ float  saturate_16(float x)  { return clamp(x, 0.0f, FLT_MAX_16U); }
 float2 saturate_16(float2 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
+
+/*------------------------------------------------------------------------------
+    VALIDATE
+------------------------------------------------------------------------------*/
+float validate_output(float value)
+{
+    value = saturate_16(value);
+    float is_nan_mask = isnan(value) ? 1.0f : 0.0f;
+    return lerp(value, 1.0f, is_nan_mask);
+}
+
+float2 validate_output(float2 value)
+{
+    return float2
+    (
+        validate_output(value.x),
+        validate_output(value.y)
+    );
+}
+
+float3 validate_output(float3 value)
+{
+    return float3
+    (
+        validate_output(value.x),
+        validate_output(value.y),
+        validate_output(value.z)
+    );
+}
+
+float4 validate_output(float4 value)
+{
+    return float4
+    (
+        validate_output(value.x),
+        validate_output(value.y),
+        validate_output(value.z),
+        validate_output(value.w)
+    );
+}
 
 /*------------------------------------------------------------------------------
     PACK/UNPACK
