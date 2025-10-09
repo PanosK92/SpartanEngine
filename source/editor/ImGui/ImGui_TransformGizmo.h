@@ -90,9 +90,6 @@ namespace ImGui::TransformGizmo
 
         // get selected entity
         spartan::Entity* entity = camera->GetSelectedEntity();
-
-        // enable/disable gizmo
-        ImGuizmo::Enable(entity != nullptr);
         if (!entity)
             return;
 
