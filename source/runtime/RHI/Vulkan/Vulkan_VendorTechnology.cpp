@@ -717,9 +717,41 @@ namespace spartan
 
         // assets
         {
-            // shared
+            // empty skybox
             {
-                amd::texture_skybox = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 128, 128, 6, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox");
+                const uint32_t width     = 128;
+                const uint32_t height    = 128;
+                const uint32_t depth     = 6; // cube faces
+                const uint32_t mip_count = 1;
+                const RHI_Format format  = RHI_Format::R16G16B16A16_Float;
+                const uint32_t flags     = RHI_Texture_Srv | RHI_Texture_Uav;
+                const char* name         = "skybox";
+
+                const uint32_t channel_count    = 4;
+                const uint32_t bits_per_channel = 16;
+                const uint32_t bytes_per_pixel  = (bits_per_channel / 8) * channel_count;
+                const size_t slice_size         = static_cast<size_t>(width) * height * bytes_per_pixel;
+
+                // create black data for all 6 faces
+                std::vector<RHI_Texture_Slice> data(depth);
+                for (uint32_t face = 0; face < depth; face++)
+                {
+                    RHI_Texture_Mip mip;
+                    mip.bytes.resize(slice_size, std::byte(0));
+                    data[face].mips.push_back(std::move(mip));
+                }
+
+                amd::texture_skybox = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::TypeCube,
+                    width,
+                    height,
+                    depth,
+                    mip_count,
+                    format,
+                    flags,
+                    name,
+                    std::move(data)
+                );
             }
         }
     #endif
