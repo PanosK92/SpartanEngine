@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Volume.h"
 
+#include "Display/Display.h"
 #include "Rendering/Renderer.h"
 #include "World/Entity.h"
 //============================================
@@ -39,13 +40,38 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_shape_type, VolumeType);
 
         m_volume_shape_type = VolumeType::Sphere;
-        m_bounding_box = math::BoundingBox::Unit;
-        m_shape_size = 1.0f;
-        m_transition_size = 0.2f;
-        for (auto& [option, value] : Renderer::GetOptions())
+        m_bounding_box = BoundingBox::Unit;
+        m_shape_size = default_shape_size;
+        m_transition_size = default_transition_size;
+        m_is_debug_draw_enabled = true;
+        /*for (auto& [option, value] : Renderer::GetOptions())
         {
             m_options[option] = value;
-        }
+        }*/
+
+        m_options[Renderer_Option::WhitePoint] =                  350.0f; // float
+        m_options[Renderer_Option::Tonemapping] =                 Renderer_Tonemapping::Max; // enum
+        m_options[Renderer_Option::Bloom] =                       1.0f;  // non-zero values activate it and control the intensity, float
+        m_options[Renderer_Option::MotionBlur] =                  true;  // bool
+        m_options[Renderer_Option::DepthOfField] =                true;  // bool
+        m_options[Renderer_Option::FilmGrain] =                   false; // bool
+        m_options[Renderer_Option::ChromaticAberration] =         false; // bool
+        m_options[Renderer_Option::Vhs] =                         false; // bool
+        m_options[Renderer_Option::Dithering] =                   false; // bool
+        m_options[Renderer_Option::ScreenSpaceAmbientOcclusion] = true;  // bool
+        m_options[Renderer_Option::ScreenSpaceReflections] =      true;  // bool
+        m_options[Renderer_Option::Fog] =                         1.0f;  // float
+        m_options[Renderer_Option::VariableRateShading] =         false; // bool
+        m_options[Renderer_Option::Vsync] =                       false; // bool
+        m_options[Renderer_Option::TransformHandle] =             true;  // bool
+        m_options[Renderer_Option::SelectionOutline] =            false; // bool
+        m_options[Renderer_Option::Grid] =                        false; // bool
+        m_options[Renderer_Option::Lights] =                      true;  // bool
+        m_options[Renderer_Option::AudioSources] =                true;  // bool
+        m_options[Renderer_Option::Physics] =                     false; // bool
+        m_options[Renderer_Option::PerformanceMetrics] =          true;  // bool
+        m_options[Renderer_Option::Gamma] =                       Display::GetGamma(); // float
+        m_options[Renderer_Option::AutoExposureAdaptationSpeed] = 0.5f;  // float
     }
 
     Volume::~Volume()
@@ -55,19 +81,22 @@ namespace spartan
 
     void Volume::Tick()
     {
-        // For debugging
-        if (m_volume_shape_type == VolumeType::Sphere)
+        if (m_is_debug_draw_enabled)
         {
-            Renderer::DrawSphere(m_entity_ptr->GetPosition(), m_shape_size, 16, Color::standard_yellow);
-            Renderer::DrawSphere(m_entity_ptr->GetPosition(), m_shape_size + m_transition_size, 16, Color::standard_renderer_lines);
-        }
-        else if (m_volume_shape_type == VolumeType::Box)
-        {
-            const Matrix new_matrix_inner = Matrix(m_entity_ptr->GetPosition(), m_entity_ptr->GetRotation(), m_entity_ptr->GetScale() + m_shape_size);
-            Renderer::DrawBox(m_bounding_box * new_matrix_inner, Color::standard_yellow);
+            // For debugging
+            if (m_volume_shape_type == VolumeType::Sphere)
+            {
+                Renderer::DrawSphere(m_entity_ptr->GetPosition(), m_shape_size, 16, Color::standard_yellow);
+                Renderer::DrawSphere(m_entity_ptr->GetPosition(), m_shape_size + m_transition_size, 16, Color::standard_renderer_lines);
+            }
+            else if (m_volume_shape_type == VolumeType::Box)
+            {
+                const Matrix new_matrix_inner = Matrix(m_entity_ptr->GetPosition(), m_entity_ptr->GetRotation(), m_entity_ptr->GetScale() + m_shape_size);
+                Renderer::DrawBox(m_bounding_box * new_matrix_inner, Color::standard_yellow);
 
-            const Matrix new_matrix_outer = Matrix(m_entity_ptr->GetPosition(), m_entity_ptr->GetRotation(), m_entity_ptr->GetScale() + m_shape_size + m_transition_size);
-            Renderer::DrawBox(m_bounding_box * new_matrix_outer, Color::standard_renderer_lines);
+                const Matrix new_matrix_outer = Matrix(m_entity_ptr->GetPosition(), m_entity_ptr->GetRotation(), m_entity_ptr->GetScale() + m_shape_size + m_transition_size);
+                Renderer::DrawBox(m_bounding_box * new_matrix_outer, Color::standard_renderer_lines);
+            }
         }
     }
 }

@@ -753,11 +753,91 @@ namespace spartan
         m_options = options;
     }
 
+    // For Editor
+    std::string Renderer::EnumToString(Renderer_Option option)
+    {
+        switch (option)
+        {
+            case Renderer_Option::Aabb:                        return "AABB";
+            case Renderer_Option::PickingRay:                  return "Picking Ray";
+            case Renderer_Option::Grid:                        return "Grid";
+            case Renderer_Option::TransformHandle:             return "Transform Handle";
+            case Renderer_Option::SelectionOutline:            return "Selection Outline";
+            case Renderer_Option::Lights:                      return "Lights";
+            case Renderer_Option::AudioSources:                return "Audio Sources";
+            case Renderer_Option::PerformanceMetrics:          return "Performance Metrics";
+            case Renderer_Option::Physics:                     return "Physics";
+            case Renderer_Option::Wireframe:                   return "Wireframe";
+            case Renderer_Option::Bloom:                       return "Bloom";
+            case Renderer_Option::Fog:                         return "Fog";
+            case Renderer_Option::ScreenSpaceAmbientOcclusion: return "Ambient Occlusion (SSAO)";
+            case Renderer_Option::ScreenSpaceReflections:      return "Reflections (SSR)";
+            case Renderer_Option::MotionBlur:                  return "Motion Blur";
+            case Renderer_Option::DepthOfField:                return "Depth Of Field";
+            case Renderer_Option::FilmGrain:                   return "Film Grain";
+            case Renderer_Option::Vhs:                         return "VHS Effect";
+            case Renderer_Option::ChromaticAberration:         return "Chromatic Aberration";
+            case Renderer_Option::Anisotropy:                  return "Anisotropy";
+            case Renderer_Option::Tonemapping:                 return "Tone Mapping";
+            case Renderer_Option::AntiAliasing_Upsampling:     return "Anti-Aliasing Upsampling";
+            case Renderer_Option::Sharpness:                   return "Sharpness";
+            case Renderer_Option::Dithering:                   return "Dithering";
+            case Renderer_Option::Hdr:                         return "HDR";
+            case Renderer_Option::WhitePoint:                  return "White Point";
+            case Renderer_Option::Gamma:                       return "Gamma";
+            case Renderer_Option::Vsync:                       return "VSync";
+            case Renderer_Option::VariableRateShading:         return "Variable Rate Shading";
+            case Renderer_Option::ResolutionScale:             return "Resolution Scale";
+            case Renderer_Option::DynamicResolution:           return "Dynamic Resolution";
+            case Renderer_Option::OcclusionCulling:            return "Occlusion Culling";
+            case Renderer_Option::AutoExposureAdaptationSpeed: return "Exposure Adaptation Speed";
+            default:                                           return "Max";
+        }
+    }
+
+    Renderer_Option Renderer::StringToEnum(const std::string& name)
+    {
+        if (name == "AABB")                           return Renderer_Option::Aabb;
+        else if (name == "Picking Ray")               return Renderer_Option::PickingRay;
+        else if (name == "Grid")                      return Renderer_Option::Grid;
+        else if (name == "Transform Handle")          return Renderer_Option::TransformHandle;
+        else if (name == "Selection Outline")         return Renderer_Option::SelectionOutline;
+        else if (name == "Lights")                    return Renderer_Option::Lights;
+        else if (name == "Audio Sources")             return Renderer_Option::AudioSources;
+        else if (name == "Performance Metrics")       return Renderer_Option::PerformanceMetrics;
+        else if (name == "Physics")                   return Renderer_Option::Physics;
+        else if (name == "Wireframe")                 return Renderer_Option::Wireframe;
+        else if (name == "Bloom")                     return Renderer_Option::Bloom;
+        else if (name == "Fog")                       return Renderer_Option::Fog;
+        else if (name == "Ambient Occlusion (SSAO)")  return Renderer_Option::ScreenSpaceAmbientOcclusion;
+        else if (name == "Reflections (SSR)")         return Renderer_Option::ScreenSpaceReflections;
+        else if (name == "Motion Blur")               return Renderer_Option::MotionBlur;
+        else if (name == "Depth Of Field")            return Renderer_Option::DepthOfField;
+        else if (name == "Film Grain")                return Renderer_Option::FilmGrain;
+        else if (name == "VHS Effect")                return Renderer_Option::Vhs;
+        else if (name == "Chromatic Aberration")      return Renderer_Option::ChromaticAberration;
+        else if (name == "Anisotropy")                return Renderer_Option::Anisotropy;
+        else if (name == "Tone Mapping")              return Renderer_Option::Tonemapping;
+        else if (name == "Anti-Aliasing Upsampling")  return Renderer_Option::AntiAliasing_Upsampling;
+        else if (name == "Sharpness")                 return Renderer_Option::Sharpness;
+        else if (name == "Dithering")                 return Renderer_Option::Dithering;
+        else if (name == "HDR")                       return Renderer_Option::Hdr;
+        else if (name == "White Point")               return Renderer_Option::WhitePoint;
+        else if (name == "Gamma")                     return Renderer_Option::Gamma;
+        else if (name == "VSync")                     return Renderer_Option::Vsync;
+        else if (name == "Variable Rate Shading")     return Renderer_Option::VariableRateShading;
+        else if (name == "Resolution Scale")          return Renderer_Option::ResolutionScale;
+        else if (name == "Dynamic Resolution")        return Renderer_Option::DynamicResolution;
+        else if (name == "Occlusion Culling")         return Renderer_Option::OcclusionCulling;
+        else if (name == "Exposure Adaptation Speed") return Renderer_Option::AutoExposureAdaptationSpeed;
+        else                                          return Renderer_Option::Max; // Default fallback
+    }
+
     RHI_SwapChain* Renderer::GetSwapChain()
     {
         return swapchain.get();
     }
-    
+
     void Renderer::BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture)
     {
         cmd_list->BeginMarker("blit_to_back_buffer");

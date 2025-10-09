@@ -80,6 +80,8 @@ namespace spartan
         static void SetOption(Renderer_Option option, float value);
         static std::unordered_map<Renderer_Option, float>& GetOptions();
         static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
+        static std::string EnumToString(Renderer_Option option); // used most likely for editor-related applications
+        static Renderer_Option StringToEnum(const std::string& name);
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();

@@ -29,6 +29,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    struct EnumClassHash
+    {
+        template <typename T>
+        std::size_t operator()(T t) const
+        {
+            return static_cast<std::size_t>(t);
+        }
+    };
+
+    using RenderOptionType = std::variant<bool, int, float, Renderer_Tonemapping>;
+
+    static constexpr float default_shape_size = 1.0f;
+    static constexpr float default_transition_size = 0.2f;
+
     enum class VolumeType
     {
         Box,
@@ -54,8 +68,8 @@ namespace spartan
         //============================================
 
         // Render Options
-        std::unordered_map<Renderer_Option, float> GetRenderOptions() const { return m_options;}
-        void GetRenderOptions(const std::unordered_map<Renderer_Option, float>& options) { m_options = options; }
+        std::unordered_map<Renderer_Option, RenderOptionType, EnumClassHash> GetRenderOptions() const { return m_options;}
+        void SetRenderOptions(const std::unordered_map<Renderer_Option, RenderOptionType, EnumClassHash>& options) { m_options = options; }
 
         // Mesh Type
         VolumeType GetVolumeShapeType() const { return m_volume_shape_type; }
@@ -69,13 +83,17 @@ namespace spartan
         float GetTransitionSize() const { return m_transition_size; }
         void SetTransitionSize(const float transition_size) { m_transition_size = transition_size; }
 
+        // Debug Draw
+        bool GetDebugDrawEnabled() const { return m_is_debug_draw_enabled; }
+        void SetDebugDrawEnabled(bool value) { m_is_debug_draw_enabled = value; }
+
     private:
         VolumeType m_volume_shape_type   = VolumeType::Sphere;
-        float m_shape_size               = 1.0f;
-        float m_transition_size          = 0.2f;
+        float m_shape_size               = default_shape_size;
+        float m_transition_size          = default_transition_size;
         math::BoundingBox m_bounding_box = math::BoundingBox::Unit;
+        bool m_is_debug_draw_enabled = true;
 
-        //std::unordered_map<ComponentType, std::vector<Attribute>> m_component_attributes; // might be useful for interpolating directional light attributes?
-        std::unordered_map<Renderer_Option, float> m_options;
+        std::unordered_map<Renderer_Option, RenderOptionType, EnumClassHash> m_options;
     };
 }

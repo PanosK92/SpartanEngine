@@ -850,7 +850,7 @@ void Properties::ShowMaterial(Material* material) const
                         m_material_color_picker->Update();
                     }
                     else
-                    { 
+                    {
                         float value = material->GetProperty(mat_property);
 
                         if (mat_property != MaterialProperty::Metalness)
@@ -874,7 +874,7 @@ void Properties::ShowMaterial(Material* material) const
                     }
                 }
             };
-        
+
             // properties with textures
             show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorA);
             show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
@@ -891,7 +891,7 @@ void Properties::ShowMaterial(Material* material) const
             show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
             show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
         }
-        
+
         // uv
         {
             // tiling
@@ -900,7 +900,7 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
             ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-        
+
             // offset
             ImGui::Text("Offset");
             ImGui::SameLine(column_pos_x); ImGui::Text("X");
@@ -930,7 +930,7 @@ void Properties::ShowMaterial(Material* material) const
                     "Front",
                     "None"
                 };
-        
+
                 ImGui::Text("Culling");
                 ImGui::SameLine(column_pos_x);
                 uint32_t cull_mode_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::CullMode));
@@ -1030,7 +1030,7 @@ void Properties::ShowCamera(Camera* camera) const
         ImGui::Text("First Person Control");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
- 
+
         //= MAP =======================================================================================================================================================
         if (aperture != camera->GetAperture())          camera->SetAperture(aperture);
         if (shutter_speed != camera->GetShutterSpeed()) camera->SetShutterSpeed(shutter_speed);
@@ -1184,53 +1184,104 @@ void Properties::ShowVolume(spartan::Volume* volume) const
     if (component_begin("Volume", volume))
     {
         // reflect
-        unordered_map<Renderer_Option, float> options = volume->GetRenderOptions();
-        float shape_size                       = volume->GetShapeSize();
-        float transition_size                  = volume->GetTransitionSize();
+        unordered_map<Renderer_Option, RenderOptionType, EnumClassHash> options = volume->GetRenderOptions();
+        float shape_size                                                        = volume->GetShapeSize();
+        float transition_size                                                   = volume->GetTransitionSize();
+        bool  is_debug_draw_enabled                                             = volume->GetDebugDrawEnabled();
 
         // Render Options
-        ImGui::Text("Render Options");
-        //ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_mass", &mass, step, step_fast, precision, input_text_flags);
-
-        // Mesh Type
+        if (ImGuiSp::collapsing_header("Render Options", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            static vector<string> body_types =
+            for (auto& [option_key, option_value] : options)
             {
-                "Box",
-                "Sphere"
-            };
+                string label_str = Renderer::EnumToString(option_key);
+                const char* label = label_str.c_str();
 
-            ImGui::Text("Volume Type");
-            ImGui::SameLine(column_pos_x);
-            uint32_t selection_index = static_cast<uint32_t>(volume->GetVolumeShapeType());
-            if (ImGuiSp::combo_box("##volume_body_shape", body_types, &selection_index))
-            {
-                volume->SetMeshType(static_cast<VolumeType>(selection_index));
+                if (std::holds_alternative<bool>(option_value))
+                {
+                    bool& bool_value = get<bool>(option_value);
+                    if (ImGui::Checkbox(label, &bool_value))
+                    {
+                        options[option_key] = bool_value;
+                    }
+                }
+                else if (std::holds_alternative<int>(option_value))
+                {
+                    int& int_value = get<int>(option_value);
+                    if (ImGui::InputInt(label, &int_value, 1, 0.0f))
+                    {
+                        options[option_key] = int_value;
+                    }
+                }
+                else if (std::holds_alternative<float>(option_value))
+                {
+                    float& float_value = get<float>(option_value);
+                    if (ImGui::InputFloat(label, &float_value, 1, 0.1f))
+                    {
+                        options[option_key] = float_value;
+                    }
+                }
+                else if (std::holds_alternative<Renderer_Tonemapping>(option_value))
+                {
+                    const char* tonemapping_items[] = { "Aces", "AgX", "Reinhard", "AcesNautilus" };
+                    Renderer_Tonemapping& tone_mapping_value = get<Renderer_Tonemapping>(option_value);
+                    int current = static_cast<int>(tone_mapping_value);
+                    if (ImGui::Combo(label, &current, tonemapping_items, IM_ARRAYSIZE(tonemapping_items)))
+                    {
+                        options[option_key] = tone_mapping_value;
+                    }
+                }
             }
         }
 
-        // shape size
-        // mass
-        ImGui::Text("Volume Size");
-        ImGui::SameLine(column_pos_x);
-        if (ImGui::InputFloat("##collisionShapeSize", &shape_size, step, step_fast, precision, input_text_flags))
+        if (ImGuiSp::collapsing_header("Volume Properties", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            // clamp to positive
-            shape_size = std::max(shape_size, 1.0f);
-        }
+            // Mesh Type
+            {
+                static vector<string> body_types =
+                {
+                    "Box",
+                    "Sphere"
+                };
 
-        // transition size
-        ImGui::Text("Transition Size");
-        ImGui::SameLine(column_pos_x);
-        if (ImGui::InputFloat("##collisionTransitionSize", &transition_size, step, step_fast, precision, input_text_flags))
-        {
-            // clamp to positive
-            transition_size = std::max(transition_size, 0.2f);
+                ImGui::Text("Volume Type");
+                ImGui::SameLine(column_pos_x);
+                uint32_t selection_index = static_cast<uint32_t>(volume->GetVolumeShapeType());
+                if (ImGuiSp::combo_box("##volume_body_shape", body_types, &selection_index))
+                {
+                    volume->SetMeshType(static_cast<VolumeType>(selection_index));
+                }
+            }
+
+            // shape size
+            ImGui::Text("Volume Size");
+            ImGui::SameLine(column_pos_x);
+            if (ImGui::InputFloat("##collisionShapeSize", &shape_size, step, step_fast, precision, input_text_flags))
+            {
+                // clamp to positive
+                shape_size = std::max(shape_size, default_shape_size);
+            }
+
+            // transition size
+            ImGui::Text("Transition Size");
+            ImGui::SameLine(column_pos_x);
+            if (ImGui::InputFloat("##collisionTransitionSize", &transition_size, step, step_fast, precision, input_text_flags))
+            {
+                // clamp to positive
+                transition_size = std::max(transition_size, default_transition_size);
+            }
+
+            // toggle for debug draw enabled
+            if (ImGui::Checkbox("Debug Draw Shape", &is_debug_draw_enabled))
+            {
+                volume->SetDebugDrawEnabled(is_debug_draw_enabled);
+            }
         }
 
         //= MAP =========================================================================================
-        if (shape_size != volume->GetShapeSize())      volume->SetShapeSize(shape_size);
-        if (transition_size != volume->GetShapeSize()) volume->SetTransitionSize(transition_size);
+        if (shape_size != volume->GetShapeSize())           volume->SetShapeSize(shape_size);
+        if (transition_size != volume->GetTransitionSize()) volume->SetTransitionSize(transition_size);
+        if (options != volume->GetRenderOptions())          volume->SetRenderOptions(options);
         //===============================================================================================
     }
     component_end();
