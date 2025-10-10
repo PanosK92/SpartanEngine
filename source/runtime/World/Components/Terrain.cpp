@@ -157,10 +157,10 @@ namespace spartan
             if (adjusted_count == 0)
                 return;
 
-            // new: setup clusters
-            uint32_t cluster_count = adjusted_count;
+            // setup clusters
+            uint32_t cluster_count              = adjusted_count;
             uint32_t base_instances_per_cluster = 1;
-            uint32_t remainder_instances = 0;
+            uint32_t remainder_instances        = 0;
             if (prop_desc.instances_per_cluster > 1)
             {
                 cluster_count = max(1u, adjusted_count / prop_desc.instances_per_cluster);
@@ -183,21 +183,22 @@ namespace spartan
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
-                    uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
+                    uint32_t tri_idx  = acceptable_triangles[triangle_dist(generator)];
                     TriangleData& tri = tile_triangle_data[tri_idx];
+
                     // position (xz used as cluster center)
-                    float r1 = dist(generator);
-                    float r2 = dist(generator);
-                    float sqrt_r1 = sqrtf(r1);
-                    float u = 1.0f - sqrt_r1;
-                    float v = r2 * sqrt_r1;
+                    float r1         = dist(generator);
+                    float r2         = dist(generator);
+                    float sqrt_r1    = sqrtf(r1);
+                    float u          = 1.0f - sqrt_r1;
+                    float v          = r2 * sqrt_r1;
                     Vector3 position = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
-                    clusters[i] = { position, tri_idx };
+                    clusters[i]      = { position, tri_idx };
                 }
             };
             ThreadPool::ParallelLoop(place_cluster, cluster_count);
 
-            // new: compute nearby acceptable triangles per cluster (for snapping to surface)
+            // compute nearby acceptable triangles per cluster (for snapping to surface)
             vector<vector<uint32_t>> cluster_nearby_tris(cluster_count);
             auto compute_nearby = [
                 &cluster_nearby_tris,
@@ -1052,8 +1053,8 @@ namespace spartan
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
             description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
-            description.min_scale               = scale;
-            description.max_scale               = scale;
+            description.min_scale               = scale * 0.5f;
+            description.max_scale               = scale * 1.5f;
         }
         else if (terrain_prop == TerrainProp::Flower)
         {
@@ -1061,10 +1062,10 @@ namespace spartan
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
             description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
-            description.min_scale               = scale;
-            description.max_scale               = scale;
-            description.instances_per_cluster   = 5000;  // avg flowers per cluster
-            description.cluster_radius          = 50.0f; // max spread radius in world units
+            description.min_scale               = scale * 0.5f;
+            description.max_scale               = scale * 1.5f;
+            description.instances_per_cluster   = 5000;                         // avg flowers per cluster
+            description.cluster_radius          = 50.0f;                        // max spread radius in world units
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
