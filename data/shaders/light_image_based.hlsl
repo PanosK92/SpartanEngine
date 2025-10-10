@@ -85,5 +85,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // tone down for transparent surfaces
     ibl *= surface.alpha;
 
-    tex_uav[thread_id.xy] += float4(ibl, 0.0f);
+    tex_uav[thread_id.xy] += validate_output(float4(ibl, 0.0f));
 }

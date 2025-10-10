@@ -139,20 +139,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             break;
     }
 
-    if (buffer_frame.hdr_enabled == 0.0f) // sdr
+    if (buffer_frame.hdr_enabled != 0.0f) // hdr
     {
-        color.rgb  = linear_to_srgb(color.rgb);
-    }
-    else // hdr
-    {
-        // scale to max display nits
-        float peak_scale = buffer_frame.hdr_max_nits / buffer_frame.hdr_white_point;
-        float3 clamped   = color.rgb / peak_scale;
-        clamped          = clamped / (1.0f + clamped);
-        color.rgb        = clamped * peak_scale;
+        // 1. Tone map scene from scene-referred to display-referred brightness
+        color.rgb = tone_map_to_display(color.rgb, buffer_frame.hdr_white_point, buffer_frame.hdr_max_nits);
 
-        // convert to hdr10
-        color.rgb  = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
+         // 2. Convert from linear (scene) to HDR10 PQ encoding
+        color.rgb = linear_to_hdr10(color.rgb, buffer_frame.hdr_white_point);
+    }    
+    else // sdr
+    {
+        color.rgb = linear_to_srgb(color.rgb);
     }
 
     // at this point there is not reason to store an alpha value

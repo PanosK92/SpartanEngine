@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
 {
     float camera_height = buffer_frame.camera_position.y;
-    float density      = pass_get_f3_value().y * 0.0002f;
+    float density      = pass_get_f3_value().y * 0.0001f;
     float scale_height = 50.0f; 
     float b            = 1.0f / scale_height;
     float delta_height = pixel_height_world - camera_height;

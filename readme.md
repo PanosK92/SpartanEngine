@@ -54,6 +54,7 @@ The Forest is the most advanced and demanding world. It features **256 million**
 - Renderer
   - Cutting-edge Vulkan renderer
   - 128-byte push constant buffer across passes for lightning-fast CPU-to-GPU data transfer
+  - Capable of handling hundreds of millions of instances thanks to its tightly packed 10-byte instance format
   - On-the-fly single-dispatch GPU-based mip generation for render targets (FidelityFX SPD)
   - On-the-fly compression and mip generation for material textures (FidelityFX Compressonator)
   - Vulkan (main) and DirectX 12 (wip) backends with universal HLSL shaders

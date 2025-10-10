@@ -66,10 +66,10 @@ namespace spartan
     bool Renderer::m_transparents_present          = false;
     bool Renderer::m_bindless_samplers_dirty       = true;
     RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
+        vector<ShadowSlice> Renderer::m_shadow_slices;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    vector<ShadowSlice> Renderer::m_shadow_slices;
 
     namespace
     {
@@ -556,19 +556,19 @@ namespace spartan
             m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                 ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
         }
-        m_cb_frame_cpu.resolution_output           = m_resolution_output;
-        m_cb_frame_cpu.resolution_render           = m_resolution_render;
-        m_cb_frame_cpu.taa_jitter_previous         = m_cb_frame_cpu.taa_jitter_current;
-        m_cb_frame_cpu.taa_jitter_current          = jitter_offset;
-        m_cb_frame_cpu.time                        = Timer::GetTimeSec();
-        m_cb_frame_cpu.delta_time                  = static_cast<float>(Timer::GetDeltaTimeSec());
-        m_cb_frame_cpu.frame                       = static_cast<uint32_t>(frame_num);
-        m_cb_frame_cpu.resolution_scale            = GetOption<float>(Renderer_Option::ResolutionScale);
-        m_cb_frame_cpu.hdr_enabled                 = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
-        m_cb_frame_cpu.hdr_max_nits                = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_white_point             = GetOption<float>(Renderer_Option::WhitePoint);
-        m_cb_frame_cpu.gamma                       = GetOption<float>(Renderer_Option::Gamma);
-        m_cb_frame_cpu.camera_exposure             = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+        m_cb_frame_cpu.resolution_output   = m_resolution_output;
+        m_cb_frame_cpu.resolution_render   = m_resolution_render;
+        m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
+        m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
+        m_cb_frame_cpu.time                = Timer::GetTimeSec();
+        m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
+        m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
+        m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
+        m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
+        m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
+        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
+        m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+        m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
         // these must match what common_buffer.hlsl is reading
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
@@ -844,9 +844,10 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::WindAnimation)              ? (1U << 9)  : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::ColorVariationFromInstance) ? (1U << 10) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsGrassBlade)               ? (1U << 11) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)                    ? (1U << 12) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 13) : 0;
-                properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 14) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsFlower)                   ? (1U << 12) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)                    ? (1U << 13) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
     

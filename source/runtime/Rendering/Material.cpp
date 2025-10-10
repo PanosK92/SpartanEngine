@@ -84,6 +84,7 @@ namespace spartan
                 // Special effects
                 case MaterialProperty::IsTerrain:                  return "texture_slope_based";
                 case MaterialProperty::IsGrassBlade:               return "is_grass_blade";
+                case MaterialProperty::IsFlower:                   return "is_flower";
                 case MaterialProperty::WindAnimation:              return "wind_animation";
                 case MaterialProperty::ColorVariationFromInstance: return "color_variation_from_instance";
                 case MaterialProperty::IsWater:                    return "vertex_animate_water";

@@ -1,4 +1,4 @@
-#/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -87,6 +87,7 @@ namespace spartan
         // special effects
         IsTerrain,                  // slope-based texture mapping
         IsGrassBlade,               // grass blade specific effects
+        IsFlower,                   // flower specific effects
         WindAnimation,              // vertex wind animation
         ColorVariationFromInstance, // per-instance color variation
         IsWater,                    // water flow animation

@@ -717,9 +717,41 @@ namespace spartan
 
         // assets
         {
-            // shared
+            // empty skybox
             {
-                amd::texture_skybox = make_shared<RHI_Texture>(RHI_Texture_Type::TypeCube, 128, 128, 6, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Uav, "skybox");
+                const uint32_t width     = 128;
+                const uint32_t height    = 128;
+                const uint32_t depth     = 6; // cube faces
+                const uint32_t mip_count = 1;
+                const RHI_Format format  = RHI_Format::R16G16B16A16_Float;
+                const uint32_t flags     = RHI_Texture_Srv | RHI_Texture_Uav;
+                const char* name         = "skybox";
+
+                const uint32_t channel_count    = 4;
+                const uint32_t bits_per_channel = 16;
+                const uint32_t bytes_per_pixel  = (bits_per_channel / 8) * channel_count;
+                const size_t slice_size         = static_cast<size_t>(width) * height * bytes_per_pixel;
+
+                // create black data for all 6 faces
+                std::vector<RHI_Texture_Slice> data(depth);
+                for (uint32_t face = 0; face < depth; face++)
+                {
+                    RHI_Texture_Mip mip;
+                    mip.bytes.resize(slice_size, std::byte(0));
+                    data[face].mips.push_back(std::move(mip));
+                }
+
+                amd::texture_skybox = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::TypeCube,
+                    width,
+                    height,
+                    depth,
+                    mip_count,
+                    format,
+                    flags,
+                    name,
+                    std::move(data)
+                );
             }
         }
     #endif
@@ -1019,14 +1051,14 @@ namespace spartan
         amd::ssr::description_dispatch.normalUnPackMul                      = 1.0f;
         amd::ssr::description_dispatch.normalUnPackAdd                      = 0.0f;
         amd::ssr::description_dispatch.depthBufferThickness                 = 0.1f;   // hit acceptance bias, larger values can cause streaks, lower values can cause holes
-        amd::ssr::description_dispatch.varianceThreshold                    = 0.005f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
+        amd::ssr::description_dispatch.varianceThreshold                    = 0.001f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
         amd::ssr::description_dispatch.maxTraversalIntersections            = 100;    // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         amd::ssr::description_dispatch.minTraversalOccupancy                = 1;      // exit the core loop early if less than this number of threads are running
         amd::ssr::description_dispatch.mostDetailedMip                      = 0;
         amd::ssr::description_dispatch.temporalStabilityFactor              = 1.0f;   // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
         amd::ssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;   // whether a ray should be spawned on pixels where a temporal variance is detected or not
         amd::ssr::description_dispatch.samplesPerQuad                       = 4;      // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
-        amd::ssr::description_dispatch.iblFactor                            = 0.0f;
+        amd::ssr::description_dispatch.iblFactor                            = 1.0f;
         amd::ssr::description_dispatch.roughnessChannel                     = 0;
         amd::ssr::description_dispatch.isRoughnessPerceptual                = true;
         amd::ssr::description_dispatch.roughnessThreshold                   = 0.5f;   // regions with a roughness value greater than this threshold won't spawn rays

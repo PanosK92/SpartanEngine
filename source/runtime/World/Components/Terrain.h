@@ -40,8 +40,23 @@ namespace spartan
     {
         Tree,
         Grass,
+        Flower,
         Rock,
         Max
+    };
+
+    struct TerrainPropDescription
+    {
+        bool  align_to_surface_normal  = true;                     // if true, aligns the prop rotation to the terrain surface normal
+        float max_slope_angle_rad      = math::deg_to_rad * 35.0f; // maximum terrain slope (in radians) where the prop can spawn
+        float surface_offset           = 0.05f;                    // vertical offset from the terrain surface
+        float min_spawn_height         = 0.0f;                     // lowest height where the prop can spawn
+        float max_spawn_height         = 1000.0f;                  // highest height where the prop can spawn
+        float min_scale                = 0.8f;                     // minimum scale variation
+        float max_scale                = 1.2f;                     // maximum scale variation
+        bool  scale_adjust_by_slope    = false;                    // scale down props on steep slopes (helps large rocks sit on flat ground)
+        uint32_t instances_per_cluster = 0;                        // if > 0, instances will be clustered in groups of this size, which is more efficient for rendering
+        float cluster_radius = 0.0f;                               // radius of each cluster, ignored if instances_per_cluster is 0
     };
 
     class Terrain : public Component
@@ -68,7 +83,14 @@ namespace spartan
 
         // generate
         void Generate();
-        void FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, Entity* entity, const float scale, std::vector<math::Matrix>& transforms_out);
+        void FindTransforms(
+            const uint32_t tile_index,
+            const TerrainProp terrain_prop,
+            Entity* entity,
+            const float density_fraction,
+            const float scale,
+            std::vector<math::Matrix>& transforms_out
+        );
 
         // io
         void SaveToFile(const char* file_path);

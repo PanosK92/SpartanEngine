@@ -603,7 +603,7 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.rasterizer_state                 = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
+            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are few, no pre-pass needed
             pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.resolution_scale                 = true;
             pso.render_target_color_textures[0]  = tex_color;
@@ -1073,7 +1073,7 @@ namespace spartan
         RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTarget::frame_output_2);
 
-        cmd_list->BeginMarker("post_proccess");
+        cmd_list->BeginMarker("post_process");
 
         // macros which allows us to keep track of which texture is an input/output for each pass
         bool swap_output = true;
@@ -1101,8 +1101,18 @@ namespace spartan
             Pass_Bloom(cmd_list, get_output_in, get_output_out);
         }
 
-        // auto exposure
-        Pass_AutoExposure(cmd_list, get_output_in);
+        // ensure input is rt_frame_output for auto-exposure (which has per mip views)
+        if (get_output_in != rt_frame_output)
+        {
+            cmd_list->Blit(get_output_in, rt_frame_output, false);
+            swap_output = !swap_output;
+        }
+
+        // auto-exposure
+        if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
+        {
+            Pass_AutoExposure(cmd_list, get_output_in);
+        }
 
         // tone-mapping & gamma correction
         {
@@ -1482,24 +1492,9 @@ namespace spartan
     void Renderer::Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
     {
         // get resources
-        RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);          // current
-        RHI_Texture* tex_exposure_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous); // previous
+        RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure); 
+        RHI_Texture* tex_exposure_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
 
-        // clear once if disabled or continue if enabled
-        float adaptation_speed         = GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed);
-        static bool cleared_on_disable = false;
-        if (adaptation_speed <= 0.0f)
-        {
-            if (!cleared_on_disable)
-            {
-                cmd_list->ClearTexture(tex_exposure, Color::standard_white);
-                cmd_list->ClearTexture(tex_exposure_previous, Color::standard_white);
-                cleared_on_disable = true;
-            }
-            return;
-        }
-        cleared_on_disable = false;
-    
         // define pipeline state
         RHI_PipelineState pso;
         pso.name             = "auto_exposure";
@@ -1511,12 +1506,12 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
     
             // push constants
-            m_pcb_pass_cpu.set_f3_value(adaptation_speed);
+            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous); // input: previous exposure value
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);           // output: current exposure value
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, tex_in->GetMipCount() - 1, 1); // input: current frame
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);               // input: previous exposure value
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);                         // output: current exposure value
 
             // single dispatch: just writes 1 value
             cmd_list->Dispatch(1, 1, 1);

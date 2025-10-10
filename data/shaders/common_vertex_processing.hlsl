@@ -29,14 +29,90 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // vertex buffer input
 struct Vertex_PosUvNorTan
 {
-    float4 position          : POSITION;
-    float2 uv                : TEXCOORD;
-    float3 normal            : NORMAL;
-    float3 tangent           : TANGENT;
-    float3 instance_position : INSTANCE_POSITION;
-    float4 instance_rotation : INSTANCE_ROTATION;
-    float instance_scale     : INSTANCE_SCALE;
+    float4 position                : POSITION;
+    float2 uv                      : TEXCOORD;
+    float3 normal                  : NORMAL;
+    float3 tangent                 : TANGENT;
+    min16float instance_position_x : INSTANCE_POSITION_X;
+    min16float instance_position_y : INSTANCE_POSITION_Y;
+    min16float instance_position_z : INSTANCE_POSITION_Z;
+    uint instance_normal_oct       : INSTANCE_NORMAL_OCT;
+    uint instance_yaw              : INSTANCE_YAW;
+    uint instance_scale            : INSTANCE_SCALE;
 };
+
+float4x4 compose_instance_transform(min16float instance_position_x, min16float instance_position_y, min16float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
+{
+    // compose position
+    float3 instance_position = float3(instance_position_x, instance_position_y, instance_position_z);
+
+    // check for identity
+    if (!any(instance_position) && instance_normal_oct == 0 && instance_yaw == 0 && instance_scale == 0)
+        return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+
+    // compose octahedral normal
+    float x = float(instance_normal_oct >> 8) / 255.0 * 2.0 - 1.0;
+    float y = float(instance_normal_oct & 0xFF) / 255.0 * 2.0 - 1.0;
+    float z = 1.0 - abs(x) - abs(y);
+    if (z < 0.0)
+    {
+        float temp_x = x;
+        x = (1.0 - abs(y)) * (temp_x >= 0.0 ? 1.0 : -1.0);
+        y = (1.0 - abs(temp_x)) * (y >= 0.0 ? 1.0 : -1.0);
+    }
+    float3 normal = normalize(float3(x, y, z));
+
+    // compose yaw and scale
+    float yaw   = float(instance_yaw) / 255.0 * 6.28318530718; // pi_2
+    float scale = exp2(lerp(-6.643856, 6.643856, float(instance_scale) / 255.0)); // log2(0.01) to log2(100)
+
+    // compose quaternion
+    float3 up = float3(0, 1, 0);
+    float up_dot_normal = dot(up, normal);
+    float4 quat;
+    if (abs(up_dot_normal) >= 0.999999)
+    {
+        quat = up_dot_normal > 0 ? float4(0, 0, 0, 1) : float4(1, 0, 0, 0);
+    }
+    else
+    {
+        float s = fast_sqrt(2.0 + 2.0 * up_dot_normal);
+        quat    = float4(cross(up, normal) / s, s * 0.5);
+    }
+    float cy = cos(yaw * 0.5);
+    float sy = sin(yaw * 0.5);
+    float4 quat_yaw = float4(0, sy, 0, cy);
+    float4 q = float4( 
+        quat.w * quat_yaw.x + quat.x * quat_yaw.w + quat.y * quat_yaw.z - quat.z * quat_yaw.y,
+        quat.w * quat_yaw.y - quat.x * quat_yaw.z + quat.y * quat_yaw.w + quat.z * quat_yaw.x,
+        quat.w * quat_yaw.z + quat.x * quat_yaw.y - quat.y * quat_yaw.x + quat.z * quat_yaw.w,
+        quat.w * quat_yaw.w - quat.x * quat_yaw.x - quat.y * quat_yaw.y - quat.z * quat_yaw.z
+    );
+
+    // compose rotation matrix
+    float xx = q.x * q.x;
+    float xy = q.x * q.y;
+    float xz = q.x * q.z;
+    float xw = q.x * q.w;
+    float yy = q.y * q.y;
+    float yz = q.y * q.z;
+    float yw = q.y * q.w;
+    float zz = q.z * q.z;
+    float zw = q.z * q.w;
+    float3x3 rotation = float3x3(
+        1 - 2 * (yy + zz), 2 * (xy - zw), 2 * (xz + yw),
+        2 * (xy + zw), 1 - 2 * (xx + zz), 2 * (yz - xw),
+        2 * (xz - yw), 2 * (yz + xw), 1 - 2 * (xx + yy)
+    );
+
+    // compose final transform
+    return float4x4(
+        float4(rotation._11 * scale, rotation._12 * scale, rotation._13 * scale, 0),
+        float4(rotation._21 * scale, rotation._22 * scale, rotation._23 * scale, 0),
+        float4(rotation._31 * scale, rotation._32 * scale, rotation._33 * scale, 0),
+        float4(instance_position, 1)
+    );
+}
 
 // vertex buffer output
 struct gbuffer_vertex
@@ -49,7 +125,6 @@ struct gbuffer_vertex
     float width_percent      : TEXCOORD2; // temp, will remove
 }; 
 
-// remap a value from one range to another
 float remap(float value, float inMin, float inMax, float outMin, float outMax)
 {
     return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
@@ -83,38 +158,8 @@ float3x3 rotation_matrix(float3 axis, float angle)
     );
 }
 
-float4x4 instance_to_matrix(float3 instance_position, float4 instance_rotation, float instance_scale, matrix entity_transform)
-{
-    // quaternion to rotation matrix
-    float xx = instance_rotation.x * instance_rotation.x;
-    float xy = instance_rotation.x * instance_rotation.y;
-    float xz = instance_rotation.x * instance_rotation.z;
-    float xw = instance_rotation.x * instance_rotation.w;
-    float yy = instance_rotation.y * instance_rotation.y;
-    float yz = instance_rotation.y * instance_rotation.z;
-    float yw = instance_rotation.y * instance_rotation.w;
-    float zz = instance_rotation.z * instance_rotation.z;
-    float zw = instance_rotation.z * instance_rotation.w;
-
-    float3x3 rotation = float3x3(
-        1 - 2 * (yy + zz), 2 * (xy - zw), 2 * (xz + yw),
-        2 * (xy + zw), 1 - 2 * (xx + zz), 2 * (yz - xw),
-        2 * (xz - yw), 2 * (yz + xw), 1 - 2 * (xx + yy)
-    );
-
-    // scale, rotation, translation
-    float4x4 transform = float4x4(
-        float4(rotation._11 * instance_scale, rotation._12 * instance_scale, rotation._13 * instance_scale, 0),
-        float4(rotation._21 * instance_scale, rotation._22 * instance_scale, rotation._23 * instance_scale, 0),
-        float4(rotation._31 * instance_scale, rotation._32 * instance_scale, rotation._33 * instance_scale, 0),
-        float4(instance_position, 1)
-    );
-    return mul(transform, entity_transform);
-}
-
 struct vertex_processing
 {
-   
     static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, const float width_percent, uint instance_id)
     {
         if (!surface.is_grass_blade())
@@ -144,7 +189,7 @@ struct vertex_processing
         float3 instance_up                = normalize(transform[1].xyz);
         
         // wind simulation
-        if (surface.is_grass_blade())
+        if (surface.is_grass_blade() || surface.is_flower())
         {
             const float wind_direction_scale      = 0.05f;                                           // scale for wind direction noise (larger scale = broader patterns)
             const float wind_direction_variation  = PI / 4.0f * (0.5f + base_wind_magnitude / 2.0f); // scale variation width (e.g., wider swings at high mag)
@@ -266,8 +311,9 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
   
     // transform to world space
-    transform                 = instance_to_matrix(input.instance_position, input.instance_rotation, input.instance_scale, transform);
-    matrix transform_previous = instance_to_matrix(input.instance_position, input.instance_rotation, input.instance_scale, pass_get_transform_previous());
+    matrix instance         = compose_instance_transform(input.instance_position_x, input.instance_position_y, input.instance_position_z, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
+    transform                 = mul(instance, transform);
+    matrix transform_previous = mul(instance, pass_get_transform_previous());
     float3 position           = mul(input.position, transform).xyz;
     float3 position_previous  = mul(input.position, transform_previous).xyz;
     vertex.normal             = normalize(mul(input.normal, (float3x3)transform));
