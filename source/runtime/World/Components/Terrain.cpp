@@ -1044,8 +1044,8 @@ namespace spartan
             description.max_slope_angle_rad  = 45.0f * math::deg_to_rad;     // moderate slope
             description.min_spawn_height     = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height     = parameters::level_snow + 20;  // stop a bit above the snow
-            description.min_scale            = scale * 0.5f;
-            description.max_scale            = scale * 1.5f;
+            description.min_scale            = scale * 0.4f;
+            description.max_scale            = scale * 1.0f;
         }
         else if (terrain_prop == TerrainProp::Grass)
         {
@@ -1053,8 +1053,8 @@ namespace spartan
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
             description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
-            description.min_scale               = scale * 0.25f;
-            description.max_scale               = scale * 1.75f;
+            description.min_scale               = scale * 0.2f;
+            description.max_scale               = scale * 1.2f;
         }
         else if (terrain_prop == TerrainProp::Flower)
         {
@@ -1062,8 +1062,8 @@ namespace spartan
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
             description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
-            description.min_scale               = scale * 0.25f;
-            description.max_scale               = scale * 1.75f;
+            description.min_scale               = scale * 0.2f;
+            description.max_scale               = scale * 1.2f;
             description.instances_per_cluster   = 5000;                         // avg flowers per cluster
             description.cluster_radius          = 50.0f;                        // max spread radius in world units
         }
@@ -1073,8 +1073,8 @@ namespace spartan
             description.align_to_surface_normal = true;                          // rocks align with terrain normal
             description.min_spawn_height        = parameters::level_sea - 10.0f; // can spawn underwater
             description.max_spawn_height        = numeric_limits<float>::max();  // can spawn at any height
-            description.min_scale               = scale * 0.2f;
-            description.max_scale               = scale * 1.4f;
+            description.min_scale               = scale * 0.1f;
+            description.max_scale               = scale * 1.0f;
             description.scale_adjust_by_slope   = true;
         }
         else

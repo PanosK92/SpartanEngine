@@ -744,7 +744,7 @@ namespace spartan
                 const float render_distance_trees            = 2'000.0f;
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
-                const float per_triangle_density_grass_blade = 12.0f;
+                const float per_triangle_density_grass_blade = 15.0f;
                 const float per_triangle_density_flower      = 0.4f;
                 const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;
@@ -824,8 +824,8 @@ namespace spartan
                         // set properties
                         material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingX, 250.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY, 250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX, 1000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY, 1000.0f);
 
                         // set textures
                         material->SetTexture(MaterialTextureType::Color,     "project\\materials\\whispy_grass_meadow\\albedo.png",    0);
@@ -1063,7 +1063,7 @@ namespace spartan
                                 // generate instances
                                 {
                                     vector<Matrix> transforms;
-                                    terrain->FindTransforms(tile_index, TerrainProp::Rock, entity, per_triangle_density_rock, 2.0f, transforms);
+                                    terrain->FindTransforms(tile_index, TerrainProp::Rock, entity, per_triangle_density_rock, 1.0f, transforms);
 
                                     if (Entity* rock_entity = entity->GetDescendantByName("untitled")) // where the model keeps the mesh
                                     {
