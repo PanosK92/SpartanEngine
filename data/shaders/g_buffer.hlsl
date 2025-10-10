@@ -190,29 +190,37 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             }
             else if (surface.is_flower())
             {
-               // natural, darkish flower base and colored tip
-                const float3 flower_base = float3(0.05f, 0.07f, 0.03f);    // muted earthy green (like grass)
-                float3 flower_tip        = float3(0.529f, 0.808f, 0.922f); // light sky blue as default
-                
-                // vary tip color: blue, red, yellow
-                flower_tip = lerp(flower_tip, float3(0.8f, 0.2f, 0.2f), step(0.33f, variation)); // red
-                flower_tip = lerp(flower_tip, float3(0.9f, 0.8f, 0.1f), step(0.66f, variation)); // yellow
-                
-                // darken blue a bit
-                flower_tip           = lerp(flower_tip, flower_tip * 0.7f, step(variation, 0.33f)); // darken only blue
+                // base and default tip colors
+                const float3 flower_base = float3(0.05f, 0.07f, 0.03f);
+                float3 flower_tip = float3(0.529f, 0.808f, 0.922f); // light sky blue
+
+                uint instance_id = vertex.uv_misc.w;
+
+                // reflect CPU clustering logic (same grouping)
+                const uint instances_per_cluster = 5000;
+                uint cluster_id = instance_id / instances_per_cluster;
+
+                // stable cluster color (same for all flowers in this cluster)
+                float cluster_variation = hash(cluster_id);
+
+                // assign a main hue to the cluster
+                if (cluster_variation < 0.33f)
+                    flower_tip = float3(0.529f, 0.808f, 0.922f); // blue
+                else if (cluster_variation < 0.66f)
+                    flower_tip = float3(0.8f, 0.2f, 0.2f); // red
+                else
+                    flower_tip = float3(0.9f, 0.8f, 0.1f); // yellow
+
+                // tiny internal variation so not every flower is identical
+                float local_variation = hash(instance_id * 13u);
+                flower_tip = lerp(flower_tip, flower_tip * (0.9f + 0.2f * local_variation), 0.5f);
+
+                // vertical gradient (base to tip)
                 float height_percent = vertex.uv_misc.z;
-                float t              = smoothstep(0.2f, 1.0f, height_percent);
-                float3 flower_tint   = lerp(flower_base, flower_tip, t);
-                
-                // subtle variation along flower
-                float3 variation_color = flower_tint;
-                variation_color        = lerp(variation_color, flower_tint * 1.1f, step(0.33f, variation)); // slight brighten
-                variation_color        = lerp(variation_color, flower_tint * 0.9f, step(0.66f, variation)); // slight darken
-                
-                // blend with low weight to prevent extreme changes
-                flower_tint = lerp(flower_tint, variation_color, 0.3f * vegetation_variation_strength);
-                
-                // final blend onto albedo
+                float t = smoothstep(0.2f, 1.0f, height_percent);
+                float3 flower_tint = lerp(flower_base, flower_tip, t);
+
+                // blend with original albedo
                 albedo.rgb = lerp(albedo.rgb, flower_tint, 1.0f);
             }
             else // trees and other vegetation variation

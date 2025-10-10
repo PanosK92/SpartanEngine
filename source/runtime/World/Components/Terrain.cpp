@@ -63,8 +63,15 @@ namespace spartan
             float height_min;
             float height_max;
             Quaternion rotation_to_normal;
+            Vector3 centroid;
         };
         static unordered_map<uint64_t, vector<TriangleData>> triangle_data;
+
+        struct ClusterData
+        {
+            Vector3 center_position;
+            uint32_t center_tri_idx;
+        };
 
         void compute_triangle_data(
             const vector<vector<RHI_Vertex_PosTexNorTan>>& vertices_terrain,
@@ -100,7 +107,9 @@ namespace spartan
                     Vector3 v2_minus_v0           = v2 - v0;
                     Quaternion rotation_to_normal = Quaternion::FromToRotation(Vector3::Up, normal);
 
-                    tile_triangle_data[i] = { normal, v0, v1_minus_v0, v2_minus_v0, slope_radians, height_min, height_max, rotation_to_normal };
+                    Vector3 centroid = v0 + (v1_minus_v0 + v2_minus_v0) / 3.0f;
+
+                    tile_triangle_data[i] = { normal, v0, v1_minus_v0, v2_minus_v0, slope_radians, height_min, height_max, rotation_to_normal, centroid };
                 }
             };
 
@@ -120,7 +129,6 @@ namespace spartan
                 SP_LOG_ERROR("No triangle data found for tile %d", tile_index);
                 return;
             }
-
             vector<TriangleData>& tile_triangle_data = it->second;
             SP_ASSERT(!tile_triangle_data.empty());
 
@@ -149,30 +157,129 @@ namespace spartan
             if (adjusted_count == 0)
                 return;
 
-            // step 4: parallel placement without mutex by direct assignment
-            auto place_mesh = [
-                &transforms_out,
+            // new: setup clusters
+            uint32_t cluster_count = adjusted_count;
+            uint32_t base_instances_per_cluster = 1;
+            uint32_t remainder_instances = 0;
+            if (prop_desc.instances_per_cluster > 1)
+            {
+                cluster_count = max(1u, adjusted_count / prop_desc.instances_per_cluster);
+                base_instances_per_cluster = adjusted_count / cluster_count;
+                remainder_instances = adjusted_count % cluster_count;
+            }
+            vector<ClusterData> clusters(cluster_count);
+
+            auto place_cluster = [
+                &clusters,
                 &tile_triangle_data,
                 &acceptable_triangles,
                 &prop_desc
             ]
-                (uint32_t start_index, uint32_t end_index)
+            (uint32_t start_index, uint32_t end_index)
             {
                 mt19937 generator(random_device{}());
                 const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
                 uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
-                uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
-                uniform_real_distribution<float> scale_dist(prop_desc.min_scale, prop_desc.max_scale);
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
-                    uint32_t tri_idx  = acceptable_triangles[triangle_dist(generator)];
+                    uint32_t tri_idx = acceptable_triangles[triangle_dist(generator)];
                     TriangleData& tri = tile_triangle_data[tri_idx];
+                    // position (xz used as cluster center)
+                    float r1 = dist(generator);
+                    float r2 = dist(generator);
+                    float sqrt_r1 = sqrtf(r1);
+                    float u = 1.0f - sqrt_r1;
+                    float v = r2 * sqrt_r1;
+                    Vector3 position = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
+                    clusters[i] = { position, tri_idx };
+                }
+            };
+            ThreadPool::ParallelLoop(place_cluster, cluster_count);
 
+            // new: compute nearby acceptable triangles per cluster (for snapping to surface)
+            vector<vector<uint32_t>> cluster_nearby_tris(cluster_count);
+            auto compute_nearby = [
+                &cluster_nearby_tris,
+                &clusters,
+                &tile_triangle_data,
+                &acceptable_triangles,
+                &prop_desc
+            ]
+            (uint32_t start_index, uint32_t end_index)
+            {
+                mt19937 generator(random_device{}());
+                const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
+                uniform_int_distribution<> triangle_dist(0, tri_count - 1);
+                for (uint32_t c = start_index; c < end_index; c++)
+                {
+                    auto& nearby = cluster_nearby_tris[c];
+                    ClusterData& cl = clusters[c];
+                    Vector2 cl_xz(cl.center_position.x, cl.center_position.z);
+                    if (prop_desc.cluster_radius <= 0.0f)
+                    {
+                        nearby.push_back(cl.center_tri_idx);
+                    }
+                    else
+                    {
+                        for (uint32_t t = 0; t < tri_count; t++)
+                        {
+                            uint32_t tri_idx = acceptable_triangles[t];
+                            TriangleData& tri = tile_triangle_data[tri_idx];
+                            Vector2 tri_xz(tri.centroid.x, tri.centroid.z);
+                            float dist_sq = (tri_xz - cl_xz).LengthSquared();
+                            if (dist_sq <= prop_desc.cluster_radius * prop_desc.cluster_radius)
+                            {
+                                nearby.push_back(tri_idx);
+                            }
+                        }
+                        if (nearby.empty())
+                        {
+                            nearby.push_back(cl.center_tri_idx);
+                        }
+                    }
+                }
+            };
+            ThreadPool::ParallelLoop(compute_nearby, cluster_count);
+
+            // step 4: parallel placement without mutex by direct assignment
+            auto place_mesh = [
+                &transforms_out,
+                &tile_triangle_data,
+                &prop_desc,
+                &cluster_nearby_tris,
+                base_instances_per_cluster,
+                remainder_instances
+            ]
+            (uint32_t start_index, uint32_t end_index)
+            {
+                mt19937 generator(random_device{}());
+                uniform_real_distribution<float> dist(0.0f, 1.0f);
+                uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
+                uniform_real_distribution<float> scale_dist(prop_desc.min_scale, prop_desc.max_scale);
+                uint32_t larger_cluster_size = base_instances_per_cluster + 1;
+                for (uint32_t i = start_index; i < end_index; i++)
+                {
+                    // compute cluster idx from instance idx (distributes remainder to first clusters)
+                    uint32_t cluster_idx;
+                    if (i < remainder_instances * larger_cluster_size)
+                    {
+                        cluster_idx = i / larger_cluster_size;
+                    }
+                    else
+                    {
+                        cluster_idx = remainder_instances + (i - remainder_instances * larger_cluster_size) / base_instances_per_cluster;
+                    }
+                    auto& nearby = cluster_nearby_tris[cluster_idx];
+                    if (nearby.empty())
+                        continue;
+
+                    uniform_int_distribution<int> nearby_dist(0, static_cast<int>(nearby.size()) - 1);
+                    uint32_t tri_idx = nearby[nearby_dist(generator)];
+                    TriangleData& tri = tile_triangle_data[tri_idx];
                     // position
                     Vector3 position = Vector3::Zero;
                     {
-                        // compute barycentric coordinates
                         float r1      = dist(generator);
                         float r2      = dist(generator);
                         float sqrt_r1 = sqrtf(r1);
@@ -186,9 +293,8 @@ namespace spartan
                     {
                         if (prop_desc.align_to_surface_normal)
                         {
-                            Quaternion rotate_to_normal  = tri.rotation_to_normal;
                             Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
-                            rotation                     = rotate_to_normal * random_y_rotation;
+                            rotation                     = tri.rotation_to_normal * random_y_rotation;
                         }
                         else
                         {
@@ -202,10 +308,8 @@ namespace spartan
                     {
                         float slope_normalized = tri.slope_radians / prop_desc.max_slope_angle_rad;
                         slope_normalized       = clamp(slope_normalized, 0.0f, 1.0f);
-
-                        // influence the random scale on top
-                        float slope_scale = lerp(1.0f, prop_desc.max_scale / prop_desc.min_scale, slope_normalized);
-                        scale            *= slope_scale;
+                        float slope_scale      = lerp(1.0f, prop_desc.max_scale / prop_desc.min_scale, slope_normalized);
+                        scale                  *= slope_scale;
                     }
                     transforms_out[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
                 }
@@ -942,7 +1046,7 @@ namespace spartan
             description.min_scale            = scale * 0.5f;
             description.max_scale            = scale * 1.5f;
         }
-        else if (terrain_prop == TerrainProp::Foliage)
+        else if (terrain_prop == TerrainProp::Grass)
         {
             description.max_slope_angle_rad     = 45.0f * math::deg_to_rad;     // moderate slope for grass in snowy, high-altitude conditions
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
@@ -950,6 +1054,17 @@ namespace spartan
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
             description.min_scale               = scale;
             description.max_scale               = scale;
+        }
+        else if (terrain_prop == TerrainProp::Flower)
+        {
+            description.max_slope_angle_rad     = 45.0f * math::deg_to_rad;     // moderate slope for grass in snowy, high-altitude conditions
+            description.align_to_surface_normal = true;                         // small plants align with terrain normal
+            description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
+            description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
+            description.min_scale               = scale;
+            description.max_scale               = scale;
+            description.instances_per_cluster   = 5000;  // avg flowers per cluster
+            description.cluster_radius          = 50.0f; // max spread radius in world units
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
@@ -1001,7 +1116,6 @@ namespace spartan
         uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
         uint32_t triangle_data_count = static_cast<uint32_t>(placement::triangle_data.size());
         uint32_t offset_count = static_cast<uint32_t>(m_tile_offsets.size());
-
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height_data_size), sizeof(uint32_t));
@@ -1034,7 +1148,6 @@ namespace spartan
         }
 
         file.close();
-
         SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u",
             file_path, width, height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count);
     }
@@ -1051,7 +1164,6 @@ namespace spartan
         uint32_t tile_count = 0;
         uint32_t triangle_data_count = 0;
         uint32_t offset_count = 0;
-
         file.read(reinterpret_cast<char*>(&m_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_height), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
@@ -1074,12 +1186,10 @@ namespace spartan
         m_tile_indices.resize(tile_count);
         m_tile_offsets.resize(offset_count);
         placement::triangle_data.clear();
-
         file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
-
         for (uint32_t i = 0; i < triangle_data_count; i++)
         {
             uint64_t tile_id;
@@ -1096,16 +1206,13 @@ namespace spartan
             uint32_t vertex_size, index_size;
             file.read(reinterpret_cast<char*>(&vertex_size), sizeof(uint32_t));
             file.read(reinterpret_cast<char*>(&index_size), sizeof(uint32_t));
-
             m_tile_vertices[i].resize(vertex_size);
             m_tile_indices[i].resize(index_size);
-
             file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
             file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
         }
 
         file.close();
-
         SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u",
             file_path, m_width, m_height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count);
     }

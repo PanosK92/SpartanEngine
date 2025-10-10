@@ -39,7 +39,8 @@ namespace spartan
     enum class TerrainProp
     {
         Tree,
-        Foliage, // grass, flowers and other small plants
+        Grass,
+        Flower,
         Rock,
         Max
     };
@@ -54,6 +55,8 @@ namespace spartan
         float min_scale                = 0.8f;                     // minimum scale variation
         float max_scale                = 1.2f;                     // maximum scale variation
         bool  scale_adjust_by_slope    = false;                    // scale down props on steep slopes (helps large rocks sit on flat ground)
+        uint32_t instances_per_cluster = 0;                        // if > 0, instances will be clustered in groups of this size, which is more efficient for rendering
+        float cluster_radius = 0.0f;                               // radius of each cluster, ignored if instances_per_cluster is 0
     };
 
     class Terrain : public Component

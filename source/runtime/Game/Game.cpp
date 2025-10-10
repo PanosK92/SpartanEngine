@@ -745,7 +745,7 @@ namespace spartan
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
                 const float per_triangle_density_grass_blade = 12.0f;
-                const float per_triangle_density_flower      = 0.2f;
+                const float per_triangle_density_flower      = 0.4f;
                 const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;
 
@@ -1092,7 +1092,7 @@ namespace spartan
 
                                    // generate instances
                                    vector<Matrix> transforms;
-                                   terrain->FindTransforms(tile_index, TerrainProp::Foliage, entity, per_triangle_density_grass_blade, 1.0f, transforms);
+                                   terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade, 1.0f, transforms);
 
                                    // set renderable component
                                    Renderable* renderable = entity->AddComponent<Renderable>();
@@ -1112,7 +1112,7 @@ namespace spartan
                                     
                                     // generate instances
                                     vector<Matrix> transforms;
-                                    terrain->FindTransforms(tile_index, TerrainProp::Foliage, entity, per_triangle_density_flower, 1.0f, transforms);
+                                    terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 1.0f, transforms);
                                     
                                     // set renderable component
                                     Renderable* renderable = entity->AddComponent<Renderable>();
