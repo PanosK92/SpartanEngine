@@ -950,7 +950,6 @@ namespace spartan
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
             description.min_scale               = scale;
             description.max_scale               = scale;
-            description.random_height_variation = 5.0f;                         // ensure grass doesn't hit a min or max limit and form a perfect line
         }
         else if (terrain_prop == TerrainProp::Rock)
         {

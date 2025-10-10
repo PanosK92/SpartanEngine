@@ -54,7 +54,6 @@ namespace spartan
         float min_scale                = 0.8f;                     // minimum scale variation
         float max_scale                = 1.2f;                     // maximum scale variation
         bool  scale_adjust_by_slope    = false;                    // scale down props on steep slopes (helps large rocks sit on flat ground)
-        float random_height_variation  = 0.1f;                     // random offset in vertical position for more natural placement
     };
 
     class Terrain : public Component
