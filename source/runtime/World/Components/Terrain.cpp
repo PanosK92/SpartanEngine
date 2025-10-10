@@ -108,16 +108,8 @@ namespace spartan
         }
 
         void find_transforms(
-            const uint32_t transform_count,
-            const float max_slope_radians,
-            const bool rotate_to_match_surface_normal,
-            const float terrain_offset,
-            const float height_min,
-            const float height_max,
-            const float scale_min,
-            const float scale_max,
-            const bool scale_by_slope,
-            const float height_jitter,
+            TerrainPropDescription prop_desc,
+            const float density_fraction,
             uint32_t tile_index,
             vector<Matrix>& transforms_out
         )
@@ -128,7 +120,8 @@ namespace spartan
                 SP_LOG_ERROR("No triangle data found for tile %d", tile_index);
                 return;
             }
-            const auto& tile_triangle_data = it->second;
+
+            vector<TriangleData>& tile_triangle_data = it->second;
             SP_ASSERT(!tile_triangle_data.empty());
 
             // step 1: filter acceptable triangles using precomputed data
@@ -137,41 +130,31 @@ namespace spartan
             {
                 for (uint32_t i = 0; i < tile_triangle_data.size(); i++)
                 {
-                    if (tile_triangle_data[i].slope_radians <= max_slope_radians &&
-                        tile_triangle_data[i].height_min >= height_min  &&
-                        tile_triangle_data[i].height_max <= height_max )
+                    if (tile_triangle_data[i].slope_radians <= prop_desc.max_slope_angle_rad &&
+                        tile_triangle_data[i].height_min >= prop_desc.min_spawn_height &&
+                        tile_triangle_data[i].height_max <= prop_desc.max_spawn_height)
                     {
                         acceptable_triangles.push_back(i);
                     }
                 }
-
                 if (acceptable_triangles.empty())
                     return;
             }
 
-            // Computes terrain tile usability to maintain consistent grass density. Flat tiles support all requested transforms,
-            // but steep or water-covered tiles have fewer valid triangles. Adjusts transform count based on usable area fraction
-            // to prevent instance packing and ensure uniform visual density across tiles.
-            float usability_fraction = static_cast<float>(acceptable_triangles.size()) / static_cast<float>(tile_triangle_data.size());
-            uint32_t adjusted_count  = static_cast<uint32_t>(static_cast<float>(transform_count) * usability_fraction + 0.5f);
+            // step 2: compute adjusted count based on density fraction of acceptable triangles (maintains uniform visual density)
+            uint32_t adjusted_count = static_cast<uint32_t>(density_fraction * static_cast<float>(acceptable_triangles.size()) + 0.5f);
 
-            // step 2: pre-allocate output vector
+            // step 3: pre-allocate output vector
             transforms_out.resize(adjusted_count);
-
             if (adjusted_count == 0)
                 return;
 
-            // step 3: parallel placement without mutex by direct assignment
+            // step 4: parallel placement without mutex by direct assignment
             auto place_mesh = [
                 &transforms_out,
                 &tile_triangle_data,
                 &acceptable_triangles,
-                scale_by_slope,
-                scale_min,
-                scale_max,
-                rotate_to_match_surface_normal,
-                terrain_offset,
-                max_slope_radians
+                &prop_desc
             ]
                 (uint32_t start_index, uint32_t end_index)
             {
@@ -180,12 +163,11 @@ namespace spartan
                 uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
-                uniform_real_distribution<float> scale_dist(scale_min, scale_max);
-
+                uniform_real_distribution<float> scale_dist(prop_desc.min_scale, prop_desc.max_scale);
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
-                    uint32_t tri_idx        = acceptable_triangles[triangle_dist(generator)];
-                    const TriangleData& tri = tile_triangle_data[tri_idx];
+                    uint32_t tri_idx  = acceptable_triangles[triangle_dist(generator)];
+                    TriangleData& tri = tile_triangle_data[tri_idx];
 
                     // position
                     Vector3 position = Vector3::Zero;
@@ -196,13 +178,13 @@ namespace spartan
                         float sqrt_r1 = sqrtf(r1);
                         float u       = 1.0f - sqrt_r1;
                         float v       = r2 * sqrt_r1;
-                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, terrain_offset, 0.0f);
+                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
                     }
 
                     // rotation
                     Quaternion rotation;
                     {
-                        if (rotate_to_match_surface_normal)
+                        if (prop_desc.align_to_surface_normal)
                         {
                             Quaternion rotate_to_normal  = tri.rotation_to_normal;
                             Quaternion random_y_rotation = Quaternion::FromEulerAngles(0.0f, angle_dist(generator), 0.0f);
@@ -216,20 +198,18 @@ namespace spartan
 
                     // scale
                     float scale = scale_dist(generator);
-                    if (scale_by_slope)
+                    if (prop_desc.scale_adjust_by_slope)
                     {
-                        float slope_normalized = tri.slope_radians / max_slope_radians;
+                        float slope_normalized = tri.slope_radians / prop_desc.max_slope_angle_rad;
                         slope_normalized       = clamp(slope_normalized, 0.0f, 1.0f);
 
                         // influence the random scale on top
-                        float slope_scale  = lerp(1.0f, scale_max / scale_min, slope_normalized);
-                        scale             *= slope_scale;
+                        float slope_scale = lerp(1.0f, prop_desc.max_scale / prop_desc.min_scale, slope_normalized);
+                        scale            *= slope_scale;
                     }
-
                     transforms_out[i] = Matrix::CreateScale(scale) * Matrix::CreateRotation(rotation) * Matrix::CreateTranslation(position);
                 }
             };
-
             ThreadPool::ParallelLoop(place_mesh, adjusted_count);
         }
     }
@@ -950,62 +930,46 @@ namespace spartan
         m_height_texture = nullptr;
     }
 
-    void Terrain::FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, Entity* entity, const float scale, vector<Matrix>& transforms_out)
+    void Terrain::FindTransforms(const uint32_t tile_index, const TerrainProp terrain_prop, Entity* entity, const float density_fraction, const float scale, vector<Matrix>& transforms_out)
     {
-        bool rotate_match_surface_normal = false;                        // don't rotate to match the surface normal
-        float max_slope                  = 0.0f;                         // don't allow slope
-        float terrain_offset             = 0.0f;                         // 0.0f places exactly on the terrain
-        float height_min                 = parameters::level_sea;        // start spawning at sea level
-        float height_max                 = numeric_limits<float>::max(); // no height limit
-        float scale_min                  = 1.0f;
-        float scale_max                  = 1.0f;
-        bool scale_by_slope              = false;                        // relevant for rocks (in real life, larger rocks tend to settle on flatter terrain)
-        float height_variation           = 0.0f;
-    
+        TerrainPropDescription description;
+
         if (terrain_prop == TerrainProp::Tree)
         {
-            max_slope  = 30.0f * math::deg_to_rad;     // tighter slope for trees in harsh
-            height_min = parameters::level_sea + 5.0f; // a bit above sea level
-            height_max = parameters::level_snow + 20;  // stop a bit above the snow
-            scale_min  = scale * 0.5f;
-            scale_max  = scale * 1.5f;
+            description.max_slope_angle_rad  = 45.0f * math::deg_to_rad;     // moderate slope
+            description.min_spawn_height     = parameters::level_sea + 5.0f; // a bit above sea level
+            description.max_spawn_height     = parameters::level_snow + 20;  // stop a bit above the snow
+            description.min_scale            = scale * 0.5f;
+            description.max_scale            = scale * 1.5f;
         }
-        else if (terrain_prop == TerrainProp::Grass)
+        else if (terrain_prop == TerrainProp::Foliage)
         {
-            max_slope                   = 45.0f * math::deg_to_rad;     // moderate slope for grass in snowy, high-altitude conditions
-            rotate_match_surface_normal = true;                         // small plants align with terrain normal
-            height_min                  = parameters::level_sea + 5.0f; // a bit above sea level
-            height_max                  = parameters::level_snow;       // stop when snow shows up
-            scale_min                   = scale;
-            scale_max                   = scale;
-            height_variation            = 5.0f;                         // ensure grass doesn't hit a min or max limit and form a perfect line
+            description.max_slope_angle_rad     = 45.0f * math::deg_to_rad;     // moderate slope for grass in snowy, high-altitude conditions
+            description.align_to_surface_normal = true;                         // small plants align with terrain normal
+            description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
+            description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
+            description.min_scale               = scale;
+            description.max_scale               = scale;
+            description.random_height_variation = 5.0f;                         // ensure grass doesn't hit a min or max limit and form a perfect line
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
-            max_slope                   = 60.0f * math::deg_to_rad;      // moderate slope for grass in snowy, high-altitude conditions
-            rotate_match_surface_normal = true;                          // small plants align with terrain normal
-            height_min                  = parameters::level_sea - 10.0f; // can spawn underwater
-            height_max                  = numeric_limits<float>::max();  // can spawn at any height
-            scale_min                   = scale * 0.2f;
-            scale_max                   = scale * 1.4f;
-            scale_by_slope              = true;
+            description.max_slope_angle_rad     = 45.0f * math::deg_to_rad;      // steeper slope for rocks
+            description.align_to_surface_normal = true;                          // rocks align with terrain normal
+            description.min_spawn_height        = parameters::level_sea - 10.0f; // can spawn underwater
+            description.max_spawn_height        = numeric_limits<float>::max();  // can spawn at any height
+            description.min_scale               = scale * 0.2f;
+            description.max_scale               = scale * 1.4f;
+            description.scale_adjust_by_slope   = true;
         }
         else
         {
-            SP_ASSERT_MSG(false, "Unknown terrain prop type for GenerateTransforms");
+            SP_ASSERT_MSG(false, "Unknown terrain prop type for FindTransforms");
         }
 
         placement::find_transforms(
-            count,
-            max_slope,
-            rotate_match_surface_normal,
-            terrain_offset,
-            height_min,
-            height_max,
-            scale_min,
-            scale_max,
-            scale_by_slope,
-            height_variation,
+            description,
+            density_fraction,
             tile_index,
             transforms_out
         );

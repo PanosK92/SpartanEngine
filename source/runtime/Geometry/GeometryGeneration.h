@@ -330,7 +330,7 @@ namespace spartan::geometry_generation
         generate_cylinder(vertices, indices, 0.0f, radius, height);
     }
 
-    static void generate_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count)
+    static void generate_foliage_grass_blade(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t segment_count)
     {
         using namespace math;
 
@@ -468,6 +468,201 @@ namespace spartan::geometry_generation
             (*vertices)[i2].tan[2] += tangent.z;
         }
 
+        // normalize normals and tangents per vertex
+        for (auto& v : *vertices)
+        {
+            Vector3 n(v.nor[0], v.nor[1], v.nor[2]);
+            n = Vector3::Normalize(n);
+            v.nor[0] = n.x; v.nor[1] = n.y; v.nor[2] = n.z;
+            Vector3 t(v.tan[0], v.tan[1], v.tan[2]);
+            t = Vector3::Normalize(t);
+            v.tan[0] = t.x; v.tan[1] = t.y; v.tan[2] = t.z;
+        }
+    }
+
+    static void generate_foliage_flower(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, const uint32_t stem_segment_count, const uint32_t petal_count, const uint32_t petal_segment_count)
+    {
+        using namespace math;
+    
+        // constants
+        const float stem_width = 0.1f;
+        const float stem_height = 1.0f;
+        const float stem_thinning_start = 1.0f; // constant width
+        const float stem_thinning_power = 1.0f;
+        const float petal_width = 0.2f;
+        const float petal_length = 0.4f;
+        const float petal_thinning_start = 0.3f;
+        const float petal_thinning_power = 2.0f; // sharper taper
+        const float two_pi = 6.283185307f;
+    
+        // clear output vectors
+        vertices->clear();
+        indices->clear();
+    
+        // helper to push vertex
+        auto push_vertex = [&](const Vector3& pos, const Vector2& tex)
+        {
+            RHI_Vertex_PosTexNorTan v{};
+            v.pos[0] = pos.x; v.pos[1] = pos.y; v.pos[2] = pos.z;
+            v.tex[0] = tex.x; v.tex[1] = tex.y;
+            v.nor[0] = 0.0f; v.nor[1] = 0.0f; v.nor[2] = 0.0f;
+            v.tan[0] = 0.0f; v.tan[1] = 0.0f; v.tan[2] = 0.0f;
+            vertices->push_back(v);
+        };
+    
+        // stem: flat strip with constant width, no tip
+        auto stem_width_factor = [=](float t) -> float
+        {
+            float denom = 1.0f - stem_thinning_start;
+            if (denom <= 0.0f)
+                return 1.0f;
+        
+            if (t <= stem_thinning_start)
+                return 1.0f;
+        
+            float x = (t - stem_thinning_start) / denom;
+            x = std::clamp(x, 0.0f, 1.0f);
+            return std::pow(1.0f - x, stem_thinning_power);
+        };
+        
+    
+        for (uint32_t i = 0; i <= stem_segment_count; ++i)
+        {
+            float t = static_cast<float>(i) / stem_segment_count;
+            float y = t * stem_height;
+            float wf = stem_width_factor(t);
+            push_vertex(Vector3(-stem_width * 0.5f * wf, y, 0.0f), Vector2(0.0f, t));
+            push_vertex(Vector3( stem_width * 0.5f * wf, y, 0.0f), Vector2(1.0f, t));
+        }
+    
+        uint32_t offset = 0;
+        for (uint32_t i = 0; i < stem_segment_count; ++i)
+        {
+            indices->push_back(offset + i * 2);
+            indices->push_back(offset + i * 2 + 1);
+            indices->push_back(offset + i * 2 + 2);
+            indices->push_back(offset + i * 2 + 2);
+            indices->push_back(offset + i * 2 + 1);
+            indices->push_back(offset + i * 2 + 3);
+        }
+    
+        // petals: radial, horizontal, tapered like grass blades
+        uint32_t current_offset = (stem_segment_count + 1) * 2;
+        float angle_step = two_pi / static_cast<float>(petal_count);
+        auto petal_width_factor = [=](float t) -> float
+        {
+            return (t <= petal_thinning_start) ? 1.0f : std::pow(1.0f - ((t - petal_thinning_start) / (1.0f - petal_thinning_start)), petal_thinning_power);
+        };
+    
+        for (uint32_t p = 0; p < petal_count; ++p)
+        {
+            float angle = static_cast<float>(p) * angle_step;
+            float ca = std::cos(angle);
+            float sa = std::sin(angle);
+    
+            for (uint32_t i = 0; i <= petal_segment_count; ++i)
+            {
+                float t = static_cast<float>(i) / petal_segment_count;
+                float wf = petal_width_factor(t);
+                Vector3 local_pos;
+                Vector2 tex;
+    
+                if (i < petal_segment_count)
+                {
+                    // left
+                    local_pos = Vector3(-petal_width * 0.5f * wf, 0.0f, t * petal_length);
+                    tex = Vector2(0.0f, t);
+                    Vector3 pos = local_pos;
+                    float new_x = ca * pos.x - sa * pos.z;
+                    float new_z = sa * pos.x + ca * pos.z;
+                    pos.x = new_x;
+                    pos.z = new_z;
+                    pos.y += stem_height;
+                    push_vertex(pos, tex);
+    
+                    // right
+                    local_pos = Vector3(petal_width * 0.5f * wf, 0.0f, t * petal_length);
+                    tex = Vector2(1.0f, t);
+                    pos = local_pos;
+                    new_x = ca * pos.x - sa * pos.z;
+                    new_z = sa * pos.x + ca * pos.z;
+                    pos.x = new_x;
+                    pos.z = new_z;
+                    pos.y += stem_height;
+                    push_vertex(pos, tex);
+                }
+                else
+                {
+                    // tip
+                    local_pos = Vector3(0.0f, 0.0f, t * petal_length);
+                    tex = Vector2(0.5f, t);
+                    Vector3 pos = local_pos;
+                    float new_x = ca * pos.x - sa * pos.z;
+                    float new_z = sa * pos.x + ca * pos.z;
+                    pos.x = new_x;
+                    pos.z = new_z;
+                    pos.y += stem_height;
+                    push_vertex(pos, tex);
+                }
+            }
+    
+            for (uint32_t i = 0; i < petal_segment_count; ++i)
+            {
+                if (i < petal_segment_count - 1)
+                {
+                    indices->push_back(current_offset + i * 2);
+                    indices->push_back(current_offset + i * 2 + 1);
+                    indices->push_back(current_offset + i * 2 + 2);
+                    indices->push_back(current_offset + i * 2 + 2);
+                    indices->push_back(current_offset + i * 2 + 1);
+                    indices->push_back(current_offset + i * 2 + 3);
+                }
+                else
+                {
+                    indices->push_back(current_offset + i * 2);
+                    indices->push_back(current_offset + i * 2 + 1);
+                    indices->push_back(current_offset + i * 2 + 2);
+                }
+            }
+    
+            current_offset += (petal_segment_count * 2 + 1);
+        }
+    
+        // compute normals and tangents
+        for (size_t i = 0; i < indices->size(); i += 3)
+        {
+            uint32_t i0 = (*indices)[i];
+            uint32_t i1 = (*indices)[i + 1];
+            uint32_t i2 = (*indices)[i + 2];
+            Vector3 p0((*vertices)[i0].pos[0], (*vertices)[i0].pos[1], (*vertices)[i0].pos[2]);
+            Vector3 p1((*vertices)[i1].pos[0], (*vertices)[i1].pos[1], (*vertices)[i1].pos[2]);
+            Vector3 p2((*vertices)[i2].pos[0], (*vertices)[i2].pos[1], (*vertices)[i2].pos[2]);
+            Vector3 edge1 = p1 - p0;
+            Vector3 edge2 = p2 - p0;
+            Vector3 face_normal = Vector3::Normalize(Vector3::Cross(edge1, edge2));
+            // add face normal to vertices
+            (*vertices)[i0].nor[0] += face_normal.x;
+            (*vertices)[i0].nor[1] += face_normal.y;
+            (*vertices)[i0].nor[2] += face_normal.z;
+            (*vertices)[i1].nor[0] += face_normal.x;
+            (*vertices)[i1].nor[1] += face_normal.y;
+            (*vertices)[i1].nor[2] += face_normal.z;
+            (*vertices)[i2].nor[0] += face_normal.x;
+            (*vertices)[i2].nor[1] += face_normal.y;
+            (*vertices)[i2].nor[2] += face_normal.z;
+            // approximate tangent as direction along width (x axis), assuming grass blade vertical along y
+            Vector3 tangent = Vector3::Normalize(Vector3(edge1.x, 0.0f, edge1.z));
+            (*vertices)[i0].tan[0] += tangent.x;
+            (*vertices)[i0].tan[1] += tangent.y;
+            (*vertices)[i0].tan[2] += tangent.z;
+            (*vertices)[i1].tan[0] += tangent.x;
+            (*vertices)[i1].tan[1] += tangent.y;
+            (*vertices)[i1].tan[2] += tangent.z;
+            (*vertices)[i2].tan[0] += tangent.x;
+            (*vertices)[i2].tan[1] += tangent.y;
+            (*vertices)[i2].tan[2] += tangent.z;
+        }
+    
         // normalize normals and tangents per vertex
         for (auto& v : *vertices)
         {

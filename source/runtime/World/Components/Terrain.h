@@ -39,9 +39,22 @@ namespace spartan
     enum class TerrainProp
     {
         Tree,
-        Grass,
+        Foliage, // grass, flowers and other small plants
         Rock,
         Max
+    };
+
+    struct TerrainPropDescription
+    {
+        bool  align_to_surface_normal  = true;                     // if true, aligns the prop rotation to the terrain surface normal
+        float max_slope_angle_rad      = math::deg_to_rad * 35.0f; // maximum terrain slope (in radians) where the prop can spawn
+        float surface_offset           = 0.05f;                    // vertical offset from the terrain surface
+        float min_spawn_height         = 0.0f;                     // lowest height where the prop can spawn
+        float max_spawn_height         = 1000.0f;                  // highest height where the prop can spawn
+        float min_scale                = 0.8f;                     // minimum scale variation
+        float max_scale                = 1.2f;                     // maximum scale variation
+        bool  scale_adjust_by_slope    = false;                    // scale down props on steep slopes (helps large rocks sit on flat ground)
+        float random_height_variation  = 0.1f;                     // random offset in vertical position for more natural placement
     };
 
     class Terrain : public Component
@@ -68,7 +81,14 @@ namespace spartan
 
         // generate
         void Generate();
-        void FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, Entity* entity, const float scale, std::vector<math::Matrix>& transforms_out);
+        void FindTransforms(
+            const uint32_t tile_index,
+            const TerrainProp terrain_prop,
+            Entity* entity,
+            const float density_fraction,
+            const float scale,
+            std::vector<math::Matrix>& transforms_out
+        );
 
         // io
         void SaveToFile(const char* file_path);
