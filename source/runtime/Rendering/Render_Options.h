@@ -53,16 +53,17 @@ namespace spartan
      * This is a scalable system that can work for different parameter collection
      * methods.
      */
-    class RenderOptionsCollection
+    class RenderOptions
     {
     public:
-        RenderOptionsCollection();
-        RenderOptionsCollection(const std::unordered_map<Renderer_Option, RenderOptionType>& options);
-        ~RenderOptionsCollection();
+        RenderOptions();
+        RenderOptions(const std::map<Renderer_Option, RenderOptionType>& options);
+        RenderOptions(RenderOptions& other); // Move version
+        ~RenderOptions() = default;
 
         // Options map
-        std::unordered_map<Renderer_Option, RenderOptionType> GetOptions() const { return m_options;}
-        void SetOptions(const std::unordered_map<Renderer_Option, RenderOptionType>& options) { m_options = options; }
+        std::map<Renderer_Option, RenderOptionType> GetOptions() const { return m_options;}
+        void SetOptions(const std::map<Renderer_Option, RenderOptionType>& options) { m_options = options; }
 
         template<typename T>
         T GetOption(Renderer_Option option)
@@ -72,9 +73,11 @@ namespace spartan
         }
         void SetOption(Renderer_Option option, const RenderOptionType& value);
 
+        bool operator!=(const RenderOptions& other) const;
+
         static std::string EnumToString(Renderer_Option option); // used most likely for editor-related applications
         static Renderer_Option StringToEnum(const std::string& name);
     private:
-        std::unordered_map<Renderer_Option, RenderOptionType> m_options;
+        std::map<Renderer_Option, RenderOptionType> m_options;
     };
 }

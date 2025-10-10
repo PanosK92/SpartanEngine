@@ -24,22 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Component.h"
 #include "Geometry/Mesh.h"
-#include "Rendering/Renderer_Definitions.h"
+#include "Rendering/Render_Options.h"
 //============================================
 
 namespace spartan
 {
-    struct EnumClassHash
-    {
-        template <typename T>
-        std::size_t operator()(T t) const
-        {
-            return static_cast<std::size_t>(t);
-        }
-    };
-
-    using RenderOptionType = std::variant<bool, int, float, Renderer_Tonemapping>;
-
     static constexpr float default_shape_size = 1.0f;
     static constexpr float default_transition_size = 0.2f;
 
@@ -56,6 +45,14 @@ namespace spartan
      */
     class Volume : public Component
     {
+    private:
+        VolumeType m_volume_shape_type   = VolumeType::Sphere;
+        float m_shape_size               = default_shape_size;
+        float m_transition_size          = default_transition_size;
+        math::BoundingBox m_bounding_box = math::BoundingBox::Unit;
+        bool m_is_debug_draw_enabled     = true;
+
+        RenderOptions m_options_collection = RenderOptions();
     public:
         Volume(Entity* entity);
         ~Volume();
@@ -67,9 +64,9 @@ namespace spartan
         //void Load(pugi::xml_node& node) override;
         //============================================
 
-        // Render Options
-        std::unordered_map<Renderer_Option, RenderOptionType, EnumClassHash> GetRenderOptions() const { return m_options;}
-        void SetRenderOptions(const std::unordered_map<Renderer_Option, RenderOptionType, EnumClassHash>& options) { m_options = options; }
+        // Render Options Collection
+        RenderOptions GetOptionsCollection() { return m_options_collection; }
+        void SetOptionsCollection(const RenderOptions& options_collection) { m_options_collection = options_collection; }
 
         // Mesh Type
         VolumeType GetVolumeShapeType() const { return m_volume_shape_type; }
@@ -86,14 +83,5 @@ namespace spartan
         // Debug Draw
         bool GetDebugDrawEnabled() const { return m_is_debug_draw_enabled; }
         void SetDebugDrawEnabled(bool value) { m_is_debug_draw_enabled = value; }
-
-    private:
-        VolumeType m_volume_shape_type   = VolumeType::Sphere;
-        float m_shape_size               = default_shape_size;
-        float m_transition_size          = default_transition_size;
-        math::BoundingBox m_bounding_box = math::BoundingBox::Unit;
-        bool m_is_debug_draw_enabled = true;
-
-        std::unordered_map<Renderer_Option, RenderOptionType, EnumClassHash> m_options;
     };
 }

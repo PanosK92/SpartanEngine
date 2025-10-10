@@ -39,7 +39,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    RenderOptionsCollection::RenderOptionsCollection()
+    RenderOptions::RenderOptions()
     {
         m_options.clear();
         m_options[Renderer_Option::WhitePoint] =                  350.0f; // float
@@ -67,7 +67,22 @@ namespace spartan
         m_options[Renderer_Option::AutoExposureAdaptationSpeed] = 0.5f;  // float
     }
 
-    void RenderOptionsCollection::SetOption(Renderer_Option option, const RenderOptionType& value)
+    RenderOptions::RenderOptions(const std::map<Renderer_Option, RenderOptionType>& options)
+    {
+        m_options.clear();
+        m_options = options;
+    }
+
+    RenderOptions::RenderOptions(RenderOptions& other)
+    {
+        m_options.clear();
+        for (const auto& [key, value] : other.m_options)
+        {
+            m_options[key] = value; // replaces if key exists, inserts otherwise
+        }
+    }
+
+    void RenderOptions::SetOption(Renderer_Option option, const RenderOptionType& value)
     {
         // Handle clamping for float options
         if (std::holds_alternative<float>(value))
@@ -163,8 +178,13 @@ namespace spartan
         }
     }
 
+    bool RenderOptions::operator!=(const RenderOptions& other) const
+    {
+        return m_options != other.m_options;
+    }
+
     // For Editor
-    std::string RenderOptionsCollection::EnumToString(Renderer_Option option)
+    std::string RenderOptions::EnumToString(Renderer_Option option)
     {
         switch (option)
         {
@@ -205,7 +225,7 @@ namespace spartan
         }
     }
 
-    Renderer_Option RenderOptionsCollection::StringToEnum(const std::string& name)
+    Renderer_Option RenderOptions::StringToEnum(const std::string& name)
     {
         if (name == "AABB")                           return Renderer_Option::Aabb;
         else if (name == "Picking Ray")               return Renderer_Option::PickingRay;

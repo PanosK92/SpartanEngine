@@ -48,34 +48,8 @@ namespace spartan
         m_shape_size = default_shape_size;
         m_transition_size = default_transition_size;
         m_is_debug_draw_enabled = true;
-        /*for (auto& [option, value] : Renderer::GetOptions())
-        {
-            m_options[option] = value;
-        }*/
 
-        m_options[Renderer_Option::WhitePoint] =                  350.0f; // float
-        m_options[Renderer_Option::Tonemapping] =                 Renderer_Tonemapping::Max; // enum
-        m_options[Renderer_Option::Bloom] =                       1.0f;  // non-zero values activate it and control the intensity, float
-        m_options[Renderer_Option::MotionBlur] =                  true;  // bool
-        m_options[Renderer_Option::DepthOfField] =                true;  // bool
-        m_options[Renderer_Option::FilmGrain] =                   false; // bool
-        m_options[Renderer_Option::ChromaticAberration] =         false; // bool
-        m_options[Renderer_Option::Vhs] =                         false; // bool
-        m_options[Renderer_Option::Dithering] =                   false; // bool
-        m_options[Renderer_Option::ScreenSpaceAmbientOcclusion] = true;  // bool
-        m_options[Renderer_Option::ScreenSpaceReflections] =      true;  // bool
-        m_options[Renderer_Option::Fog] =                         1.0f;  // float
-        m_options[Renderer_Option::VariableRateShading] =         false; // bool
-        m_options[Renderer_Option::Vsync] =                       false; // bool
-        m_options[Renderer_Option::TransformHandle] =             true;  // bool
-        m_options[Renderer_Option::SelectionOutline] =            false; // bool
-        m_options[Renderer_Option::Grid] =                        false; // bool
-        m_options[Renderer_Option::Lights] =                      true;  // bool
-        m_options[Renderer_Option::AudioSources] =                true;  // bool
-        m_options[Renderer_Option::Physics] =                     false; // bool
-        m_options[Renderer_Option::PerformanceMetrics] =          true;  // bool
-        m_options[Renderer_Option::Gamma] =                       Display::GetGamma(); // float
-        m_options[Renderer_Option::AutoExposureAdaptationSpeed] = 0.5f;  // float
+        m_options_collection = RenderOptions();
     }
 
     Volume::~Volume()

@@ -124,23 +124,23 @@ namespace
         ImGui::PushFont(Editor::font_bold);
         const bool collapsed = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
-    
+
         if (options)
         {
             // gear icon constants
             const float icon_size = 24.0f; // square icon size
             const float offset_x  = 43.0f; // distance from right edge
             const float offset_y  = 2.0f;  // distance from top edge
-    
+
             // get top-right of last item (the header)
             const ImVec2 header_min = ImGui::GetItemRectMin();
             const ImVec2 header_max = ImGui::GetItemRectMax();
-    
+
             // place gear icon in top-right of header with padding
             ImVec2 icon_pos;
             icon_pos.x = header_max.x - offset_x;
             icon_pos.y = header_min.y + offset_y;
-    
+
             ImGui::SetCursorScreenPos(icon_pos);
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
             if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Gear), icon_size, false))
@@ -149,13 +149,13 @@ namespace
                 ImGui::OpenPopup(context_menu_id.c_str());
             }
             ImGui::PopStyleColor();
-    
+
             if (component_instance && context_menu_id == name)
             {
                 component_context_menu_options(context_menu_id, component_instance, removable);
             }
         }
-    
+
         return collapsed;
     }
 
@@ -371,7 +371,7 @@ void Properties::ShowLight(spartan::Light* light) const
             // light types
             bool is_directional = light->GetLightType() == LightType::Directional;
             if (!is_directional)
-            { 
+            {
                 uint32_t intensity_type_index = static_cast<uint32_t>(light->GetIntensity());
                 if (ImGuiSp::combo_box("##light_intensity_type", intensity_types, &intensity_type_index))
                 {
@@ -383,7 +383,7 @@ void Properties::ShowLight(spartan::Light* light) const
 
             // intensity
             if (!is_directional)
-            { 
+            {
                 ImGui::SameLine();
             }
             ImGuiSp::draw_float_wrap(is_directional ? "lux" : "lm", &intensity, 10.0f, 0.0f, 120000.0f);
@@ -415,7 +415,7 @@ void Properties::ShowLight(spartan::Light* light) const
             ImGui::Checkbox("Day/Night Cycle", &day_night_cycle);
             light->SetFlag(spartan::LightFlags::DayNightCycle, day_night_cycle);
 
-            
+
             bool real_time_cycle = light->GetFlag(spartan::LightFlags::RealTimeCycle);
             ImGui::BeginDisabled(!day_night_cycle);
             ImGui::Checkbox("Real Time Cycle", &real_time_cycle);
@@ -479,7 +479,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         {
             // move to column_pos_x before starting the table
             ImGui::SetCursorPosX(column_pos_x);
-            
+
             int lod_count = renderable->GetLodCount();
             if (ImGui::BeginTable("##geometry_table", lod_count + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
             {
@@ -513,7 +513,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                     ImGui::TableSetColumnIndex(i + 1);
                     ImGui::Text("%d", renderable->GetVertexCount(i));
                 }
-        
+
                 // row 2: indices
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -523,7 +523,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                     ImGui::TableSetColumnIndex(i + 1);
                     ImGui::Text("%d", renderable->GetIndexCount(i));
                 }
-        
+
                 ImGui::EndTable();
             }
 
@@ -792,23 +792,23 @@ void Properties::ShowMaterial(Material* material) const
             {
                 bool show_texture  = mat_tex      != MaterialTextureType::Max;
                 bool show_modifier = mat_property != MaterialProperty::Max;
-        
+
                 // name
                 if (name)
                 {
                     ImGui::Text(name);
-        
+
                     if (tooltip)
                     {
                         ImGuiSp::tooltip(tooltip);
                     }
-        
+
                     if (show_texture || show_modifier)
                     {
                         ImGui::SameLine(column_pos_x);
                     }
                 }
-        
+
                 // texture
                 ImGui::BeginDisabled(optimized);
                 if (show_texture)
@@ -817,31 +817,31 @@ void Properties::ShowMaterial(Material* material) const
                     for (uint32_t slot = 0; slot < material->GetUsedSlotCount(); ++slot)
                     {
                         MaterialTextureType texture_type = static_cast<MaterialTextureType>(mat_tex);
-                        
+
                         // create a lambda that captures both the type and slot for the setter
-                        auto setter = [material, texture_type, slot](spartan::RHI_Texture* texture) 
-                        { 
+                        auto setter = [material, texture_type, slot](spartan::RHI_Texture* texture)
+                        {
                             material->SetTexture(texture_type, texture, slot);
                         };
-                
+
                         // slots are shown side by side for each type
                         if (slot > 0)
                         {
                             ImGui::SameLine();
                         }
-                
+
                         // get the texture for this slot and show it in the UI
                         spartan::RHI_Texture* texture = material->GetTexture(texture_type, slot);
                         ImGuiSp::image_slot(texture, setter);
                     }
-                
+
                     if (show_modifier)
                     {
                         ImGui::SameLine();
                     }
                 }
                 ImGui::EndDisabled();
-        
+
                 // modifier/multiplier
                 if (show_modifier)
                 {
@@ -1184,7 +1184,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
     if (component_begin("Volume", volume))
     {
         // reflect
-        unordered_map<Renderer_Option, RenderOptionType, EnumClassHash> options = volume->GetRenderOptions();
+        RenderOptions options                                                   = volume->GetOptionsCollection();
         float shape_size                                                        = volume->GetShapeSize();
         float transition_size                                                   = volume->GetTransitionSize();
         bool  is_debug_draw_enabled                                             = volume->GetDebugDrawEnabled();
@@ -1192,7 +1192,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         // Render Options
         if (ImGuiSp::collapsing_header("Render Options", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            for (auto& [option_key, option_value] : options)
+            for (auto& [option_key, option_value] : options.GetOptions())
             {
                 string label_str = Renderer::EnumToString(option_key);
                 const char* label = label_str.c_str();
@@ -1202,15 +1202,23 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                     bool& bool_value = get<bool>(option_value);
                     if (ImGui::Checkbox(label, &bool_value))
                     {
-                        options[option_key] = bool_value;
+                        options.SetOption(option_key, bool_value);
                     }
                 }
-                else if (std::holds_alternative<int>(option_value))
+                else if (std::holds_alternative<uint32_t>(option_value))
                 {
-                    int& int_value = get<int>(option_value);
-                    if (ImGui::InputInt(label, &int_value, 1, 0.0f))
+                    uint32_t& enumValue = std::get<uint32_t>(option_value);
+
+                    if (option_key == Renderer_Option::Tonemapping)
                     {
-                        options[option_key] = int_value;
+                        const char* tonemapping_items[] = { "Aces", "AgX", "Reinhard", "AcesNautilus" };
+                        int current = static_cast<int>(enumValue);
+
+                        if (ImGui::Combo(label, &current, tonemapping_items, IM_ARRAYSIZE(tonemapping_items)))
+                        {
+                            enumValue = static_cast<uint32_t>(current);
+                            options.SetOption(option_key, enumValue);
+                        }
                     }
                 }
                 else if (std::holds_alternative<float>(option_value))
@@ -1218,17 +1226,15 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                     float& float_value = get<float>(option_value);
                     if (ImGui::InputFloat(label, &float_value, 1, 0.1f))
                     {
-                        options[option_key] = float_value;
+                        options.SetOption(option_key, float_value);
                     }
                 }
-                else if (std::holds_alternative<Renderer_Tonemapping>(option_value))
+                else if (std::holds_alternative<int>(option_value))
                 {
-                    const char* tonemapping_items[] = { "Aces", "AgX", "Reinhard", "AcesNautilus" };
-                    Renderer_Tonemapping& tone_mapping_value = get<Renderer_Tonemapping>(option_value);
-                    int current = static_cast<int>(tone_mapping_value);
-                    if (ImGui::Combo(label, &current, tonemapping_items, IM_ARRAYSIZE(tonemapping_items)))
+                    int& int_value = get<int>(option_value);
+                    if (ImGui::InputInt(label, &int_value, 1, 0.0f))
                     {
-                        options[option_key] = tone_mapping_value;
+                        options.SetOption(option_key, int_value);
                     }
                 }
             }
@@ -1281,7 +1287,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         //= MAP =========================================================================================
         if (shape_size != volume->GetShapeSize())           volume->SetShapeSize(shape_size);
         if (transition_size != volume->GetTransitionSize()) volume->SetTransitionSize(transition_size);
-        if (options != volume->GetRenderOptions())          volume->SetRenderOptions(options);
+        if (options != volume->GetOptionsCollection())      volume->SetOptionsCollection(options);
         //===============================================================================================
     }
     component_end();
