@@ -55,7 +55,7 @@ float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 
 /*------------------------------------------------------------------------------
-    VALIDATE
+    VALIDATE (used because AMD SSSR is full of issues)
 ------------------------------------------------------------------------------*/
 float validate_output(float value)
 {

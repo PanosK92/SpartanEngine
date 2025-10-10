@@ -189,7 +189,7 @@ struct vertex_processing
         float3 instance_up                = normalize(transform[1].xyz);
         
         // wind simulation
-        if (surface.is_grass_blade())
+        if (surface.is_grass_blade() || surface.is_flower())
         {
             const float wind_direction_scale      = 0.05f;                                           // scale for wind direction noise (larger scale = broader patterns)
             const float wind_direction_variation  = PI / 4.0f * (0.5f + base_wind_magnitude / 2.0f); // scale variation width (e.g., wider swings at high mag)

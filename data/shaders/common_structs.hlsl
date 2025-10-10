@@ -67,8 +67,9 @@ struct Surface
     bool has_wind_animation()            { return flags & uint(1U << 9);  }
     bool color_variation_from_instance() { return flags & uint(1U << 10); }
     bool is_grass_blade()                { return flags & uint(1U << 11); }
-    bool is_water()                      { return flags & uint(1U << 12); }
-    bool is_tessellated()                { return flags & uint(1U << 13); }
+    bool is_flower()                     { return flags & uint(1U << 12); }
+    bool is_water()                      { return flags & uint(1U << 13); }
+    bool is_tessellated()                { return flags & uint(1U << 14); }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }

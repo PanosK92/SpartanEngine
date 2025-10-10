@@ -745,8 +745,8 @@ namespace spartan
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
                 const float per_triangle_density_grass_blade = 12.0f;
-                const float per_triangle_density_flower      = 0.01f;
-                const float per_triangle_density_tree        = 0.001f;
+                const float per_triangle_density_flower      = 0.2f;
+                const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;
 
                 // sun/lighting/mood
@@ -946,7 +946,8 @@ namespace spartan
                     shared_ptr<Material> material_leaf;
                     shared_ptr<Material> material_body;
                     shared_ptr<Material> material_rock;
-                    shared_ptr<Material> material_foliage;
+                    shared_ptr<Material> material_grass_blade;
+                    shared_ptr<Material> material_flower;
                     {
                         material_leaf = make_shared<Material>();
                         material_leaf->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\Twig_Base_Material_2.png");
@@ -970,15 +971,25 @@ namespace spartan
                         material_rock->SetTexture(MaterialTextureType::Occlusion, "project\\models\\rock_2\\occlusion.png");
                         material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
 
-                        material_foliage = make_shared<Material>();
-                        material_foliage->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
-                        material_foliage->SetProperty(MaterialProperty::Roughness, 1.0f);
-                        material_foliage->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                        material_foliage->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-                        material_foliage->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                        material_foliage->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material_foliage->SetColor(Color::standard_white);
-                        material_foliage->SetResourceName("foliage" + string(EXTENSION_MATERIAL));
+                        material_grass_blade = make_shared<Material>();
+                        material_grass_blade->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::Roughness, 1.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
+                        material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material_grass_blade->SetColor(Color::standard_white);
+                        material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
+
+                        material_flower = make_shared<Material>();
+                        material_flower->SetProperty(MaterialProperty::IsFlower, 1.0f);
+                        material_flower->SetProperty(MaterialProperty::Roughness, 1.0f);
+                        material_flower->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                        material_flower->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
+                        material_flower->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_flower->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material_flower->SetColor(Color::standard_white);
+                        material_flower->SetResourceName("flower" + string(EXTENSION_MATERIAL));
                     }
 
                     // place props on each terrain tile
@@ -1000,7 +1011,8 @@ namespace spartan
                         material_leaf,
                         material_body,
                         material_rock,
-                        material_foliage
+                        material_grass_blade,
+                        material_flower
                     ](uint32_t start_index, uint32_t end_index)
                     {
                         for (uint32_t tile_index = start_index; tile_index < end_index; tile_index++)
@@ -1071,26 +1083,6 @@ namespace spartan
 
                             // foliage
                             {
-                                // flower
-                                {
-                                    // create entity
-                                    Entity* entity = World::CreateEntity();
-                                    entity->SetObjectName("flower");
-                                    entity->SetParent(terrain_tile);
-                                    
-                                    // generate instances
-                                    vector<Matrix> transforms;
-                                    terrain->FindTransforms(tile_index, TerrainProp::Foliage, entity, per_triangle_density_flower, 1.0f, transforms);
-                                    
-                                    // set renderable component
-                                    Renderable* renderable = entity->AddComponent<Renderable>();
-                                    renderable->SetMesh(mesh_flower.get());
-                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                                    renderable->SetInstances(transforms);
-                                    renderable->SetMaterial(material_foliage);
-                                    renderable->SetMaxRenderDistance(render_distance_foliage);
-                                }
-
                                 // grass
                                 {
                                    // create entity
@@ -1107,8 +1099,28 @@ namespace spartan
                                    renderable->SetMesh(mesh_grass_blade.get());
                                    renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
                                    renderable->SetInstances(transforms);
-                                   renderable->SetMaterial(material_foliage);
+                                   renderable->SetMaterial(material_grass_blade);
                                    renderable->SetMaxRenderDistance(render_distance_foliage);
+                                }
+
+                                // flower
+                                {
+                                    // create entity
+                                    Entity* entity = World::CreateEntity();
+                                    entity->SetObjectName("flower");
+                                    entity->SetParent(terrain_tile);
+                                    
+                                    // generate instances
+                                    vector<Matrix> transforms;
+                                    terrain->FindTransforms(tile_index, TerrainProp::Foliage, entity, per_triangle_density_flower, 1.0f, transforms);
+                                    
+                                    // set renderable component
+                                    Renderable* renderable = entity->AddComponent<Renderable>();
+                                    renderable->SetMesh(mesh_flower.get());
+                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaterial(material_flower);
+                                    renderable->SetMaxRenderDistance(render_distance_foliage);
                                 }
                             }
                         }
