@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "pch.h"
 #include "Volume.h"
+//============================================
 
 #include "Display/Display.h"
 #include "Rendering/Renderer.h"
@@ -38,6 +39,9 @@ namespace spartan
     Volume::Volume(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume_shape_type, VolumeType);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shape_size, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transition_size, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_debug_draw_enabled, bool);
 
         m_volume_shape_type = VolumeType::Sphere;
         m_bounding_box = BoundingBox::Unit;
