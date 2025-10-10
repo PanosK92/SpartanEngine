@@ -1053,8 +1053,8 @@ namespace spartan
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
             description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
-            description.min_scale               = scale * 0.5f;
-            description.max_scale               = scale * 1.5f;
+            description.min_scale               = scale * 0.25f;
+            description.max_scale               = scale * 1.75f;
         }
         else if (terrain_prop == TerrainProp::Flower)
         {
@@ -1062,8 +1062,8 @@ namespace spartan
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
             description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
-            description.min_scale               = scale * 0.5f;
-            description.max_scale               = scale * 1.5f;
+            description.min_scale               = scale * 0.25f;
+            description.max_scale               = scale * 1.75f;
             description.instances_per_cluster   = 5000;                         // avg flowers per cluster
             description.cluster_radius          = 50.0f;                        // max spread radius in world units
         }
