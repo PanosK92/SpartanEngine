@@ -1111,7 +1111,7 @@ namespace spartan
                 Pass_Downscale(cmd_list, rt_frame_output, Renderer_DownsampleFilter::Average);
             }
 
-            Pass_AutoExposure(cmd_list, get_output_in);
+            Pass_AutoExposure(cmd_list, rt_frame_output);
         }
 
         // tone-mapping & gamma correction
