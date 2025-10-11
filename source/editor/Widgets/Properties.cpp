@@ -1101,6 +1101,8 @@ void Properties::ShowTerrain(Terrain* terrain) const
                     terrain->Generate();
                 });
             }
+
+            ImGuiSp::image(terrain->GetHeightMapFinal(), ImVec2(100, 100));
         }
         ImGui::EndGroup();
 
