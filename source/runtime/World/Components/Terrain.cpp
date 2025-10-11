@@ -1064,8 +1064,8 @@ namespace spartan
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
             description.min_scale               = scale * 0.2f;
             description.max_scale               = scale * 1.2f;
-            description.instances_per_cluster   = 5000;                         // avg flowers per cluster
-            description.cluster_radius          = 50.0f;                        // max spread radius in world units
+            description.instances_per_cluster   = 1000;                         // avg flowers per cluster
+            description.cluster_radius          = 30.0f;                        // max spread radius in world units
         }
         else if (terrain_prop == TerrainProp::Rock)
         {
