@@ -846,7 +846,7 @@ namespace spartan
 
                     // generate a terrain from a height map
                     shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
-                    terrain->SetHeightMap(height_map.get());
+                    terrain->SetHeightMapSeed(height_map.get());
                     terrain->Generate();
 
                     // add physics so we can walk on it

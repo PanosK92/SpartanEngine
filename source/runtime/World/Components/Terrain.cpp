@@ -1032,7 +1032,7 @@ namespace spartan
 
     Terrain::~Terrain()
     {
-        m_height_texture = nullptr;
+        m_height_map_seed = nullptr;
     }
 
     void Terrain::FindTransforms(const uint32_t tile_index, const TerrainProp terrain_prop, Entity* entity, const float density_fraction, const float scale, vector<Matrix>& transforms_out)
@@ -1238,7 +1238,7 @@ namespace spartan
         }
     
         // check if height texture is assigned
-        if (!m_height_texture)
+        if (!m_height_map_seed)
         {
             SP_LOG_WARNING("you need to assign a height map before trying to generate a terrain");
             return;
@@ -1247,7 +1247,7 @@ namespace spartan
         m_is_generating = true;
     
         // start progress tracking
-        uint32_t job_count = 9;
+        uint32_t job_count = 10;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
     
         // define cache file path
@@ -1278,9 +1278,9 @@ namespace spartan
             // 1. process height map
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("process height map...");
-                get_values_from_height_map(m_height_data, m_height_texture, m_min_y, m_max_y);
-                m_width  = m_height_texture->GetWidth();
-                m_height = m_height_texture->GetHeight();
+                get_values_from_height_map(m_height_data, m_height_map_seed, m_min_y, m_max_y);
+                m_width  = m_height_map_seed->GetWidth();
+                m_height = m_height_map_seed->GetHeight();
     
                 // increase grid density
                 densify_height_map(m_height_data, m_width, m_height, parameters::density);
@@ -1310,8 +1310,42 @@ namespace spartan
                 apply_erosion(positions, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
+
+            // 5. bake
+            {
+                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("baking terrain into texture...");
+
+                vector<RHI_Texture_Slice> data(1);
+                auto& slice = data[0];
+                slice.mips.resize(1);
+                auto& mip_bytes = slice.mips[0].bytes;
+                mip_bytes.resize(dense_width * dense_height * sizeof(float));
+
+                auto copy_heights = [&positions, &mip_bytes](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t i = start; i < end; i++)
+                    {
+                        memcpy(mip_bytes.data() + i * sizeof(float), &positions[i].y, sizeof(float));
+                    }
+                };
+                ThreadPool::ParallelLoop(copy_heights, dense_width * dense_height);
+
+                m_height_map_final = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D,
+                    dense_width,
+                    dense_height,
+                    1,
+                    1,
+                    RHI_Format::R32_Float,
+                    RHI_Texture_Srv,
+                    "terrain_baked",
+                    data
+                );
+
+                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
+            }
     
-            // 5. compute vertices and indices
+            // 6. compute vertices and indices
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating vertices and indices...");
                 m_vertices.resize(dense_width * dense_height);
@@ -1320,14 +1354,14 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 6. compute normals and tangents
+            // 7. compute normals and tangents
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
                 generate_normals(m_vertices, dense_width, dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 7. split into tiles
+            // 8. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
                 uint32_t tile_count = 16;
@@ -1335,7 +1369,7 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 8. compute triangle data for placement
+            // 9 compute triangle data for placement
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
                 for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
