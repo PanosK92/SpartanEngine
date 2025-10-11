@@ -100,8 +100,10 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     MaterialParameters material = GetMaterial();
+    Surface surface;
+    surface.flags = material.flags;
 
-    if (material.ocean_parameters.displacementScale > -1.0f)
+    if (surface.is_ocean() && material.ocean_parameters.displacementScale > -1.0f)
     {
         const float3 pass_values = pass_get_f3_value();
         const float2 tile_xz_pos = pass_values.xy;
@@ -120,8 +122,6 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
 
     // transform world space position to clip space
-    Surface surface;
-    surface.flags = material.flags;
     if (!surface.is_tessellated())
     {
         vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
