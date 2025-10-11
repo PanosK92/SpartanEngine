@@ -1104,7 +1104,8 @@ namespace spartan
         // auto-exposure
         if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
         {
-            // ensure rt_frame_output contains the latest post-process result
+            // this pass requires the input texture to have mips, which only rt_frame_output
+            // therefore if that's not what's coming in, blit to it and generate the mip chain
             if ((get_output_in) != rt_frame_output)
             {
                 cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, false);
