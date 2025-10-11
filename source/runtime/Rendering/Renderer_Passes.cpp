@@ -1076,7 +1076,8 @@ namespace spartan
         cmd_list->BeginMarker("post_process");
 
         // macros which allows us to keep track of which texture is an input/output for each pass
-        bool swap_output = true;
+        bool swap_output  = true;
+        bool any_pass_ran = false;
         #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
         #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
 
@@ -1085,6 +1086,7 @@ namespace spartan
         {
             swap_output = !swap_output;
             Pass_DepthOfField(cmd_list, get_output_in, get_output_out);
+            any_pass_ran = true;
         }
         
         // motion blur
@@ -1092,6 +1094,7 @@ namespace spartan
         {
             swap_output = !swap_output;
             Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
+            any_pass_ran = true;
         }
         
         // bloom
@@ -1099,17 +1102,21 @@ namespace spartan
         {
             swap_output = !swap_output;
             Pass_Bloom(cmd_list, get_output_in, get_output_out);
+            any_pass_ran = true;
         }
 
         // auto-exposure
         if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
         {
-            // this pass requires the input texture to have mips, which only rt_frame_output
-            // therefore if that's not what's coming in, blit to it and generate the mip chain
-            if ((get_output_in) != rt_frame_output)
+            if (any_pass_ran)
             {
-                cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, false);
-                Pass_Downscale(cmd_list, rt_frame_output, Renderer_DownsampleFilter::Average);
+                // this pass requires the input texture to have mips, which only rt_frame_output has
+                // therefore if that's not what's coming in, blit to it and generate the mip chain
+                if ((get_output_in) != rt_frame_output)
+                {
+                    cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, false);
+                    Pass_Downscale(cmd_list, rt_frame_output, Renderer_DownsampleFilter::Average);
+                }
             }
 
             Pass_AutoExposure(cmd_list, rt_frame_output);
