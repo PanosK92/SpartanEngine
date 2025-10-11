@@ -106,7 +106,7 @@ struct Surface
     bool is_flower()                     { return flags & uint(1U << 12); }
     bool is_water()                      { return flags & uint(1U << 13); }
     bool is_tessellated()                { return flags & uint(1U << 14); }
-    bool is_ocean()                      { return flags & uint(1U << 15); }
+    bool is_ocean()                      { return flags & uint(1U << 16); }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }

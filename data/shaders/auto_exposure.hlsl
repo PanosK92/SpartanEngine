@@ -58,7 +58,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // min/max exposure in EV
     const float min_ev = -0.2f; // dark
-    const float max_ev = 1.5;  // bright
+    const float max_ev = 1.5; // bright
 
     // convert to linear
     float min_exposure = exp2(min_ev);
@@ -69,8 +69,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // exponential adaptation
     float adaptation_speed = pass_get_f3_value().x;
-    float tau              = 1.0 / max(adaptation_speed, 0.001);
-    float exposure         = prev + (desired_exposure - prev) * (1.0 - exp(-tau * buffer_frame.delta_time));
+    float tau = 1.0 / max(adaptation_speed, 0.001);
+    float exposure = prev + (desired_exposure - prev) * (1.0 - exp(-tau * buffer_frame.delta_time));
 
     // write output
     tex_uav[uint2(0, 0)] = float4(exposure, exposure, exposure, 1.0);
