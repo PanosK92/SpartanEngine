@@ -27,18 +27,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // compute luminance using the lowest mip
-    uint w, h, mip_count;
-    tex.GetDimensions(0, w, h, mip_count);
-    float lum_sum = 0.0;
-    for (uint y = 0; y < h; y++)
+    float lum = 0.0f;
     {
-        for (uint x = 0; x < w; x++)
+        uint w, h, mip_count;
+        tex.GetDimensions(0, w, h, mip_count);
+
+        uint mip = mip_count - 1;
+        tex.GetDimensions(mip, w, h, mip_count);
+
+        float lum_sum = 0.0;
+        for (uint y = 0; y < h; y++)
         {
-            float3 col = tex.Load(int3(x, y, mip_count - 1)).rgb;
-            lum_sum += dot(col, float3(0.2126, 0.7152, 0.0722));
+            for (uint x = 0; x < w; x++)
+            {
+                float3 col = tex.Load(int3(x, y, mip)).rgb;
+                lum_sum += dot(col, float3(0.2126, 0.7152, 0.0722));
+            }
         }
+        lum = lum_sum / float(w * h);
     }
-    float lum = lum_sum / float(w * h);
 
     // read previous exposure
     float prev = tex2.Load(int3(0, 0, 0)).r;

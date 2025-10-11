@@ -1101,16 +1101,16 @@ namespace spartan
             Pass_Bloom(cmd_list, get_output_in, get_output_out);
         }
 
-        // ensure input is rt_frame_output for auto-exposure (which has per mip views)
-        if (get_output_in != rt_frame_output)
-        {
-            cmd_list->Blit(get_output_in, rt_frame_output, false);
-            swap_output = !swap_output;
-        }
-
         // auto-exposure
         if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
         {
+            // ensure rt_frame_output contains the latest post-process result
+            if ((get_output_in) != rt_frame_output)
+            {
+                cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, false);
+                Pass_Downscale(cmd_list, rt_frame_output, Renderer_DownsampleFilter::Average);
+            }
+
             Pass_AutoExposure(cmd_list, get_output_in);
         }
 
@@ -1492,7 +1492,7 @@ namespace spartan
     void Renderer::Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
     {
         // get resources
-        RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure); 
+        RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);
         RHI_Texture* tex_exposure_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
 
         // define pipeline state
@@ -1509,9 +1509,9 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, tex_in->GetMipCount() - 1, 1); // input: current frame
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous);               // input: previous exposure value
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);                         // output: current exposure value
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous); // input: previous exposure value
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);           // output: current exposure value
 
             // single dispatch: just writes 1 value
             cmd_list->Dispatch(1, 1, 1);
