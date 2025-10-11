@@ -21,11 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
-#include "Volume.h"
-//============================================
-
-#include "Display/Display.h"
 #include "Rendering/Renderer.h"
+#include "Volume.h"
 #include "World/Entity.h"
 //============================================
 
@@ -49,7 +46,7 @@ namespace spartan
         m_transition_size = default_transition_size;
         m_is_debug_draw_enabled = true;
 
-        m_options_collection = RenderOptions();
+        m_options_collection = RenderOptionsPool();
     }
 
     Volume::~Volume()

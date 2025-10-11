@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Font/Font.h"
 #include <unordered_map>
 #include <atomic>
+#include "RenderOptionsPool.h"
 #include "../Math/Rectangle.h"
 //===============================
 
@@ -74,21 +75,14 @@ namespace spartan
         static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
         static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
-        // options
-        template<typename T>
-        static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
-        static void SetOption(Renderer_Option option, float value);
-        static std::unordered_map<Renderer_Option, float>& GetOptions();
-        static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
-        static std::string EnumToString(Renderer_Option option); // used most likely for editor-related applications
-        static Renderer_Option StringToEnum(const std::string& name);
-
         // swapchain
         static RHI_SwapChain* GetSwapChain();
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void SubmitAndPresent();
 
         // misc
+        static RenderOptionsPool GetRenderOptionsPool() { return m_global_options; }
+        static RenderOptionsPool& GetRenderOptionsPoolRef() { return m_global_options; }
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNumber();
         static RHI_Api_Type GetRhiApiType();
@@ -219,6 +213,7 @@ namespace spartan
         static bool m_bindless_samplers_dirty;
 
         // misc
+        static RenderOptionsPool m_global_options;
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;

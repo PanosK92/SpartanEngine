@@ -62,7 +62,7 @@ namespace spartan
         vector<shared_ptr<Mesh>> meshes;
 
         namespace entities
-        { 
+        {
             void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
             {
                 SP_ASSERT(soundtrack_file_path);
@@ -81,12 +81,12 @@ namespace spartan
                 default_light_directional->SetObjectName("light_directional");
                 Light* light = default_light_directional->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
-            
+
                 // rotation from direction
                 Vector3 forward = direction.Normalized();
                 Quaternion rot  = Quaternion::FromLookRotation(forward);
                 default_light_directional->SetRotation(rot);
-            
+
                 // intensity
                 light->SetTemperature(4000.0f);
                 light->SetIntensity(enabled ? 40'000.0f : 0.0f);
@@ -103,7 +103,7 @@ namespace spartan
                 default_floor->SetObjectName("floor");
                 default_floor->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise it a bit to avoid z-fighting with world grid
                 default_floor->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
-                
+
                 // add a renderable component
                 Renderable* renderable = default_floor->AddComponent<Renderable>();
                 renderable->SetMesh(MeshType::Quad);
@@ -143,7 +143,7 @@ namespace spartan
                 default_metal_cube = World::CreateEntity();
                 default_metal_cube->SetObjectName("metal_cube");
                 default_metal_cube->SetPosition(position);
-                
+
                 // create material
                 shared_ptr<Material> material = make_shared<Material>();
                 material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
@@ -154,12 +154,12 @@ namespace spartan
                 material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
                 material->SetProperty(MaterialProperty::Tessellation, 1.0f);
                 material->SetResourceName("crate_space" + string(EXTENSION_MATERIAL));
-                
+
                 // add a renderable component
                 Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
                 renderable->SetMesh(MeshType::Cube);
                 renderable->SetMaterial(material);
-                
+
                 // add physics components
                 Physics* physics_body = default_metal_cube->AddComponent<Physics>();
                 physics_body->SetMass(Physics::mass_from_volume);
@@ -221,7 +221,7 @@ namespace spartan
                 Entity* water = World::CreateEntity();
                 water->SetObjectName("water");
                 water->SetPosition(position);
-                
+
                 // material
                 shared_ptr<Material> material = make_shared<Material>();
                 {
@@ -239,7 +239,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingX,      0.1f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      0.1f);
                 }
-                
+
                 // geometry
                 {
                     // generate grid
@@ -247,32 +247,32 @@ namespace spartan
                     vector<RHI_Vertex_PosTexNorTan> vertices;
                     vector<uint32_t> indices;
                     geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, dimension);
-                
+
                     // split into tiles
                     const uint32_t tile_count = std::max(1u, density / 6); // dynamic tile count based on density, minimum 1
                     vector<vector<RHI_Vertex_PosTexNorTan>> tiled_vertices;
                     vector<vector<uint32_t>> tiled_indices;
                     vector<Vector3> tile_offsets;
                     spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices, tile_offsets);
-                
+
                     for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
                     {
                         string name = "tile_" + to_string(tile_index);
-                
+
                         // create mesh if it doesn't exist
                         shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
                         mesh->SetObjectName(name);
                         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                         mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
                         mesh->CreateGpuBuffers();
-                
+
                         // create a child entity, add a renderable, and this mesh tile to it
                         {
                             Entity* entity_tile = World::CreateEntity();
                             entity_tile->SetObjectName(name);
                             entity_tile->SetParent(water);
                             entity_tile->SetPosition(tile_offsets[tile_index]);
-                
+
                             if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
                             {
                                 renderable->SetMesh(mesh.get());
@@ -290,10 +290,10 @@ namespace spartan
         void set_base_renderer_options()
          {
              // disable all effects which are specific to certain worlds, let the each world decide which effects it wants to enable
-             Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
-             Renderer::SetOption(Renderer_Option::ChromaticAberration, 0.0f);
-             Renderer::SetOption(Renderer_Option::Grid,                0.0f);
-             Renderer::SetOption(Renderer_Option::Vhs,                 0.0f);
+             Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Dithering,           false);
+             Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::ChromaticAberration, false);
+             Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Grid,                false);
+             Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Vhs,                 false);
          }
     }
 
@@ -321,86 +321,86 @@ namespace spartan
                         material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                         material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
                         material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
-                    
+
                         material->SetTexture(MaterialTextureType::Normal, texture_paint_normal);
                         material->SetProperty(MaterialProperty::Normal, 0.03f);
                         material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
                         material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
                     }
-                    
+
                     // body metallic/carbon parts
                     if (Material* material = default_car->GetDescendantByName("Object_10")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.4f);
                         material->SetProperty(MaterialProperty::Metalness, 1.0f);
                     }
-                    
+
                     // tires
                     {
                          if (Material* material = default_car->GetDescendantByName("Object_127")->GetComponent<Renderable>()->GetMaterial())
                          {
                              material->SetProperty(MaterialProperty::Roughness, 0.7f);
                          }
-                         
+
                          if (Material* material = default_car->GetDescendantByName("Object_142")->GetComponent<Renderable>()->GetMaterial())
                          {
                              material->SetProperty(MaterialProperty::Roughness, 0.7f);
                          }
-                    
+
                          if (Material* material = default_car->GetDescendantByName("Object_157")->GetComponent<Renderable>()->GetMaterial())
                          {
                              material->SetProperty(MaterialProperty::Roughness, 0.7f);
                          }
-                    
+
                          if (Material* material = default_car->GetDescendantByName("Object_172")->GetComponent<Renderable>()->GetMaterial())
                          {
                              material->SetProperty(MaterialProperty::Roughness, 0.7f);
                          }
-                    
+
                     }
-                    
+
                     // rims back
                     if (Material* material = default_car->GetDescendantByName("Object_180")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Metalness, 1.0f);
                         material->SetProperty(MaterialProperty::Roughness, 0.3f);
                     }
-                    
+
                     // rims front
                     if (Material* material = default_car->GetDescendantByName("Object_150")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Metalness, 1.0f);
                         material->SetProperty(MaterialProperty::Roughness, 0.3f);
                     }
-                    
+
                     // headlight and taillight glass
                     if (Material* material = default_car->GetDescendantByName("Object_38")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.5f);
                         material->SetProperty(MaterialProperty::Metalness, 1.0f);
                     }
-                    
+
                     // front (windshield) and back (engine) glass
                     if (Material* material = default_car->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.0f);
                         material->SetProperty(MaterialProperty::Metalness, 0.0f);
                     }
-                    
+
                     // side mirror glass
                     if (Material* material = default_car->GetDescendantByName("Object_98")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.0f);
                         material->SetProperty(MaterialProperty::Metalness, 1.0f);
                     }
-                    
+
                     // engine block metal
                     if (Material* material = default_car->GetDescendantByName("Object_14")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.4f);
                         material->SetProperty(MaterialProperty::Metalness, 1.0f);
                     }
-                    
+
                     // brake disc metal
                     {
                         if (Material* material = default_car->GetDescendantByName("Object_129")->GetComponent<Renderable>()->GetMaterial())
@@ -501,7 +501,7 @@ namespace spartan
                 // car views
                 enum class CarView { Dashboard, Hood, Chase };
                 static CarView current_view = CarView::Dashboard;
-                
+
                 // camera positions for different views
                 static const Vector3 car_view_positions[] =
                 {
@@ -509,7 +509,7 @@ namespace spartan
                     Vector3(0.0f, 2.0f, 1.0f),  // hood
                     Vector3(0.0f, 3.0f, -10.0f) // chase
                 };
-            
+
                 // get some commonly used things
                 bool inside_the_car             = default_camera->GetChildrenCount() == 0;
                 Entity* sound_door_entity       = default_car->GetChildByName("sound_door");
@@ -531,9 +531,9 @@ namespace spartan
                         camera->SetParent(default_car);
                         camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                         camera->SetRotationLocal(Quaternion::Identity);
-            
+
                         audio_source_start->PlayClip();
-            
+
                         inside_the_car = true;
                     }
                     else
@@ -542,29 +542,29 @@ namespace spartan
                         camera->SetParent(default_camera);
                         camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
                         camera->SetRotationLocal(Quaternion::Identity);
-            
+
                         // place the camera on the left of the driver's door
                         default_camera->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
-            
+
                         audio_source_idle->StopClip();
-            
+
                         inside_the_car = false;
                     }
-            
+
                     // enable/disable car/camera control
                     camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
                     //default_car->AddComponent<PhysicsBody>()->GetCar()->SetControlEnabled(inside_the_car);
-            
+
                     // play exit/enter sound
                     audio_source_door->PlayClip();
-            
+
                     // disable/enable windshield
                     if (default_car_window)
                     {
                         default_car_window->SetActive(!inside_the_car);
                     }
                 }
-            
+
                 // change car view
                 if (Input::GetKeyDown(KeyCode::V))
                 {
@@ -720,7 +720,7 @@ namespace spartan
                 Entity* entity = mesh->GetRootEntity();
                 entity->SetObjectName("subway");
                 entity->SetScale(Vector3(0.015f));
-                
+
                 // enable physics for all meshes
                 vector<Entity*> entities;
                 entity->GetDescendants(&entities);
@@ -757,7 +757,7 @@ namespace spartan
                 sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(7.0f, -100.0f, -0.5f)); // sunrise height
 
                 entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
-                Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+                Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Grid, false);
 
                 // create
                 default_terrain = World::CreateEntity();
@@ -873,7 +873,7 @@ namespace spartan
                     shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
                     {
                         mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false); // geometry is made to spec, don't optimize
- 
+
                         // create sub-mesh and add three lods for the grass blade
                         uint32_t sub_mesh_index = 0;
 
@@ -1235,7 +1235,7 @@ namespace spartan
             {
                 // gran turismo 7 brand central music
                 entities::music("project\\music\\gran_turismo.wav");
-                
+
                 // textures
                 texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
                 texture_paint_normal = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\paint_normal.png");
@@ -1275,13 +1275,13 @@ namespace spartan
                                 {
                                     material->SetColor(color);
                                     material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
-                        
+
                                     // until we support actual area lights matching each tube, just use a point light
                                     {
                                         Entity* entity = World::CreateEntity();
                                         entity->SetObjectName("light_point");
                                         entity->SetParent(entity_tube_light);
-                        
+
                                         Light* light = entity->AddComponent<Light>();
                                         light->SetLightType(LightType::Point);
                                         light->SetColor(color);
@@ -1321,7 +1321,7 @@ namespace spartan
                                material->SetProperty(MaterialProperty::TextureTilingY, scale);
                                material->SetProperty(MaterialProperty::Metalness, 0.0f);
                            }
-                       
+
                            // add physics to the floor so we can walk on it
                            entity_floor->GetComponent<Physics>()->SetBodyType(BodyType::Plane);
                        }
@@ -1343,9 +1343,9 @@ namespace spartan
 
                 // adjust renderer options
                 {
-                    Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
-                    Renderer::SetOption(Renderer_Option::Lights,             0.0f);
-                    Renderer::SetOption(Renderer_Option::Dithering,          0.0f);
+                    Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::PerformanceMetrics, false);
+                    Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Lights,             false);
+                    Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Dithering,          false);
                 }
             }
 
@@ -1357,47 +1357,47 @@ namespace spartan
                 float angle          = rotation_speed * delta_time;
                 Quaternion rotation  = Quaternion::FromAxisAngle(Vector3::Up, angle);
                 turn_table->Rotate(rotation);
-            
+
                 const float x       = 0.75f;
                 const float y       = 0.05f;
                 const float spacing = 0.02f;
-            
+
                 // buffer for formatted text
                 static char text_buffer[128];
-            
+
                 // car specs
                 Renderer::DrawString("Ferrari LaFerrari", Vector2(x, y));
-            
+
                 snprintf(text_buffer, sizeof(text_buffer), "Torque: %.1f Nm", 900.0f);
                 Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 1));
-            
+
                 snprintf(text_buffer, sizeof(text_buffer), "Weight: %.1f kg", 1585.0f);
                 Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 2));
-            
+
                 snprintf(text_buffer, sizeof(text_buffer), "Power: %.1f kW", 708.0f);
                 Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 3));
-            
+
                 snprintf(text_buffer, sizeof(text_buffer), "Top Speed: %.1f km/h", 350.0f);
                 Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 4));
-            
+
                 Renderer::DrawString("Engine: 6.3L V12 + HY-KERS", Vector2(x, y + spacing * 5));
                 Renderer::DrawString("Drivetrain: RWD", Vector2(x, y + spacing * 6));
-            
+
                 snprintf(text_buffer, sizeof(text_buffer), "0-100 km/h: %.1f s", 2.6f);
                 Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 7));
-            
+
                 snprintf(text_buffer, sizeof(text_buffer), "Power/Weight: %.1f kW/ton", 446.7f);
                 Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 8));
-            
+
                 Renderer::DrawString("Production: 2013-2018", Vector2(x, y + spacing * 9));
                 Renderer::DrawString("Flagship Hypercar: Ferrari's Hybrid Masterpiece", Vector2(x, y + spacing * 10));
-            
+
                 // description
                 Renderer::DrawString("The LaFerrari is Ferrari's first hybrid hypercar, blending a 6.3L V12 with", Vector2(x, y + spacing * 12));
                 Renderer::DrawString("an electric motor via its HY-KERS system. It delivers extreme performance", Vector2(x, y + spacing * 13));
                 Renderer::DrawString("and razor-sharp dynamics, wrapped in a design that embodies pure", Vector2(x, y + spacing * 14));
                 Renderer::DrawString("Ferrari DNA. A limited-production icon of modern automotive engineering.", Vector2(x, y + spacing * 15));
-            
+
                 // logo
                 Renderer::DrawIcon(texture_brand_logo.get(), Vector2(400.0f, 300.0f));
             }
@@ -1430,14 +1430,14 @@ namespace spartan
                     entity_pool_light->SetScale(0.5f);
                     entity_pool_light->SetPosition(Vector3(0.0f, 1000.0f, 0.0f)); // hide blueprint
                     entity_pool_light->GetChildByIndex(3)->SetActive(false);
-            
+
                     // outer metallic ring
                     shared_ptr<Material> material_metal = make_shared<Material>();
                     material_metal->SetResourceName("material_metal" + string(EXTENSION_MATERIAL));
                     material_metal->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_metal->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle")->GetComponent<Renderable>()->SetMaterial(material_metal);
-            
+
                     // inner light paraboloid
                     shared_ptr<Material> material_paraboloid = make_shared<Material>();
                     material_paraboloid->SetResourceName("material_paraboloid" + string(EXTENSION_MATERIAL));
@@ -1445,7 +1445,7 @@ namespace spartan
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_paraboloid->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle.001")->GetComponent<Renderable>()->SetMaterial(material_paraboloid);
-            
+
                     // point light
                     //Entity* light_source = entity_pool_light->GetChildByIndex(2);
                     //light_source->SetPositionLocal(Vector3(0.0f, 0.0f, -0.5f));
@@ -1457,15 +1457,15 @@ namespace spartan
                     //light->SetFlag(LightFlags::Shadows, false);
                     //light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                 }
-            
+
                 // renderer options
-                Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
-                Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
-            
+                Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::ChromaticAberration, true);
+                Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Vhs, true);
+
                 // camera
                 entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
                 default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
-            
+
                 // audio hum
                 Entity* entity_hum = World::CreateEntity();
                 entity_hum->SetObjectName("audio_hum_electric");
@@ -1474,7 +1474,7 @@ namespace spartan
                 audio_source->SetAudioClip("project\\music\\hum_electric.wav");
                 audio_source->SetLoop(true);
                 audio_source->SetVolume(0.25f);
-            
+
                 // tile footsteps
                 Entity* entity_tiles = World::CreateEntity();
                 entity_tiles->SetObjectName("audio_footsteps_tiles");
@@ -1482,7 +1482,7 @@ namespace spartan
                 AudioSource* audio_source_tiles = entity_tiles->AddComponent<AudioSource>();
                 audio_source_tiles->SetAudioClip("project\\music\\footsteps_tiles.wav");
                 audio_source_tiles->SetPlayOnStart(false);
-            
+
                 // water footsteps
                 Entity* entity_water = World::CreateEntity();
                 entity_water->SetObjectName("audio_footsteps_water");
@@ -1498,10 +1498,10 @@ namespace spartan
                 const float DOOR_WIDTH  = 2.0f;
                 const float DOOR_HEIGHT = 5.0f;
                 const int   NUM_ROOMS   = 100;
-            
+
                 // direction enum
                 enum class Direction { Front, Back, Left, Right, Max };
-            
+
                 // rng
                 mt19937 rng(random_device{}());
                 auto rand_int = [&](int max)
@@ -1509,7 +1509,7 @@ namespace spartan
                     uniform_int_distribution<int> dist(0, max - 1);
                     return dist(rng);
                 };
-            
+
                 // create surface lambda
                 auto create_surface = [&](const char* name, const Vector3& pos, const Vector3& scale, Entity* parent)
                 {
@@ -1525,7 +1525,7 @@ namespace spartan
                     physics_body->SetMass(0.0f);
                     physics_body->SetBodyType(BodyType::Box);
                 };
-            
+
                 // create door lambda
                 auto create_door = [&](Direction dir, const Vector3& offset, Entity* parent)
                 {
@@ -1533,46 +1533,46 @@ namespace spartan
                     bool isFb = (dir == Direction::Front || dir == Direction::Back);
                     float wall_pos = (dir == Direction::Front || dir == Direction::Left) ? -0.5f : 0.5f;
                     wall_pos *= isFb ? ROOM_DEPTH : ROOM_WIDTH;
-            
+
                     // top
                     create_surface((base_name + "_top").c_str(),
                         Vector3(isFb ? 0 : wall_pos, (ROOM_HEIGHT + DOOR_HEIGHT) / 2, isFb ? wall_pos : 0) + offset,
                         Vector3(isFb ? ROOM_WIDTH : 1, ROOM_HEIGHT - DOOR_HEIGHT, isFb ? 1 : ROOM_DEPTH),
                         parent);
-            
+
                     // sides
                     float dim = isFb ? ROOM_WIDTH : ROOM_DEPTH;
                     float side_w = (dim - DOOR_WIDTH) / 2;
                     float l_pos = -dim / 2 + side_w / 2;
                     float r_pos = dim / 2 - side_w / 2;
-            
+
                     create_surface((base_name + "_left").c_str(),
                         Vector3(isFb ? l_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : l_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
                         parent);
-            
+
                     create_surface((base_name + "_right").c_str(),
                         Vector3(isFb ? r_pos : wall_pos, DOOR_HEIGHT / 2, isFb ? wall_pos : r_pos) + offset,
                         Vector3(isFb ? side_w : 1, DOOR_HEIGHT, isFb ? 1 : side_w),
                         parent);
                 };
-            
+
                 // create room lambda
                 auto create_room = [&](Direction door_dir, Direction skip_dir, const Vector3& offset, int room_index)
                 {
                     auto room_entity = World::CreateEntity();
                     room_entity->SetObjectName("room_" + to_string(room_index));
                     room_entity->SetPosition(offset);
-            
+
                     // pool chance
                     uniform_real_distribution<float> dist(0.0f, 1.0f);
                     bool is_pool  = dist(rng) < 0.5f;
                     float floor_y = is_pool ? -0.5f : 0.0f;
-            
+
                     // floor and ceiling
                     create_surface("floor", Vector3(0, floor_y, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
                     create_surface("ceiling", Vector3(0, ROOM_HEIGHT, 0), Vector3(ROOM_WIDTH, 1, ROOM_DEPTH), room_entity);
-            
+
                     // water
                     if (is_pool)
                     {
@@ -1594,12 +1594,12 @@ namespace spartan
                         {Vector3(-ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), {1, ROOM_HEIGHT, ROOM_DEPTH}}, // left
                         {Vector3(ROOM_WIDTH / 2, ROOM_HEIGHT / 2, 0), {1, ROOM_HEIGHT, ROOM_DEPTH}} // right
                     };
-            
+
                     for (int i = 0; i < 4; ++i)
                     {
                         Direction dir = static_cast<Direction>(i);
                         if (dir == skip_dir) continue;
-            
+
                         if (dir == door_dir)
                         {
                             create_door(dir, Vector3(0, 0, 0), room_entity);
@@ -1609,7 +1609,7 @@ namespace spartan
                             string name = "wall_" + to_string(i + 1);
                             create_surface(name.c_str(), walls[i].pos, walls[i].scale, room_entity);
                         }
-            
+
                         // light on side walls
                         if (dir == Direction::Left || dir == Direction::Right)
                         {
@@ -1625,20 +1625,20 @@ namespace spartan
                         }
                     }
                 };
-            
+
                 // procedural generation
                 vector<pair<int, int>> path;
                 set<pair<int, int>> occupied;
-            
+
                 auto generate_path = [&](auto&& self, pair<int, int> pos, int remaining) -> bool
                 {
                     path.push_back(pos);
                     occupied.insert(pos);
                     if (remaining == 0) return true;
-            
+
                     vector<Direction> dirs = { Direction::Front, Direction::Back, Direction::Left, Direction::Right };
                     shuffle(dirs.begin(), dirs.end(), rng);
-            
+
                     for (Direction dir : dirs)
                     {
                         pair<int, int> next = pos;
@@ -1654,15 +1654,15 @@ namespace spartan
                             if (self(self, next, remaining - 1)) return true;
                         }
                     }
-            
+
                     path.pop_back();
                     occupied.erase(pos);
                     return false;
                 };
-            
+
                 generate_path(generate_path, {0, 0}, NUM_ROOMS - 1);
                 int actual_rooms = static_cast<int>(path.size());
-            
+
                 // doors
                 vector<Direction> doors(actual_rooms);
                 for (int i = 1; i < actual_rooms; i++)
@@ -1676,9 +1676,9 @@ namespace spartan
                     else if (dz == 1) doors[i - 1] = Direction::Back;
                     else if (dz == -1) doors[i - 1] = Direction::Front;
                 }
-            
+
                 doors[actual_rooms - 1] = static_cast<Direction>(rand_int(4));
-            
+
                 // create rooms
                 for (int i = 0; i < actual_rooms; i++)
                 {
@@ -1708,7 +1708,7 @@ namespace spartan
                     bool is_in_pool                 = default_camera->GetPosition().y < 1.6f;
                     AudioSource* active_source      = is_in_pool ? audio_source_water : audio_source_tiles;
                     AudioSource* inactive_source    = is_in_pool ? audio_source_tiles : audio_source_water;
-  
+
                     if (camera->IsWalking() && !active_source->IsPlaying())
                     {
                         active_source->PlayClip();

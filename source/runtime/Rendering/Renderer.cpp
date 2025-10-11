@@ -62,6 +62,7 @@ namespace spartan
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
+    RenderOptionsPool Renderer::m_global_options   = RenderOptionsPool();
     uint32_t Renderer::m_resource_index            = 0;
     atomic<bool> Renderer::m_initialized_resources = false;
     bool Renderer::m_transparents_present          = false;
@@ -85,22 +86,21 @@ namespace spartan
         const uint8_t swap_chain_buffer_count = 2;
 
         // misc
-        unordered_map<Renderer_Option, float> m_options;
         uint64_t frame_num                   = 0;
         math::Vector2 jitter_offset          = math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
- 
 
-        void dynamic_resolution()
+
+        void dynamic_resolution(RenderOptionsPool& options_pool)
         {
-            if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
+            if (options_pool.GetOption<bool>(Renderer_Option::DynamicResolution))
             {
                 float gpu_time_target   = 16.67f;                                               // target for 60 FPS
                 float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+                float screen_percentage = options_pool.GetOption<float>(Renderer_Option::ResolutionScale);
                 float gpu_time          = Profiler::GetTimeGpuLast();
 
                 if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
@@ -115,7 +115,7 @@ namespace spartan
                 // clamp screen_percentage to a reasonable range
                 screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
 
-                Renderer::SetOption(Renderer_Option::ResolutionScale, screen_percentage);
+                options_pool.SetOption(Renderer_Option::ResolutionScale, screen_percentage);
             }
         }
     }
@@ -135,33 +135,6 @@ namespace spartan
         // options
         {
             bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
-
-            m_options.clear();
-            SetOption(Renderer_Option::WhitePoint,                  350.0f);
-            SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
-            SetOption(Renderer_Option::MotionBlur,                  1.0f);
-            SetOption(Renderer_Option::DepthOfField,                1.0f);
-            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
-            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
-            SetOption(Renderer_Option::RayTracedReflections,        RHI_Device::IsSupportedRayTracing() ? 0.0f : 0.0f);
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
-            SetOption(Renderer_Option::ResolutionScale,             1.0f);
-            SetOption(Renderer_Option::VariableRateShading,         0.0f);
-            SetOption(Renderer_Option::Vsync,                       0.0f);
-            SetOption(Renderer_Option::TransformHandle,             1.0f);
-            SetOption(Renderer_Option::SelectionOutline,            1.0f);
-            SetOption(Renderer_Option::Grid,                        1.0f);
-            SetOption(Renderer_Option::Lights,                      1.0f);
-            SetOption(Renderer_Option::AudioSources,                1.0f);
-            SetOption(Renderer_Option::Physics,                     0.0f);
-            SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
-            SetOption(Renderer_Option::Dithering,                   0.0f);
-            SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
-            SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
 
             // set wind direction and strength
             {
@@ -203,19 +176,19 @@ namespace spartan
                 Window::GetHeight(),
                 // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
                 // note: fifo is not supported on linux, it will be ignored
-                GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
+                m_global_options.GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
                 swap_chain_buffer_count,
                 Display::GetHdr(),
                 "renderer"
             );
 
-            SetOption(Renderer_Option::Hdr, swapchain->IsHdr() ? 1.0f : 0.0f);
+            m_global_options.SetOption(Renderer_Option::Hdr, swapchain->IsHdr());
         }
 
         // tonemapping
         if (!swapchain->IsHdr())
         {
-            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::AcesNautilus));
+            m_global_options.SetOption(Renderer_Option::Tonemapping, static_cast<uint32_t>(Renderer_Tonemapping::AcesNautilus));
         }
 
         // load/create resources
@@ -243,7 +216,7 @@ namespace spartan
         // handle edge cases
         {
             if (Debugging::IsBreadcrumbsEnabled())
-            { 
+            {
                 SP_ASSERT_MSG(RHI_Device::GetPrimaryPhysicalDevice()->IsAmd(), "Breadcrumbs are only supported on AMD GPUs");
             }
 
@@ -289,10 +262,10 @@ namespace spartan
         {
             swapchain->AcquireNextImage();
             RHI_Device::Tick(frame_num);
-            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetOption<float>(Renderer_Option::ResolutionScale));
-            dynamic_resolution();
+            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), m_global_options.GetOption<float>(Renderer_Option::ResolutionScale));
+            dynamic_resolution(m_global_options);
         }
-    
+
         // begin the primary graphics command list
         {
             RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
@@ -304,10 +277,7 @@ namespace spartan
         {
             // fill draw call list and determine ideal occluders
             UpdateDrawCalls(m_cmd_list_present);
-
             // update tlas
-            UpdateAccelerationStructures(m_cmd_list_present);
-    
             // handle dynamic buffers and resource deletion
             {
                 m_resource_index++;
@@ -315,17 +285,17 @@ namespace spartan
                 if (is_sync_point)
                 {
                     m_resource_index = 0;
-    
+
                     if (RHI_Device::DeletionQueueNeedsToParse())
                     {
                         RHI_Device::QueueWaitAll();
                         RHI_Device::DeletionQueueParse();
                     }
-    
+
                     GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
                 }
             }
-    
+
             // update bindless resources
             {
                 // we always update on the first frame so the buffers are bound and we don't get graphics api issues
@@ -359,12 +329,12 @@ namespace spartan
                     RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
                 }
             }
-    
+
             // update frame constant buffer and add lines to render
             UpdateFrameConstantBuffer(m_cmd_list_present);
             AddLinesToBeRendered();
         }
-    
+
         // produce the frame if window is not minimized
         {
             if (!Window::IsMinimized() && m_initialized_resources)
@@ -372,7 +342,7 @@ namespace spartan
                 ProduceFrame(m_cmd_list_present, nullptr);
             }
         }
-    
+
         // blit to back buffer when standalone
         {
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
@@ -381,7 +351,7 @@ namespace spartan
                 BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
             }
         }
-    
+
         // present frame when standalone
         {
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
@@ -390,13 +360,13 @@ namespace spartan
                 SubmitAndPresent();
             }
         }
-    
+
         // clear per-frame data
         {
             m_lines_vertices.clear();
             m_icons.clear();
         }
-    
+
         // increment frame counter and trigger first-frame event
         {
             frame_num++;
@@ -520,7 +490,7 @@ namespace spartan
             }
 
             if (dirty_orthographic_projection)
-            { 
+            {
                 // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below
                 Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
                 m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
@@ -529,7 +499,7 @@ namespace spartan
         }
 
         // generate jitter samples in case of fsr or xess
-        Renderer_AntiAliasing_Upsampling upsampling_mode = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        Renderer_AntiAliasing_Upsampling upsampling_mode = m_global_options.GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
         {
             if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
             {
@@ -573,17 +543,17 @@ namespace spartan
         m_cb_frame_cpu.time                = Timer::GetTimeSec();
         m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
         m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
-        m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
-        m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
+        m_cb_frame_cpu.resolution_scale    = m_global_options.GetOption<float>(Renderer_Option::ResolutionScale);
+        m_cb_frame_cpu.hdr_enabled         = m_global_options.GetOption<bool>(Renderer_Option::Hdr);
         m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
-        m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+        m_cb_frame_cpu.hdr_white_point     = m_global_options.GetOption<float>(Renderer_Option::WhitePoint);
+        m_cb_frame_cpu.gamma               = m_global_options.GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
         // these must match what common_buffer.hlsl is reading
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion), 1 << 1);
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
+        m_cb_frame_cpu.set_bit(m_global_options.GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
+        m_cb_frame_cpu.set_bit(m_global_options.GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion), 1 << 1);
+        m_cb_frame_cpu.set_bit(m_global_options.GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
 
         // set
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
@@ -645,193 +615,6 @@ namespace spartan
             m_icons.emplace_back(make_tuple(icon, world_position));
         }
     }
-    
-    void Renderer::SetOption(Renderer_Option option, float value)
-    {
-        // clamp value
-        {
-            // anisotropy
-            if (option == Renderer_Option::Anisotropy)
-            {
-                value = clamp(value, 0.0f, 16.0f);
-            }
-            else if (option == Renderer_Option::ResolutionScale)
-            {
-                value = clamp(value, 0.5f, 1.0f);
-            }
-        }
-
-        // early exit if the value is already set
-        if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
-            return;
-
-        // reject changes (if needed)
-        {
-            if (option == Renderer_Option::Hdr)
-            {
-                if (value == 1.0f)
-                {
-                    if (!Display::GetHdr())
-                    { 
-                        SP_LOG_WARNING("This display doesn't support HDR");
-                        return;
-                    }
-                }
-            }
-            else if (option == Renderer_Option::VariableRateShading)
-            {
-                if (value == 1.0f)
-                {
-                    if (!RHI_Device::IsSupportedVrs())
-                    { 
-                        SP_LOG_WARNING("This GPU doesn't support variable rate shading");
-                        return;
-                    }
-                }
-            }
-            else if (option == Renderer_Option::AntiAliasing_Upsampling)
-            {
-                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
-                {
-                    if (!RHI_Device::IsSupportedXess())
-                    { 
-                        SP_LOG_WARNING("This GPU doesn't support XeSS");
-                        return;
-                    }
-                }
-            }
-        }
-
-        // set new value
-        m_options[option] = value;
-
-        // handle cascading changes
-        {
-            // upsampling and anti-aliasing
-            if (option == Renderer_Option::AntiAliasing_Upsampling)
-            {
-                // reset history for temporal filters
-                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) || value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
-                {
-                    RHI_VendorTechnology::ResetHistory();
-                }
-            }
-            else if (option == Renderer_Option::Hdr)
-            {
-                if (swapchain)
-                { 
-                    swapchain->SetHdr(value == 1.0f);
-                }
-            }
-            else if (option == Renderer_Option::Vsync)
-            {
-                if (swapchain)
-                {
-                    swapchain->SetVsync(value == 1.0f);
-                }
-            }
-            else if (option == Renderer_Option::PerformanceMetrics)
-            {
-                static bool enabled = false;
-                if (!enabled && value == 1.0f)
-                {
-                    Profiler::ClearMetrics();
-                }
-
-                enabled = value != 0.0f;
-            }
-        }
-    }
-
-    unordered_map<Renderer_Option, float>& Renderer::GetOptions()
-    {
-        return m_options;
-    }
-
-    void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
-    {
-        m_options = options;
-    }
-
-    // For Editor
-    std::string Renderer::EnumToString(Renderer_Option option)
-    {
-        switch (option)
-        {
-            case Renderer_Option::Aabb:                        return "AABB";
-            case Renderer_Option::PickingRay:                  return "Picking Ray";
-            case Renderer_Option::Grid:                        return "Grid";
-            case Renderer_Option::TransformHandle:             return "Transform Handle";
-            case Renderer_Option::SelectionOutline:            return "Selection Outline";
-            case Renderer_Option::Lights:                      return "Lights";
-            case Renderer_Option::AudioSources:                return "Audio Sources";
-            case Renderer_Option::PerformanceMetrics:          return "Performance Metrics";
-            case Renderer_Option::Physics:                     return "Physics";
-            case Renderer_Option::Wireframe:                   return "Wireframe";
-            case Renderer_Option::Bloom:                       return "Bloom";
-            case Renderer_Option::Fog:                         return "Fog";
-            case Renderer_Option::ScreenSpaceAmbientOcclusion: return "Ambient Occlusion (SSAO)";
-            case Renderer_Option::ScreenSpaceReflections:      return "Reflections (SSR)";
-            case Renderer_Option::MotionBlur:                  return "Motion Blur";
-            case Renderer_Option::DepthOfField:                return "Depth Of Field";
-            case Renderer_Option::FilmGrain:                   return "Film Grain";
-            case Renderer_Option::Vhs:                         return "VHS Effect";
-            case Renderer_Option::ChromaticAberration:         return "Chromatic Aberration";
-            case Renderer_Option::Anisotropy:                  return "Anisotropy";
-            case Renderer_Option::Tonemapping:                 return "Tone Mapping";
-            case Renderer_Option::AntiAliasing_Upsampling:     return "Anti-Aliasing Upsampling";
-            case Renderer_Option::Sharpness:                   return "Sharpness";
-            case Renderer_Option::Dithering:                   return "Dithering";
-            case Renderer_Option::Hdr:                         return "HDR";
-            case Renderer_Option::WhitePoint:                  return "White Point";
-            case Renderer_Option::Gamma:                       return "Gamma";
-            case Renderer_Option::Vsync:                       return "VSync";
-            case Renderer_Option::VariableRateShading:         return "Variable Rate Shading";
-            case Renderer_Option::ResolutionScale:             return "Resolution Scale";
-            case Renderer_Option::DynamicResolution:           return "Dynamic Resolution";
-            case Renderer_Option::OcclusionCulling:            return "Occlusion Culling";
-            case Renderer_Option::AutoExposureAdaptationSpeed: return "Exposure Adaptation Speed";
-            default:                                           return "Max";
-        }
-    }
-
-    Renderer_Option Renderer::StringToEnum(const std::string& name)
-    {
-        if (name == "AABB")                           return Renderer_Option::Aabb;
-        else if (name == "Picking Ray")               return Renderer_Option::PickingRay;
-        else if (name == "Grid")                      return Renderer_Option::Grid;
-        else if (name == "Transform Handle")          return Renderer_Option::TransformHandle;
-        else if (name == "Selection Outline")         return Renderer_Option::SelectionOutline;
-        else if (name == "Lights")                    return Renderer_Option::Lights;
-        else if (name == "Audio Sources")             return Renderer_Option::AudioSources;
-        else if (name == "Performance Metrics")       return Renderer_Option::PerformanceMetrics;
-        else if (name == "Physics")                   return Renderer_Option::Physics;
-        else if (name == "Wireframe")                 return Renderer_Option::Wireframe;
-        else if (name == "Bloom")                     return Renderer_Option::Bloom;
-        else if (name == "Fog")                       return Renderer_Option::Fog;
-        else if (name == "Ambient Occlusion (SSAO)")  return Renderer_Option::ScreenSpaceAmbientOcclusion;
-        else if (name == "Reflections (SSR)")         return Renderer_Option::ScreenSpaceReflections;
-        else if (name == "Motion Blur")               return Renderer_Option::MotionBlur;
-        else if (name == "Depth Of Field")            return Renderer_Option::DepthOfField;
-        else if (name == "Film Grain")                return Renderer_Option::FilmGrain;
-        else if (name == "VHS Effect")                return Renderer_Option::Vhs;
-        else if (name == "Chromatic Aberration")      return Renderer_Option::ChromaticAberration;
-        else if (name == "Anisotropy")                return Renderer_Option::Anisotropy;
-        else if (name == "Tone Mapping")              return Renderer_Option::Tonemapping;
-        else if (name == "Anti-Aliasing Upsampling")  return Renderer_Option::AntiAliasing_Upsampling;
-        else if (name == "Sharpness")                 return Renderer_Option::Sharpness;
-        else if (name == "Dithering")                 return Renderer_Option::Dithering;
-        else if (name == "HDR")                       return Renderer_Option::Hdr;
-        else if (name == "White Point")               return Renderer_Option::WhitePoint;
-        else if (name == "Gamma")                     return Renderer_Option::Gamma;
-        else if (name == "VSync")                     return Renderer_Option::Vsync;
-        else if (name == "Variable Rate Shading")     return Renderer_Option::VariableRateShading;
-        else if (name == "Resolution Scale")          return Renderer_Option::ResolutionScale;
-        else if (name == "Dynamic Resolution")        return Renderer_Option::DynamicResolution;
-        else if (name == "Occlusion Culling")         return Renderer_Option::OcclusionCulling;
-        else if (name == "Exposure Adaptation Speed") return Renderer_Option::AutoExposureAdaptationSpeed;
-        else                                          return Renderer_Option::Max; // Default fallback
-    }
 
     RHI_SwapChain* Renderer::GetSwapChain()
     {
@@ -885,16 +668,16 @@ namespace spartan
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
         static uint32_t count = 0;
-    
+
         auto update_material = [](Material* material)
         {
             // check if the material's ID is already processed
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
                 return;
-    
+
             // if not, add it to the list
             unique_material_ids.insert(material->GetObjectId());
-    
+
             // properties
             {
                 SP_ASSERT(count < rhi_max_array_size);
@@ -942,7 +725,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
-    
+
             // textures
             {
                 // iterate through all texture types and their slots
@@ -952,19 +735,19 @@ namespace spartan
                     {
                         // calculate the final index in the bindless array
                         uint32_t bindless_index = count + (type * Material::slots_per_texture) + slot;
-                        
+
                         // get the texture from the material using type and slot
                         m_bindless_textures[bindless_index] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
                     }
                 }
             }
-    
+
             material->SetIndex(count);
 
             // update index increment to account for all texture slots
             count += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture;
         };
-    
+
         auto update_entities = [update_material]()
         {
             for (Entity* entity : World::GetEntities())
@@ -981,7 +764,7 @@ namespace spartan
                 }
             }
         };
-    
+
         // cpu
         {
             // clear
@@ -990,7 +773,7 @@ namespace spartan
             unique_material_ids.clear();
             update_entities();
         }
-    
+
         // gpu
         {
             // material properties
@@ -1006,12 +789,12 @@ namespace spartan
     {
         const Entity* camera_entity = World::GetCamera() ? World::GetCamera()->GetEntity() : nullptr;
         const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
-    
+
         m_bindless_lights.fill(Sb_Light());
         static uint32_t count;
         count = 0;
         Light* first_directional = nullptr;
-    
+
         auto fill_light = [&](Light* light_component)
         {
             //SP_LOG_INFO("Processing light %s", light_component->GetEntity()->GetObjectName().c_str());
@@ -1039,7 +822,7 @@ namespace spartan
             light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Shadows)             ? (1 << 3) : 0;
             light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
             light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
-    
+
             for (uint32_t i = 0; i < 6; i++)
             {
                 if (i < light_component->GetSliceCount())
@@ -1057,7 +840,7 @@ namespace spartan
                 }
             }
         };
-    
+
         // directional light always goes in slot 0
         for (Entity* entity : World::GetEntitiesLights())
         {
@@ -1071,7 +854,7 @@ namespace spartan
                 }
             }
         }
-    
+
         // fill remaining lights (skip disabled or out-of-range)
         for (Entity* entity : World::GetEntitiesLights())
         {
@@ -1081,7 +864,7 @@ namespace spartan
                     continue;
 
                 light_component->SetIndex(numeric_limits<uint32_t>::max());
-    
+
                 if (!light_component->GetEntity()->GetActive())
                     continue;
 
@@ -1105,7 +888,7 @@ namespace spartan
                 fill_light(light_component);
             }
         }
-    
+
         // upload to gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
@@ -1370,7 +1153,7 @@ namespace spartan
         const uint32_t min_slice_res    = 256;
 
         // assume atlas is square, width == height
-    
+
         // collect slices
         m_shadow_slices.clear();
         for (const auto& entity : World::GetEntitiesLights())
@@ -1386,23 +1169,23 @@ namespace spartan
         }
         if (m_shadow_slices.empty())
             return;
-    
+
         // lambda to check if slices of given res can fit with borders
         uint32_t border  = 8; // pixels between slices, none at edges
         auto can_fit = [&](uint32_t test_res, uint32_t num_slices) -> bool
         {
             if (test_res > resolution_atlas)
                 return false;
-    
+
             uint32_t x     = 0;
             uint32_t y     = 0;
             uint32_t row_h = 0;
-    
+
             for (uint32_t i = 0; i < num_slices; ++i)
             {
                 uint32_t left_pad = (x == 0) ? 0 : border;
                 uint32_t placed_x = x + left_pad;
-    
+
                 // wrap to next row if overflow
                 if (placed_x + test_res > resolution_atlas)
                 {
@@ -1411,23 +1194,23 @@ namespace spartan
                     row_h     = 0;
                     placed_x  = 0;
                 }
-    
+
                 // check if too wide after wrap
                 if (placed_x + test_res > resolution_atlas)
                     return false;
-    
+
                 uint32_t placed_y       = y;
                 if (placed_y + test_res > resolution_atlas)
                     return false;
-    
+
                 // simulate placement
                 x     = placed_x + test_res;
                 row_h = max(row_h, test_res);
             }
-    
+
             return true;
         };
-    
+
         // binary search for max uniform slice res
         uint32_t max_slice_res = resolution_atlas;
         if (m_shadow_slices.size() > 1)
@@ -1449,13 +1232,13 @@ namespace spartan
             max_slice_res = low;
         }
         max_slice_res = max(max_slice_res, min_slice_res); // clamp to min
-    
+
         // assign res to all slices (uniform)
         for (auto& slice : m_shadow_slices)
         {
             slice.res = max_slice_res;
         }
-    
+
         // pack slices in scanline order
         uint32_t x     = 0;
         uint32_t y     = 0;
@@ -1464,7 +1247,7 @@ namespace spartan
         {
             uint32_t left_pad = (x == 0) ? 0 : border;
             uint32_t placed_x = x + left_pad;
-    
+
             // wrap to next row if needed
             if (placed_x + slice.res > resolution_atlas)
             {
@@ -1473,22 +1256,22 @@ namespace spartan
                 row_h     = 0;
                 placed_x  = 0;
             }
-    
+
             // no overflow checks here, as can_fit validated
             // assert(placed_x + slice.res <= resolution_atlas && y + slice.res <= resolution_atlas);
-    
+
             slice.rect = math::Rectangle(
                 static_cast<float>(placed_x),
                 static_cast<float>(y),
                 static_cast<float>(slice.res),
                 static_cast<float>(slice.res)
             );
-    
+
             // advance
             x     = placed_x + slice.res;
             row_h = max(row_h, slice.res);
         }
-    
+
         // assign rects back to lights
         for (const auto& slice : m_shadow_slices)
         {
@@ -1505,17 +1288,17 @@ namespace spartan
         uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
         uint32_t channel_count    = frame_output->GetChannelCount();
         size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
-        
+
         // create staging buffer (linear: element_count=1, stride=data_size; mappable=true for coherent host-visible)
         auto staging = make_unique<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
-        
+
         // copy image to buffer
         if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
             cmd_list->CopyTextureToBuffer(frame_output, staging.get());
             RHI_CommandList::ImmediateExecutionEnd(cmd_list);
         }
-        
+
         // read mapped data (coherent, so direct access post-submit)
         void* mapped_data = staging->GetMappedData();
         SP_ASSERT_MSG(mapped_data, "Staging buffer not mappable");

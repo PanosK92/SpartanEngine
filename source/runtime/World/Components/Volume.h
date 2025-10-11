@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Component.h"
 #include "Geometry/Mesh.h"
-#include "Rendering/Render_Options.h"
+#include "Rendering/RenderOptionsPool.h"
 //============================================
 
 namespace spartan
@@ -52,7 +52,7 @@ namespace spartan
         math::BoundingBox m_bounding_box = math::BoundingBox::Unit;
         bool m_is_debug_draw_enabled     = true;
 
-        RenderOptions m_options_collection = RenderOptions();
+        RenderOptionsPool m_options_collection = RenderOptionsPool();
     public:
         Volume(Entity* entity);
         ~Volume();
@@ -65,8 +65,8 @@ namespace spartan
         //============================================
 
         // Render Options Collection
-        RenderOptions GetOptionsCollection() { return m_options_collection; }
-        void SetOptionsCollection(const RenderOptions& options_collection) { m_options_collection = options_collection; }
+        RenderOptionsPool GetOptionsCollection() { return m_options_collection; }
+        void SetOptionsCollection(const RenderOptionsPool& options_collection) { m_options_collection = options_collection; }
 
         // Mesh Type
         VolumeType GetVolumeShapeType() const { return m_volume_shape_type; }

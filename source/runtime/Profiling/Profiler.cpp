@@ -198,7 +198,7 @@ namespace spartan
             ReadTimeBlocks();
         }
 
-        if (Renderer::GetOption<bool>(Renderer_Option::PerformanceMetrics))
+        if (Renderer::GetRenderOptionsPool().GetOption<bool>(Renderer_Option::PerformanceMetrics))
         {
             DrawPerformanceMetrics();
         }
@@ -449,7 +449,7 @@ namespace spartan
                 static_cast<uint32_t>(Display::GetLuminanceMax()),
                 static_cast<uint32_t>(res_render.x),
                 static_cast<uint32_t>(res_render.y),
-                Renderer::GetOption<float>(Renderer_Option::ResolutionScale) * 100.0f,
+                Renderer::GetRenderOptionsPool().GetOption<float>(Renderer_Option::ResolutionScale) * 100.0f,
                 static_cast<uint32_t>(res_output.x),
                 static_cast<uint32_t>(res_output.y),
                 static_cast<uint32_t>(vp.width),

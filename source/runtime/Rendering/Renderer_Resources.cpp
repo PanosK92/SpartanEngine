@@ -161,7 +161,7 @@ namespace spartan
             if (mip_bias_new != mip_bias)
             {
                 mip_bias         = mip_bias_new;
-                float anisotropy = GetOption<float>(Renderer_Option::Anisotropy);
+                float anisotropy = GetRenderOptionsPool().GetOption<float>(Renderer_Option::Anisotropy);
                 sampler(Renderer_Sampler::Anisotropic_wrap, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
             }
         }
@@ -649,7 +649,7 @@ namespace spartan
                 "black_texture",                   // name
                 black_data                         // data
             );
-        
+
             // white texture (1x1 pixel, rgba = 255,255,255,255)
             std::vector<RHI_Texture_Mip> white_mips = {
                 RHI_Texture_Mip{std::vector<std::byte>{std::byte{255}, std::byte{255}, std::byte{255}, std::byte{255}}} // single pixel: r=255, g=255, b=255, a=255

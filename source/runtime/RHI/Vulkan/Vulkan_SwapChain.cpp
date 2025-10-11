@@ -187,20 +187,20 @@ namespace spartan
             if (snapshot == INVALID_HANDLE_VALUE) {
                 return false;
             }
-        
+
             PROCESSENTRY32W pe32 = {0}; // Use PROCESSENTRY32W for Unicode
             pe32.dwSize = sizeof(PROCESSENTRY32W);
-        
+
             if (!Process32FirstW(snapshot, &pe32)) { // Use Process32FirstW for Unicode
                 CloseHandle(snapshot);
                 return false; // Failed to get first process
             }
-        
+
             // Convert processName to wide-character string for comparison
             size_t convertedChars = 0;
             wchar_t wProcessName[MAX_PATH];
             mbstowcs_s(&convertedChars, wProcessName, process_name, strlen(process_name) + 1);
-        
+
             // Iterate through all processes
             do {
                 if (_wcsicmp(pe32.szExeFile, wProcessName) == 0) { // Case-insensitive wide-character comparison
@@ -208,24 +208,24 @@ namespace spartan
                     return true; // Process found
                 }
             } while (Process32NextW(snapshot, &pe32)); // Use Process32NextW for Unicode
-        
+
             CloseHandle(snapshot);
             return false; // Process not found
-        
+
         #elif defined(__linux__)
             // Linux implementation
             DIR* dir = opendir("/proc");
             if (!dir) {
                 return false; // Failed to open /proc directory
             }
-        
+
             struct dirent* entry;
             while ((entry = readdir(dir)) != NULL) {
                 // Check if the directory is a PID (starts with a digit)
                 if (entry->d_type == DT_DIR && isdigit(entry->d_name[0])) {
                     char commPath[256];
                     snprintf(commPath, sizeof(commPath), "/proc/%s/comm", entry->d_name);
-        
+
                     FILE* commFile = fopen(commPath, "r");
                     if (commFile) {
                         char comm[256];
@@ -241,10 +241,10 @@ namespace spartan
                     }
                 }
             }
-        
+
             closedir(dir);
             return false; // Process not found
-        
+
         #else
             // Unsupported platform
             return false;
@@ -264,7 +264,7 @@ namespace spartan
     {
         SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
         SP_ASSERT_MSG(buffer_count >= 2, "Buffer count can't be less than 2");
-    
+
         m_format       = hdr ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
@@ -272,7 +272,7 @@ namespace spartan
         m_sdl_window   = sdl_window;
         m_object_name  = name;
         m_present_mode = present_mode;
-    
+
         // create surface once
         {
             SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_rhi_surface)), "Failed to create window surface");
@@ -287,7 +287,7 @@ namespace spartan
         }
 
         Create();
-    
+
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
 
@@ -328,14 +328,14 @@ namespace spartan
 
         // get surface capabilities
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(static_cast<VkSurfaceKHR>(m_rhi_surface));
-    
+
         // skip if window is minimized
         if (capabilities.currentExtent.width == 0 || capabilities.currentExtent.height == 0)
         {
             SP_LOG_WARNING("Window is minimized, swapchain creation skipped");
             return;
         }
-    
+
         // check surface supports the requested format and color space, fall back to SDR if not supported
         VkColorSpaceKHR color_space = get_color_space(m_format);
         if (!is_format_and_color_space_supported(static_cast<VkSurfaceKHR>(m_rhi_surface), &m_format, color_space))
@@ -344,9 +344,9 @@ namespace spartan
                            "On NVIDIA Optimus laptops, switch to 'High-performance NVIDIA processor' in NVIDIA Control Panel or Windows Graphics Settings,"
                            "or update to NVIDIA driver 551.xx+ for Vulkan HDR support.", rhi_format_to_string(m_format), color_space);
 
-            Renderer::SetOption(Renderer_Option::Hdr, 0.0f);
-            m_format    = format_sdr; 
-            color_space = get_color_space(m_format); 
+            Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Hdr, 0.0f);
+            m_format    = format_sdr;
+            color_space = get_color_space(m_format);
         }
 
         RHI_Device::QueueWaitAll();
@@ -354,7 +354,7 @@ namespace spartan
         // clamp size
         m_width  = clamp(m_width,  capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
         m_height = clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-    
+
         // create new swapchain
         VkSwapchainCreateInfoKHR create_info = {};
         create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -379,24 +379,24 @@ namespace spartan
         }
 
         SP_ASSERT_VK(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkSwapchainKHR*>(&m_rhi_swapchain)));
-   
+
         // destroy old swapchain if it existed
         if (create_info.oldSwapchain != VK_NULL_HANDLE)
         {
             vkDestroySwapchainKHR(RHI_Context::device, create_info.oldSwapchain, nullptr);
         }
-    
+
         // get new images
         uint32_t image_count = 0;
         SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, nullptr));
         SP_ASSERT_VK(vkGetSwapchainImagesKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())));
-    
+
         // create new image views
         for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             // delete old one, if it exists
             if (m_rhi_rtv[i])
-            { 
+            {
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv[i]);
             }
 
@@ -409,13 +409,13 @@ namespace spartan
             view_info.components            = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
             SP_ASSERT_VK(vkCreateImageView(RHI_Context::device, &view_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])));
         }
-    
+
         // sync primitives
         for (uint32_t i = 0; i < static_cast<uint32_t>( m_image_acquired_semaphore.size()); i++)
         {
             m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_" + to_string(i)).c_str());
         }
-    
+
         // set HDR metadata only if HDR is enabled
         if (m_format == format_hdr)
         {
@@ -467,12 +467,12 @@ namespace spartan
         if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
         {
             if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-            { 
+            {
                 cmd_list->WaitForExecution();
             }
             SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Idle);
         }
- 
+
         // vk_not_ready can happen if the swapchain is not ready yet, possible during window events
         // it can happen often on some gpus/drivers and less and on others, regardless, it has to be handled
         uint32_t retry_count     = 0;
@@ -487,7 +487,7 @@ namespace spartan
                 nullptr,
                 &m_image_index
             );
-        
+
             if (result == VK_SUCCESS)
             {
                 // associate the semaphore with the acquired image index
@@ -510,7 +510,7 @@ namespace spartan
             }
         }
     }
-    
+
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
         // when the window is minimized acquisition isn't happening, so neither is presentation
@@ -533,9 +533,9 @@ namespace spartan
         {
             SP_ASSERT_MSG(Display::GetHdr(), "This display doesn't support HDR");
         }
-    
+
         RHI_Format new_format = enabled ? format_hdr : format_sdr;
-    
+
         if (new_format != m_format)
         {
             m_format   = new_format;
@@ -552,7 +552,7 @@ namespace spartan
             Timer::OnVsyncToggled(enabled);
         }
     }
-    
+
     bool RHI_SwapChain::GetVsync()
     {
         // for v-sync, we could Mailbox for lower latency, but fifo is always supported, so we'll assume that

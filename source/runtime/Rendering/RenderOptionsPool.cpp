@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
-#include "Render_Options.h"
+#include "RenderOptionsPool.h"
 //============================================
 
 #include "Display/Display.h"
@@ -39,7 +39,12 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    RenderOptions::RenderOptions()
+    RenderOptionsPool::RenderOptionsPool() : RenderOptionsPool(RenderOptionsListType::Global)
+    {
+
+    }
+
+    RenderOptionsPool::RenderOptionsPool(const RenderOptionsListType list_type)
     {
         m_options.clear();
         m_options[Renderer_Option::WhitePoint] =                  350.0f; // float
@@ -64,16 +69,30 @@ namespace spartan
         m_options[Renderer_Option::Physics] =                     false; // bool
         m_options[Renderer_Option::PerformanceMetrics] =          true;  // bool
         m_options[Renderer_Option::Gamma] =                       Display::GetGamma(); // float
+        m_options[Renderer_Option::Hdr] =                         false; // bool
         m_options[Renderer_Option::AutoExposureAdaptationSpeed] = 0.5f;  // float
+
+        if (list_type == RenderOptionsListType::Global) // Global is default (For Render Options Window)
+        {
+            m_options[Renderer_Option::Aabb] =                        false; // bool
+            m_options[Renderer_Option::PickingRay] =                  false; // bool
+            m_options[Renderer_Option::Wireframe] =                   false; // bool
+            m_options[Renderer_Option::Anisotropy] =                  16.0f; // float
+            m_options[Renderer_Option::Sharpness] =                   1.0f;  // float
+            m_options[Renderer_Option::AntiAliasing_Upsampling] =     static_cast<uint32_t>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr); // enum
+            m_options[Renderer_Option::ResolutionScale] =             1.0f;  // float
+            m_options[Renderer_Option::DynamicResolution] =           false; // bool
+            m_options[Renderer_Option::OcclusionCulling] =            false; // boo
+        }
     }
 
-    RenderOptions::RenderOptions(const std::map<Renderer_Option, RenderOptionType>& options)
+    RenderOptionsPool::RenderOptionsPool(const std::map<Renderer_Option, RenderOptionType>& options)
     {
         m_options.clear();
         m_options = options;
     }
 
-    RenderOptions::RenderOptions(RenderOptions& other)
+    RenderOptionsPool::RenderOptionsPool(RenderOptionsPool& other)
     {
         m_options.clear();
         for (const auto& [key, value] : other.m_options)
@@ -82,7 +101,7 @@ namespace spartan
         }
     }
 
-    void RenderOptions::SetOption(Renderer_Option option, const RenderOptionType& value)
+    void RenderOptionsPool::SetOption(Renderer_Option option, const RenderOptionType& value)
     {
         // Handle clamping for float options
         if (std::holds_alternative<float>(value))
@@ -97,10 +116,6 @@ namespace spartan
             {
                 v = clamp(v, 0.5f, 1.0f);
             }
-
-            // early exit if same value
-            if (auto it = m_options.find(option); it != m_options.end() && std::holds_alternative<float>(it->second) && std::get<float>(it->second) == v)
-                return;
 
             // HDR, VRS, etc. validation (float enums)
             if (option == Renderer_Option::Hdr && v == 1.0f && !Display::GetHdr())
@@ -120,10 +135,6 @@ namespace spartan
         {
             bool v = std::get<bool>(value);
 
-            // early exit if same value
-            if (auto it = m_options.find(option); it != m_options.end() && std::holds_alternative<bool>(it->second) && std::get<bool>(it->second) == v)
-                return;
-
             m_options[option] = v;
 
             // cascade for toggles
@@ -142,19 +153,11 @@ namespace spartan
         else if (std::holds_alternative<uint32_t>(value))
         {
             uint32_t v = std::get<uint32_t>(value);
-
-            // early exit if the value is already set
-            if (auto it = m_options.find(option); it != m_options.end() && std::holds_alternative<uint32_t>(it->second) && std::get<uint32_t>(it->second) == v)
-                return;
-
             m_options[option] = v;
         }
         else if (std::holds_alternative<int>(value))
         {
             int v = std::get<int>(value);
-            if (auto it = m_options.find(option); it != m_options.end() && std::holds_alternative<int>(it->second) && std::get<int>(it->second) == v)
-                return;
-
             m_options[option] = v;
         }
 
@@ -178,13 +181,13 @@ namespace spartan
         }
     }
 
-    bool RenderOptions::operator!=(const RenderOptions& other) const
+    bool RenderOptionsPool::operator!=(const RenderOptionsPool& other) const
     {
         return m_options != other.m_options;
     }
 
     // For Editor
-    std::string RenderOptions::EnumToString(Renderer_Option option)
+    std::string RenderOptionsPool::EnumToString(Renderer_Option option)
     {
         switch (option)
         {
@@ -225,7 +228,7 @@ namespace spartan
         }
     }
 
-    Renderer_Option RenderOptions::StringToEnum(const std::string& name)
+    Renderer_Option RenderOptionsPool::StringToEnum(const std::string& name)
     {
         if (name == "AABB")                           return Renderer_Option::Aabb;
         else if (name == "Picking Ray")               return Renderer_Option::PickingRay;

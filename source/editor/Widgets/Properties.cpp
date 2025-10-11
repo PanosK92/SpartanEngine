@@ -1184,7 +1184,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
     if (component_begin("Volume", volume))
     {
         // reflect
-        RenderOptions options                                                   = volume->GetOptionsCollection();
+        RenderOptionsPool options                                                   = volume->GetOptionsCollection();
         float shape_size                                                        = volume->GetShapeSize();
         float transition_size                                                   = volume->GetTransitionSize();
         bool  is_debug_draw_enabled                                             = volume->GetDebugDrawEnabled();
@@ -1194,7 +1194,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         {
             for (auto& [option_key, option_value] : options.GetOptions())
             {
-                string label_str = Renderer::EnumToString(option_key);
+                string label_str = RenderOptionsPool::EnumToString(option_key);
                 const char* label = label_str.c_str();
 
                 if (std::holds_alternative<bool>(option_value))

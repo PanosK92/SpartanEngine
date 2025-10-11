@@ -43,7 +43,11 @@ namespace spartan
         }
     };
 
-    using RenderOptionType = std::variant<bool, int, float, uint32_t>;
+    enum class RenderOptionsListType : uint32_t
+    {
+        Global,
+        Component
+    };
 
     /*
      * A class that encompasses all the rendering options settings.
@@ -53,31 +57,69 @@ namespace spartan
      * This is a scalable system that can work for different parameter collection
      * methods.
      */
-    class RenderOptions
+    class RenderOptionsPool
     {
+    private:
+        std::map<Renderer_Option, RenderOptionType> m_options;
     public:
-        RenderOptions();
-        RenderOptions(const std::map<Renderer_Option, RenderOptionType>& options);
-        RenderOptions(RenderOptions& other); // Move version
-        ~RenderOptions() = default;
+        RenderOptionsPool();
+        RenderOptionsPool(const RenderOptionsListType list_type);
+        RenderOptionsPool(const std::map<Renderer_Option, RenderOptionType>& options);
+        RenderOptionsPool(RenderOptionsPool& other); // Move version
+        ~RenderOptionsPool() = default;
 
         // Options map
         std::map<Renderer_Option, RenderOptionType> GetOptions() const { return m_options;}
         void SetOptions(const std::map<Renderer_Option, RenderOptionType>& options) { m_options = options; }
 
-        template<typename T>
-        T GetOption(Renderer_Option option)
-        {
-            auto it = GetOptions().find(option);
-            return (it != GetOptions().end() && std::holds_alternative<T>(it->second)) ? std::get<T>(it->second) : T{};
-        }
-        void SetOption(Renderer_Option option, const RenderOptionType& value);
-
-        bool operator!=(const RenderOptions& other) const;
+        bool operator!=(const RenderOptionsPool& other) const;
 
         static std::string EnumToString(Renderer_Option option); // used most likely for editor-related applications
         static Renderer_Option StringToEnum(const std::string& name);
-    private:
-        std::map<Renderer_Option, RenderOptionType> m_options;
+
+        void SetOption(Renderer_Option option, const RenderOptionType& value);
+
+        // Getters in the form of templates
+        template<typename T>
+        T GetOption(Renderer_Option option)
+        {
+            auto it = m_options.find(option);
+            if (it == m_options.end())
+            {
+                return T{}; // default fallback for specific value type
+            }
+
+            auto& variant_value = it->second;
+
+            if constexpr (std::is_enum_v<T>) // T is an enum: cast
+            {
+                return std::holds_alternative<uint32_t>(variant_value) ? static_cast<T>(std::get<uint32_t>(variant_value)) : T{};
+            }
+            else // T is bool, int, float
+            {
+                return std::holds_alternative<T>(variant_value) ? std::get<T>(variant_value) : T{};
+            }
+        }
+        template<typename T>
+        T& GetOptionRef(Renderer_Option option)
+        {
+            auto it = m_options.find(option);
+            if (it == m_options.end())
+            {
+                throw std::out_of_range("Option not found");
+            }
+
+            auto& variant_value = it->second;
+
+            if constexpr (!std::is_enum_v<T>) // bool, int, float
+            {
+                return std::get<T>(variant_value);
+            }
+            else
+            {
+                static T dummy{}; // fallback for enums (can't reference the cast)
+                return dummy;     // or throw / handle separately
+            }
+        }
     };
 }

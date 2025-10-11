@@ -51,7 +51,7 @@ namespace spartan
     {
         const Vector3& min = box.GetMin();
         const Vector3& max = box.GetMax();
-    
+
         DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, color);
         DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color, color);
         DrawLine(Vector3(max.x, max.y, min.z), Vector3(min.x, max.y, min.z), color, color);
@@ -195,13 +195,13 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
-        if (GetOption<bool>(Renderer_Option::PickingRay))
+        if (GetRenderOptionsPool().GetOption<bool>(Renderer_Option::PickingRay))
         {
             Ray ray = World::GetCamera()->ComputePickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * World::GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
-        
-        if (GetOption<bool>(Renderer_Option::Lights))
+
+        if (GetRenderOptionsPool().GetOption<bool>(Renderer_Option::Lights))
         {
             if (Camera* camera = World::GetCamera())
             {
@@ -251,8 +251,8 @@ namespace spartan
                 }
             }
         }
-        
-        if (GetOption<bool>(Renderer_Option::Aabb))
+
+        if (GetRenderOptionsPool().GetOption<bool>(Renderer_Option::Aabb))
         {
             auto get_color = [](Renderable* renderable)
             {
