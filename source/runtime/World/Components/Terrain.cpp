@@ -480,11 +480,11 @@ namespace spartan
                 return; // no density increase needed
         
             // compute dense grid dimensions
-            uint32_t dense_width  = density * (width - 1) + 1;
-            uint32_t dense_height = density * (height - 1) + 1;
+            uint32_t m_dense_width  = density * (width - 1) + 1;
+            uint32_t m_dense_height = density * (height - 1) + 1;
         
             // create new height map with denser grid
-            vector<float> dense_height_data(dense_width * dense_height);
+            vector<float> dense_height_data(m_dense_width * m_dense_height);
         
             // helper function to get height at integer coordinates
             auto get_height = [&height_data, width, height](uint32_t x, uint32_t y) -> float
@@ -495,12 +495,12 @@ namespace spartan
             };
         
             // parallel computation of dense grid
-            auto compute_dense_pixel = [&dense_height_data, &get_height, width, height, dense_width, dense_height, density](uint32_t start_index, uint32_t end_index)
+            auto compute_dense_pixel = [&dense_height_data, &get_height, width, height, m_dense_width, m_dense_height, density](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t index = start_index; index < end_index; index++)
                 {
-                    uint32_t x = index % dense_width;
-                    uint32_t y = index / dense_width;
+                    uint32_t x = index % m_dense_width;
+                    uint32_t y = index / m_dense_width;
         
                     // map to original height map coordinates (0 to width-1, 0 to height-1)
                     float u = static_cast<float>(x) / static_cast<float>(density);
@@ -526,22 +526,22 @@ namespace spartan
                                    (1.0f - dx) * dy * h01 +
                                    dx * dy * h11;
         
-                    dense_height_data[y * dense_width + x] = height;
+                    dense_height_data[y * m_dense_width + x] = height;
                 }
             };
         
-            ThreadPool::ParallelLoop(compute_dense_pixel, dense_width * dense_height);
+            ThreadPool::ParallelLoop(compute_dense_pixel, m_dense_width * m_dense_height);
         
             // replace original height data with denser grid
             height_data = move(dense_height_data);
         }
 
-        void generate_positions(vector<Vector3>& positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
+        void generate_positions(vector<Vector3>& m_positions, const vector<float>& height_map, const uint32_t width, const uint32_t height)
         {
             SP_ASSERT_MSG(!height_map.empty(), "Height map is empty");
         
             // pre-allocate positions vector
-            positions.resize(width * height);
+            m_positions.resize(width * height);
         
             // compute base dimensions (before density)
             uint32_t base_width  = (width - 1) / parameters::density + 1;
@@ -558,7 +558,7 @@ namespace spartan
             float offset_z = extent_z / 2.0f;
         
             // parallel generation of positions
-            auto generate_position_range = [&positions, &height_map, width, height, scale_x, scale_z, offset_x, offset_z](uint32_t start_index, uint32_t end_index)
+            auto generate_position_range = [&m_positions, &height_map, width, height, scale_x, scale_z, offset_x, offset_z](uint32_t start_index, uint32_t end_index)
             {
                 for (uint32_t index = start_index; index < end_index; index++)
                 {
@@ -576,7 +576,7 @@ namespace spartan
                     // get height from height_map
                     float height_value = height_map[index];
         
-                    positions[index] = Vector3(centered_x, height_value, centered_z);
+                    m_positions[index] = Vector3(centered_x, height_value, centered_z);
                 }
             };
         
@@ -584,7 +584,7 @@ namespace spartan
             ThreadPool::ParallelLoop(generate_position_range, total_positions);
         }
 
-        void apply_wind_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, float wind_strength = 0.3f)
+        void apply_wind_erosion(vector<Vector3>& m_positions, uint32_t width, uint32_t height, float wind_strength = 0.3f)
         {
             // 3x3 gaussian kernel
             const float kernel[3][3] =
@@ -597,7 +597,7 @@ namespace spartan
             const int kernel_half = kernel_size / 2;
         
             // store original positions for reference
-           vector<Vector3> temp_positions = positions;
+           vector<Vector3> temp_positions = m_positions;
            mutex positions_mutex;
         
             // sequential wind erosion
@@ -622,20 +622,20 @@ namespace spartan
         
                     // update height with wind strength (interpolate between original and convolved height)
                     uint32_t idx = x + z * width;
-                    float original_height = positions[idx].y;
+                    float original_height = m_positions[idx].y;
                     float smoothed_height = new_height;
                     float final_height = original_height + wind_strength * (smoothed_height - original_height);
         
                     // update
                     {
                         lock_guard<mutex> lock(positions_mutex);
-                        positions[idx].y = final_height;
+                        m_positions[idx].y = final_height;
                     }
                 }
             }
         }
         
-        void apply_erosion(vector<Vector3>& positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 50'000)
+        void apply_erosion(vector<Vector3>& m_positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 50'000)
         {
             // erosion parameters
             const float inertia          = 0.05f;
@@ -648,7 +648,7 @@ namespace spartan
             const uint32_t max_steps     = 30;
             const float wind_strength    = 0.3f;
 
-            auto get_height = [&positions, width, height](float x, float z) -> float
+            auto get_height = [&m_positions, width, height](float x, float z) -> float
             {
                 int ix   = static_cast<int>(floor(x));
                 int iz   = static_cast<int>(floor(z));
@@ -657,10 +657,10 @@ namespace spartan
                 ix       = clamp(ix, 0, static_cast<int>(width) - 2);
                 iz       = clamp(iz, 0, static_cast<int>(height) - 2);
         
-                float h00 = positions[static_cast<size_t>(iz) * width + ix].y;
-                float h10 = positions[static_cast<size_t>(iz) * width + ix + 1].y;
-                float h01 = positions[static_cast<size_t>(iz + 1) * width + ix].y;
-                float h11 = positions[static_cast<size_t>(iz + 1) * width + ix + 1].y;
+                float h00 = m_positions[static_cast<size_t>(iz) * width + ix].y;
+                float h10 = m_positions[static_cast<size_t>(iz) * width + ix + 1].y;
+                float h01 = m_positions[static_cast<size_t>(iz + 1) * width + ix].y;
+                float h11 = m_positions[static_cast<size_t>(iz + 1) * width + ix + 1].y;
         
                 float h0 = h00 + fx * (h10 - h00);
                 float h1 = h01 + fx * (h11 - h01);
@@ -668,7 +668,7 @@ namespace spartan
                 return h0 + fz * (h1 - h0);
             };
         
-            auto add_height = [&positions, width, height](float x, float z, float amount)
+            auto add_height = [&m_positions, width, height](float x, float z, float amount)
             {
                 int ix   = static_cast<int>(floor(x));
                 int iz   = static_cast<int>(floor(z));
@@ -687,7 +687,7 @@ namespace spartan
                 float max_step = 0.5f;
                 auto apply     = [&](size_t idx, float delta)
                 {
-                    float& h  = positions[idx].y;
+                    float& h  = m_positions[idx].y;
                     h        += clamp(delta, -max_step, max_step);
                     h         = max(h, parameters::level_sea - 10.0f);
                 };
@@ -716,7 +716,7 @@ namespace spartan
                 // apply wind erosion periodically
                 if (i % wind_interval == 0 && i != 0)
                 {
-                    apply_wind_erosion(positions, width, height, wind_strength);
+                    apply_wind_erosion(m_positions, width, height, wind_strength);
                 }
         
                 // hydraulic erosion: simulate a single droplet
@@ -791,12 +791,12 @@ namespace spartan
             }
         
             // final wind erosion pass
-            apply_wind_erosion(positions, width, height, wind_strength);
+            apply_wind_erosion(m_positions, width, height, wind_strength);
         }
 
-        void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, vector<uint32_t>& terrain_indices, const vector<Vector3>& positions, const uint32_t width, const uint32_t height)
+        void generate_vertices_and_indices(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, vector<uint32_t>& terrain_indices, const vector<Vector3>& m_positions, const uint32_t width, const uint32_t height)
         {
-            SP_ASSERT_MSG(!positions.empty(), "Positions are empty");
+            SP_ASSERT_MSG(!m_positions.empty(), "Positions are empty");
 
             // offset that centers the mesh
             Vector3 offset = Vector3( -static_cast<float>(width) * 0.5f, 0.0f, -static_cast<float>(height) * 0.5f);
@@ -807,7 +807,7 @@ namespace spartan
             {
                 for (uint32_t x = 0; x < width - 1; x++)
                 {
-                    Vector3 position = positions[index] + offset;
+                    Vector3 position = m_positions[index] + offset;
 
                     float u = static_cast<float>(x) / static_cast<float>(width - 1);
                     float v = static_cast<float>(y) / static_cast<float>(height - 1);
@@ -820,32 +820,32 @@ namespace spartan
                     // bottom right of quad
                     index           = index_bottom_right;
                     terrain_indices[k]      = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
+                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
 
                     // bottom left of quad
                     index           = index_bottom_left;
                     terrain_indices[k + 1]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v + 1.0f / (height - 1)));
+                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u, v + 1.0f / (height - 1)));
 
                     // top left of quad
                     index           = index_top_left;
                     terrain_indices[k + 2]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
+                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u, v));
 
                     // bottom right of quad
                     index           = index_bottom_right;
                     terrain_indices[k + 3]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
+                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
 
                     // top left of quad
                     index           = index_top_left;
                     terrain_indices[k + 4]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u, v));
+                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u, v));
 
                     // top right of quad
                     index           = index_top_right;
                     terrain_indices[k + 5]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(positions[index], Vector2(u + 1.0f / (width - 1), v));
+                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u + 1.0f / (width - 1), v));
 
                     k += 6; // next quad
                 }
@@ -922,7 +922,7 @@ namespace spartan
             ThreadPool::ParallelLoop(compute_vertex_data, static_cast<uint32_t>(terrain_vertices.size()));
         }
 
-        void apply_perlin_noise(vector<Vector3>& positions, uint32_t width, uint32_t height, float amplitude = 5.0f, float frequency = 0.01f, uint32_t octaves = 4, float persistence = 1.0f)
+        void apply_perlin_noise(vector<Vector3>& m_positions, uint32_t width, uint32_t height, float amplitude = 5.0f, float frequency = 0.01f, uint32_t octaves = 4, float persistence = 1.0f)
         {
             auto fade = [](float t) -> float
             {
@@ -1016,7 +1016,7 @@ namespace spartan
                     }
         
                     noise_value /= max_amplitude; // normalize to [-1,1] range
-                    positions[index].y += noise_value * amplitude; // apply final amplitude
+                    m_positions[index].y += noise_value * amplitude; // apply final amplitude
                 }
             };
         
@@ -1100,7 +1100,7 @@ namespace spartan
         }
     }
 
-    void Terrain::SaveToFile(const char* file_path)
+     void Terrain::SaveToFile(const char* file_path)
     {
         ofstream file(file_path, ios::binary);
         if (!file.is_open())
@@ -1108,15 +1108,20 @@ namespace spartan
             SP_LOG_ERROR("failed to open file for writing: %s", file_path);
             return;
         }
-
-        uint32_t width = GetWidth();
-        uint32_t height = GetHeight();
-        uint32_t height_data_size = static_cast<uint32_t>(m_height_data.size());
-        uint32_t vertex_count = static_cast<uint32_t>(m_vertices.size());
-        uint32_t index_count = static_cast<uint32_t>(m_indices.size());
-        uint32_t tile_count = static_cast<uint32_t>(m_tile_vertices.size());
+    
+        uint32_t width               = GetWidth();
+        uint32_t height              = GetHeight();
+        uint32_t height_data_size    = static_cast<uint32_t>(m_height_data.size());
+        uint32_t vertex_count        = static_cast<uint32_t>(m_vertices.size());
+        uint32_t index_count         = static_cast<uint32_t>(m_indices.size());
+        uint32_t tile_count          = static_cast<uint32_t>(m_tile_vertices.size());
         uint32_t triangle_data_count = static_cast<uint32_t>(placement::triangle_data.size());
-        uint32_t offset_count = static_cast<uint32_t>(m_tile_offsets.size());
+        uint32_t offset_count        = static_cast<uint32_t>(m_tile_offsets.size());
+        uint32_t position_count      = static_cast<uint32_t>(m_positions.size());
+        uint32_t dense_width_value   = m_dense_width;
+        uint32_t dense_height_value  = m_dense_height;
+    
+        // header
         file.write(reinterpret_cast<const char*>(&width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&height_data_size), sizeof(uint32_t));
@@ -1125,11 +1130,18 @@ namespace spartan
         file.write(reinterpret_cast<const char*>(&tile_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&triangle_data_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&offset_count), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&position_count), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&dense_width_value), sizeof(uint32_t));
+        file.write(reinterpret_cast<const char*>(&dense_height_value), sizeof(uint32_t));
+    
+        // main data
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.write(reinterpret_cast<const char*>(m_indices.data()), index_count * sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
-
+        file.write(reinterpret_cast<const char*>(m_positions.data()), position_count * sizeof(Vector3));
+    
+        // triangle data
         for (const auto& [tile_id, tile_triangles] : placement::triangle_data)
         {
             file.write(reinterpret_cast<const char*>(&tile_id), sizeof(uint64_t));
@@ -1137,34 +1149,38 @@ namespace spartan
             file.write(reinterpret_cast<const char*>(&triangle_count), sizeof(uint32_t));
             file.write(reinterpret_cast<const char*>(tile_triangles.data()), triangle_count * sizeof(placement::TriangleData));
         }
-
+    
+        // tile data
         for (uint32_t i = 0; i < tile_count; i++)
         {
             uint32_t vertex_size = static_cast<uint32_t>(m_tile_vertices[i].size());
-            uint32_t index_size = static_cast<uint32_t>(m_tile_indices[i].size());
+            uint32_t index_size  = static_cast<uint32_t>(m_tile_indices[i].size());
             file.write(reinterpret_cast<const char*>(&vertex_size), sizeof(uint32_t));
             file.write(reinterpret_cast<const char*>(&index_size), sizeof(uint32_t));
             file.write(reinterpret_cast<const char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
             file.write(reinterpret_cast<const char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
         }
-
+    
         file.close();
-        SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u",
-            file_path, width, height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count);
-    }
 
+        SP_LOG_INFO("saved terrain to %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u, position_count=%u, dense_width=%u, dense_height=%u",
+            file_path, width, height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count, position_count, dense_width_value, dense_height_value);
+    }
+    
     void Terrain::LoadFromFile(const char* file_path)
     {
         ifstream file(file_path, ios::binary);
         if (!file.is_open())
             return;
-
-        uint32_t height_data_size = 0;
-        uint32_t vertex_count = 0;
-        uint32_t index_count = 0;
-        uint32_t tile_count = 0;
+    
+        uint32_t height_data_size    = 0;
+        uint32_t vertex_count        = 0;
+        uint32_t index_count         = 0;
+        uint32_t tile_count          = 0;
         uint32_t triangle_data_count = 0;
-        uint32_t offset_count = 0;
+        uint32_t offset_count        = 0;
+        uint32_t position_count      = 0;
+    
         file.read(reinterpret_cast<char*>(&m_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_height), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&height_data_size), sizeof(uint32_t));
@@ -1173,24 +1189,32 @@ namespace spartan
         file.read(reinterpret_cast<char*>(&tile_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&triangle_data_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&offset_count), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&position_count), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&m_dense_width), sizeof(uint32_t));
+        file.read(reinterpret_cast<char*>(&m_dense_height), sizeof(uint32_t));
+    
         if (tile_count > 10000 || offset_count > 10000)
         {
             SP_LOG_ERROR("invalid tile_count (%u) or offset_count (%u) read from file, aborting load", tile_count, offset_count);
             file.close();
             return;
         }
-
+    
         m_height_data.resize(height_data_size);
         m_vertices.resize(vertex_count);
         m_indices.resize(index_count);
         m_tile_vertices.resize(tile_count);
         m_tile_indices.resize(tile_count);
         m_tile_offsets.resize(offset_count);
+        m_positions.resize(position_count);
         placement::triangle_data.clear();
+    
         file.read(reinterpret_cast<char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.read(reinterpret_cast<char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
         file.read(reinterpret_cast<char*>(m_indices.data()), index_count * sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(m_tile_offsets.data()), offset_count * sizeof(Vector3));
+        file.read(reinterpret_cast<char*>(m_positions.data()), position_count * sizeof(Vector3));
+    
         for (uint32_t i = 0; i < triangle_data_count; i++)
         {
             uint64_t tile_id;
@@ -1201,7 +1225,7 @@ namespace spartan
             tile_triangles.resize(triangle_count);
             file.read(reinterpret_cast<char*>(tile_triangles.data()), triangle_count * sizeof(placement::TriangleData));
         }
-
+    
         for (uint32_t i = 0; i < tile_count; i++)
         {
             uint32_t vertex_size, index_size;
@@ -1212,10 +1236,11 @@ namespace spartan
             file.read(reinterpret_cast<char*>(m_tile_vertices[i].data()), vertex_size * sizeof(RHI_Vertex_PosTexNorTan));
             file.read(reinterpret_cast<char*>(m_tile_indices[i].data()), index_size * sizeof(uint32_t));
         }
-
+    
         file.close();
-        SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u",
-            file_path, m_width, m_height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count);
+    
+        SP_LOG_INFO("loaded terrain from %s: width=%u, height=%u, height_data_size=%u, vertex_count=%u, index_count=%u, tile_count=%u, triangle_data_count=%u, offset_count=%u, position_count=%u, dense_width=%u, dense_height=%u",
+            file_path, m_width, m_height, height_data_size, vertex_count, index_count, tile_count, triangle_data_count, offset_count, position_count, m_dense_width, m_dense_height);
     }
 
     uint32_t Terrain::GetDensity() const
@@ -1247,7 +1272,7 @@ namespace spartan
         m_is_generating = true;
     
         // start progress tracking
-        uint32_t job_count = 10;
+        uint32_t job_count = 9;
         ProgressTracker::GetProgress(ProgressType::Terrain).Start(job_count, "generating terrain...");
     
         // define cache file path
@@ -1268,9 +1293,6 @@ namespace spartan
             }
         }
 
-        vector<Vector3> positions;
-        uint32_t dense_width  = 0;
-        uint32_t dense_height = 0;
         if (!loaded_from_cache)
         {
             SP_LOG_INFO("Terrain not found, generating from scratch...");
@@ -1284,84 +1306,50 @@ namespace spartan
     
                 // increase grid density
                 densify_height_map(m_height_data, m_width, m_height, parameters::density);
-                dense_width  = parameters::density * (m_width - 1) + 1;
-                dense_height = parameters::density * (m_height - 1) + 1;
+                m_dense_width  = parameters::density * (m_width - 1) + 1;
+                m_dense_height = parameters::density * (m_height - 1) + 1;
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
             // 2. compute positions
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating positions...");
-                positions.resize(dense_width * dense_height);
-                generate_positions(positions, m_height_data, dense_width, dense_height);
+                m_positions.resize(m_dense_width * m_dense_height);
+                generate_positions(m_positions, m_height_data, m_dense_width, m_dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
             // 3. apply perlin noise
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying Perlin noise...");
-                apply_perlin_noise(positions, dense_width, dense_height);
+                apply_perlin_noise(m_positions, m_dense_width, m_dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
             // 4. apply hydraulic and wind erosion
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("applying hydraulic and wind erosion...");
-                apply_erosion(positions, dense_width, dense_height);
+                apply_erosion(m_positions, m_dense_width, m_dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 5. bake
-            {
-                ProgressTracker::GetProgress(ProgressType::Terrain).SetText("baking terrain into texture...");
-
-                vector<RHI_Texture_Slice> data(1);
-                auto& slice = data[0];
-                slice.mips.resize(1);
-                auto& mip_bytes = slice.mips[0].bytes;
-                mip_bytes.resize(dense_width * dense_height * sizeof(float));
-
-                auto copy_heights = [&positions, &mip_bytes](uint32_t start, uint32_t end)
-                {
-                    for (uint32_t i = start; i < end; i++)
-                    {
-                        memcpy(mip_bytes.data() + i * sizeof(float), &positions[i].y, sizeof(float));
-                    }
-                };
-                ThreadPool::ParallelLoop(copy_heights, dense_width * dense_height);
-
-                m_height_map_final = make_shared<RHI_Texture>(
-                    RHI_Texture_Type::Type2D,
-                    dense_width,
-                    dense_height,
-                    1,
-                    1,
-                    RHI_Format::R32_Float,
-                    RHI_Texture_Srv,
-                    "terrain_baked",
-                    data
-                );
-
-                ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-            }
-    
-            // 6. compute vertices and indices
+            // 5. compute vertices and indices
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating vertices and indices...");
-                m_vertices.resize(dense_width * dense_height);
-                m_indices.resize((dense_width - 1) * (dense_height - 1) * 6);
-                generate_vertices_and_indices(m_vertices, m_indices, positions, dense_width, dense_height);
+                m_vertices.resize(m_dense_width * m_dense_height);
+                m_indices.resize((m_dense_width - 1) * (m_dense_height - 1) * 6);
+                generate_vertices_and_indices(m_vertices, m_indices, m_positions, m_dense_width, m_dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 7. compute normals and tangents
+            // 6. compute normals and tangents
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("generating normals...");
-                generate_normals(m_vertices, dense_width, dense_height);
+                generate_normals(m_vertices, m_dense_width, m_dense_height);
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
     
-            // 8. split into tiles
+            // 7. split into tiles
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("splitting into tiles...");
                 uint32_t tile_count = 16;
@@ -1369,7 +1357,7 @@ namespace spartan
                 ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
             }
 
-            // 9 compute triangle data for placement
+            // 8. compute triangle data for placement
             {
                 ProgressTracker::GetProgress(ProgressType::Terrain).SetText("computing triangle data for placement...");
                 for (uint32_t tile_index = 0; tile_index < m_tile_vertices.size(); tile_index++)
@@ -1381,9 +1369,39 @@ namespace spartan
 
             SaveToFile(cache_file.c_str());
         }
+
+        // bake terrain into a texture
+        {
+            vector<RHI_Texture_Slice> data(1);
+            auto& slice = data[0];
+            slice.mips.resize(1);
+            auto& mip_bytes = slice.mips[0].bytes;
+            mip_bytes.resize(m_dense_width * m_dense_height * sizeof(float));
+        
+            auto copy_heights = [this, &mip_bytes](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    memcpy(mip_bytes.data() + i * sizeof(float), &m_positions[i].y, sizeof(float));
+                }
+            };
+            ThreadPool::ParallelLoop(copy_heights, m_dense_width * m_dense_height);
+        
+            m_height_map_final = make_shared<RHI_Texture>(
+                RHI_Texture_Type::Type2D,
+                m_dense_width,
+                m_dense_height,
+                1,
+                1,
+                RHI_Format::R32_Float,
+                RHI_Texture_Srv,
+                "terrain_baked",
+                data
+            );
+        }
     
         // compute certain properties
-        m_height_samples = dense_width * dense_height;
+        m_height_samples = m_dense_width * m_dense_height;
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
