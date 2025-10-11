@@ -412,41 +412,58 @@ float luminance(float4 color)
 /*------------------------------------------------------------------------------
     HASHES & NOISE
 ------------------------------------------------------------------------------*/
-float hash(float n)
+// fast 1d hash
+float hash(float p)
 {
-    return frac(sin(n) * 43758.5453);
+    // scale input, convert to uint for bit manipulation
+    uint u = asuint(p * 3141592653.0f);
+    
+    // mix with multiply and xor, normalize to [0,1)
+    return float(u * u * 3141592653u) / 4294967295.0f;
 }
 
+// fast 2d hash
 float hash(float2 p)
 {
-    return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
+    // scale each component, convert to uint2
+    uint2 u = asuint(p * float2(141421356.0f, 2718281828.0f));
+    
+    // combine with xor, mix, normalize to [0,1)
+    return float((u.x ^ u.y) * 3141592653u) / 4294967295.0f;
 }
 
+// fast 1d perlin noise
 float noise_perlin(float x)
 {
+    // split into integer and fractional parts
     float i = floor(x);
-    float f = frac(x); 
-
-    // smooth interpolation factor
-    f = f * f * (3.0 - 2.0 * f);
-
-    return lerp(hash(i), hash(i + 1.0), f);
+    float f = frac(x);
+    
+    // smooth interpolation curve (3t^2 - 2t^3)
+    f = f * f * (3.0f - 2.0f * f);
+    
+    // interpolate between hashed points
+    return lerp(hash(i), hash(i + 1.0f), f);
 }
 
+// fast 2d perlin noise
 float noise_perlin(float2 x)
 {
+    // split into integer and fractional parts
     float2 i = floor(x);
     float2 f = frac(x);
-
-    // smooth interpolation factor
+    
+    // smooth interpolation curve for both axes
     float2 u = f * f * (3.0f - 2.0f * f);
-
-    float a = hash(i.x + hash(i.y));
-    float b = hash(i.x + 1.0f + hash(i.y));
-    float c = hash(i.x + hash(i.y + 1.0f));
-    float d = hash(i.x + 1.0f + hash(i.y + 1.0f));
-
-    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+    
+    // hash grid corners
+    float ha = hash(i + float2(0.0f, 0.0f));
+    float hb = hash(i + float2(1.0f, 0.0f));
+    float hc = hash(i + float2(0.0f, 1.0f));
+    float hd = hash(i + float2(1.0f, 1.0f));
+    
+    // bilinear interp with optimized mad
+    return ha + (hb - ha) * u.x + ((hc - ha) + (ha - hb + hd - hc) * u.x) * u.y;
 }
 
 // spartan take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
