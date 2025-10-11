@@ -95,5 +95,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     float accumulate      = (pass_is_transparent() && !surface.is_transparent()) ? 1.0f : 0.0f; // transparent surfaces will sample the background via refraction, no need to blend
-    tex_uav[thread_id.xy] = float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric, alpha) + tex_uav[thread_id.xy] * accumulate;
+    tex_uav[thread_id.xy] = validate_output(float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric, alpha) + tex_uav[thread_id.xy] * accumulate);
 }

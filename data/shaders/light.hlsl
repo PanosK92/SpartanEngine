@@ -163,8 +163,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         out_volumetric += write_volumetric;
     }
 
-    tex_uav[thread_id.xy]  = float4(out_diffuse,    1.0f);
-    tex_uav2[thread_id.xy] = float4(out_specular,   1.0f);
-    tex_uav3[thread_id.xy] = out_shadow;
-    tex_uav4[thread_id.xy] = float4(out_volumetric, 1.0f);
+    tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,    1.0f));
+    tex_uav2[thread_id.xy] = validate_output(float4(out_specular,   1.0f));
+    tex_uav3[thread_id.xy] = validate_output(out_shadow);
+    tex_uav4[thread_id.xy] = validate_output(float4(out_volumetric, 1.0f));
 }

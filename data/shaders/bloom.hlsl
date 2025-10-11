@@ -27,7 +27,7 @@ float3 threshold(float3 color)
 {
     const float BLOOM_THRESHOLD = 4.3;
     const float BLOOM_SOFT_KNEE = 0.5;
-    const float MAX_BRIGHTNESS  = 10.0;
+    const float MAX_BRIGHTNESS  = 5.0;
 
     color               = min(color, MAX_BRIGHTNESS);
     float brightness    = dot(color, float3(0.2126, 0.7152, 0.0722)); // luminance for accuracy

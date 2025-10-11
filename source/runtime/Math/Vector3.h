@@ -360,7 +360,8 @@ namespace spartan::math
         // return negation
         Vector3 operator -() const { return Vector3(-x, -y, -z); }
 
-        bool IsNaN() const { return std::isnan(x) || std::isnan(y) || std::isnan(z); }
+        bool IsNaN() const    { return std::isnan(x) || std::isnan(y) || std::isnan(z); }
+        bool IsFinite() const { return std::isfinite(x) && std::isfinite(y) && std::isfinite(z); }
         std::string ToString() const;
         const float* Data() const { return &x; }
 

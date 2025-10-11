@@ -113,7 +113,19 @@ void Viewport::OnTickVisible()
     // entity transform gizmo (will only show if an entity has been picked)
     if (Renderer::GetOption<bool>(spartan::Renderer_Option::TransformHandle))
     {
-        ImGui::TransformGizmo::tick();
+        if (camera) // skip if no camera
+        {
+            if (spartan::Entity* selected_entity = camera->GetSelectedEntity()) // skip if no entity is selected
+            {
+                spartan::Entity* camera_entity = camera->GetEntity();
+                spartan::math::Vector3 dir_to_entity = selected_entity->GetPosition() - camera_entity->GetPosition();
+                dir_to_entity.Normalize();
+                if (dir_to_entity.Dot(camera_entity->GetForward()) >= 0.0f) // skip when the camera is facing away
+                {
+                    ImGui::TransformGizmo::tick();
+                }
+            }
+        }
     }
 
     // check if the engine wants cursor control

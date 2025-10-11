@@ -848,20 +848,21 @@ namespace spartan
             void create()
             {
                 // tweak without exceeding a vram usage of 8 GB (that is until streaming is implemented)
-                const float render_distance_trees          = 2'000.0f;
-                const float render_distance_grass          = 500.0f;  // grass is expensive
-                const uint32_t per_tile_count_grass_blades = 1'000'000; // approximate, only open flat terrain tiles can fit them all
-                const uint32_t per_tile_count_tree         = 128;
-                const uint32_t per_tile_count_rock         = 64;
-                const float shadow_distance                = 150.0f;  // beyond that, screen space shadows are enough
+                const float render_distance_trees            = 2'000.0f;
+                const float render_distance_foliage          = 500.0f;
+                const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
+                const float per_triangle_density_grass_blade = 15.0f;
+                const float per_triangle_density_flower      = 0.2f;
+                const float per_triangle_density_tree        = 0.004f;
+                const float per_triangle_density_rock        = 0.001f;
 
                 // sun/lighting/mood
                 entities::sun(true);
                 Light* sun = default_light_directional->GetComponent<Light>();
-                sun->SetIntensity(20'000.0f);
+                sun->SetIntensity(5'000.0f);   // low light too match the sunrise direction
                 sun->SetTemperature(3'800.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, false);
-                sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(10.0f, -100.0f, -0.5f));
+                sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(7.0f, -100.0f, -0.5f)); // sunrise height
 
                 entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
@@ -930,8 +931,8 @@ namespace spartan
                         // set properties
                         material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingX, 250.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY, 250.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX, 1000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY, 1000.0f);
 
                         // set textures
                         material->SetTexture(MaterialTextureType::Color,     "project\\materials\\whispy_grass_meadow\\albedo.png",    0);
@@ -952,7 +953,7 @@ namespace spartan
 
                     // generate a terrain from a height map
                     shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
-                    terrain->SetHeightMap(height_map.get());
+                    terrain->SetHeightMapSeed(height_map.get());
                     terrain->Generate();
 
                     // add physics so we can walk on it
@@ -988,35 +989,72 @@ namespace spartan
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 5);        // high detail
-                            mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index); // add lod 0, no auto-lod generation
+                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 5); // high detail
+                            mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index);  // add lod 0, no auto-lod generation
                         }
 
                         // lod 1: medium quality grass blade (3 segment)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 3); // medium detail
-                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 1
+                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 3); // medium detail
+                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);               // add lod 1
                         }
 
                         // lod 2: low quality grass blade (1 segment)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_grass_blade(&vertices, &indices, 1); // low detail
-                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);       // add lod 2
+                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 1); // low detail
+                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);               // add lod 2
                         }
 
                         mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // need to remove that
                         mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc.
                     }
 
+                    // add after mesh_grass_blade
+                    shared_ptr<Mesh> mesh_flower = meshes.emplace_back(make_shared<Mesh>());
+                    {
+                        mesh_flower->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+
+                        // create sub-mesh and add three lods for the flower
+                        uint32_t sub_mesh_index = 0;
+
+                        // lod 0: high quality flower
+                        {
+                            vector<RHI_Vertex_PosTexNorTan> vertices;
+                            vector<uint32_t> indices;
+                            geometry_generation::generate_foliage_flower(&vertices, &indices, 3, 6, 3);
+                            mesh_flower->AddGeometry(vertices, indices, false, &sub_mesh_index);
+                        }
+
+                        // lod 1: medium quality flower
+                        {
+                            vector<RHI_Vertex_PosTexNorTan> vertices;
+                            vector<uint32_t> indices;
+                            geometry_generation::generate_foliage_flower(&vertices, &indices, 2, 4, 2);
+                            mesh_flower->AddLod(vertices, indices, sub_mesh_index);
+                        }
+
+                        // lod 2: low quality flower
+                        {
+                            vector<RHI_Vertex_PosTexNorTan> vertices;
+                            vector<uint32_t> indices;
+                            geometry_generation::generate_foliage_flower(&vertices, &indices, 1, 1, 1);
+                            mesh_flower->AddLod(vertices, indices, sub_mesh_index);
+                        }
+
+                        mesh_flower->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_flower" + EXTENSION_MESH);
+                        mesh_flower->CreateGpuBuffers();
+                    }
+
                     // materials
                     shared_ptr<Material> material_leaf;
                     shared_ptr<Material> material_body;
                     shared_ptr<Material> material_rock;
-                    shared_ptr<Material> material_grass;
+                    shared_ptr<Material> material_grass_blade;
+                    shared_ptr<Material> material_flower;
                     {
                         material_leaf = make_shared<Material>();
                         material_leaf->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\Twig_Base_Material_2.png");
@@ -1040,15 +1078,25 @@ namespace spartan
                         material_rock->SetTexture(MaterialTextureType::Occlusion, "project\\models\\rock_2\\occlusion.png");
                         material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
 
-                        material_grass = make_shared<Material>();
-                        material_grass->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
-                        material_grass->SetProperty(MaterialProperty::Roughness, 1.0f);
-                        material_grass->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                        material_grass->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-                        material_grass->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
-                        material_grass->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
-                        material_grass->SetColor(Color::standard_white);
-                        material_grass->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
+                        material_grass_blade = make_shared<Material>();
+                        material_grass_blade->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::Roughness, 1.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
+                        material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material_grass_blade->SetColor(Color::standard_white);
+                        material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
+
+                        material_flower = make_shared<Material>();
+                        material_flower->SetProperty(MaterialProperty::IsFlower, 1.0f);
+                        material_flower->SetProperty(MaterialProperty::Roughness, 1.0f);
+                        material_flower->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                        material_flower->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
+                        material_flower->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_flower->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                        material_flower->SetColor(Color::standard_white);
+                        material_flower->SetResourceName("flower" + string(EXTENSION_MATERIAL));
                     }
 
                     // place props on each terrain tile
@@ -1058,14 +1106,20 @@ namespace spartan
                         &mesh_rock,
                         &mesh_tree,
                         &mesh_grass_blade,
+                        &mesh_flower,
                         &terrain,
                         render_distance_trees,
-                        render_distance_grass,
+                        render_distance_foliage,
                         shadow_distance,
+                        per_triangle_density_grass_blade,
+                        per_triangle_density_flower,
+                        per_triangle_density_tree,
+                        per_triangle_density_rock,
                         material_leaf,
                         material_body,
                         material_rock,
-                        material_grass
+                        material_grass_blade,
+                        material_flower
                     ](uint32_t start_index, uint32_t end_index)
                     {
                         for (uint32_t tile_index = start_index; tile_index < end_index; tile_index++)
@@ -1080,7 +1134,7 @@ namespace spartan
 
                                 // generate instances
                                 vector<Matrix> transforms;
-                                terrain->FindTransforms(tile_index, per_tile_count_tree, TerrainProp::Tree, entity, 0.04f, transforms);
+                                terrain->FindTransforms(tile_index, TerrainProp::Tree, entity, per_triangle_density_tree, 0.04f, transforms);
 
                                 if (Entity* trunk = entity->GetChildByIndex(0))
                                 {
@@ -1116,7 +1170,7 @@ namespace spartan
                                 // generate instances
                                 {
                                     vector<Matrix> transforms;
-                                    terrain->FindTransforms(tile_index, per_tile_count_rock, TerrainProp::Rock, entity, 2.0f, transforms);
+                                    terrain->FindTransforms(tile_index, TerrainProp::Rock, entity, per_triangle_density_rock, 1.0f, transforms);
 
                                     if (Entity* rock_entity = entity->GetDescendantByName("untitled")) // where the model keeps the mesh
                                     {
@@ -1134,24 +1188,47 @@ namespace spartan
                                 }
                             }
 
-                            // grass
+                            // foliage
                             {
-                               // create entity
-                               Entity* entity = World::CreateEntity();
-                               entity->SetObjectName("grass");
-                               entity->SetParent(terrain_tile);
+                                // grass
+                                {
+                                   // create entity
+                                   Entity* entity = World::CreateEntity();
+                                   entity->SetObjectName("grass");
+                                   entity->SetParent(terrain_tile);
 
-                               // generate instances
-                               vector<Matrix> transforms;
-                               terrain->FindTransforms(tile_index, per_tile_count_grass_blades, TerrainProp::Grass, entity, 1.0f, transforms);
+                                   // generate instances
+                                   vector<Matrix> transforms;
+                                   terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade, 1.0f, transforms);
 
-                               // set renderable component
-                               Renderable* renderable = entity->AddComponent<Renderable>();
-                               renderable->SetMesh(mesh_grass_blade.get());
-                               renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
-                               renderable->SetInstances(transforms);
-                               renderable->SetMaterial(material_grass);
-                               renderable->SetMaxRenderDistance(render_distance_grass);
+                                   // set renderable component
+                                   Renderable* renderable = entity->AddComponent<Renderable>();
+                                   renderable->SetMesh(mesh_grass_blade.get());
+                                   renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
+                                   renderable->SetInstances(transforms);
+                                   renderable->SetMaterial(material_grass_blade);
+                                   renderable->SetMaxRenderDistance(render_distance_foliage);
+                                }
+
+                                // flower
+                                {
+                                    // create entity
+                                    Entity* entity = World::CreateEntity();
+                                    entity->SetObjectName("flower");
+                                    entity->SetParent(terrain_tile);
+                                    
+                                    // generate instances
+                                    vector<Matrix> transforms;
+                                    terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 1.0f, transforms);
+                                    
+                                    // set renderable component
+                                    Renderable* renderable = entity->AddComponent<Renderable>();
+                                    renderable->SetMesh(mesh_flower.get());
+                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaterial(material_flower);
+                                    renderable->SetMaxRenderDistance(render_distance_foliage);
+                                }
                             }
                         }
                     };

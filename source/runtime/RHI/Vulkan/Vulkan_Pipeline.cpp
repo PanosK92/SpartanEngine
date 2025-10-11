@@ -263,42 +263,17 @@ namespace spartan
                     }
                 }
             
-                // instance buffer (binding 1) - for instance transform (matrix) in geometry vertices
+                // instance buffer (binding 1) - for instance transform (position, rotation, scale)
                 if (is_geometry_pass_vertex)
                 {
-                    // instance buffer (binding 1) - for instance transform (position, rotation, scale)
-                    vertex_input_binding_descs.push_back(
-                    {
-                        1,                            // binding
-                        sizeof(Instance),             // stride (12 + 16 + 4 = 32 bytes)
-                        VK_VERTEX_INPUT_RATE_INSTANCE // input rate
-                    });
-
-                    // add attribute descriptions for instance data
-                    uint32_t base_location = static_cast<uint32_t>(vertex_attribute_descs.size()); // next available location
-                    vertex_attribute_descs.push_back(
-                    {
-                        base_location + 0,
-                        1,                          // binding
-                        VK_FORMAT_R32G32B32_SFLOAT, // format (vec3 for position)
-                        0                           // offset
-                    });
-
-                    vertex_attribute_descs.push_back(
-                    {
-                        base_location + 1,
-                        1,                             // binding
-                        VK_FORMAT_R32G32B32A32_SFLOAT, // format (quat for rotation)
-                        offsetof(Instance, rotation)   // offset (12 bytes)
-                    });
-
-                    vertex_attribute_descs.push_back(
-                    {
-                        base_location + 2,
-                        1,                        // binding
-                        VK_FORMAT_R32_SFLOAT,     // format (float for scale)
-                        offsetof(Instance, scale) // offset (28 bytes)
-                    });
+                    vertex_input_binding_descs.emplace_back(1, sizeof(Instance), VK_VERTEX_INPUT_RATE_INSTANCE);
+                    uint32_t start_index = static_cast<uint32_t>(vertex_attribute_descs.size());
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, offsetof(Instance, position_x));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, offsetof(Instance, position_y));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_SFLOAT, offsetof(Instance, position_z));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R16_UINT,   offsetof(Instance, normal_oct));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,    offsetof(Instance, yaw_packed));
+                    vertex_attribute_descs.emplace_back(start_index++, 1, VK_FORMAT_R8_UINT,    offsetof(Instance, scale_packed));
                 }
             }
             // vertex input state

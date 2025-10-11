@@ -40,8 +40,23 @@ namespace spartan
     {
         Tree,
         Grass,
+        Flower,
         Rock,
         Max
+    };
+
+    struct TerrainPropDescription
+    {
+        bool  align_to_surface_normal  = true;                     // if true, aligns the prop rotation to the terrain surface normal
+        float max_slope_angle_rad      = math::deg_to_rad * 35.0f; // maximum terrain slope (in radians) where the prop can spawn
+        float surface_offset           = 0.05f;                    // vertical offset from the terrain surface
+        float min_spawn_height         = 0.0f;                     // lowest height where the prop can spawn
+        float max_spawn_height         = 1000.0f;                  // highest height where the prop can spawn
+        float min_scale                = 0.8f;                     // minimum scale variation
+        float max_scale                = 1.2f;                     // maximum scale variation
+        bool  scale_adjust_by_slope    = false;                    // scale down props on steep slopes (helps large rocks sit on flat ground)
+        uint32_t instances_per_cluster = 0;                        // if > 0, instances will be clustered in groups of this size, which is more efficient for rendering
+        float cluster_radius = 0.0f;                               // radius of each cluster, ignored if instances_per_cluster is 0
     };
 
     class Terrain : public Component
@@ -50,8 +65,9 @@ namespace spartan
         Terrain(Entity* entity);
         ~Terrain();
 
-        RHI_Texture* GetHeightMap() const          { return m_height_texture; }
-        void SetHeightMap(RHI_Texture* height_map) { m_height_texture = height_map;}
+        RHI_Texture* GetHeightMapSeed() const          { return m_height_map_seed; }
+        void SetHeightMapSeed(RHI_Texture* height_map) { m_height_map_seed = height_map;}
+        RHI_Texture* GetHeightMapFinal() const         { return m_height_map_final.get(); }
 
         uint32_t GetWidth() const { return m_width; }
         uint32_t GetHeight() const { return m_height; }
@@ -68,7 +84,14 @@ namespace spartan
 
         // generate
         void Generate();
-        void FindTransforms(const uint32_t tile_index, const uint32_t count, const TerrainProp terrain_prop, Entity* entity, const float scale, std::vector<math::Matrix>& transforms_out);
+        void FindTransforms(
+            const uint32_t tile_index,
+            const TerrainProp terrain_prop,
+            Entity* entity,
+            const float density_fraction,
+            const float scale,
+            std::vector<math::Matrix>& transforms_out
+        );
 
         // io
         void SaveToFile(const char* file_path);
@@ -83,6 +106,10 @@ namespace spartan
     private:
         void Clear();
 
+        // textures
+        RHI_Texture* m_height_map_seed                  = nullptr;
+        std::shared_ptr<RHI_Texture> m_height_map_final = nullptr;
+
         // properties
         float m_min_y = -64.0f;
         float m_max_y = 256.0;
@@ -96,7 +123,7 @@ namespace spartan
         uint32_t m_vertex_count           = 0;
         uint32_t m_index_count            = 0;
         uint32_t m_triangle_count         = 0;
-        RHI_Texture* m_height_texture     = nullptr;
+    
         std::vector<float> m_height_data;
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>> m_tile_vertices;
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;

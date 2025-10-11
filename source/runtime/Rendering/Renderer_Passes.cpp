@@ -636,7 +636,7 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.rasterizer_state                 = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
+            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are few, no pre-pass needed
             pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.resolution_scale                 = true;
             pso.render_target_color_textures[0]  = tex_color;
@@ -1255,85 +1255,104 @@ namespace spartan
         // acquire render targets
         RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTarget::frame_output_2);
-
-        cmd_list->BeginMarker("post_proccess");
-
-        // macros which allows us to keep track of which texture is an input/output for each pass
-        bool swap_output = true;
-        #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
-        #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
-
+        cmd_list->BeginMarker("post_process");
+    
+        // track current input explicitly for robustness
+        RHI_Texture* tex_in  = rt_frame_output;
+        RHI_Texture* tex_out = rt_frame_output_scratch;
+        bool any_pass_ran    = false;
+    
         // depth of field
         if (GetOption<bool>(Renderer_Option::DepthOfField))
         {
-            swap_output = !swap_output;
-            Pass_DepthOfField(cmd_list, get_output_in, get_output_out);
+            Pass_DepthOfField(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
+            any_pass_ran = true;
         }
-        
+    
         // motion blur
         if (GetOption<bool>(Renderer_Option::MotionBlur))
         {
-            swap_output = !swap_output;
-            Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
+            Pass_MotionBlur(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
+            any_pass_ran = true;
         }
-        
+    
         // bloom
         if (GetOption<bool>(Renderer_Option::Bloom))
         {
-            swap_output = !swap_output;
-            Pass_Bloom(cmd_list, get_output_in, get_output_out);
+            Pass_Bloom(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
+            any_pass_ran = true;
         }
-
-        // auto exposure
-        Pass_AutoExposure(cmd_list, get_output_in);
-
-        // tone-mapping & gamma correction
+    
+        // auto-exposure
+        if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
         {
-            swap_output = !swap_output;
-            Pass_Output(cmd_list, get_output_in, get_output_out);
-        }
+            RHI_Texture* tex_exposure = tex_in;
 
+            // auto-exposure needs mips
+            if (any_pass_ran)
+            {
+                if (!tex_in->HasPerMipViews())
+                {
+                    tex_exposure = tex_out;
+                    cmd_list->Blit(tex_in, tex_exposure, false);
+                }
+                
+                Pass_Downscale(cmd_list, tex_exposure, Renderer_DownsampleFilter::Average);
+            }
+            
+            Pass_AutoExposure(cmd_list, tex_exposure);
+        }
+    
+        // tone-mapping & gamma correction
+        Pass_Output(cmd_list, tex_in, tex_out);
+        swap(tex_in, tex_out);
+    
         // dithering
         if (GetOption<bool>(Renderer_Option::Dithering))
         {
-            swap_output = !swap_output;
-            Pass_Dithering(cmd_list, get_output_in, get_output_out);
+            Pass_Dithering(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
+    
         // sharpening
-        if (GetOption<bool>(Renderer_Option::Sharpness) && GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) != Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+        Renderer_AntiAliasing_Upsampling aa_upsampling = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        bool is_fsr                                    = aa_upsampling == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr; // fsr does it's own sharpening
+        if (GetOption<bool>(Renderer_Option::Sharpness) && !is_fsr)
         {
-            swap_output = !swap_output;
-            Pass_Sharpening(cmd_list, get_output_in, get_output_out);
+            Pass_Sharpening(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-        
+    
         // film grain
         if (GetOption<bool>(Renderer_Option::FilmGrain))
         {
-            swap_output = !swap_output;
-            Pass_FilmGrain(cmd_list, get_output_in, get_output_out);
+            Pass_FilmGrain(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
+    
         // chromatic aberration
         if (GetOption<bool>(Renderer_Option::ChromaticAberration))
         {
-            swap_output = !swap_output;
-            Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
+            Pass_ChromaticAberration(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
+    
         // vhs
         if (GetOption<bool>(Renderer_Option::Vhs))
         {
-            swap_output = !swap_output;
-            Pass_Vhs(cmd_list, get_output_in, get_output_out);
+            Pass_Vhs(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
-        // if the last written texture is not the output one, then make sure it is
-        if (!swap_output)
+    
+        // ensure final output is in rt_frame_output
+        if (tex_in != rt_frame_output)
         {
-            cmd_list->Copy(rt_frame_output_scratch, rt_frame_output, false);
+            cmd_list->Copy(tex_in, rt_frame_output, false);
         }
-
+    
         // editor
         Pass_Grid(cmd_list, rt_frame_output);
         Pass_Lines(cmd_list, rt_frame_output);
@@ -1665,24 +1684,9 @@ namespace spartan
     void Renderer::Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
     {
         // get resources
-        RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);          // current
-        RHI_Texture* tex_exposure_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous); // previous
+        RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);
+        RHI_Texture* tex_exposure_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
 
-        // clear once if disabled or continue if enabled
-        float adaptation_speed         = GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed);
-        static bool cleared_on_disable = false;
-        if (adaptation_speed <= 0.0f)
-        {
-            if (!cleared_on_disable)
-            {
-                cmd_list->ClearTexture(tex_exposure, Color::standard_white);
-                cmd_list->ClearTexture(tex_exposure_previous, Color::standard_white);
-                cleared_on_disable = true;
-            }
-            return;
-        }
-        cleared_on_disable = false;
-    
         // define pipeline state
         RHI_PipelineState pso;
         pso.name             = "auto_exposure";
@@ -1694,7 +1698,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
     
             // push constants
-            m_pcb_pass_cpu.set_f3_value(adaptation_speed);
+            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame

@@ -205,6 +205,41 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
                 // final blend onto albedo with moderate weight
                 albedo.rgb = lerp(albedo.rgb, grass_tint, 1.0f);
             }
+            else if (surface.is_flower())
+            {
+                // base and default tip colors
+                const float3 flower_base = float3(0.05f, 0.07f, 0.03f);
+                float3 flower_tip = float3(0.529f, 0.808f, 0.922f); // light sky blue
+
+                uint instance_id = vertex.uv_misc.w;
+
+                // reflect CPU clustering logic (same grouping)
+                const uint instances_per_cluster = 5000;
+                uint cluster_id = instance_id / instances_per_cluster;
+
+                // stable cluster color (same for all flowers in this cluster)
+                float cluster_variation = hash(cluster_id);
+
+                // assign a main hue to the cluster
+                if (cluster_variation < 0.33f)
+                    flower_tip = float3(0.529f, 0.808f, 0.922f); // blue
+                else if (cluster_variation < 0.66f)
+                    flower_tip = float3(0.8f, 0.2f, 0.2f); // red
+                else
+                    flower_tip = float3(0.9f, 0.8f, 0.1f); // yellow
+
+                // tiny internal variation so not every flower is identical
+                float local_variation = hash(instance_id * 13u);
+                flower_tip = lerp(flower_tip, flower_tip * (0.9f + 0.2f * local_variation), 0.5f);
+
+                // vertical gradient (base to tip)
+                float height_percent = vertex.uv_misc.z;
+                float t = smoothstep(0.2f, 1.0f, height_percent);
+                float3 flower_tint = lerp(flower_base, flower_tip, t);
+
+                // blend with original albedo
+                albedo.rgb = lerp(albedo.rgb, flower_tint, 1.0f);
+            }
             else // trees and other vegetation variation
             {
                 float3 variation_color = vegetation_greener;
@@ -322,11 +357,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         //albedo = float4(flow_dir * 0.5f + 0.5f, 0.0f, 1.0f);
     }
 
-    // apply curved normals for grass blades
-    if (surface.is_grass_blade())
+    // apply curved normals for foliage
+    if (surface.is_grass_blade() || surface.is_flower())
     {
         // compute curvature angle based on width percent
-        const float total_curvature = 160.0f * DEG_TO_RAD;
+        const float total_curvature = 120.0f * DEG_TO_RAD;
         float t                     = (vertex.width_percent - 0.5f) * 2.0f; // [left, right] -> [-1, 1]
         float harsh_factor          = t;
         float curve_angle           = harsh_factor * (total_curvature / 2.0f); // += half total

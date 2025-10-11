@@ -88,14 +88,12 @@ namespace spartan
         for (const auto& instance : m_instances)
         {
             pugi::xml_node t_node = instances_node.append_child("Transform");
-            stringstream ss;
-            ss << instance.position.x << " "
-                << instance.position.y << " "
-                << instance.position.z << " "
-                << instance.rotation.x << " "
-                << instance.rotation.y << " "
-                << instance.rotation.z << " "
-                << instance.scale;
+            math::Matrix matrix = instance.GetMatrix();
+            std::stringstream ss;
+            ss << matrix.m00 << " " << matrix.m01 << " " << matrix.m02 << " " << matrix.m03 << " "
+               << matrix.m10 << " " << matrix.m11 << " " << matrix.m12 << " " << matrix.m13 << " "
+               << matrix.m20 << " " << matrix.m21 << " " << matrix.m22 << " " << matrix.m23 << " "
+               << matrix.m30 << " " << matrix.m31 << " " << matrix.m32 << " " << matrix.m33;
             t_node.append_attribute("matrix") = ss.str().c_str();
         }
     }
@@ -136,13 +134,21 @@ namespace spartan
         {
             for (pugi::xml_node t_node : instances_node.children("Transform"))
             {
-                stringstream ss(t_node.attribute("matrix").as_string());
-                Instance instance;
-                ss >> instance.position.x >> instance.position.y >> instance.position.z
-                    >> instance.rotation.x >> instance.rotation.y >> instance.rotation.z
-                    >> instance.scale;
+                std::stringstream ss(t_node.attribute("matrix").as_string());
+                math::Matrix matrix;
+                float m[16];
+                for (int i = 0; i < 16; ++i)
+                {
+                    ss >> m[i];
+                }
                 if (!ss.fail())
                 {
+                    matrix = math::Matrix(m[0], m[1], m[2], m[3],
+                        m[4], m[5], m[6], m[7],
+                        m[8], m[9], m[10], m[11],
+                        m[12], m[13], m[14], m[15]);
+                    Instance instance;
+                    instance.SetMatrix(matrix);
                     m_instances.emplace_back(instance);
                 }
             }
