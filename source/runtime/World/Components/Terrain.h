@@ -132,5 +132,8 @@ namespace spartan
         std::shared_ptr<Mesh> m_mesh;
         std::shared_ptr<Material> m_material;
         std::vector<math::Vector3> m_tile_offsets;
+        std::vector<math::Vector3> m_positions;
+        uint32_t m_dense_width  = 0;
+        uint32_t m_dense_height = 0;
     };
 }
