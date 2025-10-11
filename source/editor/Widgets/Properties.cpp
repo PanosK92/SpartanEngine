@@ -996,9 +996,9 @@ void Properties::ShowTerrain(Terrain* terrain) const
         {
             ImGui::Text("Height Map");
 
-            ImGuiSp::image_slot(terrain->GetHeightMap(), [&terrain](spartan::RHI_Texture* texture)
+            ImGuiSp::image_slot(terrain->GetHeightMapSeed(), [&terrain](spartan::RHI_Texture* texture)
             {
-                terrain->SetHeightMap(texture);
+                terrain->SetHeightMapSeed(texture);
             });
 
             if (ImGuiSp::button("Generate", ImVec2(82.0f * spartan::Window::GetDpiScale(), 0)))

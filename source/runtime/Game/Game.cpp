@@ -745,7 +745,7 @@ namespace spartan
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
                 const float per_triangle_density_grass_blade = 15.0f;
-                const float per_triangle_density_flower      = 0.4f;
+                const float per_triangle_density_flower      = 0.2f;
                 const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;
 
@@ -846,7 +846,7 @@ namespace spartan
 
                     // generate a terrain from a height map
                     shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
-                    terrain->SetHeightMap(height_map.get());
+                    terrain->SetHeightMapSeed(height_map.get());
                     terrain->Generate();
 
                     // add physics so we can walk on it
@@ -918,7 +918,7 @@ namespace spartan
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_flower(&vertices, &indices, 5, 8, 5);
+                            geometry_generation::generate_foliage_flower(&vertices, &indices, 3, 6, 3);
                             mesh_flower->AddGeometry(vertices, indices, false, &sub_mesh_index);
                         }
 
@@ -926,7 +926,7 @@ namespace spartan
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_flower(&vertices, &indices, 3, 6, 3);
+                            geometry_generation::generate_foliage_flower(&vertices, &indices, 2, 4, 2);
                             mesh_flower->AddLod(vertices, indices, sub_mesh_index);
                         }
 
@@ -934,7 +934,7 @@ namespace spartan
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_flower(&vertices, &indices, 1, 4, 1);
+                            geometry_generation::generate_foliage_flower(&vertices, &indices, 1, 1, 1);
                             mesh_flower->AddLod(vertices, indices, sub_mesh_index);
                         }
 

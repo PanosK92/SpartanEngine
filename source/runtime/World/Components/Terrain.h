@@ -65,8 +65,9 @@ namespace spartan
         Terrain(Entity* entity);
         ~Terrain();
 
-        RHI_Texture* GetHeightMap() const          { return m_height_texture; }
-        void SetHeightMap(RHI_Texture* height_map) { m_height_texture = height_map;}
+        RHI_Texture* GetHeightMapSeed() const          { return m_height_map_seed; }
+        void SetHeightMapSeed(RHI_Texture* height_map) { m_height_map_seed = height_map;}
+        RHI_Texture* GetHeightMapFinal() const         { return m_height_map_final.get(); }
 
         uint32_t GetWidth() const { return m_width; }
         uint32_t GetHeight() const { return m_height; }
@@ -105,6 +106,10 @@ namespace spartan
     private:
         void Clear();
 
+        // textures
+        RHI_Texture* m_height_map_seed                  = nullptr;
+        std::shared_ptr<RHI_Texture> m_height_map_final = nullptr;
+
         // properties
         float m_min_y = -64.0f;
         float m_max_y = 256.0;
@@ -118,7 +123,7 @@ namespace spartan
         uint32_t m_vertex_count           = 0;
         uint32_t m_index_count            = 0;
         uint32_t m_triangle_count         = 0;
-        RHI_Texture* m_height_texture     = nullptr;
+    
         std::vector<float> m_height_data;
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>> m_tile_vertices;
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
