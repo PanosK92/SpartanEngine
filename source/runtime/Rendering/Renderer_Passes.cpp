@@ -1072,103 +1072,104 @@ namespace spartan
         // acquire render targets
         RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTarget::frame_output_2);
-
         cmd_list->BeginMarker("post_process");
-
-        // macros which allows us to keep track of which texture is an input/output for each pass
-        bool swap_output  = true;
-        bool any_pass_ran = false;
-        #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
-        #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
-
+    
+        // track current input explicitly for robustness
+        RHI_Texture* tex_in  = rt_frame_output;
+        RHI_Texture* tex_out = rt_frame_output_scratch;
+        bool any_pass_ran    = false;
+    
         // depth of field
         if (GetOption<bool>(Renderer_Option::DepthOfField))
         {
-            swap_output = !swap_output;
-            Pass_DepthOfField(cmd_list, get_output_in, get_output_out);
+            Pass_DepthOfField(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
             any_pass_ran = true;
         }
-        
+    
         // motion blur
         if (GetOption<bool>(Renderer_Option::MotionBlur))
         {
-            swap_output = !swap_output;
-            Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
+            Pass_MotionBlur(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
             any_pass_ran = true;
         }
-        
+    
         // bloom
         if (GetOption<bool>(Renderer_Option::Bloom))
         {
-            swap_output = !swap_output;
-            Pass_Bloom(cmd_list, get_output_in, get_output_out);
+            Pass_Bloom(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
             any_pass_ran = true;
         }
-
+    
         // auto-exposure
         if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
         {
+            RHI_Texture* tex_exposure = tex_in;
+
+            // auto-exposure needs mips
             if (any_pass_ran)
             {
-                // this pass requires the input texture to have mips, which only rt_frame_output has
-                // therefore if that's not what's coming in, blit to it and generate the mip chain
-                if ((get_output_in) != rt_frame_output)
+                if (!tex_in->HasPerMipViews())
                 {
-                    cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, false);
-                    Pass_Downscale(cmd_list, rt_frame_output, Renderer_DownsampleFilter::Average);
+                    tex_exposure = tex_out;
+                    cmd_list->Blit(tex_in, tex_exposure, false);
                 }
+                
+                Pass_Downscale(cmd_list, tex_exposure, Renderer_DownsampleFilter::Average);
             }
-
-            Pass_AutoExposure(cmd_list, rt_frame_output);
+            
+            Pass_AutoExposure(cmd_list, tex_exposure);
         }
-
+    
         // tone-mapping & gamma correction
-        {
-            swap_output = !swap_output;
-            Pass_Output(cmd_list, get_output_in, get_output_out);
-        }
-
+        Pass_Output(cmd_list, tex_in, tex_out);
+        swap(tex_in, tex_out);
+    
         // dithering
         if (GetOption<bool>(Renderer_Option::Dithering))
         {
-            swap_output = !swap_output;
-            Pass_Dithering(cmd_list, get_output_in, get_output_out);
+            Pass_Dithering(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
+    
         // sharpening
-        if (GetOption<bool>(Renderer_Option::Sharpness) && GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) != Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+        Renderer_AntiAliasing_Upsampling aa_upsampling = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        bool is_fsr                                    = aa_upsampling == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr; // fsr does it's own sharpening
+        if (GetOption<bool>(Renderer_Option::Sharpness) && !is_fsr)
         {
-            swap_output = !swap_output;
-            Pass_Sharpening(cmd_list, get_output_in, get_output_out);
+            Pass_Sharpening(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-        
+    
         // film grain
         if (GetOption<bool>(Renderer_Option::FilmGrain))
         {
-            swap_output = !swap_output;
-            Pass_FilmGrain(cmd_list, get_output_in, get_output_out);
+            Pass_FilmGrain(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
+    
         // chromatic aberration
         if (GetOption<bool>(Renderer_Option::ChromaticAberration))
         {
-            swap_output = !swap_output;
-            Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
+            Pass_ChromaticAberration(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
+    
         // vhs
         if (GetOption<bool>(Renderer_Option::Vhs))
         {
-            swap_output = !swap_output;
-            Pass_Vhs(cmd_list, get_output_in, get_output_out);
+            Pass_Vhs(cmd_list, tex_in, tex_out);
+            swap(tex_in, tex_out);
         }
-
-        // if the last written texture is not the output one, then make sure it is
-        if (!swap_output)
+    
+        // ensure final output is in rt_frame_output
+        if (tex_in != rt_frame_output)
         {
-            cmd_list->Copy(rt_frame_output_scratch, rt_frame_output, false);
+            cmd_list->Copy(tex_in, rt_frame_output, false);
         }
-
+    
         // editor
         Pass_Grid(cmd_list, rt_frame_output);
         Pass_Lines(cmd_list, rt_frame_output);
