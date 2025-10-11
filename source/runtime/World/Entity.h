@@ -82,10 +82,15 @@ namespace spartan
             component->SetType(type);
             component->Initialize();
 
+            if (auto volume = dynamic_cast<Volume*>(component.get()))
+            {
+                World::AddVolume(volume);
+            }
+
             return component.get();
         }
 
-        // adds a component of ComponentType 
+        // adds a component of ComponentType
         Component* AddComponent(ComponentType type);
 
         // returns a component of type T

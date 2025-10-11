@@ -139,7 +139,7 @@ namespace
             value = clamp(value, min, max);
 
             // Only update if changed
-            if (old_value != value)
+            if (changed && old_value != value)
             {
                 Renderer::GetRenderOptionsPool().SetOption(render_option, value);
             }

@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "../Resource/ResourceCache.h"
+#include "Components/Volume.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -52,6 +53,7 @@ namespace spartan
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
+        vector<Volume*> volumes;
         uint32_t audio_source_count     = 0;
         atomic<bool> resolve            = false;
         bool was_in_editor_mode         = false;
@@ -589,6 +591,10 @@ namespace spartan
         {
             camera = nullptr;
         }
+        if (Volume* volume = entity_to_remove->GetComponent<Volume>())
+        {
+            RemoveVolume(volume);
+        }
 
         // remove the entity and all of its children
         {
@@ -653,6 +659,28 @@ namespace spartan
     const vector<Entity*>& World::GetEntitiesLights()
     {
         return entities_lights;
+    }
+
+    void World::AddVolume(Volume* volume)
+    {
+        if (!volume)
+            return;
+
+        if (const auto it = ranges::find(volumes, volume); it == volumes.end())
+        {
+            volumes.push_back(volume);
+        }
+    }
+
+    void World::RemoveVolume(Volume* volume)
+    {
+        if (!volume)
+            return;
+
+        if (const auto it = ranges::find(volumes, volume); it != volumes.end())
+        {
+            volumes.erase(ranges::remove(volumes, volume).begin(), volumes.end());
+        }
     }
 
     string World::GetName()
