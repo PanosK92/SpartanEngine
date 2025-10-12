@@ -277,8 +277,8 @@ namespace spartan
                                 renderable->GetIndexCount(lod_index),
                                 renderable->GetIndexOffset(lod_index),
                                 renderable->GetVertexOffset(lod_index),
-                                renderable->HasInstancing() ? draw_call.instance_index : 0,
-                                renderable->HasInstancing() ? draw_call.instance_count : 1
+                                draw_call.instance_index,
+                                draw_call.instance_count
                             );
                         }
                     }
@@ -562,8 +562,8 @@ namespace spartan
                         renderable->GetIndexCount(draw_call.lod_index),
                         renderable->GetIndexOffset(draw_call.lod_index),
                         renderable->GetVertexOffset(draw_call.lod_index),
-                        renderable->HasInstancing() ? draw_call.instance_index : 0,
-                        renderable->HasInstancing() ? draw_call.instance_count : 1
+                        draw_call.instance_index,
+                        draw_call.instance_count
                     );
 
                     // at this point, we don't want clear in case another render pass is implicitly started
@@ -660,8 +660,8 @@ namespace spartan
                         renderable->GetIndexCount(draw_call.lod_index),
                         renderable->GetIndexOffset(draw_call.lod_index),
                         renderable->GetVertexOffset(draw_call.lod_index),
-                        renderable->HasInstancing() ? draw_call.instance_index : 0,
-                        renderable->HasInstancing() ? draw_call.instance_count : 1
+                        draw_call.instance_index,
+                        draw_call.instance_count
                     );
 
                     // at this point, we don't want clear in case another render pass is implicitly started
