@@ -744,7 +744,7 @@ namespace spartan
                 const float render_distance_trees            = 2'000.0f;
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
-                const float per_triangle_density_grass_blade = 15.0f;
+                const float per_triangle_density_grass_blade = 10.0f;
                 const float per_triangle_density_flower      = 0.2f;
                 const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;
@@ -861,7 +861,7 @@ namespace spartan
                 const float dimension  = 8000; // meters
                 const uint32_t density = 64;   // geometric
                 const Color forest_water_color = Color(0.0f / 255.0f, 150.0f / 255.0f, 70.0f / 255.0f, 220.0f / 255.0f);
-                entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f, 0.1f);
+                entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f, 0.05f);
 
                 // props: trees, rocks, grass
                 {
