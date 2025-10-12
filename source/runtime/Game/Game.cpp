@@ -744,7 +744,7 @@ namespace spartan
                 const float render_distance_trees            = 2'000.0f;
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
-                const float per_triangle_density_grass_blade = 10.0f;
+                const float per_triangle_density_grass_blade = 13.0f;
                 const float per_triangle_density_flower      = 0.2f;
                 const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;

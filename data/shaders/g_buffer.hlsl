@@ -263,7 +263,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // reconstruct z-component as this can be a bc5 two channel normal map
         tangent_normal.z = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
     
-        // rotate normals for water using Perlin noise, modulated by surface.is_water()
+        // rotate normals to fake water waves/ripples
+        if (surface.is_water())
         {
             float2 direction = float2(1.0, 0.5);
             float speed      = 0.2;
@@ -271,8 +272,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float2 uv_offset = direction * speed * time;
             float2 noise_uv  = (vertex.uv_misc.xy + uv_offset) * 5.0f;            // scale UVs for wave size
             float noise      = noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
-            float is_water   = (float) surface.is_water();
-            float angle      = noise * PI2 * is_water;                            // map noise [0,1] to angle [0, 2π] for water only
+            float angle      = noise * PI2;                                       // map noise [0,1] to angle [0, 2π] for water only
     
             // rotate tangent normal.xy around Z-axis (tangent space)
             float cos_a       = cos(angle);
@@ -283,11 +283,11 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             );
     
             // blend between original and rotated normals based on is_water (0 = original, 1 = rotated)
-            tangent_normal.xy = lerp(tangent_normal.xy, rotated_xy, is_water);
+            tangent_normal.xy = rotated_xy;
             tangent_normal.z  = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
     
             // flip if normal points down
-            tangent_normal *= lerp(1.0, sign(tangent_normal.z), is_water);
+            tangent_normal *= sign(tangent_normal.z);
         }
     
         float normal_intensity     = saturate(max(0.012f, GetMaterial().normal));
@@ -327,6 +327,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
     
     // specular anti-aliasing (toksvig-inspired with distance adaptation)
+    if (surface.has_texture_normal())
     {
         static const float strength           = 1.0f;
         static const float max_roughness_gain = 0.02f;
@@ -335,16 +336,16 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float3 dndv                           = ddy(normal);
         
         // compute variance and normalize by normal length
-        float variance                        = length(dndu) * length(dndu) + length(dndv) * length(dndv);
-        float normal_length                   = length(normal);
-        variance                             /= max(0.001f, normal_length * normal_length);
+        float variance       = length(dndu) * length(dndu) + length(dndv) * length(dndv);
+        float normal_length  = length(normal);
+        variance            /= max(0.001f, normal_length * normal_length);
         
         // adapt strength based on camera distance
-        float distance                        = length(position_world - buffer_frame.camera_position);
-        float adaptive_strength               = lerp(1.0f, 0.3f, saturate(distance / 10.0f));
-        float kernel_roughness2               = min(variance * strength * adaptive_strength, max_roughness_gain);
-        float filtered_roughness2             = saturate(roughness2 + kernel_roughness2);
-        roughness                             = fast_sqrt(filtered_roughness2);
+        float distance            = length(position_world - buffer_frame.camera_position);
+        float adaptive_strength   = lerp(1.0f, 0.3f, saturate(distance / 10.0f));
+        float kernel_roughness2   = min(variance * strength * adaptive_strength, max_roughness_gain);
+        float filtered_roughness2 = saturate(roughness2 + kernel_roughness2);
+        roughness                 = fast_sqrt(filtered_roughness2);
     }
 
     // write to g-buffer
