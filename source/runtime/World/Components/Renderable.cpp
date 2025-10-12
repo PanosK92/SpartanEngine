@@ -473,12 +473,11 @@ namespace spartan
         bool is_grass      = m_material && m_material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f;
         if (is_grass)
         {
-            // unchanged grass logic
             static const array<float, 3> grass_distance_thresholds =
             {
-                30.0f,  // lod0: <30m  (high detail, 5 segments)
-                100.0f, // lod1: <100m (medium, 3 segments)
-                300.0f  // lod2: <300m (low, 1 segment)
+                15.0f, // lod0: (high detail, 5 segments)
+                40.0f, // lod1: (medium, 3 segments)
+                80.0f  // lod2: (low, 1 segment)
             };
             for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(grass_distance_thresholds.size())); i++)
             {
