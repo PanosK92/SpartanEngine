@@ -1112,7 +1112,7 @@ namespace spartan
             });
         }
 
-        // build prepass calls: opaques only, sorted by depth front-to-back
+        // build prepass calls: opaques only, sorted by alpha test (non-alpha first), then depth front-to-back
         {
             for (uint32_t i = 0; i < m_draw_call_count; ++i)
             {
@@ -1123,9 +1123,15 @@ namespace spartan
                 }
             }
 
-            // sort prepass by distance_squared only (front-to-back)
+            // sort prepass by alpha test flag, then distance_squared (front-to-back)
             sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
             {
+                bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
+                bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+                if (a_alpha != b_alpha)
+                {
+                    return !a_alpha; // non-alpha before alpha-tested
+                }
                 return a.distance_squared < b.distance_squared;
             });
         }
