@@ -1050,7 +1050,7 @@ namespace spartan
         amd::ssr::description_dispatch.motionVectorScale.y                  = -0.5f;   // same as above, but also flips Y
         amd::ssr::description_dispatch.normalUnPackMul                      = 1.0f;
         amd::ssr::description_dispatch.normalUnPackAdd                      = 0.0f;
-        amd::ssr::description_dispatch.depthBufferThickness                 = 2.5f;    // hit acceptance bias, larger values can cause streaks, lower values can cause holes
+        amd::ssr::description_dispatch.depthBufferThickness                 = 1.5f;    // hit acceptance bias, larger values can cause streaks, lower values can cause holes
         amd::ssr::description_dispatch.varianceThreshold                    = 0.0001f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
         amd::ssr::description_dispatch.maxTraversalIntersections            = 100;     // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
         amd::ssr::description_dispatch.minTraversalOccupancy                = 1;       // exit the core loop early if less than this number of threads are running

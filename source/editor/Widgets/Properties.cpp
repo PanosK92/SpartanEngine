@@ -891,10 +891,15 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::Checkbox("Wind animation", &wind_animation);
             material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
 
-              // wind animation
+            // wind animation
             bool emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo) != 0.0f;
             ImGui::Checkbox("Emissive from albedo", &emissive_from_albedo);
             material->SetProperty(MaterialProperty::EmissiveFromAlbedo, emissive_from_albedo ? 1.0f : 0.0f);
+
+            // world space uv
+            bool world_space_uv = material->GetProperty(MaterialProperty::WorldSpaceUv) != 0.0f;
+            ImGui::Checkbox("World space uv", &world_space_uv);
+            material->SetProperty(MaterialProperty::WorldSpaceUv, world_space_uv ? 1.0f : 0.0f);
         }
 
         //= MAP ===============================================================================

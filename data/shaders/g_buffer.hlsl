@@ -141,12 +141,21 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     if (any(material.world_space_uv))
     {
         float3 abs_normal = abs(normal);
-        float2 uv_x       = position_world.yz;
-        float2 uv_y       = position_world.xz;
-        float2 uv_z       = position_world.xy;
-        vertex.uv_misc.xy = (uv_x * abs_normal.x + uv_y * abs_normal.y + uv_z * abs_normal.z) * material.world_space_uv;
+
+         // planar projection based on dominant axis
+        float2 uv_x = position_world.yz;
+        float2 uv_y = position_world.xz;
+        float2 uv_z = position_world.xy;
+
+        // base world-space UV (planar blend)
+        float2 uv_world = uv_x * abs_normal.x + uv_y * abs_normal.y + uv_z * abs_normal.z;
+
+        // apply tiling and offset
+        uv_world = uv_world * material.tiling + material.offset;
+
+        vertex.uv_misc.xy = uv_world;
     }
-    
+
     // albedo
     {
         float4 albedo_sample = 1.0f;
@@ -192,30 +201,29 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             {
                 // base and default tip colors
                 const float3 flower_base = float3(0.05f, 0.07f, 0.03f);
-                float3 flower_tip = float3(0.529f, 0.808f, 0.922f); // light sky blue
 
                 uint instance_id = vertex.uv_misc.w;
-
-                // reflect CPU clustering logic (same grouping)
                 const uint instances_per_cluster = 5000;
                 uint cluster_id = instance_id / instances_per_cluster;
 
-                // stable cluster color (same for all flowers in this cluster)
+                // stable cluster variation
                 float cluster_variation = hash(cluster_id);
 
-                // assign a main hue to the cluster
-                if (cluster_variation < 0.33f)
-                    flower_tip = float3(0.529f, 0.808f, 0.922f); // blue
-                else if (cluster_variation < 0.66f)
-                    flower_tip = float3(0.8f, 0.2f, 0.2f); // red
-                else
-                    flower_tip = float3(0.9f, 0.8f, 0.1f); // yellow
+                 // define the three main cluster colors
+                const float3 color_blue = float3(0.529f, 0.808f, 0.922f);
+                const float3 color_red = float3(0.8f, 0.2f, 0.2f);
+                const float3 color_yellow = float3(0.9f, 0.8f, 0.1f);
 
-                // tiny internal variation so not every flower is identical
+                // branchless hue selection
+                float3 flower_tip = color_blue;
+                flower_tip = lerp(flower_tip, color_red, step(0.33f, cluster_variation));
+                flower_tip = lerp(flower_tip, color_yellow, step(0.66f, cluster_variation));
+
+                // local subtle variation
                 float local_variation = hash(instance_id * 13u);
-                flower_tip = lerp(flower_tip, flower_tip * (0.9f + 0.2f * local_variation), 0.5f);
+                flower_tip *= (0.9f + 0.1f * local_variation); // slight brightness variance
 
-                // vertical gradient (base to tip)
+                // vertical gradient
                 float height_percent = vertex.uv_misc.z;
                 float t = smoothstep(0.2f, 1.0f, height_percent);
                 float3 flower_tint = lerp(flower_base, flower_tip, t);
@@ -268,12 +276,12 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         if (surface.is_water())
         {
             float2 direction = float2(1.0, 0.5);
-            float speed      = 0.2;
+            float speed      = 0.5f;
             float time       = (float)buffer_frame.time;
-            float2 uv_offset = direction * speed * time;
-            float2 noise_uv  = (vertex.uv_misc.xy + uv_offset) * 5.0f;            // scale UVs for wave size
-            float noise      = noise_perlin(noise_uv + float2(time, time * 0.5)); // animate with time
-            float angle      = noise * PI2;                                       // map noise [0,1] to angle [0, 2π] for water only
+            float2 uv_offset = direction * time * speed;
+            float2 noise_uv  = (vertex.uv_misc.xy + uv_offset); 
+            float noise      = noise_perlin(noise_uv);
+            float angle      = noise * PI2; 
     
             // rotate tangent normal.xy around Z-axis (tangent space)
             float cos_a       = cos(angle);
