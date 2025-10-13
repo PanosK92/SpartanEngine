@@ -264,7 +264,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         tangent_normal.z = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
     
         // rotate normals to fake water waves/ripples
-        float distance_fade = 1.0f;
         if (surface.is_water())
         {
             float2 direction = float2(1.0, 0.5);
@@ -289,12 +288,12 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     
             // flip if normal points down
             tangent_normal *= sign(tangent_normal.z);
-
-            // fade normal intensity beyond distance - this is because high frequency normals sampled at low mip (far off and glazing angles) become noisy
-            float fade_start = 200.0f;
-            float fade_end   = 400.0f;
-            distance_fade    = saturate((fade_end - surface.camera_to_pixel_length) / (fade_end - fade_start));
         }
+
+        // fade normal texture beyond a certain distnace to avoid high frequency noise from lower mips
+        float fade_start    = 150.0f;
+        float fade_end      = 30.0f;
+        float distance_fade = saturate((fade_end - surface.camera_to_pixel_length) / (fade_end - fade_start));
 
         float normal_intensity    = saturate(max(0.01f, GetMaterial().normal)) * distance_fade;
         tangent_normal.xy         *= normal_intensity;
