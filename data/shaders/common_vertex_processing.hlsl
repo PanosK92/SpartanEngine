@@ -160,11 +160,10 @@ struct vertex_processing
         const float3 up    = float3(0, 1, 0);
         const float3 right = float3(1, 0, 0);
     
-        // bending due to gravity and a subtle breeze (proper wind simulation is done in world space)
+        // bending due to gravity (towards a random direction)
         float random_lean      = hash(instance_id);
         float gravity_angle    = random_lean * vertex.uv_misc.z;
-        float wind_angle       = noise_perlin(float(buffer_frame.time * 0.5f) + input.position.x * 0.05f + input.position.z * 0.05f + float(instance_id) * 0.17f) * 0.2f;
-        float3x3 bend_rotation = rotation_matrix(right, gravity_angle + wind_angle);
+        float3x3 bend_rotation = rotation_matrix(right, gravity_angle);
         input.position.xyz     = mul(bend_rotation, input.position.xyz);
         input.normal           = mul(bend_rotation, input.normal);
         input.tangent          = mul(bend_rotation, input.tangent);
@@ -187,7 +186,6 @@ struct vertex_processing
             float3 wind        = buffer_frame.wind;
             float3 wind_dir    = normalize(wind + float3(1e-6f, 0.0f, 1e-6f));
             float wind_mag     = length(wind);
-            float3 instance_up = normalize(transform[1].xyz);
 
             // base params
             const float base_scale = 0.025f;                   // broad patterns
@@ -206,7 +204,7 @@ struct vertex_processing
 
             // rotate around axis
             float3 axis  = normalize(cross(instance_up, bend_dir));
-            float angle  = sway * (PI / 3.0f); // cap for realism
+            float angle  = sway * (60.0f * DEG_TO_RAD);
             float3x3 rot = rotation_matrix(axis, angle);
 
              // apply to pos/normal/tangent

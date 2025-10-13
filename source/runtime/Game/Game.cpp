@@ -902,7 +902,7 @@ namespace spartan
                         }
 
                         mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // need to remove that
-                        mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc.
+                        mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc
                     }
 
                     // add after mesh_grass_blade
