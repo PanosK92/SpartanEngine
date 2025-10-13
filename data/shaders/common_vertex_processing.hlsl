@@ -152,23 +152,6 @@ float3x3 rotation_matrix(float3 axis, float angle)
 
 struct vertex_processing
 {
-    static void process_local_space(Surface surface, inout Vertex_PosUvNorTan input, inout gbuffer_vertex vertex, const float width_percent, uint instance_id)
-    {
-        if (!surface.is_grass_blade())
-            return;
-    
-        const float3 up    = float3(0, 1, 0);
-        const float3 right = float3(1, 0, 0);
-    
-        // bending due to gravity (towards a random direction)
-        float random_lean      = hash(instance_id);
-        float gravity_angle    = random_lean * vertex.uv_misc.z;
-        float3x3 bend_rotation = rotation_matrix(right, gravity_angle);
-        input.position.xyz     = mul(bend_rotation, input.position.xyz);
-        input.normal           = mul(bend_rotation, input.normal);
-        input.tangent          = mul(bend_rotation, input.tangent);
-    }
- 
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
     {
         float time                        = (float)buffer_frame.time + time_offset;
@@ -286,9 +269,6 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.uv_misc.z          = height_percent;
     vertex.width_percent      = width_percent;
     
-    // process in local space
-    vertex_processing::process_local_space(surface, input, vertex, width_percent, instance_id);
-  
     // transform to world space
     matrix instance         = compose_instance_transform(input.instance_position_x, input.instance_position_y, input.instance_position_z, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
     transform                 = mul(instance, transform);
@@ -397,8 +377,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     float3 position_previous  = 0.0f;// get_position_previous(depth_previous, screen_uv_previous);
 
     // calculate fade factor based on actual distance from camera
-    float3 vec_to_vertex      = position - buffer_frame.camera_position;
-    float distance_from_cam   = length(vec_to_vertex);
+    float distance_from_cam   = fast_length(position - buffer_frame.camera_position);
     const float fade_distance = 4.0f; // distance from the end at which tessellation starts to fade to 0
     float fade_factor         = saturate((TESS_DISTANCE - distance_from_cam) / fade_distance);
     
