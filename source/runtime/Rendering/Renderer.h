@@ -63,7 +63,7 @@ namespace spartan
         static void Shutdown();
         static void Tick();
 
-        // primitive rendering (development/debugging)
+        // primitive rendering (development & debugging)
         static void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines);
         static void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines);
         static void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines);

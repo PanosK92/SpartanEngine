@@ -115,7 +115,6 @@ float fast_sqrt(float x)
 float fast_length(float3 v)
 {
     float length_squared = dot(v, v);
-    
     return fast_sqrt(length_squared);
 }
 
