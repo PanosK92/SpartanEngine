@@ -270,7 +270,7 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.width_percent      = width_percent;
     
     // transform to world space
-    matrix instance         = compose_instance_transform(input.instance_position_x, input.instance_position_y, input.instance_position_z, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
+    matrix instance           = compose_instance_transform(input.instance_position_x, input.instance_position_y, input.instance_position_z, input.instance_normal_oct, input.instance_yaw, input.instance_scale);
     transform                 = mul(instance, transform);
     matrix transform_previous = mul(instance, pass_get_transform_previous());
     float3 position           = mul(input.position, transform).xyz;

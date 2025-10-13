@@ -1366,14 +1366,14 @@ namespace spartan
                 // shared material for surfaces
                 shared_ptr<Material> tile_material = make_shared<Material>();
                 tile_material->SetResourceName("floor_tile" + string(EXTENSION_MATERIAL));
-                tile_material->SetTexture(MaterialTextureType::Color, "project\\materials\\tile_white\\albedo.png");
-                tile_material->SetTexture(MaterialTextureType::Normal, "project\\materials\\tile_white\\normal.png");
-                tile_material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\tile_white\\metallic.png");
-                tile_material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\tile_white\\roughness.png");
-                tile_material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\tile_white\\ao.png");
-                tile_material->SetProperty(MaterialProperty::WorldSpaceUv, 1.0f);
-                tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
-                tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
+                tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
+                tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
+                tile_material->SetTexture(MaterialTextureType::Metalness,    "project\\materials\\tile_white\\metallic.png");
+                tile_material->SetTexture(MaterialTextureType::Roughness,    "project\\materials\\tile_white\\roughness.png");
+                tile_material->SetTexture(MaterialTextureType::Occlusion,    "project\\materials\\tile_white\\ao.png");
+                tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f);
+                tile_material->SetProperty(MaterialProperty::TextureTilingX, 0.25);
+                tile_material->SetProperty(MaterialProperty::TextureTilingY, 0.25);
 
                 // pool light mesh
                 Entity* entity_pool_light = nullptr;
