@@ -432,38 +432,16 @@ float hash(float2 p)
     return float((u.x ^ u.y) * 3141592653u) / 4294967295.0f;
 }
 
-// fast 1d perlin noise
 float noise_perlin(float x)
 {
-    // split into integer and fractional parts
-    float i = floor(x);
-    float f = frac(x);
-    
-    // smooth interpolation curve (3t^2 - 2t^3)
-    f = f * f * (3.0f - 2.0f * f);
-    
-    // interpolate between hashed points
-    return lerp(hash(i), hash(i + 1.0f), f);
+    float scale = 0.1f;
+    return tex_perlin.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), float2(x * scale, 0.5f), 0).r * 2.0f - 1.0f;
 }
 
-// fast 2d perlin noise
 float noise_perlin(float2 x)
 {
-    // split into integer and fractional parts
-    float2 i = floor(x);
-    float2 f = frac(x);
-    
-    // smooth interpolation curve for both axes
-    float2 u = f * f * (3.0f - 2.0f * f);
-    
-    // hash grid corners
-    float ha = hash(i + float2(0.0f, 0.0f));
-    float hb = hash(i + float2(1.0f, 0.0f));
-    float hc = hash(i + float2(0.0f, 1.0f));
-    float hd = hash(i + float2(1.0f, 1.0f));
-    
-    // bilinear interp with optimized mad
-    return ha + (hb - ha) * u.x + ((hc - ha) + (ha - hb + hd - hc) * u.x) * u.y;
+    float scale = 0.1f;
+    return tex_perlin.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), x * scale, 0).r * 2.0f - 1.0f;
 }
 
 // spartan take on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso

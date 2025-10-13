@@ -585,6 +585,9 @@ namespace spartan
 
         #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
+        // perlin noise
+        standard_texture(Renderer_StandardTexture::Noise_perlin) = make_shared<RHI_Texture>(dir_texture + "noise_perlin.png");
+
         // blue noise textures with 2 channels, each channel containing a different pattern
         {
             standard_texture(Renderer_StandardTexture::Noise_blue_0) = make_shared<RHI_Texture>(dir_texture + "noise_blue_0.png");

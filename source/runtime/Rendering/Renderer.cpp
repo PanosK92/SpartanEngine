@@ -162,7 +162,7 @@ namespace spartan
 
             // set wind direction and strength
             {
-                float rotation_y      = 0.0f * math::deg_to_rad;
+                float rotation_y      = 120.0f * math::deg_to_rad;
                 const float intensity = 3.0f; // meters per second
                 SetWind(Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity);
             }

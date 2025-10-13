@@ -125,11 +125,6 @@ struct gbuffer_vertex
     float width_percent      : TEXCOORD2; // temp, will remove
 }; 
 
-float remap(float value, float inMin, float inMax, float outMin, float outMax)
-{
-    return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
-}
-
 float3 extract_position(matrix transform)
 {
     return float3(transform._31, transform._32, transform._33);
@@ -191,50 +186,39 @@ struct vertex_processing
         // wind simulation
         if (surface.is_grass_blade() || surface.is_flower())
         {
-            const float wind_direction_scale      = 0.05f;                                           // scale for wind direction noise (larger scale = broader patterns)
-            const float wind_direction_variation  = PI / 4.0f * (0.5f + base_wind_magnitude / 2.0f); // scale variation width (e.g., wider swings at high mag)
-            const float wind_strength_scale       = 0.25f;                                           // scale for wind strength noise
-            const float wind_strength_amplitude   = 2.0f;                                            // amplifies the wind strength noise
-            const float min_wind_lean             = 0.25f;                                           // minimum grass lean angle
-            const float max_wind_lean             = 1.0f;                                            // maximum grass lean angle
-            
-            // global wind strength modulation (simulates gusts and lulls)
-            float global_wind_strength = noise_perlin(float2(time * scaled_gust_scale, 0.0f));
-            global_wind_strength       = remap(global_wind_strength, -1.0f, 1.0f, 0.5f, 1.5f); // varies between 0.5x and 1.5x strength
-            
-            // base wind direction from buffer, with noise variation
-            float base_wind_angle    = atan2(base_wind_dir.z, base_wind_dir.x);
-            float2 noise_pos_dir     = position_world.xz * wind_direction_scale + float2(time * scaled_direction_time_scale, 0.0f);
-            float wind_direction_var = noise_perlin(noise_pos_dir);
-            float wind_direction     = base_wind_angle + remap(wind_direction_var, -1.0f, 1.0f, -wind_direction_variation, wind_direction_variation);
-            
-            // 2D noise for wind strength
-            float2 noise_pos_strength = position_world.xz * wind_strength_scale + float2(time * base_wind_magnitude, 0.0f);
-            float wind_strength_noise = noise_perlin(noise_pos_strength) * wind_strength_amplitude * global_wind_strength;
-            
-            // calculate wind lean angle with cubic easing for natural bending
-            float wind_lean_angle = remap(wind_strength_noise, -1.0f, 1.0f, min_wind_lean, max_wind_lean);
-            wind_lean_angle       = (wind_lean_angle * wind_lean_angle * wind_lean_angle); // cubic ease-in
-            wind_lean_angle       = clamp(wind_lean_angle, 0.0f, PI);                      // cap at π to avoid bending below ground
-            
-            // wind direction vector and rotation axis
-            float3 wind_dir      = float3(cos(wind_direction), 0, sin(wind_direction));
-            float3 rotation_axis = normalize(cross(instance_up, -wind_dir));
-            
-            // apply wind bend based on height
-            float total_height = GetMaterial().local_height;
-            float curve_angle  = (wind_lean_angle / total_height) * vertex.uv_misc.z; // taller parts bend more
-            
-            // rotate position, normal, and tangent around the axis
-            float3x3 rotation    = rotation_matrix(rotation_axis, curve_angle);
-            float3 base_position = position_world - position_local;
-            float3 local_pos     = position_world - base_position;
-            local_pos            = mul(rotation, local_pos);
-            position_world       = base_position + local_pos;
-            vertex.normal        = mul(rotation, vertex.normal);
-            vertex.tangent       = mul(rotation, vertex.tangent);
+            float time         = (float) buffer_frame.time + time_offset;
+            float3 wind        = buffer_frame.wind;
+            float3 wind_dir    = normalize(wind + float3(1e-6f, 0.0f, 1e-6f));
+            float wind_mag     = length(wind);
+            float3 instance_up = normalize(transform[1].xyz);
+
+            // base params
+            const float base_scale = 0.025f;                   // broad patterns
+            const float time_scale = 0.1f * (1.0f + wind_mag); // speed up with mag
+            const float sway_amp   = wind_mag * 3.0f;          // stronger bends at high wind
+
+            // layered noise for sway (primary broad + secondary gust)
+            float2 uv   = position_world.xz * base_scale + wind_dir.xz * time * time_scale;
+            float sway  = noise_perlin(uv) * 0.7f;                                           // broad layer
+            sway       += noise_perlin(uv * 2.0f + float2(time * 0.5f, 0.0f)) * 0.3f;        // gust layer
+            sway        = sway * sway_amp * (vertex.uv_misc.z / GetMaterial().local_height); // height-based, remap to 0-1
+
+            // bend dir with slight noise variation
+            float dir_var   = noise_perlin(position_world.xz * 0.01f + time * 0.05f) * (PI / 6.0f);
+            float3 bend_dir = normalize(wind_dir + float3(sin(dir_var), 0.0f, cos(dir_var)));
+
+            // rotate around axis
+            float3 axis  = normalize(cross(instance_up, bend_dir));
+            float angle  = sway * (PI / 3.0f); // cap for realism
+            float3x3 rot = rotation_matrix(axis, angle);
+
+             // apply to pos/normal/tangent
+            float3 base_pos = position_world - position_local;
+            position_world  = base_pos + mul(rot, position_world - base_pos);
+            vertex.normal   = mul(rot, vertex.normal);
+            vertex.tangent  = mul(rot, vertex.tangent);
         }
-        else if (surface.has_wind_animation()) // realistic tree branch/leaf wind sway
+        else if (surface.has_wind_animation()) // tree branch/leaf wind sway
         {
             const float horizontal_amplitude = 0.15f; // max horizontal sway
             const float vertical_amplitude   = 0.1f;  // max vertical bob

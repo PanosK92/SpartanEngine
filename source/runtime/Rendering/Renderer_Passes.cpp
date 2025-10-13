@@ -53,6 +53,7 @@ namespace spartan
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex_perlin, GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute)

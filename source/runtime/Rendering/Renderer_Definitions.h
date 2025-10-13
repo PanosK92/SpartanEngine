@@ -112,11 +112,14 @@ namespace spartan
         tex6  = 11,
         tex3d = 12,
 
+        // noise
+        tex_perlin = 13,
+
         // bindless
-        bindless_material_textures   = 13,
-        bindless_material_parameters = 14,
-        bindless_light_parameters    = 15,
-        bindless_aabbs               = 16,
+        bindless_material_textures   = 14,
+        bindless_material_parameters = 15,
+        bindless_light_parameters    = 16,
+        bindless_aabbs               = 17,
     };
 
     enum class Renderer_BindingsUav
@@ -250,6 +253,7 @@ namespace spartan
 
     enum class Renderer_StandardTexture
     {
+        Noise_perlin,
         Noise_blue_0,
         Noise_blue_1,
         Noise_blue_2,
