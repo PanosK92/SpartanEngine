@@ -859,7 +859,7 @@ namespace spartan
                 // water
                 const float dimension          = 8000; // meters
                 const uint32_t density         = 64;   // geometric
-                const Color forest_water_color = Color(0.0f / 255.0f, 140.0f / 255.0f, 100.0f / 255.0f, 28.0f / 255.0f);
+                const Color forest_water_color = Color(0.0f / 255.0f, 140.0f / 255.0f, 100.0f / 255.0f, 50.0f / 255.0f);
                 entities::water(Vector3::Zero, dimension, density, forest_water_color);
 
                 // props: trees, rocks, grass
