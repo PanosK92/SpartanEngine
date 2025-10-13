@@ -226,16 +226,15 @@ namespace spartan
                 shared_ptr<Material> material = make_shared<Material>();
                 {
                     material->SetResourceName("water" + string(EXTENSION_MATERIAL));
-                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); // pool water color
+                    material->SetColor(color);
                     material->SetTexture(MaterialTextureType::Normal,            "project\\materials\\water\\normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
                     material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
-                    material->SetProperty(MaterialProperty::WorldSpaceUv,        1.0f); // mesh size independent tiling
+                    material->SetProperty(MaterialProperty::WorldSpaceUv,        1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest
                     material->SetProperty(MaterialProperty::Normal,              0.1f);
                     material->SetProperty(MaterialProperty::TextureTilingX,      0.1f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      0.1f);
@@ -858,10 +857,10 @@ namespace spartan
                 }
 
                 // water
-                const float dimension  = 8000; // meters
-                const uint32_t density = 64;   // geometric
-                const Color forest_water_color = Color(0.0f / 255.0f, 150.0f / 255.0f, 70.0f / 255.0f, 220.0f / 255.0f);
-                entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color);
+                const float dimension          = 8000; // meters
+                const uint32_t density         = 64;   // geometric
+                const Color forest_water_color = Color(0.0f / 255.0f, 140.0f / 255.0f, 100.0f / 255.0f, 28.0f / 255.0f);
+                entities::water(Vector3::Zero, dimension, density, forest_water_color);
 
                 // props: trees, rocks, grass
                 {
