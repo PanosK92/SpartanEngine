@@ -45,27 +45,20 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
 {
     // compose position
     float3 instance_position = float3(instance_position_x, instance_position_y, instance_position_z);
-
     // check for identity
     if (!any(instance_position) && instance_normal_oct == 0 && instance_yaw == 0 && instance_scale == 0)
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-
     // compose octahedral normal
     float x = float(instance_normal_oct >> 8) / 255.0 * 2.0 - 1.0;
     float y = float(instance_normal_oct & 0xFF) / 255.0 * 2.0 - 1.0;
-    float z = 1.0 - abs(x) - abs(y);
-    if (z < 0.0)
-    {
-        float temp_x = x;
-        x = (1.0 - abs(y)) * (temp_x >= 0.0 ? 1.0 : -1.0);
-        y = (1.0 - abs(temp_x)) * (y >= 0.0 ? 1.0 : -1.0);
-    }
-    float3 normal = normalize(float3(x, y, z));
-
+    float3 n = float3(x, y, 1.0 - abs(x) - abs(y));
+    float mask = step(0.0, n.z);
+    float2 adjusted_xy = (float2(1.0, 1.0) - abs(n.yx)) * sign(n.xy);
+    n.xy = mask * n.xy + (1.0 - mask) * adjusted_xy;
+    float3 normal = normalize(n);
     // compose yaw and scale
-    float yaw   = float(instance_yaw) / 255.0 * 6.28318530718; // pi_2
+    float yaw = float(instance_yaw) / 255.0 * 6.28318530718; // pi_2
     float scale = exp2(lerp(-6.643856, 6.643856, float(instance_scale) / 255.0)); // log2(0.01) to log2(100)
-
     // compose quaternion
     float3 up = float3(0, 1, 0);
     float up_dot_normal = dot(up, normal);
@@ -77,18 +70,17 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
     else
     {
         float s = fast_sqrt(2.0 + 2.0 * up_dot_normal);
-        quat    = float4(cross(up, normal) / s, s * 0.5);
+        quat = float4(cross(up, normal) / s, s * 0.5);
     }
     float cy = cos(yaw * 0.5);
     float sy = sin(yaw * 0.5);
     float4 quat_yaw = float4(0, sy, 0, cy);
-    float4 q = float4( 
+    float4 q = float4(
         quat.w * quat_yaw.x + quat.x * quat_yaw.w + quat.y * quat_yaw.z - quat.z * quat_yaw.y,
         quat.w * quat_yaw.y - quat.x * quat_yaw.z + quat.y * quat_yaw.w + quat.z * quat_yaw.x,
         quat.w * quat_yaw.z + quat.x * quat_yaw.y - quat.y * quat_yaw.x + quat.z * quat_yaw.w,
         quat.w * quat_yaw.w - quat.x * quat_yaw.x - quat.y * quat_yaw.y - quat.z * quat_yaw.z
     );
-
     // compose rotation matrix
     float xx = q.x * q.x;
     float xy = q.x * q.y;
@@ -104,7 +96,6 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
         2 * (xy + zw), 1 - 2 * (xx + zz), 2 * (yz - xw),
         2 * (xz - yw), 2 * (yz + xw), 1 - 2 * (xx + yy)
     );
-
     // compose final transform
     return float4x4(
         float4(rotation._11 * scale, rotation._12 * scale, rotation._13 * scale, 0),
