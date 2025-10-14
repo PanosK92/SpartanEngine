@@ -289,19 +289,19 @@ namespace spartan
             AddLod(vertices, indices, current_sub_mesh_index);
         }
 
-        // generate additional LODs if requested
+        // generate additional lod if requested
         if (generate_lods && (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods)))
         {
-            // store the original index count (for reference, but we'll base targets on previous LOD)
+            // store the original index count (for reference, but we'll base targets on previous lod)
             size_t original_index_count = indices.size();
             
-            // start with the original geometry for LOD 1 onwards
+            // start with the original geometry for lod 1 onwards
             vector<RHI_Vertex_PosTexNorTan> prev_vertices = vertices;
             vector<uint32_t> prev_indices                 = indices;
             
             for (uint32_t lod_level = 1; lod_level < mesh_lod_count; lod_level++)
             {
-                // use the previous LOD's geometry for simplification
+                // use the previous lod's geometry for simplification
                 vector<RHI_Vertex_PosTexNorTan> lod_vertices = prev_vertices;
                 vector<uint32_t> lod_indices                 = prev_indices;
             
@@ -320,7 +320,7 @@ namespace spartan
                     }
                     float target_fraction = max(0.1f, 1.0f - t); // retain at least 10% to avoid over-reduction
 
-                    // compute target index count based on the previous LOD's actual index count
+                    // compute target index count based on the previous lod's actual index count
                     size_t target_index_count = max(static_cast<size_t>(64), static_cast<size_t>(prev_indices.size() * target_fraction));
             
                     // simplify geometry
@@ -332,10 +332,10 @@ namespace spartan
                     if (lod_indices.size() >= prev_indices.size())
                         break;
             
-                    // Add the simplified geometry as a new LOD
+                    // add the simplified geometry as a new lod
                     AddLod(lod_vertices, lod_indices, current_sub_mesh_index);
             
-                    // Update previous geometry for the next iteration
+                    // update previous geometry for the next iteration
                     prev_vertices = move(lod_vertices);
                     prev_indices  = move(lod_indices);
                 }
@@ -403,17 +403,17 @@ namespace spartan
             for (const auto& sub : m_sub_meshes)
         
             {
-                const auto& lod = sub.lods[0]; // Use LOD 0 for BLAS
+                const auto& lod = sub.lods[0]; // use lod 0 for blas
         
                 RHI_AccelerationStructureGeometry geo;
-                geo.flags                    = 0; // Or VK_GEOMETRY_OPAQUE_BIT_KHR if no any-hit
-                geo.vertex_format            = RHI_Format::R32G32B32_Float; // Positions
-                geo.vertex_buffer_address    =  RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
+                geo.flags                    = 0; // or VK_GEOMETRY_OPAQUE_BIT_KHR if no any-hit
+                geo.vertex_format            = RHI_Format::R32G32B32_Float; // positions
+                geo.vertex_buffer_address    = RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
                 geo.vertex_stride            = m_vertex_buffer->GetStride();
                 geo.max_vertex               = lod.vertex_count - 1;
                 geo.index_format             = RHI_Format::R32_Uint;
                 geo.index_buffer_address     = RHI_Device::GetBufferDeviceAddress(m_index_buffer->GetRhiResource()) + lod.index_offset * sizeof(uint32_t);
-                geo.transform_buffer_address = 0; // No instance transform here
+                geo.transform_buffer_address = 0; // no instance transform here
         
                 geometries.push_back(geo);
                 primitive_counts.push_back(lod.index_count / 3);

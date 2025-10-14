@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_VendorTechnology.h"
+#include "../RHI/RHI_AccelerationStructure.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
@@ -70,6 +71,7 @@ namespace spartan
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
+    unique_ptr<RHI_AccelerationStructure> m_tlas;
 
     namespace
     {
@@ -297,6 +299,9 @@ namespace spartan
         {
             // fill draw call list and determine ideal occluders
             UpdateDrawCalls(m_cmd_list_present);
+
+            // update tlas
+            UpdateTopLevelAccelerationStructure(m_cmd_list_present);
     
             // handle dynamic buffers and resource deletion
             {
@@ -1197,6 +1202,53 @@ namespace spartan
                 m_draw_calls_prepass[areas[i].index].is_occluder = true;
             }
         }
+    }
+
+    void Renderer::UpdateTopLevelAccelerationStructure(RHI_CommandList* cmd_list)
+    {
+        if (!RHI_Device::IsSupportedRayTracing())
+          return;
+
+        return; // fix later
+        
+        if (!m_tlas)
+        {
+            m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "scene_tlas");
+        }
+
+        vector<RHI_AccelerationStructureInstance> instances;
+
+        // go through the world, add all renderables with a blas
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity->GetActive())
+                continue;
+        
+            if (Renderable* renderable = entity->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    if (RHI_AccelerationStructure* blas = renderable->GetMeshBlas())
+                    {
+                        RHI_AccelerationStructureInstance inst;
+                        Matrix world_matrix = renderable->GetEntity()->GetMatrix();
+                        copy(world_matrix.Data(), world_matrix.Data() + 12, inst.transform.begin());
+                        inst.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
+                        inst.mask                                        = 0xFF;                 // visible to all rays
+                        inst.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
+                        inst.flags                                       = 0;                    // or RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT if needed
+                        inst.acceleration_structure_reference            = blas->GetDeviceAddress();
+                        
+                        instances.push_back(inst);
+                    }
+                }
+            }
+        }
+
+        if (instances.empty())
+            return;
+        
+        m_tlas->Build(cmd_list, instances);
     }
 
     void Renderer::UpdateShadowAtlas()

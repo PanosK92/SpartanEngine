@@ -64,6 +64,7 @@ namespace spartan
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
+        RHI_AccelerationStructure* GetMeshBlas() const;
 
         // bounding box
         const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}

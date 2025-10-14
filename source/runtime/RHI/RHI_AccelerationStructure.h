@@ -33,13 +33,14 @@ namespace spartan
    enum class RHI_AccelerationStructureType
     {
         Bottom,
-        Top
+        Top,
+        Max
     };
 
     struct RHI_AccelerationStructureGeometry
     {
         uint32_t flags                    = 0;
-        RHI_Format vertex_format          = RHI_Format::R32G32B32_Float;
+        RHI_Format vertex_format          = RHI_Format::Max;
         uint64_t vertex_buffer_address    = 0;
         uint32_t vertex_stride            = 0;
         uint32_t max_vertex               = 0;
@@ -66,22 +67,26 @@ namespace spartan
 
         // build for blas (bottom-level)
         void Build(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts);
-
         // build for tlas (top-level)
         void Build(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
 
+        // misc
         void* GetRhiResource() const                  { return m_rhi_resource; }
         RHI_AccelerationStructureType GetType() const { return m_type; }
+        uint64_t GetDeviceAddress() const             { return m_buffer_device_address; }
 
     private:
         void CreateScratchBuffer(uint64_t scratch_size);
         void CreateResultBuffer(uint64_t result_size);
 
-        RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Bottom;
+        // misc
+        RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
+        uint64_t m_buffer_device_address = 0;
+
+        // rhi
         void* m_rhi_resource                 = nullptr;
         void* m_rhi_resource_results         = nullptr;
-        // temporaries (destroyed after build)
-        void* m_scratch_buffer               = nullptr;
-        void* m_instance_buffer              = nullptr;
+        void* m_scratch_buffer               = nullptr; // detroyed after build
+        void* m_instance_buffer              = nullptr; // detroyed after build
     };
 }

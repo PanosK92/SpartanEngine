@@ -310,6 +310,14 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
+    RHI_AccelerationStructure* Renderable::GetMeshBlas() const
+    {
+        if (!m_mesh)
+            return nullptr;
+
+        return m_mesh->GetBlas();
+    }
+
     Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)
     {
         return to_world ? m_instances[index].GetMatrix() * GetEntity()->GetMatrix() : m_instances[index].GetMatrix();

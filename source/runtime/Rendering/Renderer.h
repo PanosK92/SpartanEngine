@@ -200,12 +200,19 @@ namespace spartan
         static void DestroyResources();
         static void UpdateShadowAtlas();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
+        static void UpdateTopLevelAccelerationStructure(RHI_CommandList* cmd_list);
 
         // draw calls
         static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;
         static uint32_t m_draw_call_count;
         static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls_prepass;
         static uint32_t m_draw_calls_prepass_count;
+
+        // bindless
+        static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
+        static std::array<Sb_Light, rhi_max_array_size> m_bindless_lights;
+        static std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
+        static bool m_bindless_samplers_dirty;
 
         // misc
         static Cb_Frame m_cb_frame_cpu;
@@ -219,11 +226,5 @@ namespace spartan
         static bool m_transparents_present;
         static RHI_CommandList* m_cmd_list_present;
         static std::vector<ShadowSlice> m_shadow_slices;
-
-        // bindless
-        static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
-        static std::array<Sb_Light, rhi_max_array_size> m_bindless_lights;
-        static std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
-        static bool m_bindless_samplers_dirty;
     };
 }

@@ -56,14 +56,14 @@ namespace spartan
 
     void RHI_AccelerationStructure::CreateResultBuffer(uint64_t result_size)
     {
-        VkBufferUsageFlags usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        VkBufferUsageFlags usage         = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         RHI_Device::MemoryBufferCreate(m_rhi_resource_results, result_size, usage, properties, nullptr, m_object_name.c_str());
     
         VkAccelerationStructureCreateInfoKHR create_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
-        create_info.buffer = static_cast<VkBuffer>(m_rhi_resource_results);
-        create_info.size   = result_size;
-        create_info.type   = (m_type == RHI_AccelerationStructureType::Bottom) ? VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        create_info.buffer                               = static_cast<VkBuffer>(m_rhi_resource_results);
+        create_info.size                                 = result_size;
+        create_info.type                                 = (m_type == RHI_AccelerationStructureType::Bottom) ? VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
     
         int result = RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         SP_ASSERT(result == 0); // VK_SUCCESS is 0
@@ -117,6 +117,7 @@ namespace spartan
             vk_geo.geometry.triangles.indexType                   = geo.index_format == RHI_Format::R32_Uint ? VK_INDEX_TYPE_UINT32 : (geo.index_format == RHI_Format::R16_Uint ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_NONE_KHR);
             vk_geo.geometry.triangles.indexData.deviceAddress     = geo.index_buffer_address;
             vk_geo.geometry.triangles.transformData.deviceAddress = geo.transform_buffer_address;
+
             vk_geometries.push_back(vk_geo);
         }
     
@@ -163,6 +164,8 @@ namespace spartan
         // Destroy scratch
         RHI_Device::MemoryBufferDestroy(m_scratch_buffer);
         m_scratch_buffer = nullptr;
+
+        m_buffer_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource_results);
     }
 
     void RHI_AccelerationStructure::Build(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureInstance>& instances)
