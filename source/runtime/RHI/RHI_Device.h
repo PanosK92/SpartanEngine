@@ -99,6 +99,7 @@ namespace spartan
         static uint64_t PropertyGetOptimalBufferCopyOffsetAlignment() { return m_optimal_buffer_copy_offset_alignment; }
         static bool PropertyIsShadingRateSupported()                  { return m_is_shading_rate_supported; }
         static bool PropertyIsXessSupported()                         { return m_xess_supported; }
+        static bool PropertyIsRayTracingSupported()                   { return m_is_ray_tracing_supported; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color);
@@ -132,6 +133,7 @@ namespace spartan
         static uint64_t m_optimal_buffer_copy_offset_alignment;
         static bool m_is_shading_rate_supported;
         static bool m_xess_supported;
+        static bool m_is_ray_tracing_supported;
 
         // misc
         static bool m_wide_lines;

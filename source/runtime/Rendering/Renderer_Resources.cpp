@@ -183,7 +183,7 @@ namespace spartan
             uint32_t max_dimension = max(width, height);
             uint32_t mip_count     = 1;
 
-            // halve max_dimension until it’s at or below smallest_dimension
+            // halve max_dimension until itâ€™s at or below smallest_dimension
             while (max_dimension >= smallest_dimension)
             {
                 max_dimension /= 2;
@@ -511,6 +511,13 @@ namespace spartan
         // auto-exposure
         shader(Renderer_Shader::auto_exposure_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::auto_exposure_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "auto_exposure.hlsl", async);
+
+        // ray-tracing
+        if (RHI_Device::PropertyIsRayTracingSupported())
+        {
+            shader(Renderer_Shader::ray_tracing_r) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ray_tracing_r)->Compile(RHI_Shader_Type::RayTracing, shader_dir + "ray_tracing.hlsl", async);
+        }
     }
 
     void Renderer::CreateFonts()
