@@ -46,14 +46,24 @@ namespace spartan
     {
         RHI_DestroyResource();
 
-        // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT  -> mappable
-        // VK_MEMORY_PROPERTY_HOST_COHERENT_BIT -> persistently mapped (flushless)
-        // VK_BUFFER_USAGE_TRANSFER_DST_BIT     -> vkCmdUpdateBuffer()
+        // VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT       -> mappable
+        // VK_MEMORY_PROPERTY_HOST_COHERENT_BIT      -> persistently mapped (flushless)
+        // VK_BUFFER_USAGE_TRANSFER_DST_BIT          -> vkCmdUpdateBuffer()
+        // VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT -> RHI_Device::GetBufferDeviceAddress(void* buffer)
 
         if (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index || m_type == RHI_Buffer_Type::Instance)
         {
             bool vertex                     = m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Instance;
             VkBufferUsageFlags flags_usage  = vertex ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+             if (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index)
+             {
+                if (RHI_Device::IsSupportedRayTracing())
+                {
+                    flags_usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                                |  VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+                }
+             }
 
             if (m_mappable)
             {

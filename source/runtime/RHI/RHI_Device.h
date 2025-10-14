@@ -85,21 +85,22 @@ namespace spartan
         static void CmdImmediateSubmit(RHI_CommandList* cmd_list);
 
         // properties (actual silicon properties)
-        static float PropertyGetTimestampPeriod()                     { return m_timestamp_period; }
-        static uint64_t PropertyGetMinUniformBufferOffsetAlignment()  { return m_min_uniform_buffer_offset_alignment; }
-        static uint64_t PropertyGetMinStorageBufferOffsetAlignment()  { return m_min_storage_buffer_offset_alignment; }
-        static uint32_t PropertyGetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
-        static uint32_t PropertyGetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
-        static uint32_t PropertyGetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }
-        static uint32_t PropertyGetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
-        static uint32_t PropertyGetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
-        static uint32_t PropertyGetMaxPushConstantSize()              { return m_max_push_constant_size; }
-        static uint32_t PropertyGetMaxShadingRateTexelSizeX()         { return m_max_shading_rate_texel_size_x; }
-        static uint32_t PropertyGetMaxShadingRateTexelSizeY()         { return m_max_shading_rate_texel_size_y; }
-        static uint64_t PropertyGetOptimalBufferCopyOffsetAlignment() { return m_optimal_buffer_copy_offset_alignment; }
-        static bool PropertyIsShadingRateSupported()                  { return m_is_shading_rate_supported; }
-        static bool PropertyIsXessSupported()                         { return m_xess_supported; }
-        static bool PropertyIsRayTracingSupported()                   { return m_is_ray_tracing_supported; }
+        static float PropertyGetTimestampPeriod()                         { return m_timestamp_period; }
+        static uint64_t PropertyGetMinUniformBufferOffsetAlignment()      { return m_min_uniform_buffer_offset_alignment; }
+        static uint64_t PropertyGetMinStorageBufferOffsetAlignment()      { return m_min_storage_buffer_offset_alignment; }
+        static uint64_t PropertyGetMinAccelerationBufferOffsetAlignment() { return m_min_acceleration_buffer_offset_alignment; }
+        static uint32_t PropertyGetMaxTexture1dDimension()                { return m_max_texture_1d_dimension; }
+        static uint32_t PropertyGetMaxTexture2dDimension()                { return m_max_texture_2d_dimension; }
+        static uint32_t PropertyGetMaxTexture3dDimension()                { return m_max_texture_3d_dimension; }
+        static uint32_t PropertyGetMaxTextureCubeDimension()              { return m_max_texture_cube_dimension; }
+        static uint32_t PropertyGetMaxTextureArrayLayers()                { return m_max_texture_array_layers; }
+        static uint32_t PropertyGetMaxPushConstantSize()                  { return m_max_push_constant_size; }
+        static uint32_t PropertyGetMaxShadingRateTexelSizeX()             { return m_max_shading_rate_texel_size_x; }
+        static uint32_t PropertyGetMaxShadingRateTexelSizeY()             { return m_max_shading_rate_texel_size_y; }
+        static uint64_t PropertyGetOptimalBufferCopyOffsetAlignment()     { return m_optimal_buffer_copy_offset_alignment; }
+        static bool IsSupportedVrs()                                      { return m_is_shading_rate_supported; }
+        static bool IsSupportedXess()                                     { return m_xess_supported; }
+        static bool IsSupportedRayTracing()                               { return m_is_ray_tracing_supported; }
 
         // markers
         static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color);
@@ -129,6 +130,7 @@ namespace spartan
         static float m_timestamp_period;
         static uint64_t m_min_uniform_buffer_offset_alignment;
         static uint64_t m_min_storage_buffer_offset_alignment;
+        static uint64_t m_min_acceleration_buffer_offset_alignment;
         static uint32_t m_max_texture_1d_dimension;
         static uint32_t m_max_texture_2d_dimension;
         static uint32_t m_max_texture_3d_dimension;

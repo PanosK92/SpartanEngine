@@ -672,7 +672,7 @@ namespace spartan
             {
                 if (value == 1.0f)
                 {
-                    if (!RHI_Device::PropertyIsShadingRateSupported())
+                    if (!RHI_Device::IsSupportedVrs())
                     { 
                         SP_LOG_WARNING("This GPU doesn't support variable rate shading");
                         return;
@@ -683,7 +683,7 @@ namespace spartan
             {
                 if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
                 {
-                    if (!RHI_Device::PropertyIsXessSupported())
+                    if (!RHI_Device::IsSupportedXess())
                     { 
                         SP_LOG_WARNING("This GPU doesn't support XeSS");
                         return;

@@ -240,7 +240,7 @@ namespace spartan
             render_target(Renderer_RenderTarget::sss)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "sss");
             render_target(Renderer_RenderTarget::ssr)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "ssr");
             render_target(Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "ssao");
-            if (RHI_Device::PropertyIsShadingRateSupported())
+            if (RHI_Device::IsSupportedVrs())
             { 
                 render_target(Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render / 4, height_render / 4, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
             }
@@ -513,7 +513,7 @@ namespace spartan
         shader(Renderer_Shader::auto_exposure_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "auto_exposure.hlsl", async);
 
         // ray-tracing
-        if (RHI_Device::PropertyIsRayTracingSupported())
+        if (RHI_Device::IsSupportedRayTracing())
         {
             shader(Renderer_Shader::ray_tracing_r) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::ray_tracing_r)->Compile(RHI_Shader_Type::RayTracing, shader_dir + "ray_tracing.hlsl", async);

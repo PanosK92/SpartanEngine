@@ -309,6 +309,11 @@ namespace spartan
         return descriptors;
     }
 
+    uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
+    {
+        return 0;
+    }
+
     // immediate command list
 
     RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)

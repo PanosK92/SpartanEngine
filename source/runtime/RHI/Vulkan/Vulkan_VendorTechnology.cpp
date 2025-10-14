@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -117,7 +117,7 @@ namespace spartan
 
         void context_create()
         {
-            if (!RHI_Device::PropertyIsXessSupported())
+            if (!RHI_Device::IsSupportedXess())
                 return;
 
             // create

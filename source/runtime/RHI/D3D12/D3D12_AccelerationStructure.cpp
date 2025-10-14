@@ -24,6 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_AccelerationStructure.h"
 //=======================================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace spartan
 {
     RHI_AccelerationStructure::RHI_AccelerationStructure(const RHI_AccelerationStructureType type, const char* name)
@@ -33,6 +37,16 @@ namespace spartan
     }
 
     RHI_AccelerationStructure::~RHI_AccelerationStructure()
+    {
+
+    }
+
+    void RHI_AccelerationStructure::Build(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
+    {
+
+    }
+
+    void RHI_AccelerationStructure::Build(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureInstance>& instances)
     {
 
     }

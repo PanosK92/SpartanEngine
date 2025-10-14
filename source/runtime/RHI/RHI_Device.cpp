@@ -32,21 +32,22 @@ using namespace spartan::math;
 namespace spartan
 {
     // device properties
-    float RHI_Device::m_timestamp_period                        = 0;
-    uint64_t RHI_Device::m_min_uniform_buffer_offset_alignment  = 0;
-    uint64_t RHI_Device::m_min_storage_buffer_offset_alignment  = 0;
-    uint32_t RHI_Device::m_max_texture_1d_dimension             = 0;
-    uint32_t RHI_Device::m_max_texture_2d_dimension             = 0;
-    uint32_t RHI_Device::m_max_texture_3d_dimension             = 0;
-    uint32_t RHI_Device::m_max_texture_cube_dimension           = 0;
-    uint32_t RHI_Device::m_max_texture_array_layers             = 0;
-    uint32_t RHI_Device::m_max_push_constant_size               = 0;
-    uint32_t RHI_Device::m_max_shading_rate_texel_size_x        = 0;
-    uint32_t RHI_Device::m_max_shading_rate_texel_size_y        = 0;
-    uint64_t RHI_Device::m_optimal_buffer_copy_offset_alignment = 0;
-    bool RHI_Device::m_is_shading_rate_supported                = false;
-    bool RHI_Device::m_xess_supported                           = false;
-    bool RHI_Device::m_is_ray_tracing_supported                 = false;
+    float RHI_Device::m_timestamp_period                            = 0;
+    uint64_t RHI_Device::m_min_uniform_buffer_offset_alignment      = 0;
+    uint64_t RHI_Device::m_min_storage_buffer_offset_alignment      = 0;
+    uint64_t RHI_Device::m_min_acceleration_buffer_offset_alignment = 0;
+    uint32_t RHI_Device::m_max_texture_1d_dimension                 = 0;
+    uint32_t RHI_Device::m_max_texture_2d_dimension                 = 0;
+    uint32_t RHI_Device::m_max_texture_3d_dimension                 = 0;
+    uint32_t RHI_Device::m_max_texture_cube_dimension               = 0;
+    uint32_t RHI_Device::m_max_texture_array_layers                 = 0;
+    uint32_t RHI_Device::m_max_push_constant_size                   = 0;
+    uint32_t RHI_Device::m_max_shading_rate_texel_size_x            = 0;
+    uint32_t RHI_Device::m_max_shading_rate_texel_size_y            = 0;
+    uint64_t RHI_Device::m_optimal_buffer_copy_offset_alignment     = 0;
+    bool RHI_Device::m_is_shading_rate_supported                    = false;
+    bool RHI_Device::m_xess_supported                               = false;
+    bool RHI_Device::m_is_ray_tracing_supported                     = false;
 
     // misc
     bool RHI_Device::m_wide_lines                = false;

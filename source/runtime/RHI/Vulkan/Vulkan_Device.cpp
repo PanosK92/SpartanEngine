@@ -188,18 +188,18 @@ namespace spartan
 
     namespace functions
     {
-        PFN_vkCreateDebugUtilsMessengerEXT          create_messenger                           = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger                          = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag                             = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT            set_object_name                            = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT            marker_begin                               = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT              marker_end                                 = nullptr;
-        PFN_vkCmdSetFragmentShadingRateKHR          set_fragment_shading_rate                  = nullptr;
-        PFN_vkCreateAccelerationStructureKHR        create_acceleration_structure_khr          = nullptr;
-        PFN_vkDestroyAccelerationStructureKHR       destroy_acceleration_structure_khr         = nullptr;
+        PFN_vkCreateDebugUtilsMessengerEXT          create_messenger                       = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger                      = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag                         = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT            set_object_name                        = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT            marker_begin                           = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT              marker_end                             = nullptr;
+        PFN_vkCmdSetFragmentShadingRateKHR          set_fragment_shading_rate              = nullptr;
+        PFN_vkCreateAccelerationStructureKHR        create_acceleration_structure          = nullptr;
+        PFN_vkDestroyAccelerationStructureKHR       destroy_acceleration_structure         = nullptr;
         PFN_vkGetAccelerationStructureBuildSizesKHR get_acceleration_structure_build_sizes = nullptr;
-        PFN_vkCmdBuildAccelerationStructuresKHR     cmd_build_acceleration_structures_khr      = nullptr;
-        PFN_vkGetBufferDeviceAddress                get_buffer_device_address                  = nullptr;
+        PFN_vkCmdBuildAccelerationStructuresKHR     cmd_build_acceleration_structures      = nullptr;
+        PFN_vkGetBufferDeviceAddress                get_buffer_device_address              = nullptr;
 
         void get_pointers()
         {
@@ -211,7 +211,7 @@ namespace spartan
             {
                 if (Debugging::IsValidationLayerEnabled())
                 {
-                    get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
+                    get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
                     get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
 
                     SP_ASSERT(create_messenger && destroy_messenger);
@@ -229,20 +229,19 @@ namespace spartan
             /* VK_EXT_debug_marker */
             if (Debugging::IsValidationLayerEnabled())
             {
-                get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
+                get_func(set_object_tag,  vkSetDebugUtilsObjectTagEXT);
                 get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
 
                 SP_ASSERT(set_object_tag && set_object_name);
             }
 
             // ray tracing
-            if (RHI_Device::PropertyIsRayTracingSupported())
             {
-                get_func(create_acceleration_structure_khr, vkCreateAccelerationStructureKHR);
-                get_func(destroy_acceleration_structure_khr, vkDestroyAccelerationStructureKHR);
+                get_func(create_acceleration_structure,          vkCreateAccelerationStructureKHR);
+                get_func(destroy_acceleration_structure,         vkDestroyAccelerationStructureKHR);
                 get_func(get_acceleration_structure_build_sizes, vkGetAccelerationStructureBuildSizesKHR);
-                get_func(cmd_build_acceleration_structures_khr, vkCmdBuildAccelerationStructuresKHR);
-                get_func(get_buffer_device_address, vkGetBufferDeviceAddress);
+                get_func(cmd_build_acceleration_structures,      vkCmdBuildAccelerationStructuresKHR);
+                get_func(get_buffer_device_address,              vkGetBufferDeviceAddress);
             }
 
             get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
@@ -745,6 +744,11 @@ namespace spartan
             allocator_info.instance               = RHI_Context::instance;
             allocator_info.vulkanApiVersion       = vulkan_version::used;
             allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+            if (RHI_Device::IsSupportedRayTracing())
+            {
+                allocator_info.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+            }
+
             SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &allocator));
             Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.3.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
         }
@@ -1537,9 +1541,13 @@ namespace spartan
                 VkPhysicalDeviceFragmentShadingRatePropertiesKHR shading_rate_properties = {};
                 shading_rate_properties.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
 
+                VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties = {};
+                acceleration_structure_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+                acceleration_structure_properties.pNext = &shading_rate_properties;
+
                 VkPhysicalDeviceVulkan13Properties device_properties_1_3 = {};
                 device_properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-                device_properties_1_3.pNext                              = &shading_rate_properties;
+                device_properties_1_3.pNext                              = &acceleration_structure_properties;
 
                 VkPhysicalDeviceProperties2 properties_device = {};
                 properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
@@ -1548,18 +1556,19 @@ namespace spartan
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
                 // save some properties
-                m_timestamp_period                     = properties_device.properties.limits.timestampPeriod;
-                m_min_uniform_buffer_offset_alignment  = properties_device.properties.limits.minUniformBufferOffsetAlignment;
-                m_min_storage_buffer_offset_alignment  = properties_device.properties.limits.minStorageBufferOffsetAlignment;
-                m_max_texture_1d_dimension             = properties_device.properties.limits.maxImageDimension1D;
-                m_max_texture_2d_dimension             = properties_device.properties.limits.maxImageDimension2D;
-                m_max_texture_3d_dimension             = properties_device.properties.limits.maxImageDimension3D;
-                m_max_texture_cube_dimension           = properties_device.properties.limits.maxImageDimensionCube;
-                m_max_texture_array_layers             = properties_device.properties.limits.maxImageArrayLayers;
-                m_max_push_constant_size               = properties_device.properties.limits.maxPushConstantsSize;
-                m_max_shading_rate_texel_size_x        = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
-                m_max_shading_rate_texel_size_y        = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
-                m_optimal_buffer_copy_offset_alignment = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
+                m_timestamp_period                         = properties_device.properties.limits.timestampPeriod;
+                m_min_uniform_buffer_offset_alignment      = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_min_storage_buffer_offset_alignment      = properties_device.properties.limits.minStorageBufferOffsetAlignment;
+                m_min_acceleration_buffer_offset_alignment = acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
+                m_max_texture_1d_dimension                 = properties_device.properties.limits.maxImageDimension1D;
+                m_max_texture_2d_dimension                 = properties_device.properties.limits.maxImageDimension2D;
+                m_max_texture_3d_dimension                 = properties_device.properties.limits.maxImageDimension3D;
+                m_max_texture_cube_dimension               = properties_device.properties.limits.maxImageDimensionCube;
+                m_max_texture_array_layers                 = properties_device.properties.limits.maxImageArrayLayers;
+                m_max_push_constant_size                   = properties_device.properties.limits.maxPushConstantsSize;
+                m_max_shading_rate_texel_size_x            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
+                m_max_shading_rate_texel_size_y            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
+                m_optimal_buffer_copy_offset_alignment     = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
 
                 // disable profiler if timestamps are not supported
                 if (Debugging::IsGpuTimingEnabled())
@@ -2271,7 +2280,7 @@ namespace spartan
 
     int RHI_Device::CreateAccelerationStructure(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure)
     {
-        return static_cast<int>(functions::create_acceleration_structure_khr(
+        return static_cast<int>(functions::create_acceleration_structure(
             static_cast<VkDevice>(RHI_Context::device),
             static_cast<const VkAccelerationStructureCreateInfoKHR*>(pCreateInfo),
             static_cast<const VkAllocationCallbacks*>(pAllocator),
@@ -2281,7 +2290,7 @@ namespace spartan
     
     void RHI_Device::DestroyAccelerationStructure(void* accelerationStructure, const void* pAllocator)
     {
-        functions::destroy_acceleration_structure_khr(
+        functions::destroy_acceleration_structure(
             static_cast<VkDevice>(RHI_Context::device),
             static_cast<VkAccelerationStructureKHR>(accelerationStructure),
             static_cast<const VkAllocationCallbacks*>(pAllocator)
@@ -2290,13 +2299,6 @@ namespace spartan
     
     void RHI_Device::GetAccelerationStructureBuildSizes(uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo)
     {
-        // this function can be called very early, so self-initialize the function pointer if needed
-        if (functions::get_acceleration_structure_build_sizes == nullptr)
-        {
-            functions::get_acceleration_structure_build_sizes = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(static_cast<VkDevice>(RHI_Context::device), "vkGetAccelerationStructureBuildSizesKHR"));
-            SP_ASSERT(functions::get_acceleration_structure_build_sizes != nullptr);
-        }
-
         functions::get_acceleration_structure_build_sizes(
             static_cast<VkDevice>(RHI_Context::device),
             static_cast<VkAccelerationStructureBuildTypeKHR>(buildType),
@@ -2308,7 +2310,7 @@ namespace spartan
     
     void RHI_Device::BuildAccelerationStructures(void* commandBuffer, uint32_t infoCount, const void* pInfos, const void* ppBuildRangeInfos)
     {
-        functions::cmd_build_acceleration_structures_khr(
+        functions::cmd_build_acceleration_structures(
             static_cast<VkCommandBuffer>(commandBuffer),
             infoCount,
             static_cast<const VkAccelerationStructureBuildGeometryInfoKHR*>(pInfos),
@@ -2318,13 +2320,6 @@ namespace spartan
     
     uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
     {
-        // this function can be called very early, so self-initialize the function pointer if needed
-        if (functions::get_buffer_device_address == nullptr)
-        {
-            functions::get_buffer_device_address = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(vkGetDeviceProcAddr(static_cast<VkDevice>(RHI_Context::device), "vkGetBufferDeviceAddress"));
-            SP_ASSERT(functions::get_buffer_device_address != nullptr);
-        }
-    
         VkBufferDeviceAddressInfo info = {};
         info.sType                     = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         info.pNext                     = nullptr;

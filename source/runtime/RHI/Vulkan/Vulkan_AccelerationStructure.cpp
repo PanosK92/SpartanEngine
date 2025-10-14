@@ -73,9 +73,26 @@ namespace spartan
 
     void RHI_AccelerationStructure::CreateScratchBuffer(uint64_t scratch_size)
     {
+        // get device required alignment
+        const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+    
+        // round up scratch_size to next multiple of alignment
+        scratch_size = (scratch_size + alignment - 1) & ~(alignment - 1);
+    
+        // add extra alignment bytes in case the buffer start needs alignment internally
+        scratch_size += alignment;
+    
         VkBufferUsageFlags usage         = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        RHI_Device::MemoryBufferCreate(m_scratch_buffer, scratch_size, usage, properties, nullptr, (m_object_name + "_scratch").c_str());
+    
+        RHI_Device::MemoryBufferCreate(
+            m_scratch_buffer,
+            scratch_size,
+            usage,
+            properties,
+            nullptr,
+            (m_object_name + "_scratch").c_str()
+        );
     }
 
     void RHI_AccelerationStructure::Build(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
@@ -93,7 +110,7 @@ namespace spartan
             vk_geo.flags                                          = static_cast<VkGeometryFlagsKHR>(geo.flags);
             vk_geo.geometryType                                   = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
             vk_geo.geometry.triangles                             = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR };
-            vk_geo.geometry.triangles.vertexFormat                = static_cast<VkFormat>(geo.vertex_format);
+            vk_geo.geometry.triangles.vertexFormat                = vulkan_format[static_cast<uint32_t>(geo.vertex_format)];
             vk_geo.geometry.triangles.vertexData.deviceAddress    = geo.vertex_buffer_address;
             vk_geo.geometry.triangles.vertexStride                = geo.vertex_stride;
             vk_geo.geometry.triangles.maxVertex                   = geo.max_vertex;
@@ -117,7 +134,11 @@ namespace spartan
         CreateScratchBuffer(size_info.buildScratchSize);
     
         build_info.dstAccelerationStructure  = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
-        build_info.scratchData.deviceAddress = RHI_Device::GetBufferDeviceAddress(m_scratch_buffer);
+
+        const uint64_t alignment             = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+        VkDeviceAddress address              = RHI_Device::GetBufferDeviceAddress(m_scratch_buffer);
+        address                              = (address + alignment - 1) & ~(alignment - 1);
+        build_info.scratchData.deviceAddress = address;
     
         vector<VkAccelerationStructureBuildRangeInfoKHR> range_infos(geometries.size());
         for (uint32_t i = 0; i < static_cast<uint32_t>(geometries.size()); ++i)
@@ -189,7 +210,7 @@ namespace spartan
         CreateResultBuffer(size_info.accelerationStructureSize);
         CreateScratchBuffer(size_info.buildScratchSize);
     
-        build_info.dstAccelerationStructure =  static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
+        build_info.dstAccelerationStructure  = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
         build_info.scratchData.deviceAddress = RHI_Device::GetBufferDeviceAddress(m_scratch_buffer);
     
         VkAccelerationStructureBuildRangeInfoKHR range_info = {};
