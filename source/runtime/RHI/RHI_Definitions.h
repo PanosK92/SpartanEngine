@@ -214,6 +214,7 @@ namespace spartan
         Pipeline,
         PipelineLayout,
         Queue,
+        AccelerationStructure,
         Max
     };
 
