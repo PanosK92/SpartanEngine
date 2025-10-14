@@ -845,16 +845,21 @@ namespace spartan
 
         namespace forest
         {
+            uint32_t ocean_tile_count = 1;
+            float tile_size = 128.0f;
+            uint32_t vertices_count = 512;
+            shared_ptr<Material> ocean_material = make_shared<Material>();
+
             void create()
             {
                 // tweak without exceeding a vram usage of 8 GB (that is until streaming is implemented)
                 const float render_distance_trees            = 2'000.0f;
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f; // beyond that, screen space shadows are enough
-                const float per_triangle_density_grass_blade = 15.0f;
-                const float per_triangle_density_flower      = 0.2f;
-                const float per_triangle_density_tree        = 0.004f;
-                const float per_triangle_density_rock        = 0.001f;
+                const float per_triangle_density_grass_blade = 0.0f;
+                const float per_triangle_density_flower      = 0.0f;
+                const float per_triangle_density_tree        = 0.000f;
+                const float per_triangle_density_rock        = 0.000f;
 
                 // sun/lighting/mood
                 entities::sun(true);
@@ -870,6 +875,7 @@ namespace spartan
                 // create
                 default_terrain = World::CreateEntity();
                 default_terrain->SetObjectName("terrain");
+                default_ocean = entities::ocean(ocean_material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
 
                 // sound
                 {
@@ -963,6 +969,11 @@ namespace spartan
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
                 }
+
+                // TEMP - ocean
+                //RHI_Texture* height_map = terrain->GetHeightMapFinal();
+                default_ocean = entities::ocean(ocean_material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
+                //ocean_material->SetTexture(MaterialTextureType::Height, height_map);
 
                 // water
                 const float dimension  = 8000; // meters

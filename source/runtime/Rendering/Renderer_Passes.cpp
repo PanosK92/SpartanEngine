@@ -578,6 +578,13 @@ namespace spartan
                     bool is_tessellated    = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                     bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
                     m_pcb_pass_cpu.set_f3_value(is_tessellated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
+
+                    if (material->IsOcean())
+                    {
+                        const Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+                        m_pcb_pass_cpu.set_f3_value2(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                    }
+
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                     m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -590,6 +597,12 @@ namespace spartan
                     cmd_list->SetCullMode(cull_mode);
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                    if (material->IsOcean())
+                    {
+                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                    }
 
                     cmd_list->DrawIndexed(
                         renderable->GetIndexCount(draw_call.lod_index),
@@ -706,7 +719,8 @@ namespace spartan
                         RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
                         cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
 
-                        RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
+                        //RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
+                        RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Height);
                         cmd_list->SetTexture(Renderer_BindingsSrv::tex4, flowmap);
                     }
 
