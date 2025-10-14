@@ -215,7 +215,7 @@ namespace spartan
                 }
             }
 
-            Entity* water(const Vector3& position, float dimension, uint32_t density, Color color, float tiling, float normal_strength)
+            Entity* water(const Vector3& position, float dimension, uint32_t density, Color color)
             {
                 // entity
                 Entity* water = World::CreateEntity();
@@ -226,19 +226,18 @@ namespace spartan
                 shared_ptr<Material> material = make_shared<Material>();
                 {
                     material->SetResourceName("water" + string(EXTENSION_MATERIAL));
-                    material->SetColor(Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 150.0f / 255.0f)); // pool water color
+                    material->SetColor(color);
                     material->SetTexture(MaterialTextureType::Normal,            "project\\materials\\water\\normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
                     material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
-                    material->SetProperty(MaterialProperty::WorldSpaceUv,        1.0f); // mesh size independent tiling
+                    material->SetProperty(MaterialProperty::WorldSpaceUv,        1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                    material->SetProperty(MaterialProperty::Tessellation,        0.0f); // turned off till I fix tessellation for the forest
-                    material->SetProperty(MaterialProperty::Normal,              normal_strength);
-                    material->SetProperty(MaterialProperty::TextureTilingX,      tiling);
-                    material->SetProperty(MaterialProperty::TextureTilingY,      tiling);
+                    material->SetProperty(MaterialProperty::Normal,              0.1f);
+                    material->SetProperty(MaterialProperty::TextureTilingX,      0.1f);
+                    material->SetProperty(MaterialProperty::TextureTilingY,      0.1f);
                 }
                 
                 // geometry
@@ -858,10 +857,10 @@ namespace spartan
                 }
 
                 // water
-                const float dimension  = 8000; // meters
-                const uint32_t density = 64;   // geometric
-                const Color forest_water_color = Color(0.0f / 255.0f, 150.0f / 255.0f, 70.0f / 255.0f, 220.0f / 255.0f);
-                entities::water(Vector3(0.0f, 0.0f, 0.0f), dimension, density, forest_water_color, 5.0f, 0.1f);
+                const float dimension          = 8000; // meters
+                const uint32_t density         = 64;   // geometric
+                const Color forest_water_color = Color(0.0f / 255.0f, 140.0f / 255.0f, 100.0f / 255.0f, 50.0f / 255.0f);
+                entities::water(Vector3::Zero, dimension, density, forest_water_color);
 
                 // props: trees, rocks, grass
                 {
@@ -903,7 +902,7 @@ namespace spartan
                         }
 
                         mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH); // need to remove that
-                        mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc.
+                        mesh_grass_blade->CreateGpuBuffers();                                                                                    // aabb, gpu buffers, etc
                     }
 
                     // add after mesh_grass_blade
@@ -1367,14 +1366,14 @@ namespace spartan
                 // shared material for surfaces
                 shared_ptr<Material> tile_material = make_shared<Material>();
                 tile_material->SetResourceName("floor_tile" + string(EXTENSION_MATERIAL));
-                tile_material->SetTexture(MaterialTextureType::Color, "project\\materials\\tile_white\\albedo.png");
-                tile_material->SetTexture(MaterialTextureType::Normal, "project\\materials\\tile_white\\normal.png");
-                tile_material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\tile_white\\metallic.png");
-                tile_material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\tile_white\\roughness.png");
-                tile_material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\tile_white\\ao.png");
-                tile_material->SetProperty(MaterialProperty::WorldSpaceUv, 1.0f);
-                tile_material->SetProperty(MaterialProperty::TextureTilingX, 5.0f);
-                tile_material->SetProperty(MaterialProperty::TextureTilingY, 5.0f);
+                tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
+                tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
+                tile_material->SetTexture(MaterialTextureType::Metalness,    "project\\materials\\tile_white\\metallic.png");
+                tile_material->SetTexture(MaterialTextureType::Roughness,    "project\\materials\\tile_white\\roughness.png");
+                tile_material->SetTexture(MaterialTextureType::Occlusion,    "project\\materials\\tile_white\\ao.png");
+                tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f);
+                tile_material->SetProperty(MaterialProperty::TextureTilingX, 0.25);
+                tile_material->SetProperty(MaterialProperty::TextureTilingY, 0.25);
 
                 // pool light mesh
                 Entity* entity_pool_light = nullptr;
@@ -1536,7 +1535,7 @@ namespace spartan
                         float water_distance = 0.5f; // distance from floor
                         float water_y        = floor_y + 0.5f + water_distance;
                         Color pool_color     = Color(0.0f, 150.0f / 255.0f, 130.0f / 255.0f, 254.0f / 255.0f);
-                        auto water           = entities::water(Vector3(0, water_y, 0), ROOM_WIDTH, 2, pool_color, 2.0f, 0.1f);
+                        auto water           = entities::water(Vector3(0, water_y, 0), ROOM_WIDTH, 2, pool_color);
                         water->SetParent(room_entity);
                     }
 

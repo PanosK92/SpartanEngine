@@ -1,4 +1,4 @@
-﻿f/*
+f/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -473,12 +473,11 @@ namespace spartan
         bool is_grass      = m_material && m_material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f;
         if (is_grass)
         {
-            // unchanged grass logic
             static const array<float, 3> grass_distance_thresholds =
             {
-                30.0f,  // lod0: <30m  (high detail, 5 segments)
-                100.0f, // lod1: <100m (medium, 3 segments)
-                300.0f  // lod2: <300m (low, 1 segment)
+                20.0f, // lod0: (high detail, 5 segments)
+                40.0f, // lod1: (medium, 3 segments)
+                80.0f  // lod2: (low, 1 segment)
             };
             for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(grass_distance_thresholds.size())); i++)
             {
@@ -519,11 +518,11 @@ namespace spartan
             uint32_t lod_dist = lod_count - 1;
             static const array<float, 5> lod_distance_thresholds =
             {
-                100.0f,  // lod0: <100m (high detail)
-                250.0f,  // lod1: <250m (trees/tiles decent)
-                500.0f,  // lod2: <500m
-                750.0f,  // lod3: <750m
-                1000.0f  // lod4: <1000m (lowest beyond this)
+                100.0f,  // lod0
+                150.0f,  // lod1
+                300.0f,  // lod2
+                500.0f,  // lod3
+                700.0f   // lod4
             };
 
             // scale thresholds by object size (large objects keep detail longer)

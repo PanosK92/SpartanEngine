@@ -46,6 +46,7 @@ namespace spartan
     uint64_t RHI_Device::m_optimal_buffer_copy_offset_alignment = 0;
     bool RHI_Device::m_is_shading_rate_supported                = false;
     bool RHI_Device::m_xess_supported                           = false;
+    bool RHI_Device::m_is_ray_tracing_supported                 = false;
 
     // misc
     bool RHI_Device::m_wide_lines                = false;

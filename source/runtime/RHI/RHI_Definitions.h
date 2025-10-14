@@ -289,6 +289,7 @@ namespace spartan
         Domain,
         Pixel,
         Compute,
+        RayTracing,
         Max
     };
 
