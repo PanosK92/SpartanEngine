@@ -1,13 +1,16 @@
 # top-most EditorConfig file
 root = true
 
-# use 4 spaces as indentation
+# ----------------------------------------------------------------------
+# Global defaults for all files
+# ----------------------------------------------------------------------
 [*]
-indent_style = space
-indent_size = 4
+charset = utf-8
+end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 120
 force_editorconfig_settings = true
-
-[*.yml]
-indent_size = 2

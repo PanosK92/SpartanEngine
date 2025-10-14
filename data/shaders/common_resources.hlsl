@@ -193,11 +193,14 @@ Texture2D tex5  : register(t10);
 Texture2D tex6  : register(t11);
 Texture3D tex3d : register(t12);
 
+// noise
+Texture2D tex_perlin : register(t13);
+
 // bindless arrays
-Texture2D material_textures[]                            : register(t13, space1);
-StructuredBuffer<MaterialParameters> material_parameters : register(t14, space2);
-StructuredBuffer<LightParameters> light_parameters       : register(t15, space3);
-StructuredBuffer<aabb> aabbs                             : register(t16, space4);
+Texture2D material_textures[]                            : register(t14, space1);
+StructuredBuffer<MaterialParameters> material_parameters : register(t15, space2);
+StructuredBuffer<LightParameters> light_parameters       : register(t16, space3);
+StructuredBuffer<aabb> aabbs                             : register(t17, space4);
 SamplerComparisonState samplers_comparison[]             : register(s0,  space5);
 SamplerState samplers[]                                  : register(s1,  space6);
 

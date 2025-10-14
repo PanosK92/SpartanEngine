@@ -1053,8 +1053,8 @@ namespace spartan
             description.align_to_surface_normal = true;                         // small plants align with terrain normal
             description.min_spawn_height        = parameters::level_sea + 5.0f; // a bit above sea level
             description.max_spawn_height        = parameters::level_snow;       // stop when snow shows up
-            description.min_scale               = scale * 0.2f;
-            description.max_scale               = scale * 1.2f;
+            description.min_scale               = scale * 1.0f;
+            description.max_scale               = scale * 1.5f;
         }
         else if (terrain_prop == TerrainProp::Flower)
         {

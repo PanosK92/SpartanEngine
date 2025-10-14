@@ -336,9 +336,9 @@ namespace spartan::geometry_generation
 
         // constants
         const float grass_width    = 0.2f; // base width
-        const float grass_height   = 1.2f;  // blade height
-        const float thinning_start = 0.4f;  // thinning start (0=base, 1=top)
-        const float thinning_power = 1.0f;  // thinning sharpness
+        const float grass_height   = 1.2f; // blade height
+        const float thinning_start = 0.4f; // thinning start (0=base, 1=top)
+        const float thinning_power = 1.0f; // thinning sharpness
 
         // clear output vectors
         vertices->clear();
@@ -363,7 +363,7 @@ namespace spartan::geometry_generation
 
         // total verts per face
         uint32_t verts_per_strip = (segment_count + 1) * 2 - 1;
-        uint32_t total_vertices = verts_per_strip;
+        uint32_t total_vertices  = verts_per_strip;
         vertices->reserve(total_vertices);
 
         // generate vertices for front face
@@ -384,6 +384,20 @@ namespace spartan::geometry_generation
                 // top vertex (single vertex at tip)
                 push_vertex(Vector3(0.0f, y, 0.0f), Vector2(0.5f, t));
             }
+        }
+
+        // bend towards downwards (emulate gravity pulling the blade down)
+        const float bend_amount = 0.25f;
+        for (RHI_Vertex_PosTexNorTan& v : *vertices)
+        {
+            float uv_misc_z     = v.tex[1];
+            float gravity_angle = bend_amount * uv_misc_z;
+            float c             = std::cos(gravity_angle);
+            float s             = std::sin(gravity_angle);
+            float y             = v.pos[1];
+            float z             = v.pos[2];
+            v.pos[1]            = c * y - s * z;
+            v.pos[2]            = s * y + c * z;
         }
 
         // build indices for front face

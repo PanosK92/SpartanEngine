@@ -96,8 +96,16 @@ namespace spartan
 
         // arguments
         {
-            arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
-            arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
+            // entry point - doesn't apply to libraries (ray tracing)
+            if (const char* entry_point = GetEntryPoint())
+            {
+                arguments.emplace_back("-E");
+                arguments.emplace_back(entry_point);
+            }
+
+            // target profile
+            arguments.emplace_back("-T");
+            arguments.emplace_back(GetTargetProfile());
 
             // spir-v
             {
@@ -107,6 +115,11 @@ namespace spartan
                 // this prevents all sorts of issues with constant buffers having random data
                 arguments.emplace_back("-fspv-preserve-bindings");  // preserves all bindings declared within the module, even when those bindings are unused
                 arguments.emplace_back("-fspv-preserve-interface"); // preserves all interface variables in the entry point, even when those variables are unused
+
+                if (m_shader_type == RHI_Shader_Type::RayTracing)
+                {
+                    arguments.emplace_back("-fspv-extension=SPV_KHR_ray_tracing");
+                }
 
                 // shift registers to avoid conflicts
                 arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
