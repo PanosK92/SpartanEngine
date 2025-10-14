@@ -70,8 +70,8 @@ namespace spartan
         // build for tlas (top-level)
         void Build(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
 
-        void* GetRhiResource() const { return m_rhi_resource; }
-        uint64_t GetDeviceAddress() const { return m_device_address; }
+        void* GetRhiResource() const                  { return m_rhi_resource; }
+        uint64_t GetDeviceAddress() const             { return m_device_address; }
         RHI_AccelerationStructureType GetType() const { return m_type; }
 
     private:

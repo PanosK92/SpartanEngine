@@ -1741,7 +1741,7 @@ namespace spartan
                     case RHI_Resource_Type::QueryPool:             vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
                     case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
                     case RHI_Resource_Type::PipelineLayout:        vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
-                    case RHI_Resource_Type::AccelerationStructure: RHI_Device::DestroyAccelerationStructureKHR(RHI_Context::device, resource, nullptr), nullptr;             break;
+                    case RHI_Resource_Type::AccelerationStructure: DestroyAccelerationStructureKHR(resource, nullptr), nullptr;                                              break;
                     default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
                 }
 
@@ -2266,29 +2266,29 @@ namespace spartan
 
     // ray tracing
 
-    int RHI_Device::CreateAccelerationStructureKHR(void* device, const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure)
+    int RHI_Device::CreateAccelerationStructureKHR(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure)
     {
         return static_cast<int>(functions::create_acceleration_structure_khr(
-            static_cast<VkDevice>(device),
+            static_cast<VkDevice>(RHI_Context::device),
             static_cast<const VkAccelerationStructureCreateInfoKHR*>(pCreateInfo),
             static_cast<const VkAllocationCallbacks*>(pAllocator),
             static_cast<VkAccelerationStructureKHR*>(pAccelerationStructure)
         ));
     }
     
-    void RHI_Device::DestroyAccelerationStructureKHR(void* device, void* accelerationStructure, const void* pAllocator)
+    void RHI_Device::DestroyAccelerationStructureKHR(void* accelerationStructure, const void* pAllocator)
     {
         functions::destroy_acceleration_structure_khr(
-            static_cast<VkDevice>(device),
+            static_cast<VkDevice>(RHI_Context::device),
             static_cast<VkAccelerationStructureKHR>(accelerationStructure),
             static_cast<const VkAllocationCallbacks*>(pAllocator)
         );
     }
     
-    void RHI_Device::GetAccelerationStructureBuildSizesKHR(void* device, uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo)
+    void RHI_Device::GetAccelerationStructureBuildSizesKHR(uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo)
     {
         functions::get_acceleration_structure_build_sizes_khr(
-            static_cast<VkDevice>(device),
+            static_cast<VkDevice>(RHI_Context::device),
             static_cast<VkAccelerationStructureBuildTypeKHR>(buildType),
             static_cast<const VkAccelerationStructureBuildGeometryInfoKHR*>(pBuildInfo),
             pMaxPrimitiveCounts,
@@ -2306,12 +2306,14 @@ namespace spartan
         );
     }
     
-    uint64_t RHI_Device::GetBufferDeviceAddress(void* device, const void* pInfo)
+    uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
     {
-        return functions::get_buffer_device_address(
-            static_cast<VkDevice>(device),
-            static_cast<const VkBufferDeviceAddressInfo*>(pInfo)
-        );
+        VkBufferDeviceAddressInfo info = {};
+        info.sType                     = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        info.pNext                     = nullptr;
+        info.buffer                    = static_cast<VkBuffer>(buffer);
+
+        return functions::get_buffer_device_address(static_cast<VkDevice>(RHI_Context::device), static_cast<const VkBufferDeviceAddressInfo*>(&info));
     }
 
     // misc

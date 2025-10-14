@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class RHI_Buffer;
+    class RHI_AccelerationStructure;
 
     enum class MeshFlags : uint32_t
     {
@@ -122,15 +123,21 @@ namespace spartan
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
 
+        // acceleration structure
+        RHI_AccelerationStructure* GetBlas() const { return m_blas.get(); }
+
     private:
+        void CreateAccelerationStructures();
+
         // geometry
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices; // all vertices of a model file
         std::vector<uint32_t> m_indices;                 // all indices of a model file
         std::vector<SubMesh> m_sub_meshes;               // tracks sub-meshes and lods within the above vectors
 
         // gpu buffers
-        std::shared_ptr<RHI_Buffer> m_vertex_buffer;
-        std::shared_ptr<RHI_Buffer> m_index_buffer;
+        std::unique_ptr<RHI_Buffer> m_vertex_buffer;
+        std::unique_ptr<RHI_Buffer> m_index_buffer;
+        std::unique_ptr<RHI_AccelerationStructure> m_blas;
 
         // misc
         std::mutex m_mutex;

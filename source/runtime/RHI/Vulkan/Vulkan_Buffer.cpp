@@ -54,7 +54,6 @@ namespace spartan
         {
             bool vertex                     = m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Instance;
             VkBufferUsageFlags flags_usage  = vertex ? VK_BUFFER_USAGE_VERTEX_BUFFER_BIT : VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-            flags_usage                    |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT; // AMD FidelityFX Brizelizer GI
 
             if (m_mappable)
             {

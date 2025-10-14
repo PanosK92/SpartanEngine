@@ -106,11 +106,11 @@ namespace spartan
         static void MarkerEnd(RHI_CommandList* cmd_list);
 
         // ray tracing
-        static int CreateAccelerationStructureKHR(void* device, const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure);
-        static void DestroyAccelerationStructureKHR(void* device, void* accelerationStructure, const void* pAllocator);
-        static void GetAccelerationStructureBuildSizesKHR(void* device, uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo);
+        static int CreateAccelerationStructureKHR(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure);
+        static void DestroyAccelerationStructureKHR(void* accelerationStructure, const void* pAllocator);
+        static void GetAccelerationStructureBuildSizesKHR(uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo);
         static void CmdBuildAccelerationStructuresKHR(void* commandBuffer, uint32_t infoCount, const void* pInfos, const void* ppBuildRangeInfos);
-        static uint64_t GetBufferDeviceAddress(void* device, const void* pInfo);
+        static uint64_t GetBufferDeviceAddress(void* pInfo);
 
         // physical device
         static void PhysicalDeviceRegister(const RHI_PhysicalDevice& physical_device);
