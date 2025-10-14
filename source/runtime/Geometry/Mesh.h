@@ -127,8 +127,6 @@ namespace spartan
         RHI_AccelerationStructure* GetBlas() const { return m_blas.get(); }
 
     private:
-        void CreateAccelerationStructures();
-
         // geometry
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices; // all vertices of a model file
         std::vector<uint32_t> m_indices;                 // all indices of a model file

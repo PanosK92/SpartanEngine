@@ -26,5 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    RHI_AccelerationStructure::RHI_AccelerationStructure(const RHI_AccelerationStructureType type, const char* name)
+    {
+        m_type        = type;
+        m_object_name = name ? name : "acceleration_structure";
+    }
 
+    RHI_AccelerationStructure::~RHI_AccelerationStructure()
+    {
+
+    }
 }

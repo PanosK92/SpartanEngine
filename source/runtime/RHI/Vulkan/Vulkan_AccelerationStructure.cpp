@@ -47,10 +47,10 @@ namespace spartan
             m_rhi_resource = nullptr;
         }
 
-        if (m_result_buffer)
+        if (m_rhi_resource_results)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_result_buffer);
-            m_result_buffer = nullptr;
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource_results);
+            m_rhi_resource_results = nullptr;
         }
     }
 
@@ -58,17 +58,15 @@ namespace spartan
     {
         VkBufferUsageFlags usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        RHI_Device::MemoryBufferCreate(m_result_buffer, result_size, usage, properties, nullptr, m_object_name.c_str());
+        RHI_Device::MemoryBufferCreate(m_rhi_resource_results, result_size, usage, properties, nullptr, m_object_name.c_str());
     
         VkAccelerationStructureCreateInfoKHR create_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
-        create_info.buffer = static_cast<VkBuffer>(m_result_buffer);
+        create_info.buffer = static_cast<VkBuffer>(m_rhi_resource_results);
         create_info.size   = result_size;
         create_info.type   = (m_type == RHI_AccelerationStructureType::Bottom) ? VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR : VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
     
-        int result = RHI_Device::CreateAccelerationStructureKHR(&create_info, nullptr, &m_rhi_resource);
+        int result = RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         SP_ASSERT(result == 0); // VK_SUCCESS is 0
-    
-        m_device_address = RHI_Device::GetBufferDeviceAddress(m_result_buffer);
     
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
     }
@@ -113,7 +111,7 @@ namespace spartan
         build_info.pGeometries                                 = vk_geometries.data();
     
         VkAccelerationStructureBuildSizesInfoKHR size_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-        RHI_Device::GetAccelerationStructureBuildSizesKHR(VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, primitive_counts.data(), &size_info);
+        RHI_Device::GetAccelerationStructureBuildSizes(VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, primitive_counts.data(), &size_info);
     
         CreateResultBuffer(size_info.accelerationStructureSize);
         CreateScratchBuffer(size_info.buildScratchSize);
@@ -133,7 +131,7 @@ namespace spartan
         vector<VkAccelerationStructureBuildRangeInfoKHR*> p_range_infos;
         for (auto& range : range_infos) { p_range_infos.push_back(&range); }
     
-        RHI_Device::CmdBuildAccelerationStructuresKHR(static_cast<void*>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos.data());
+        RHI_Device::BuildAccelerationStructures(static_cast<void*>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos.data());
     
         // Barrier
         VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
@@ -186,7 +184,7 @@ namespace spartan
     
         uint32_t primitive_count = static_cast<uint32_t>(instances.size());
         VkAccelerationStructureBuildSizesInfoKHR size_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
-        RHI_Device::GetAccelerationStructureBuildSizesKHR(VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
+        RHI_Device::GetAccelerationStructureBuildSizes(VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
     
         CreateResultBuffer(size_info.accelerationStructureSize);
         CreateScratchBuffer(size_info.buildScratchSize);
@@ -198,7 +196,7 @@ namespace spartan
         range_info.primitiveCount = primitive_count;
         VkAccelerationStructureBuildRangeInfoKHR* p_range_infos[] = { &range_info };
     
-        RHI_Device::CmdBuildAccelerationStructuresKHR(static_cast<void*>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos);
+        RHI_Device::BuildAccelerationStructures(static_cast<void*>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos);
     
         // Barrier
         VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };

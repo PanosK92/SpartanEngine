@@ -71,7 +71,6 @@ namespace spartan
         void Build(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
 
         void* GetRhiResource() const                  { return m_rhi_resource; }
-        uint64_t GetDeviceAddress() const             { return m_device_address; }
         RHI_AccelerationStructureType GetType() const { return m_type; }
 
     private:
@@ -80,11 +79,9 @@ namespace spartan
 
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Bottom;
         void* m_rhi_resource                 = nullptr;
-        void* m_result_buffer                = nullptr;
-        uint64_t m_device_address            = 0;
-
+        void* m_rhi_resource_results         = nullptr;
         // temporaries (destroyed after build)
-        void* m_scratch_buffer  = nullptr; // VkBuffer*
-        void* m_instance_buffer = nullptr; // VkBuffer* for TLAS
+        void* m_scratch_buffer               = nullptr;
+        void* m_instance_buffer              = nullptr;
     };
 }

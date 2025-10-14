@@ -375,6 +375,7 @@ namespace spartan
 
     void Mesh::CreateGpuBuffers()
     {
+        // vertex buffer
         m_vertex_buffer = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex,
             sizeof(m_vertices[0]),
             static_cast<uint32_t>(m_vertices.size()),
@@ -383,6 +384,7 @@ namespace spartan
             (string("mesh_vertex_buffer_") + m_object_name).c_str()
         );
 
+        // index buffer
         m_index_buffer = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index,
             sizeof(m_indices[0]),
             static_cast<uint32_t>(m_indices.size()),
@@ -390,6 +392,38 @@ namespace spartan
             false,
             (string("mesh_index_buffer_") + m_object_name).c_str()
         );
+
+        // acceleration structure
+        //if (RHI_Device::PropertyIsRayTracingSupported() && !m_sub_meshes.empty())
+        //{
+        //    RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics);
+        //
+        //    vector<RHI_AccelerationStructureGeometry> geometries;
+        //    vector<uint32_t> primitive_counts;
+        //    for (const auto& sub : m_sub_meshes)
+        //
+        //    {
+        //        const auto& lod = sub.lods[0]; // Use LOD 0 for BLAS
+        //
+        //        RHI_AccelerationStructureGeometry geo;
+        //        geo.flags                    = 0; // Or VK_GEOMETRY_OPAQUE_BIT_KHR if no any-hit
+        //        geo.vertex_format            = RHI_Format::R32G32B32_Float; // Positions
+        //        geo.vertex_buffer_address    =  RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
+        //        geo.vertex_stride            = m_vertex_buffer->GetStride();
+        //        geo.max_vertex               = lod.vertex_count - 1;
+        //        geo.index_format             = RHI_Format::R32_Uint;
+        //        geo.index_buffer_address     = RHI_Device::GetBufferDeviceAddress(m_index_buffer->GetRhiResource()) + lod.index_offset * sizeof(uint32_t);
+        //        geo.transform_buffer_address = 0; // No instance transform here
+        //
+        //        geometries.push_back(geo);
+        //        primitive_counts.push_back(lod.index_count / 3);
+        //    }
+        //
+        //    m_blas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, (m_object_name + "_blas").c_str());
+        //    m_blas->Build(cmd_list, geometries, primitive_counts);
+        //
+        //    RHI_Device::CmdImmediateSubmit(cmd_list);
+        //}
 
         // normalize scale
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))
@@ -401,40 +435,6 @@ namespace spartan
                 float normalized_scale = 1.0f / scale_offset;
                 m_root_entity->SetScale(normalized_scale);
             }
-        }
-    }
-
-    void Mesh::CreateAccelerationStructures()
-    {
-        if (RHI_Device::PropertyIsRayTracingSupported() && !m_sub_meshes.empty())
-        {
-            RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics);
-
-            vector<RHI_AccelerationStructureGeometry> geometries;
-            vector<uint32_t> primitive_counts;
-            for (const auto& sub : m_sub_meshes)
-
-            {
-                const auto& lod = sub.lods[0]; // Use LOD 0 for BLAS
-
-                RHI_AccelerationStructureGeometry geo;
-                geo.flags                    = 0; // Or VK_GEOMETRY_OPAQUE_BIT_KHR if no any-hit
-                geo.vertex_format            = RHI_Format::R32G32B32_Float; // Positions
-                geo.vertex_buffer_address    =  RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
-                geo.vertex_stride            = m_vertex_buffer->GetStride();
-                geo.max_vertex               = lod.vertex_count - 1;
-                geo.index_format             = RHI_Format::R32_Uint;
-                geo.index_buffer_address     = RHI_Device::GetBufferDeviceAddress(m_index_buffer->GetRhiResource()) + lod.index_offset * sizeof(uint32_t);
-                geo.transform_buffer_address = 0; // No instance transform here
-
-                geometries.push_back(geo);
-                primitive_counts.push_back(lod.index_count / 3);
-            }
-
-            m_blas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, (m_object_name + "_blas").c_str());
-            m_blas->Build(cmd_list, geometries, primitive_counts);
-
-            RHI_Device::CmdImmediateSubmit(cmd_list);
         }
     }
 }
