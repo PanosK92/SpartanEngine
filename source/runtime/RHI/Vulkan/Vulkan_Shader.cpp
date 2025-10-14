@@ -116,11 +116,6 @@ namespace spartan
                 arguments.emplace_back("-fspv-preserve-bindings");  // preserves all bindings declared within the module, even when those bindings are unused
                 arguments.emplace_back("-fspv-preserve-interface"); // preserves all interface variables in the entry point, even when those variables are unused
 
-                if (m_shader_type == RHI_Shader_Type::RayTracing)
-                {
-                    arguments.emplace_back("-fspv-extension=SPV_KHR_ray_tracing");
-                }
-
                 // shift registers to avoid conflicts
                 arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
                 arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_b)); arguments.emplace_back("all"); // binding number shift for b-type (buffer) register
@@ -133,7 +128,7 @@ namespace spartan
                 arguments.emplace_back("-fvk-use-dx-layout");     // use DirectX memory layout for Vulkan resources
                 arguments.emplace_back("-fvk-use-dx-position-w"); // reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
-                // negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
+                // negate SV_Position.y before writing to stage output in vs/ds/gs to accommodate vulkan's coordinate system
                 if (m_shader_type == RHI_Shader_Type::Vertex || m_shader_type == RHI_Shader_Type::Domain)
                 {
                     arguments.emplace_back("-fvk-invert-y");

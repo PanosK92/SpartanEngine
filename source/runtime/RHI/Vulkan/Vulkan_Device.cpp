@@ -242,7 +242,7 @@ namespace spartan
         vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
-            "VK_EXT_memory_budget",         // to obtain precise memory usage information from Vulkan Memory Allocator
+            "VK_EXT_memory_budget",          // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_KHR_robustness2",
