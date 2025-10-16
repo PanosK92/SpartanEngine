@@ -304,6 +304,7 @@ namespace spartan
 
                     material->SetOceanTileSize(tile_size);
                     material->SetOceanVerticesCount(density);
+                    material->MarkSpectrumAsComputed(false);
                     material->SetTexture(MaterialTextureType::Flowmap, "project\\materials\\water\\flowmap.png");
 
                     // if material fails to load from file
@@ -848,6 +849,7 @@ namespace spartan
             float tile_size = 128.0f;
             uint32_t vertices_count = 512;
             shared_ptr<Material> ocean_material = make_shared<Material>();
+            shared_ptr<RHI_Texture> flow_map;
 
             void create()
             {
@@ -970,9 +972,72 @@ namespace spartan
                 }
 
                 // TEMP - ocean
-                //RHI_Texture* height_map = terrain->GetHeightMapFinal();
-                default_ocean = entities::ocean(ocean_material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
-                //ocean_material->SetTexture(MaterialTextureType::Height, height_map);
+                RHI_Texture* height_map = terrain->GetHeightMapFinal();
+                //default_ocean = entities::ocean(ocean_material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
+                ocean_material->SetTexture(MaterialTextureType::Height, height_map);
+                // generate flowmap
+                {
+                    std::vector<byte> height_data = height_map->GetMip(0, 0).bytes;
+                    SP_ASSERT(height_data.size() > 0);
+
+                    const uint32_t tex_width = height_map->GetWidth();
+                    const uint32_t tex_height = height_map->GetHeight();
+
+                    std::vector<Vector2> flow_data(tex_width * tex_height);
+
+                    // compute flow directions
+                    for (uint32_t y = 1; y < tex_height - 1; y++)
+                    {
+                        for (uint32_t x = 1; x < tex_width - 1; x++)
+                        {
+                            // Sample neighbors
+                            const float hL = (float)height_data[y * tex_width + (x - 1)];
+                            const float hR = (float)height_data[y * tex_width + (x + 1)];
+                            const float hU = (float)height_data[(y + 1) * tex_width + x];
+                            const float hD = (float)height_data[(y - 1) * tex_width + x];
+
+                            // Compute gradient
+                            const float dhdx = (hR - hL) * 0.5f;
+                            const float dhdy = (hU - hD) * 0.5f;
+
+                            // Flow direction = -gradient (downhill)
+                            Vector2 flow = { -dhdx, -dhdy };
+
+                            const float len = std::sqrt(flow.x * flow.x + flow.y * flow.y);
+                            if (len > 0.0001f)
+                            {
+                                flow.x /= len;
+                                flow.y /= len;
+                            }
+
+                            // Encode to [0,1]
+                            const float fx = flow.x * 0.5f + 0.5f;
+                            const float fy = flow.y * 0.5f + 0.5f;
+
+                            flow_data[x + y * tex_width] = Vector2(fx * 255.0f, fy * 255.0f);
+                        }
+                    }
+
+                    vector<RHI_Texture_Slice> data(1);
+                    auto& slice = data[0];
+                    slice.mips.resize(1);
+                    auto& mip_bytes = slice.mips[0].bytes;
+                    mip_bytes.resize(tex_width * tex_height * sizeof(Vector2));
+
+                    auto copy_data = [&flow_data, &mip_bytes](uint32_t start, uint32_t end)
+                    {
+                        for (uint32_t i = start; i < end; i++)
+                        {
+                            memcpy(mip_bytes.data() + i * sizeof(Vector2), &flow_data[i], sizeof(Vector2));
+                        }
+                    };
+                    ThreadPool::ParallelLoop(copy_data, tex_width * tex_height);
+
+                    flow_map = std::make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, tex_width, tex_height, 1, 1,
+                        RHI_Format::R8G8_Unorm, RHI_Texture_Srv, "terrain_flowmap", data);
+
+                    ocean_material->SetTexture(MaterialTextureType::Flowmap, flow_map);
+                }
 
                 // water
                 const float dimension          = 8000; // meters

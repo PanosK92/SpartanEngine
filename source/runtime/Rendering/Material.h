@@ -194,7 +194,7 @@ namespace spartan
 
         // ocean
         bool ShouldComputeSpectrum() const { return m_should_compute_spectrum; }
-        void MarkSpectrumAsComputed() { m_should_compute_spectrum = false; }
+        void MarkSpectrumAsComputed(const bool flag) { m_should_compute_spectrum = !flag; }
         void SetOceanTileCount(const uint32_t count) { m_ocean_tiles = count; }
         uint32_t GetOceanTileCount() const { return m_ocean_tiles; }
         void SetOceanVerticesCount(const uint32_t count) { m_ocean_vertices_count = count; }
@@ -213,7 +213,7 @@ namespace spartan
         uint32_t m_index = 0;
         std::mutex m_mutex;
 
-        bool m_should_compute_spectrum = true;
+        bool m_should_compute_spectrum = false;
         uint32_t m_ocean_tiles = 1;
         uint32_t m_ocean_vertices_count = 0;
         float m_ocean_tile_size = 0.0f;

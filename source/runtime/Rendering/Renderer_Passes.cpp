@@ -121,7 +121,7 @@ namespace spartan
                     // calculates conjugate and stores it in BA channels of the initial spectrum
                     Pass_PackSpectrum(cmd_list_graphics_present);
 
-                    material->MarkSpectrumAsComputed();
+                    material->MarkSpectrumAsComputed(true);
                 }
 
                 // computes displacement and slope maps
@@ -156,7 +156,7 @@ namespace spartan
             }
 
             Pass_Light_ImageBased(cmd_list_graphics_present);
-            //Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
+            Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
@@ -720,9 +720,11 @@ namespace spartan
                         RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
                         cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
 
-                        //RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
-                        RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Height);
-                        cmd_list->SetTexture(Renderer_BindingsSrv::tex4, flowmap);
+                        RHI_Texture* heightmap = material->GetTexture(MaterialTextureType::Height);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex4, heightmap);
+
+                        RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex5, flowmap);
                     }
 
                     cmd_list->DrawIndexed(

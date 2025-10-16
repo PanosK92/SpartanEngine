@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -113,14 +113,19 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
         //synthesize(tex2, displacement, world_space_tile_uv);
         synthesize_with_flow(tex2, displacement, material.ocean_parameters.windDirection, world_space_tile_uv);
+
+        const float2 world_pos = mul(input.position, buffer_pass.transform).xz;
         
-        input.position.xyz += displacement * material.ocean_parameters.displacementScale;
+        const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
+        
+        input.position.y += tex4.SampleLevel(samplers[sampler_point_wrap], uv, 0);
+        input.position.xyz += displacement.xyz * material.ocean_parameters.displacementScale;
     }
     
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
-
+    
     // transform world space position to clip space
     if (!surface.is_tessellated())
     {
@@ -370,6 +375,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         //albedo = tex4.Sample(samplers[sampler_anisotropic_wrap], world_space_tile_uv / float2(6.0f, 6.0f)).rgba;
         //albedo = float4(flow_dir * 0.5f + 0.5f, 0.0f, 1.0f);
+        albedo = tex5.Sample(samplers[sampler_point_clamp], vertex.uv_misc.xy);
     }
 
     // apply curved normals for foliage
