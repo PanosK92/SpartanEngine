@@ -375,7 +375,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         //albedo = tex4.Sample(samplers[sampler_anisotropic_wrap], world_space_tile_uv / float2(6.0f, 6.0f)).rgba;
         //albedo = float4(flow_dir * 0.5f + 0.5f, 0.0f, 1.0f);
-        albedo = tex5.Sample(samplers[sampler_point_clamp], vertex.uv_misc.xy);
+        //albedo = tex5.Sample(samplers[sampler_point_clamp], vertex.uv_misc.xy);
     }
 
     // apply curved normals for foliage

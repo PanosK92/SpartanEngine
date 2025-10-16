@@ -977,44 +977,57 @@ namespace spartan
                 ocean_material->SetTexture(MaterialTextureType::Height, height_map);
                 // generate flowmap
                 {
-                    std::vector<byte> height_data = height_map->GetMip(0, 0).bytes;
-                    SP_ASSERT(height_data.size() > 0);
+                    const float* height_data = reinterpret_cast<const float*>(height_map->GetMip(0, 0).bytes.data());
 
                     const uint32_t tex_width = height_map->GetWidth();
                     const uint32_t tex_height = height_map->GetHeight();
 
+                    SP_ASSERT(height_map->GetMip(0, 0).bytes.size() == tex_width * tex_height * sizeof(float));
+
                     std::vector<Vector2> flow_data(tex_width * tex_height);
 
-                    // compute flow directions
-                    for (uint32_t y = 1; y < tex_height - 1; y++)
+                    for (uint32_t y = 0; y < tex_height; y++)
                     {
-                        for (uint32_t x = 1; x < tex_width - 1; x++)
+                        for (uint32_t x = 0; x < tex_width; x++)
                         {
-                            // Sample neighbors
-                            const float hL = (float)height_data[y * tex_width + (x - 1)];
-                            const float hR = (float)height_data[y * tex_width + (x + 1)];
-                            const float hU = (float)height_data[(y + 1) * tex_width + x];
-                            const float hD = (float)height_data[(y - 1) * tex_width + x];
+                            float gx = 0.0f;
+                            float gy = 0.0f;
+                            int samples = 0;
 
-                            // Compute gradient
-                            const float dhdx = (hR - hL) * 0.5f;
-                            const float dhdy = (hU - hD) * 0.5f;
-
-                            // Flow direction = -gradient (downhill)
-                            Vector2 flow = { -dhdx, -dhdy };
-
-                            const float len = std::sqrt(flow.x * flow.x + flow.y * flow.y);
-                            if (len > 0.0001f)
+                            const int kernelRadius = 2; // try 2–4 for smoother flow
+                            for (int ky = -kernelRadius; ky <= kernelRadius; ky++)
                             {
-                                flow.x /= len;
-                                flow.y /= len;
+                                for (int kx = -kernelRadius; kx <= kernelRadius; kx++)
+                                {
+                                    uint32_t ix = std::clamp<int>(x + kx, 0, tex_width - 1);
+                                    uint32_t iy = std::clamp<int>(y + ky, 0, tex_height - 1);
+                                    uint32_t ixL = std::clamp<int>(ix - 1, 0, tex_width - 1);
+                                    uint32_t ixR = std::clamp<int>(ix + 1, 0, tex_width - 1);
+                                    uint32_t iyU = std::clamp<int>(iy + 1, 0, tex_height - 1);
+                                    uint32_t iyD = std::clamp<int>(iy - 1, 0, tex_height - 1);
+
+                                    float hL = height_data[iy * tex_width + ixL];
+                                    float hR = height_data[iy * tex_width + ixR];
+                                    float hU = height_data[iyU * tex_width + ix];
+                                    float hD = height_data[iyD * tex_width + ix];
+
+                                    gx += (hR - hL);
+                                    gy += (hD - hU);
+                                    samples++;
+                                }
                             }
 
-                            // Encode to [0,1]
-                            const float fx = flow.x * 0.5f + 0.5f;
-                            const float fy = flow.y * 0.5f + 0.5f;
+                            gx /= (samples * 2.0f);
+                            gy /= (samples * 2.0f);
 
-                            flow_data[x + y * tex_width] = Vector2(fx * 255.0f, fy * 255.0f);
+                            Vector2 flow = { -gx, -gy };
+                            float len = std::sqrt(flow.x * flow.x + flow.y * flow.y);
+                            if (len > 0.0001f)
+                                flow /= len;
+
+                            // Encode to [0,1]
+                            flow_data[y * tex_width + x] = Vector2(flow.x * 0.5f + 0.5f, flow.y * 0.5f + 0.5f);
+                            //flow_data[y * tex_width + x] = Vector2(1.0f, 0.0f);
                         }
                     }
 
@@ -1022,13 +1035,22 @@ namespace spartan
                     auto& slice = data[0];
                     slice.mips.resize(1);
                     auto& mip_bytes = slice.mips[0].bytes;
-                    mip_bytes.resize(tex_width * tex_height * sizeof(Vector2));
+                    mip_bytes.resize(tex_width * tex_height * 2); // 2 bytes per pixel for R8G8_Unorm
 
                     auto copy_data = [&flow_data, &mip_bytes](uint32_t start, uint32_t end)
                     {
                         for (uint32_t i = start; i < end; i++)
                         {
-                            memcpy(mip_bytes.data() + i * sizeof(Vector2), &flow_data[i], sizeof(Vector2));
+                            const Vector2& f = flow_data[i];
+                            //float fx = (f.x * 0.5f) + 0.5f;
+                            //float fy = (f.y * 0.5f) + 0.5f;
+                            // clamp to [0,1]
+                            float fx = std::clamp(f.x, 0.0f, 1.0f);
+                            float fy = std::clamp(f.y, 0.0f, 1.0f);
+                            uint8_t r = static_cast<uint8_t>(std::round(fx * 255.0f));
+                            uint8_t g = static_cast<uint8_t>(std::round(fy * 255.0f));
+                            mip_bytes[i * 2 + 0] = static_cast<byte>(r);
+                            mip_bytes[i * 2 + 1] = static_cast<byte>(g);
                         }
                     };
                     ThreadPool::ParallelLoop(copy_data, tex_width * tex_height);
