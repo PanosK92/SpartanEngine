@@ -39,7 +39,7 @@ namespace spartan
 
     struct RHI_AccelerationStructureGeometry
     {
-        uint32_t flags                    = 0;
+        bool transparent                  = false;
         RHI_Format vertex_format          = RHI_Format::Max;
         uint64_t vertex_buffer_address    = 0;
         uint32_t vertex_stride            = 0;
@@ -76,17 +76,14 @@ namespace spartan
         uint64_t GetDeviceAddress() const             { return m_buffer_device_address; }
 
     private:
-        void CreateScratchBuffer(uint64_t scratch_size);
-        void CreateResultBuffer(uint64_t result_size);
+        void Destroy();
 
         // misc
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
-        uint64_t m_buffer_device_address = 0;
+        uint64_t m_buffer_device_address     = 0;
 
         // rhi
-        void* m_rhi_resource                 = nullptr;
-        void* m_rhi_resource_results         = nullptr;
-        void* m_scratch_buffer               = nullptr; // detroyed after build
-        void* m_instance_buffer              = nullptr; // detroyed after build
+        void* m_rhi_resource         = nullptr;
+        void* m_rhi_resource_results = nullptr;
     };
 }
