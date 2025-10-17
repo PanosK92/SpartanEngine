@@ -37,11 +37,11 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         const float3 pass_values = pass_get_f3_value2();
         const float2 tile_xz_pos = pass_values.xy;
         const float tile_size = pass_values.z;
-        const float2 world_space_tile_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
+        const float2 tile_local_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
         
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
         //synthesize(tex2, displacement, world_space_tile_uv);
-        synthesize_with_flow(tex2, displacement, material.ocean_parameters.windDirection, world_space_tile_uv);
+        synthesize_with_flow(tex2, displacement, tex5, tile_xz_pos, material.ocean_parameters.windDirection, tile_local_uv);
         
         input.position.xyz += displacement * material.ocean_parameters.displacementScale;
     }
