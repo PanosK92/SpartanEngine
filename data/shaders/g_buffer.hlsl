@@ -118,7 +118,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         //synthesize(tex2, displacement, world_space_tile_uv);
         synthesize_with_flow(tex2, displacement, tex5, tile_xz_pos, material.ocean_parameters.windDirection, tile_local_uv);
         
-        input.position.y += tex4.SampleLevel(samplers[sampler_point_wrap], uv, 0);
+        input.position.y += tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
         input.position.xyz += displacement.xyz * material.ocean_parameters.displacementScale;
     }
     
