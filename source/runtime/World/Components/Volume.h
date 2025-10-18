@@ -64,8 +64,10 @@ namespace spartan
         //void Load(pugi::xml_node& node) override;
         //============================================
 
+        float ComputeAlpha(const math::Vector3& camera_position) const;
+
         // Render Options Collection
-        RenderOptionsPool GetOptionsCollection() { return m_options_collection; }
+        RenderOptionsPool& GetOptionsCollection() { return m_options_collection; }
         void SetOptionsCollection(const RenderOptionsPool& options_collection) { m_options_collection = options_collection; }
 
         // Mesh Type

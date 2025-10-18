@@ -82,7 +82,7 @@ namespace spartan
             m_options[Renderer_Option::AntiAliasing_Upsampling] =     static_cast<uint32_t>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr); // enum
             m_options[Renderer_Option::ResolutionScale] =             1.0f;  // float
             m_options[Renderer_Option::DynamicResolution] =           false; // bool
-            m_options[Renderer_Option::OcclusionCulling] =            false; // boo
+            m_options[Renderer_Option::OcclusionCulling] =            false; // bool
         }
     }
 

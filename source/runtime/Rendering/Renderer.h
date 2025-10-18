@@ -80,9 +80,14 @@ namespace spartan
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void SubmitAndPresent();
 
+        // render options
+        template<typename T> static T GetOption(Renderer_Option option, bool bIsEditor = false) { return bIsEditor ? m_editor_options.GetOption<T>(option) : m_global_options.GetOption<T>(option); }
+        template<typename T> static T& GetOptionRef(Renderer_Option option, bool bIsEditor = false) { return bIsEditor ? m_editor_options.GetOptionRef<T>(option) : m_global_options.GetOptionRef<T>(option); }
+        static void SetOption(Renderer_Option option, const RenderOptionType& value, bool bIsEditor = false) { return bIsEditor ? m_editor_options.SetOption(option, value) : m_global_options.SetOption(option, value); }
+        static RenderOptionsPool GetRenderOptionsPool(bool bIsEditor = false) { return bIsEditor ? m_editor_options : m_global_options; }
+        static RenderOptionsPool& GetRenderOptionsPoolRef(bool bIsEditor = false) { return bIsEditor ? m_editor_options : m_global_options; }
+
         // misc
-        static RenderOptionsPool GetRenderOptionsPool() { return m_global_options; }
-        static RenderOptionsPool& GetRenderOptionsPoolRef() { return m_global_options; }
         static void SetStandardResources(RHI_CommandList* cmd_list);
         static uint64_t GetFrameNumber();
         static RHI_Api_Type GetRhiApiType();
@@ -214,6 +219,7 @@ namespace spartan
 
         // misc
         static RenderOptionsPool m_global_options;
+        static RenderOptionsPool m_editor_options;
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;

@@ -1184,7 +1184,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
     if (component_begin("Volume", volume))
     {
         // reflect
-        RenderOptionsPool options                                                   = volume->GetOptionsCollection();
+        RenderOptionsPool options                                               = volume->GetOptionsCollection();
         float shape_size                                                        = volume->GetShapeSize();
         float transition_size                                                   = volume->GetTransitionSize();
         bool  is_debug_draw_enabled                                             = volume->GetDebugDrawEnabled();

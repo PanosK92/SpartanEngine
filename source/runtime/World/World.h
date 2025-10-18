@@ -51,8 +51,14 @@ namespace spartan
         static Entity* GetEntityById(uint64_t id);
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
-        static void AddVolume(Volume* volume);
-        static void RemoveVolume(Volume* volume);
+
+        // volumes
+        static void UpdateActiveVolumes();
+        static void UpdateMixRenderOptions();
+        static void InterpolateOverlappingVolumes();
+        static void UpdateRenderOptions();
+        static void RegisterVolume(Volume* volume);
+        static void UnregisterVolume(Volume* volume);
 
         // misc
         static std::string GetName();

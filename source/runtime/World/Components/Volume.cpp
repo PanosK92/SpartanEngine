@@ -74,4 +74,19 @@ namespace spartan
             }
         }
     }
+
+    float Volume::ComputeAlpha(const Vector3& camera_position) const
+    {
+        const float distance = Vector3::Distance(camera_position, m_entity_ptr->GetPosition());
+        if (distance > m_transition_size + m_shape_size)
+        {
+            return 0.0f;
+        }
+        if (distance <= m_shape_size)
+        {
+            return 1.0f;
+        }
+
+        return 1.0f - (distance - m_shape_size) / m_transition_size;
+    }
 }

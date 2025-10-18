@@ -62,6 +62,7 @@ namespace spartan
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
+    RenderOptionsPool Renderer::m_editor_options   = RenderOptionsPool();
     RenderOptionsPool Renderer::m_global_options   = RenderOptionsPool();
     uint32_t Renderer::m_resource_index            = 0;
     atomic<bool> Renderer::m_initialized_resources = false;

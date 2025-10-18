@@ -309,7 +309,7 @@ namespace spartan
                 {
                     if (auto volume = dynamic_cast<Volume*>(component.get()))
                     {
-                        World::AddVolume(volume);
+                        World::UnregisterVolume(volume);
                     }
                     component->Remove();
                     component = nullptr;

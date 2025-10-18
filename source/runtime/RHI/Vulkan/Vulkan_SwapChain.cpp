@@ -344,7 +344,7 @@ namespace spartan
                            "On NVIDIA Optimus laptops, switch to 'High-performance NVIDIA processor' in NVIDIA Control Panel or Windows Graphics Settings,"
                            "or update to NVIDIA driver 551.xx+ for Vulkan HDR support.", rhi_format_to_string(m_format), color_space);
 
-            Renderer::GetRenderOptionsPool().SetOption(Renderer_Option::Hdr, 0.0f);
+            Renderer::SetOption(Renderer_Option::Hdr, 0.0f);
             m_format    = format_sdr;
             color_space = get_color_space(m_format);
         }

@@ -122,7 +122,7 @@ void Viewport::OnTickVisible()
     }
 
     // entity transform gizmo (will only show if an entity has been picked)
-    if (Renderer::GetRenderOptionsPool().GetOption<bool>(spartan::Renderer_Option::TransformHandle))
+    if (Renderer::GetOption<bool>(spartan::Renderer_Option::TransformHandle))
     {
         if (camera) // skip if no camera
         {

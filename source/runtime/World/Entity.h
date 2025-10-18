@@ -84,7 +84,7 @@ namespace spartan
 
             if (auto volume = dynamic_cast<Volume*>(component.get()))
             {
-                World::AddVolume(volume);
+                World::RegisterVolume(volume);
             }
 
             return component.get();
