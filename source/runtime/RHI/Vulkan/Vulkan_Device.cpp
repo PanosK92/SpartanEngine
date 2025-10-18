@@ -188,6 +188,7 @@ namespace spartan
 
     namespace functions
     {
+        // function pointers
         PFN_vkCreateDebugUtilsMessengerEXT          create_messenger                       = nullptr;
         PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger                      = nullptr;
         PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag                         = nullptr;
@@ -200,52 +201,44 @@ namespace spartan
         PFN_vkGetAccelerationStructureBuildSizesKHR get_acceleration_structure_build_sizes = nullptr;
         PFN_vkCmdBuildAccelerationStructuresKHR     cmd_build_acceleration_structures      = nullptr;
         PFN_vkGetBufferDeviceAddress                get_buffer_device_address              = nullptr;
-
-        void get_pointers()
+    
+        void load(void** out_func, const char* name)
         {
-            #define get_func(var, def)\
-            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
-            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
-
-            /* VK_EXT_debug_utils */
+            *out_func = reinterpret_cast<void*>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), name));
+            if (!*out_func)
+            {
+                SP_LOG_ERROR("Failed to get function pointer for %s", name);
+            }
+        }
+    
+        void get_pointers_from_gpu_driver()
+        {
+            // debug utils
             {
                 if (Debugging::IsValidationLayerEnabled())
                 {
-                    get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
-                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
-
-                    SP_ASSERT(create_messenger && destroy_messenger);
+                    load(reinterpret_cast<void**>(&create_messenger), "vkCreateDebugUtilsMessengerEXT");
+                    load(reinterpret_cast<void**>(&destroy_messenger), "vkDestroyDebugUtilsMessengerEXT");
+                    load(reinterpret_cast<void**>(&set_object_tag), "vkSetDebugUtilsObjectTagEXT");
+                    load(reinterpret_cast<void**>(&set_object_name), "vkSetDebugUtilsObjectNameEXT");
                 }
-
+    
                 if (Debugging::IsGpuMarkingEnabled())
                 {
-                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
-                    get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
-
-                    SP_ASSERT(marker_begin && marker_end);
+                    load(reinterpret_cast<void**>(&marker_begin), "vkCmdBeginDebugUtilsLabelEXT");
+                    load(reinterpret_cast<void**>(&marker_end), "vkCmdEndDebugUtilsLabelEXT");
                 }
-            }
-
-            /* VK_EXT_debug_marker */
-            if (Debugging::IsValidationLayerEnabled())
-            {
-                get_func(set_object_tag,  vkSetDebugUtilsObjectTagEXT);
-                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
-
-                SP_ASSERT(set_object_tag && set_object_name);
             }
 
             // ray tracing
-            {
-                get_func(create_acceleration_structure,          vkCreateAccelerationStructureKHR);
-                get_func(destroy_acceleration_structure,         vkDestroyAccelerationStructureKHR);
-                get_func(get_acceleration_structure_build_sizes, vkGetAccelerationStructureBuildSizesKHR);
-                get_func(cmd_build_acceleration_structures,      vkCmdBuildAccelerationStructuresKHR);
-                get_func(get_buffer_device_address,              vkGetBufferDeviceAddress);
-            }
-
-            get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
-            SP_ASSERT(set_fragment_shading_rate);
+            load(reinterpret_cast<void**>(&create_acceleration_structure), "vkCreateAccelerationStructureKHR");
+            load(reinterpret_cast<void**>(&destroy_acceleration_structure), "vkDestroyAccelerationStructureKHR");
+            load(reinterpret_cast<void**>(&get_acceleration_structure_build_sizes), "vkGetAccelerationStructureBuildSizesKHR");
+            load(reinterpret_cast<void**>(&cmd_build_acceleration_structures), "vkCmdBuildAccelerationStructuresKHR");
+            load(reinterpret_cast<void**>(&get_buffer_device_address), "vkGetBufferDeviceAddress");
+    
+            // fragment shading rate
+            load(reinterpret_cast<void**>(&set_fragment_shading_rate), "vkCmdSetFragmentShadingRateKHR");
         }
     }
 
@@ -1502,7 +1495,7 @@ namespace spartan
             // create the vulkan instance
             SP_ASSERT_VK(vkCreateInstance(&info_instance, nullptr, &RHI_Context::instance));
 
-            functions::get_pointers();
+            functions::get_pointers_from_gpu_driver();
             validation_layer::logging::enable();
         }
 
