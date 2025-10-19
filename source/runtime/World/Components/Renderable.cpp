@@ -1,4 +1,4 @@
-f/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,19 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Renderable.h"
 #include "Camera.h"
 #include "../Entity.h"
 #include "../RHI/RHI_Buffer.h"
+#include "../RHI/RHI_AccelerationStructure.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/Material.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//=======================================
+//===========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -310,12 +311,20 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
-    RHI_AccelerationStructure* Renderable::GetMeshBlas() const
+    uint64_t Renderable::GetBlasDeviceAddress()
+    {
+        if (!m_mesh || !m_mesh->GetBlas())
+            return 0;
+
+        return m_mesh->GetBlas()->GetDeviceAddress();
+    }
+
+    void Renderable::BuildAccelerationStructure(RHI_CommandList* cmd_list)
     {
         if (!m_mesh)
-            return nullptr;
+            return;
 
-        return m_mesh->GetBlas();
+        m_mesh->CreateAccelerationStructure(cmd_list);
     }
 
     Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)

@@ -35,7 +35,7 @@ namespace spartan
 {
     RHI_AccelerationStructure::RHI_AccelerationStructure(const RHI_AccelerationStructureType type, const char* name)
     {
-        m_type = type;
+        m_type        = type;
         m_object_name = name ? name : "acceleration_structure";
     }
 
@@ -109,9 +109,7 @@ namespace spartan
         create_info.size = size_info.accelerationStructureSize;
         create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-        int result = RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
-        SP_ASSERT(result == 0); // VK_SUCCESS is 0
-
+        RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
         m_buffer_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource_results);
 
@@ -219,9 +217,7 @@ namespace spartan
         create_info.size                                 = size_info.accelerationStructureSize;
         create_info.type                                 = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
 
-        int result = RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
-        SP_ASSERT(result == 0); // VK_SUCCESS is 0
-
+        RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
         m_buffer_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource_results);
 

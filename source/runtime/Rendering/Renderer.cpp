@@ -302,7 +302,7 @@ namespace spartan
             UpdateDrawCalls(m_cmd_list_present);
 
             // update tlas
-            UpdateTopLevelAccelerationStructure(m_cmd_list_present);
+            UpdateAccelerationStructures(m_cmd_list_present);
     
             // handle dynamic buffers and resource deletion
             {
@@ -1205,52 +1205,63 @@ namespace spartan
         }
     }
 
-    void Renderer::UpdateTopLevelAccelerationStructure(RHI_CommandList* cmd_list)
+    void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
     {
         return;
 
         // validate ray tracing and command list
         if (!RHI_Device::IsSupportedRayTracing() || !cmd_list)
         {
-            SP_LOG_WARNING("Ray tracing or command list invalid, skipping TLAS update");
+            SP_LOG_WARNING("Ray tracing or command list invalid, skipping update");
             return;
         }
-    
-        // create or rebuild tlas
-        if (!m_tlas)
+
+        // bottom-level acceleration structures
         {
-            m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "scene_tlas");
+            for (Entity* entity : World::GetEntities())
+            {
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                {
+                    renderable->BuildAccelerationStructure(cmd_list);
+                }
+            }
         }
 
-        // temp till we make rhi enum
-        constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // matches VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
-        constexpr uint32_t RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT                 = 0x00000004; // matches VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR
-
-        vector<RHI_AccelerationStructureInstance> instances;
-        for (Entity* entity : World::GetEntities())
+        // top-level acceleration structure
         {
-            if (!entity->GetActive())
-                continue;
-    
-           if (Renderable* renderable = entity->GetComponent<Renderable>())
+            // create or rebuild tlas
+            if (!m_tlas)
             {
-                if (Material* material = renderable->GetMaterial())
+                m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
+            }
+
+            // temp till we make rhi enum
+            constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // matches VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
+            constexpr uint32_t RHI_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT                 = 0x00000004; // matches VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR
+
+            vector<RHI_AccelerationStructureInstance> instances;
+            for (Entity* entity : World::GetEntities())
+            {
+                if (!entity->GetActive())
+                    continue;
+    
+               if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
-                    if (RHI_AccelerationStructure* blas = renderable->GetMeshBlas())
+                    if (Material* material = renderable->GetMaterial())
                     {
-                        uint64_t blas_address = blas->GetDeviceAddress();
+                        uint64_t blas_address = renderable->GetBlasDeviceAddress();
                         if (blas_address == 0)
                         {
                             SP_LOG_WARNING("Invalid BLAS address for entity %s", entity->GetObjectName().c_str());
                             continue;
                         }
-
+                        
                         RHI_AccelerationStructureInstance inst;
-
+                        
                         // convert column-major 4x4 to row-major 3x4
                         Matrix world_matrix = renderable->GetEntity()->GetMatrix().Transposed();
                         copy(world_matrix.Data(), world_matrix.Data() + 12, inst.transform.begin());
-
+                        
                         inst.instance_custom_index = material->GetIndex(); // for hit shader material lookup
                         inst.mask = 0xFF; // visible to all rays
                         inst.instance_shader_binding_table_record_offset = 0; // sbt hit group offset
@@ -1259,16 +1270,16 @@ namespace spartan
                                      RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
                         SP_ASSERT_MSG(inst.flags <= 0xFF, "Instance flags exceed 8-bit field");
                         inst.acceleration_structure_reference = blas_address;
-
+                        
                         instances.push_back(inst);
                     }
                 }
             }
-        }
     
-        if (!instances.empty())
-        {
-            m_tlas->Build(cmd_list, instances);
+            if (!instances.empty())
+            {
+                m_tlas->Build(cmd_list, instances);
+            }
         }
     }
 

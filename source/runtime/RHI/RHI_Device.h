@@ -107,7 +107,7 @@ namespace spartan
         static void MarkerEnd(RHI_CommandList* cmd_list);
 
         // ray tracing
-        static int CreateAccelerationStructure(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure);
+        static void CreateAccelerationStructure(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure);
         static void DestroyAccelerationStructure(void* accelerationStructure, const void* pAllocator);
         static void GetAccelerationStructureBuildSizes(uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo);
         static void BuildAccelerationStructures(void* commandBuffer, uint32_t infoCount, const void* pInfos, const void* ppBuildRangeInfos);

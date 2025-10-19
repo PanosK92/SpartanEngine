@@ -200,7 +200,7 @@ namespace spartan
         static void DestroyResources();
         static void UpdateShadowAtlas();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
-        static void UpdateTopLevelAccelerationStructure(RHI_CommandList* cmd_list);
+        static void UpdateAccelerationStructures(RHI_CommandList* cmd_list);
 
         // draw calls
         static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;

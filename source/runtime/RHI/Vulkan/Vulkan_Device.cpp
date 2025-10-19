@@ -2271,9 +2271,9 @@ namespace spartan
 
     // ray tracing
 
-    int RHI_Device::CreateAccelerationStructure(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure)
+    void RHI_Device::CreateAccelerationStructure(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure)
     {
-        return static_cast<int>(functions::create_acceleration_structure(
+        SP_ASSERT_VK(functions::create_acceleration_structure(
             static_cast<VkDevice>(RHI_Context::device),
             static_cast<const VkAccelerationStructureCreateInfoKHR*>(pCreateInfo),
             static_cast<const VkAllocationCallbacks*>(pAllocator),

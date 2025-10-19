@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Material;
+    class RHI_CommandList;
 
     enum RenderableFlags : uint32_t
     {
@@ -64,7 +65,8 @@ namespace spartan
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
-        RHI_AccelerationStructure* GetMeshBlas() const;
+        uint64_t GetBlasDeviceAddress();
+        void BuildAccelerationStructure(RHI_CommandList* cmd_list);
 
         // bounding box
         const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}

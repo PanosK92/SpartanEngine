@@ -33,6 +33,7 @@ namespace spartan
 {
     class RHI_Buffer;
     class RHI_AccelerationStructure;
+    class RHI_CommandList;
 
     enum class MeshFlags : uint32_t
     {
@@ -108,6 +109,7 @@ namespace spartan
 
         // gpu buffers
         void CreateGpuBuffers();
+        void CreateAccelerationStructure(RHI_CommandList* cmd_list);
         RHI_Buffer* GetIndexBuffer()  { return m_index_buffer.get();  }
         RHI_Buffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
 
