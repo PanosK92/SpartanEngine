@@ -67,27 +67,31 @@ namespace spartan
         SP_ASSERT(geometries.size() == primitive_counts.size());
         SP_ASSERT(!geometries.empty());
         Destroy();
-
+    
         // define geometry
         vector<VkAccelerationStructureGeometryKHR> vk_geometries;
         vk_geometries.reserve(geometries.size());
-        for (const auto& geo : geometries)
+        for (const RHI_AccelerationStructureGeometry& geo : geometries)
         {
-            VkAccelerationStructureGeometryKHR geometry             = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
-            geometry.flags                                          = geo.transparent ? 0 : VK_GEOMETRY_OPAQUE_BIT_KHR;
-            geometry.geometryType                                   = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-            geometry.geometry.triangles                             = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR };
-            geometry.geometry.triangles.vertexFormat                = vulkan_format[static_cast<uint32_t>(geo.vertex_format)];
-            geometry.geometry.triangles.vertexData.deviceAddress    = geo.vertex_buffer_address;
-            geometry.geometry.triangles.vertexStride                = geo.vertex_stride;
-            geometry.geometry.triangles.maxVertex                   = geo.max_vertex;
-            geometry.geometry.triangles.indexType                   = geo.index_format == RHI_Format::R32_Uint ? VK_INDEX_TYPE_UINT32 : (geo.index_format == RHI_Format::R16_Uint ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_NONE_KHR);
-            geometry.geometry.triangles.indexData.deviceAddress     = geo.index_buffer_address;
-            geometry.geometry.triangles.transformData.deviceAddress = 0;
-
-            vk_geometries.push_back(geometry);
+            VkAccelerationStructureGeometryTrianglesDataKHR triangles_data = {};
+            triangles_data.sType                                           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            triangles_data.vertexFormat                                    = vulkan_format[static_cast<uint32_t>(geo.vertex_format)];
+            triangles_data.vertexData.deviceAddress                        = geo.vertex_buffer_address;
+            triangles_data.vertexStride                                    = geo.vertex_stride;
+            triangles_data.maxVertex                                       = geo.max_vertex;
+            triangles_data.indexType                                       = geo.index_format == RHI_Format::R32_Uint ? VK_INDEX_TYPE_UINT32 : (geo.index_format == RHI_Format::R16_Uint ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_NONE_KHR);
+            triangles_data.indexData.deviceAddress                         = geo.index_buffer_address;
+            triangles_data.transformData.deviceAddress                     = 0;
+    
+            VkAccelerationStructureGeometryKHR geometry = {};
+            geometry.sType                              = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+            geometry.flags                              = geo.transparent ? 0 : VK_GEOMETRY_OPAQUE_BIT_KHR;
+            geometry.geometryType                       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+            geometry.geometry.triangles                 = triangles_data;
+    
+            vk_geometries.emplace_back(geometry);
         }
-
+    
         // build info
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
         build_info.type                                        = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
@@ -95,7 +99,7 @@ namespace spartan
         build_info.mode                                        = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
         build_info.geometryCount                               = static_cast<uint32_t>(vk_geometries.size());
         build_info.pGeometries                                 = vk_geometries.data();
-
+    
         // get build sizes
         VkAccelerationStructureBuildSizesInfoKHR size_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
         RHI_Device::GetAccelerationStructureBuildSizes(VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, primitive_counts.data(), &size_info);
@@ -104,17 +108,16 @@ namespace spartan
         VkBufferUsageFlags usage         = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         RHI_Device::MemoryBufferCreate(m_rhi_resource_results, size_info.accelerationStructureSize, usage, properties, nullptr, m_object_name.c_str());
-
+    
         // create acceleration structure
         VkAccelerationStructureCreateInfoKHR create_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
         create_info.buffer                               = static_cast<VkBuffer>(m_rhi_resource_results);
         create_info.size                                 = size_info.accelerationStructureSize;
         create_info.type                                 = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-
         RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
-        m_buffer_device_address = RHI_Device::GetAccelerationStructureDeviceAddress(m_rhi_resource);
-
+        m_buffer_device_address                          = RHI_Device::GetAccelerationStructureDeviceAddress(m_rhi_resource);
+    
         // create scratch buffer
         void* scratch_buffer     = nullptr;
         const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
@@ -129,34 +132,39 @@ namespace spartan
             nullptr,
             (m_object_name + "_scratch").c_str()
         );
-
+    
         // set up build
         build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
         VkDeviceAddress address = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
+        SP_ASSERT_MSG(address != 0, "Invalid scratch buffer address");
         build_info.scratchData.deviceAddress = (address + alignment - 1) & ~(alignment - 1); // align address
-
+    
         // set up ranges
         vector<VkAccelerationStructureBuildRangeInfoKHR> range_infos(geometries.size());
-        for (uint32_t i                    = 0; i < static_cast<uint32_t>(geometries.size()); ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(geometries.size()); ++i)
         {
-            range_infos[i].primitiveCount  = primitive_counts[i];
+            range_infos[i].primitiveCount = primitive_counts[i];
             range_infos[i].primitiveOffset = 0;
-            range_infos[i].firstVertex     = 0;
+            range_infos[i].firstVertex = 0;
             range_infos[i].transformOffset = 0;
         }
-
         vector<VkAccelerationStructureBuildRangeInfoKHR*> p_range_infos;
         for (auto& range : range_infos) { p_range_infos.push_back(&range); }
-
+    
         // build
         RHI_Device::BuildAccelerationStructures(static_cast<void*>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos.data());
-
+    
         // barrier
         VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-        barrier.srcAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        vkCmdPipelineBarrier(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1, &barrier, 0, nullptr, 0, nullptr);
-
+        barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            0, 1, &barrier, 0, nullptr, 0, nullptr
+        );
+    
         // cleanup scratch buffer
         RHI_Device::MemoryBufferDestroy(scratch_buffer);
     }
