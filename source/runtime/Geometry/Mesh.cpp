@@ -418,8 +418,8 @@ namespace spartan
         for (const auto& sub : m_sub_meshes)
         {
             const auto& lod = sub.lods[0]; // use lod 0 for blas
-        
             RHI_AccelerationStructureGeometry geo;
+
             geo.transparent              = false;
             geo.vertex_format            = RHI_Format::R32G32B32_Float; // positions
             geo.vertex_buffer_address    = RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
@@ -427,7 +427,6 @@ namespace spartan
             geo.max_vertex               = lod.vertex_count - 1;
             geo.index_format             = RHI_Format::R32_Uint;
             geo.index_buffer_address     = RHI_Device::GetBufferDeviceAddress(m_index_buffer->GetRhiResource()) + lod.index_offset * sizeof(uint32_t);
-            geo.transform_buffer_address = 0; // no instance transform here
         
             geometries.push_back(geo);
             primitive_counts.push_back(lod.index_count / 3);

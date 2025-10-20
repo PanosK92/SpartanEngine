@@ -46,17 +46,16 @@ namespace spartan
         uint32_t max_vertex               = 0;
         RHI_Format index_format           = RHI_Format::Max;
         uint64_t index_buffer_address     = 0;
-        uint64_t transform_buffer_address = 0;
     };
 
     struct RHI_AccelerationStructureInstance
     {
-        std::array<float, 12> transform                           = {}; // row-major 3x4 matrix
-        uint32_t instance_custom_index : 24                       = 0;
-        uint32_t mask : 8                                         = 0xFF;
-        uint32_t instance_shader_binding_table_record_offset : 24 = 0;
-        uint32_t flags : 8                                        = 0;
-        uint64_t acceleration_structure_reference                 = 0;
+        std::array<float, 12> transform                      = {}; // row-major 3x4 matrix
+        uint32_t instance_custom_index                       = 0;
+        uint32_t mask                                        = 0xFF;
+        uint32_t instance_shader_binding_table_record_offset = 0;
+        uint32_t flags                                       = 0;
+        uint64_t device_address                              = 0;
     };
 
     class RHI_AccelerationStructure : public SpartanObject

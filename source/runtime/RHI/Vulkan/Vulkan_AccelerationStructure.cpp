@@ -71,21 +71,21 @@ namespace spartan
         // define geometry
         vector<VkAccelerationStructureGeometryKHR> vk_geometries;
         vk_geometries.reserve(geometries.size());
-
         for (const auto& geo : geometries)
         {
-            VkAccelerationStructureGeometryKHR vk_geo             = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
-            vk_geo.flags                                          = geo.transparent ? 0 : VK_GEOMETRY_OPAQUE_BIT_KHR;
-            vk_geo.geometryType                                   = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-            vk_geo.geometry.triangles                             = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR };
-            vk_geo.geometry.triangles.vertexFormat                = vulkan_format[static_cast<uint32_t>(geo.vertex_format)];
-            vk_geo.geometry.triangles.vertexData.deviceAddress    = geo.vertex_buffer_address;
-            vk_geo.geometry.triangles.vertexStride                = geo.vertex_stride;
-            vk_geo.geometry.triangles.maxVertex                   = geo.max_vertex;
-            vk_geo.geometry.triangles.indexType                   = geo.index_format == RHI_Format::R32_Uint ? VK_INDEX_TYPE_UINT32 : (geo.index_format == RHI_Format::R16_Uint ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_NONE_KHR);
-            vk_geo.geometry.triangles.indexData.deviceAddress     = geo.index_buffer_address;
-            vk_geo.geometry.triangles.transformData.deviceAddress = geo.transform_buffer_address;
-            vk_geometries.push_back(vk_geo);
+            VkAccelerationStructureGeometryKHR geometry             = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
+            geometry.flags                                          = geo.transparent ? 0 : VK_GEOMETRY_OPAQUE_BIT_KHR;
+            geometry.geometryType                                   = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+            geometry.geometry.triangles                             = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR };
+            geometry.geometry.triangles.vertexFormat                = vulkan_format[static_cast<uint32_t>(geo.vertex_format)];
+            geometry.geometry.triangles.vertexData.deviceAddress    = geo.vertex_buffer_address;
+            geometry.geometry.triangles.vertexStride                = geo.vertex_stride;
+            geometry.geometry.triangles.maxVertex                   = geo.max_vertex;
+            geometry.geometry.triangles.indexType                   = geo.index_format == RHI_Format::R32_Uint ? VK_INDEX_TYPE_UINT32 : (geo.index_format == RHI_Format::R16_Uint ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_NONE_KHR);
+            geometry.geometry.triangles.indexData.deviceAddress     = geo.index_buffer_address;
+            geometry.geometry.triangles.transformData.deviceAddress = 0;
+
+            vk_geometries.push_back(geometry);
         }
 
         // build info
@@ -169,16 +169,16 @@ namespace spartan
 
         // define instances
         vector<VkAccelerationStructureInstanceKHR> vk_instances(instances.size());
-        for (size_t i                                      = 0; i < instances.size(); ++i)
+        for (size_t i = 0; i < instances.size(); ++i)
         {
-            const auto& inst                               = instances[i];
-            auto& vk_inst                                  = vk_instances[i];
-            memcpy(&vk_inst.transform.matrix, inst.transform.data(), sizeof(float) * 12);
-            vk_inst.instanceCustomIndex                    = inst.instance_custom_index;
-            vk_inst.mask                                   = inst.mask;
-            vk_inst.instanceShaderBindingTableRecordOffset = inst.instance_shader_binding_table_record_offset;
-            vk_inst.flags                                  = static_cast<VkGeometryInstanceFlagsKHR>(inst.flags);
-            vk_inst.accelerationStructureReference         = inst.acceleration_structure_reference;
+            const RHI_AccelerationStructureInstance& instance = instances[i];
+            auto& vk_inst                                     = vk_instances[i];
+            vk_inst.instanceCustomIndex                       = instance.instance_custom_index;
+            vk_inst.mask                                      = instance.mask;
+            vk_inst.instanceShaderBindingTableRecordOffset    = instance.instance_shader_binding_table_record_offset;
+            vk_inst.flags                                     = static_cast<VkGeometryInstanceFlagsKHR>(instance.flags);
+            vk_inst.accelerationStructureReference            = instance.device_address;
+            memcpy(&vk_inst.transform.matrix, instance.transform.data(), sizeof(float) * 12);
         }
 
         // create instance buffer
