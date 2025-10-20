@@ -189,19 +189,20 @@ namespace spartan
     namespace functions
     {
         // function pointers
-        PFN_vkCreateDebugUtilsMessengerEXT          create_messenger                       = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger                      = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag                         = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT            set_object_name                        = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT            marker_begin                           = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT              marker_end                             = nullptr;
-        PFN_vkCmdSetFragmentShadingRateKHR          set_fragment_shading_rate              = nullptr;
-        PFN_vkCreateAccelerationStructureKHR        create_acceleration_structure          = nullptr;
-        PFN_vkDestroyAccelerationStructureKHR       destroy_acceleration_structure         = nullptr;
-        PFN_vkGetAccelerationStructureBuildSizesKHR get_acceleration_structure_build_sizes = nullptr;
-        PFN_vkCmdBuildAccelerationStructuresKHR     cmd_build_acceleration_structures      = nullptr;
-        PFN_vkGetBufferDeviceAddress                get_buffer_device_address              = nullptr;
-    
+        PFN_vkCreateDebugUtilsMessengerEXT             create_messenger                          = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT            destroy_messenger                         = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT                set_object_tag                            = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT               set_object_name                           = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT               marker_begin                              = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT                 marker_end                                = nullptr;
+        PFN_vkCmdSetFragmentShadingRateKHR             set_fragment_shading_rate                 = nullptr;
+        PFN_vkCreateAccelerationStructureKHR           create_acceleration_structure             = nullptr;
+        PFN_vkDestroyAccelerationStructureKHR          destroy_acceleration_structure            = nullptr;
+        PFN_vkGetAccelerationStructureBuildSizesKHR    get_acceleration_structure_build_sizes    = nullptr;
+        PFN_vkCmdBuildAccelerationStructuresKHR        cmd_build_acceleration_structures         = nullptr;
+        PFN_vkGetAccelerationStructureDeviceAddressKHR get_acceleration_structure_device_address = nullptr;
+        PFN_vkGetBufferDeviceAddress                   get_buffer_device_address                 = nullptr;
+
         void load(void** out_func, const char* name)
         {
             *out_func = reinterpret_cast<void*>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), name));
@@ -235,6 +236,7 @@ namespace spartan
             load(reinterpret_cast<void**>(&destroy_acceleration_structure), "vkDestroyAccelerationStructureKHR");
             load(reinterpret_cast<void**>(&get_acceleration_structure_build_sizes), "vkGetAccelerationStructureBuildSizesKHR");
             load(reinterpret_cast<void**>(&cmd_build_acceleration_structures), "vkCmdBuildAccelerationStructuresKHR");
+            load(reinterpret_cast<void**>(&get_acceleration_structure_device_address), "vkGetAccelerationStructureDeviceAddressKHR");
             load(reinterpret_cast<void**>(&get_buffer_device_address), "vkGetBufferDeviceAddress");
     
             // fragment shading rate
@@ -2311,6 +2313,16 @@ namespace spartan
         );
     }
     
+    uint64_t RHI_Device::GetAccelerationStructureDeviceAddress(void* acceleration_structure)
+    {
+        VkAccelerationStructureDeviceAddressInfoKHR address_info = {};
+        address_info.sType                                       = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+        address_info.pNext                                       = nullptr;
+        address_info.accelerationStructure                       = static_cast<VkAccelerationStructureKHR>(acceleration_structure);
+
+        return functions::get_acceleration_structure_device_address(static_cast<VkDevice>(RHI_Context::device), &address_info);
+    }
+
     uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
     {
         VkBufferDeviceAddressInfo info = {};

@@ -324,7 +324,15 @@ namespace spartan
         if (!m_mesh)
             return;
 
-        m_mesh->CreateAccelerationStructure(cmd_list);
+        m_mesh->BuildAccelerationStructure(cmd_list);
+    }
+
+    bool Renderable::HasAccelerationStructure() const
+    {
+        if (!m_mesh)
+            return false;
+
+        return m_mesh->GetBlas() != nullptr;
     }
 
     Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)

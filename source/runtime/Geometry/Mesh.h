@@ -109,7 +109,7 @@ namespace spartan
 
         // gpu buffers
         void CreateGpuBuffers();
-        void CreateAccelerationStructure(RHI_CommandList* cmd_list);
+        void BuildAccelerationStructure(RHI_CommandList* cmd_list);
         RHI_Buffer* GetIndexBuffer()  { return m_index_buffer.get();  }
         RHI_Buffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
 

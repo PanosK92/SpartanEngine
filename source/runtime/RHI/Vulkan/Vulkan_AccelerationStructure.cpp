@@ -51,11 +51,13 @@ namespace spartan
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::AccelerationStructure, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
+
         if (m_rhi_resource_results)
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource_results);
             m_rhi_resource_results = nullptr;
         }
+
         m_buffer_device_address = 0;
     }
 
@@ -105,13 +107,13 @@ namespace spartan
 
         // create acceleration structure
         VkAccelerationStructureCreateInfoKHR create_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR };
-        create_info.buffer = static_cast<VkBuffer>(m_rhi_resource_results);
-        create_info.size = size_info.accelerationStructureSize;
-        create_info.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        create_info.buffer                               = static_cast<VkBuffer>(m_rhi_resource_results);
+        create_info.size                                 = size_info.accelerationStructureSize;
+        create_info.type                                 = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
         RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
-        m_buffer_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource_results);
+        m_buffer_device_address = RHI_Device::GetAccelerationStructureDeviceAddress(m_rhi_resource);
 
         // create scratch buffer
         void* scratch_buffer     = nullptr;

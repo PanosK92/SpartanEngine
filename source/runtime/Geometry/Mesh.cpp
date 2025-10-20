@@ -406,7 +406,7 @@ namespace spartan
         }
     }
 
-    void Mesh::CreateAccelerationStructure(RHI_CommandList* cmd_list)
+    void Mesh::BuildAccelerationStructure(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 

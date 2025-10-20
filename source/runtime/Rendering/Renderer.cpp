@@ -1220,12 +1220,20 @@ namespace spartan
         {
             for (Entity* entity : World::GetEntities())
             {
+                if (!entity->GetActive())
+                    continue;
+
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
-                    renderable->BuildAccelerationStructure(cmd_list);
+                    if (!renderable->HasAccelerationStructure())
+                    {
+                        renderable->BuildAccelerationStructure(cmd_list);
+                    }
                 }
             }
         }
+
+        return;
 
         // top-level acceleration structure
         {
@@ -1249,13 +1257,6 @@ namespace spartan
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
-                        uint64_t blas_address = renderable->GetBlasDeviceAddress();
-                        if (blas_address == 0)
-                        {
-                            SP_LOG_WARNING("Invalid BLAS address for entity %s", entity->GetObjectName().c_str());
-                            continue;
-                        }
-                        
                         RHI_AccelerationStructureInstance inst;
                         
                         // convert column-major 4x4 to row-major 3x4
@@ -1269,7 +1270,7 @@ namespace spartan
                         inst.flags = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) == RHI_CullMode::None ?
                                      RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
                         SP_ASSERT_MSG(inst.flags <= 0xFF, "Instance flags exceed 8-bit field");
-                        inst.acceleration_structure_reference = blas_address;
+                        inst.acceleration_structure_reference =  renderable->GetBlasDeviceAddress();
                         
                         instances.push_back(inst);
                     }

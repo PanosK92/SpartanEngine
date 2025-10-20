@@ -111,7 +111,8 @@ namespace spartan
         static void DestroyAccelerationStructure(void* accelerationStructure, const void* pAllocator);
         static void GetAccelerationStructureBuildSizes(uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo);
         static void BuildAccelerationStructures(void* commandBuffer, uint32_t infoCount, const void* pInfos, const void* ppBuildRangeInfos);
-        static uint64_t GetBufferDeviceAddress(void* pInfo);
+        static uint64_t GetAccelerationStructureDeviceAddress(void* acceleration_structure);
+        static uint64_t GetBufferDeviceAddress(void* buffer);
 
         // physical device
         static void PhysicalDeviceRegister(const RHI_PhysicalDevice& physical_device);

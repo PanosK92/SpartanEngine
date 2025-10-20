@@ -67,6 +67,7 @@ namespace spartan
         const std::string& GetMeshName() const;
         uint64_t GetBlasDeviceAddress();
         void BuildAccelerationStructure(RHI_CommandList* cmd_list);
+        bool HasAccelerationStructure() const;
 
         // bounding box
         const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}
