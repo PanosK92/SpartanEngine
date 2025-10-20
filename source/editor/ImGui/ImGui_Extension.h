@@ -271,7 +271,7 @@ namespace ImGuiSp
     }
 
     // a drag float which will wrap the mouse cursor around the edges of the screen
-    static void draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
+    static bool draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
         static const uint32_t screen_edge_padding = 10;
         ImGuiIO& io = ImGui::GetIO();
@@ -315,8 +315,10 @@ namespace ImGuiSp
         }
     
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-        ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+        bool result = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
         ImGui::PopID();
+
+        return result;
     }
 
 
