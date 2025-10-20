@@ -120,6 +120,7 @@ struct gbuffer_vertex
     float3 tangent           : TANGENT_WORLD;
     float4 uv_misc           : TEXCOORD;  // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
     float width_percent      : TEXCOORD2; // temp, will remove
+    float2 tile_position     : POS_TILE;
 }; 
 
 float3 extract_position(matrix transform)

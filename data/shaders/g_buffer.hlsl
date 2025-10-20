@@ -103,6 +103,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     Surface surface;
     surface.flags = material.flags;
 
+    float2 pos = float2(0.0f, 0.0f);
+    
     if (surface.is_ocean() && material.ocean_parameters.displacementScale > -1.0f)
     {
         const float3 pass_values = pass_get_f3_value();
@@ -120,6 +122,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         
         input.position.y += tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
         input.position.xyz += displacement.xyz * material.ocean_parameters.displacementScale;
+
+        pos = world_pos;
     }
     
     float3 position_world          = 0.0f;
@@ -132,6 +136,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
     }
 
+    vertex.tile_position = pos;
+    
     return vertex;
 }
 
@@ -358,9 +364,16 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
                 // to the synthesised displacement (it's calculated in the vertex stage)
                 float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
                 //synthesize(tex2, displacement, world_space_tile_uv);
-                synthesize_with_flow(tex2, displacement, tex5, tile_xz_pos, material.ocean_parameters.windDirection, tile_local_uv, true);
+                synthesize_with_flow(tex2, displacement, tex5, tile_xz_pos, material.ocean_parameters.windDirection, tile_local_uv);
                 
                 albedo = displacement;
+
+                {
+                    const float2 world_pos = vertex.tile_position;
+                    const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
+                    float4 flow = float4(tex5.Sample(samplers[sampler_point_wrap], uv).rg, 0.0f, 1.0f);
+                    albedo = flow;
+                }
             }
             else // show original displacement
                 albedo = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgba;

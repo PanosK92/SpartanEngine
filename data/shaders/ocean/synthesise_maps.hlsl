@@ -122,10 +122,11 @@ void synthesize_with_flow(Texture2D example, out float4 output, Texture2D flowma
         float2 node_world_uv = (node_world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
 
         float2 flow_dir = flowmap.SampleLevel(samplers[sampler_point_wrap], node_world_uv, 0).rg;
-        flow_dir = normalize(flow_dir * 2.0f - 1.0f) * interp_node.z;
+        flow_dir = normalize(flow_dir * 2.0f - 1.0f);
+        flow_dir = float2(flow_dir.x, flow_dir.y); //* interp_node.z;
         output_flow += flow_dir;
         
-        const float theta = atan2(flow_dir.y, flow_dir.x); //- atan2(wind_dir.y, wind_dir.x);
+        const float theta = atan2(flow_dir.y, flow_dir.x) - atan2(wind_dir.y, wind_dir.x);
         const float cosT = cos(theta);
         const float sinT = sin(theta);
         const float2x2 R2 = float2x2(cosT, -sinT, sinT, cosT);
