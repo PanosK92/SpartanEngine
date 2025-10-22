@@ -118,7 +118,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
         //synthesize(tex2, displacement, world_space_tile_uv);
-        synthesize_with_flow(tex2, displacement, tex5, tile_xz_pos, material.ocean_parameters.windDirection, tile_local_uv);
+        synthesize_with_flow(tex2, displacement, tex5, world_pos, material.ocean_parameters.windDirection, tile_local_uv);
         
         input.position.y += tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
         input.position.xyz += displacement.xyz * material.ocean_parameters.displacementScale;
@@ -347,7 +347,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         
         float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
         //synthesize(tex3, slope, world_space_tile_uv);
-        synthesize_with_flow(tex3, slope, tex5, tile_xz_pos, material.ocean_parameters.windDirection, tile_local_uv);
+        synthesize_with_flow(tex3, slope, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv);
         
         slope = slope * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, 1.0f, -slope.y));
@@ -364,16 +364,17 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
                 // to the synthesised displacement (it's calculated in the vertex stage)
                 float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
                 //synthesize(tex2, displacement, world_space_tile_uv);
-                synthesize_with_flow(tex2, displacement, tex5, tile_xz_pos, material.ocean_parameters.windDirection, tile_local_uv);
+                synthesize_with_flow(tex2, displacement, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv, true);
                 
-                albedo = displacement;
+                normal = displacement;
 
-                {
-                    const float2 world_pos = vertex.tile_position;
-                    const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
-                    float4 flow = float4(tex5.Sample(samplers[sampler_point_wrap], uv).rg, 0.0f, 1.0f);
-                    albedo = flow;
-                }
+                //{
+                //    const float2 world_pos = vertex.tile_position;
+                //    const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
+                //    float4 flow = float4(tex5.Sample(samplers[sampler_point_wrap], uv).rg, 0.0f, 1.0f);
+                //    albedo = float4(uv, 0.0f, 1.0f);
+                //    albedo = flow;
+                //}
             }
             else // show original displacement
                 albedo = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgba;

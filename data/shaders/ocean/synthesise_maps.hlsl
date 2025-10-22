@@ -105,7 +105,7 @@ void synthesize_with_flow(Texture2D example, out float4 output, Texture2D flowma
     
     // convert wind dir from degrees to a 2d vector
     const float wind_dir_rad = radians(wind_dir_deg);
-    const float2 wind_dir = float2(cos(wind_dir_rad), sin(wind_dir_rad));
+    const float2 wind_dir = float2(cos(wind_dir_rad), sin(wind_dir_rad)) * float2(-1.0f, -1.0f);
 
     output = float4(0.0f, 0.0f, 0.0f, 0.0f); // init to 0.0f for safety reasons
     float moment2 = 0.0f;
@@ -115,15 +115,12 @@ void synthesize_with_flow(Texture2D example, out float4 output, Texture2D flowma
     {
         const float3 interp_node = get_triangle_interp_node(tile_local_uv, tile_freq, i);
 
-        //float2 to_center = interp_node.xy - float2(3.0f, 3.0f);
-        //float2 flow_dir = normalize(float2(-to_center.y, to_center.x));
-
-        float2 node_world_pos = (tile_xz_pos - 0.5f * 128.0f) + interp_node.xy * 128.0f;
+        float2 node_world_pos = tile_xz_pos;
         float2 node_world_uv = (node_world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
 
-        float2 flow_dir = flowmap.SampleLevel(samplers[sampler_point_wrap], node_world_uv, 0).rg;
+        float2 flow_dir = flowmap.SampleLevel(samplers[sampler_bilinear_wrap], node_world_uv, 0).rg;
         flow_dir = normalize(flow_dir * 2.0f - 1.0f);
-        flow_dir = float2(flow_dir.x, flow_dir.y); //* interp_node.z;
+        flow_dir = float2(flow_dir.x, flow_dir.y) * interp_node.z;
         output_flow += flow_dir;
         
         const float theta = atan2(flow_dir.y, flow_dir.x) - atan2(wind_dir.y, wind_dir.x);
@@ -148,7 +145,10 @@ void synthesize_with_flow(Texture2D example, out float4 output, Texture2D flowma
     preserve_variance(output, mean_example, moment2);
 
     if (debug_flow)
-        output = float4(output_flow * 0.5f + 0.5f, 0.0f, 0.0f);
+    {
+        //output = float4(output_flow * 0.5f + 0.5f, 0.0f, 1.0f);
+        output = float4(output_flow, 0.0f, 1.0f);
+    }
 }
 
 float2 ocean_get_world_space_uvs(float2 uv, float2 tile_xz_pos, float tile_size)
