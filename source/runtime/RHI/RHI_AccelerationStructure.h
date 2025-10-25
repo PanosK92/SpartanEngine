@@ -80,8 +80,7 @@ namespace spartan
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
 
         // rhi
-        void* m_rhi_resource                 = nullptr;
-        void* m_rhi_resource_results         = nullptr;
-        void* m_rhi_resource_scratch_buffer  = nullptr;
+        void* m_rhi_resource         = nullptr;
+        void* m_rhi_resource_results = nullptr;
     };
 }

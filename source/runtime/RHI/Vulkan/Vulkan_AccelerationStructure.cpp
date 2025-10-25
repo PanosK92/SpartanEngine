@@ -41,7 +41,6 @@ namespace spartan
 
     RHI_AccelerationStructure::~RHI_AccelerationStructure()
     {
-        RHI_Device::MemoryBufferDestroy(m_rhi_resource_scratch_buffer);
         Destroy();
     }
 
@@ -119,9 +118,9 @@ namespace spartan
         // create scratch buffer
         void* scratch_buffer     = nullptr;
         const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        uint64_t scratch_size    = size_info.buildScratchSize + alignment; // add alignment for offset
-        scratch_size             = (scratch_size + alignment - 1) & ~(alignment - 1); // align to next multiple
-        usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        uint64_t scratch_size    = (size_info.buildScratchSize + alignment - 1) & ~(alignment - 1); // align size
+        usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+        properties               = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         RHI_Device::MemoryBufferCreate(
             scratch_buffer,
             scratch_size,
@@ -133,9 +132,9 @@ namespace spartan
 
         // set up build
         build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
-        VkDeviceAddress address             = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
-        SP_ASSERT_MSG(address != 0, "Invalid scratch buffer address");
-        build_info.scratchData.deviceAddress = (address + alignment - 1) & ~(alignment - 1); // align address
+        VkDeviceAddress address = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
+        SP_ASSERT_MSG(address != 0, "invalid scratch buffer address");
+        build_info.scratchData.deviceAddress = address; // rely on buffer alignment
     
         // set up ranges
         vector<VkAccelerationStructureBuildRangeInfoKHR> range_infos(geometries.size());
@@ -239,27 +238,25 @@ namespace spartan
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
 
         // create scratch buffer
-        if (!m_rhi_resource_scratch_buffer)
-        {
-            const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-            uint64_t scratch_size    = size_info.buildScratchSize + alignment; // add alignment for offset
-            scratch_size             = (scratch_size + alignment - 1) & ~(alignment - 1); // align to next multiple
-            usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-            RHI_Device::MemoryBufferCreate(
-                m_rhi_resource_scratch_buffer,
-                scratch_size,
-                usage,
-                properties,
-                nullptr,
-                (m_object_name + "_scratch").c_str()
-            );
-        }
-
+        void* scratch_buffer     = nullptr;
+        const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+        uint64_t scratch_size    = (size_info.buildScratchSize + alignment - 1) & ~(alignment - 1); // align size
+        usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+        properties               = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        RHI_Device::MemoryBufferCreate(
+            scratch_buffer,
+            scratch_size,
+            usage,
+            properties,
+            nullptr,
+            (m_object_name + "_scratch").c_str()
+        );
+        
         // set up build
-        build_info.dstAccelerationStructure  = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
-        VkDeviceAddress address              = RHI_Device::GetBufferDeviceAddress(m_rhi_resource_scratch_buffer);
-        const uint64_t alignment             = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        build_info.scratchData.deviceAddress = (address + alignment - 1) & ~(alignment - 1); // align address
+        build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
+        VkDeviceAddress address = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
+        SP_ASSERT_MSG(address != 0, "invalid scratch buffer address");
+        build_info.scratchData.deviceAddress = address; // rely on buffer alignment
 
         VkAccelerationStructureBuildRangeInfoKHR range_info       = {};
         range_info.primitiveCount                                 = primitive_count;
@@ -276,6 +273,8 @@ namespace spartan
             0, 1, &barrier, 0, nullptr, 0, nullptr
         );
 
+        // destroy temp buffers
         RHI_Device::MemoryBufferDestroy(instance_buffer);
+        RHI_Device::MemoryBufferDestroy(scratch_buffer);
     }
 }

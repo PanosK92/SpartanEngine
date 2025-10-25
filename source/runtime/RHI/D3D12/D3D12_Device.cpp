@@ -314,6 +314,11 @@ namespace spartan
         return 0;
     }
 
+    uint64_t RHI_Device::GetAccelerationStructureDeviceAddress(void* acceleration_structure)
+    {
+        return 0;
+    }
+
     // immediate command list
 
     RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
