@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "../Entity.h"
 #include "../RHI/RHI_Buffer.h"
+#include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_AccelerationStructure.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Renderer.h"
@@ -316,7 +317,7 @@ namespace spartan
         if (!m_mesh || !m_mesh->GetBlas())
             return 0;
 
-        return m_mesh->GetBlas()->GetDeviceAddress();
+        return RHI_Device::GetAccelerationStructureDeviceAddress(m_mesh->GetBlas()->GetRhiResource());
     }
 
     void Renderable::BuildAccelerationStructure(RHI_CommandList* cmd_list)

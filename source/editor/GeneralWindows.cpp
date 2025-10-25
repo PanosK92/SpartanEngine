@@ -82,7 +82,7 @@ namespace
             if (ImGui::Begin("What should you expect", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
                 ImGui::PushItemWidth(500.0f * spartan::Window::GetDpiScale());
-                ImGui::Text("This isn't an engine for the average user, it's designed for advanced research and experimentation, ideal for industry veterans.");
+                ImGui::Text("This isn't an engine for the average user, it's designed for advanced research, ideal for game engine and rendering engineers.");
                 ImGui::PopItemWidth();
 
                 ImGui::Separator();
@@ -295,7 +295,6 @@ namespace
             {
                 ImGui::BeginGroup();
                 {
-                    // my details
                     personal_details();
 
                     ImGui::Separator();
@@ -417,13 +416,13 @@ namespace
 
         const WorldEntry worlds[] =
         {
-            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" , "Light",          4000 },
-            { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5400 },
-            { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          2048 },
-            { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      5000 },
-            { "Subway",            "GI test. No lights, only emissive textures",                         "Complete" , "Moderate",       5000 },
-            { "Minecraft",         "Blocky aesthetic",                                                   "Complete" , "Light",          4000 },
-            { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          4000 }
+            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" , "Light",          2100 },
+            { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5600 },
+            { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          2100 },
+            { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      2600 },
+            { "Subway",            "GI test. No lights, only emissive textures",                         "Complete" , "Moderate",       2600 },
+            { "Minecraft",         "Blocky aesthetic",                                                   "Complete" , "Light",          2100 },
+            { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 }
         };
         int world_index = 0;
 

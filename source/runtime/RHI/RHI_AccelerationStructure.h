@@ -72,17 +72,16 @@ namespace spartan
         // misc
         void* GetRhiResource() const                  { return m_rhi_resource; }
         RHI_AccelerationStructureType GetType() const { return m_type; }
-        uint64_t GetDeviceAddress() const             { return m_buffer_device_address; }
 
     private:
         void Destroy();
 
         // misc
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
-        uint64_t m_buffer_device_address     = 0;
 
         // rhi
-        void* m_rhi_resource         = nullptr;
-        void* m_rhi_resource_results = nullptr;
+        void* m_rhi_resource                 = nullptr;
+        void* m_rhi_resource_results         = nullptr;
+        void* m_rhi_resource_scratch_buffer  = nullptr;
     };
 }

@@ -144,7 +144,6 @@ namespace spartan
 
     void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal)
     {
-        // the engine can employ multiple threads for things like laoding assets, which will need staging buffers
         lock_guard<mutex> lock(get_mutex(this));
     
         // wait semaphore setup
@@ -181,8 +180,8 @@ namespace spartan
     
         // command buffer
         VkCommandBufferSubmitInfo cmd_buffer_info = {};
-        cmd_buffer_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
-        cmd_buffer_info.commandBuffer            = *reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+        cmd_buffer_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR;
+        cmd_buffer_info.commandBuffer             = reinterpret_cast<VkCommandBuffer>(cmd_buffer);
     
         // submit
         {
@@ -214,7 +213,6 @@ namespace spartan
 
     void RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
     {
-        // the engine can employ multiple threads for things like laoding assets, which will need staging buffers
         lock_guard<mutex> lock(get_mutex(this));
 
         // get semaphore vulkan resources

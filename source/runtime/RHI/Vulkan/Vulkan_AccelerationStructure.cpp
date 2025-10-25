@@ -41,6 +41,7 @@ namespace spartan
 
     RHI_AccelerationStructure::~RHI_AccelerationStructure()
     {
+        RHI_Device::MemoryBufferDestroy(m_rhi_resource_scratch_buffer);
         Destroy();
     }
 
@@ -57,8 +58,6 @@ namespace spartan
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource_results);
             m_rhi_resource_results = nullptr;
         }
-
-        m_buffer_device_address = 0;
     }
 
     void RHI_AccelerationStructure::Build(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
@@ -116,8 +115,7 @@ namespace spartan
         create_info.type                                 = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
         RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
-        m_buffer_device_address                          = RHI_Device::GetAccelerationStructureDeviceAddress(m_rhi_resource);
-    
+
         // create scratch buffer
         void* scratch_buffer     = nullptr;
         const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
@@ -132,10 +130,10 @@ namespace spartan
             nullptr,
             (m_object_name + "_scratch").c_str()
         );
-    
+
         // set up build
         build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
-        VkDeviceAddress address = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
+        VkDeviceAddress address             = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
         SP_ASSERT_MSG(address != 0, "Invalid scratch buffer address");
         build_info.scratchData.deviceAddress = (address + alignment - 1) & ~(alignment - 1); // align address
     
@@ -143,9 +141,9 @@ namespace spartan
         vector<VkAccelerationStructureBuildRangeInfoKHR> range_infos(geometries.size());
         for (uint32_t i = 0; i < static_cast<uint32_t>(geometries.size()); ++i)
         {
-            range_infos[i].primitiveCount = primitive_counts[i];
+            range_infos[i].primitiveCount  = primitive_counts[i];
             range_infos[i].primitiveOffset = 0;
-            range_infos[i].firstVertex = 0;
+            range_infos[i].firstVertex     = 0;
             range_infos[i].transformOffset = 0;
         }
         vector<VkAccelerationStructureBuildRangeInfoKHR*> p_range_infos;
@@ -164,8 +162,7 @@ namespace spartan
             VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             0, 1, &barrier, 0, nullptr, 0, nullptr
         );
-    
-        // cleanup scratch buffer
+
         RHI_Device::MemoryBufferDestroy(scratch_buffer);
     }
 
@@ -173,6 +170,18 @@ namespace spartan
     {
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Top);
         SP_ASSERT(!instances.empty());
+
+        // barrier to ensure prior writes are complete
+        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+        barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            0, 1, &barrier, 0, nullptr, 0, nullptr
+        );
+
         Destroy();
 
         // define instances
@@ -226,29 +235,30 @@ namespace spartan
         create_info.buffer                               = static_cast<VkBuffer>(m_rhi_resource_results);
         create_info.size                                 = size_info.accelerationStructureSize;
         create_info.type                                 = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-
         RHI_Device::CreateAccelerationStructure(&create_info, nullptr, &m_rhi_resource);
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
-        m_buffer_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource_results);
 
         // create scratch buffer
-        void* scratch_buffer     = nullptr;
-        const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        uint64_t scratch_size    = size_info.buildScratchSize + alignment; // add alignment for offset
-        scratch_size             = (scratch_size + alignment - 1) & ~(alignment - 1); // align to next multiple
-        usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-        RHI_Device::MemoryBufferCreate(
-            scratch_buffer,
-            scratch_size,
-            usage,
-            properties,
-            nullptr,
-            (m_object_name + "_scratch").c_str()
-        );
+        if (!m_rhi_resource_scratch_buffer)
+        {
+            const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+            uint64_t scratch_size    = size_info.buildScratchSize + alignment; // add alignment for offset
+            scratch_size             = (scratch_size + alignment - 1) & ~(alignment - 1); // align to next multiple
+            usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            RHI_Device::MemoryBufferCreate(
+                m_rhi_resource_scratch_buffer,
+                scratch_size,
+                usage,
+                properties,
+                nullptr,
+                (m_object_name + "_scratch").c_str()
+            );
+        }
 
         // set up build
         build_info.dstAccelerationStructure  = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
-        VkDeviceAddress address              = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
+        VkDeviceAddress address              = RHI_Device::GetBufferDeviceAddress(m_rhi_resource_scratch_buffer);
+        const uint64_t alignment             = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
         build_info.scratchData.deviceAddress = (address + alignment - 1) & ~(alignment - 1); // align address
 
         VkAccelerationStructureBuildRangeInfoKHR range_info       = {};
@@ -258,14 +268,14 @@ namespace spartan
         // build
         RHI_Device::BuildAccelerationStructures(static_cast<void*>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos);
 
-        // barrier
-        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-        barrier.srcAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        vkCmdPipelineBarrier(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+        // ensure build is complete
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            0, 1, &barrier, 0, nullptr, 0, nullptr
+        );
 
-        // cleanup temporary buffers
-        RHI_Device::MemoryBufferDestroy(scratch_buffer);
         RHI_Device::MemoryBufferDestroy(instance_buffer);
     }
 }

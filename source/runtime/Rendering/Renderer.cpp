@@ -1233,8 +1233,6 @@ namespace spartan
             }
         }
 
-        return;
-
         // top-level acceleration structure
         {
             // create or rebuild tlas
@@ -1259,13 +1257,13 @@ namespace spartan
                         RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
                         RHI_AccelerationStructureInstance instance           = {};
-                        instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
-                        instance.mask                                        = 0xFF;                 // visible to all rays
-                        instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
+                        instance.instance_custom_index                       = material->GetIndex();     // for hit shader material lookup
+                        instance.mask                                        = 0xFF;                     // visible to all rays
+                        instance.instance_shader_binding_table_record_offset = 0;                        // sbt hit group offset
                         instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
                         instance.device_address                              = renderable->GetBlasDeviceAddress();
                         Matrix world_matrix                                  = renderable->GetEntity()->GetMatrix().Transposed();
-                        copy(world_matrix.Data(), world_matrix.Data() + 12, instance.transform.begin());  // convert column-major 4x4 to row-major 3x4
+                        copy(world_matrix.Data(), world_matrix.Data() + 12, instance.transform.begin()); // convert column-major 4x4 to row-major 3x4
 
                         instances.push_back(instance);
                     }
