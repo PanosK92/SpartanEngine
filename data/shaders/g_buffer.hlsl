@@ -119,8 +119,10 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
         //synthesize(tex2, displacement, world_space_tile_uv);
         synthesize_with_flow(tex2, displacement, tex5, world_pos, material.ocean_parameters.windDirection, tile_local_uv);
+
+        const float height = tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
         
-        input.position.y += tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
+        input.position.y += height <= 0.0f ? 0.0f : height + 3.0f;
         input.position.xyz += displacement.xyz * material.ocean_parameters.displacementScale;
 
         pos = world_pos;
@@ -350,7 +352,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         synthesize_with_flow(tex3, slope, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv);
         
         slope = slope * material.ocean_parameters.slopeScale;
-        normal = normalize(float3(-slope.x, 1.0f, -slope.y));
+        normal = normalize(float3(-slope.x, vertex.normal.y, -slope.y));
 
         // apply foam (foam mask is stored in the alpha channel of slope map)
         //const float foam_noise = compute_foam_noise(vertex.uv_misc.xy, buffer_frame.time);

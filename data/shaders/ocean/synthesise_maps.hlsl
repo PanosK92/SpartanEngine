@@ -122,6 +122,9 @@ void synthesize_with_flow(Texture2D example, out float4 output, Texture2D flowma
         flow_dir = normalize(flow_dir * 2.0f - 1.0f);
         flow_dir = float2(flow_dir.x, flow_dir.y) * interp_node.z;
         output_flow += flow_dir;
+
+        //float2 to_center = interp_node.xy - float2(3.0f, 3.0f);
+        //float2 flow_dir = normalize(float2(to_center.y, to_center.x));
         
         const float theta = atan2(flow_dir.y, flow_dir.x) - atan2(wind_dir.y, wind_dir.x);
         const float cosT = cos(theta);
