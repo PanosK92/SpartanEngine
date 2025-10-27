@@ -851,6 +851,211 @@ namespace spartan
             shared_ptr<Material> ocean_material = make_shared<Material>();
             shared_ptr<RHI_Texture> flow_map;
 
+            inline int idx(int x, int y, int w) { return y * w + x; }
+
+            void GenerateLakeOutwardFlow(
+                const float* height_data,
+                uint32_t tex_width,
+                uint32_t tex_height,
+                float waterLevel,                    // e.g. 0.0f
+                std::vector<Vector2>& out_flow_data, // output, size must be tex_width*tex_height
+                int blurRadius = 3,                  // optional smoothing radius (3..8)
+                float center_strength = 1.0f         // scale of outward strength
+            )
+            {
+                const int W = (int)tex_width;
+                const int H = (int)tex_height;
+                const int N = W * H;
+                out_flow_data.assign(N, Vector2(0.5f, 0.5f));
+
+                // 1) lake mask and shore detection
+                std::vector<uint8_t> isLake(N, 0);
+                std::vector<uint8_t> isShore(N, 0);
+
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (height_data[i] <= waterLevel) isLake[i] = 1;
+                    }
+                }
+
+                // find shore pixels: lake pixel adjacent to any non-lake (4-neighbour)
+                auto inBounds = [&](int x, int y) { return x >= 0 && x < W && y >= 0 && y < H; };
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (!isLake[i]) continue;
+                        bool shore = false;
+                        const int nx[4] = { 1,-1,0,0 };
+                        const int ny[4] = { 0,0,1,-1 };
+                        for (int k = 0; k < 4; ++k)
+                        {
+                            int sx = x + nx[k], sy = y + ny[k];
+                            if (!inBounds(sx, sy) || !isLake[idx(sx, sy, W)]) { shore = true; break; }
+                        }
+                        if (shore) isShore[i] = 1;
+                    }
+                }
+
+                // 2) multi-source BFS from shore pixels
+                // store nearest shore coords and distance (in pixels)
+                const int INF = 1 << 30;
+                std::vector<int> dist(N, INF);
+                std::vector<int> nearestX(N, -1), nearestY(N, -1);
+                std::deque<int> q;
+
+                // push all shore pixels as index seeds
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (isShore[i])
+                        {
+                            dist[i] = 0;
+                            nearestX[i] = x;
+                            nearestY[i] = y;
+                            q.push_back(i);
+                        }
+                    }
+                }
+
+                // if no shore pixels (rare), bail out
+                if (q.empty()) {
+                    // fallback: set small wind or zero flow
+                    for (int i = 0; i < N; i++) out_flow_data[i] = Vector2(0.5f, 0.5f);
+                    return;
+                }
+
+                const int nbrX[4] = { 1,-1,0,0 };
+                const int nbrY[4] = { 0,0,1,-1 };
+
+                while (!q.empty())
+                {
+                    int cur = q.front(); q.pop_front();
+                    int cx = cur % W;
+                    int cy = cur / W;
+                    int cd = dist[cur];
+
+                    for (int k = 0; k < 4; ++k)
+                    {
+                        int nxp = cx + nbrX[k];
+                        int nyp = cy + nbrY[k];
+                        if (!inBounds(nxp, nyp)) continue;
+                        int ni = idx(nxp, nyp, W);
+                        if (!isLake[ni]) continue; // only propagate inside lakes
+
+                        if (dist[ni] > cd + 1)
+                        {
+                            dist[ni] = cd + 1;
+                            nearestX[ni] = nearestX[cur];
+                            nearestY[ni] = nearestY[cur];
+                            q.push_back(ni);
+                        }
+                    }
+                }
+
+                // 3) build outward flow: nearest shore vector -> direction to shore
+                // also compute max distance for normalization
+                int maxDist = 0;
+                for (int i = 0; i < N; i++) if (isLake[i] && dist[i] < INF) maxDist = std::max(maxDist, dist[i]);
+
+                if (maxDist == 0) maxDist = 1;
+
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (!isLake[i])
+                        {
+                            // encode 0 flow on land (or whatever you prefer)
+                            out_flow_data[i] = Vector2(0.5f, 0.5f);
+                            continue;
+                        }
+
+                        int sx = nearestX[i];
+                        int sy = nearestY[i];
+                        if (sx < 0)
+                        {
+                            // no nearest shore found (shouldn't happen) => tiny noise/wind
+                            out_flow_data[i] = Vector2(0.5f, 0.5f);
+                            continue;
+                        }
+
+                        // vector from pixel -> shore
+                        float vx = (float)sx - (float)x;
+                        float vy = (float)sy - (float)y;
+                        float d = std::sqrt(vx * vx + vy * vy);
+                        if (d < 1e-6f) {
+                            // on the shore pixel: zero magnitude
+                            out_flow_data[i] = Vector2(0.5f, 0.5f);
+                        }
+                        else {
+                            // normalized direction towards shore (points outward)
+                            float nxv = vx / d;
+                            float nyv = vy / d;
+
+                            // optional magnitude: stronger near center (far from shore)
+                            float mag = (float)dist[i] / (float)maxDist; // 0..1 (0 at shore, 1 at farthest)
+                            mag = pow(mag, 0.8f) * center_strength;    // tweak exponent for shape
+
+                            // combine direction and magnitude (we'll store unit direction only; magnitude can be separate channel)
+                            float ux = nxv * mag;
+                            float uy = nyv * mag;
+
+                            // store as signed normalized vector in [-1,1] then encode to [0,1]
+                            float ex = ux * 0.5f + 0.5f;
+                            float ey = uy * 0.5f + 0.5f;
+                            out_flow_data[i] = Vector2(ex, ey);
+                        }
+                    }
+                }
+
+                // 4) optional: blur/smooth the flow vectors (box blur or Gaussian)
+                if (blurRadius > 0)
+                {
+                    std::vector<Vector2> temp = out_flow_data;
+                    for (int y = 0; y < H; ++y)
+                    {
+                        for (int x = 0; x < W; ++x)
+                        {
+                            int i = idx(x, y, W);
+                            if (!isLake[i]) continue;
+                            float sx = 0.0f, sy = 0.0f; int cnt = 0;
+                            for (int oy = -blurRadius; oy <= blurRadius; ++oy)
+                            {
+                                for (int ox = -blurRadius; ox <= blurRadius; ++ox)
+                                {
+                                    int nxp = std::clamp(x + ox, 0, W - 1);
+                                    int nyp = std::clamp(y + oy, 0, H - 1);
+                                    int ni = idx(nxp, nyp, W);
+                                    if (!isLake[ni]) continue;
+                                    sx += (temp[ni].x - 0.5f) * 2.0f; // decode back -1..1
+                                    sy += (temp[ni].y - 0.5f) * 2.0f;
+                                    cnt++;
+                                }
+                            }
+                            if (cnt > 0) {
+                                sx /= (float)cnt;
+                                sy /= (float)cnt;
+                                float l = std::sqrt(sx * sx + sy * sy);
+                                if (l > 1e-6f) { sx /= l; sy /= l; }
+                                // reapply magnitude based on dist (optional)
+                                float mag = (float)dist[i] / (float)maxDist;
+                                float ux = sx * mag;
+                                float uy = sy * mag;
+                                out_flow_data[i] = Vector2(ux * 0.5f + 0.5f, uy * 0.5f + 0.5f);
+                            }
+                        }
+                    }
+                }
+            }
+
             void create()
             {
                 // tweak without exceeding a vram usage of 8 GB (that is until streaming is implemented)
@@ -985,7 +1190,15 @@ namespace spartan
                     SP_ASSERT(height_map->GetMip(0, 0).bytes.size() == tex_width * tex_height * sizeof(float));
 
                     std::vector<Vector2> flow_data(tex_width * tex_height);
+                    std::vector<Vector2> lake_flow(tex_width * tex_height);
 
+                    const float waterLevel = 0.0f; // threshold for "lake" height
+                    const int kernelRadius = 8;    // used for slope-based flow smoothing
+
+                    // --- 1) Generate lake outward flow field ---
+                    GenerateLakeOutwardFlow(height_data, tex_width, tex_height, waterLevel, lake_flow, 4, 1.0f);
+
+                    // --- 2) Generate slope-based (river) flow field ---
                     for (uint32_t y = 0; y < tex_height; y++)
                     {
                         for (uint32_t x = 0; x < tex_width; x++)
@@ -994,7 +1207,6 @@ namespace spartan
                             float gy = 0.0f;
                             int samples = 0;
 
-                            const int kernelRadius = 2; // try 2–4 for smoother flow
                             for (int ky = -kernelRadius; ky <= kernelRadius; ky++)
                             {
                                 for (int kx = -kernelRadius; kx <= kernelRadius; kx++)
@@ -1021,16 +1233,24 @@ namespace spartan
                             gy /= (samples * 2.0f);
 
                             Vector2 flow = { -gx, -gy };
+
+                            // --- 3) Replace flow with lake pattern where below waterLevel ---
+                            if (height_data[y * tex_width + x] <= waterLevel)
+                            {
+                                flow_data[y * tex_width + x] = lake_flow[y * tex_width + x];
+                                continue;
+                            }
+
                             float len = std::sqrt(flow.x * flow.x + flow.y * flow.y);
                             if (len > 0.0001f)
                                 flow /= len;
 
-                            // Encode to [0,1]
+                            // Encode slope flow into [0,1]
                             flow_data[y * tex_width + x] = Vector2(flow.x * 0.5f + 0.5f, flow.y * 0.5f + 0.5f);
-                            //flow_data[y * tex_width + x] = Vector2(1.0f, 0.0f);
                         }
                     }
 
+                    // --- 4) Encode into R8G8_UNORM texture ---
                     vector<RHI_Texture_Slice> data(1);
                     auto& slice = data[0];
                     slice.mips.resize(1);
@@ -1038,25 +1258,30 @@ namespace spartan
                     mip_bytes.resize(tex_width * tex_height * 2); // 2 bytes per pixel for R8G8_Unorm
 
                     auto copy_data = [&flow_data, &mip_bytes](uint32_t start, uint32_t end)
-                    {
-                        for (uint32_t i = start; i < end; i++)
                         {
-                            const Vector2& f = flow_data[i];
-                            //float fx = (f.x * 0.5f) + 0.5f;
-                            //float fy = (f.y * 0.5f) + 0.5f;
-                            // clamp to [0,1]
-                            float fx = std::clamp(f.x, 0.0f, 1.0f);
-                            float fy = std::clamp(f.y, 0.0f, 1.0f);
-                            uint8_t r = static_cast<uint8_t>(std::round(fx * 255.0f));
-                            uint8_t g = static_cast<uint8_t>(std::round(fy * 255.0f));
-                            mip_bytes[i * 2 + 0] = static_cast<byte>(r);
-                            mip_bytes[i * 2 + 1] = static_cast<byte>(g);
-                        }
-                    };
+                            for (uint32_t i = start; i < end; i++)
+                            {
+                                const Vector2& f = flow_data[i];
+                                float fx = std::clamp(f.x, 0.0f, 1.0f);
+                                float fy = std::clamp(f.y, 0.0f, 1.0f);
+                                uint8_t r = static_cast<uint8_t>(std::round(fx * 255.0f));
+                                uint8_t g = static_cast<uint8_t>(std::round(fy * 255.0f));
+                                mip_bytes[i * 2 + 0] = static_cast<byte>(r);
+                                mip_bytes[i * 2 + 1] = static_cast<byte>(g);
+                            }
+                        };
+
                     ThreadPool::ParallelLoop(copy_data, tex_width * tex_height);
 
-                    flow_map = std::make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, tex_width, tex_height, 1, 1,
-                        RHI_Format::R8G8_Unorm, RHI_Texture_Srv, "terrain_flowmap", data);
+                    // --- 5) Upload to GPU ---
+                    flow_map = std::make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        tex_width, tex_height, 1, 1,
+                        RHI_Format::R8G8_Unorm,
+                        RHI_Texture_Srv,
+                        "terrain_flowmap",
+                        data
+                    );
 
                     ocean_material->SetTexture(MaterialTextureType::Flowmap, flow_map);
                 }
