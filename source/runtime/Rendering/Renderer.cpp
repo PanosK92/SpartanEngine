@@ -266,6 +266,8 @@ namespace spartan
         // wait for all commands list, from all queues, to finish executing
         RHI_Device::QueueWaitAll();
 
+        RHI_Texture::DestroyStagingBuffer();
+
         // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
         {
             DestroyResources();
