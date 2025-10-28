@@ -654,8 +654,8 @@ namespace spartan
         immediate_execution::condition_var.wait(lock, [] { return !immediate_execution::is_executing; });
         immediate_execution::is_executing = true;
     
-        // get command pool
-        RHI_Queue* queue = immediate_execution::queues[static_cast<uint32_t>(queue_type)].get();
+        // get command list
+        RHI_Queue* queue          = immediate_execution::queues[static_cast<uint32_t>(queue_type)].get();
         RHI_CommandList* cmd_list = queue->NextCommandList();
         cmd_list->Begin();
         return cmd_list;
@@ -676,6 +676,8 @@ namespace spartan
         // wait for ongoing operations to complete
         unique_lock<mutex> lock(immediate_execution::mutex_execution);
         immediate_execution::condition_var.wait(lock, [] { return !immediate_execution::is_executing; });
+
+        // now release memory
         immediate_execution::queues.fill(nullptr);
     }
 

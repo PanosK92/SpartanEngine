@@ -91,6 +91,11 @@ DOCUMENT(R"(The basic irreducible type of an object. Every other more complex ty
 
   A ResourceId. Equivalent to (and stored as) an 8-byte unsigned integer, but specifically contains
   the unique Id of a resource in a capture.
+
+.. data:: GPUAddress
+
+  A GPU pointer. Equivalent to (and stored as) an 8-byte unsigned integer, but specifically contains
+  the address of a resource in a capture.
 )");
 enum class SDBasic : uint32_t
 {
@@ -107,9 +112,16 @@ enum class SDBasic : uint32_t
   Boolean,
   Character,
   Resource,
+  GPUAddress,
 };
 
 DECLARE_REFLECTION_ENUM(SDBasic);
+
+#if defined(ENABLE_PYTHON_FLAG_ENUMS)
+
+ENABLE_PYTHON_FLAG_ENUMS;
+
+#endif
 
 DOCUMENT(R"(Bitfield flags that could be applied to a type.
 
@@ -188,57 +200,6 @@ enum class SDTypeFlags : uint32_t
 BITMASK_OPERATORS(SDTypeFlags);
 DECLARE_REFLECTION_ENUM(SDTypeFlags);
 
-struct SDObject;
-struct SDChunk;
-
-DOCUMENT("Details the name and properties of a structured type");
-struct SDType
-{
-  SDType(const rdcinflexiblestr &n)
-      : name(n), basetype(SDBasic::Struct), flags(SDTypeFlags::NoFlags), byteSize(0)
-  {
-  }
-#if !defined(SWIG)
-  SDType(rdcinflexiblestr &&n)
-      : name(std::move(n)), basetype(SDBasic::Struct), flags(SDTypeFlags::NoFlags), byteSize(0)
-  {
-  }
-#endif
-
-  DOCUMENT("The name of this type.");
-  rdcinflexiblestr name;
-
-  DOCUMENT("The :class:`SDBasic` category that this type belongs to.");
-  SDBasic basetype;
-
-  DOCUMENT("The :class:`SDTypeFlags` flags for this type.");
-  SDTypeFlags flags;
-
-  DOCUMENT(R"(The size in bytes that an instance of this type takes up.
-
-This is only valid for whole chunks (where it contains the whole chunk size), for buffers that have
-an arbitrary size, or for basic types such as integers and floating point values where it gives the
-size/precision of the type.
-
-For variable size types like structs, arrays, etc it will be set to 0.
-)");
-  uint64_t byteSize;
-
-protected:
-  friend struct SDObject;
-  friend struct SDChunk;
-
-  SDType() = default;
-  SDType(const SDType &) = default;
-  SDType &operator=(const SDType &) = default;
-  void *operator new(size_t count) = delete;
-  void *operator new[](size_t count) = delete;
-  void operator delete(void *p) = delete;
-  void operator delete[](void *p) = delete;
-};
-
-DECLARE_REFLECTION_STRUCT(SDType);
-
 DOCUMENT(R"(Bitfield flags that could be applied to an :class:`SDChunk`.
 
 .. data:: NoFlags
@@ -265,6 +226,69 @@ enum class SDChunkFlags : uint64_t
 BITMASK_OPERATORS(SDChunkFlags);
 DECLARE_REFLECTION_ENUM(SDChunkFlags);
 
+#if defined(DISABLE_PYTHON_FLAG_ENUMS)
+DISABLE_PYTHON_FLAG_ENUMS;
+#endif
+
+struct SDObject;
+struct SDChunk;
+
+DOCUMENT("Details the name and properties of a structured type");
+struct SDType
+{
+  SDType(const rdcinflexiblestr &n)
+      : name(n), basetype(SDBasic::Struct), flags(SDTypeFlags::NoFlags), byteSize(0)
+  {
+  }
+#if !defined(SWIG)
+  SDType(rdcinflexiblestr &&n)
+      : name(std::move(n)), basetype(SDBasic::Struct), flags(SDTypeFlags::NoFlags), byteSize(0)
+  {
+  }
+#endif
+
+  DOCUMENT("The name of this type.");
+  rdcinflexiblestr name;
+
+  DOCUMENT(R"(The :class:`SDBasic` category that this type belongs to.
+
+:type: SDBasic
+)");
+  SDBasic basetype;
+
+  DOCUMENT(R"(The :class:`SDTypeFlags` flags for this type.
+
+:type: SDTypeFlags
+)");
+  SDTypeFlags flags;
+
+  DOCUMENT(R"(The size in bytes that an instance of this type takes up.
+
+This is only valid for whole chunks (where it contains the whole chunk size), for buffers that have
+an arbitrary size, or for basic types such as integers and floating point values where it gives the
+size/precision of the type.
+
+For variable size types like structs, arrays, etc it will be set to 0.
+
+:type: int
+)");
+  uint64_t byteSize;
+
+protected:
+  friend struct SDObject;
+  friend struct SDChunk;
+
+  SDType() = default;
+  SDType(const SDType &) = default;
+  SDType &operator=(const SDType &) = default;
+  void *operator new(size_t count) = delete;
+  void *operator new[](size_t count) = delete;
+  void operator delete(void *p) = delete;
+  void operator delete[](void *p) = delete;
+};
+
+DECLARE_REFLECTION_STRUCT(SDType);
+
 DOCUMENT("The metadata that goes along with a :class:`SDChunk` to detail how it was recorded.");
 struct SDChunkMetaData
 {
@@ -281,22 +305,35 @@ struct SDChunkMetaData
 
   DOCUMENT(R"(The length in bytes of this chunk - may be longer than the actual sum of the data if a
 conservative size estimate was used on creation to avoid seeking to fix-up the stored length.
+
+:type: int
 )");
   uint64_t length = 0;
 
-  DOCUMENT("The ID of the thread where this chunk was recorded.");
+  DOCUMENT(R"(The ID of the thread where this chunk was recorded.
+
+:type: int
+)");
   uint64_t threadID = 0;
 
   DOCUMENT(R"(The duration in microseconds that this chunk took. This is the time for the actual
 work, not the serialising.
 Since 0 is a possible value for this (for extremely fast calls), -1 is the invalid/not present value.
+
+:type: int
 )");
   int64_t durationMicro = -1;
 
-  DOCUMENT("The point in time when this chunk was recorded, in microseconds since program start.");
+  DOCUMENT(R"(The point in time when this chunk was recorded, in microseconds since program start.
+
+:type: int
+)");
   uint64_t timestampMicro = 0;
 
-  DOCUMENT("The frames of the CPU-side callstack leading up to the chunk.");
+  DOCUMENT(R"(The frames of the CPU-side callstack leading up to the chunk.
+
+:type: List[int]
+)");
   rdcarray<uint64_t> callstack;
 
 private:
@@ -314,22 +351,40 @@ Only one member is valid, as defined by the type of the :class:`SDObject`.
 )");
 union SDObjectPODData
 {
-  DOCUMENT("The value as an unsigned integer.");
+  DOCUMENT(R"(The value as an unsigned integer.
+
+:type: int
+)");
   uint64_t u;
 
-  DOCUMENT("The value as a signed integer.");
+  DOCUMENT(R"(The value as a signed integer.
+
+:type: int
+)");
   int64_t i;
 
-  DOCUMENT("The value as a floating point number.");
+  DOCUMENT(R"(The value as a floating point number.
+
+:type: float
+)");
   double d;
 
-  DOCUMENT("The value as a boolean.");
+  DOCUMENT(R"(The value as a boolean.
+
+:type: bool
+)");
   bool b;
 
-  DOCUMENT("The value as a single byte character.");
+  DOCUMENT(R"(The value as a single byte character.
+
+:type: str
+)");
   char c;
 
-  DOCUMENT("The value as a :class:`ResourceId`.");
+  DOCUMENT(R"(The value as a :class:`ResourceId`
+
+:type: ResourceId
+)");
   ResourceId id;
 
   SDObjectPODData() : u(0) {}
@@ -385,10 +440,16 @@ struct SDObjectData
   DOCUMENT("");
   SDObjectData() = default;
 
-  DOCUMENT("The plain-old data contents of the object, in a :class:`SDObjectPODData`.");
+  DOCUMENT(R"(The plain-old data contents of the object, in a :class:`SDObjectPODData`.
+
+:type: basic
+)");
   SDObjectPODData basic;
 
-  DOCUMENT("The string contents of the object.");
+  DOCUMENT(R"(The string contents of the object.
+
+:type: str
+)");
   rdcinflexiblestr str;
 
   SDObjectData(const SDObjectData &) = delete;
@@ -556,13 +617,22 @@ struct SDObject
     return ret;
   }
 
-  DOCUMENT("The name of this object.");
+  DOCUMENT(R"(The name of this object.
+
+:type: name
+)");
   rdcinflexiblestr name;
 
-  DOCUMENT("The :class:`SDType` of this object.");
+  DOCUMENT(R"(The :class:`SDType` of this object.
+
+:type: SDType
+)");
   SDType type;
 
-  DOCUMENT("The :class:`SDObjectData` with the contents of this object.");
+  DOCUMENT(R"(The :class:`SDObjectData` with the contents of this object.
+
+:type: SDObjectData
+)");
   SDObjectData data;
 
   DOCUMENT(R"(Checks if the given object has the same value as this one. This equality is defined
@@ -932,6 +1002,7 @@ Invalid if the object is not actually a :class:`ResourceId`.
       case SDBasic::Buffer: return QVariant();
       case SDBasic::String: return data.str;
       case SDBasic::Enum:
+      case SDBasic::GPUAddress:
       case SDBasic::UnsignedInteger: return QVariant(qulonglong(data.basic.u));
       case SDBasic::SignedInteger: return QVariant(qlonglong(data.basic.i));
       case SDBasic::Resource: return (QVariant)data.basic.id;
@@ -1553,7 +1624,10 @@ public:
 )");
   StructuredBufferList buffers;
 
-  DOCUMENT("The version of this structured stream, typically only used internally.");
+  DOCUMENT(R"(The version of this structured stream, typically only used internally.
+
+:type: int
+)");
   uint64_t version = 0;
 
   DOCUMENT(R"(Swaps the contents of this file with another.

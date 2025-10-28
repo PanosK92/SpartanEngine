@@ -149,7 +149,7 @@ namespace spartan
 
     void RenderDoc::OnPreDeviceCreation()
     {
-         // load renderdoc module and get a pointer to it's api
+        // load renderdoc module and get a pointer to it's api
         if (rdc_api == nullptr)
         {
             pRENDERDOC_GetAPI rdc_get_api = nullptr;
@@ -183,9 +183,6 @@ namespace spartan
         rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_APIValidation, 1);
         rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
         rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_VerifyBufferAccess, 1);
-
-        // disable overlay
-        rdc_api->MaskOverlayBits(eRENDERDOC_Overlay_None, eRENDERDOC_Overlay_None);
     }
 
     void RenderDoc::Shutdown()

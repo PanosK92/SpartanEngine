@@ -653,8 +653,8 @@ struct DescriptorAccess
   }
   bool operator==(const ShaderDirectAccess &o) const
   {
-    return CategoryForDescriptorType(type) == o.category && descriptorStore == o.descriptorStore &&
-           byteOffset == o.byteOffset && byteSize == o.byteSize;
+    return type == o.type && descriptorStore == o.descriptorStore && byteOffset == o.byteOffset &&
+           byteSize == o.byteSize;
   }
   bool operator==(const DescriptorAccess &o) const
   {
@@ -746,8 +746,7 @@ inline ShaderBindIndex::ShaderBindIndex(const DescriptorAccess &access)
 }
 
 inline ShaderDirectAccess::ShaderDirectAccess(const DescriptorAccess &access)
-    : ShaderDirectAccess(CategoryForDescriptorType(access.type), access.descriptorStore,
-                         access.byteOffset, access.byteSize)
+    : ShaderDirectAccess(access.type, access.descriptorStore, access.byteOffset, access.byteSize)
 {
 }
 

@@ -85,10 +85,19 @@ struct DescriptorSet
       return pushDescriptor < o.pushDescriptor;
     return false;
   }
+
   DOCUMENT("The :class:`ResourceId` of the descriptor set layout that matches this set.");
   ResourceId layoutResourceId;
-  DOCUMENT("The :class:`ResourceId` of the descriptor set object.");
+
+  DOCUMENT(R"(The :class:`ResourceId` of the descriptor set object, if a real descriptor set is bound.
+
+.. note::
+  If using descriptor buffers this value may be unset, see :data:`descriptorBufferIndex`.
+
+:type: ResourceId
+)");
   ResourceId descriptorSetResourceId;
+
   DOCUMENT("Indicates if this is a virtual 'push' descriptor set.");
   bool pushDescriptor = false;
 
@@ -101,6 +110,92 @@ of their descriptors.
 :type: List[VKDynamicOffset]
 )");
   rdcarray<DynamicOffset> dynamicOffsets;
+
+  DOCUMENT(R"(The index of the descriptor buffer to be used, or ``-1`` if no descriptor buffer is used.
+
+:type: int
+)");
+  int32_t descriptorBufferIndex = -1;
+
+  DOCUMENT(R"(The byte offset from the start of the descriptor buffer at index :data:`descriptorBufferIndex` where this set's data is.
+
+:type: int
+)");
+  uint64_t descriptorBufferByteOffset = 0;
+
+  DOCUMENT(R"(Indicates if this is a virtual descriptor set for binding embedded immutable samplers.
+
+:type: bool
+)");
+  bool descriptorBufferEmbeddedSamplers = false;
+};
+
+DOCUMENT("A single descriptor buffer binding.");
+struct DescriptorBuffer
+{
+  DOCUMENT("");
+  DescriptorBuffer() = default;
+  DescriptorBuffer(const DescriptorBuffer &) = default;
+  DescriptorBuffer &operator=(const DescriptorBuffer &) = default;
+
+  bool operator==(const DescriptorBuffer &o) const
+  {
+    return buffer == o.buffer && offset == o.offset && pushDescriptor == o.pushDescriptor &&
+           pushBuffer == o.pushBuffer && resourceBuffer == o.resourceBuffer &&
+           samplerBuffer == o.samplerBuffer;
+  }
+  bool operator<(const DescriptorBuffer &o) const
+  {
+    if(!(buffer == o.buffer))
+      return buffer < o.buffer;
+    if(!(offset == o.offset))
+      return offset < o.offset;
+    if(!(pushDescriptor == o.pushDescriptor))
+      return pushDescriptor < o.pushDescriptor;
+    if(!(pushBuffer == o.pushBuffer))
+      return pushBuffer < o.pushBuffer;
+    if(!(resourceBuffer == o.resourceBuffer))
+      return resourceBuffer < o.resourceBuffer;
+    if(!(samplerBuffer == o.samplerBuffer))
+      return samplerBuffer < o.samplerBuffer;
+    return false;
+  }
+
+  DOCUMENT(R"(The :class:`ResourceId` of the buffer object being bound.
+
+:type: ResourceId
+)");
+  ResourceId buffer;
+
+  DOCUMENT(R"(The offset in bytes from the base of the buffer object to the start of the bound region.
+
+:type: int
+)");
+  uint64_t offset = 0;
+
+  DOCUMENT(R"(Indicates if this is the 'push' descriptor buffer.
+
+:type: bool
+)");
+  bool pushDescriptor = false;
+
+  DOCUMENT(R"(For push descriptors where a buffer is required, the :class:`ResourceId` of the push buffer object.
+
+:type: ResourceId
+)");
+  ResourceId pushBuffer;
+
+  DOCUMENT(R"(Indicates if this buffer can contain resources (buffers and images).
+
+:type: bool
+)");
+  bool resourceBuffer = false;
+
+  DOCUMENT(R"(Indicates if this buffer can contain samplers.
+
+:type: bool
+)");
+  bool samplerBuffer = false;
 };
 
 DOCUMENT("Describes the object and descriptor set bindings of a Vulkan pipeline object.");
@@ -133,6 +228,12 @@ When not using pipeline libraries, this will be identical to :data:`pipelinePreR
 :type: List[VKDescriptorSet]
 )");
   rdcarray<DescriptorSet> descriptorSets;
+
+  DOCUMENT(R"(The bound descriptor buffers.
+
+:type: List[VKDescriptorBuffer]
+)");
+  rdcarray<DescriptorBuffer> descriptorBuffers;
 };
 
 DOCUMENT("Describes the Vulkan index buffer binding.")
@@ -1189,6 +1290,7 @@ struct State
 
 DECLARE_REFLECTION_STRUCT(VKPipe::DynamicOffset);
 DECLARE_REFLECTION_STRUCT(VKPipe::DescriptorSet);
+DECLARE_REFLECTION_STRUCT(VKPipe::DescriptorBuffer);
 DECLARE_REFLECTION_STRUCT(VKPipe::Pipeline);
 DECLARE_REFLECTION_STRUCT(VKPipe::IndexBuffer);
 DECLARE_REFLECTION_STRUCT(VKPipe::InputAssembly);
