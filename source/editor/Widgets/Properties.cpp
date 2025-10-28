@@ -98,11 +98,11 @@ namespace
         }
     }
 
-    bool component_begin(const string& name, Component* component_instance, bool options = true, const bool removable = true)
+    bool component_begin(const char* name, Component* component_instance, bool options = true, const bool removable = true)
     {
         // draw header first so we get its screen rect
         ImGui::PushFont(Editor::font_bold);
-        const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+        const bool collapsed = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
     
         if (options)
@@ -421,14 +421,15 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
     if (component_begin("Renderable", renderable))
     {
-        //= REFLECT =================================================================
-        string name_mesh        = renderable->GetMeshName();
-        Material* material      = renderable->GetMaterial();
-        uint32_t instance_count = renderable->GetInstanceCount();
-        string name_material    = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows       = renderable->HasFlag(RenderableFlags::CastsShadows);
-        bool is_visible         = renderable->IsVisible();
-        //===========================================================================
+        //= REFLECT ========================================================================================================
+        string& name_mesh                 = const_cast<string&>(renderable->GetMeshName());
+        Material* material                = renderable->GetMaterial();
+        uint32_t instance_count           = renderable->GetInstanceCount();
+        static string name_material_empty = "N/A";
+        string& name_material             = material ? const_cast<string&>(material->GetObjectName()) : name_material_empty;
+        bool cast_shadows                 = renderable->HasFlag(RenderableFlags::CastsShadows);
+        bool is_visible                   = renderable->IsVisible();
+        //==================================================================================================================
 
         // mesh
         ImGui::Text("Mesh");
@@ -443,23 +444,27 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             int lod_count = renderable->GetLodCount();
             if (ImGui::BeginTable("##geometry_table", lod_count + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
             {
+                char lod_name[16];
+
                 // setup columns
-                ImGui::TableSetupColumn("");  // first column for labels
-                for (int i = 0; i < lod_count; i++)
+                ImGui::TableSetupColumn(""); // first column for labels
+                for (int i = 0; i < lod_count; ++i)
                 {
-                    ImGui::TableSetupColumn(("LOD " + to_string(i + 1)).c_str());  // start numbering from 1
+                    std::snprintf(lod_name, sizeof(lod_name), "LOD %d", i + 1);
+                    ImGui::TableSetupColumn(lod_name);
                 }
-        
+                
                 // header row
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
                 ImGui::Text("LODs");
-                for (int i = 0; i < lod_count; i++)
+                for (int i = 0; i < lod_count; ++i)
                 {
                     ImGui::TableSetColumnIndex(i + 1);
-                    ImGui::Text(("LOD " + to_string(i + 1)).c_str());
+                    std::snprintf(lod_name, sizeof(lod_name), "LOD %d", i + 1);
+                    ImGui::Text(lod_name);
                 }
-        
+
                 // row 1: vertices
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -485,10 +490,12 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
             // we can print the lod index for each instanceb but it's not needed (so far)
             if (!renderable->HasInstancing())
-            { 
+            {
                 ImGui::Text("Lod Index");
                 ImGui::SameLine(column_pos_x);
-                ImGui::LabelText("##renderable_lod_index", to_string(renderable->GetLodIndex()).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+                char lod_buf[16];
+                std::snprintf(lod_buf, sizeof(lod_buf), "%u", renderable->GetLodIndex());
+                ImGui::LabelText("##renderable_lod_index", lod_buf, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
             }
         }
 
@@ -497,7 +504,9 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             // count
             ImGui::Text("Instances");
             ImGui::SameLine(column_pos_x);
-            ImGui::LabelText("##renderable_instance_count", to_string(instance_count).c_str(), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+            char buf[16];
+            std::snprintf(buf, sizeof(buf), "%u", instance_count);
+            ImGui::LabelText("##renderable_instance_count", buf, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
             // position, rotation, scale
             if (renderable->HasInstancing())

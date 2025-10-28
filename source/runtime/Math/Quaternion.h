@@ -114,7 +114,7 @@ namespace spartan::math
             );
         }
 
-        static Quaternion FromToRotation(const Vector3& start, const Vector3& end)
+        static Quaternion FromRotation(const Vector3& start, const Vector3& end)
         {
             const Vector3 normStart = start.Normalized();
             const Vector3 normEnd   = end.Normalized();
@@ -159,13 +159,13 @@ namespace spartan::math
             }
             else
             {
-                result = Quaternion::FromToRotation(Vector3::Forward, forward);
+                result = Quaternion::FromRotation(Vector3::Forward, forward);
             }
 
             return result;
         }
 
-        static Quaternion FromToRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
+        static Quaternion FromRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
 
         static Quaternion Lerp(const Quaternion& a, const Quaternion& b, const float t)
         {

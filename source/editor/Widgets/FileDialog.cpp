@@ -200,8 +200,8 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         // split manually
         const char* delimiters = "/\\";
         char* context = nullptr;
-        char* token = strtok_s(current_path, delimiters, &context);
-        bool first = true;
+        char* token   = strtok_s(current_path, delimiters, &context);
+        bool first    = true;
 
         while (token)
         {
@@ -216,7 +216,9 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
                 strncat_s(accumulated_path, sizeof(accumulated_path), "/", _TRUNCATE);
             }
 
-            if (FileSystem::GetDirectoryFromFilePath(accumulated_path) == root_path)
+            size_t root_len = strlen(root_path);
+            size_t acc_len  = strlen(accumulated_path);
+            if (acc_len == root_len + 1 && accumulated_path[root_len] == '/' && strncmp(accumulated_path, root_path, root_len) == 0)
             {
                 token = strtok_s(nullptr, delimiters, &context);
                 continue;

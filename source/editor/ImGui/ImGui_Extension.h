@@ -319,31 +319,32 @@ namespace ImGuiSp
         ImGui::PopID();
     }
 
-
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
-        // Clamp the selection index in case it's larger than the actual option count.
         const uint32_t option_count = static_cast<uint32_t>(options.size());
+    
+        // clamp index
         if (*selection_index >= option_count)
         {
-            *selection_index = option_count - 1;
+            *selection_index = option_count ? option_count - 1 : 0;
         }
-
-        bool selection_made          = false;
-        std::string selection_string = options[*selection_index];
-
-        if (ImGui::BeginCombo(label, selection_string.c_str()))
+    
+        bool selection_made = false;
+    
+        // preview: direct pointer into existing string buffer
+        const char* preview = option_count ? options[*selection_index].data() : "";
+    
+        if (ImGui::BeginCombo(label, preview))
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(options.size()); i++)
+            for (uint32_t i = 0; i < option_count; ++i)
             {
-                const bool is_selected = *selection_index == i;
-
-                if (ImGui::Selectable(options[i].c_str(), is_selected))
+                const bool is_selected = (*selection_index == i);
+                // direct data() — null-terminated, no copy
+                if (ImGui::Selectable(options[i].data(), is_selected))
                 {
-                    *selection_index    = i;
-                    selection_made      = true;
+                    *selection_index = i;
+                    selection_made     = true;
                 }
-
                 if (is_selected)
                 {
                     ImGui::SetItemDefaultFocus();
@@ -351,7 +352,6 @@ namespace ImGuiSp
             }
             ImGui::EndCombo();
         }
-
         return selection_made;
     }
 

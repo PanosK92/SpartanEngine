@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -82,7 +82,7 @@ namespace spartan
             const vector<RHI_Vertex_PosTexNorTan>& vertices_tile = vertices_terrain[tile_index];
             const vector<uint32_t>& indices_tile                 = indices_terrain[tile_index];
 
-            uint32_t triangle_count = static_cast<uint32_t>(indices_tile.size() / 3);
+            uint32_t triangle_count  = static_cast<uint32_t>(indices_tile.size() / 3);
             auto& tile_triangle_data = triangle_data[tile_index];
             tile_triangle_data.resize(triangle_count);
 
@@ -105,7 +105,7 @@ namespace spartan
                     float height_max              = max({ v0.y, v1.y, v2.y });
                     Vector3 v1_minus_v0           = v1 - v0;
                     Vector3 v2_minus_v0           = v2 - v0;
-                    Quaternion rotation_to_normal = Quaternion::FromToRotation(Vector3::Up, normal);
+                    Quaternion rotation_to_normal = Quaternion::FromRotation(Vector3::Up, normal);
 
                     Vector3 centroid = v0 + (v1_minus_v0 + v2_minus_v0) / 3.0f;
 
@@ -276,8 +276,9 @@ namespace spartan
                         continue;
 
                     uniform_int_distribution<int> nearby_dist(0, static_cast<int>(nearby.size()) - 1);
-                    uint32_t tri_idx = nearby[nearby_dist(generator)];
+                    uint32_t tri_idx  = nearby[nearby_dist(generator)];
                     TriangleData& tri = tile_triangle_data[tri_idx];
+
                     // position
                     Vector3 position = Vector3::Zero;
                     {

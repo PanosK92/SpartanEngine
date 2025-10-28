@@ -217,7 +217,7 @@ namespace spartan
             {
                 if (staging_buffer)
                 {
-                    RHI_Device::MemoryBufferDestroy(staging_buffer);
+                    RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
                 }
 
                 staging_buffer_size = required_size;

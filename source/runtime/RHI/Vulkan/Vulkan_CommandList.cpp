@@ -646,7 +646,6 @@ namespace spartan
 
     RHI_CommandList* RHI_CommandList::ImmediateExecutionBegin(const RHI_Queue_Type queue_type)
     {
-        // ensure queues are initialized
         immediate_execution::ensure_initialized();
     
         // wait until it's safe to proceed

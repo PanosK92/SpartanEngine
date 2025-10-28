@@ -38,8 +38,8 @@ namespace spartan
             // simple stack-safe thread-unique value
             uint64_t thread_unique = reinterpret_cast<uint64_t>(GetThreadUniqueAddress());
 
-            uint64_t random_value = (time_now ^ thread_unique) * 2654435761u;
-            random_value           ^= (random_value >> 16);
+            uint64_t random_value  = (time_now ^ thread_unique) * 2654435761u;
+            random_value          ^= (random_value >> 16);
 
             m_object_id = random_value;
         }
