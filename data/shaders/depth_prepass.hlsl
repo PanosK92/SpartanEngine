@@ -33,11 +33,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     vertex                         = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
 
     // transform to clip space
-    const bool is_tesselated = pass_get_f3_value().x == 1.0f;
-    if (!is_tesselated)
-    {
-        vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
-    }
+    vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
 
     return vertex;
 }

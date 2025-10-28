@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -98,17 +98,13 @@ static float4 sample_texture(gbuffer_vertex vertex, uint texture_index, Surface 
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
+    // transform to world space
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
 
-    // transform world space position to clip space
-    Surface surface;
-    surface.flags = GetMaterial().flags;
-    if (!surface.is_tessellated())
-    {
-        vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
-    }
+    // transform to clip space
+    vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
 
     return vertex;
 }

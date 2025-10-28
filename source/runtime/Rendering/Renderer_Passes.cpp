@@ -543,9 +543,8 @@ namespace spartan
     
                 // pass constants
                 {
-                    bool is_tessellated    = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                     bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
-                    m_pcb_pass_cpu.set_f3_value(is_tessellated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
+                    m_pcb_pass_cpu.set_f3_value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
                     m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                     m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                     cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -604,7 +603,7 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.rasterizer_state                 = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are few, no pre-pass needed
+            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are see-through, no pre-pass needed
             pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.resolution_scale                 = true;
             pso.render_target_color_textures[0]  = tex_color;
