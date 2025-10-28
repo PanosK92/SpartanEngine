@@ -86,8 +86,8 @@ namespace spartan
 
     namespace image_barrier
     {
-        static unordered_map<void*, array<RHI_Image_Layout, rhi_max_mip_count>> image_layouts;
-        static mutex image_layouts_mutex;
+        unordered_map<void*, array<RHI_Image_Layout, rhi_max_mip_count>> image_layouts;
+        mutex image_layouts_mutex;
 
         RHI_Image_Layout get_layout(void* image, uint32_t mip_index)
         {
@@ -428,6 +428,26 @@ namespace spartan
         }
     }
 
+    namespace immediate_execution
+    {
+        mutex mutex_execution;
+        condition_variable condition_var;
+        bool is_executing = false;
+        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> queues; // graphics, compute, and copy
+        once_flag init_flag;
+    
+        // initialize queues on first use
+        void ensure_initialized()
+        {
+            call_once(init_flag, []()
+            {
+                queues[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
+                queues[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
+                queues[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
+            });
+        }
+    }
+
     RHI_CommandList::RHI_CommandList(RHI_Queue* queue, void* cmd_pool, const char* name)
     {
         m_queue = queue;
@@ -622,6 +642,41 @@ namespace spartan
             Renderer::SetStandardResources(this);
             descriptor_sets::set_dynamic(m_pso, m_rhi_resource, m_pipeline->GetRhiResourceLayout(), m_descriptor_layout_current);
         }
+    }
+
+    RHI_CommandList* RHI_CommandList::ImmediateExecutionBegin(const RHI_Queue_Type queue_type)
+    {
+        // ensure queues are initialized
+        immediate_execution::ensure_initialized();
+    
+        // wait until it's safe to proceed
+        unique_lock<mutex> lock(immediate_execution::mutex_execution);
+        immediate_execution::condition_var.wait(lock, [] { return !immediate_execution::is_executing; });
+        immediate_execution::is_executing = true;
+    
+        // get command pool
+        RHI_Queue* queue = immediate_execution::queues[static_cast<uint32_t>(queue_type)].get();
+        RHI_CommandList* cmd_list = queue->NextCommandList();
+        cmd_list->Begin();
+        return cmd_list;
+    }
+    
+    void RHI_CommandList::ImmediateExecutionEnd(RHI_CommandList* cmd_list)
+    {
+        cmd_list->Submit(nullptr, true);
+        cmd_list->WaitForExecution();
+    
+        // signal that it's safe to proceed with the next ImmediateBegin
+        immediate_execution::is_executing = false;
+        immediate_execution::condition_var.notify_one();
+    }
+
+    void RHI_CommandList::ImmediateExecutionShutdown()
+    {
+        // wait for ongoing operations to complete
+        unique_lock<mutex> lock(immediate_execution::mutex_execution);
+        immediate_execution::condition_var.wait(lock, [] { return !immediate_execution::is_executing; });
+        immediate_execution::queues.fill(nullptr);
     }
 
     void RHI_CommandList::RenderPassBegin()

@@ -266,6 +266,7 @@ namespace spartan
         // wait for all commands list, from all queues, to finish executing
         RHI_Device::QueueWaitAll();
 
+        RHI_CommandList::ImmediateExecutionShutdown();
         RHI_Texture::DestroyStagingBuffer();
 
         // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
@@ -1425,10 +1426,10 @@ namespace spartan
         auto staging = make_unique<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
         
         // copy image to buffer
-        if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
             cmd_list->CopyTextureToBuffer(frame_output, staging.get());
-            RHI_Device::CmdImmediateSubmit(cmd_list);
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
         }
         
         // read mapped data (coherent, so direct access post-submit)

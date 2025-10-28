@@ -65,6 +65,11 @@ namespace spartan
         void WaitForExecution(const bool log_wait_time = false);
         void SetPipelineState(RHI_PipelineState& pso);
 
+        // immediate
+        static RHI_CommandList* ImmediateExecutionBegin(const RHI_Queue_Type queue_type);
+        static void ImmediateExecutionEnd(RHI_CommandList* cmd_list);
+        static void ImmediateExecutionShutdown();
+
         // clear
         void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
         void ClearTexture(

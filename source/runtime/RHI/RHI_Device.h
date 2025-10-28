@@ -80,10 +80,6 @@ namespace spartan
         static uint64_t MemoryGetAvailableMb();
         static uint64_t MemoryGetTotalMb();
 
-        // immediate execution command list
-        static RHI_CommandList* CmdImmediateBegin(const RHI_Queue_Type queue_type);
-        static void CmdImmediateSubmit(RHI_CommandList* cmd_list);
-
         // properties (actual silicon properties)
         static float PropertyGetTimestampPeriod()                         { return m_timestamp_period; }
         static uint64_t PropertyGetMinUniformBufferOffsetAlignment()      { return m_min_uniform_buffer_offset_alignment; }

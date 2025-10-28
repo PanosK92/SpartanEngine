@@ -84,9 +84,9 @@ namespace spartan
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
                 VkBufferCopy copy_region    = {};
                 copy_region.size            = m_object_size;
-                RHI_CommandList* cmd_list   = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Copy);
+                RHI_CommandList* cmd_list   = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
                 vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
-                RHI_Device::CmdImmediateSubmit(cmd_list);
+                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
                 RHI_Device::MemoryBufferDestroy(staging_buffer);
             }
         }

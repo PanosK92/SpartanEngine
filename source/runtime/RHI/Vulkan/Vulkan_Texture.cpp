@@ -101,7 +101,7 @@ namespace spartan
         
             if (texture->GetType() == RHI_Texture_Type::TypeCube)
             {
-                // fFor cubemaps, array layers represent the faces, so we set layerCount to 6
+                // for cubemaps, array layers represent the faces, so we set layerCount to 6
                 create_info.subresourceRange.baseArrayLayer = 0; // starting from the first face
                 create_info.subresourceRange.layerCount     = 6; // 6 faces of the cubemap
             }
@@ -271,7 +271,7 @@ namespace spartan
             copy_to_staging_buffer(texture, regions, buffer);
 
             // copy the staging buffer into the image
-            if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
+            if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
             {
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
 
@@ -286,7 +286,7 @@ namespace spartan
                     regions.data()
                 );
 
-                RHI_Device::CmdImmediateSubmit(cmd_list);
+                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }
         }
 
@@ -318,7 +318,7 @@ namespace spartan
         }
 
         // transition to target layout
-        if (RHI_CommandList* cmd_list = RHI_Device::CmdImmediateBegin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
             uint32_t array_length = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
             cmd_list->InsertBarrier(
@@ -331,7 +331,7 @@ namespace spartan
             );
         
             // flush
-            RHI_Device::CmdImmediateSubmit(cmd_list);
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
         }
 
         // create image views

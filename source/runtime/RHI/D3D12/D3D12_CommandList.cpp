@@ -403,4 +403,19 @@ namespace spartan
     {
 
     }
+
+    RHI_CommandList* RHI_CommandList::ImmediateExecutionBegin(const RHI_Queue_Type queue_type)
+    {
+        return nullptr;
+    }
+    
+    void RHI_CommandList::ImmediateExecutionEnd(RHI_CommandList* cmd_list)
+    {
+
+    }
+
+    void RHI_CommandList::ImmediateExecutionShutdown()
+    {
+
+    }
 }

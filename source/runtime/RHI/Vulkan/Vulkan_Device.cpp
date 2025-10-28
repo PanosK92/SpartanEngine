@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
-#include "../../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -499,20 +498,11 @@ namespace spartan
         uint32_t index_compute  = numeric_limits<uint32_t>::max();
         uint32_t index_copy     = numeric_limits<uint32_t>::max();
 
-        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular;   // graphics, compute, and copy
-        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> immediate; // graphics, compute, and copy
-
-        // sync for immediate execution
-        mutex mutex_queue;
-        mutex mutex_immediate_execution;
-        condition_variable condition_variable_immediate_execution;
-        bool is_immediate_executing = false;
-        RHI_Queue* queue            = nullptr;
+        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular; // graphics, compute, and copy
 
         void destroy()
         {
             regular.fill(nullptr);
-            immediate.fill(nullptr);
         }
 
         uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
@@ -1604,10 +1594,6 @@ namespace spartan
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
-
-            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
-            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
-            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
         }
 
         vulkan_memory_allocator::initialize();
@@ -2219,35 +2205,6 @@ namespace spartan
         }
     
         return bytes / (1024ull * 1024ull);
-    }
-  
-    // immediate command list
-
-    RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
-    {
-        // wait until it's safe to proceed
-        unique_lock<mutex> lock(queues::mutex_immediate_execution);
-        queues::condition_variable_immediate_execution.wait(lock, [] { return !queues::is_immediate_executing; });
-        queues::is_immediate_executing = true;
-        ProgressTracker::SetGlobalLoadingState(true);
-
-        // get command pool
-        queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
-        RHI_CommandList* cmd_list = queues::queue->NextCommandList();
-        cmd_list->Begin();
-
-        return cmd_list;
-    }
-
-    void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
-    {
-        cmd_list->Submit(nullptr, true);
-        cmd_list->WaitForExecution();
-
-        // signal that it's safe to proceed with the next ImmediateBegin()
-        queues::is_immediate_executing = false;
-        queues::condition_variable_immediate_execution.notify_one();
-        ProgressTracker::SetGlobalLoadingState(false);
     }
 
     // markers
