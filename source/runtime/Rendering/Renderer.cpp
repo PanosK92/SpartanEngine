@@ -1211,8 +1211,6 @@ namespace spartan
 
     void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
     {
-        return;
-
         // validate ray tracing and command list
         if (!RHI_Device::IsSupportedRayTracing() || !cmd_list)
         {

@@ -782,14 +782,15 @@ namespace spartan
 
         void create_pool()
         {
-            static array<VkDescriptorPoolSize, 6> pool_sizes =
+            static array<VkDescriptorPoolSize, 7> pool_sizes =
             {
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count }
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                    rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,     rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,     rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, rhi_max_array_size * rhi_max_descriptor_set_count }
             };
 
             // describe
@@ -903,6 +904,21 @@ namespace spartan
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::Domain]->GetDescriptors());
                     }
                 }
+                else if (pipeline_state.IsRayTracing())
+                {
+                    SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::RayGeneration]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayGeneration]->GetDescriptors());
+
+                    if (pipeline_state.shaders[RHI_Shader_Type::RayMiss])
+                    {
+                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayMiss]->GetDescriptors());
+                    }
+        
+                    if (pipeline_state.shaders[RHI_Shader_Type::RayClosestHit])
+                    {
+                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayClosestHit]->GetDescriptors());
+                    }
+                }
         
                 // simple bubble sort
                 for (size_t i = 0; i < static_size; ++i)
@@ -987,7 +1003,14 @@ namespace spartan
                       layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
                   }
                   layout_binding.descriptorCount    = count;
-                  layout_binding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+                  layout_binding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT |
+                                                      VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                                      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                                      VK_SHADER_STAGE_FRAGMENT_BIT |
+                                                      VK_SHADER_STAGE_COMPUTE_BIT |
+                                                      VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+                                                      VK_SHADER_STAGE_MISS_BIT_KHR |
+                                                      VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
                   VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
 
@@ -1848,6 +1871,9 @@ namespace spartan
 
         if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+
+        if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
 
         SP_ASSERT_MSG(false, "Unhandled descriptor type");
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;

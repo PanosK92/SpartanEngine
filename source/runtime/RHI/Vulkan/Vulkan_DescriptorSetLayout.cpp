@@ -50,8 +50,8 @@ namespace spartan
         (
             remove_if(descriptors.begin(), descriptors.end(), [](RHI_Descriptor& descriptor)
             { 
-                    return descriptor.type == RHI_Descriptor_Type::PushConstantBuffer ||          // push constants are not part of the descriptor set layout
-                          (descriptor.as_array && descriptor.array_length == rhi_max_array_size); // binldess arrays have their own layout
+                return descriptor.type == RHI_Descriptor_Type::PushConstantBuffer ||          // push constants are not part of the descriptor set layout
+                      (descriptor.as_array && descriptor.array_length == rhi_max_array_size); // binldess arrays have their own layout
             }),
             descriptors.end()
         );
@@ -90,12 +90,15 @@ namespace spartan
             const RHI_Descriptor& descriptor = descriptors[i];
 
             // stage flags
-            VkShaderStageFlags stage_flags  = 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))  ? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Hull))    ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))  ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))   ? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute)) ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
+            VkShaderStageFlags stage_flags = 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))        ? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Hull))          ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))        ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))         ? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute))       ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayGeneration)) ? VK_SHADER_STAGE_RAYGEN_BIT_KHR              : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))       ? VK_SHADER_STAGE_MISS_BIT_KHR                : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayClosestHit)) ? VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR         : 0;
 
             layout_bindings[i].descriptorType     = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(descriptor));
             layout_bindings[i].binding            = descriptor.slot;

@@ -53,6 +53,11 @@ namespace spartan
         info_buffers.resize(descriptor_count);
         info_buffers.reserve(descriptor_count);
 
+        vector<VkWriteDescriptorSetAccelerationStructureKHR> info_accel_structs;
+        info_accel_structs.resize(descriptor_count);
+        info_accel_structs.reserve(descriptor_count);
+        int accel_index = -1;
+
         uint32_t index = 0;
         descriptor_sets = {};
         for (const RHI_Descriptor& descriptor : descriptors)
@@ -130,6 +135,15 @@ namespace spartan
                     descriptor_cnt = descriptor.mip_range != 0 ? descriptor.mip_range : descriptor_cnt;
                 }
             }
+            else if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure)
+            {
+                accel_index++;
+                info_accel_structs[accel_index].sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+                info_accel_structs[accel_index].accelerationStructureCount = 1;
+                info_accel_structs[accel_index].pAccelerationStructures    = static_cast<VkAccelerationStructureKHR*>(descriptor.data);
+                descriptor_index_start                                     = accel_index;
+                descriptor_cnt                                             = 1;
+            }
             else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer || descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
             {
                 info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_Buffer*>(descriptor.data)->GetRhiResource());
@@ -145,7 +159,7 @@ namespace spartan
 
             // wWrite descriptor set
             descriptor_sets[index].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptor_sets[index].pNext            = nullptr;
+            descriptor_sets[index].pNext            = (descriptor.type == RHI_Descriptor_Type::AccelerationStructure) ? &info_accel_structs[descriptor_index_start] : nullptr;
             descriptor_sets[index].dstSet           = static_cast<VkDescriptorSet>(m_resource);
             descriptor_sets[index].dstBinding       = descriptor.slot;
             descriptor_sets[index].dstArrayElement  = 0; // starting element in that array

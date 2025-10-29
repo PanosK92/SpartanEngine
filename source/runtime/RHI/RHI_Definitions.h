@@ -267,6 +267,7 @@ namespace spartan
         PushConstantBuffer,
         ConstantBuffer,
         StructuredBuffer,
+        AccelerationStructure,
         Max
     };
 
@@ -300,12 +301,15 @@ namespace spartan
     {
         switch (type)
         {
-            case RHI_Shader_Type::Vertex:  return 1 << 0;
-            case RHI_Shader_Type::Hull:    return 1 << 1;
-            case RHI_Shader_Type::Domain:  return 1 << 2;
-            case RHI_Shader_Type::Pixel:   return 1 << 3;
-            case RHI_Shader_Type::Compute: return 1 << 4;
-            default:                       return 0;
+            case RHI_Shader_Type::Vertex:        return 1 << 0;
+            case RHI_Shader_Type::Hull:          return 1 << 1;
+            case RHI_Shader_Type::Domain:        return 1 << 2;
+            case RHI_Shader_Type::Pixel:         return 1 << 3;
+            case RHI_Shader_Type::Compute:       return 1 << 4;
+            case RHI_Shader_Type::RayGeneration: return 1 << 5;
+            case RHI_Shader_Type::RayMiss:       return 1 << 6;
+            case RHI_Shader_Type::RayClosestHit: return 1 << 7;
+            default:                             return 0;
         }
     }
 
