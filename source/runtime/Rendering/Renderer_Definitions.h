@@ -101,26 +101,29 @@ namespace spartan
         gbuffer_velocity = 3,
         gbuffer_depth    = 4,
 
+        // ray-tracing
+        tlas = 5,
+
         // other
-        ssao = 5,
+        ssao = 6,
     
         // misc
-        tex   = 6,
-        tex2  = 7,
-        tex3  = 8,
-        tex4  = 9,
-        tex5  = 10,
-        tex6  = 11,
-        tex3d = 12,
+        tex   = 7,
+        tex2  = 8,
+        tex3  = 9,
+        tex4  = 10,
+        tex5  = 11,
+        tex6  = 12,
+        tex3d = 13,
 
         // noise
-        tex_perlin = 13,
+        tex_perlin = 14,
 
         // bindless
-        bindless_material_textures   = 14,
-        bindless_material_parameters = 15,
-        bindless_light_parameters    = 16,
-        bindless_aabbs               = 17,
+        bindless_material_textures   = 15,
+        bindless_material_parameters = 16,
+        bindless_light_parameters    = 17,
+        bindless_aabbs               = 18,
     };
 
     enum class Renderer_BindingsUav

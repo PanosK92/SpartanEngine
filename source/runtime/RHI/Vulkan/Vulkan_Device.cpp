@@ -264,6 +264,7 @@ namespace spartan
             "VK_KHR_acceleration_structure",
             "VK_KHR_ray_tracing_pipeline",
             "VK_KHR_deferred_host_operations",
+            "VK_KHR_ray_query",
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -1126,7 +1127,7 @@ namespace spartan
         }
     }
 
-   namespace device_features
+    namespace device_features
     {
         VkPhysicalDeviceFeatures2 features                                           = {};
         VkPhysicalDeviceRobustness2FeaturesEXT features_robustness                   = {};
@@ -1135,73 +1136,66 @@ namespace spartan
         VkPhysicalDeviceVulkan12Features features_1_2                                = {};
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs                  = {};
         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT features_mutable_descriptor = {}; // xess
+        VkPhysicalDeviceRayQueryFeaturesKHR features_ray_query                       = {};
         VkPhysicalDeviceAccelerationStructureFeaturesKHR features_accel_struct       = {};
         VkPhysicalDeviceRayTracingPipelineFeaturesKHR features_ray_tracing_pipeline  = {};
-    
+
         void detect(bool* is_shading_rate_supported, bool* is_xess_supported, bool* is_ray_tracing_supported)
         {
             // features that will be enabled
-            features_vrs.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-            features_vrs.pNext = nullptr;
-    
-            features_robustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            features_robustness.pNext = &features_vrs;
-    
-            features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features_1_2.pNext = &features_robustness;
-    
-            features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features_1_3.pNext = &features_1_2;
-    
-            features_1_4.sType                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-            features_1_4.pNext                = &features_1_3;
-            features_mutable_descriptor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
-            features_mutable_descriptor.pNext = &features_1_4;
-    
+            features_vrs.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            features_vrs.pNext                  = nullptr;
+            features_robustness.sType           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            features_robustness.pNext           = &features_vrs;
+            features_1_2.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            features_1_2.pNext                  = &features_robustness;
+            features_1_3.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            features_1_3.pNext                  = &features_1_2;
+            features_1_4.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+            features_1_4.pNext                  = &features_1_3;
+            features_mutable_descriptor.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
+            features_mutable_descriptor.pNext   = &features_1_4;
             features_accel_struct.sType         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
             features_accel_struct.pNext         = &features_mutable_descriptor;
+            features_ray_query.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+            features_ray_query.pNext            = &features_accel_struct;
             features_ray_tracing_pipeline.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-            features_ray_tracing_pipeline.pNext = &features_accel_struct;
-    
-            features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            features.pNext = &features_ray_tracing_pipeline;
-    
+            features_ray_tracing_pipeline.pNext = &features_ray_query;
+            features.sType                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            features.pNext                      = &features_ray_tracing_pipeline;
+
             // detect which features are supported
-            VkPhysicalDeviceFragmentShadingRateFeaturesKHR support_vrs = {};
-            support_vrs.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-    
-            VkPhysicalDeviceRobustness2FeaturesEXT support_robustness = {};
-            support_robustness.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            support_robustness.pNext                                  = &support_vrs;
-    
-            VkPhysicalDeviceVulkan12Features support_1_2 = {};
-            support_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            support_1_2.pNext                            = &support_robustness;
-    
-            VkPhysicalDeviceVulkan13Features support_1_3 = {};
-            support_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            support_1_3.pNext                            = &support_1_2;
-    
+            VkPhysicalDeviceFragmentShadingRateFeaturesKHR support_vrs                  = {};
+            support_vrs.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            VkPhysicalDeviceRobustness2FeaturesEXT support_robustness                   = {};
+            support_robustness.sType                                                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            support_robustness.pNext                                                    = &support_vrs;
+            VkPhysicalDeviceVulkan12Features support_1_2                                = {};
+            support_1_2.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            support_1_2.pNext                                                           = &support_robustness;
+            VkPhysicalDeviceVulkan13Features support_1_3                                = {};
+            support_1_3.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            support_1_3.pNext                                                           = &support_1_2;
             VkPhysicalDeviceVulkan14Features support_1_4                                = {};
             support_1_4.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
             support_1_4.pNext                                                           = &support_1_3;
             VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT support_mutable_descriptor = {};
             support_mutable_descriptor.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
             support_mutable_descriptor.pNext                                            = &support_1_4;
-    
-            VkPhysicalDeviceAccelerationStructureFeaturesKHR support_accel_struct      = {};
-            support_accel_struct.sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-            support_accel_struct.pNext                                                 = &support_mutable_descriptor;
-            VkPhysicalDeviceRayTracingPipelineFeaturesKHR support_ray_tracing_pipeline = {};
-            support_ray_tracing_pipeline.sType                                         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-            support_ray_tracing_pipeline.pNext                                         = &support_accel_struct;
-    
-            VkPhysicalDeviceFeatures2 support = {};
-            support.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            support.pNext                     = &support_ray_tracing_pipeline;
-    
+            VkPhysicalDeviceAccelerationStructureFeaturesKHR support_accel_struct       = {};
+            support_accel_struct.sType                                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+            support_accel_struct.pNext                                                  = &support_mutable_descriptor;
+            VkPhysicalDeviceRayQueryFeaturesKHR support_ray_query                       = {};
+            support_ray_query.sType                                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+            support_ray_query.pNext                                                     = &support_accel_struct;
+            VkPhysicalDeviceRayTracingPipelineFeaturesKHR support_ray_tracing_pipeline  = {};
+            support_ray_tracing_pipeline.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+            support_ray_tracing_pipeline.pNext                                          = &support_ray_query;
+            VkPhysicalDeviceFeatures2 support                                           = {};
+            support.sType                                                               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            support.pNext                                                               = &support_ray_tracing_pipeline;
             vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &support);
-    
+
             // check if certain features are supported and enable them
             {
                 // variable shading rate
@@ -1216,7 +1210,7 @@ namespace spartan
                 {
                     support_robustness.pNext = features_vrs.pNext; // remove from chain
                 }
-    
+
                 // misc
                 {
                     // tessellation
@@ -1247,7 +1241,7 @@ namespace spartan
                     SP_ASSERT(support.features.pipelineStatisticsQuery == VK_TRUE);
                     features.features.pipelineStatisticsQuery = VK_TRUE;
                 }
-    
+
                 // quality of life improvements
                 {
                     // dynamic render passes and no frame buffer objects
@@ -1266,7 +1260,7 @@ namespace spartan
                     SP_ASSERT(support.features.shaderFloat64 == VK_TRUE);
                     features.features.shaderFloat64 = VK_TRUE;
                 }
-    
+
                 // descriptors
                 {
                     SP_ASSERT(support_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
@@ -1291,7 +1285,7 @@ namespace spartan
                     //SP_ASSERT(support_1_4.pushDescriptor == VK_TRUE);
                     //features_1_4.pushDescriptor = VK_TRUE;
                 }
-    
+
                 // fidelity fx
                 {
                     // spd
@@ -1320,7 +1314,7 @@ namespace spartan
                         features_1_3.subgroupSizeControl = VK_TRUE;
                     }
                 }
-    
+
                 // xess
                 {
                     SP_ASSERT(support_1_2.shaderInt8 == VK_TRUE);
@@ -1342,14 +1336,21 @@ namespace spartan
                         features.pNext = features.pNext; // remove from chain
                     }
                 }
-    
+
                 // ray tracing
                 {
-                    *is_ray_tracing_supported = support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE;
+                    *is_ray_tracing_supported = support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE && support_ray_query.rayQuery == VK_TRUE;
+
                     if (*is_ray_tracing_supported)
                     {
-                        features_accel_struct.accelerationStructure      = VK_TRUE;
+                        SP_ASSERT(support_accel_struct.accelerationStructure == VK_TRUE);
+                        features_accel_struct.accelerationStructure = VK_TRUE;
+
+                        SP_ASSERT(support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE);
                         features_ray_tracing_pipeline.rayTracingPipeline = VK_TRUE;
+
+                        SP_ASSERT(support_ray_query.rayQuery == VK_TRUE);
+                        features_ray_query.rayQuery = VK_TRUE;
 
                         SP_ASSERT(support_1_2.bufferDeviceAddress == VK_TRUE);
                         features_1_2.bufferDeviceAddress = VK_TRUE;
@@ -1360,7 +1361,6 @@ namespace spartan
                         features.pNext = features_ray_tracing_pipeline.pNext;
                     }
                 }
-    
                 // directx shader compiler spir-v output automatically enables certain capabilities
                 {
                     // geometry

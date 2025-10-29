@@ -793,9 +793,9 @@ namespace spartan
             pso.shaders[RayClosestHit] = GetShader(Renderer_Shader::reflections_ray_closest_hit_r);
             cmd_list->SetPipelineState(pso);
 
-            // set textures (inputs from gbuffers, output uav)
+            // set output and input textures
             SetCommonTextures(cmd_list);
-           // cmd_list->SetTexture(Renderer_BindingsUav::tex_reflections, tex_reflections); // write
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_reflections); // write
             
             // set tlas (assume method exists)
             //cmd_list->SetBufferAccelerationStructure(m_tlas.get());
