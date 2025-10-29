@@ -287,7 +287,10 @@ namespace spartan
             uint32_t dynamic_offset_count = 0;
             layout->GetDynamicOffsets(&dynamic_offsets, &dynamic_offset_count);
 
-            VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+            VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+            bind_point                     = pso.IsGraphics()   ? VK_PIPELINE_BIND_POINT_GRAPHICS        : bind_point;
+            bind_point                     = pso.IsRayTracing() ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : bind_point;
+
             vkCmdBindDescriptorSets
             (
                 static_cast<VkCommandBuffer>(resource),               // commandBuffer
@@ -311,7 +314,10 @@ namespace spartan
                 resources[i] = RHI_Device::GetDescriptorSet(static_cast<RHI_Device_Bindless_Resource>(i));
             }
 
-            VkPipelineBindPoint bind_point = pso.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+            VkPipelineBindPoint bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+            bind_point                     = pso.IsGraphics()   ? VK_PIPELINE_BIND_POINT_GRAPHICS        : bind_point;
+            bind_point                     = pso.IsRayTracing() ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : bind_point;
+
             vkCmdBindDescriptorSets
             (
                 static_cast<VkCommandBuffer>(resource),               // commandBuffer
@@ -600,7 +606,9 @@ namespace spartan
             SP_ASSERT(vk_pipeline != nullptr);
 
             // bind
-            VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+            VkPipelineBindPoint pipeline_bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+            pipeline_bind_point                     = m_pso.IsGraphics()   ? VK_PIPELINE_BIND_POINT_GRAPHICS        : pipeline_bind_point;
+            pipeline_bind_point                     = m_pso.IsRayTracing() ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR : pipeline_bind_point;
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
             Profiler::m_rhi_bindings_pipeline++;
 

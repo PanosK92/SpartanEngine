@@ -109,6 +109,7 @@ namespace spartan
                 Pass_ShadowMaps(cmd_list_graphics_present);
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
+                Pass_RayTracedReflections(cmd_list_graphics_present);
                 Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
                 cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
@@ -776,6 +777,9 @@ namespace spartan
 
     void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list)
     {
+        if (!GetOption<bool>(Renderer_Option::RayTracedReflections))
+            return;
+
         // get resources
         RHI_Texture* tex_reflections = GetRenderTarget(Renderer_RenderTarget::ssr);
         
@@ -811,7 +815,7 @@ namespace spartan
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections->GetWidth();
             uint32_t height = tex_reflections->GetHeight();
-            cmd_list->TraceRays(width, height); // todo: take care of shader binding tables
+            //cmd_list->TraceRays(width, height); // todo: take care of shader binding tables
         }
         cmd_list->EndTimeblock();
     }
