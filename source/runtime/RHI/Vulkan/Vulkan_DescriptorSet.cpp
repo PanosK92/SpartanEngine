@@ -19,14 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ============================
 #include "pch.h"
 #include "../RHI_Device.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Buffer.h"
+#include "../RHI_AccelerationStructure.h"
 #include "../Rendering/Renderer.h"
-//================================
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -137,10 +138,12 @@ namespace spartan
             }
             else if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure)
             {
+                RHI_AccelerationStructure* tlas = static_cast<RHI_AccelerationStructure*>(descriptor.data);
+
                 accel_index++;
                 info_accel_structs[accel_index].sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
                 info_accel_structs[accel_index].accelerationStructureCount = 1;
-                info_accel_structs[accel_index].pAccelerationStructures    = static_cast<VkAccelerationStructureKHR*>(descriptor.data);
+                info_accel_structs[accel_index].pAccelerationStructures    = static_cast<VkAccelerationStructureKHR*>(tlas->GetRhiResource());
                 descriptor_index_start                                     = accel_index;
                 descriptor_cnt                                             = 1;
             }

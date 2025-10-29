@@ -110,6 +110,18 @@ namespace spartan
         }
     }
 
+    void RHI_DescriptorSetLayout::SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas)
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if (descriptor.slot == slot + rhi_shader_register_shift_t)
+            {
+                descriptor.data = static_cast<void*>(tlas);
+                return;
+            }
+        }
+    }
+
     void RHI_DescriptorSetLayout::ClearDescriptorData()
     {
         for (RHI_Descriptor& descriptor : m_descriptors)

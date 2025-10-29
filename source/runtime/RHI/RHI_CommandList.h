@@ -127,6 +127,9 @@ namespace spartan
         void SetTexture(const Renderer_BindingsUav slot, RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, true); }
         void SetTexture(const Renderer_BindingsSrv slot, RHI_Texture* texture,  const uint32_t mip_index = rhi_all_mips, uint32_t mip_range = 0) { SetTexture(static_cast<uint32_t>(slot), texture, mip_index, mip_range, false); }
 
+        // acceleration structure
+        void SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas);
+
         // markers
         void BeginMarker(const char* name);
         void EndMarker();

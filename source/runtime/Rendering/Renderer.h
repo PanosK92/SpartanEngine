@@ -123,6 +123,7 @@ namespace spartan
         static RHI_Shader* GetShader(const Renderer_Shader type);
         static RHI_Buffer* GetBuffer(const Renderer_Buffer type);
         static RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
+        static RHI_AccelerationStructure* GetTopLevelAccelerationStructure();
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();

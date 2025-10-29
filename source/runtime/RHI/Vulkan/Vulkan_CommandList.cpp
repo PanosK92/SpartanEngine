@@ -1498,11 +1498,17 @@ namespace spartan
             }
         }
 
-        // Set (will only happen if it's not already set)
+        // set (will only happen if it's not already set)
         m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range);
 
         // todo: detect if there are changes, otherwise don't bother binding
         descriptor_sets::bind_dynamic = true;
+    }
+
+    void RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        m_descriptor_layout_current->SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
     }
 
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const

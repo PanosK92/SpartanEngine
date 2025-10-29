@@ -48,6 +48,7 @@ namespace spartan
         void SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer);
         void SetBuffer(const uint32_t slot, RHI_Buffer* buffer);
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range);
+        void SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas);
 
         // dynamic offsets
         void GetDynamicOffsets(std::array<uint32_t, 10>* offsets, uint32_t* count);

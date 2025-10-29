@@ -50,6 +50,7 @@ namespace spartan
     class RHI_Texture;
     class RHI_Shader;
     class RHI_SyncPrimitive;
+    class RHI_AccelerationStructure;
     struct RHI_Texture_Mip;
     struct RHI_Texture_Slice;
     struct RHI_Vertex_Undefined;

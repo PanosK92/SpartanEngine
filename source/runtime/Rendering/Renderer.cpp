@@ -71,7 +71,7 @@ namespace spartan
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    unique_ptr<RHI_AccelerationStructure> m_tlas;
+    unique_ptr<RHI_AccelerationStructure> tlas;
 
     namespace
     {
@@ -275,7 +275,7 @@ namespace spartan
             DestroyResources();
             swapchain             = nullptr;
             m_lines_vertex_buffer = nullptr;
-            m_tlas                = nullptr;
+            tlas                = nullptr;
         }
 
         RHI_VendorTechnology::Shutdown();
@@ -1238,9 +1238,9 @@ namespace spartan
         // top-level acceleration structure
         {
             // create or rebuild tlas
-            if (!m_tlas)
+            if (!tlas)
             {
-                m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
+                tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
             }
 
             // temp till we make rhi enum
@@ -1274,7 +1274,7 @@ namespace spartan
     
             if (!instances.empty())
             {
-                m_tlas->Build(cmd_list, instances);
+                tlas->Build(cmd_list, instances);
             }
         }
     }
@@ -1441,5 +1441,10 @@ namespace spartan
             ImageImporter::Save("screenshot.exr", width, height, channel_count, bits_per_channel, mapped_data);
             SP_LOG_INFO("Screenshot saved as 'screenshot.exr'");
         });
+    }
+
+    RHI_AccelerationStructure* Renderer::GetTopLevelAccelerationStructure()
+    {
+        return tlas.get();
     }
 }

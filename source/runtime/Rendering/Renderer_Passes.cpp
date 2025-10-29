@@ -793,12 +793,12 @@ namespace spartan
             pso.shaders[RayClosestHit] = GetShader(Renderer_Shader::reflections_ray_closest_hit_r);
             cmd_list->SetPipelineState(pso);
 
-            // set output and input textures
+            // set output textures and acceleration structure
             SetCommonTextures(cmd_list);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_reflections); // write
-            
-            // set tlas (assume method exists)
-            //cmd_list->SetBufferAccelerationStructure(m_tlas.get());
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, GetTopLevelAccelerationStructure());
+
+            // set output texture
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_reflections);
             
             // create sbt if not exists (move to init for efficiency)
             //if (!m_sbt)
@@ -807,10 +807,6 @@ namespace spartan
             //    m_sbt = make_unique<RHI_ShaderBindingTable>(pso, "reflections_sbt");
             //}
             //cmd_list->SetShaderBindingTable(m_sbt.get());
-            
-            // set constants (e.g., camera for raygen)
-            //m_pcb_pass_cpu.set_matrix(World::GetCamera()->GetViewProjectionMatrix());
-            //cmd_list->PushConstants(m_pcb_pass_cpu);
             
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections->GetWidth();

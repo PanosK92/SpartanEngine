@@ -167,6 +167,11 @@ namespace spartan
 
     }
 
+    void RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+    {
+
+    }
+
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float resolution_scale)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
