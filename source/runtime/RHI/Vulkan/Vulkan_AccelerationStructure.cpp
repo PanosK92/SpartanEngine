@@ -167,19 +167,6 @@ namespace spartan
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Top);
         SP_ASSERT(!instances.empty());
 
-        // barrier to ensure prior writes are complete
-        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-        barrier.srcAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        vkCmdPipelineBarrier(
-            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-            0, 1, &barrier, 0, nullptr, 0, nullptr
-        );
-
-        Destroy();
-
         // define instances
         vector<VkAccelerationStructureInstanceKHR> vk_instances(instances.size());
         for (size_t i = 0; i < instances.size(); ++i)
@@ -194,13 +181,44 @@ namespace spartan
             memcpy(&vk_inst.transform.matrix, instance.transform.data(), sizeof(float) * 12);
         }
 
-        // create instance buffer
+        // create staging buffer
+        void* staging_buffer                     = nullptr;
+        const size_t data_size                   = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
+        VkBufferUsageFlags staging_usage         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        VkMemoryPropertyFlags staging_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        RHI_Device::MemoryBufferCreate(staging_buffer, data_size, staging_usage, staging_properties, vk_instances.data(), (m_object_name + "_staging").c_str());
+
+        // create instance buffer (device local, no host visible)
         void* instance_buffer                     = nullptr;
-        size_t instance_size                      = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size() + 16; // add 16 for alignment
-        instance_size                             = (instance_size + 15) & ~15; // align to 16 bytes
-        VkBufferUsageFlags instance_usage         = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        VkMemoryPropertyFlags instance_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-        RHI_Device::MemoryBufferCreate(instance_buffer, instance_size, instance_usage, instance_properties, vk_instances.data(), (m_object_name + "_instances").c_str());
+        const uint64_t alignment                  = 16; // required for instance data
+        const size_t buffer_size                  = data_size + alignment - 1; // pad for alignment
+        VkBufferUsageFlags instance_usage         = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+        VkMemoryPropertyFlags instance_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        RHI_Device::MemoryBufferCreate(instance_buffer, buffer_size, instance_usage, instance_properties, nullptr, (m_object_name + "_instances").c_str());
+
+        // compute aligned offset
+        VkDeviceAddress base_address    = RHI_Device::GetBufferDeviceAddress(instance_buffer);
+        VkDeviceAddress aligned_address = (base_address + alignment - 1) & ~(alignment - 1);
+        uint64_t dst_offset             = aligned_address - base_address;
+
+        // copy from staging to instance buffer at aligned offset
+        VkBufferCopy region = {};
+        region.size         = data_size;
+        region.dstOffset    = dst_offset;
+        vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(staging_buffer), static_cast<VkBuffer>(instance_buffer), 1, &region);
+
+        // barrier: make copy available for build
+        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+        barrier.srcAccessMask   = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            0, 1, &barrier, 0, nullptr, 0, nullptr
+        );
+
+        Destroy(); // moved here to avoid recreating unnecessarily, but still rebuild for now
 
         // build info
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
@@ -212,8 +230,7 @@ namespace spartan
         geom.geometryType                                      = VK_GEOMETRY_TYPE_INSTANCES_KHR;
         geom.geometry.instances                                = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR };
         geom.geometry.instances.arrayOfPointers                = VK_FALSE;
-        VkDeviceAddress instance_address                       = RHI_Device::GetBufferDeviceAddress(instance_buffer);
-        geom.geometry.instances.data.deviceAddress             = (instance_address + 15) & ~15; // align to 16 bytes
+        geom.geometry.instances.data.deviceAddress             = aligned_address;
         build_info.pGeometries                                 = &geom;
 
         // get build sizes
@@ -235,20 +252,12 @@ namespace spartan
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
 
         // create scratch buffer
-        void* scratch_buffer     = nullptr;
-        const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        uint64_t scratch_size    = (size_info.buildScratchSize + alignment - 1) & ~(alignment - 1); // align size
-        usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
-        properties               = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        RHI_Device::MemoryBufferCreate(
-            scratch_buffer,
-            scratch_size,
-            usage,
-            properties,
-            nullptr,
-            (m_object_name + "_scratch").c_str()
-        );
-        
+        void* scratch_buffer             = nullptr;
+        const uint64_t scratch_alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
+        uint64_t scratch_size            = (size_info.buildScratchSize + scratch_alignment - 1) & ~(scratch_alignment - 1);
+        usage                            = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+        RHI_Device::MemoryBufferCreate(scratch_buffer, scratch_size, usage, properties, nullptr, (m_object_name + "_scratch").c_str());
+
         // set up build
         build_info.dstAccelerationStructure  = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
         build_info.scratchData.deviceAddress = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
@@ -259,7 +268,9 @@ namespace spartan
         VkAccelerationStructureBuildRangeInfoKHR* p_range_infos[] = { &range_info };
         RHI_Device::BuildAccelerationStructures(static_cast<void*>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos);
 
-        // ensure build is complete
+        // barrier: ensure build complete
+        barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
         vkCmdPipelineBarrier(
             static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
             VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
@@ -268,6 +279,7 @@ namespace spartan
         );
 
         // destroy temp buffers
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, instance_buffer);
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, scratch_buffer);
     }

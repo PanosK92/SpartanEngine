@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -492,7 +492,7 @@ namespace spartan
             float velocity_magnitude = physics_body->GetLinearVelocity().Length();
             if (velocity_magnitude > 0.01f) // walking head bob
             {
-                bob_timer           += delta_time * velocity_magnitude * 2.5f;
+                bob_timer           += delta_time * velocity_magnitude * 1.5f;
                 float bob_amplitude  = 0.04f;
                 bob_offset.y         = sin(bob_timer) * bob_amplitude;
                 bob_offset.x         = cos(bob_timer) * bob_amplitude * 0.5f;
@@ -514,7 +514,7 @@ namespace spartan
             if (has_physics_body && is_playing && is_grounded && button_jump)
             {
                 m_jump_velocity = sqrt(2.0f * jump_acceleration * jump_height); // initial velocity from v^2 = 2*a*h
-                m_jump_time = 0.0f;
+                m_jump_time     = 0.0f;
             }
         
             if (m_jump_velocity > 0.0f)

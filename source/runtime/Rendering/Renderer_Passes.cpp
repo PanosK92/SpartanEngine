@@ -628,8 +628,8 @@ namespace spartan
                 // tessellation & culling
                 {
                     bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    RHI_Shader* hull     = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                    RHI_Shader* domain   = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+                    RHI_Shader* hull    = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+                    RHI_Shader* domain  = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
                 
                     if (pso.shaders[RHI_Shader_Type::Hull] != hull || pso.shaders[RHI_Shader_Type::Domain] != domain)
                     {
