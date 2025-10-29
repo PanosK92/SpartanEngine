@@ -284,6 +284,13 @@ void RenderOptions::OnTickVisible()
                     option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
                 }
 
+                if (option("Ray-traced Effects"))
+                {
+                    ImGui::BeginDisabled(!RHI_Device::IsSupportedRayTracing());
+                    option_check_box("Reflections (WIP)", Renderer_Option::RayTracedReflections);
+                    ImGui::EndDisabled();
+                }
+
                 if (option("Screen-space Effects"))
                 {
                     option_check_box("Reflections (SSR)", Renderer_Option::ScreenSpaceReflections);

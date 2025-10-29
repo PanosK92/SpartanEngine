@@ -47,6 +47,7 @@ namespace spartan
         Fog,
         ScreenSpaceAmbientOcclusion,
         ScreenSpaceReflections,
+        RayTracedReflections,
         MotionBlur,
         DepthOfField,
         FilmGrain,

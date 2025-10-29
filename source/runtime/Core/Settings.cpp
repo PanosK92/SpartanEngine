@@ -81,6 +81,7 @@ namespace spartan
                 case Renderer_Option::Vhs:                         return "VHS";
                 case Renderer_Option::OcclusionCulling:            return "OcclusionCulling";
                 case Renderer_Option::AutoExposureAdaptationSpeed: return "AutoExposureAdaptationSpeed";
+                case Renderer_Option::RayTracedReflections:        return "RayTracedReflections";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");
