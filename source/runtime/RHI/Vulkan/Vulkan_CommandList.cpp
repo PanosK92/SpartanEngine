@@ -1365,34 +1365,41 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(size <= RHI_Device::PropertyGetMaxPushConstantSize());
-
+    
         uint32_t stages = 0;
-
         if (m_pso.shaders[RHI_Shader_Type::Compute])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
         }
-
         if (m_pso.shaders[RHI_Shader_Type::Vertex])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
         }
-
         if (m_pso.shaders[RHI_Shader_Type::Hull])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
         }
-
         if (m_pso.shaders[RHI_Shader_Type::Domain])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
         }
-
         if (m_pso.shaders[RHI_Shader_Type::Pixel])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
         }
-
+        if (m_pso.shaders[RHI_Shader_Type::RayGeneration])
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        }
+        if (m_pso.shaders[RHI_Shader_Type::RayMiss])
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_MISS_BIT_KHR;
+        }
+        if (m_pso.shaders[RHI_Shader_Type::RayClosestHit])
+        {
+            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        }
+    
         vkCmdPushConstants(
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkPipelineLayout>(m_pipeline->GetRhiResourceLayout()),
