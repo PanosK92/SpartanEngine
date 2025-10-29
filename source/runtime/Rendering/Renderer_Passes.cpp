@@ -787,32 +787,31 @@ namespace spartan
             pso.shaders[RayGeneration] = GetShader(Renderer_Shader::reflections_ray_generation_r);
             pso.shaders[RayMiss]       = GetShader(Renderer_Shader::reflections_ray_miss_r);
             pso.shaders[RayClosestHit] = GetShader(Renderer_Shader::reflections_ray_closest_hit_r);
+            cmd_list->SetPipelineState(pso);
 
-            //cmd_list->SetPipelineState(pso);
-            //
-            //// set textures (inputs from gbuffers, output uav)
-            //SetCommonTextures(cmd_list);
-            //cmd_list->SetTexture(Renderer_BindingsUav::tex_reflections, tex_reflections); // write
-            //
-            //// set tlas (assume method exists)
-            //cmd_list->SetAccelerationStructure(m_tlas.get());
-            //
-            //// create sbt if not exists (move to init for efficiency)
+            // set textures (inputs from gbuffers, output uav)
+            SetCommonTextures(cmd_list);
+           // cmd_list->SetTexture(Renderer_BindingsUav::tex_reflections, tex_reflections); // write
+            
+            // set tlas (assume method exists)
+            //cmd_list->SetBufferAccelerationStructure(m_tlas.get());
+            
+            // create sbt if not exists (move to init for efficiency)
             //if (!m_sbt)
             //{
             //    // assume rhi helper to create sbt from pso (raygen, miss, one hit group)
             //    m_sbt = make_unique<RHI_ShaderBindingTable>(pso, "reflections_sbt");
             //}
             //cmd_list->SetShaderBindingTable(m_sbt.get());
-            //
-            //// set constants (e.g., camera for raygen)
+            
+            // set constants (e.g., camera for raygen)
             //m_pcb_pass_cpu.set_matrix(World::GetCamera()->GetViewProjectionMatrix());
             //cmd_list->PushConstants(m_pcb_pass_cpu);
-            //
-            //// trace full screen (match tex resolution, depth=1 for 2d)
-            //uint32_t width  = tex_reflections->GetWidth();
-            //uint32_t height = tex_reflections->GetHeight();
-            //cmd_list->TraceRays(width, height, 1);
+            
+            // trace full screen (match tex resolution)
+            uint32_t width  = tex_reflections->GetWidth();
+            uint32_t height = tex_reflections->GetHeight();
+            cmd_list->TraceRays(width, height);
         }
         cmd_list->EndTimeblock();
     }

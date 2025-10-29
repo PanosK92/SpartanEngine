@@ -962,11 +962,6 @@ namespace spartan
 
         PreDraw();
 
-        if (Debugging::IsBreadcrumbsEnabled())
-        {
-            //RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::DrawIndexed, m_pso.name);
-        }
-
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
             index_count,                                  // indexCount
@@ -977,11 +972,6 @@ namespace spartan
         );
         Profiler::m_rhi_draw++;
         Profiler::m_rhi_instance_count += instance_count == 1 ? 0 : instance_count;
-
-        if (Debugging::IsBreadcrumbsEnabled())
-        {
-            //RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
-        }
     }
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
@@ -990,17 +980,29 @@ namespace spartan
 
         PreDraw();
 
-        if (Debugging::IsBreadcrumbsEnabled())
-        {
-            //RHI_AMD_FFX::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::Dispatch, m_pso.name);
-        }
-
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
+    }
 
-        if (Debugging::IsBreadcrumbsEnabled())
+    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)
+    {
+        // load extension func once
+        static PFN_vkCmdTraceRaysKHR pfn_vk_cmd_trace_rays_khr = nullptr;
+        if (!pfn_vk_cmd_trace_rays_khr)
         {
-            //RHI_AMD_FFX::Breadcrumbs_MarkerEnd(this);
+            pfn_vk_cmd_trace_rays_khr = (PFN_vkCmdTraceRaysKHR)vkGetDeviceProcAddr(RHI_Context::device, "vkCmdTraceRaysKHR");
+            SP_ASSERT(pfn_vk_cmd_trace_rays_khr != nullptr);
         }
+    
+        pfn_vk_cmd_trace_rays_khr(
+            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
+            nullptr,                                      // pRaygenShaderBindingTable
+            nullptr,                                      // pMissShaderBindingTable
+            nullptr,                                      // pHitShaderBindingTable
+            nullptr,                                      // pCallableShaderBindingTable
+            width,                                        // width
+            height,                                       // height
+            1                                             // depth
+        );
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling)
