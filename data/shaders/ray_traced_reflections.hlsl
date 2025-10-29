@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct [raypayload] Payload
 {
-    float3 color : read(caller) : write(closesthit, miss);
+    float3 color : read(caller, closesthit, miss) : write(caller, closesthit, miss);
 };
 
 [shader("raygeneration")]
