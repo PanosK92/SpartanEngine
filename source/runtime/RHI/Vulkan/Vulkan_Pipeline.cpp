@@ -72,10 +72,21 @@ namespace spartan
             {
                 shader_stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
             }
-
-            SP_ASSERT(shader_stage_info.stage  != 0);
+            else if (shader->GetShaderStage() == RHI_Shader_Type::RayGeneration)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::RayMiss)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
+            }
+            else if (shader->GetShaderStage() == RHI_Shader_Type::RayClosestHit)
+            {
+                shader_stage_info.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            }
+            SP_ASSERT(shader_stage_info.stage != 0);
             SP_ASSERT(shader_stage_info.module != nullptr);
-            SP_ASSERT(shader_stage_info.pName  != nullptr);
+            SP_ASSERT(shader_stage_info.pName != nullptr);
 
             return shader_stage_info;
         }
@@ -469,6 +480,51 @@ namespace spartan
                     RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::Pipeline, pipeline_state.name);
                 }
             }
+        }
+        else if (pipeline_state.IsRayTracing())
+        {
+            // load extension func once
+            static PFN_vkCreateRayTracingPipelinesKHR pfn_vk_create_ray_tracing_pipelines_khr = nullptr;
+            if (!pfn_vk_create_ray_tracing_pipelines_khr)
+            {
+                pfn_vk_create_ray_tracing_pipelines_khr = (PFN_vkCreateRayTracingPipelinesKHR)vkGetDeviceProcAddr(RHI_Context::device, "vkCreateRayTracingPipelinesKHR");
+                SP_ASSERT(pfn_vk_create_ray_tracing_pipelines_khr != nullptr);
+            }
+
+            // simple setup: raygen, miss, closest hit
+            vector<VkRayTracingShaderGroupCreateInfoKHR> groups(3);
+            groups[0].sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+            groups[0].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+            groups[0].generalShader      = 0; // raygen index in stages
+            groups[0].closestHitShader   = VK_SHADER_UNUSED_KHR;
+            groups[0].anyHitShader       = VK_SHADER_UNUSED_KHR;
+            groups[0].intersectionShader = VK_SHADER_UNUSED_KHR;
+
+            groups[1].sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+            groups[1].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+            groups[1].generalShader      = 1; // miss index
+            groups[1].closestHitShader   = VK_SHADER_UNUSED_KHR;
+            groups[1].anyHitShader       = VK_SHADER_UNUSED_KHR;
+            groups[1].intersectionShader = VK_SHADER_UNUSED_KHR;
+
+            groups[2].sType              = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+            groups[2].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+            groups[2].generalShader      = VK_SHADER_UNUSED_KHR;
+            groups[2].closestHitShader   = 2; // closest hit index
+            groups[2].anyHitShader       = VK_SHADER_UNUSED_KHR;
+            groups[2].intersectionShader = VK_SHADER_UNUSED_KHR;
+
+            VkRayTracingPipelineCreateInfoKHR pipeline_info = {};
+            pipeline_info.sType                             = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
+            pipeline_info.stageCount                        = static_cast<uint32_t>(shader_stages.size());
+            pipeline_info.pStages                           = shader_stages.data();
+            pipeline_info.groupCount                        = static_cast<uint32_t>(groups.size());
+            pipeline_info.pGroups                           = groups.data();
+            pipeline_info.maxPipelineRayRecursionDepth      = 1; // number of bounces
+            pipeline_info.layout                            = static_cast<VkPipelineLayout>(m_rhi_resource_layout);
+
+            SP_ASSERT_VK(pfn_vk_create_ray_tracing_pipelines_khr(RHI_Context::device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)));
+            RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::Pipeline, pipeline_state.name);
         }
 
         SP_ASSERT(m_rhi_resource != nullptr);

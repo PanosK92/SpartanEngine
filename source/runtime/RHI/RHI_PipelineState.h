@@ -41,6 +41,7 @@ namespace spartan
         uint32_t GetHeight() const { return m_height; }
         bool IsGraphics() const;
         bool IsCompute() const;
+        bool IsRayTracing() const;
         bool HasTessellation();
 
         //= STATE =========================================================================

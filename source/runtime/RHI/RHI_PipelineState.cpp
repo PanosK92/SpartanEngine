@@ -41,18 +41,28 @@ namespace spartan
     {
         void validate(RHI_PipelineState& pso)
         {
-            bool has_shader_compute  = pso.shaders[RHI_Shader_Type::Compute] ? pso.shaders[RHI_Shader_Type::Compute]->IsCompiled() : false;
-            bool has_shader_vertex   = pso.shaders[RHI_Shader_Type::Vertex]  ? pso.shaders[RHI_Shader_Type::Vertex]->IsCompiled()  : false;
-            bool has_shader_pixel    = pso.shaders[RHI_Shader_Type::Pixel]   ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()   : false;
-            bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
-
-            SP_ASSERT_MSG(has_shader_compute || has_shader_vertex || has_shader_pixel, "There is no shader set, ensure that it compiled successfully and that it has been set");
+            bool has_shader_compute     = pso.shaders[RHI_Shader_Type::Compute]       ? pso.shaders[RHI_Shader_Type::Compute]->IsCompiled()       : false;
+            bool has_shader_vertex      = pso.shaders[RHI_Shader_Type::Vertex]        ? pso.shaders[RHI_Shader_Type::Vertex]->IsCompiled()        : false;
+            bool has_shader_hull        = pso.shaders[RHI_Shader_Type::Hull]          ? pso.shaders[RHI_Shader_Type::Hull]->IsCompiled()          : false;
+            bool has_shader_domain      = pso.shaders[RHI_Shader_Type::Domain]        ? pso.shaders[RHI_Shader_Type::Domain]->IsCompiled()        : false;
+            bool has_shader_pixel       = pso.shaders[RHI_Shader_Type::Pixel]         ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()         : false;
+            bool has_shader_raygen      = pso.shaders[RHI_Shader_Type::RayGeneration] ? pso.shaders[RHI_Shader_Type::RayGeneration]->IsCompiled() : false;
+            bool has_shader_miss        = pso.shaders[RHI_Shader_Type::RayMiss]       ? pso.shaders[RHI_Shader_Type::RayMiss]->IsCompiled()       : false;
+            bool has_shader_closest_hit = pso.shaders[RHI_Shader_Type::RayClosestHit] ? pso.shaders[RHI_Shader_Type::RayClosestHit]->IsCompiled() : false;
+        
+            bool has_some_shader = has_shader_compute || has_shader_vertex || has_shader_hull || has_shader_domain || has_shader_pixel || has_shader_raygen || has_shader_miss || has_shader_closest_hit;
+            SP_ASSERT_MSG(has_some_shader, "There is no shader set, ensure that it compiled successfully and that it has been set");
+        
+            bool is_graphics    = (has_shader_vertex || has_shader_hull || has_shader_domain || has_shader_pixel) && !has_shader_compute && !has_shader_raygen && !has_shader_miss && !has_shader_closest_hit;
+            bool is_compute     = has_shader_compute && !has_shader_vertex && !has_shader_hull && !has_shader_domain && !has_shader_pixel && !has_shader_raygen && !has_shader_miss && !has_shader_closest_hit;
+            bool is_ray_tracing = (has_shader_raygen || has_shader_miss || has_shader_closest_hit) && !has_shader_compute && !has_shader_vertex && !has_shader_hull && !has_shader_domain && !has_shader_pixel;
+            SP_ASSERT_MSG(is_graphics || is_compute || is_ray_tracing, "Invalid pipeline state type, must be graphics, compute, or ray tracing");
+        
             if (is_graphics)
             {
                 bool has_render_target   = pso.render_target_color_textures[0] || pso.render_target_depth_texture; // ensure at least one render target
-                bool has_backbuffer      = pso.render_target_swapchain;                                            // check that no both the swapchain and the color render target are active
+                bool has_backbuffer      = pso.render_target_swapchain; // check that no both the swapchain and the color render target are active
                 bool has_graphics_states = pso.rasterizer_state && pso.blend_state && pso.depth_stencil_state;
-
                 SP_ASSERT_MSG(has_graphics_states,                 "Graphics states are missing");
                 SP_ASSERT_MSG(has_render_target || has_backbuffer, "A render target is missing");
                 SP_ASSERT_MSG(pso.blend_state,                     "You need to define a blend state");
@@ -60,7 +70,11 @@ namespace spartan
                 SP_ASSERT_MSG(pso.rasterizer_state,                "You need to define a rasterizer state");
                 SP_ASSERT(pso.GetWidth() != 0 && pso.GetHeight() != 0);
             }
-
+            else if (is_ray_tracing)
+            {
+                SP_ASSERT_MSG(has_shader_raygen && has_shader_miss && has_shader_closest_hit, "Ray tracing requires ray generation, miss, and closest hit shaders");
+            }
+        
             SP_ASSERT_MSG(pso.name != nullptr, "Name your pipeline state");
         }
 
@@ -197,12 +211,33 @@ namespace spartan
 
     bool RHI_PipelineState::IsGraphics() const
     {
-        return (HasShader(RHI_Shader_Type::Vertex) || HasShader(RHI_Shader_Type::Pixel)) && !HasShader(RHI_Shader_Type::Compute);
+        return (HasShader(RHI_Shader_Type::Vertex) || HasShader(RHI_Shader_Type::Hull) || HasShader(RHI_Shader_Type::Domain) || HasShader(RHI_Shader_Type::Pixel)) &&
+               !HasShader(RHI_Shader_Type::Compute) &&
+               !HasShader(RHI_Shader_Type::RayGeneration) &&
+               !HasShader(RHI_Shader_Type::RayMiss) &&
+               !HasShader(RHI_Shader_Type::RayClosestHit);
     }
-
+    
     bool RHI_PipelineState::IsCompute() const
     {
-        return HasShader(RHI_Shader_Type::Compute) && !(HasShader(RHI_Shader_Type::Vertex) || HasShader(RHI_Shader_Type::Pixel));
+        return HasShader(RHI_Shader_Type::Compute) &&
+               !HasShader(RHI_Shader_Type::Vertex) &&
+               !HasShader(RHI_Shader_Type::Hull) &&
+               !HasShader(RHI_Shader_Type::Domain) &&
+               !HasShader(RHI_Shader_Type::Pixel) &&
+               !HasShader(RHI_Shader_Type::RayGeneration) &&
+               !HasShader(RHI_Shader_Type::RayMiss) &&
+               !HasShader(RHI_Shader_Type::RayClosestHit);
+    }
+    
+    bool RHI_PipelineState::IsRayTracing() const
+    {
+        return (HasShader(RHI_Shader_Type::RayGeneration) || HasShader(RHI_Shader_Type::RayMiss) || HasShader(RHI_Shader_Type::RayClosestHit)) &&
+               !HasShader(RHI_Shader_Type::Vertex) &&
+               !HasShader(RHI_Shader_Type::Hull) &&
+               !HasShader(RHI_Shader_Type::Domain) &&
+               !HasShader(RHI_Shader_Type::Pixel) &&
+               !HasShader(RHI_Shader_Type::Compute);
     }
 
     bool RHI_PipelineState::HasTessellation()

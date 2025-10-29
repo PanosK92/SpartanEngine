@@ -811,7 +811,7 @@ namespace spartan
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections->GetWidth();
             uint32_t height = tex_reflections->GetHeight();
-            cmd_list->TraceRays(width, height);
+            cmd_list->TraceRays(width, height); // todo: take care of shader binding tables
         }
         cmd_list->EndTimeblock();
     }
