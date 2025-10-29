@@ -271,28 +271,31 @@ namespace spartan
     {
         switch (m_shader_type)
         {
-            case RHI_Shader_Type::Vertex:     return "main_vs";
-            case RHI_Shader_Type::Hull:       return "main_hs";
-            case RHI_Shader_Type::Domain:     return "main_ds";
-            case RHI_Shader_Type::Pixel:      return "main_ps";
-            case RHI_Shader_Type::Compute:    return "main_cs";
-            case RHI_Shader_Type::RayTracing: return nullptr;
-            default:                          return nullptr;
+            case RHI_Shader_Type::Vertex:        return "main_vs";
+            case RHI_Shader_Type::Hull:          return "main_hs";
+            case RHI_Shader_Type::Domain:        return "main_ds";
+            case RHI_Shader_Type::Pixel:         return "main_ps";
+            case RHI_Shader_Type::Compute:       return "main_cs";
+            case RHI_Shader_Type::RayGeneration: return "ray_gen";
+            case RHI_Shader_Type::RayMiss:       return "miss";
+            case RHI_Shader_Type::RayClosestHit: return "closest_hit";
+            default: return nullptr;
         }
     }
-
+    
     const char* RHI_Shader::GetTargetProfile() const
     {
         switch (m_shader_type)
         {
-            case RHI_Shader_Type::Vertex:     return "vs_6_8";
-            case RHI_Shader_Type::Hull:       return "hs_6_8";
-            case RHI_Shader_Type::Domain:     return "ds_6_8";
-            case RHI_Shader_Type::Pixel:      return "ps_6_8";
-            case RHI_Shader_Type::Compute:    return "cs_6_8";
-            case RHI_Shader_Type::RayTracing: return "lib_6_8";
-            default:                          return nullptr;
+            case RHI_Shader_Type::Vertex:        return "vs_6_8";
+            case RHI_Shader_Type::Hull:          return "hs_6_8";
+            case RHI_Shader_Type::Domain:        return "ds_6_8";
+            case RHI_Shader_Type::Pixel:         return "ps_6_8";
+            case RHI_Shader_Type::Compute:       return "cs_6_8";
+            case RHI_Shader_Type::RayGeneration:
+            case RHI_Shader_Type::RayMiss:
+            case RHI_Shader_Type::RayClosestHit: return "lib_6_8";
+            default: return nullptr;
         }
     }
-
 }

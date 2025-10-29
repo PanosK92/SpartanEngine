@@ -290,7 +290,9 @@ namespace spartan
         Domain,
         Pixel,
         Compute,
-        RayTracing,
+        RayGeneration,
+        RayMiss,
+        RayClosestHit,
         Max
     };
 

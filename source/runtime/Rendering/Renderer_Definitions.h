@@ -187,7 +187,9 @@ namespace spartan
         dithering_c,
         transparency_reflection_refraction_c,
         auto_exposure_c,
-        ray_tracing_r,
+        reflections_ray_generation_r,
+        reflections_ray_miss_r,
+        reflections_ray_closest_hit_r,
         max
     };
     

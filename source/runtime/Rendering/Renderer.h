@@ -153,6 +153,7 @@ namespace spartan
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list);
+        static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting

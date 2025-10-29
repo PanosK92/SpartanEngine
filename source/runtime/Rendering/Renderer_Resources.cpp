@@ -515,8 +515,17 @@ namespace spartan
         // ray-tracing
         if (RHI_Device::IsSupportedRayTracing())
         {
-            shader(Renderer_Shader::ray_tracing_r) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::ray_tracing_r)->Compile(RHI_Shader_Type::RayTracing, shader_dir + "ray_tracing.hlsl", async);
+            // ray generation
+            shader(Renderer_Shader::reflections_ray_generation_r) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::reflections_ray_generation_r)->Compile(RHI_Shader_Type::RayGeneration, shader_dir + "ray_traced_reflections.hlsl", async);
+        
+            // ray miss
+            shader(Renderer_Shader::reflections_ray_miss_r) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::reflections_ray_miss_r)->Compile(RHI_Shader_Type::RayMiss, shader_dir + "ray_traced_reflections.hlsl", async);
+        
+            // ray closest hit
+            shader(Renderer_Shader::reflections_ray_closest_hit_r) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::reflections_ray_closest_hit_r)->Compile(RHI_Shader_Type::RayClosestHit, shader_dir + "ray_traced_reflections.hlsl", async);
         }
     }
 
