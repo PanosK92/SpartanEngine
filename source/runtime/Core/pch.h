@@ -73,7 +73,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Ray.h"
-#include "../Math/RayHit.h"
+#include "../Math/RayHitResult.h"
 #include "../Math/Rectangle.h"
 #include "../Math/BoundingBox.h"
 #include "../Math/Sphere.h"

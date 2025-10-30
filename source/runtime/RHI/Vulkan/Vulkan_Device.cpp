@@ -915,9 +915,9 @@ namespace spartan
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayMiss]->GetDescriptors());
                     }
         
-                    if (pipeline_state.shaders[RHI_Shader_Type::RayClosestHit])
+                    if (pipeline_state.shaders[RHI_Shader_Type::RayHit])
                     {
-                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayClosestHit]->GetDescriptors());
+                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayHit]->GetDescriptors());
                     }
                 }
         
@@ -1584,6 +1584,8 @@ namespace spartan
                 m_max_shading_rate_texel_size_y            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
                 m_optimal_buffer_copy_offset_alignment     = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
                 m_shader_group_handle_size                 = ray_tracing_properties.shaderGroupHandleSize;
+                m_shader_group_handle_alignment            = ray_tracing_properties.shaderGroupHandleAlignment;
+                m_shader_group_base_alignment              = ray_tracing_properties.shaderGroupBaseAlignment;
 
                 // disable profiler if timestamps are not supported
                 if (Debugging::IsGpuTimingEnabled())

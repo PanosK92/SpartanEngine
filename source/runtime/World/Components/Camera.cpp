@@ -162,7 +162,7 @@ namespace spartan
 
         const Ray& ray = ComputePickingRay();
 
-        static vector<RayHit> hits;
+        static vector<RayHitResult> hits;
         hits.clear();
 
         const vector<Entity*>& entities = World::GetEntities();
@@ -189,7 +189,7 @@ namespace spartan
         float best_screen_dist = numeric_limits<float>::max();
         float best_depth       = numeric_limits<float>::max();
         Entity* best_entity    = nullptr;
-        for (RayHit& broad_hit : hits)
+        for (RayHitResult& broad_hit : hits)
         {
             Renderable* renderable = broad_hit.m_entity->GetComponent<Renderable>();
             static vector<uint32_t> indices;

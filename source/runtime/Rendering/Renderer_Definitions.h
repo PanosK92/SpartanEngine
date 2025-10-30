@@ -193,7 +193,7 @@ namespace spartan
         auto_exposure_c,
         reflections_ray_generation_r,
         reflections_ray_miss_r,
-        reflections_ray_closest_hit_r,
+        reflections_ray_hit_r,
         max
     };
     

@@ -32,10 +32,10 @@ namespace spartan
 
     namespace math
     {
-        class RayHit
+        class RayHitResult
         {
         public:
-            RayHit(Entity* entity, const Vector3& position, float distance, bool is_inside)
+            RayHitResult(Entity* entity, const Vector3& position, float distance, bool is_inside)
             {
                 m_entity   = entity;
                 m_position = position;

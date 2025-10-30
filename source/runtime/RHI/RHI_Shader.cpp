@@ -278,7 +278,7 @@ namespace spartan
             case RHI_Shader_Type::Compute:       return "main_cs";
             case RHI_Shader_Type::RayGeneration: return "ray_gen";
             case RHI_Shader_Type::RayMiss:       return "miss";
-            case RHI_Shader_Type::RayClosestHit: return "closest_hit";
+            case RHI_Shader_Type::RayHit: return "closest_hit";
             default: return nullptr;
         }
     }
@@ -294,7 +294,7 @@ namespace spartan
             case RHI_Shader_Type::Compute:       return "cs_6_8";
             case RHI_Shader_Type::RayGeneration:
             case RHI_Shader_Type::RayMiss:
-            case RHI_Shader_Type::RayClosestHit: return "lib_6_8";
+            case RHI_Shader_Type::RayHit: return "lib_6_8";
             default: return nullptr;
         }
     }

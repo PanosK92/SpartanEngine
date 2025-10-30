@@ -80,7 +80,7 @@ namespace spartan
             {
                 shader_stage_info.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
             }
-            else if (shader->GetShaderStage() == RHI_Shader_Type::RayClosestHit)
+            else if (shader->GetShaderStage() == RHI_Shader_Type::RayHit)
             {
                 shader_stage_info.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
             }

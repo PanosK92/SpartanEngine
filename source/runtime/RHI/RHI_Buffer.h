@@ -57,9 +57,13 @@ namespace spartan
             SP_ASSERT(stride != 0);
             SP_ASSERT(element_count != 0);
             SP_ASSERT_MSG(name != nullptr, "Name the buffer to aid the validation layer");
-            if (type == RHI_Buffer_Type::Constant)
+            if (type == RHI_Buffer_Type::Constant )
             {
                 SP_ASSERT_MSG(mappable, "Constant buffers must be mappable");
+            }
+            if (type == RHI_Buffer_Type::ShaderBindingTable)
+            {
+                SP_ASSERT_MSG(mappable, "Shader binding tables must be mappable");
             }
 
             // set
@@ -94,14 +98,19 @@ namespace spartan
         RHI_Buffer_Type GetType() const     { return m_type; }
 
     private:
-        RHI_Buffer_Type m_type      = RHI_Buffer_Type::Max;
-        uint32_t m_stride_unaligned = 0;
-        uint32_t m_stride           = 0;
-        uint32_t m_element_count    = 0;
-        uint32_t m_offset           = 0;
-        void* m_data_gpu            = nullptr;
-        bool m_mappable             = false;
-        bool first_update           = true;
+        RHI_Buffer_Type m_type         = RHI_Buffer_Type::Max;
+        uint32_t m_stride_unaligned    = 0;
+        uint32_t m_stride              = 0;
+        uint32_t m_element_count       = 0;
+        uint32_t m_offset              = 0;
+        uint32_t m_aligned_handle_size = 0;
+        uint64_t m_raygen_offset       = 0;
+        uint64_t m_miss_offset         = 0;
+        uint64_t m_hit_offset          = 0;
+        uint64_t m_device_address      = 0;
+        void* m_data_gpu               = nullptr;
+        bool m_mappable                = false;
+        bool first_update              = true;
 
         // rhi
         void RHI_DestroyResource();

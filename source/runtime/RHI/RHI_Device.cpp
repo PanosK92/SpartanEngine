@@ -46,6 +46,8 @@ namespace spartan
     uint32_t RHI_Device::m_max_shading_rate_texel_size_y            = 0;
     uint64_t RHI_Device::m_optimal_buffer_copy_offset_alignment     = 0;
     uint32_t RHI_Device::m_shader_group_handle_size                 = 0;
+    uint32_t RHI_Device::m_shader_group_handle_alignment            = 0;
+    uint32_t RHI_Device::m_shader_group_base_alignment              = 0;
     bool RHI_Device::m_is_shading_rate_supported                    = false;
     bool RHI_Device::m_xess_supported                               = false;
     bool RHI_Device::m_is_ray_tracing_supported                     = false;

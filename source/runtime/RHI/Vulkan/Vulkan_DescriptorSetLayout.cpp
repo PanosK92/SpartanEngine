@@ -98,7 +98,7 @@ namespace spartan
             stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute))       ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
             stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayGeneration)) ? VK_SHADER_STAGE_RAYGEN_BIT_KHR              : 0;
             stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))       ? VK_SHADER_STAGE_MISS_BIT_KHR                : 0;
-            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayClosestHit)) ? VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR         : 0;
+            stage_flags |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayHit)) ? VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR         : 0;
 
             layout_bindings[i].descriptorType     = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(descriptor));
             layout_bindings[i].binding            = descriptor.slot;

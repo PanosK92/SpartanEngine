@@ -1011,7 +1011,7 @@ namespace spartan
         // get regions
         RHI_StridedDeviceAddressRegion raygen_region   = shader_binding_table->GetRegion(RHI_Shader_Type::RayGeneration);
         RHI_StridedDeviceAddressRegion miss_region     = shader_binding_table->GetRegion(RHI_Shader_Type::RayMiss);
-        RHI_StridedDeviceAddressRegion hit_region      = shader_binding_table->GetRegion(RHI_Shader_Type::RayClosestHit);
+        RHI_StridedDeviceAddressRegion hit_region      = shader_binding_table->GetRegion(RHI_Shader_Type::RayHit);
 
         // convert to vulkan regions
         VkStridedDeviceAddressRegionKHR vk_raygen      = { raygen_region.device_address, raygen_region.stride, raygen_region.size };
@@ -1413,7 +1413,7 @@ namespace spartan
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_MISS_BIT_KHR;
         }
-        if (m_pso.shaders[RHI_Shader_Type::RayClosestHit])
+        if (m_pso.shaders[RHI_Shader_Type::RayHit])
         {
             stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
         }

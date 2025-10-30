@@ -294,7 +294,7 @@ namespace spartan
         Compute,
         RayGeneration,
         RayMiss,
-        RayClosestHit,
+        RayHit,
         Max
     };
 
@@ -309,7 +309,7 @@ namespace spartan
             case RHI_Shader_Type::Compute:       return 1 << 4;
             case RHI_Shader_Type::RayGeneration: return 1 << 5;
             case RHI_Shader_Type::RayMiss:       return 1 << 6;
-            case RHI_Shader_Type::RayClosestHit: return 1 << 7;
+            case RHI_Shader_Type::RayHit:        return 1 << 7;
             default:                             return 0;
         }
     }

@@ -48,7 +48,7 @@ namespace spartan
             bool has_shader_pixel       = pso.shaders[RHI_Shader_Type::Pixel]         ? pso.shaders[RHI_Shader_Type::Pixel]->IsCompiled()         : false;
             bool has_shader_raygen      = pso.shaders[RHI_Shader_Type::RayGeneration] ? pso.shaders[RHI_Shader_Type::RayGeneration]->IsCompiled() : false;
             bool has_shader_miss        = pso.shaders[RHI_Shader_Type::RayMiss]       ? pso.shaders[RHI_Shader_Type::RayMiss]->IsCompiled()       : false;
-            bool has_shader_closest_hit = pso.shaders[RHI_Shader_Type::RayClosestHit] ? pso.shaders[RHI_Shader_Type::RayClosestHit]->IsCompiled() : false;
+            bool has_shader_closest_hit = pso.shaders[RHI_Shader_Type::RayHit]        ? pso.shaders[RHI_Shader_Type::RayHit]->IsCompiled()        : false;
         
             bool has_some_shader = has_shader_compute || has_shader_vertex || has_shader_hull || has_shader_domain || has_shader_pixel || has_shader_raygen || has_shader_miss || has_shader_closest_hit;
             SP_ASSERT_MSG(has_some_shader, "There is no shader set, ensure that it compiled successfully and that it has been set");
@@ -215,7 +215,7 @@ namespace spartan
                !HasShader(RHI_Shader_Type::Compute) &&
                !HasShader(RHI_Shader_Type::RayGeneration) &&
                !HasShader(RHI_Shader_Type::RayMiss) &&
-               !HasShader(RHI_Shader_Type::RayClosestHit);
+               !HasShader(RHI_Shader_Type::RayHit);
     }
     
     bool RHI_PipelineState::IsCompute() const
@@ -227,12 +227,12 @@ namespace spartan
                !HasShader(RHI_Shader_Type::Pixel) &&
                !HasShader(RHI_Shader_Type::RayGeneration) &&
                !HasShader(RHI_Shader_Type::RayMiss) &&
-               !HasShader(RHI_Shader_Type::RayClosestHit);
+               !HasShader(RHI_Shader_Type::RayHit);
     }
     
     bool RHI_PipelineState::IsRayTracing() const
     {
-        return (HasShader(RHI_Shader_Type::RayGeneration) || HasShader(RHI_Shader_Type::RayMiss) || HasShader(RHI_Shader_Type::RayClosestHit)) &&
+        return (HasShader(RHI_Shader_Type::RayGeneration) || HasShader(RHI_Shader_Type::RayMiss) || HasShader(RHI_Shader_Type::RayHit)) &&
                !HasShader(RHI_Shader_Type::Vertex) &&
                !HasShader(RHI_Shader_Type::Hull) &&
                !HasShader(RHI_Shader_Type::Domain) &&

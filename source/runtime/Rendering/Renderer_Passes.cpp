@@ -792,7 +792,7 @@ namespace spartan
             pso.name                   = "ray_traced_reflections";
             pso.shaders[RayGeneration] = GetShader(Renderer_Shader::reflections_ray_generation_r);
             pso.shaders[RayMiss]       = GetShader(Renderer_Shader::reflections_ray_miss_r);
-            pso.shaders[RayClosestHit] = GetShader(Renderer_Shader::reflections_ray_closest_hit_r);
+            pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
             cmd_list->SetPipelineState(pso);
 
             // set output textures and acceleration structure

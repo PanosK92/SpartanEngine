@@ -125,9 +125,34 @@ namespace spartan
         }
         else if (m_type == RHI_Buffer_Type::ShaderBindingTable)
         {
-            VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-            VkMemoryPropertyFlags flags_memory = m_mappable ? VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, data, m_object_name.c_str());
+            SP_ASSERT(m_element_count == 3); // raygen, miss, hit
+        
+            uint32_t handle_size   = RHI_Device::PropertyGetShaderGroupHandleSize();
+            m_aligned_handle_size  = static_cast<uint32_t>(((handle_size + RHI_Device::PropertyGetShaderGroupHandleAlignment() - 1) / RHI_Device::PropertyGetShaderGroupHandleAlignment()) * RHI_Device::PropertyGetShaderGroupHandleAlignment());
+            uint64_t base_align    = RHI_Device::PropertyGetShaderGroupBaseAlignment();
+        
+            // compute worst-case size
+            uint64_t max_padding = base_align - 1;
+            m_object_size        = 3 * m_aligned_handle_size + 2 * max_padding;
+        
+            VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
+        
+            m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
+        
+            // now align offsets based on device_address
+            uint64_t current_address  = m_device_address;
+            m_raygen_offset           = (base_align - (current_address % base_align)) % base_align;
+            current_address          += m_raygen_offset + m_aligned_handle_size;
+            uint64_t padding_miss     = (base_align - (current_address % base_align)) % base_align;
+            m_miss_offset             = m_raygen_offset + m_aligned_handle_size + padding_miss;
+            current_address          += padding_miss + m_aligned_handle_size;
+            uint64_t padding_hit      = (base_align - (current_address % base_align)) % base_align;
+            m_hit_offset              = m_miss_offset + m_aligned_handle_size + padding_hit;
+        
+            // actual size
+            m_object_size = m_hit_offset + m_aligned_handle_size;
         }
 
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
@@ -159,20 +184,15 @@ namespace spartan
 
     RHI_StridedDeviceAddressRegion RHI_Buffer::GetRegion(const RHI_Shader_Type group_type, const uint32_t stride_extra /*= 0*/) const
     {
-        uint32_t offset = 0;
-        if (group_type == RHI_Shader_Type::RayMiss)
-        {
-            offset = m_stride;
-        }
-        else if (group_type == RHI_Shader_Type::RayClosestHit)
-        {
-            offset = 2 * m_stride;
-        }
-    
-        RHI_StridedDeviceAddressRegion region{};
-        region.device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource) + offset;
-        region.stride         = m_stride + stride_extra;
-        region.size           = region.stride; // single record per group
+        uint64_t offset = 0;
+        if (group_type == RHI_Shader_Type::RayGeneration) offset = m_raygen_offset;
+        else if (group_type == RHI_Shader_Type::RayMiss)  offset = m_miss_offset;
+        else if (group_type == RHI_Shader_Type::RayHit)   offset = m_hit_offset;
+
+        RHI_StridedDeviceAddressRegion region = {};
+        region.device_address                 = m_device_address + offset;
+        region.stride                         = m_aligned_handle_size;
+        region.size                           = m_aligned_handle_size;
 
         return region;
     }
@@ -180,8 +200,7 @@ namespace spartan
     void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(m_type == RHI_Buffer_Type::ShaderBindingTable);
-
-        // load pfn if needed
+    
         static PFN_vkGetRayTracingShaderGroupHandlesKHR pfn_vk_get_ray_tracing_shader_group_handles_khr = nullptr;
         if (!pfn_vk_get_ray_tracing_shader_group_handles_khr)
         {
@@ -190,19 +209,33 @@ namespace spartan
             );
             SP_ASSERT(pfn_vk_get_ray_tracing_shader_group_handles_khr != nullptr);
         }
-
-        vector<uint8_t> handles(m_object_size);
+    
+        uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+        vector<uint8_t> handles(m_element_count * handle_size);
         SP_ASSERT_VK(pfn_vk_get_ray_tracing_shader_group_handles_khr(
             RHI_Context::device,
             static_cast<VkPipeline>(cmd_list->GetRhiResourcePipeline()),
             0,
             m_element_count,
-            m_object_size,
+            handles.size(),
             handles.data()
         ));
-
-        // reset and update buffer
-        ResetOffset();
-        Update(cmd_list, handles.data(), m_object_size);
+    
+        SP_ASSERT(m_data_gpu != nullptr);
+        uint8_t* dst = static_cast<uint8_t*>(m_data_gpu);
+        memset(dst, 0, m_object_size);
+        memcpy(dst + m_raygen_offset, handles.data() + 0 * handle_size, handle_size);
+        memcpy(dst + m_miss_offset, handles.data() + 1 * handle_size, handle_size);
+        memcpy(dst + m_hit_offset, handles.data() + 2 * handle_size, handle_size);
+    
+        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+        barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(
+            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
+            VK_PIPELINE_STAGE_HOST_BIT,
+            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+            0, 1, &barrier, 0, nullptr, 0, nullptr
+        );
     }
 }
