@@ -94,6 +94,7 @@ namespace spartan
         static uint32_t PropertyGetMaxShadingRateTexelSizeX()             { return m_max_shading_rate_texel_size_x; }
         static uint32_t PropertyGetMaxShadingRateTexelSizeY()             { return m_max_shading_rate_texel_size_y; }
         static uint64_t PropertyGetOptimalBufferCopyOffsetAlignment()     { return m_optimal_buffer_copy_offset_alignment; }
+        static uint32_t PropertyGetShaderGroupHandleSize()                { return m_shader_group_handle_size; }
         static bool IsSupportedVrs()                                      { return m_is_shading_rate_supported; }
         static bool IsSupportedXess()                                     { return m_xess_supported; }
         static bool IsSupportedRayTracing()                               { return m_is_ray_tracing_supported; }
@@ -137,6 +138,7 @@ namespace spartan
         static uint32_t m_max_shading_rate_texel_size_x;
         static uint32_t m_max_shading_rate_texel_size_y;
         static uint64_t m_optimal_buffer_copy_offset_alignment;
+        static uint32_t m_shader_group_handle_size;
         static bool m_is_shading_rate_supported;
         static bool m_xess_supported;
         static bool m_is_ray_tracing_supported;

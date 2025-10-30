@@ -123,6 +123,12 @@ namespace spartan
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; // mappable and flushless
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, flags_memory, data, m_object_name.c_str());
         }
+        else if (m_type == RHI_Buffer_Type::ShaderBindingTable)
+        {
+            VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            VkMemoryPropertyFlags flags_memory = m_mappable ? VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, data, m_object_name.c_str());
+        }
 
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
         m_data_gpu = m_mappable ? RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource) : nullptr;
@@ -149,5 +155,54 @@ namespace spartan
 
         // vkCmdUpdateBuffer and vkCmdPipelineBarrier
         cmd_list->UpdateBuffer(this, m_offset, size != 0 ? size : m_stride, data_cpu);
+    }
+
+    RHI_StridedDeviceAddressRegion RHI_Buffer::GetRegion(const RHI_Shader_Type group_type, const uint32_t stride_extra /*= 0*/) const
+    {
+        uint32_t offset = 0;
+        if (group_type == RHI_Shader_Type::RayMiss)
+        {
+            offset = m_stride;
+        }
+        else if (group_type == RHI_Shader_Type::RayClosestHit)
+        {
+            offset = 2 * m_stride;
+        }
+    
+        RHI_StridedDeviceAddressRegion region{};
+        region.device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource) + offset;
+        region.stride         = m_stride + stride_extra;
+        region.size           = region.stride; // single record per group
+
+        return region;
+    }
+
+    void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)
+    {
+        SP_ASSERT(m_type == RHI_Buffer_Type::ShaderBindingTable);
+
+        // load pfn if needed
+        static PFN_vkGetRayTracingShaderGroupHandlesKHR pfn_vk_get_ray_tracing_shader_group_handles_khr = nullptr;
+        if (!pfn_vk_get_ray_tracing_shader_group_handles_khr)
+        {
+            pfn_vk_get_ray_tracing_shader_group_handles_khr = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(
+                vkGetDeviceProcAddr(RHI_Context::device, "vkGetRayTracingShaderGroupHandlesKHR")
+            );
+            SP_ASSERT(pfn_vk_get_ray_tracing_shader_group_handles_khr != nullptr);
+        }
+
+        vector<uint8_t> handles(m_object_size);
+        SP_ASSERT_VK(pfn_vk_get_ray_tracing_shader_group_handles_khr(
+            RHI_Context::device,
+            static_cast<VkPipeline>(cmd_list->GetRhiResourcePipeline()),
+            0,
+            m_element_count,
+            m_object_size,
+            handles.data()
+        ));
+
+        // reset and update buffer
+        ResetOffset();
+        Update(cmd_list, handles.data(), m_object_size);
     }
 }

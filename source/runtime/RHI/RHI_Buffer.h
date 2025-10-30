@@ -35,7 +35,15 @@ namespace spartan
         Instance,
         Storage,
         Constant,
+        ShaderBindingTable,
         Max
+    };
+
+    struct RHI_StridedDeviceAddressRegion
+    {
+        uint64_t device_address = 0;
+        uint32_t stride         = 0;
+        uint32_t size           = 0;
     };
 
     class RHI_Buffer : public SpartanObject
@@ -71,6 +79,10 @@ namespace spartan
         // storage and constant buffer updating
         void Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size = 0);
         void ResetOffset() { m_offset = 0; first_update = true; }
+
+        // ray tracing
+        RHI_StridedDeviceAddressRegion GetRegion(const RHI_Shader_Type group_type, const uint32_t stride_extra = 0) const;
+        void UpdateHandles(RHI_CommandList* cmd_list);
 
         // propeties
         uint32_t GetStrideUnaligned() const { return m_stride_unaligned; }

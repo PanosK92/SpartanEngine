@@ -44,4 +44,9 @@ namespace spartan
     {
 
     }
+
+    void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)
+    {
+
+    }
 }

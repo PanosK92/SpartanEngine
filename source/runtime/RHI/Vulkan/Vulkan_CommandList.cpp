@@ -830,6 +830,11 @@ namespace spartan
         m_render_pass_active = true;
     }
 
+    void* RHI_CommandList::GetRhiResourcePipeline()
+    {
+        return m_pipeline->GetRhiResource();
+    }
+
     void RHI_CommandList::RenderPassEnd()
     {
         if (!m_render_pass_active)
@@ -991,8 +996,10 @@ namespace spartan
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
     }
 
-    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)
+    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table)
     {
+        SP_ASSERT(shader_binding_table && shader_binding_table->GetType() == RHI_Buffer_Type::ShaderBindingTable);
+
         // load extension func once
         static PFN_vkCmdTraceRaysKHR pfn_vk_cmd_trace_rays_khr = nullptr;
         if (!pfn_vk_cmd_trace_rays_khr)
@@ -1000,13 +1007,24 @@ namespace spartan
             pfn_vk_cmd_trace_rays_khr = (PFN_vkCmdTraceRaysKHR)vkGetDeviceProcAddr(RHI_Context::device, "vkCmdTraceRaysKHR");
             SP_ASSERT(pfn_vk_cmd_trace_rays_khr != nullptr);
         }
+
+        // get regions
+        RHI_StridedDeviceAddressRegion raygen_region   = shader_binding_table->GetRegion(RHI_Shader_Type::RayGeneration);
+        RHI_StridedDeviceAddressRegion miss_region     = shader_binding_table->GetRegion(RHI_Shader_Type::RayMiss);
+        RHI_StridedDeviceAddressRegion hit_region      = shader_binding_table->GetRegion(RHI_Shader_Type::RayClosestHit);
+
+        // convert to vulkan regions
+        VkStridedDeviceAddressRegionKHR vk_raygen      = { raygen_region.device_address, raygen_region.stride, raygen_region.size };
+        VkStridedDeviceAddressRegionKHR vk_miss        = { miss_region.device_address, miss_region.stride, miss_region.size };
+        VkStridedDeviceAddressRegionKHR vk_hit         = { hit_region.device_address, hit_region.stride, hit_region.size };
+        VkStridedDeviceAddressRegionKHR vk_callable    = {};
     
         pfn_vk_cmd_trace_rays_khr(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
-            nullptr,                                      // pRaygenShaderBindingTable
-            nullptr,                                      // pMissShaderBindingTable
-            nullptr,                                      // pHitShaderBindingTable
-            nullptr,                                      // pCallableShaderBindingTable
+            &vk_raygen,                                   // pRaygenShaderBindingTable
+            &vk_miss,                                     // pMissShaderBindingTable
+            &vk_hit,                                      // pHitShaderBindingTable
+            &vk_callable,                                 // pCallableShaderBindingTable
             width,                                        // width
             height,                                       // height
             1                                             // depth
@@ -1770,6 +1788,9 @@ namespace spartan
                     break;
                 case RHI_Buffer_Type::Constant:
                     barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_UNIFORM_READ_BIT;
+                    break;
+                case RHI_Buffer_Type::ShaderBindingTable:
+                    barrier_after.dstAccessMask |= VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR;
                     break;
                 default:
                     SP_ASSERT_MSG(false, "Unknown buffer type");

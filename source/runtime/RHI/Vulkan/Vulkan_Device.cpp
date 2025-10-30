@@ -265,6 +265,7 @@ namespace spartan
             "VK_KHR_ray_tracing_pipeline",
             "VK_KHR_deferred_host_operations",
             "VK_KHR_ray_query",
+            "VK_KHR_ray_tracing_maintenance1"
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -1546,20 +1547,25 @@ namespace spartan
 
             // properties
             {
+                VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_properties = {};
+                ray_tracing_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+
                 VkPhysicalDeviceFragmentShadingRatePropertiesKHR shading_rate_properties = {};
-                shading_rate_properties.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
+                shading_rate_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
 
                 VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties = {};
                 acceleration_structure_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
-                acceleration_structure_properties.pNext = &shading_rate_properties;
+                acceleration_structure_properties.pNext = &ray_tracing_properties;
+
+                ray_tracing_properties.pNext = &shading_rate_properties;
 
                 VkPhysicalDeviceVulkan13Properties device_properties_1_3 = {};
-                device_properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-                device_properties_1_3.pNext                              = &acceleration_structure_properties;
+                device_properties_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+                device_properties_1_3.pNext = &acceleration_structure_properties;
 
                 VkPhysicalDeviceProperties2 properties_device = {};
-                properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-                properties_device.pNext                       = &device_properties_1_3;
+                properties_device.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+                properties_device.pNext = &device_properties_1_3;
 
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
@@ -1577,6 +1583,7 @@ namespace spartan
                 m_max_shading_rate_texel_size_x            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
                 m_max_shading_rate_texel_size_y            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
                 m_optimal_buffer_copy_offset_alignment     = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
+                m_shader_group_handle_size                 = ray_tracing_properties.shaderGroupHandleSize;
 
                 // disable profiler if timestamps are not supported
                 if (Debugging::IsGpuTimingEnabled())

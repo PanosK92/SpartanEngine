@@ -88,7 +88,7 @@ namespace spartan
         void Dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
 
         // trace rays
-        void TraceRays(const uint32_t width, const uint32_t height);
+        void TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table);
 
         // blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
@@ -172,10 +172,13 @@ namespace spartan
         // misc
         void RenderPassEnd();
         RHI_SyncPrimitive* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
-        void* GetRhiResource() const                       { return m_rhi_resource; }
         const RHI_CommandListState GetState() const        { return m_state; }
         RHI_Queue* GetQueue() const                        { return m_queue; }
         void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
+
+        // rhi
+        void* GetRhiResourcePipeline();
+        void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
         void PreDraw();

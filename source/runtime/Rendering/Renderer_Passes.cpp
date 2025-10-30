@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
+#include "../RHI/RHI_Device.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 SP_WARNINGS_ON
@@ -49,6 +50,7 @@ namespace spartan
     uint32_t Renderer::m_draw_call_count;
     array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls_prepass;
     uint32_t Renderer::m_draw_calls_prepass_count;
+    unique_ptr<RHI_Buffer> Renderer::m_std_reflections;
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
@@ -800,18 +802,19 @@ namespace spartan
             // set output texture
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_reflections);
             
-            // create sbt if not exists (move to init for efficiency)
-            //if (!m_sbt)
-            //{
-            //    // assume rhi helper to create sbt from pso (raygen, miss, one hit group)
-            //    m_sbt = make_unique<RHI_ShaderBindingTable>(pso, "reflections_sbt");
-            //}
-            //cmd_list->SetShaderBindingTable(m_sbt.get());
-            
+            // temp: do it here for now
+          
+            if (!m_std_reflections)
+            {
+                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+                m_std_reflections = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "reflections_sbt");
+                m_std_reflections->UpdateHandles(cmd_list);
+            }
+ 
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections->GetWidth();
             uint32_t height = tex_reflections->GetHeight();
-            //cmd_list->TraceRays(width, height); // todo: take care of shader binding tables
+            cmd_list->TraceRays(width, height, m_std_reflections.get());
         }
         cmd_list->EndTimeblock();
     }

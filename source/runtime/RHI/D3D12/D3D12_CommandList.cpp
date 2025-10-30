@@ -162,7 +162,7 @@ namespace spartan
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Dispatch(x, y, z);
     }
 
-    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)
+    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table)
     {
 
     }

@@ -228,5 +228,6 @@ namespace spartan
         static bool m_transparents_present;
         static RHI_CommandList* m_cmd_list_present;
         static std::vector<ShadowSlice> m_shadow_slices;
+        static std::unique_ptr<RHI_Buffer> m_std_reflections; // it temporarily lives here
     };
 }

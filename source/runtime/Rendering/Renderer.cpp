@@ -275,7 +275,8 @@ namespace spartan
             DestroyResources();
             swapchain             = nullptr;
             m_lines_vertex_buffer = nullptr;
-            tlas                = nullptr;
+            tlas                  = nullptr;
+            m_std_reflections     = nullptr;
         }
 
         RHI_VendorTechnology::Shutdown();
