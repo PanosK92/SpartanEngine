@@ -146,43 +146,22 @@ namespace spartan
             }
         }
 
-        RHI_Image_Layout get_appropriate_layout(RHI_Texture* texture)
+        template<uint32_t MaxRegions>
+        void copy_to_staging_buffer(RHI_Texture* texture, array<VkBufferImageCopy, MaxRegions>& regions, void*& staging_buffer)
         {
-            if (texture->IsRt())
-                return RHI_Image_Layout::Attachment;
-
-            if (texture->IsUav())
-                return RHI_Image_Layout::General;
-
-            if (texture->IsSrv())
-                return RHI_Image_Layout::Shader_Read;
-
-            return RHI_Image_Layout::Preinitialized;
-        }
-    }
-
-    namespace staging
-    {
-        void* staging_buffer             = nullptr;
-        VkDeviceSize staging_buffer_size = 0;
-        mutex staging_mutex;
-
-        template<uint32_t max_regions>
-        void copy_to_staging_buffer(RHI_Texture* texture, array<VkBufferImageCopy, max_regions>& regions, void*& buffer)
-        {
-            SP_ASSERT_MSG(texture->HasData(), "no data to stage");
-            const uint32_t width        = texture->GetWidth();
-            const uint32_t height       = texture->GetHeight();
-            const uint32_t depth        = texture->GetDepth();
-            const uint32_t mip_count    = texture->GetMipCount();
+            SP_ASSERT_MSG(texture->HasData(), "No data to stage");
+        
+            const uint32_t width     = texture->GetWidth();
+            const uint32_t height    = texture->GetHeight();
+            const uint32_t depth     = texture->GetDepth();
+            const uint32_t mip_count = texture->GetMipCount();
+        
             const uint32_t region_count = depth * mip_count;
-            SP_ASSERT(region_count <= max_regions);
+            SP_ASSERT(region_count <= MaxRegions);
         
             VkDeviceSize buffer_offset    = 0;
             VkDeviceSize buffer_alignment = RHI_Device::PropertyGetOptimalBufferCopyOffsetAlignment();
-            VkDeviceSize required_size    = 0;
         
-            // calculate required buffer size and populate regions
             for (uint32_t array_index = 0; array_index < depth; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
@@ -210,23 +189,12 @@ namespace spartan
                     buffer_offset += RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
                 }
             }
-            required_size = buffer_offset;
         
-            // resize staging buffer if needed
-            if (required_size > staging_buffer_size)
-            {
-                if (staging_buffer)
-                {
-                    RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
-                }
-
-                staging_buffer_size = required_size;
-                RHI_Device::MemoryBufferCreate(staging_buffer, staging_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
-            }
+            // create staging buffer with aligned size
+            RHI_Device::MemoryBufferCreate(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
         
-            // map and copy data
             void* mapped_data = nullptr;
-            buffer_offset     = 0;
+            buffer_offset = 0;
             RHI_Device::MemoryMap(staging_buffer, mapped_data);
         
             for (uint32_t array_index = 0; array_index < depth; array_index++)
@@ -248,58 +216,69 @@ namespace spartan
             }
         
             RHI_Device::MemoryUnmap(staging_buffer);
-            buffer = staging_buffer;
         }
 
         void stage(RHI_Texture* texture)
         {
-            SP_ASSERT_MSG(texture->HasData(), "no data to stage");
-            const uint32_t depth                = texture->GetDepth();
-            const uint32_t mip_count            = texture->GetMipCount();
-            const uint32_t region_count         = depth * mip_count;
-            constexpr uint32_t max_array_layers = 512;
-            constexpr uint32_t max_mip_levels   = 16;
-            constexpr uint32_t max_regions      = max_array_layers * max_mip_levels;
-            SP_ASSERT(region_count <= max_regions);
-
-            // lock for thread-safety
-            lock_guard<mutex> lock(staging_mutex);
-
-            // copy data to staging buffer
-            void* buffer = nullptr;
-            array<VkBufferImageCopy, max_regions> regions = {};
-            copy_to_staging_buffer(texture, regions, buffer);
-
+            SP_ASSERT(texture->HasData());
+        
+            void* staging_buffer = nullptr;
+        
+            // determine region count
+            const uint32_t depth        = texture->GetDepth();
+            const uint32_t mip_count    = texture->GetMipCount();
+            const uint32_t region_count = depth * mip_count;
+        
+            // fixed-size stack array
+            constexpr uint32_t MaxArrayLayers = 512;
+            constexpr uint32_t MaxMipLevels   = 16;
+            constexpr uint32_t MaxRegions     = MaxArrayLayers * MaxMipLevels;
+            SP_ASSERT(region_count <= MaxRegions);
+        
+            array<VkBufferImageCopy, MaxRegions> regions{};
+        
+            // copy data to staging buffer using stack array
+            copy_to_staging_buffer(texture, regions, staging_buffer);
+        
             // copy the staging buffer into the image
             if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
             {
                 RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Destination;
-
+        
                 cmd_list->InsertBarrier(texture->GetRhiResource(), texture->GetFormat(), 0, mip_count, depth, layout);
-
+        
                 vkCmdCopyBufferToImage(
                     static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
-                    static_cast<VkBuffer>(buffer),
+                    static_cast<VkBuffer>(staging_buffer),
                     static_cast<VkImage>(texture->GetRhiResource()),
                     vulkan_image_layout[static_cast<uint8_t>(layout)],
                     region_count,
                     regions.data()
                 );
-
+        
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }
+        
+            if (staging_buffer)
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
         }
 
-        void destroy_staging_buffer()
+        RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
         {
-            lock_guard<mutex> lock(staging_mutex);
+            RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
 
-            if (staging_buffer)
+            if (texture->IsRt())
             {
-                RHI_Device::MemoryBufferDestroy(staging_buffer);
-                staging_buffer      = nullptr;
-                staging_buffer_size = 0;
+                target_layout = RHI_Image_Layout::Attachment;
             }
+
+            if (texture->IsUav())
+                target_layout = RHI_Image_Layout::General;
+
+            if (texture->IsSrv())
+                target_layout = RHI_Image_Layout::Shader_Read;
+
+            return target_layout;
         }
     }
 
@@ -314,7 +293,7 @@ namespace spartan
         // if the texture has any data, stage it
         if (HasData())
         {
-            staging::stage(this);
+            stage(this);
         }
 
         // transition to target layout
@@ -327,7 +306,7 @@ namespace spartan
                 0,            // mip start
                 m_mip_count,  // mip count
                 array_length, // array length
-                get_appropriate_layout(this)
+                GetAppropriateLayout(this)
             );
         
             // flush
@@ -417,10 +396,5 @@ namespace spartan
         RHI_CommandList::RemoveLayout(m_rhi_resource);
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Image, m_rhi_resource);
         m_rhi_resource = nullptr;
-    }
-
-    void RHI_Texture::DestroyStagingBuffer()
-    {
-        staging::destroy_staging_buffer();
     }
 }

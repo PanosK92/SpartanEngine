@@ -268,7 +268,6 @@ namespace spartan
         RHI_Device::QueueWaitAll();
 
         RHI_CommandList::ImmediateExecutionShutdown();
-        RHI_Texture::DestroyStagingBuffer();
 
         // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
         {

@@ -40,9 +40,4 @@ namespace spartan
     {
 
     }
-
-    void RHI_Texture::DestroyStagingBuffer()
-    {
-       
-    }
 }

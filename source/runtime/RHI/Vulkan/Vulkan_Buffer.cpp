@@ -87,7 +87,7 @@ namespace spartan
                 RHI_CommandList* cmd_list   = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
                 vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-                RHI_Device::MemoryBufferDestroy(staging_buffer);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
             }
         }
         else if (m_type == RHI_Buffer_Type::Storage)
