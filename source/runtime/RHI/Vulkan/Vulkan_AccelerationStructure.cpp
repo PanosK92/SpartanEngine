@@ -190,7 +190,7 @@ namespace spartan
 
         // create instance buffer (device local, no host visible)
         void* instance_buffer                     = nullptr;
-        const uint64_t alignment                  = 16; // required for instance data
+        const uint64_t alignment                  = max(static_cast<uint64_t>(16), RHI_Device::PropertyGetMinStorageBufferOffsetAlignment());
         const size_t buffer_size                  = data_size + alignment - 1; // pad for alignment
         VkBufferUsageFlags instance_usage         = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
         VkMemoryPropertyFlags instance_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
