@@ -188,19 +188,15 @@ namespace spartan
     namespace functions
     {
         // function pointers
-        PFN_vkCreateDebugUtilsMessengerEXT             create_messenger                          = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT            destroy_messenger                         = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT                set_object_tag                            = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT               set_object_name                           = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT               marker_begin                              = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT                 marker_end                                = nullptr;
-        PFN_vkCmdSetFragmentShadingRateKHR             set_fragment_shading_rate                 = nullptr;
-        PFN_vkCreateAccelerationStructureKHR           create_acceleration_structure             = nullptr;
-        PFN_vkDestroyAccelerationStructureKHR          destroy_acceleration_structure            = nullptr;
-        PFN_vkGetAccelerationStructureBuildSizesKHR    get_acceleration_structure_build_sizes    = nullptr;
-        PFN_vkCmdBuildAccelerationStructuresKHR        cmd_build_acceleration_structures         = nullptr;
-        PFN_vkGetAccelerationStructureDeviceAddressKHR get_acceleration_structure_device_address = nullptr;
-        PFN_vkGetBufferDeviceAddress                   get_buffer_device_address                 = nullptr;
+        PFN_vkCreateDebugUtilsMessengerEXT    create_messenger               = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT   destroy_messenger              = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT       set_object_tag                 = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT      set_object_name                = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT      marker_begin                   = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT        marker_end                     = nullptr;
+        PFN_vkCmdSetFragmentShadingRateKHR    set_fragment_shading_rate      = nullptr;
+        PFN_vkGetBufferDeviceAddress          get_buffer_device_address      = nullptr;
+        PFN_vkDestroyAccelerationStructureKHR destroy_acceleration_structure = nullptr;
 
         void load(void** out_func, const char* name)
         {
@@ -231,15 +227,13 @@ namespace spartan
             }
 
             // ray tracing
-            load(reinterpret_cast<void**>(&create_acceleration_structure), "vkCreateAccelerationStructureKHR");
-            load(reinterpret_cast<void**>(&destroy_acceleration_structure), "vkDestroyAccelerationStructureKHR");
-            load(reinterpret_cast<void**>(&get_acceleration_structure_build_sizes), "vkGetAccelerationStructureBuildSizesKHR");
-            load(reinterpret_cast<void**>(&cmd_build_acceleration_structures), "vkCmdBuildAccelerationStructuresKHR");
-            load(reinterpret_cast<void**>(&get_acceleration_structure_device_address), "vkGetAccelerationStructureDeviceAddressKHR");
             load(reinterpret_cast<void**>(&get_buffer_device_address), "vkGetBufferDeviceAddress");
     
             // fragment shading rate
             load(reinterpret_cast<void**>(&set_fragment_shading_rate), "vkCmdSetFragmentShadingRateKHR");
+
+            // acceleration structure
+            load(reinterpret_cast<void**>(&destroy_acceleration_structure), "vkDestroyAccelerationStructureKHR");
         }
     }
 
@@ -1755,19 +1749,19 @@ namespace spartan
 
                 switch (resource_type)
                 {
-                    case RHI_Resource_Type::Image:                 MemoryTextureDestroy(resource);                                                                           break;
-                    case RHI_Resource_Type::ImageView:             vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
-                    case RHI_Resource_Type::Buffer:                MemoryBufferDestroy(resource);                                                                            break;
-                    case RHI_Resource_Type::Shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
-                    case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
-                    case RHI_Resource_Type::DescriptorSetLayout:   vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr); break;
-                    case RHI_Resource_Type::QueryPool:             vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
-                    case RHI_Resource_Type::PipelineLayout:        vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
-                    case RHI_Resource_Type::AccelerationStructure: DestroyAccelerationStructure(resource, nullptr), nullptr;                                              break;
-                    default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
+                    case RHI_Resource_Type::Image:                 MemoryTextureDestroy(resource);                                                                                            break;
+                    case RHI_Resource_Type::ImageView:             vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                                      break;
+                    case RHI_Resource_Type::Sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                                     break;
+                    case RHI_Resource_Type::Buffer:                MemoryBufferDestroy(resource);                                                                                             break;
+                    case RHI_Resource_Type::Shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);                                break;
+                    case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                                      break;
+                    case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                                              break;
+                    case RHI_Resource_Type::DescriptorSetLayout:   vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr);                  break;
+                    case RHI_Resource_Type::QueryPool:             vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                                      break;
+                    case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                                        break;
+                    case RHI_Resource_Type::PipelineLayout:        vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);                            break;
+                    case RHI_Resource_Type::AccelerationStructure: functions::destroy_acceleration_structure(RHI_Context::device,static_cast<VkAccelerationStructureKHR>(resource), nullptr); break;
+                    default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                                  break;
                 }
 
                 // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
@@ -2263,57 +2257,7 @@ namespace spartan
         functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
     }
 
-    // ray tracing
-
-    void RHI_Device::CreateAccelerationStructure(const void* pCreateInfo, const void* pAllocator, void* pAccelerationStructure)
-    {
-        SP_ASSERT_VK(functions::create_acceleration_structure(
-            static_cast<VkDevice>(RHI_Context::device),
-            static_cast<const VkAccelerationStructureCreateInfoKHR*>(pCreateInfo),
-            static_cast<const VkAllocationCallbacks*>(pAllocator),
-            static_cast<VkAccelerationStructureKHR*>(pAccelerationStructure)
-        ));
-    }
-    
-    void RHI_Device::DestroyAccelerationStructure(void* accelerationStructure, const void* pAllocator)
-    {
-        functions::destroy_acceleration_structure(
-            static_cast<VkDevice>(RHI_Context::device),
-            static_cast<VkAccelerationStructureKHR>(accelerationStructure),
-            static_cast<const VkAllocationCallbacks*>(pAllocator)
-        );
-    }
-    
-    void RHI_Device::GetAccelerationStructureBuildSizes(uint32_t buildType, const void* pBuildInfo, const uint32_t* pMaxPrimitiveCounts, void* pSizeInfo)
-    {
-        functions::get_acceleration_structure_build_sizes(
-            static_cast<VkDevice>(RHI_Context::device),
-            static_cast<VkAccelerationStructureBuildTypeKHR>(buildType),
-            static_cast<const VkAccelerationStructureBuildGeometryInfoKHR*>(pBuildInfo),
-            pMaxPrimitiveCounts,
-            static_cast<VkAccelerationStructureBuildSizesInfoKHR*>(pSizeInfo)
-        );
-    }
-    
-    void RHI_Device::BuildAccelerationStructures(void* commandBuffer, uint32_t infoCount, const void* pInfos, const void* ppBuildRangeInfos)
-    {
-        functions::cmd_build_acceleration_structures(
-            static_cast<VkCommandBuffer>(commandBuffer),
-            infoCount,
-            static_cast<const VkAccelerationStructureBuildGeometryInfoKHR*>(pInfos),
-            static_cast<const VkAccelerationStructureBuildRangeInfoKHR* const*>(ppBuildRangeInfos)
-        );
-    }
-    
-    uint64_t RHI_Device::GetAccelerationStructureDeviceAddress(void* acceleration_structure)
-    {
-        VkAccelerationStructureDeviceAddressInfoKHR address_info = {};
-        address_info.sType                                       = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-        address_info.pNext                                       = nullptr;
-        address_info.accelerationStructure                       = static_cast<VkAccelerationStructureKHR>(acceleration_structure);
-
-        return functions::get_acceleration_structure_device_address(static_cast<VkDevice>(RHI_Context::device), &address_info);
-    }
+    // misc
 
     uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
     {
@@ -2323,8 +2267,6 @@ namespace spartan
         info.buffer                    = static_cast<VkBuffer>(buffer);
         return functions::get_buffer_device_address(static_cast<VkDevice>(RHI_Context::device), &info);
     }
-
-    // misc
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)
     {

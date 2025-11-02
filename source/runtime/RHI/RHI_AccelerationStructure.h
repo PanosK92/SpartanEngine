@@ -70,6 +70,7 @@ namespace spartan
         void Build(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
 
         // misc
+        uint64_t GetDeviceAddress();
         void* GetRhiResource() const                  { return m_rhi_resource; }
         RHI_AccelerationStructureType GetType() const { return m_type; }
 

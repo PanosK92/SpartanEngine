@@ -1211,8 +1211,6 @@ namespace spartan
 
     void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
     {
-        return;
-
         // validate ray tracing and command list
         if (!RHI_Device::IsSupportedRayTracing() || !cmd_list)
         {
@@ -1265,7 +1263,7 @@ namespace spartan
                         instance.mask                                        = 0xFF;                     // visible to all rays
                         instance.instance_shader_binding_table_record_offset = 0;                        // sbt hit group offset
                         instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
-                        instance.device_address                              = renderable->GetBlasDeviceAddress();
+                        instance.device_address                              = renderable->GetAccelerationStructureDeviceAddress();
                         Matrix world_matrix                                  = renderable->GetEntity()->GetMatrix().Transposed();
                         copy(world_matrix.Data(), world_matrix.Data() + 12, instance.transform.begin()); // convert column-major 4x4 to row-major 3x4
 

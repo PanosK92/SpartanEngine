@@ -312,14 +312,6 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
-    uint64_t Renderable::GetBlasDeviceAddress()
-    {
-        if (!m_mesh || !m_mesh->GetBlas())
-            return 0;
-
-        return RHI_Device::GetAccelerationStructureDeviceAddress(m_mesh->GetBlas()->GetRhiResource());
-    }
-
     void Renderable::BuildAccelerationStructure(RHI_CommandList* cmd_list)
     {
         if (!m_mesh)
@@ -334,6 +326,14 @@ namespace spartan
             return false;
 
         return m_mesh->GetBlas() != nullptr;
+    }
+
+    uint64_t Renderable::GetAccelerationStructureDeviceAddress() const
+    {
+        if (!m_mesh)
+            return 0;
+
+        return m_mesh->GetBlas()->GetDeviceAddress();
     }
 
     Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)

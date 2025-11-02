@@ -65,9 +65,9 @@ namespace spartan
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
-        uint64_t GetBlasDeviceAddress();
         void BuildAccelerationStructure(RHI_CommandList* cmd_list);
         bool HasAccelerationStructure() const;
+        uint64_t GetAccelerationStructureDeviceAddress() const;
 
         // bounding box
         const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}
