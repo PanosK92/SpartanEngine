@@ -41,13 +41,18 @@ namespace spartan
 
     }
 
-    void RHI_AccelerationStructure::Build(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
+    void RHI_AccelerationStructure::BuildBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
     {
 
     }
 
-    void RHI_AccelerationStructure::Build(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureInstance>& instances)
+    void RHI_AccelerationStructure::BuildTopLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureInstance>& instances)
     {
 
+    }
+
+    uint64_t RHI_AccelerationStructure::GetDeviceAddress()
+    {
+        return 0;
     }
 }
