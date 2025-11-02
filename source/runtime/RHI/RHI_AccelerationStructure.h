@@ -64,10 +64,8 @@ namespace spartan
         RHI_AccelerationStructure(const RHI_AccelerationStructureType type, const char* name);
         ~RHI_AccelerationStructure();
 
-        // build for blas (bottom-level)
-        void Build(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts);
-        // build for tlas (top-level)
-        void Build(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
+        void BuildBottomLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts);
+        void BuildTopLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
 
         // misc
         uint64_t GetDeviceAddress();
@@ -79,9 +77,16 @@ namespace spartan
 
         // misc
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
+        uint64_t m_size                      = 0;
 
         // rhi
         void* m_rhi_resource         = nullptr;
         void* m_rhi_resource_results = nullptr;
+
+        // reusable buffers
+        void* m_scratch_buffer          = nullptr;
+        uint64_t m_scratch_buffer_size  = 0;
+        void* m_instance_buffer         = nullptr;
+        uint64_t m_instance_buffer_size = 0;
     };
 }

@@ -433,6 +433,6 @@ namespace spartan
         }
         
         m_blas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, (m_object_name + "_blas").c_str());
-        m_blas->Build(cmd_list, geometries, primitive_counts);
+        m_blas->BuildBottomLevel(cmd_list, geometries, primitive_counts);
     }
 }
