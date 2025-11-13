@@ -79,6 +79,8 @@ namespace spartan
 
         void SetOption(Renderer_Option option, const RenderOptionType& value);
 
+        RenderOptionType GetOption(const Renderer_Option option) const { return m_options.at(option); }
+
         // Getters in the form of templates
         template<typename T>
         T GetOption(Renderer_Option option)
@@ -120,6 +122,34 @@ namespace spartan
                 static T dummy{}; // fallback for enums (can't reference the cast)
                 return dummy;     // or throw / handle separately
             }
+        }
+
+        template<typename... Ts>
+        static bool AreVariantsEqual(const std::variant<Ts...>& a, const std::variant<Ts...>& b)
+        {
+            // Fast path: if the active types differ, they cannot be equal
+            if (a.index() != b.index())
+                return false;
+
+            // Compare only if they hold the same type
+            return std::visit([]<typename T0, typename T1>(T0&& lhs, T1&& rhs) -> bool
+            {
+                using T = std::decay_t<T0>;
+
+                // Check that both are the same type at compile time
+                if constexpr (std::is_same_v<T, std::decay_t<T1>>)
+                {
+                    // For floats, use epsilon comparison to avoid precision errors
+                    if constexpr (std::is_floating_point_v<T>)
+                        return std::fabs(lhs - rhs) < 1e-6f;
+                    else
+                        return lhs == rhs;
+                }
+                else
+                {
+                    return false; // Different types — not equal
+                }
+            }, a, b);
         }
     };
 }

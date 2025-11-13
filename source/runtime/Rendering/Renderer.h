@@ -81,6 +81,7 @@ namespace spartan
         static void SubmitAndPresent();
 
         // render options
+        static RenderOptionType GetOption(const Renderer_Option option, bool bIsEditor = false) { return bIsEditor ? m_editor_options.GetOption(option) : m_global_options.GetOption(option); }
         template<typename T> static T GetOption(Renderer_Option option, bool bIsEditor = false) { return bIsEditor ? m_editor_options.GetOption<T>(option) : m_global_options.GetOption<T>(option); }
         template<typename T> static T& GetOptionRef(Renderer_Option option, bool bIsEditor = false) { return bIsEditor ? m_editor_options.GetOptionRef<T>(option) : m_global_options.GetOptionRef<T>(option); }
         static void SetOption(Renderer_Option option, const RenderOptionType& value, bool bIsEditor = false) { return bIsEditor ? m_editor_options.SetOption(option, value) : m_global_options.SetOption(option, value); }
