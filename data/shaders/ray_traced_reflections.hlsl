@@ -43,14 +43,15 @@ void ray_gen()
     }
     
     float3 pos_vs    = get_position_view_space(uv);
-    float3 normal_vs = get_normal_view_space(uv);
+    float3 normal_ws = get_normal(uv);
+    float3 normal_vs = normalize(mul(float4(normal_ws, 0.0f), buffer_frame.view).xyz);
     float3 V         = normalize(-pos_vs);     // view dir from surface to camera
     float3 R         = reflect(-V, normal_vs); // reflection dir 
     float3 pos_ws    = mul(float4(pos_vs, 1.0f), buffer_frame.view_inverted).xyz;
     float3 R_ws      = mul(float4(R, 0.0f), buffer_frame.view_inverted).xyz;
     
     RayDesc ray;
-    ray.Origin    = pos_ws + normal_vs * 0.01f; // offset to avoid self-intersection
+    ray.Origin = pos_ws + normal_ws * 0.01f; // offset to avoid self-intersection
     ray.Direction = normalize(R_ws);
     ray.TMin      = 0.001f;
     ray.TMax      = 10000.0f;
@@ -72,10 +73,10 @@ void miss(inout Payload payload : SV_RayPayload)
 [shader("closesthit")]
 void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
-    //// 1. Determine which instance / primitive was hit =
-    //uint instanceIndex  = InstanceCustomIndex(); // per instance in TLAS
-    //uint primitiveIndex = PrimitiveIndex();      // triangle index in BLAS
-    //
+    // 1. Determine which instance / primitive was hit =
+    uint instanceIndex  = InstanceID();     // per instance in TLAS
+    uint primitiveIndex = PrimitiveIndex(); // triangle index in BLAS
+
     //// 2. Fetch material for this instance
     //MaterialParameters mat = material_parameters[instanceIndex];
     //
