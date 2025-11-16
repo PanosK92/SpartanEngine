@@ -1,7 +1,7 @@
 
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
-<p>Spartan Engine is a highly capable one-man game engine, designed for research, experimentation, and pushing the boundaries of rendering and simulation. The engine is particularly suited for industry professionals exploring advanced workflows rather than users focused solely on game creation.</p>
+<p>Spartan Engine is a highly capable one-man game engine I've been working on for over 10 years, it's designed for research, experimentation, and pushing the boundaries of rendering and simulation. The engine is particularly suited for industry professionals exploring advanced workflows rather than users focused solely on game creation.</p>
 
 <p>Originally developed as a personal learning project, Spartan Engine has grown into a community that fosters collaboration and experimentation. Its Discord community of over 600 members, including seasoned professionals, provides an active space for knowledge-sharing and networking (jobs channel).</p>
 
