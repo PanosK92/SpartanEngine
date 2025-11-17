@@ -179,7 +179,7 @@ namespace
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                 if (ImGuiSp::button("X"))
                 {
-                    spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas1");
+                    spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas");
                 }
             }
             ImGui::EndGroup();
