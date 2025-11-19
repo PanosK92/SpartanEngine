@@ -697,7 +697,7 @@ namespace spartan
     {
         // Update the render options results for overlapping volumes.
         // Works for single-volume overlapping cases as well.
-        // - for floats and ints: take weighted average result
+        // - for floats and ints: take weighted average result (from interpolation function)
         // - for booleans:        take combination result
         // - for enums:           take the value of the newest overlapping volume (can't mix)
 
@@ -705,7 +705,6 @@ namespace spartan
         // Used for dividing sums for averages and setting up first overlapping contact outputs
         map<Renderer_Option, int> bool_options_frequencies;
         map<Renderer_Option, int> float_options_frequencies;
-        float total_alpha = 0.0f;
         for (Volume* volume : overlapping_volumes)
         {
             for (auto& [option_key, option_value] : volume->GetOptionsCollection().GetOptions())
@@ -732,37 +731,11 @@ namespace spartan
                 }
                 else if (holds_alternative<float>(option_value))
                 {
-                    float alpha = volume->ComputeAlpha(camera->GetMatrix().GetTranslation());
-
-                    // Calculate alpha factor relative to overlapping volume
-                    if (alpha > 0.0f && alpha < 1.0)
+                    float new_float_value = get<float>(option_value);
+                    if (mix_volume_options.GetOptions().contains(option_key) && !RenderOptionsPool::AreVariantsEqual(option_value, mix_volume_options.GetOptions()[option_key]))
                     {
-                        total_alpha += alpha;
-                        // Iterate through volume options
-                        for (auto& [option_key, option_value] : volume->GetOptionsCollection().GetOptions())
-                        {
-                            // Interpolate float's and int's using alpha factor
-                            if (holds_alternative<float>(option_value))
-                            {
-                                float mix_float_value = mix_volume_options.GetOption<float>(option_key);
-                                float option_float_value = get<float>(option_value);
-                                mix_float_value =+ option_float_value * alpha;
-                                mix_volume_options.SetOption(option_key, mix_float_value);
-                            }
-                        }
+                        mix_volume_options.SetOption(option_key, new_float_value);
                     }
-                }
-            }
-        }
-
-        for (Volume* volume : overlapping_volumes)
-        {
-            for (auto& [option_key, option_value] : volume->GetOptionsCollection().GetOptions())
-            {
-                if (holds_alternative<float>(option_value))
-                {
-                    float& option_float_value = get<float>(option_value);
-                    option_float_value /= total_alpha;
                 }
             }
         }
@@ -789,6 +762,7 @@ namespace spartan
                 for (auto& [option_key, option_value] : volume->GetOptionsCollection().GetOptions())
                 {
                     // Interpolate float's and int's using alpha factor
+                    // && option_key == Renderer_Option::WhitePoint
                     if (holds_alternative<float>(option_value))
                     {
                         float mix_float_value = mix_volume_options.GetOption<float>(option_key);
@@ -808,10 +782,13 @@ namespace spartan
             }
             for (auto& [option_key, option_value] : mix_volume_options.GetOptions())
             {
+                //  && option_key == Renderer_Option::WhitePoint
                 if (holds_alternative<float>(option_value))
                 {
                     float& option_float_value = get<float>(option_value);
-                    option_float_value /= total_alpha;
+                    float blended_option_value = option_float_value / total_alpha;
+                    option_float_value = lerp(global_render_options.GetOption<float>(option_key), blended_option_value, total_alpha);
+                    mix_volume_options.SetOption(option_key, option_float_value);
                 }
             }
         }
