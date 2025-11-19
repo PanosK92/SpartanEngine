@@ -73,16 +73,16 @@ namespace spartan::math
             #ifdef __AVX2__
                 // load x, y, z into an AVX vector (set w component to 0)
                 __m128 vec = _mm_set_ps(0.0f, z, y, x);
-                
+
                 // calculate the length squared (dot product of vec with itself)
                 __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
-                
+
                 // calculate reciprocal square root of the length
                 __m128 inv_sqrt = _mm_rsqrt_ps(dot);
-                
+
                 // normalize vec by multiplying with inv_sqrt
                 vec = _mm_mul_ps(vec, inv_sqrt);
-                
+
                 // store back the normalized values
                 x = _mm_cvtss_f32(vec);
                 y = _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(1, 1, 1, 1)));
@@ -117,12 +117,19 @@ namespace spartan::math
             return std::max(std::max(x, y), z);
         }
 
-        [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2) 
-        { 
+        Vector3 Max(const Vector3& other)
+        {
+            return {std::max(x, other.x),
+                       std::max(y, other.y),
+                       std::max(z, other.z)};
+        }
+
+        [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2)
+        {
             return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z);
         }
-        
-        [[nodiscard]] float Dot(const Vector3& rhs) const 
+
+        [[nodiscard]] float Dot(const Vector3& rhs) const
         {
             return Dot(*this, rhs);
         }
@@ -144,13 +151,13 @@ namespace spartan::math
         #ifdef __AVX2__
             // Load x, y, z, and 0.0f into an AVX register
             __m128 vec = _mm_set_ps(0.0f, z, y, x);
-        
+
             // Calculate squared length (dot product of vec with itself)
             __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
-        
+
             // Take the square root of the dot product
             __m128 length = _mm_sqrt_ps(dot);
-        
+
             // Extract the result as a scalar float
             return _mm_cvtss_f32(length);
         #else
@@ -158,16 +165,16 @@ namespace spartan::math
             return sqrt(x * x + y * y + z * z);
         #endif
         }
-        
+
         [[nodiscard]] float LengthSquared() const
         {
         #ifdef __AVX2__
             // Load x, y, z, and 0.0f into an AVX register
             __m128 vec = _mm_set_ps(0.0f, z, y, x);
-        
+
             // Calculate squared length (dot product of vec with itself)
             __m128 dot = _mm_dp_ps(vec, vec, 0x7F); // only sum x, y, z and leave w as 0
-        
+
             // Extract the result as a scalar float
             return _mm_cvtss_f32(dot);
         #else
@@ -252,7 +259,7 @@ namespace spartan::math
             __m128 bVec    = _mm_set_ps(0.0f, b.z, b.y, b.x);
             // oerform element-wise multiplication of the two vectors
             __m128 result  = _mm_mul_ps(thisVec, bVec);
-            
+
             // temporary array to hold the result (we need to extract the data from the SIMD register)
             float res[4];
             // store the result from the SIMD register into the array
@@ -268,7 +275,7 @@ namespace spartan::math
             );
         #endif
         }
-        
+
         static Vector3 Min(const Vector3& a, const Vector3& b)
         {
             return Vector3(
@@ -277,7 +284,7 @@ namespace spartan::math
                 a.z < b.z ? a.z : b.z
             );
         }
-        
+
         static Vector3 Max(const Vector3& a, const Vector3& b)
         {
             return Vector3(

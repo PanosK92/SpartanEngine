@@ -1171,7 +1171,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     component_end();
 }
 
-void Properties::ShowVolume(spartan::Volume* volume) const
+void Properties::ShowVolume(Volume* volume) const
 {
     if (!volume)
         return;
@@ -1188,6 +1188,50 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         float shape_size                                                        = volume->GetShapeSize();
         float transition_size                                                   = volume->GetTransitionSize();
         bool  is_debug_draw_enabled                                             = volume->GetDebugDrawEnabled();
+
+        if (ImGuiSp::collapsing_header("Volume Properties", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            // Mesh Type
+            {
+                static vector<string> body_types =
+                {
+                    "Box",
+                    "Sphere"
+                };
+
+                ImGui::Text("Volume Type");
+                ImGui::SameLine(column_pos_x);
+                uint32_t selection_index = static_cast<uint32_t>(volume->GetVolumeShapeType());
+                if (ImGuiSp::combo_box("##volume_body_shape", body_types, &selection_index))
+                {
+                    volume->SetMeshType(static_cast<VolumeType>(selection_index));
+                }
+            }
+
+            // shape size
+            ImGui::Text("Volume Size");
+            ImGui::SameLine(column_pos_x);
+            if (ImGui::InputFloat("##collisionShapeSize", &shape_size, step, step_fast, precision, input_text_flags))
+            {
+                // clamp to positive
+                shape_size = std::max(shape_size, default_shape_size);
+            }
+
+            // transition size
+            ImGui::Text("Transition Size");
+            ImGui::SameLine(column_pos_x);
+            if (ImGui::InputFloat("##collisionTransitionSize", &transition_size, step, step_fast, precision, input_text_flags))
+            {
+                // clamp to positive
+                transition_size = std::max(transition_size, default_transition_size);
+            }
+
+            // toggle for debug draw enabled
+            if (ImGui::Checkbox("Debug Draw Shape", &is_debug_draw_enabled))
+            {
+                volume->SetDebugDrawEnabled(is_debug_draw_enabled);
+            }
+        }
 
         // Render Options
         if (ImGuiSp::collapsing_header("Render Options", ImGuiTreeNodeFlags_DefaultOpen))
@@ -1240,55 +1284,11 @@ void Properties::ShowVolume(spartan::Volume* volume) const
             }
         }
 
-        if (ImGuiSp::collapsing_header("Volume Properties", ImGuiTreeNodeFlags_DefaultOpen))
-        {
-            // Mesh Type
-            {
-                static vector<string> body_types =
-                {
-                    "Box",
-                    "Sphere"
-                };
-
-                ImGui::Text("Volume Type");
-                ImGui::SameLine(column_pos_x);
-                uint32_t selection_index = static_cast<uint32_t>(volume->GetVolumeShapeType());
-                if (ImGuiSp::combo_box("##volume_body_shape", body_types, &selection_index))
-                {
-                    volume->SetMeshType(static_cast<VolumeType>(selection_index));
-                }
-            }
-
-            // shape size
-            ImGui::Text("Volume Size");
-            ImGui::SameLine(column_pos_x);
-            if (ImGui::InputFloat("##collisionShapeSize", &shape_size, step, step_fast, precision, input_text_flags))
-            {
-                // clamp to positive
-                shape_size = std::max(shape_size, default_shape_size);
-            }
-
-            // transition size
-            ImGui::Text("Transition Size");
-            ImGui::SameLine(column_pos_x);
-            if (ImGui::InputFloat("##collisionTransitionSize", &transition_size, step, step_fast, precision, input_text_flags))
-            {
-                // clamp to positive
-                transition_size = std::max(transition_size, default_transition_size);
-            }
-
-            // toggle for debug draw enabled
-            if (ImGui::Checkbox("Debug Draw Shape", &is_debug_draw_enabled))
-            {
-                volume->SetDebugDrawEnabled(is_debug_draw_enabled);
-            }
-        }
-
-        //= MAP =========================================================================================
-        if (shape_size != volume->GetShapeSize())           volume->SetShapeSize(shape_size);
-        if (transition_size != volume->GetTransitionSize()) volume->SetTransitionSize(transition_size);
-        if (options != volume->GetOptionsCollection())      volume->SetOptionsCollection(options);
-        //===============================================================================================
+        //= MAP ===================================================================================================================
+        if (fabs(shape_size - volume->GetShapeSize())           > epsilon) volume->SetShapeSize(shape_size);
+        if (fabs(transition_size - volume->GetTransitionSize()) > epsilon) volume->SetTransitionSize(transition_size);
+        if (options != volume->GetOptionsCollection())                         volume->SetOptionsCollection(options);
+        //=========================================================================================================================
     }
     component_end();
 }

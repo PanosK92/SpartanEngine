@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Rendering/Renderer.h"
 #include "Volume.h"
+
+#include <algorithm>
 #include "World/Entity.h"
 //============================================
 
@@ -77,7 +79,27 @@ namespace spartan
 
     float Volume::ComputeAlpha(const Vector3& camera_position) const
     {
+        if (m_volume_shape_type == VolumeType::Box)
+        {
+            Vector3 p = camera_position - m_entity_ptr->GetPosition();
+            Vector3 q = p.Abs() - m_bounding_box.GetExtents();
+
+            float outside = Vector3::Max(q, Vector3::Zero).Length();
+            float inside  = std::min(std::max(q.x, std::max(q.y, q.z)), 0.0f);
+
+            float d = outside + inside; // signed distance to box
+
+            if (d <= 0)
+                return 1.0f;
+            if (d >= m_transition_size)
+                return 0.0f;
+
+            return 1.0f - d / m_transition_size;
+        }
+
+        // Circle volume type
         const float distance = Vector3::Distance(camera_position, m_entity_ptr->GetPosition());
+
         if (distance > m_transition_size + m_shape_size)
         {
             return 0.0f;
