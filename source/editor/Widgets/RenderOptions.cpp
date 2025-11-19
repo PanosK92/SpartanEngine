@@ -152,6 +152,7 @@ namespace
         bool result = ImGuiSp::combo_box("", options, &selection_index);
         ImGui::PopItemWidth();
         ImGui::PopID();
+
         return result;
     }
 
@@ -185,7 +186,7 @@ namespace
         }
 
         option_third_column();
-        if (Renderer::GetOptionRef<bool>(Renderer_Option::Hdr) || is_renderer_visible)
+        if (is_renderer_visible)
         {
             float& renderer_value = Renderer::GetOptionRef<float>(render_option);
             ImGui::BeginDisabled(true);
@@ -378,13 +379,17 @@ void RenderOptions::OnTickVisible()
                 {
                     static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Off" };
                     uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping, true);
-                    if (option_combo_box("Algorithm", tonemapping, index))
+                    option_combo_box("Algorithm", tonemapping, index);
+                    if (Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping, true) != index)
                     {
-                        Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(index), true);
-
-                        option_third_column();
-                        ImGui::Text(tonemapping[index].c_str());
+                        Renderer::SetOption(Renderer_Option::Tonemapping, index, true);
                     }
+
+                    option_third_column();
+                    ImGui::BeginDisabled(true);
+                    uint32_t renderer_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
+                    ImGui::Text("%s", tonemapping[renderer_index].c_str());
+                    ImGui::EndDisabled();
                 }
 
                 ImGui::EndTable();
