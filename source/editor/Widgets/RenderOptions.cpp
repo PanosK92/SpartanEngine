@@ -36,7 +36,7 @@ using namespace spartan::math;
 namespace
 {
     // table
-    int column_count      = 2;
+    int column_count      = 3;
     ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_Resizable;
 
     // options sizes
@@ -66,6 +66,27 @@ namespace
         ImGui::TableSetColumnIndex(1);
     }
 
+    void option_third_column()
+    {
+        ImGui::TableSetColumnIndex(2);
+    }
+
+    void render_options_table_header(const char* title)
+    {
+        ImGui::TableSetupColumn(title);
+        ImGui::TableSetupColumn("Editor Value");
+        ImGui::TableSetupColumn("Renderer Value");
+        ImGui::TableHeadersRow();
+    }
+
+    int get_item_id()
+    {
+        int cursorX = static_cast<int>(ImGui::GetCursorPosX());
+        int cursorY = static_cast<int>(ImGui::GetCursorPosY());
+
+        return stoi(to_string(cursorX) + to_string(cursorY));
+    }
+
     void option_check_box(const char* label, const Renderer_Option render_option, const char* tooltip = nullptr)
     {
         option_first_column();
@@ -76,11 +97,23 @@ namespace
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        bool& value = Renderer::GetOptionRef<bool>(render_option, true);
-        ImGui::Checkbox("", &value);
-        Renderer::SetOption(render_option, value, true);
+        ImGui::PushID(get_item_id());
+        bool& editor_value = Renderer::GetOptionRef<bool>(render_option, true);
+        ImGui::Checkbox("", &editor_value);
+        Renderer::SetOption(render_option, editor_value, true);
         ImGui::PopID();
+
+        option_third_column();
+        if (bool& renderer_value = Renderer::GetOptionRef<bool>(render_option))
+        {
+            ImGui::BeginDisabled(true);
+            auto test = ImGui::GetCursorPosX();
+            auto test2 = ImGui::GetCursorPosY();
+            ImGui::PushID(get_item_id());
+            ImGui::Checkbox("", &renderer_value);
+            ImGui::PopID();
+            ImGui::EndDisabled();
+        }
     }
 
     void option_check_box(const char* label, bool& value, const char* tooltip = nullptr)
@@ -93,7 +126,7 @@ namespace
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(get_item_id());
         ImGui::Checkbox("", &value);
         ImGui::PopID();
     }
@@ -108,7 +141,7 @@ namespace
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(get_item_id());
         ImGui::PushItemWidth(width_combo_box);
         bool result = ImGuiSp::combo_box("", options, &selection_index);
         ImGui::PopItemWidth();
@@ -128,21 +161,31 @@ namespace
         bool changed = false;
         option_second_column();
         {
-            float& value = Renderer::GetOptionRef<float>(render_option, true);
-            float old_value = value;
+            float& editor_value = Renderer::GetOptionRef<float>(render_option, true);
+            float old_value = editor_value;
 
-            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+            ImGui::PushID(get_item_id());
             ImGui::PushItemWidth(width_input_numeric);
-            changed = ImGui::InputFloat("", &value, step, 0.0f, format);
+            changed = ImGui::InputFloat("", &editor_value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
-            value = clamp(value, min, max);
+            editor_value = clamp(editor_value, min, max);
 
             // Only update if changed
-            if (changed && old_value != value)
+            if (changed && old_value != editor_value)
             {
-                Renderer::SetOption(render_option, value, true);
+                Renderer::SetOption(render_option, editor_value, true);
             }
+        }
+
+        option_third_column();
+        {
+            float& renderer_value = Renderer::GetOptionRef<float>(render_option);
+            ImGui::BeginDisabled(true);
+            ImGui::PushItemWidth(width_input_numeric);
+            ImGui::Text("%f", renderer_value);
+            ImGui::PopItemWidth();
+            ImGui::EndDisabled();
         }
 
         return changed;
@@ -155,7 +198,7 @@ namespace
 
         option_second_column();
         {
-            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+            ImGui::PushID(get_item_id());
             ImGui::PushItemWidth(width_input_numeric);
             ImGui::InputFloat("", &option, step, 0.0f, format);
             ImGui::PopItemWidth();
@@ -168,7 +211,7 @@ namespace
         option_first_column();
         ImGui::Text(label);
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(get_item_id());
         ImGui::PushItemWidth(width_input_numeric);
         ImGui::InputInt("##shadow_resolution", &option, step);
         ImGui::PopItemWidth();
@@ -231,9 +274,7 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##rendering", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
                 if (option("Resolution"))
                 {
@@ -310,9 +351,7 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##output", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
                 if (option("Display"))
                 {
@@ -335,6 +374,9 @@ void RenderOptions::OnTickVisible()
                     if (option_combo_box("Algorithm", tonemapping, index))
                     {
                         Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(index), true);
+
+                        option_third_column();
+                        ImGui::Text(tonemapping[index].c_str());
                     }
                 }
 
@@ -350,9 +392,7 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##camera", column_count, flags))
             {
-                ImGui::TableSetupColumn("Effect");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Effect");
 
                 option_value("Bloom intensity", Renderer_Option::Bloom, "Blend factor, set to 0 to disable", 0.01f);
                 option_check_box("Motion blur", Renderer_Option::MotionBlur, "Controlled by camera shutter speed");
@@ -374,9 +414,7 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##world", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
                 option_value("Fog density", Renderer_Option::Fog, "Controls atmospheric fog strength", 0.1f);
 
@@ -411,9 +449,7 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##debug", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
                 if (option("Performance"))
                 {
