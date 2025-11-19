@@ -76,7 +76,17 @@ namespace
         ImGui::TableSetupColumn(title);
         ImGui::TableSetupColumn("Editor Value");
         ImGui::TableSetupColumn("Renderer Value");
-        ImGui::TableHeadersRow();
+
+        ImGui::TableNextColumn();
+        ImGui::TableHeader(title);
+
+        ImGui::TableNextColumn();
+        ImGui::TableHeader("Editor Value");
+        ImGuiSp::tooltip("Global value set by the user");
+
+        ImGui::TableNextColumn();
+        ImGui::TableHeader("Renderer Value");
+        ImGuiSp::tooltip("Final value read by the renderer.\nMay be overridden by volume components.");
     }
 
     int get_item_id()
@@ -104,16 +114,12 @@ namespace
         ImGui::PopID();
 
         option_third_column();
-        if (bool& renderer_value = Renderer::GetOptionRef<bool>(render_option))
-        {
-            ImGui::BeginDisabled(true);
-            auto test = ImGui::GetCursorPosX();
-            auto test2 = ImGui::GetCursorPosY();
-            ImGui::PushID(get_item_id());
-            ImGui::Checkbox("", &renderer_value);
-            ImGui::PopID();
-            ImGui::EndDisabled();
-        }
+        bool& renderer_value = Renderer::GetOptionRef<bool>(render_option);
+        ImGui::BeginDisabled(true);
+        ImGui::PushID(get_item_id());
+        ImGui::Checkbox("", &renderer_value);
+        ImGui::PopID();
+        ImGui::EndDisabled();
     }
 
     void option_check_box(const char* label, bool& value, const char* tooltip = nullptr)
@@ -149,7 +155,7 @@ namespace
         return result;
     }
 
-    bool option_value(const char* label, Renderer_Option render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
+    bool option_value(const char* label, Renderer_Option render_option, bool is_renderer_visible, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
         option_first_column();
         ImGui::Text(label);
@@ -179,11 +185,12 @@ namespace
         }
 
         option_third_column();
+        if (Renderer::GetOptionRef<bool>(Renderer_Option::Hdr) || is_renderer_visible)
         {
             float& renderer_value = Renderer::GetOptionRef<float>(render_option);
             ImGui::BeginDisabled(true);
             ImGui::PushItemWidth(width_input_numeric);
-            ImGui::Text("%f", renderer_value);
+            ImGui::Text(format, renderer_value);
             ImGui::PopItemWidth();
             ImGui::EndDisabled();
         }
@@ -298,7 +305,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "Scales render resolution automatically based on GPU load");
 
                     ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution, true));
-                    option_value("Resolution scale", Renderer_Option::ResolutionScale, "Adjusts the percentage of the render resolution", 0.01f);
+                    option_value("Resolution scale", Renderer_Option::ResolutionScale, true, "Adjusts the percentage of the render resolution", 0.01f);
                     ImGui::EndDisabled();
                 }
 
@@ -323,7 +330,7 @@ void RenderOptions::OnTickVisible()
                     bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling, true) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
                     string label = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
                     string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening" : "AMD FidelityFX Contrast Adaptive Sharpening";
-                    option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
+                    option_value(label.c_str(), Renderer_Option::Sharpness, true, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
                 }
 
                 if (option("Ray-traced Effects"))
@@ -357,13 +364,13 @@ void RenderOptions::OnTickVisible()
                 {
                     option_check_box("HDR", Renderer_Option::Hdr, "Enable high dynamic range output");
                     ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr, true));
-                    option_value("Gamma", Renderer_Option::Gamma);
+                    option_value("Gamma", Renderer_Option::Gamma, true);
                     ImGui::EndDisabled();
-                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
+                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, true, "Negative value disables adaptation");
 
                     bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr, true);
                     ImGui::BeginDisabled(!hdr_enabled);
-                    option_value("White point (nits)", Renderer_Option::WhitePoint, "Target luminance of peak white", 1.0f);
+                    option_value("White point (nits)", Renderer_Option::WhitePoint, hdr_enabled, "Target luminance of peak white", 1.0f);
                     ImGui::EndDisabled();
                 }
 
@@ -394,7 +401,7 @@ void RenderOptions::OnTickVisible()
             {
                 render_options_table_header("Effect");
 
-                option_value("Bloom intensity", Renderer_Option::Bloom, "Blend factor, set to 0 to disable", 0.01f);
+                option_value("Bloom intensity", Renderer_Option::Bloom, true, "Blend factor, set to 0 to disable", 0.01f);
                 option_check_box("Motion blur", Renderer_Option::MotionBlur, "Controlled by camera shutter speed");
                 option_check_box("Depth of field", Renderer_Option::DepthOfField, "Controlled by camera aperture");
                 option_check_box("Film grain", Renderer_Option::FilmGrain, "Simulates old film camera noise");
@@ -416,7 +423,7 @@ void RenderOptions::OnTickVisible()
             {
                 render_options_table_header("Option");
 
-                option_value("Fog density", Renderer_Option::Fog, "Controls atmospheric fog strength", 0.1f);
+                option_value("Fog density", Renderer_Option::Fog, true, "Controls atmospheric fog strength", 0.1f);
 
                 if (option("Wind"))
                 {
