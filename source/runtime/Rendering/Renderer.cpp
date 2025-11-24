@@ -829,6 +829,8 @@ namespace spartan
                 properties[count].tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
                 properties[count].offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
                 properties[count].offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
+                properties[count].invert_uv.x           = material->GetProperty(MaterialProperty::TextureInvertX);
+                properties[count].invert_uv.y           = material->GetProperty(MaterialProperty::TextureInvertY);
                 properties[count].roughness_mul         = material->GetProperty(MaterialProperty::Roughness);
                 properties[count].metallic_mul          = material->GetProperty(MaterialProperty::Metalness);
                 properties[count].normal_mul            = material->GetProperty(MaterialProperty::Normal);

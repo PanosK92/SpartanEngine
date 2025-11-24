@@ -80,6 +80,8 @@ namespace spartan
                 case MaterialProperty::TextureTilingY:             return "texture_tiling_y";
                 case MaterialProperty::TextureOffsetX:             return "texture_offset_x";
                 case MaterialProperty::TextureOffsetY:             return "texture_offset_y";
+                case MaterialProperty::TextureInvertX:             return "texture_invert_x";
+                case MaterialProperty::TextureInvertY:             return "texture_invert_y";
         
                 // Special effects
                 case MaterialProperty::IsTerrain:                  return "texture_slope_based";
@@ -542,6 +544,8 @@ namespace spartan
         SetProperty(MaterialProperty::Roughness,      1.0f);
         SetProperty(MaterialProperty::TextureTilingX, 1.0f);
         SetProperty(MaterialProperty::TextureTilingY, 1.0f);
+        SetProperty(MaterialProperty::TextureInvertX, 0.0f);
+        SetProperty(MaterialProperty::TextureInvertY, 0.0f);
         SetProperty(MaterialProperty::WorldHeight,    1.0f);
         SetProperty(MaterialProperty::CullMode,       static_cast<float>(RHI_CullMode::Back));
 

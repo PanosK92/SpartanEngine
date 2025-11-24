@@ -149,6 +149,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         // apply tiling and offset
         uv_world = uv_world * material.tiling + material.offset;
+        
+        // apply inversion (mirror along axis)
+        uv_world.x = material.invert_uv.x > 0.5f ? (1.0f - frac(uv_world.x)) + floor(uv_world.x) : uv_world.x;
+        uv_world.y = material.invert_uv.y > 0.5f ? (1.0f - frac(uv_world.y)) + floor(uv_world.y) : uv_world.y;
 
         vertex.uv_misc.xy = uv_world;
     }

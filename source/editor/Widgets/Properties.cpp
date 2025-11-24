@@ -868,6 +868,17 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+        
+            // inversion
+            bool invert_x = material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
+            bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
+            ImGui::Text("Invert");
+            ImGui::SameLine(column_pos_x);
+            ImGui::Checkbox("X##matInvertX", &invert_x);
+            ImGui::SameLine();
+            ImGui::Checkbox("Y##matInvertY", &invert_y);
+            material->SetProperty(MaterialProperty::TextureInvertX, invert_x ? 1.0f : 0.0f);
+            material->SetProperty(MaterialProperty::TextureInvertY, invert_y ? 1.0f : 0.0f);
         }
 
         // rendering

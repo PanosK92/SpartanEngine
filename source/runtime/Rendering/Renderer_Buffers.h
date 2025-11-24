@@ -161,6 +161,7 @@ namespace spartan
 
         math::Vector2 tiling_uv = math::Vector2::Zero;
         math::Vector2 offset_uv = math::Vector2::Zero;
+        math::Vector2 invert_uv = math::Vector2::Zero;
 
         float roughness_mul = 0.0f;
         float metallic_mul  = 0.0f;
